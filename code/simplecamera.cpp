@@ -2,6 +2,7 @@
 #include "vk_scene_renderer.h"
 #include <tracy/Tracy.hpp>
 #include "utils/mc2log.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
 #include "Gates/preferences_legacy.h"
 #include "../GameOS/gameos/ui_texture.h"
 #include "../GameOS/gameos/vulkan_legacy_shape_island.h"
@@ -607,10 +608,27 @@ long SimpleCamera::update()
 				{
 					// Size ~ 1/tan(fov/2) at a fixed distance (a long lens: moving the camera in distorts the
 					// model and pushes it into the near plane); then centre across, feet just above the bottom edge.
-					const float s = std::clamp( std::max( h / ( fillFrac_ * rh ), w / ( 0.94f * rw ) ), 0.5f, 2.f );
-					framedFov_ = 2.f * std::atan( std::tan( framedFov_ * 0.5f * DEGREES_TO_RADS ) * s ) / DEGREES_TO_RADS;
+					// Estimate the full-turn width from the drawn height; bound root-offset inflation.
+					const float wTurn = turnHalfHeight_ > 0.f
+						? std::min(2.f * turnRadius_ * h / (2.f * turnHalfHeight_), 2.f * w) : w;
+					const float s = std::clamp(std::max({h / (fillFrac_ * rh), wTurn / (0.94f * rw), w / (0.94f * rw)}), 0.5f, 2.f);
+					framedFov_ = 2.f * std::atan(std::tan(framedFov_ * 0.5f * DEGREES_TO_RADS) * s) / DEGREES_TO_RADS;
 					fudgeX += ( bounds[0] + bounds[2] ) * 0.5f - ( drawn_[0] + drawn_[2] ) * 0.5f;
 					fudgeY += bounds[3] - rh * ( 1.f - fillFrac_ ) * 0.35f - drawn_[3];
+				}
+			}
+			else if (haveDrawn_ && fitIters_ == 0)
+			{
+				haveDrawn_ = false;
+				const float cx = 0.5f * (bounds[0] + bounds[2]), rw = bounds[2] - bounds[0];
+				const float half = std::max(cx - drawn_[0], drawn_[2] - cx);
+				maxHalf_ = std::max(maxHalf_, half);
+				if (half > 0.47f * rw)
+				{
+					const float s = std::min(half / (0.47f * rw), 2.f);
+					framedFov_ = 2.f * std::atan(std::tan(framedFov_ * 0.5f * DEGREES_TO_RADS) * s) / DEGREES_TO_RADS;
+					fudgeY += bounds[3] - (bounds[3] - bounds[1]) * (1.f - fillFrac_) * 0.35f - drawn_[3];
+					++widens_;
 				}
 			}
 			const float sharedAlt = AltitudeTight;
@@ -630,7 +648,16 @@ long SimpleCamera::update()
 			// Idle turntable once the fit has settled; the clock keeps running while paused so a drag does not bank a jump.
 			const double now = std::chrono::duration<double>( std::chrono::steady_clock::now().time_since_epoch() ).count();
 			if ( fitIters_ == 0 && !turntablePaused_ && turntableLastT_ > 0.0 )
-				rotation = std::fmod( rotation + 10.f * static_cast<float>( std::min( now - turntableLastT_, 0.1 ) ), 360.f );
+			{
+				const float step = 10.f * static_cast<float>(std::min(now - turntableLastT_, 0.1));
+				rotation = std::fmod(rotation + step, 360.f);
+				const float previousTurn = turnAccum_;
+				turnAccum_ += step;
+				if (previousTurn < 360.f && turnAccum_ >= 360.f)
+					if (mc2_diag::tagRequested("MECH_PREVIEW_FIT"))
+						MC2_LOG(Ui, Info, "[MECH_PREVIEW_FIT] chassis={} maxHalfW={} limit={} rectHalf={} widens={} fov={}",
+							fitChassis_, maxHalf_, 0.47f * (bounds[2] - bounds[0]), 0.5f * (bounds[2] - bounds[0]), widens_, framedFov_);
+			}
 			turntableLastT_ = now;
 			pObject->rotation = this->rotation;
 		}
@@ -667,9 +694,13 @@ long SimpleCamera::update()
 
 void SimpleCamera::drawAnimationPanel()
 {
-    if (ImGui::IsKeyPressed(ImGuiKey_F9, false)) {
+    static bool keyHeld = false;
+    const auto key = gos_GetKeyStatus(KEY_F9);
+    const bool down = key == KEY_PRESSED || key == KEY_HELD || ImGui::IsKeyDown(ImGuiKey_F9);
+    if (down && !keyHeld) {
         animationPreview = {}; animationCamera = animationCamera == this ? nullptr : this;
     }
+    keyHeld = down;
     if (animationCamera != this) return;
     bool open = true;
     ImGui::SetNextWindowPos(ImVec2(900, 110), ImGuiCond_FirstUseEver);
@@ -743,10 +774,11 @@ void SimpleCamera::setMech(mc2::czstring fileName, long baseColor, long highligh
 	}
 
 	std::string NoPathFileName = stemOfPath(fileName);
-	if (const auto* chassis = std::getenv("MECH_PREVIEW_CAPTURE"); chassis && *chassis)
+	if (const auto* chassis = std::getenv("MECH_PREVIEW_CAPTURE"); chassis && *chassis && std::strcmp(chassis, "1") != 0)
 		NoPathFileName = stemOfPath(chassis);
 
 	char testName[256];
+	fitChassis_ = NoPathFileName;
 	strcpy( testName, NoPathFileName.c_str() );
 	strcat( testName, "enc" );
 
@@ -787,6 +819,18 @@ void SimpleCamera::setMech(mc2::czstring fileName, long baseColor, long highligh
 	pObject->setGestureGoal(2);
 	pObject->resetPaintScheme( highlight1, highlight2, baseColor );
 	pObject->rotation = rotation;
+	turnRadius_ = turnHalfHeight_ = 0.f;
+	maxHalf_ = turnAccum_ = 0.f;
+	widens_ = 0;
+	if (auto* shape = static_cast<Mech3DAppearance*>(pObject.get())->previewShape())
+	{
+		const auto lo = shape->GetMinBox(), hi = shape->GetMaxBox(), root = shape->GetRootNodeCenter();
+		const float halfWidth = std::max(std::abs(lo.x), std::abs(hi.x));
+		const float halfDepth = std::max(std::abs(lo.z), std::abs(hi.z));
+		turnRadius_ = std::hypot(halfWidth, halfDepth)
+			+ 0.5f * std::hypot(root.x, root.z);
+		turnHalfHeight_ = 0.5f * (hi.y - lo.y);
+	}
 
 	activate();
 		

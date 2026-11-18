@@ -10,6 +10,7 @@ LogisticsVariant.cpp			: Implementation of the LogisticsVariant component.
 #include "mc2fmt.h"
 #include "mc2str.h"
 #include "package_chassis.h"
+#include "../GameOS/gameos/utils/mc2log.h"
 #include <filesystem>
 
 
@@ -117,6 +118,24 @@ int LogisticsChassis::init( CSVFile* file, int chassisID )
 
 	result = file->readLong( 6, 5, baseArmor );
 	gosASSERT( result == NO_ERR );
+	// Same CSV-to-simulation location order as BattleMech::init.
+	static constexpr int columns[]{2,7,5,6,3,4,8,9,12,10,11};
+	armorEditable = true;
+	for (int i = 0; i < 11; ++i) {
+		long value = 0;
+		if (file->readLong(18, columns[i], value) != NO_ERR || value < 0 || value > 255)
+			armorEditable = false;
+		else baseArmorLoc[i] = static_cast<int>(value);
+		if (i < 8) {
+			value = 0;
+			if (file->readLong(17, columns[i], value) != NO_ERR || value < 0 || value > 255)
+				armorEditable = false;
+			else structure[i] = static_cast<int>(value);
+		}
+	}
+	armorEditable = armorEditable && mc2::armor::total(baseArmorLoc) == baseArmor && maxArmor >= baseArmor;
+	if (!armorEditable)
+		MC2_LOG(Core, Warn, "logistics: chassis '{}' armor display-only: invalid CSV rows 17/18", fileName);
 
 	result = file->readLong( 13, 2, componentAreaWidth );
 	gosASSERT( result == NO_ERR );
@@ -361,6 +380,7 @@ bool LogisticsVariant::operator==( const LogisticsVariant& src ) const
 		if ( availableToUser != src.availableToUser )
 			return 0;
 
+		if (layoutState.armorExplicit != src.layoutState.armorExplicit || layoutState.armor != src.layoutState.armor) return false;
 		if ( componentCount != src.componentCount )
 			return 0;
 		
@@ -425,17 +445,22 @@ int LogisticsVariant::init( CSVFile* file, LogisticsChassis* pChassis, int Varia
 		}
 	}
 
+	// big-first (stock order); the package chassis solves the whole loadout in setLoadout.
+	std::vector<SavedComponent> saved;
 	for ( int j = 4; j > 0; j-- )
 	{
 		for ( int k = 3; k >0; k-- )
 		{
 			for (int i = 0; i < componentCount; i++ )
 			{
-				LogisticsComponent*
-				pComponent = pComps[i];
+				LogisticsComponent* pComponent = pComps[i];
 
-				if ( pComponent&& pComponent->getComponentWidth() == k 
+				if ( pComponent && pComponent->getComponentWidth() == k
 					&& pComponent->getComponentHeight() == j )
+				{
+					if (chassis->getPackage())
+						saved.push_back({pComps[i]->getID(), xLocs[i], yLocs[i]});
+					else
 				{
 					if ( !addComponent( pComps[i]->getID(), xLocs[i], yLocs[i] ) )
 					{
@@ -461,8 +486,15 @@ int LogisticsVariant::init( CSVFile* file, LogisticsChassis* pChassis, int Varia
 				}
 			}
 		}
-
 	}
+	}
+	LoadoutReport report;
+	if (chassis->getPackage()) {
+		setLoadout( saved, &report );
+		restoreLocationRecord(locationRecord());
+	}
+	for ( const DroppedComponent& d : report.dropped )   // a pack authoring error: designer variants are authored against their own layout
+		MC2_LOG(Core, Warn, "logistics: designer variant '{}' lost component {} ({}): {}", variantName, d.name, d.id, d.reason);
 
 	
 	layoutState.version = 2;
@@ -480,7 +512,7 @@ mc2pkg::LayoutComponent layoutComponent(const LogisticsComponent& c) {
 		auto& master = MasterComponent::masterList[result.id];
 		result.size = static_cast<int>(master.getSize()); result.allowed = 0;
 		for (int loc = 0; loc < 8; ++loc)
-			if (master.getCriticalSpacesReq(loc) > 0) result.allowed |= 1u << loc;
+			if (master.getCriticalSpacesReq(loc) >= 0) result.allowed |= 1u << loc;
 		result.implicitAmmo = master.getWeaponAmmoMasterId() != 0;
 	}
 	using K = mc2pkg::EquipmentKind;
@@ -510,6 +542,7 @@ mc2pkg::LayoutComponent layoutComponent(const LogisticsComponent& c) {
 
 mc2pkg::LocationVariant LogisticsVariant::locationRecord() const {
 	auto record = layoutState;
+	if (record.armorExplicit && chassis->armorEditable) record.armor = armorAllocation();
 	record.items.clear();
 	std::vector<mc2pkg::LayoutComponent> specs;
 	for (int i = 0; i < componentCount; ++i) {
@@ -521,9 +554,13 @@ mc2pkg::LocationVariant LogisticsVariant::locationRecord() const {
 	const auto* package = chassis->getPackage();
 	const std::string stem = std::filesystem::path(chassis->fileName).stem().string();
 	const auto layoutPath = std::filesystem::path("data") / "defs" / "chassis" / "core" / stem / "locations.fit";
-	auto loaded = mc2pkg::loadChassisLayout(package ? package->fitPath : layoutPath.generic_string());
+	if (!chassis->layoutCacheLoaded) {   // the sheet asks ~10x per frame: parse the FIT once per chassis
+		chassis->layoutCache = mc2pkg::loadChassisLayout(package ? package->fitPath : layoutPath.generic_string());
+		chassis->layoutCacheLoaded = true;
+	}
+	const auto& loaded = chassis->layoutCache;
 	mc2pkg::ChassisLayout layout;
-	if (loaded) layout = std::move(*loaded);
+	if (loaded) layout = *loaded;
 	else {
 		// Compatibility fallback until lane 3 supplies authored layouts. Do not
 		// invent restrictive hardpoints for mods with no location table.
@@ -561,6 +598,12 @@ bool LogisticsVariant::restoreLocationRecord(mc2pkg::LocationVariant record) {
 		c.component = resolved[i]; c.xCoord = item.x; c.yCoord = item.y;
 		c.location = static_cast<LOGISTICS_COMPONENT_LOCATION>(item.legacyLocation);
 		c.bodyLocation = item.location; c.bodySlot = item.slot; c.layoutHardpoint = item.hardpoint;
+	}
+	if (record.armorExplicit && chassis->armorEditable) {
+		const auto cap = armorCapacity();
+		const auto normal = mc2::armor::normalise(record.armor, chassis->baseArmorLoc, cap, getArmor());
+		if (normal != record.armor) mc2::fmt::print_out("[ARMOR] normalised armor for {}\n", variantName);
+		record.armor = normal;
 	}
 	layoutState = std::move(record);
 	layoutState = locationRecord();
@@ -674,3 +717,21 @@ bool LogisticsVariant::addComponent( int idFromFitFile, long& x, long& y )
 	componentCount++;
 	return true;
 }
+
+mc2::armor::Allocation LogisticsVariant::armorCapacity() const {
+	return mc2::armor::maxPerLocation(chassis->structure, chassis->baseArmorLoc, static_cast<int>(chassis->maxArmor - chassis->baseArmor));
+}
+mc2::armor::Allocation LogisticsVariant::armorAllocation(bool legacy) const {
+	if (!legacy && hasExplicitArmor())
+		return mc2::armor::normalise(layoutState.armor, chassis->baseArmorLoc, armorCapacity(), getArmor());
+	return mc2::armor::legacyDistribution(chassis->baseArmorLoc, getArmor() - static_cast<int>(chassis->baseArmor));
+}
+bool LogisticsVariant::stepArmor(int location, int delta) {
+	if (!chassis->armorEditable) return false;
+	auto a = armorAllocation();
+	if (!mc2::armor::step(a, location, delta, armorCapacity(), getArmor())) return false;
+	layoutState.armor = a;
+	layoutState.armorExplicit = true;
+	return true;
+}
+// Armor allocation end.

@@ -569,6 +569,7 @@ long Mission::addMover (MoverInitData* moveSpec, LogisticsMech* mechData)
 	// weapons in (component-list order).
 	BattleMechPtr bMech = static_cast<BattleMechPtr>(mMech);
 	bMech->setPendingPackageMounts({});
+	bMech->setPendingArmorAllocation({});
 	if ( totalComponents && bMech->isPackageChassis() )
 	{
 		std::vector<unsigned int> keys(static_cast<size_t>(totalComponents), 0u);
@@ -587,9 +588,14 @@ long Mission::addMover (MoverInitData* moveSpec, LogisticsMech* mechData)
 		}
 	}
 
+	if (!MPlayer && mechData->getVariant()->hasExplicitArmor()) {
+		const auto allocation = mechData->getVariant()->armorAllocation();
+		bMech->setPendingArmorAllocation(allocation);
+	}
 	bMech->resetComponents(totalComponents,componentList);
 	std::free(componentList);
 	bMech->setPendingPackageMounts({});
+	bMech->setPendingArmorAllocation({});
 	
 	return moverHandle;
 }

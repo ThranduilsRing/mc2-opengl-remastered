@@ -230,7 +230,7 @@ def build_profile(recipe: dict, wm: dict, bp: dict) -> dict:
             "tonnage": tons, "structure": structure, "heat_index": heat_index, "speed": spd,
             "cost": cost, "br": br, "max_armor": max_armor, "payload": payload, "empty_mass": empty_mass,
             "jump_capable": int(cd.get("MaxJumpjets", 0)) > 0,
-            "grid": mc2["grid"], "regions": mc2["regions"],
+            "grid": mc2["grid"], "regions": mc2["regions"], "layout_rev": int(mc2.get("layout_rev", 1)),
             "ap_ordinals": ap_ordinals,
         },
         "hardpoints": hardpoints,
@@ -477,7 +477,7 @@ def emit_chassis_fit(profile, recipe):
              "[Chassis]", f'st ChassisId = "{profile["chassis_id"]}"', f'st Stem = "{stem}"',
              f'st BalanceProfile = "{profile["balance_profile"]}"', "f Scale = 1.0",
              f"f Tonnage = {m['tonnage']}", f"f EmptyMass = {m['empty_mass']}", f"f Payload = {m['payload']}",
-             "b Purchasable = TRUE",
+             "b Purchasable = TRUE", f"l LayoutRev = {m['layout_rev']}",   # saves/exports of a revised layout are fenced from older builds
              f'st HudIcon = "{stem}_hud"',
              f"l RegionCount = {len(m['regions'])}", f"l HardpointCount = {len(profile['hardpoints'])}", ""]
     for i, (loc, (x, y, w, h)) in enumerate(m["regions"].items()):

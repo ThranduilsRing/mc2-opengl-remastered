@@ -15,10 +15,12 @@ class CSVFile;
 class FitIniFile;
 
 #include <string>
+#include <vector>
 #include <optional>
 #include <functional>
 #include <expected>
 #include "chassis_layout.h"
+#include "armor_alloc.h"
 
 #pragma warning (disable:4514)
 
@@ -67,6 +69,9 @@ public:
 	// BT2018-FIRST-CLASS P7: the package chassis record (regions, mounts, mass budget) when this
 	// chassis comes from a package; nullptr for every stock chassis.
 	const mc2pkg::PackageChassis* getPackage() const { return package; }
+	mc2::armor::Allocation baseArmorLoc{};
+	std::array<int, 8> structure{};
+	bool armorEditable = false;
 
 protected:
 
@@ -119,6 +124,9 @@ protected:
 	MechAppearance*		appearance; 
 
 	const mc2pkg::PackageChassis* package = nullptr;
+	// Parsed locations.fit / package layout, loaded once per chassis object (a content reload recreates the chassis).
+	mutable std::optional<mc2pkg::ChassisLayout> layoutCache;
+	mutable bool layoutCacheLoaded = false;
 
 	friend class		LogisticsVariant;
 	friend class		LogisticsMech;
@@ -201,6 +209,10 @@ protected:
 
 		long			save( FitIniFile& file, long counter );
 		mc2pkg::LocationVariant locationRecord() const;
+		mc2::armor::Allocation armorAllocation(bool legacy = false) const;
+		mc2::armor::Allocation armorCapacity() const;
+		bool hasExplicitArmor() const { return chassis->armorEditable && layoutState.armorExplicit; }
+		bool stepArmor(int location, int delta);
 		bool restoreLocationRecord(mc2pkg::LocationVariant record);
 		bool isLayoutGrandfathered() const { return locationRecord().grandfathered; }
 
@@ -229,6 +241,18 @@ protected:
 		// BT2018-FIRST-CLASS P7: package chassis rules (code/package_chassis.h). Weapon hardpoint
 		// keys in getComponents() order (0 for non-weapons) -- what deployment hands BattleMech.
 		int			getPackageMounts( long& count, unsigned int* keys ) const;
+		// MECHLAB-LOC-1: first legal cell for pComponent inside package region `regionIndex`; `reason` is the short
+		// verdict text either way. Cells + mc2pkg::checkAdd only.
+		struct LocationPlace { bool legal = false; long x = -1; long y = -1; std::string reason; };
+		LocationPlace	packageLocationPlace( LogisticsComponent* pComponent, int regionIndex ) const;
+		// Loader path: install a saved component list. Stock chassis add each item at its saved cell (unchanged).
+		// A package chassis solves the WHOLE loadout against the current regions and mounts (mc2::mechlab_loc::
+		// migrateLoadout): legal loadouts load as saved; otherwise items keep or move cells and only what has no
+		// legal place is dropped, named in `report` with its cost.
+		struct SavedComponent { int id = 0; long x = -1; long y = -1; };
+		struct DroppedComponent { std::string name; int id = 0; long cost = 0; std::string reason; };
+		struct LoadoutReport { int kept = 0, moved = 0; std::vector<DroppedComponent> dropped; };
+		void		setLoadout( const std::vector<SavedComponent>& items, LoadoutReport* report = nullptr );
 
 		int			getFileID() const { return fileID; }
 

@@ -120,6 +120,10 @@
     "CONTENT_COOK": {
       "status": "keep",
       "reason": "mclib/content_ir.cpp: one line per content-cache cook/hit (cache=hit|miss); scripts/kit_payload.py parses key= from it. Printed only when a glTF/FBX shape goes through the content cache, never in a stock default run."
+    },
+    "LOADOUT_MIGRATE": {
+      "status": "keep",
+      "reason": "code/logisticsdata_save.cpp: printed only when a loaded save's loadout changed because the chassis layout moved on (moved/dropped components, C-bill refund, replaced variant); a current-layout save prints none. It is the receipt for refunded C-bills, so it must not hide behind MC2_DIAG_VERBOSE; tools/campaign_save_roundtrip.py proofs read it."
     }
   }
 }

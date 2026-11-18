@@ -1,6 +1,9 @@
 // LogisticsData: removeMechsInForceGroup, pilot ranking, save / load, setMissionCompleted and the mech / pilot / variant lookups.
 // Declared in the class headers; shared names in logisticsdata_internal.h.
 #include "pilot_pick.h"
+#include "logistics_save_version.h"
+#include "mechlab_loc_layout.h"
+#include "package_chassis.h"
 #include "logisticsdata_internal.h"
 #include "content_error.h"
 #include "mc2fmt.h"
@@ -130,18 +133,21 @@ long	LogisticsData::save( FitIniFile& file )
 {
 		
 	int variantCount = 0;
+	bool revisedLayout = false;   // a saved variant on a layout-revised package chassis: older builds must refuse this save
 	// save the player created variants
 	for ( auto vIter = variants.begin(); vIter != variants.end(); ++vIter )
 		{
 			if ( !(*vIter)->isDesignerMech() )
 			{
+				const mc2pkg::PackageChassis* pkg = (*vIter)->getChassis()->getPackage();
+				revisedLayout |= mc2::logistics_save::layoutRevised( pkg ? pkg->layoutRev : 1 );
 				if (const long rc = (*vIter)->save(file, variantCount); rc != 0) return rc;
 				variantCount++;
 			}
 		}
 
 	file.writeBlock( "Version" );
-	file.writeIdLong( "VersionNumber", SaveGameVersionNumber);
+	file.writeIdLong( "VersionNumber", mc2::logistics_save::saveVersionFor( revisedLayout ) );
 
 	file.writeBlock( "General" );	
 	
@@ -191,6 +197,7 @@ std::expected<void, long> LogisticsData::load( FitIniFile& file )
 	clearPilots();
 	initPilots();
 	clearVariants();
+	layoutNotes.clear();
 
 	if ( !missionInfo )
 		missionInfo = std::make_unique_for_overwrite<LogisticsMissionInfo>();
@@ -212,7 +219,7 @@ std::expected<void, long> LogisticsData::load( FitIniFile& file )
 		return std::unexpected(-1L);
 	}
 
-	if (testVersionNum != SaveGameVersionNumber)
+	if (!mc2::logistics_save::saveVersionReadable(testVersionNum))
 	{
 		PAUSE(("SaveGame is not Version %d.  It was Version %d which is not valid!",SaveGameVersionNumber,testVersionNum));
 		return std::unexpected(-1L);
@@ -279,6 +286,25 @@ std::expected<void, long> LogisticsData::load( FitIniFile& file )
 		loadMech( file, count );
 	}
 
+	// A migrated variant that dropped components pays the full cost back, once per owned mech of that variant (equipment is
+	// worth C-bills only; there is no component inventory). The re-saved file holds the solved cells, so this never repeats.
+	for ( LayoutNote& n : layoutNotes )
+	{
+		long droppedCost = 0;
+		for ( const LogisticsVariant::DroppedComponent& d : n.report.dropped )
+			droppedCost += d.cost;
+		for ( const auto& m : inventory )
+			if ( m->getVariant() == n.variant )
+				++n.mechs;
+		n.refund = mc2::mechlab_loc::layoutRefund( droppedCost, n.mechs );
+		if ( n.report.dropped.empty() )
+			continue;
+		const int before = missionInfo->getCBills();
+		missionInfo->incrementCBills( static_cast<int>( n.refund ) );
+		mc2::fmt::print_err( "[LOADOUT_MIGRATE] refund variant=\"{}\" mechs={} cbills={} balance={}->{}\n",
+			n.name, n.mechs, n.refund, before, missionInfo->getCBills() );
+	}
+
 	updateAvailability();
 
 
@@ -292,7 +318,9 @@ std::expected<void, long> LogisticsData::loadVariant( FitIniFile& file )
 {
 	char tmp[256] = {};
 
-	const std::optional<std::string> chassisKey = objective_text::readPlain( file, "Chassis" );
+	std::optional<std::string> chassisKey = objective_text::readPlain( file, "Chassis" );
+	if ( !chassisKey )   // a layout-revised variant names its chassis under LayoutChassis (code/logistics_save_version.h)
+		chassisKey = objective_text::readPlain( file, "LayoutChassis" );
 	if ( !chassisKey )
 	{
 		MC2_LOG(Core, Warn, "logistics: a saved variant has no Chassis and is rejected");
@@ -325,6 +353,16 @@ std::expected<void, long> LogisticsData::loadVariant( FitIniFile& file )
 		return std::unexpected(INVALID_FILE_NAME);
 	}
 
+	long savedRev = 0;
+	const long revRead = file.readIdLong("LayoutRev", savedRev);
+	savedRev = mc2::mechlab_loc::savedLayoutRev(revRead, savedRev);
+	const auto* package = pChassis->getPackage();
+	const auto layoutAction = mc2::mechlab_loc::savedLayoutAction(savedRev, package ? package->layoutRev : 1);
+	if (layoutAction == mc2::mechlab_loc::SavedLayoutAction::PackDefault) {
+		MC2_LOG(Core, Warn, "logistics: skipping saved variant '{}' layout rev {} newer than installed {}; using pack default", *variantName, savedRev, package ? package->layoutRev : 1);
+		return {};
+	}
+
 	// create the variant, add to the list
 	auto variant = std::make_unique<LogisticsVariant>( pChassis, 0 );
 	LogisticsVariant* pVariant = variant.get();
@@ -333,9 +371,46 @@ std::expected<void, long> LogisticsData::loadVariant( FitIniFile& file )
 	pVariant->setName( *variantName );
 
 	auto record = mc2pkg::readLocationVariant(file);
-	if (!record || !pVariant->restoreLocationRecord(std::move(*record))) {
+	if (!record) {
 		variants.pop_back();
 		return std::unexpected(INVALID_FILE_NAME);
+	}
+	for (const auto& item : record->items) {
+		if (!getComponent(item.id)) {
+			variants.pop_back();
+			return std::unexpected(INVALID_FILE_NAME);
+		}
+	}
+	LogisticsVariant::LoadoutReport report;
+	if (package && layoutAction == mc2::mechlab_loc::SavedLayoutAction::Migrate) {
+		std::vector<LogisticsVariant::SavedComponent> saved;
+		for (const auto& item : record->items)
+			saved.push_back({item.id, item.x, item.y});
+		pVariant->setLoadout(saved, &report);
+		auto migrated = pVariant->locationRecord();
+		migrated.armor = record->armor;
+		migrated.armorExplicit = record->armorExplicit;
+		if (!pVariant->restoreLocationRecord(std::move(migrated))) {
+			variants.pop_back();
+			return std::unexpected(INVALID_FILE_NAME);
+		}
+	} else if (!pVariant->restoreLocationRecord(std::move(*record))) {
+		variants.pop_back();
+		return std::unexpected(INVALID_FILE_NAME);
+	}
+	if ( report.moved > 0 || !report.dropped.empty() )
+	{
+		LayoutNote note;
+		note.variant = pVariant;
+		note.name = *variantName;
+		note.chassis = pChassis->getPackage() ? pChassis->getPackage()->chassisId : *chassisKey;
+		note.layoutRev = pChassis->getPackage() ? pChassis->getPackage()->layoutRev : 1;
+		note.report = std::move( report );
+		mc2::fmt::print_err( "[LOADOUT_MIGRATE] variant=\"{}\" chassis={} layout_rev={} kept={} moved={} dropped={}\n",
+			note.name, note.chassis, note.layoutRev, note.report.kept, note.report.moved, static_cast<int>( note.report.dropped.size() ) );
+		for ( const LogisticsVariant::DroppedComponent& d : note.report.dropped )
+			mc2::fmt::print_err( "[LOADOUT_MIGRATE] dropped variant=\"{}\" component=\"{}\" id={} cost={} reason={}\n", note.name, d.name, d.id, d.cost, d.reason );
+		layoutNotes.push_back( std::move( note ) );
 	}
 
 	return {};
@@ -344,6 +419,29 @@ std::expected<void, long> LogisticsData::loadVariant( FitIniFile& file )
 std::expected<void, long> LogisticsData::loadMech( FitIniFile& file, int& count )
 {
 	auto mIter = mc2purchase::loadInventoryVariant(file, variants, mc2purchase::chassisSource);
+	if ( mIter == variants.end() )
+	{
+		// The saved variant no longer exists (a pack recipe dropped it). The mech is kept on its chassis' first designer variant
+		// and the change is reported, instead of the mech silently vanishing from the inventory.
+		const std::string saved = objective_text::readPlain( file, "Variant" ).value_or( std::string() );
+		const auto chassisKey = objective_text::readPlain( file, "Chassis" );
+		const auto pack = objective_text::readPlain( file, "PurchasePack" );
+		if ( chassisKey )
+			for ( auto it = variants.begin(); it != variants.end(); ++it )
+				if ( (*it)->isDesignerMech() && mc2purchase::identityMatches( mc2purchase::chassisSource( (*it)->getFileName() ), (*it)->getFileName(), pack, *chassisKey ) )
+				{
+					mIter = it;
+					break;
+				}
+		if ( mIter != variants.end() )
+		{
+			LayoutNote note;
+			note.name = saved;
+			note.replacedWith = (*mIter)->getName();
+			mc2::fmt::print_err( "[LOADOUT_MIGRATE] variant-replaced saved=\"{}\" now=\"{}\"\n", note.name, note.replacedWith );
+			layoutNotes.push_back( std::move( note ) );
+		}
+	}
 	if ( mIter != variants.end() )
 	{
 		auto mech = std::make_unique<LogisticsMech>( mIter->get(), count );

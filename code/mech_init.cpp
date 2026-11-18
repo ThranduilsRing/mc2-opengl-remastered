@@ -273,6 +273,14 @@ bool BattleMech::isPackageChassis (void) const
 	return packageChassisByTypeNum(typeHandle) != nullptr;
 }
 
+void BattleMech::setPendingArmorAllocation(std::span<const int> values)
+{
+	hasPendingArmorAllocation = false;
+	if (values.size() != 11 || !armorBaseline.valid) return;
+	for (int value : values) if (value < 0 || value > 255) return;
+	std::copy(values.begin(), values.end(), pendingArmorAllocation);
+	hasPendingArmorAllocation = true;
+}
 void BattleMech::setPendingPackageMounts (std::span<const unsigned int> keys)
 {
 	numPendingPackageMounts = 0;

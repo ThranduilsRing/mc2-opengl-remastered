@@ -81,6 +81,7 @@ struct PackageChassis {
     long objTypeNum = -1;       // runtime allocation; never saved (saves carry chassisId)
     float scale = 1.0f, tonnage = 0.0f, emptyMass = 0.0f, payload = 0.0f;
     bool purchasable = false;
+    int layoutRev = 1;          // pack-declared layout revision (LayoutRev); saves/exports of a revised layout are fenced from older builds
     std::vector<Region> regions;
     std::vector<Hardpoint> hardpoints;
     std::vector<int> antiPersonnelOrdinals;   // component ordinals that may use AntiPersonnel mounts

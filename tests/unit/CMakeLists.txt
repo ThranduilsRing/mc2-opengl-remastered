@@ -184,6 +184,9 @@ add_executable(mc2_tests
     test_prop_array_buckets.cpp  # PROP-ARRAY-BUCKETS: alpha-ON prop albedo size buckets + (bucket, layer) encoding (offline)
     test_startup_work.cpp  # PC night startup: bounded dedup, appearance noise, TGA scratch reuse
     test_hardpoint.cpp        # HARDPOINT-ID-SCHEMA-1: HardpointId join key + weapon-tag/damage-location link (offline)
+    test_armor_alloc.cpp
+    test_mechlab_loc_layout.cpp  # MECHLAB-LOC-1: location-view rect table (draw == hit at 800x600/1080p/4K) + refusal reasons (offline)
+    test_logistics_save_version.cpp  # MECHLAB-LOC-1: save version 10005 + variant chassis key boundary for revised layouts (offline)
     test_package_chassis.cpp  # BT2018-FIRST-CLASS P3/P7: package chassis regions/mounts/payload + type-number allocation (offline)
     test_purchase_catalog.cpp
     test_mech_clip_state.cpp  # BT2018-FIRST-CLASS P9: imported-mech clip state machine + stride matching (offline)
@@ -764,11 +767,16 @@ mc2_height_slice(layout_restore code/logisticsvariant.cpp
     "bool LogisticsVariant::restoreLocationRecord(" "bool LogisticsVariant::addComponent(")
 mc2_height_slice(layout_mount_helpers code/logisticsvariant_package.cpp
     "namespace {" "int LogisticsVariant::packageCheck(")
-file(READ "${MC2_WORKTREE_ROOT}/code/logisticsvariant_package.cpp" layout_package_source)
-string(FIND "${layout_package_source}" "int LogisticsVariant::getPackageMounts(" layout_mount_start)
-string(SUBSTRING "${layout_package_source}" ${layout_mount_start} -1 layout_mounts)
+mc2_height_slice(layout_mounts code/logisticsvariant_package.cpp
+    "int LogisticsVariant::getPackageMounts(" "LogisticsVariant::LocationPlace LogisticsVariant::packageLocationPlace(")
+mc2_height_slice(layout_armor_stats code/logisticsvariant_stats.cpp
+    "int LogisticsVariant::getCost(" "const std::string& LogisticsVariant::getMechClass()")
+mc2_height_slice(layout_armor_pool code/logisticsvariant_stats.cpp
+    "int LogisticsVariant::getArmor(" "bool LogisticsVariant::hasXLEngine() const")
+mc2_height_slice(layout_armor_edit code/logisticsvariant.cpp
+    "mc2::armor::Allocation LogisticsVariant::armorCapacity()" "// Armor allocation end.")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/layout_deployment.inc"
-    CONTENT "${layout_mount_helpers}\n${layout_flat}\n${layout_mounts}\n${layout_restore}")
+    CONTENT "${layout_mount_helpers}\n${layout_flat}\n${layout_mounts}\n${layout_restore}\n${layout_armor_stats}\n${layout_armor_pool}\n${layout_armor_edit}")
 mc2_height_slice(layout_accept code/logisticsdata_modify.cpp
     "std::expected<void, int> LogisticsData::acceptMechModifications(" "\n\tbool bFound = 0;")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/layout_accept.inc" CONTENT "${layout_accept}\nreturn {};\n}\n")

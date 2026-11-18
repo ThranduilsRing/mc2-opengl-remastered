@@ -123,23 +123,37 @@ def compare(a: str, b: str, show: int = 40) -> int:
     return 1 if bad else 0
 
 
-def add_player_variant(src: str, dst: str, chassis: str, variant: str, mech_variant: str) -> None:
+def add_player_variant(src: str, dst: str, chassis: str, variant: str, mech_variant: str, components=None, pack=None) -> None:
     """Write `dst`: `src` with one player-made variant (no components) added to its LogisticsData packet, and the second inventory mech pointed at it by
     `mech_variant` (a different spelling of the same name). A campaign soak makes no variants, so this is how LogisticsVariant::save, loadVariant and the
-    case-folded variant lookup of loadMech get a save to run on."""
+    case-folded variant lookup of loadMech get a save to run on. `components` = [(id, x, y), ...] writes those components (an old build's coordinates);
+    `pack` = the chassis' PurchasePack, written on the variant and on the repointed mech so the pack's chassis resolves."""
     first, pk = si.load(src)
     out = []
     for typ, raw in pk:
         if si.packet_kind(typ, raw) == "text" and b"VariantCount" in raw:
             text = raw.decode("latin-1")
             assert "VariantCount = 0" in text and "[Version]" in text, "the source save already has variants or is not a LogisticsData packet"
-            block = f'[Variant0]\r\nst Chassis = "{chassis}"\r\nst VariantName = "{variant}"\r\nl ComponentCount = 0\r\n\r\n'
+            comps = components or []
+            lines = f'[Variant0]\r\nst Chassis = "{chassis}"\r\n' + (f'st PurchasePack = "{pack}"\r\n' if pack is not None else "")
+            lines += f'st VariantName = "{variant}"\r\nl ComponentCount = {len(comps)}\r\n'
+            for i, (cid, cx, cy) in enumerate(comps):
+                lines += f"l Component{i} = {cid}\r\nl Component{i}x = {cx}\r\nl Component{i}y = {cy}\r\nl Component{i}Location = 1\r\n"
+            block = lines + "\r\n"
             text = text.replace("[Version]", block + "[Version]", 1).replace("VariantCount = 0", "VariantCount = 1", 1)
             marker = text.index("[Inventory1]")
             at = text.index("st Variant = ", marker)
             end = text.index("\n", at)
             eol = "\r" if text[end - 1] == "\r" else ""
             text = text[:at] + f'st Variant = "{mech_variant}"' + eol + text[end:]
+            if pack is not None:   # the repointed mech must name the variant's chassis and pack, or its identity lookup falls through
+                import re
+                stop = text.find("\n[", marker + 1)
+                stop = len(text) if stop < 0 else stop
+                blk = text[marker:stop]
+                blk = re.sub(r'st PurchasePack = "[^"]*"', f'st PurchasePack = "{pack}"', blk)
+                blk = re.sub(r'st Chassis = "[^"]*"', f'st Chassis = "{chassis}"', blk)
+                text = text[:marker] + blk + text[stop:]
             raw = text.encode("latin-1")
         out.append((typ, raw))
     si.scs.write(dst, out, False)
@@ -218,6 +232,8 @@ def main(argv=None) -> int:
     v.add_argument("--chassis", default="data/objects/bushwacker.csv")
     v.add_argument("--name", default="Bush-Whacker 'Test' Z")
     v.add_argument("--mech-name", default="BUSH-WHACKER 'TEST' z", help="how the second inventory mech spells the variant")
+    v.add_argument("--pack", help="PurchasePack of the chassis (a package chassis' mod id); also written on the repointed mech")
+    v.add_argument("--component", action="append", default=[], metavar="ID,X,Y", help="a saved component (repeatable), coordinates as the saving build wrote them")
     args = ap.parse_args(argv)
     if args.cmd == "logistics":
         sys.stdout.write(logistics_text(args.save))
@@ -225,7 +241,8 @@ def main(argv=None) -> int:
     if args.cmd == "compare":
         return compare(args.a, args.b)
     if args.cmd == "add-variant":
-        add_player_variant(args.src, args.dst, args.chassis, args.name, args.mech_name)
+        add_player_variant(args.src, args.dst, args.chassis, args.name, args.mech_name,
+                           [tuple(int(n) for n in c.split(",")) for c in args.component] or None, args.pack)
         return 0
     return capture(args)
 

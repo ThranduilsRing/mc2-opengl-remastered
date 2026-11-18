@@ -42,7 +42,9 @@ MissionBegin.cpp			: Implementation of the MissionBegin component.
 #include"../GameOS/gameos/gos_screenshot.h"
 #include <cstdlib>
 #include <algorithm>
+#include <cctype>
 #include <string>
+#include "package_chassis.h"
 #include"screen_settle_capture.h"   // MC2_BOOT_TO_SCREEN / MC2_SHOT_SCREEN screen ids and the settle trigger
 
 #include"prefs.h"
@@ -1351,6 +1353,30 @@ void MissionBegin::updateSoakAutoPurchase() {
 							}
 							if ( pkgPick )
 								pick = pkgPick;
+						}
+						// MECH_PREVIEW_CHASSIS=<text>: harness choice of the bought mech (case-insensitive substring of
+						// the variant name or the package chassis stem), so a capture opens the lab on that chassis.
+						if ( const char* want = std::getenv( "MECH_PREVIEW_CHASSIS" ); want && *want )
+						{
+							auto lower = []( std::string s ) { for ( char& c : s ) c = static_cast<char>( std::tolower( static_cast<unsigned char>( c ) ) ); return s; };
+							const std::string needle = lower( want );
+							bool matched = false;
+							for ( int i = 0; i < mechCount; ++i )
+								mc2::log::event<"SOAK", -1>(mc2::log::Stream::Out,"preview-pool slot={:d} mech={} tons={:d} src={}", mc2::fmt::as_i32(i),
+									pool[ mechIdx[i] ]->getName().c_str(), mc2::fmt::as_i32(static_cast<int>(pool[ mechIdx[i] ]->getMaxWeight())), mc2::fmt::safe("pool"));
+							for ( int i = 0; i < mechCount; ++i )
+							{
+								LogisticsVariant* v = pool[ mechIdx[i] ];
+								const mc2pkg::PackageChassis* pk = v->getChassis() ? v->getChassis()->getPackage() : nullptr;
+								if ( lower( v->getName() ).find( needle ) != std::string::npos || ( pk && lower( pk->stem ).find( needle ) != std::string::npos ) )
+								{
+									pick = v;
+									matched = true;
+									break;
+								}
+							}
+							if ( !matched )
+								mc2::fmt::print_err("MECH_PREVIEW_CHASSIS: no match for '{}'; falling back to automatic chassis selection\n", want);
 						}
 						if ( !pick )
 							pick = lightest;

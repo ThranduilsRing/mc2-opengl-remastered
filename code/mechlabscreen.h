@@ -1,6 +1,7 @@
 #ifndef MECHLABSCREEN_H
 #define MECHLABSCREEN_H
 #include <memory>
+#include <optional>
 /*************************************************************************************************\
 MechLabScreen.h			: Interface for the MechLabScreen component.
 //---------------------------------------------------------------------------//
@@ -58,6 +59,7 @@ class MechLabScreen: public LogisticsScreen
 		void	endDrag( );
 
 		int		canAddComponent( LogisticsComponent* pComponent );
+		void inspectComponent( LogisticsComponent* c );
 
 		static MechLabScreen* instance() { return s_instance;}
 
@@ -69,7 +71,7 @@ class MechLabScreen: public LogisticsScreen
 		MechLabScreen( const MechLabScreen& src );
 		MechLabScreen& operator=( const MechLabScreen& echLabScreen );
 		static MechLabScreen*	s_instance;
-		
+
 		static std::unique_ptr<LogisticsVariantDialog> saveDlg;
 		static std::unique_ptr<LogisticsAcceptVariantDialog> acceptDlg;
 
@@ -94,6 +96,7 @@ class MechLabScreen: public LogisticsScreen
 
 		LogisticsComponent*	pDragComponent;
 		LogisticsComponent*	pCurComponent;
+		LogisticsComponent* pInspectedComponent = nullptr;
 
 		void showJumpJetItems( bool bShow );
 
@@ -104,11 +107,10 @@ class MechLabScreen: public LogisticsScreen
 		aObject				selRects[2][5];
 		aObject				selJumpJetRect;
 		aObject*			selRect;
-		
+
 		bool				bSaveDlg;
 		bool				bDragLeft ;
 
-		SimpleCamera		camera;
 		SimpleCamera		mechCamera;	// MECHLAB-3D-1: the posed 3D mech behind the weapon grid (replaces the Static50-53 silhouette)
 
 		std::string			varName;
@@ -132,13 +134,22 @@ class MechLabScreen: public LogisticsScreen
 		bool				bErrorDlg;
 
 
+		// MECHLAB-LOC-1: location view (package chassis); layout + hit rects in mechlab_loc_layout.h
+		bool	locationViewActive() const;
+		void	updateLocationInput();
+		void	drawLocationView( float tbSx, float tbSy, float tbOx, float tbOy, int xOffset, int yOffset );
+		struct PlacedAt { long x = -1; long y = -1; };
+		std::optional<PlacedAt>	placeInPanel( LogisticsComponent* pComponent, int panel );
+		void	endDragLocation();
+		void	setLocationView( bool on );
+
 		// HELPER FUNCTIONS
 		void getMouseDiagramCoords( long& x, long& y );
 		void getMouseDiagramCoords( long screenX, long screenY, long& x, long& y );
 
 		void	diagramToScreen( long i, long j, long& x, long& y  );
 		int		selectFirstDiagramComponent();
-		int		selectFirstLBComponent(); 
+		int		selectFirstLBComponent();
 		void	updateDiagramInput();
 		void	swapVariant();
 		void	updateHeatMeter();

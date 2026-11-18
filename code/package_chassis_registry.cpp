@@ -64,6 +64,7 @@ std::optional<mc2pkg::PackageChassis> parse(std::string_view path) {
     out.tonnage = readFloat(f, "Tonnage", 0.0f);
     out.emptyMass = readFloat(f, "EmptyMass", 0.0f);
     out.payload = readFloat(f, "Payload", 0.0f);
+    out.layoutRev = static_cast<int>(readLong(f, "LayoutRev", 1));
     bool purch = false;
     if (f.readIdBoolean("Purchasable", purch) == NO_ERR) out.purchasable = purch;
     const long regionCount = readLong(f, "RegionCount", 0);

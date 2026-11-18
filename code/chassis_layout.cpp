@@ -107,6 +107,9 @@ std::optional<LocationVariant> readLocationVariant(FitIniFile& f) {
     if (version == 2) {
         for (int i = 0; i < 11; ++i)
             if (!number(f, "Armor" + std::to_string(i), result.armor[i], 0, 255)) return std::nullopt;
+        long explicitArmor = 0;
+        f.readIdLong("ArmorAlloc", explicitArmor);
+        result.armorExplicit = explicitArmor == 1;
         long grandfathered = 0, edited = 0;
         f.readIdLong("LayoutGrandfathered", grandfathered);
         f.readIdLong("LayoutEdited", edited);
@@ -119,6 +122,7 @@ bool writeLocationVariant(FitIniFile& f, const LocationVariant& record) {
     bool ok = true;
     auto write = [&](std::string_view key, long value) { if (f.writeIdLong(key, value) <= 0) ok = false; };
     write("LayoutVersion", 2);
+    if (record.armorExplicit) write("ArmorAlloc", 1);
     write("ComponentCount", static_cast<long>(record.items.size()));
     write("LayoutGrandfathered", record.grandfathered); write("LayoutEdited", record.edited);
     for (std::size_t i = 0; i < record.items.size(); ++i) {
@@ -127,7 +131,7 @@ bool writeLocationVariant(FitIniFile& f, const LocationVariant& record) {
         write(key + "Location", item.legacyLocation); write(key + "Loc", item.location); write(key + "Slot", item.slot);
         if (f.writeIdString((key + "Hp").c_str(), std::to_string(item.hardpoint).c_str()) <= 0) ok = false;
     }
-    for (int i = 0; i < 11; ++i) write("Armor" + std::to_string(i), record.armor[i]);
+    for (int i = 0; i < 11; ++i) write("Armor" + std::to_string(i), std::clamp(record.armor[i], 0, 255));
     return ok;
 }
 } // namespace mc2pkg

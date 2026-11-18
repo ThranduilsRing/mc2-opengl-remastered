@@ -1,5 +1,6 @@
 #include "doctest.h"
 #include "chassis_layout.h"
+#include "armor_alloc.h"
 #include "inifile.h"
 #include "mc2fmt.h"
 #include <filesystem>
@@ -174,7 +175,7 @@ TEST_CASE("chassis_layout: schema requires payload and all locations") {
 TEST_CASE("chassis_layout: production FIT adapter old save and exact v1 v2 v1 coordinates") {
     FitIniFile old; REQUIRE(old.open((root / "tests/unit/fixtures/chassis_legacy.fit").string().c_str()) == NO_ERR);
     REQUIRE(old.seekBlock("Variant0") == NO_ERR);
-    auto decoded = readLocationVariant(old); REQUIRE(decoded); auto record = *decoded; CHECK(record.version == 1);
+    auto decoded = readLocationVariant(old); REQUIRE(decoded); auto record = *decoded; CHECK(record.version == 1); CHECK_FALSE(record.armorExplicit);
     const auto original = record.items;
     auto energy = weapon(); LayoutComponent sink; sink.id = 7; sink.kind = EquipmentKind::HeatSink;
     LayoutComponent sensor; sensor.id = 13; sensor.kind = EquipmentKind::Sensor;
@@ -339,11 +340,12 @@ TEST_CASE("chassis_layout: every repository stock designer variant uses exact CS
 // Compile the production restore and deployment adapters verbatim. The doubles
 // supply only the chassis/component database; no simulated deployment copy.
 namespace deployment_seam {
-enum { COMPONENT_FORM_WEAPON_ENERGY, COMPONENT_FORM_WEAPON_BALLISTIC, COMPONENT_FORM_WEAPON_MISSILE, COMPONENT_FORM_WEAPON, OTHER };
+enum { COMPONENT_FORM_WEAPON_ENERGY, COMPONENT_FORM_WEAPON_BALLISTIC, COMPONENT_FORM_WEAPON_MISSILE, COMPONENT_FORM_WEAPON, COMPONENT_FORM_BULK, OTHER };
 enum LOGISTICS_COMPONENT_LOCATION { HEAD, CHEST, LEGS };
 constexpr int NEED_BIGGER_ARRAY = -10;
 struct LogisticsComponent {
-    int id, type;
+    int id, type; int points = 32;
+    int getDamage() const { return points; } int getCost() const { return 3000; }
     int getID() const { return id; } int getType() const { return type; }
     int getComponentWidth() const { return 1; } int getComponentHeight() const { return 1; }
     float getWeight() const { return 1; }
@@ -364,6 +366,10 @@ LogisticsData* LogisticsData::instance = nullptr;
 struct Chassis {
     mc2pkg::PackageChassis package;
     std::string fileName = "fixture";
+    bool armorEditable = true;
+    int baseCost = 100, maxWeight = 100, baseArmor = 80, maxArmor = 432;
+    mc2::armor::Allocation baseArmorLoc{9,11,9,9,8,8,9,9,4,2,2};
+    std::array<int, 8> structure{3,31,21,21,17,17,21,21};
     const auto* getPackage() const { return &package; }
 };
 struct LogisticsVariant {
@@ -378,9 +384,15 @@ struct LogisticsVariant {
     ComponentInfo components[54];
     Chassis* chassis = nullptr;
     mc2pkg::LocationVariant layoutState;
+    std::string variantName = "fixture";
     int getComponents(long&, long*);
     int getPackageMounts(long&, unsigned*) const;
     bool restoreLocationRecord(mc2pkg::LocationVariant);
+    int getArmor() const; int getCost() const; int getWeight() const;
+    mc2::armor::Allocation armorCapacity() const;
+    mc2::armor::Allocation armorAllocation(bool legacy = false) const;
+    bool hasExplicitArmor() const { return chassis->armorEditable && layoutState.armorExplicit; }
+    bool stepArmor(int location,int delta);
     auto locationRecord() const { return layoutState; } // legality is covered by the shared validator cases
 };
 #include "layout_deployment.inc"
@@ -418,4 +430,53 @@ TEST_CASE("chassis_layout: production restore retains grandfathered items and Ph
     CHECK(mountsAfter[0] == 91); CHECK(mountsAfter[1] == 0); CHECK(mountsAfter[2] == 92);
     changed.items.push_back({999, 0, 0, 1}); CHECK_FALSE(v.restoreLocationRecord(changed)); CHECK(v.componentCount == 3);
     LogisticsData::instance = nullptr;
+}
+
+TEST_CASE("chassis_layout: optional explicit armor FIT roundtrip and legacy absence") {
+    for (bool explicitArmor : {false,true}) {
+        LocationVariant record; record.armorExplicit = explicitArmor;
+        record.armor = {0,20,10,5,4,3,2,1,0,0,0};
+        const auto path = std::filesystem::temp_directory_path()/"mc2_armor_roundtrip.fit";
+        { FitIniFile out; REQUIRE(out.create(path.string().c_str()) == NO_ERR);
+          out.writeBlock("Variant0"); REQUIRE(writeLocationVariant(out,record)); out.close(); }
+        { std::ifstream in(path); std::string contents((std::istreambuf_iterator<char>(in)),{});
+          CHECK((contents.find("ArmorAlloc") != std::string::npos) == explicitArmor); }
+        FitIniFile in; REQUIRE(in.open(path.string().c_str()) == NO_ERR); REQUIRE(in.seekBlock("Variant0") == NO_ERR);
+        auto read = readLocationVariant(in); REQUIRE(read); CHECK(read->version == 2);
+        CHECK(read->armorExplicit == explicitArmor); CHECK(read->armor == record.armor);
+        in.close(); std::filesystem::remove(path);
+    }
+    using namespace deployment_seam;
+    LogisticsData database; LogisticsData::instance = &database;
+    Chassis chassis; LogisticsVariant variant; variant.chassis = &chassis;
+    LocationVariant record; record.version = 2; record.armorExplicit = true;
+    record.armor.fill(255); REQUIRE(variant.restoreLocationRecord(record));
+    CHECK(mc2::armor::total(variant.layoutState.armor) <= variant.getArmor());
+    const auto once = variant.layoutState.armor;
+    REQUIRE(variant.restoreLocationRecord(variant.layoutState)); CHECK(variant.layoutState.armor == once);
+    record.armor.fill(0); REQUIRE(variant.restoreLocationRecord(record));
+    CHECK(variant.layoutState.armorExplicit); CHECK(mc2::armor::total(variant.layoutState.armor) == 0);
+    record.armorExplicit = false; record.armor.fill(217);
+    REQUIRE(variant.restoreLocationRecord(record)); CHECK_FALSE(variant.layoutState.armorExplicit);
+    CHECK(variant.layoutState.armor == record.armor); // absent key never normalises legacy records
+    LogisticsData::instance = nullptr;
+}
+TEST_CASE("chassis_layout: production armor edits preserve cost tonnage and plating pool") {
+    using namespace deployment_seam;
+    Chassis chassis;
+    LogisticsComponent plating{25,COMPONENT_FORM_BULK,64};
+    LogisticsVariant v; v.chassis = &chassis; v.componentCount=1; v.components[0].component=&plating;
+    const int cost=v.getCost(), weight=v.getWeight();
+    CHECK(v.getArmor() == 144);
+    CHECK(v.stepArmor(1,-1)); CHECK(v.stepArmor(8,1));
+    CHECK(v.getCost() == cost); CHECK(v.getWeight() == weight);
+    CHECK(v.getArmor() == 144); CHECK(v.componentCount == 1);
+    CHECK(v.layoutState.armorExplicit);
+    const auto saved=v.layoutState.armor;
+    CHECK(v.armorAllocation(true) == mc2::armor::legacyDistribution(chassis.baseArmorLoc,64));
+    CHECK(v.layoutState.armor == saved);
+    v.layoutState.armor.fill(0); v.componentCount=0;
+    CHECK(v.armorAllocation() == mc2::armor::Allocation{});
+    v.layoutState.armorExplicit=false;
+    CHECK(v.armorAllocation() == chassis.baseArmorLoc);
 }

@@ -69,9 +69,11 @@ ComponentListItem::ComponentListItem( LogisticsComponent* pComp )
 		outline.resize(outline.width(), outline.height()+deltaY);
 		iconOutline.resize(iconOutline.width()+deltaX, iconOutline.height()+deltaY);
 
-		disabledText.resize( outline.width(), outline.height() );
-		disabledText.moveTo( 0, 0 );
-		disabledText.alignment = 3;
+		// Stock look: the warning (HEAT EXCEEDED) is centred over the icon area, below the name line.
+		const long iconTop = icon.top() - outline.top();
+		disabledText.resize( outline.width(), icon.height() );
+		disabledText.moveTo( 0, iconTop );
+		disabledText.alignment = 2;
 
 
 		aObject::init( outline.left(), outline.top(), outline.width(), outline.height() );
@@ -300,6 +302,7 @@ void	ComponentListItem::update()
 		if ( (userInput->isLeftClick() && isInside
 			&& ComponentIconListBox::s_instance->pointInside( userInput->getMouseX(), userInput->getMouseY() ) ) )
 		{
+			MechLabScreen::instance()->inspectComponent( pComponent );
 			setComponent();
 			soundSystem->playDigitalSample( LOG_WRONGBUTTON );
 		}

@@ -187,7 +187,7 @@ def test_marauder_profile_keeps_bt_identity_and_raw_values(marauder):
                               "CenterTorso": 23, "LeftLeg": 16, "RightLeg": 16}
     assert m["speed"]["walk_mp"] == 4 and m["speed"]["run_mp"] == 6 and m["speed"]["mc2_class"] == 19
     assert m["payload"] == 34 and m["empty_mass"] == 41
-    assert len(marauder["hardpoints"]) == 8
+    assert len(marauder["hardpoints"]) == 10   # install MAD-3R mounts plus the pack Longbow left torso missile mount
     assert marauder["report"] == []
 
 
@@ -196,12 +196,23 @@ def test_marauder_stock_variant_mounts_and_fits(marauder):
     assert mad["name"] == "Marauder MAD-3R BT"   # the dev install already has an MC2X "Marauder MAD-3R"
     mounted = {(i["bt_id"], i["hardpoint"]) for i in mad["items"] if i["hardpoint"]}
     assert ("Weapon_PPC_PPC_0-STOCK", "LeftArm.Energy.0") in mounted
-    assert ("Weapon_Autocannon_AC5_0-STOCK", "CenterTorso.Ballistic.0") in mounted
+    assert ("Weapon_Autocannon_AC5_0-STOCK", "RightTorso.Ballistic.0") in mounted
     assert mad["payload_used"] == 30
-    assert mad["ammo_raw"] == [{"bt_id": "Ammo_AmmunitionBox_Generic_AC5", "location": "CenterTorso"}]
+    assert mad["ammo_raw"] == [{"bt_id": "Ammo_AmmunitionBox_Generic_AC5", "location": "LeftTorso"}]
+    assert len(marauder["variants"]) == 2
+
+
+def test_longbow_preserves_original_pack_loadout(marauder):
     longbow = marauder["variants"][1]
-    lrm = [i for i in longbow["items"] if i["kind"] == "pack"][0]
-    assert lrm["equipment"] == "bt2018:lrm10" and lrm["hardpoint"] == "LeftTorso.Missile.0"
+    assert longbow["name"] == "Marauder MAD-3R-L Longbow BT"
+    assert [(i["bt_id"], i["hardpoint"]) for i in longbow["items"] if i["hardpoint"]] == [
+        ("Weapon_PPC_PPC_0-STOCK", "LeftArm.Energy.0"),
+        ("Weapon_Laser_MediumLaser_0-STOCK", "LeftArm.Energy.1"),
+        ("Weapon_PPC_PPC_0-STOCK", "RightArm.Energy.0"),
+        ("Weapon_Laser_MediumLaser_0-STOCK", "RightArm.Energy.1"),
+        ("Weapon_LRM_LRM10_0-STOCK", "LeftTorso.Missile.0")]
+    assert longbow["ammo_raw"] == [{"bt_id": "Ammo_AmmunitionBox_Generic_LRM", "location": "LeftTorso"}]
+    assert sum(i["bt_id"] == "Gear_HeatSink_Generic_Standard" for i in longbow["items"]) == 2
 
 
 def _bad(recipe, mutate):
@@ -219,8 +230,10 @@ def test_illegal_loadouts_are_refused_consistently(tables, marauder_recipe):
     def third_arm_energy(r):
         r["mechdefs"][0]["inventory"].append({"MountedLocation": "LeftArm", "ComponentDefID": "Weapon_Laser_MediumLaser_0-STOCK", "HardpointSlot": 2})
 
-    def overweight(r):
-        r["mechdefs"][1]["inventory"].append({"MountedLocation": "RightTorso", "ComponentDefID": "Weapon_LRM_LRM10_0-STOCK", "HardpointSlot": 0})
+    def overweight(r):   # payload comes from the reference (first) variant, so the heavy one is a second mechdef
+        r["mechdefs"].append(copy.deepcopy(r["mechdefs"][0]))
+        for _ in range(5):
+            r["mechdefs"][-1]["inventory"].append({"MountedLocation": "CenterTorso", "ComponentDefID": "Gear_HeatSink_Generic_Standard", "HardpointSlot": -1})
 
     def no_region(r):
         del r["mc2"]["regions"]["RightTorso"]
@@ -252,7 +265,8 @@ def test_chassis_csv_layout_matches_the_engine_readers(marauder, marauder_recipe
     assert cell(3, 2) == "Marauder" and cell(3, 5) == "75"
     assert cell(5, 2) == str(C.STRING_ID_BASE)            # chassis name string id
     assert cell(7, 5) == "19"                             # MaxRunSpeed class
-    assert (cell(13, 2), cell(14, 2)) == ("6", "4")       # mech-lab grid
+    # Owner 11-17 08:23: restore Longbow; keep the revised layout that fits both loadouts.
+    assert (cell(13, 2), cell(14, 2)) == ("6", "6")       # mech-lab grid
     assert len(rows) == 19 + 97 * len(marauder["variants"])
     for v, variant in enumerate(marauder["variants"]):
         base = 97 * v
@@ -272,8 +286,27 @@ def test_chassis_fit_lists_regions_and_mounts(marauder, marauder_recipe):
     text = C.emit_chassis_fit(marauder, marauder_recipe)
     assert "l ObjectTypeNum = 2" in text and 'st ProfileName = "bt2018_marauder"' in text
     assert 'st ChassisId = "bt2018:marauder"' in text
-    assert text.count("[Hardpoint") == 8 and text.count("[Region") == 5
+    assert text.count("[Hardpoint") == 10 and text.count("[Region") == 5
     assert 'st AntiPersonnel = "67,68"' in text
+    assert "l LayoutRev = 3" in text
+
+
+# layout digest -> the mc2.layout_rev it was pinned with. A layout change without a bump would restore old saves' coordinates blindly.
+PINNED_LAYOUTS = {"bt2018:marauder": (3, "67f2b25ce41489b1")}
+
+
+def _layout_digest(profile):
+    import hashlib
+    m = profile["mc2"]
+    blob = json.dumps({"grid": m["grid"], "regions": m["regions"],
+                       "hardpoints": [[h["id"], h["location"], h["mount"]] for h in profile["hardpoints"]]}, sort_keys=True)
+    return hashlib.sha256(blob.encode()).hexdigest()[:16]
+
+
+def test_layout_change_requires_a_layout_rev_bump(marauder):
+    rev, digest = PINNED_LAYOUTS[marauder["chassis_id"]]
+    assert marauder["mc2"]["layout_rev"] == rev
+    assert _layout_digest(marauder) == digest, "chassis grid/regions/hardpoints changed: bump mc2.layout_rev in the recipe, then re-pin PINNED_LAYOUTS"
 
 
 def test_appearance_ini_uses_pack_model_and_no_host_meshes(marauder, marauder_recipe):

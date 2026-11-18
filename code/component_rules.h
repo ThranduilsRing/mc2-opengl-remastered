@@ -62,6 +62,8 @@ inline const char* placementRefusal(int code) {
         case NO_COMPATIBLE_MOUNT: return "No free hardpoint of this weapon type on this chassis.";
         case COMPONENT_TOO_HEAVY: return "Over this chassis payload: remove equipment or armor plating.";
         case INVALID_LOCATION: return "Place the component wholly inside one body location.";
+        case JUMPJETS_NOT_ALLOWED: return "This chassis cannot mount jump jets.";
+        case ONLY_ONE_JUMPJET_ALLOWED: return "Jump jets are already installed.";
         case NO_MORE_ARMOR: return "Armor is already at the maximum.";
         default: return "Component cannot fit here: choose a free valid slot.";
     }

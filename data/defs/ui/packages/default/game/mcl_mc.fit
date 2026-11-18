@@ -1145,12 +1145,12 @@ GuiRect {
     variantDefaultVisible = false
     aliasOverride = "rect for jump jet in payload area"
     sourceControlType = "Rect6"
-    rect = "134,387,96,64"
-    legacyLocalRect = "134,387,96,64"
+    rect = "321,409,104,64"
+    legacyLocalRect = "321,409,104,64"
     legacyRectSource = "xywh"
     uiPackage = "default"
     rectModel = "legacy_imgui.modern_rect_v1"
-    controlRect = "134,387,96,64"
+    controlRect = "321,409,104,64"
     legacyColor = "Oxffffffff"
     outline = "FALSE"
     filled = true
@@ -1168,12 +1168,12 @@ GuiRect {
     layer = "layout"
     aliasOverride = "rect for first unit in payload grid, if grid is 6 across"
     sourceControlType = "Rect7"
-    rect = "38,342,48,32"
-    legacyLocalRect = "38,342,48,32"
+    rect = "217,364,52,32"
+    legacyLocalRect = "217,364,52,32"
     legacyRectSource = "xywh"
     uiPackage = "default"
     rectModel = "legacy_imgui.modern_rect_v1"
-    controlRect = "38,342,48,32"
+    controlRect = "217,364,52,32"
     legacyColor = "Oxffffffff"
     outline = "FALSE"
     filled = true
@@ -1191,12 +1191,12 @@ GuiRect {
     layer = "layout"
     aliasOverride = "5 across"
     sourceControlType = "Rect8"
-    rect = "62,342,48,32"
-    legacyLocalRect = "62,342,48,32"
+    rect = "243,364,52,32"
+    legacyLocalRect = "243,364,52,32"
     legacyRectSource = "xywh"
     uiPackage = "default"
     rectModel = "legacy_imgui.modern_rect_v1"
-    controlRect = "62,342,48,32"
+    controlRect = "243,364,52,32"
     outline = "FALSE"
     filled = true
     fillColorArgb = "0x00000000"
@@ -1213,12 +1213,12 @@ GuiRect {
     layer = "layout"
     aliasOverride = "4 across"
     sourceControlType = "Rect9"
-    rect = "86,342,48,32"
-    legacyLocalRect = "86,342,48,32"
+    rect = "269,364,52,32"
+    legacyLocalRect = "269,364,52,32"
     legacyRectSource = "xywh"
     uiPackage = "default"
     rectModel = "legacy_imgui.modern_rect_v1"
-    controlRect = "86,342,48,32"
+    controlRect = "269,364,52,32"
     outline = "FALSE"
     filled = true
     fillColorArgb = "0x00000000"
@@ -1235,12 +1235,12 @@ GuiRect {
     layer = "layout"
     aliasOverride = "3 across"
     sourceControlType = "Rect10"
-    rect = "110,342,48,32"
-    legacyLocalRect = "110,342,48,32"
+    rect = "295,364,52,32"
+    legacyLocalRect = "295,364,52,32"
     legacyRectSource = "xywh"
     uiPackage = "default"
     rectModel = "legacy_imgui.modern_rect_v1"
-    controlRect = "110,342,48,32"
+    controlRect = "295,364,52,32"
     outline = "FALSE"
     filled = true
     fillColorArgb = "0x00000000"
@@ -1257,12 +1257,12 @@ GuiRect {
     layer = "layout"
     aliasOverride = "2 across"
     sourceControlType = "Rect11"
-    rect = "134,342,48,32"
-    legacyLocalRect = "134,342,48,32"
+    rect = "321,364,52,32"
+    legacyLocalRect = "321,364,52,32"
     legacyRectSource = "xywh"
     uiPackage = "default"
     rectModel = "legacy_imgui.modern_rect_v1"
-    controlRect = "134,342,48,32"
+    controlRect = "321,364,52,32"
     outline = "FALSE"
     filled = true
     fillColorArgb = "0x00000000"
@@ -1279,12 +1279,12 @@ GuiRect {
     layer = "layout"
     aliasOverride = "whole cost of changes"
     sourceControlType = "Rect12"
-    rect = "188,56,153,44"
-    legacyLocalRect = "188,56,153,44"
+    rect = "27,495,182,30"
+    legacyLocalRect = "27,495,182,30"
     legacyRectSource = "xywh"
     uiPackage = "default"
     rectModel = "legacy_imgui.modern_rect_v1"
-    controlRect = "188,56,153,44"
+    controlRect = "27,495,182,30"
     helpDescLegacyId = 29062
     helpDescKey = "legacy.mc2res.29062"
     helpDescText = "COST OF CHANGES     The customization cost of the 'Mech variant, as shown in the current payload area."
@@ -1308,12 +1308,12 @@ GuiRect {
     layer = "layout"
     aliasOverride = "rect for paper doll area"
     sourceControlType = "Rect13"
-    rect = "27,115,313,345"
-    legacyLocalRect = "27,115,313,345"
+    rect = "217,130,316,344"
+    legacyLocalRect = "217,130,316,344"
     legacyRectSource = "xywh"
     uiPackage = "default"
     rectModel = "legacy_imgui.modern_rect_v1"
-    controlRect = "27,115,313,345"
+    controlRect = "217,130,316,344"
     helpDescLegacyId = 29070
     helpDescKey = "legacy.mc2res.29070"
     helpDescText = "PAYLOAD MODEL     An inventory of what weapons and components this 'Mech is carrying. Select a weapon or component here, and then click the Remove button to remove it. You can also drag or double-click a weapon or component to remove. Orange = empty, green = short range, blue = medium range, red = long range, yellow = component."
@@ -1952,7 +1952,7 @@ GuiImage {
     uvHeight = 43
 }
 
-GuiImage {
+GuiMetadata {
     key = "game.mcl_mc.image.mcl_mc_2_06"
     pageKey = "game.mcl_mc"
     legacySection = "Static16"
@@ -1974,6 +1974,7 @@ GuiImage {
     uvY = 0
     uvWidth = 11
     uvHeight = 256
+    visible = false
 }
 
 GuiImage {
@@ -2056,15 +2057,15 @@ GuiImage {
     layer = "art"
     aliasOverride = "mcl_mc_1"
     sourceControlType = "Static20"
-    rect = "25,468,135,24"
-    legacyLocalRect = "25,468,135,24"
+    rect = "217,490,13,15"
+    legacyLocalRect = "217,490,13,15"
     legacyRectSource = "xywh"
     texture = "data/art/gui/mcl_mc_1.png"
     legacyTexture = "mcl_mc_1.tga"
     uiPackage = "default"
     rectModel = "legacy_imgui.modern_rect_v1"
-    controlRect = "25,468,135,24"
-    artRect = "25,468,135,24"
+    controlRect = "217,490,13,15"
+    artRect = "217,490,13,15"
     artLayer = "control_art"
     helpDescLegacyId = 29066
     helpDescKey = "legacy.mc2res.29066"
@@ -2074,11 +2075,11 @@ GuiImage {
     helpDescMissing = false
     uvX = 0
     uvY = 221
-    uvWidth = 135
+    uvWidth = 20
     uvHeight = 24
 }
 
-GuiImage {
+GuiMetadata {
     key = "game.mcl_mc.image.mcl_mc_1_11"
     pageKey = "game.mcl_mc"
     legacySection = "Static22"
@@ -2100,9 +2101,10 @@ GuiImage {
     uvY = 159
     uvWidth = 176
     uvHeight = 44
+    visible = false
 }
 
-GuiImage {
+GuiMetadata {
     key = "game.mcl_mc.image.mcl_mc_2_09"
     pageKey = "game.mcl_mc"
     legacySection = "Static23"
@@ -2124,9 +2126,10 @@ GuiImage {
     uvY = 0
     uvWidth = 7
     uvHeight = 124
+    visible = false
 }
 
-GuiImage {
+GuiMetadata {
     key = "game.mcl_mc.image.mcl_mc_2_10"
     pageKey = "game.mcl_mc"
     legacySection = "Static24"
@@ -2148,6 +2151,7 @@ GuiImage {
     uvY = 0
     uvWidth = 7
     uvHeight = 124
+    visible = false
 }
 
 GuiImage {
@@ -2174,7 +2178,7 @@ GuiImage {
     uvHeight = 212
 }
 
-GuiImage {
+GuiMetadata {
     key = "game.mcl_mc.image.mcl_mc_2_12"
     pageKey = "game.mcl_mc"
     legacySection = "Static26"
@@ -2196,6 +2200,7 @@ GuiImage {
     uvY = 0
     uvWidth = 11
     uvHeight = 212
+    visible = false
 }
 
 GuiImage {
@@ -2246,7 +2251,7 @@ GuiImage {
     uvHeight = 212
 }
 
-GuiImage {
+GuiMetadata {
     key = "game.mcl_mc.image.icon_for_weapon_range"
     pageKey = "game.mcl_mc"
     legacySection = "Static29"
@@ -2269,9 +2274,10 @@ GuiImage {
     uvY = 0
     uvWidth = 48
     uvHeight = 32
+    visible = false
 }
 
-GuiImage {
+GuiMetadata {
     key = "game.mcl_mc.image.icon_for_damage"
     pageKey = "game.mcl_mc"
     legacySection = "Static30"
@@ -2294,9 +2300,10 @@ GuiImage {
     uvY = 32
     uvWidth = 48
     uvHeight = 32
+    visible = false
 }
 
-GuiImage {
+GuiMetadata {
     key = "game.mcl_mc.image.icon_for_recycle_rate"
     pageKey = "game.mcl_mc"
     legacySection = "Static31"
@@ -2319,6 +2326,7 @@ GuiImage {
     uvY = 64
     uvWidth = 48
     uvHeight = 32
+    visible = false
 }
 
 GuiImage {
@@ -2330,15 +2338,15 @@ GuiImage {
     layer = "art"
     aliasOverride = "icon for heat"
     sourceControlType = "Static32"
-    rect = "25,497,135,24"
-    legacyLocalRect = "25,497,135,24"
+    rect = "217,508,13,15"
+    legacyLocalRect = "217,508,13,15"
     legacyRectSource = "xywh"
     texture = "data/art/gui/mcl_mc_2.png"
     legacyTexture = "mcl_mc_2.tga"
     uiPackage = "default"
     rectModel = "legacy_imgui.modern_rect_v1"
-    controlRect = "25,497,135,24"
-    artRect = "25,497,135,24"
+    controlRect = "217,508,13,15"
+    artRect = "217,508,13,15"
     artLayer = "control_art"
     helpDescLegacyId = 29065
     helpDescKey = "legacy.mc2res.29065"
@@ -2348,14 +2356,13 @@ GuiImage {
     helpDescMissing = false
     uvX = 108
     uvY = 230
-    uvWidth = 135
+    uvWidth = 20
     uvHeight = 24
 }
 
-GuiImage {
+GuiMetadata {
     key = "game.mcl_mc.image.icon_for_ammo_this_one_won_t_show_up_if_infinite_ammo_is_on_in_options"
     pageKey = "game.mcl_mc"
-    visible = false
     legacySection = "Static34"
     legacyComment = "icon for ammo- this one won't show up if infinite ammo is ON in options"
     role = "image"
@@ -2376,6 +2383,7 @@ GuiImage {
     uvY = 128
     uvWidth = 48
     uvHeight = 32
+    visible = false
 }
 
 GuiImage {
@@ -2666,7 +2674,7 @@ GuiImage {
     uvHeight = 5
 }
 
-GuiImage {
+GuiMetadata {
     key = "game.mcl_mc.image.icon_for_jump_range_use_only_when_jump_jets_are_selected"
     pageKey = "game.mcl_mc"
     legacySection = "Static47"
@@ -2674,7 +2682,6 @@ GuiImage {
     role = "image"
     layer = "jump_jets.art"
     legacyUiVariant = "jump_jets"
-    visible = false
     variantDefaultVisible = false
     aliasOverride = "icon for jump range- use only when jump jets are selected"
     sourceControlType = "Static47"
@@ -2692,9 +2699,10 @@ GuiImage {
     uvY = 0
     uvWidth = 48
     uvHeight = 32
+    visible = false
 }
 
-GuiImage {
+GuiMetadata {
     key = "game.mcl_mc.image.icon_for_jump_jet_heat_use_only_when_jump_jets_are_selected"
     pageKey = "game.mcl_mc"
     legacySection = "Static48"
@@ -2702,7 +2710,6 @@ GuiImage {
     role = "image"
     layer = "jump_jets.art"
     legacyUiVariant = "jump_jets"
-    visible = false
     variantDefaultVisible = false
     aliasOverride = "icon for jump jet heat- use only when jump jets are selected"
     sourceControlType = "Static48"
@@ -2720,12 +2727,12 @@ GuiImage {
     uvY = 96
     uvWidth = 48
     uvHeight = 32
+    visible = false
 }
 
-GuiImage {
+GuiMetadata {
     key = "game.mcl_mc.image.icon_for_armor_use_only_when_armor_is_selected"
     pageKey = "game.mcl_mc"
-    visible = false
     legacySection = "Static49"
     legacyComment = "icon for armor- use only when armor is selected."
     role = "image"
@@ -2746,9 +2753,10 @@ GuiImage {
     uvY = 32
     uvWidth = 48
     uvHeight = 32
+    visible = false
 }
 
-GuiImage {
+GuiMetadata {
     key = "game.mcl_mc.image.mech_payload_static_1"
     pageKey = "game.mcl_mc"
     legacySection = "Static50"
@@ -2767,9 +2775,10 @@ GuiImage {
     uvY = 0
     uvWidth = 256
     uvHeight = 256
+    visible = false
 }
 
-GuiImage {
+GuiMetadata {
     key = "game.mcl_mc.image.mech_payload_static_2"
     pageKey = "game.mcl_mc"
     legacySection = "Static51"
@@ -2788,9 +2797,10 @@ GuiImage {
     uvY = 0
     uvWidth = 59
     uvHeight = 256
+    visible = false
 }
 
-GuiImage {
+GuiMetadata {
     key = "game.mcl_mc.image.mech_payload_static_3"
     pageKey = "game.mcl_mc"
     legacySection = "Static52"
@@ -2809,9 +2819,10 @@ GuiImage {
     uvY = 0
     uvWidth = 128
     uvHeight = 91
+    visible = false
 }
 
-GuiImage {
+GuiMetadata {
     key = "game.mcl_mc.image.mech_payload_static_4"
     pageKey = "game.mcl_mc"
     legacySection = "Static53"
@@ -2830,9 +2841,10 @@ GuiImage {
     uvY = 91
     uvWidth = 187
     uvHeight = 91
+    visible = false
 }
 
-GuiImage {
+GuiMetadata {
     key = "game.mcl_mc.image.static_for_jump_jets_outline_in_payload_area"
     pageKey = "game.mcl_mc"
     legacySection = "Static54"
@@ -2840,7 +2852,6 @@ GuiImage {
     role = "image"
     layer = "jump_jets.art"
     legacyUiVariant = "jump_jets"
-    visible = false
     variantDefaultVisible = false
     aliasOverride = "static for jump jets outline in payload area"
     sourceControlType = "Static54"
@@ -2858,12 +2869,12 @@ GuiImage {
     uvY = 0
     uvWidth = 96
     uvHeight = 64
+    visible = false
 }
 
-GuiImage {
+GuiMetadata {
     key = "game.mcl_mc.image.icon_for_heat_sink_heat_use_only_when_heat_sink_is_selected"
     pageKey = "game.mcl_mc"
-    visible = false
     legacySection = "Static55"
     legacyComment = "icon for heat sink heat- use only when heat sink is selected"
     role = "image"
@@ -2884,6 +2895,7 @@ GuiImage {
     uvY = 96
     uvWidth = 48
     uvHeight = 32
+    visible = false
 }
 
 GuiMetadata {
@@ -3082,13 +3094,13 @@ GuiText {
     layer = "text"
     aliasOverride = "cost of changes header"
     sourceControlType = "Text4"
-    rect = "201,64,139,12"
-    legacyLocalRect = "201,64,139,12"
+    rect = "27,499,100,12"
+    legacyLocalRect = "27,499,100,12"
     legacyRectSource = "xywh"
     uiPackage = "default"
     rectModel = "legacy_imgui.modern_rect_v1"
-    controlRect = "201,64,139,12"
-    textRect = "201,64,139,12"
+    controlRect = "27,499,100,12"
+    textRect = "27,499,100,12"
     textRectMode = "control_rect_fallback"
     textLegacyId = 27321
     textKey = "legacy.mc2res.27321"
@@ -3123,13 +3135,13 @@ GuiText {
     layer = "text"
     aliasOverride = "cost of changes readout"
     sourceControlType = "Text5"
-    rect = "201,78,139,23"
-    legacyLocalRect = "201,78,139,23"
+    rect = "130,497,79,23"
+    legacyLocalRect = "130,497,79,23"
     legacyRectSource = "xywh"
     uiPackage = "default"
     rectModel = "legacy_imgui.modern_rect_v1"
-    controlRect = "201,78,139,23"
-    textRect = "201,78,139,23"
+    controlRect = "130,497,79,23"
+    textRect = "130,497,79,23"
     textRectMode = "control_rect_fallback"
     textLegacyId = 0
     visible = false
@@ -3156,7 +3168,7 @@ GuiText {
     borderColorArgb = "0x00000000"
 }
 
-GuiText {
+GuiMetadata {
     key = "game.mcl_mc.text.weapon_info_header"
     pageKey = "game.mcl_mc"
     legacySection = "Text6"
@@ -3195,9 +3207,10 @@ GuiText {
     legacyAlignment = 0
     legacyFontComment = "use agencyfb11"
     borderColorArgb = "0x00000000"
+    visible = false
 }
 
-GuiText {
+GuiMetadata {
     key = "game.mcl_mc.text.weapon_info_range_readout"
     pageKey = "game.mcl_mc"
     legacySection = "Text7"
@@ -3215,7 +3228,6 @@ GuiText {
     textRect = "414,360,113,17"
     textRectMode = "control_rect_fallback"
     textLegacyId = 0
-    visible = false
     textKey = "legacy.strings.ids_undefined_string_sebi"
     textLegacySymbol = "IDS_undefined_string_sebi"
     textSource = "strings.res.h"
@@ -3237,9 +3249,10 @@ GuiText {
     legacyAlignment = 0
     legacyFontComment = "use agencyfb11"
     borderColorArgb = "0x00000000"
+    visible = false
 }
 
-GuiText {
+GuiMetadata {
     key = "game.mcl_mc.text.weapon_info_damage_readout"
     pageKey = "game.mcl_mc"
     legacySection = "Text8"
@@ -3257,7 +3270,6 @@ GuiText {
     textRect = "414,397,113,17"
     textRectMode = "control_rect_fallback"
     textLegacyId = 0
-    visible = false
     textKey = "legacy.strings.ids_undefined_string_sebi"
     textLegacySymbol = "IDS_undefined_string_sebi"
     textSource = "strings.res.h"
@@ -3277,9 +3289,10 @@ GuiText {
     outline = "FALSE"
     legacyAlignment = 0
     borderColorArgb = "0x00000000"
+    visible = false
 }
 
-GuiText {
+GuiMetadata {
     key = "game.mcl_mc.text.weapon_info_recycle_readout"
     pageKey = "game.mcl_mc"
     legacySection = "Text9"
@@ -3297,7 +3310,6 @@ GuiText {
     textRect = "414,434,113,17"
     textRectMode = "control_rect_fallback"
     textLegacyId = 0
-    visible = false
     textKey = "legacy.strings.ids_undefined_string_sebi"
     textLegacySymbol = "IDS_undefined_string_sebi"
     textSource = "strings.res.h"
@@ -3319,9 +3331,10 @@ GuiText {
     legacyAlignment = 0
     legacyFontComment = "use agencyfb11"
     borderColorArgb = "0x00000000"
+    visible = false
 }
 
-GuiText {
+GuiMetadata {
     key = "game.mcl_mc.text.weapon_info_heat_readout"
     pageKey = "game.mcl_mc"
     legacySection = "Text10"
@@ -3339,7 +3352,6 @@ GuiText {
     textRect = "414,471,113,17"
     textRectMode = "control_rect_fallback"
     textLegacyId = 0
-    visible = false
     textKey = "legacy.strings.ids_undefined_string_sebi"
     textLegacySymbol = "IDS_undefined_string_sebi"
     textSource = "strings.res.h"
@@ -3361,6 +3373,7 @@ GuiText {
     legacyAlignment = 0
     legacyFontComment = "use agencyfb11"
     borderColorArgb = "0x00000000"
+    visible = false
 }
 
 GuiText {
@@ -3372,13 +3385,13 @@ GuiText {
     layer = "text"
     aliasOverride = "armor limit readout"
     sourceControlType = "Text11"
-    rect = "48,466,108,23"
-    legacyLocalRect = "48,466,108,23"
+    rect = "240,488,96,18"
+    legacyLocalRect = "240,488,96,18"
     legacyRectSource = "xywh"
     uiPackage = "default"
     rectModel = "legacy_imgui.modern_rect_v1"
-    controlRect = "48,466,108,23"
-    textRect = "48,466,108,23"
+    controlRect = "240,488,96,18"
+    textRect = "240,488,96,18"
     textRectMode = "control_rect_fallback"
     textLegacyId = 27328
     textKey = "legacy.mc2res.27328"
@@ -3419,13 +3432,13 @@ GuiText {
     layer = "text"
     aliasOverride = "heat limit readout"
     sourceControlType = "Text12"
-    rect = "48,495,108,23"
-    legacyLocalRect = "48,495,108,23"
+    rect = "240,506,96,18"
+    legacyLocalRect = "240,506,96,18"
     legacyRectSource = "xywh"
     uiPackage = "default"
     rectModel = "legacy_imgui.modern_rect_v1"
-    controlRect = "48,495,108,23"
-    textRect = "48,495,108,23"
+    controlRect = "240,506,96,18"
+    textRect = "240,506,96,18"
     textRectMode = "control_rect_fallback"
     textLegacyId = 27330
     visible = false
@@ -3458,7 +3471,7 @@ GuiText {
     borderColorArgb = "0x00000000"
 }
 
-GuiText {
+GuiMetadata {
     key = "game.mcl_mc.text.weapon_info_ammo_text_readout"
     pageKey = "game.mcl_mc"
     legacySection = "Text13"
@@ -3476,7 +3489,6 @@ GuiText {
     textRect = "414,508,113,17"
     textRectMode = "control_rect_fallback"
     textLegacyId = 0
-    visible = false
     textKey = "legacy.strings.ids_undefined_string_sebi"
     textLegacySymbol = "IDS_undefined_string_sebi"
     textSource = "strings.res.h"
@@ -3498,6 +3510,7 @@ GuiText {
     legacyAlignment = 0
     legacyFontComment = "use agencyfb11"
     borderColorArgb = "0x00000000"
+    visible = false
 }
 
 GuiText {
@@ -3542,7 +3555,7 @@ GuiText {
     borderColorArgb = "0x00000000"
 }
 
-GuiText {
+GuiMetadata {
     key = "game.mcl_mc.text.jump_jet_heat_readout"
     pageKey = "game.mcl_mc"
     legacySection = "Text15"
@@ -3550,7 +3563,6 @@ GuiText {
     role = "text"
     layer = "jump_jets.text"
     legacyUiVariant = "jump_jets"
-    visible = false
     variantDefaultVisible = false
     aliasOverride = "jump jet heat readout"
     sourceControlType = "Text15"
@@ -3563,7 +3575,6 @@ GuiText {
     textRect = "414,397,113,17"
     textRectMode = "control_rect_fallback"
     textLegacyId = 0
-    visible = false
     textKey = "legacy.strings.ids_undefined_string_sebi"
     textLegacySymbol = "IDS_undefined_string_sebi"
     textSource = "strings.res.h"
@@ -3583,9 +3594,10 @@ GuiText {
     outline = "FALSE"
     legacyAlignment = 0
     borderColorArgb = "0x00000000"
+    visible = false
 }
 
-GuiText {
+GuiMetadata {
     key = "game.mcl_mc.text.heat_sink_heat_readout"
     pageKey = "game.mcl_mc"
     legacySection = "Text16"
@@ -3603,7 +3615,6 @@ GuiText {
     textRect = "414,360,113,17"
     textRectMode = "control_rect_fallback"
     textLegacyId = 0
-    visible = false
     textKey = "legacy.strings.ids_undefined_string_sebi"
     textLegacySymbol = "IDS_undefined_string_sebi"
     textSource = "strings.res.h"
@@ -3625,6 +3636,7 @@ GuiText {
     legacyAlignment = 0
     legacyFontComment = "use agencyfb11"
     borderColorArgb = "0x00000000"
+    visible = false
 }
 
 GuiMetadata {
@@ -4351,7 +4363,7 @@ GuiAnimation {
     keyframe1X = 0
     keyframe1Y = 600
 }
-GuiImage {
+GuiMetadata {
     key = "game.mcl_mc.image.icon_for_weapon_heat"
     pageKey = "game.mcl_mc"
     role = "image"
@@ -4366,8 +4378,9 @@ GuiImage {
     uvY = 96
     uvWidth = 48
     uvHeight = 32
+    visible = false
 }
-GuiImage {
+GuiMetadata {
     key = "game.mcl_mc.image.cost_box_bottom_frame"
     pageKey = "game.mcl_mc"
     role = "image"
@@ -4382,4 +4395,5 @@ GuiImage {
     uvY = 145
     uvWidth = 161
     uvHeight = 10
+    visible = false
 }

@@ -61,6 +61,13 @@ def main():
     ap.add_argument("--buy-and-modify", action="store_true",
                     help="buy + deploy one mech at the bay (a mounted package chassis first) and open the mech lab on it "
                          "(MC2_SOAK_AUTO_PURCHASE + MC2_BOOT_TO_MECHLAB); use with screen 'bay'")
+    ap.add_argument("--chassis", default="",
+                    help="with --buy-and-modify: buy the variant whose name or package chassis stem contains this text "
+                         "(MECH_PREVIEW_CHASSIS), e.g. marauder")
+    ap.add_argument("--size", default="",
+                    help="WxH drawable size (MC2_WIDTH/MC2_HEIGHT); the nofocus launcher otherwise defaults to 854x480")
+    ap.add_argument("--script", default="",
+                    help="MC2_INPUT_SCRIPT file: scripted real mouse/keys (click X Y in 800x600, shot PATH.tga) for the lab")
     args = ap.parse_args()
 
     deploy = Path(args.deploy).resolve()
@@ -119,6 +126,13 @@ def main():
     if args.buy_and_modify:
         env["MC2_SOAK_AUTO_PURCHASE"] = "1"
         env["MC2_BOOT_TO_MECHLAB"] = "1"
+    if args.chassis:
+        env["MECH_PREVIEW_CHASSIS"] = args.chassis
+    if args.size:
+        from smoke_lib import render_resolution
+        env.update(render_resolution.size_env(*render_resolution.parse(args.size)))
+    if args.script:
+        env["MC2_INPUT_SCRIPT"] = str(Path(args.script).resolve())
     if args.walk:
         env.update(MC2_SOAK_AUTO_PURCHASE="1", MC2_SOAK_CHECK_SCREENS="1")
         env.pop("MC2_SOAK_STOP_AT_BAY", None)
