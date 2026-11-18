@@ -2693,7 +2693,9 @@ void MechLabScreen::drawLocationView(float tbSx, float tbSy, float tbOx, float t
 	const auto strip = ml::panelRect(ml::kDoll); fill(strip,0xe8101820);
 	int special = 0; for (const auto& item : placed) if (item.x<0 || item.y<0) ++special;
 	// Package chassis: PAYLOAD = placed components (incl. armor plating) vs tonnage minus empty mass.
-	char mass[112]; int mn = std::snprintf(mass,sizeof mass,"%s %.1f / %.1f t",pc ? "PAYLOAD" : "MASS",static_cast<double>(mc2pkg::massUsed(placed)),static_cast<double>(pc ? pc->payload : pVariant->getMaxWeight()));
-	if (pc && mn > 0) std::snprintf(mass+mn,sizeof mass-mn," | TOTAL %.1f / %.1f t",static_cast<double>(pVariant->getWeight()),static_cast<double>(pVariant->getMaxWeight()));
+	// Stock: EQUIPMENT = placed components only; TOTAL adds the chassis base mass and is what OVERWEIGHT tests.
+	char mass[112]; int mn = pc ? std::snprintf(mass,sizeof mass,"PAYLOAD %.1f / %.1f t",static_cast<double>(mc2pkg::massUsed(placed)),static_cast<double>(pc->payload))
+		: std::snprintf(mass,sizeof mass,"EQUIPMENT %.1f t",static_cast<double>(mc2pkg::massUsed(placed)));
+	if (mn > 0) std::snprintf(mass+mn,sizeof mass-mn," | TOTAL %.1f / %.1f t",static_cast<double>(pVariant->getWeight()),static_cast<double>(pVariant->getMaxWeight()));
 	text(strip,std::string(mass)+(special ? " | "+std::to_string(special)+" special: CLASSIC" : ""),0xffffd060,9,2);
 }
