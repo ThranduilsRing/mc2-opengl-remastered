@@ -54,7 +54,7 @@ inline const char* panelTitle(int p) {
 inline constexpr float kDx = 72;   // record sheet shifted right by kDx; the freed width goes to the mech preview (narrower component list)
 inline constexpr float kAreaX = 217 + kDx, kAreaY = 150, kColW = 102, kGap = 5;
 inline constexpr int kCellW = 52;
-inline constexpr Rect kPreview{25,130,184 + kDx,363};   // below the LOCATIONS | CLASSIC strip
+inline constexpr Rect kPreview{25,130,184 + kDx,356};   // below the LOCATIONS | CLASSIC strip, ends above the armor/heat counters (y 488)
 inline constexpr float kHeaderH = 58, kRowItemH = 11, kRefusalH = 0;
 inline constexpr int kRowsPerColumn = 8, kMaxItemRows = 8;
 inline Rect panelRect(int p) {
