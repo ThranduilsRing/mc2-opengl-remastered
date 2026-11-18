@@ -467,6 +467,8 @@ TEST_CASE("water planar: Off is sky-only, never level 0, and never the full bake
     CHECK(wp::effectiveReflectionQuality(3, 2) == 2);
     CHECK(wp::effectiveReflectionQuality(1, 2) == 2);
     CHECK(wp::effectiveReflectionQuality(3, 0) == 0);
+    CHECK(wp::effectiveReflectionQuality(0, 2) == 1);  // Off + unset legacy (defaults 2) keeps sky
+    CHECK(wp::effectiveReflectionQuality(0, 0) == 0);  // explicit legacy Off
 }
 
 TEST_CASE("water planar: the uploaded debug.z carries each level's march steps and the shader fallback is High") {

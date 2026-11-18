@@ -21,7 +21,7 @@
 // Definitions in gameos_graphics.cpp / gos_postprocess.cpp / gos_particle_bridge.cpp.
 extern float gos_GetWaterSkyTintStrength();
 extern void  gos_SetWaterSkyTintStrength(float v);
-extern int   gos_GetWaterReflectionQuality();
+extern int   gos_GetWaterReflectionLegacy();
 extern void  gos_SetWaterReflectionQuality(int quality);
 extern float gos_GetExposure();
 extern void  gos_SetExposure(float v);
@@ -361,7 +361,7 @@ void visualTuning_applyProfile(mc2::czstring missionName) {
     s_appliedKeys = count;
     const auto& waterOptions = mc2::options::current();
     mc2::fmt::print_err("[WATER_QUALITY] reflection={} detail={} legacy={} apply=live\n",
-        waterOptions.reflectionQuality, waterOptions.waterDetail, gos_GetWaterReflectionQuality());
+        waterOptions.reflectionQuality, waterOptions.waterDetail, gos_GetWaterReflectionLegacy());
     for (const auto& diagnostic : s_environment.diagnostics)
         mc2::fmt::print_err("[VisualTuning] {}\n",diagnostic);
     mc2::fmt::print_err("[MissionEnvironment] mission='{}' schema=2 sourceSchema={} hash={} color={} providers={} keys={}\n",
@@ -386,7 +386,7 @@ bool visualTuning_saveCurrentToMission() {
     current["exposure"]                  = gos_GetExposure();
     current["staticPropIblStrength"]     = g_iblShStrength;
     current["waterSkyTintStrength"]      = gos_GetWaterSkyTintStrength();
-    current["waterReflections"]         = static_cast<float>(gos_GetWaterReflectionQuality());
+    current["waterReflections"]         = static_cast<float>(gos_GetWaterReflectionLegacy());
     current["vfxBrightness"]             = gos_vfx_getBrightness();
     current["vfxAdditiveBrightness"]     = gos_vfx_getAdditiveBrightness();
     current["vfxLitStrength"]            = gos_vfx_getLitStrength();  // VFX-LIT-PARTICLES-MVP-1

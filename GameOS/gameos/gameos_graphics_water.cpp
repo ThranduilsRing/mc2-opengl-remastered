@@ -9,9 +9,10 @@
 float mc2NightLightFactor();   // mclib/camera.cpp: 0 day .. 1 full night
 
 namespace { int waterReflectionQuality = -1; }
+// Raw legacy mission value (unset = 2); this is what mission profiles save.
+int gos_GetWaterReflectionLegacy() { return waterReflectionQuality < 0 ? 2 : waterReflectionQuality; }
 int gos_GetWaterReflectionQuality() {
-    const int option = mc2::options::current().reflectionQuality;
-    const int quality = mc2::waterplanar::effectiveReflectionQuality(option, waterReflectionQuality < 0 ? (option > 0 ? 2 : 0) : waterReflectionQuality);
+    const int quality = mc2::waterplanar::effectiveReflectionQuality(mc2::options::current().reflectionQuality, gos_GetWaterReflectionLegacy());
     if (!mc2::gate::get<"MC2_WATER_REFLECTION">()) return 0;
     return quality == 2 && !mc2::gate::get<"MC2_WATER_REFLECTION_RT">() ? 1 : quality;
 }

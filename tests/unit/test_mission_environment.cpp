@@ -32,7 +32,7 @@ float gos_GetTerrainShadowSoftness() { return softness; }
 void gos_SetTerrainShadowSoftness(float v) { softness=v; }
 float gos_GetWaterSkyTintStrength() { return water; }
 void gos_SetWaterSkyTintStrength(float v) { water=v; }
-int gos_GetWaterReflectionQuality() { return waterReflections; }
+int gos_GetWaterReflectionLegacy() { return waterReflections; }
 void gos_SetWaterReflectionQuality(int v) { waterReflections=v; }
 extern "C" float gos_vfx_getBrightness() { return brightness; }
 extern "C" void gos_vfx_setBrightness(float v) { brightness=v; }
@@ -171,6 +171,15 @@ TEST_CASE("MissionEnvironment/save migrates without losing unrelated fields or m
     CHECK(saved["missions"]["a"]["customField"]=="retain");
     CHECK(saved["missions"]["a"]["exposure"].get<float>()==1.7f);
     CHECK(saved["missions"]["a"]["waterReflections"].get<int>()==1);
+}
+
+TEST_CASE("MissionEnvironment/save keeps the raw legacy water value, not the effective one") {
+    TempProfile file(R"({"missions":{"a":{}}})");
+    mc2::gate::ScopedOverride<"MC2_VISUAL_TUNING_FILE"> path(file.path.string().c_str());
+    visualTuning_applyProfile("a"); waterReflections=2;  // legacy 2 while the Off option would make the effective value 1
+    REQUIRE(visualTuning_saveCurrentToMission());
+    std::ifstream input(file.path); nlohmann::json saved; input>>saved;
+    CHECK(saved["missions"]["a"]["waterReflections"].get<int>()==2);
 }
 
 TEST_CASE("MissionEnvironment/invalid files cannot be overwritten by save") {
