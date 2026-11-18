@@ -1,9 +1,34 @@
 #include "doctest.h"
 #include "gameos/shadow_mover_fit.h"
 #include "gameos/shadow_mover_feed.h"
+#include "gameos/vulkan_shadow_island_live_algo.h"
 #include <vector>
 
 using namespace mc2shadow;
+
+TEST_CASE("R12 instance ordering matches fresh identity sort") {
+    InstanceOrder scratch;
+    struct Instance { uint32_t typeID; uint32_t payload; };
+    auto compare = [&](const std::vector<uint32_t>& types) {
+        std::vector<Instance> input(types.size());
+        std::vector<uint32_t> old(types.size());
+        for (uint32_t i = 0; i < types.size(); ++i) { input[i] = {types[i], i}; old[i] = i; }
+        std::sort(old.begin(), old.end(), [&](uint32_t a, uint32_t b) { return input[a].typeID < input[b].typeID; });
+        CHECK(scratch.update(std::span<const Instance>(input)) == old);
+        const auto* storage = scratch.update(std::span<const Instance>(input)).data();
+        std::reverse(input.begin(), input.end());
+        for (uint32_t i = 0; i < input.size(); ++i) input[i].typeID = types[i];
+        CHECK(scratch.update(std::span<const Instance>(input)) == old);
+        CHECK(scratch.update(std::span<const Instance>(input)).data() == storage);
+    };
+    compare({}); compare({7}); compare(std::vector<uint32_t>(64, 3));
+    compare({4,1,4,2,1,4}); compare({4,1,4,2,1,4});
+    compare({1,4,2,4,4,1}); compare({1,4,2,5,4,1});
+    std::vector<uint32_t> growth(1025);
+    for (uint32_t i = 0; i < growth.size(); ++i) growth[i] = (i * 17) % 13;
+    compare(growth); compare({}); compare(growth);
+    scratch.clear(); compare(growth);
+}
 
 TEST_CASE("mover feed: current-frame poses never replay history or duplicate owners") {
     MoverPropFeed feed;
