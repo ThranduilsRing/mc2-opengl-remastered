@@ -452,7 +452,7 @@ void MechLabScreen::begin()
 		if ( mechCamera.hasObject() && pVariant->getChassis() )
 			mechCamera.setScale( pVariant->getChassis()->getScale() );
 		if ( mechCamera.hasObject() )
-			mechCamera.setFramedPose( 0.9f, -35.f, 30.f );	// front three-quarter, 90% of the panel height
+			mechCamera.setFramedPose( 0.9f, -35.f, 15.f );	// front three-quarter, 90% of the panel height
 
 
 		for (int i = COMPONENT_FORM_WEAPON_ENERGY; i < COMPONENT_FORM_JUMPJET + 1; i++ )
