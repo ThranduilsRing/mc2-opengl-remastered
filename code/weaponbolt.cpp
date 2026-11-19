@@ -112,6 +112,18 @@ long WeaponBoltType::init (FilePtr objFile, unsigned long fileSize)
 		result = bullFile.readIdBoolean("MipTexture",mipTexture);
 		if (result != NO_ERR)
 			mipTexture = false;
+
+		// Type-init preload of the beam texture (same path/format/hints as WeaponBolt::init, variant 0): the first fire of
+		// each laser opened fx_laser01/03/04 cold, a ~64 ms frame. Types load at mission load (preloadTickSpawnTypes).
+		if (S_stricmp(textureName.get(),"NONE") != 0)
+		{
+			ZoneScopedN("Type.PreloadBoltTexture");
+			char tPath[1024];
+			mc2::fmt::to_buf(tPath, "{}128" PATH_SEPARATOR "", mc2::fmt::safe(tglPath));
+			FullPathFileName preloadName;
+			preloadName.init(tPath,textureName.get(),".tga");
+			mc2::textures::load(preloadName,gos_Texture_Alpha,mipTexture ? 0 : gosHint_DisableMipmap);
+		}
 			
  	 	result = bullFile.readIdLong("FiringSoundFX",fireSoundFX);
 		if (result != NO_ERR)
