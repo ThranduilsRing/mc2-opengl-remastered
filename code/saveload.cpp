@@ -21,6 +21,7 @@
 //===========================================================================//
 
 #include "saveload_internal.h"
+#include "logisticsmissioninfo.h"
 #include "save_layout_guard.h"
 #include "mc2fmt.h"
 #include "mission_load_frame.h"
