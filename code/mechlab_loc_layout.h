@@ -66,6 +66,27 @@ inline Rect panelRect(int p) {
     return p >= 0 && p < kPanelCount ? boxes[p] : Rect{};
 }
 inline constexpr Rect summaryRect() { return {324+kDx,404,102,72}; }
+
+// Available-components list item, in the stock fit's frame (mcl_mc.fit [ComponentEntryBox] .. [ComponentHeatIcon]),
+// the list kDx narrower. A one-cell-wide icon leaves the right column for cost/heat; a wider icon has no room
+// there, so it gets a header row (heat left, cost right) above the icon (rowDy). The warning sits on the icon.
+inline constexpr float kItemW = 210 - kDx, kItemRowDy = 17;
+struct ItemRects {
+    Rect item, icon, iconOutline, cost, costIcon, heat, heatIcon, warn;
+    float rowDy = 0;
+};
+inline ItemRects componentItemRects(int cellsW, int cellsH) {
+    ItemRects r;
+    r.rowDy = cellsW > 1 ? kItemRowDy : 0.f;
+    r.item = {0, 0, kItemW, 60.f + 32.f * static_cast<float>(cellsH - 1) + r.rowDy};
+    r.icon = {4, 20 + r.rowDy, 48.f * static_cast<float>(cellsW), 32.f * static_cast<float>(cellsH)};
+    r.iconOutline = {4, 20 + r.rowDy, r.icon.w + 4, r.icon.h + 4};
+    r.cost = {149 - kDx, 18, 37, 15};   r.costIcon = {189 - kDx, 18, 15, 15};
+    if (cellsW > 1) { r.heatIcon = {4, 18, 15, 15};  r.heat = {21, 18, 37, 15}; }
+    else            { r.heatIcon = {189 - kDx, 35, 15, 15};  r.heat = {149 - kDx, 35, 37, 15}; }
+    r.warn = {r.icon.x, r.icon.y + 6, r.icon.w, r.icon.h - 6};
+    return r;
+}
 inline bool torso(int p) { return p >= 1 && p <= 3; }
 inline int visibleRows(int p) { return p == 1 ? 8 : (torso(p) ? 5 : (p == 4 || p == 5 ? 4 : 3)); }
 inline float equipmentY(int p) { return torso(p) ? 68.f : 56.f; }

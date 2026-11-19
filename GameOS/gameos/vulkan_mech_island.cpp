@@ -1178,7 +1178,7 @@ bool record_mech_preview(MechIsland* s, VkCommandBuffer cb, const Mc2MechFrameFe
     }
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
-    if (s->backdropPipe && !materials.empty()) {
+    if (s->backdropPipe && q.backdrop && !materials.empty()) {
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->backdropPipe.get());
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->frameSets[par], 5, dynOffsets);
         vkCmdDraw(cb, 3, 1, 0, 0);

@@ -57,7 +57,7 @@ void ProbeGatherLightsForList(TG_LightPtr* lights, unsigned long nLights, TG_HWL
 // panel mech per frame (the batcher snapshot holds one flush); a second camera that frame keeps its CPU draw.
 // Returns true when a request was posted; the CPU draw may still be needed until the island reports a draw.
 static bool postMechPreviewGpu( Camera& cam, Mech3DAppearance* mech, float vpX, float vpY, float vpW, float vpH,
-                                float groundX, float groundY, float groundH, const float* clipRect )
+                                float groundX, float groundY, float groundH, const float* clipRect, bool backdrop )
 {
 	static uint32_t s_lastFrame = 0xffffffffu;
 	static TG_InstanceId s_lastShape;
@@ -96,6 +96,7 @@ static bool postMechPreviewGpu( Camera& cam, Mech3DAppearance* mech, float vpX, 
 	q.clipX = static_cast<int>( lroundf( clipRect[0] ) ); q.clipY = static_cast<int>( lroundf( clipRect[1] ) );
 	q.clipW = static_cast<int>( lroundf( clipRect[2] - clipRect[0] ) ); q.clipH = static_cast<int>( lroundf( clipRect[3] - clipRect[1] ) );
 	q.groundX = groundX; q.groundY = groundY; q.groundH = groundH;
+	q.backdrop = backdrop ? 1 : 0;
 	if ( gosPostProcess* pp = getGosPostProcess() )
 	{
 		q.sceneW = pp->getWidth();
@@ -427,7 +428,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 					haveGround_ = true;
 				}
 				if ( labMech && postMechPreviewGpu( *this, labMech, offsetX, offsetY, viewMulX, viewMulY,
-				                                   haveGround_ ? groundC_[0] : 0.f, groundC_[1], haveGround_ ? groundH_ : 0.f, bounds ) )
+				                                   haveGround_ ? groundC_[0] : 0.f, groundC_[1], haveGround_ ? groundH_ : 0.f, bounds, framed_ ) )
 					gpuDraws = mc2_vk_mech_preview_drew_last() != 0;
 				// With the GPU path drawing, PreviewDraw only projects (the framing bounds below).
 				g_previewBoundsOnly = gpuDraws;
@@ -598,7 +599,11 @@ long SimpleCamera::update()
 		if ( framed_ )
 		{
 			projectionAngle = framedPitch_;
-			if ( haveDrawn_ && fitIters_ > 0 )
+			// Fit phases (kFitIters iterations): the first fits height + width at the base yaw; the last kSweepIters
+			// iterations hold the yaw at the swing extremes (and halfway) and only ever widen the lens, so the idle
+			// swing never needs a later correction (no shrinking mech while it turns).
+			constexpr int kSweepIters = 24, kSweepSeg = 6;
+			if ( haveDrawn_ && fitIters_ > kSweepIters )
 			{
 				haveDrawn_ = false;
 				--fitIters_;
@@ -607,19 +612,19 @@ long SimpleCamera::update()
 				if ( w > 1.f && h > 1.f )
 				{
 					// Size ~ 1/tan(fov/2) at a fixed distance (a long lens: moving the camera in distorts the
-					// model and pushes it into the near plane); then centre across, feet just above the bottom edge.
-					// Estimate the full-turn width from the drawn height; bound root-offset inflation.
-					const float wTurn = turnHalfHeight_ > 0.f
-						? std::min(2.f * turnRadius_ * h / (2.f * turnHalfHeight_), 1.f * w) : w;	// the swing is +-30 deg, not a full turn
-					const float s = std::clamp(std::max({h / (fillFrac_ * rh), wTurn / (0.94f * rw), w / (0.94f * rw)}), 0.5f, 2.f);
+					// model and pushes it into the near plane); then centre across and vertically.
+					const float s = std::clamp(std::max(h / (fillFrac_ * rh), w / (0.94f * rw)), 0.5f, 2.f);
 					framedFov_ = 2.f * std::atan(std::tan(framedFov_ * 0.5f * DEGREES_TO_RADS) * s) / DEGREES_TO_RADS;
 					fudgeX += ( bounds[0] + bounds[2] ) * 0.5f - ( drawn_[0] + drawn_[2] ) * 0.5f;
-					fudgeY += ( bounds[1] + bounds[3] ) * 0.5f - ( drawn_[1] + drawn_[3] ) * 0.5f;	// centred vertically
+					fudgeY += ( bounds[1] + bounds[3] ) * 0.5f - ( drawn_[1] + drawn_[3] ) * 0.5f;
 				}
 			}
-			else if (haveDrawn_ && fitIters_ == 0)
+			else if ( haveDrawn_ && ( fitIters_ > 0 || std::abs( swayBase_ - fitYaw_ ) > 1.f ) )
 			{
+				// Sweep (fitIters_ > 0) or a manual rotate after the fit: widen only, never shrink.
 				haveDrawn_ = false;
+				if ( fitIters_ > 0 )
+					--fitIters_;
 				const float cx = 0.5f * (bounds[0] + bounds[2]), rw = bounds[2] - bounds[0];
 				const float half = std::max(cx - drawn_[0], drawn_[2] - cx);
 				maxHalf_ = std::max(maxHalf_, half);
@@ -630,6 +635,11 @@ long SimpleCamera::update()
 					fudgeY += ( bounds[1] + bounds[3] ) * 0.5f - ( drawn_[1] + drawn_[3] ) * 0.5f;
 					++widens_;
 				}
+			}
+			if ( fitIters_ > 0 && fitIters_ <= kSweepIters )
+			{
+				static const float kSweepYaw[4] = { -30.f, 30.f, -15.f, 15.f };
+				rotation = swayBase_ + kSweepYaw[std::min( ( kSweepIters - fitIters_ ) / kSweepSeg, 3 )];
 			}
 			const float sharedAlt = AltitudeTight;
 			AltitudeTight = framedAlt_;

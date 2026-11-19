@@ -66,17 +66,28 @@ ComponentListItem::ComponentListItem( LogisticsComponent* pComp )
 		int deltaY = icon.height() - s_templateItem->icon.height();
 		int deltaX = icon.width() - s_templateItem->icon.width();
 
+		// Rects come from the pure table (mechlab_loc::componentItemRects): wider-than-one-cell icons get a header row
+		// for heat/cost above the icon, and the warning is confined to the icon.
+		namespace ml = mc2::mechlab_loc;
+		const ml::ItemRects R = ml::componentItemRects( sizeX, sizeY );
+		const float ox = static_cast<float>(outline.left()), oy = static_cast<float>(outline.top());   // the fit frame starts at the outline
+		const long rowDy = static_cast<long>(R.rowDy);
+		if ( rowDy )
+		{
+			icon.moveTo( ox + R.icon.x, oy + R.icon.y );
+			heatIcon.moveTo( ox + R.heatIcon.x, oy + R.heatIcon.y );
+			heatText.moveTo( ox + R.heat.x, oy + R.heat.y );
+			heatText.alignment = 0;
+		}
+
 		// resize outlines and icon outlines
-		outline.resize(outline.width(), outline.height()+deltaY);
+		outline.resize(outline.width(), outline.height()+deltaY+rowDy);
 		iconOutline.resize(iconOutline.width()+deltaX, iconOutline.height()+deltaY);
 
-		// Stock look: the warning (HEAT EXCEEDED) is centred over the icon area, below the name line.
-		const long iconTop = icon.top() - outline.top();
-		const long kWarnPad = 8;   // one word (EXCEEDED) is a little wider than the narrowest icons
-		// Confined to the icon: full-row width ran across the cost/heat numbers; the text bridge wraps and
-		// shrinks it to fit the icon rect.
-		disabledText.resize( icon.width() + 2 * kWarnPad, icon.height() );
-		disabledText.moveTo( icon.left() - outline.left() - kWarnPad, iconTop );
+		// Warning (HEAT EXCEEDED): small face (agencyfb11), wraps to two lines, confined to the icon outline.
+		disabledText.font = name.font;
+		disabledText.resize( static_cast<long>(R.warn.w), static_cast<long>(R.warn.h) );
+		disabledText.moveTo( R.warn.x, R.warn.y );
 		disabledText.alignment = 2;
 
 
@@ -193,7 +204,7 @@ void ComponentListItem::render( )
 	outline.render();
 
 	iconOutline.moveTo( globalX() + s_templateItem->iconOutline.left()
-		, globalY() + s_templateItem->iconOutline.top());
+		, globalY() + s_templateItem->iconOutline.top() + ( icon.top() - s_templateItem->icon.top() ) );
 	iconOutline.setColor( animations[0].getCurrentColor( animations[0].getState() ) );
 	iconOutline.render();
 
