@@ -30,6 +30,8 @@ void releaseOwned(DWORD asset) noexcept;
 DWORD load(mc2::czstring path, gos_TextureFormat format, DWORD hints, DWORD variant=0, DWORD lifetime=0);
 DWORD findAndRetain(mc2::czstring path, gos_TextureFormat format, DWORD hints, DWORD variant=0, DWORD lifetime=0);
 DWORD retain(DWORD asset);
+// Load() calls that missed the source store (cold: opens and reads a file); test/diagnostic counter.
+uint32_t coldLoadCount() noexcept;
 void release(DWORD asset);
 DWORD sourceId(DWORD asset);
 void commitTickTextures(); // main only, after joining the tick

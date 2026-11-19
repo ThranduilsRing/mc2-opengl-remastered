@@ -1,3 +1,4 @@
+#include <atomic>
 #include "mc2_czstring.h"
 #include "../code/tick_commit.h"
 #include "../RenderCore/TextureService.h"
@@ -330,6 +331,9 @@ std::optional<RenderCore::KtxImage> loadCookedSidecar(std::string_view source) {
     return out;
 }
 
+static std::atomic<uint32_t> s_coldLoads{0};
+uint32_t coldLoadCount() noexcept { return s_coldLoads.load(std::memory_order_relaxed); }
+
 TextureSources& sourceStore() { startSources(); return *sourcesIfReady(); }
 void startSources() {
     auto& service=RenderCore::textureService();
@@ -350,6 +354,8 @@ DWORD load(mc2::czstring path, gos_TextureFormat format, DWORD hints, DWORD vari
     auto& store=sourceStore();
     { ZoneScopedN("TextureSource.Load.Find");
       if (auto source=store.find(path,variant)) return store.retain(source) ? source->asset : kInvalidAsset; }
+    s_coldLoads.fetch_add(1,std::memory_order_relaxed);
+    if (mc2::gate::get<"MC2_TEXMGR_LOAD_TRACE">()) mc2::fmt::print_out("[TEXLOAD_COLD] uniq={:d} name={}\n",mc2::fmt::as_u32(variant),path);
     auto source=std::make_shared<TextureSource>();
     source->name=path; source->variant=variant; source->hints=hints; source->lifetime=lifetime;
     if (format==gos_Texture_Alpha && Environment.Renderer==3) format=gos_Texture_Keyed;
