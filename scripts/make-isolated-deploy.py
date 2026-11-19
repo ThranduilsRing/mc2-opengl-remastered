@@ -187,6 +187,11 @@ def private_copy_rel(rel: str) -> bool:
     return rel.casefold().startswith('saved_bookmarks/')
 
 
+def root_binary_rel(rel: str) -> bool:
+    """Root-level DLL/exe: always a private byte copy (another lane's running game locks a shared inode)."""
+    return '/' not in rel and rel.casefold().endswith(('.dll', '.exe'))
+
+
 _DECLARED = None
 
 
@@ -977,6 +982,7 @@ def main(argv=None) -> int:
         # differ. Runtime/user writes still require private inodes immediately.
         static = [(r, n) for r, n in to_copy if r.casefold() in seed
                   and r.casefold() != 'mc2.exe'  # baseline exe swaps may copy in place, outside deploy_payload
+                  and not root_binary_rel(r)  # a running game holds a hardlinked root DLL/exe: deploy's unlink then fails (WinError 5)
                   and not r.casefold().endswith(('.cfg', '.ini', '.bat', '.cookstamp'))
                   and not r.casefold().startswith(('cache/', 'data/textures/'))
                   and r != '.deployed_manifest.csv']

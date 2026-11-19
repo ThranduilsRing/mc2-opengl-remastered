@@ -727,3 +727,15 @@ def test_unconfirmed_churn_rehashes_once_and_remembers_the_stamp(tmp_path, monke
     calls.clear()
     assert set(dp.prepare_seed_delta(items, str(lane))) == set(rels)
     assert calls == []  # the lane receipt now carries the proven stamps
+
+
+def test_lean_install_root_binaries_are_private_copies(tmp_path, monkeypatch):
+    """A running game locks a hardlinked root DLL/exe; deploy's replace then dies with WinError 5 (merge-1119a gate1, SDL2.dll)."""
+    iso = lean_tool()
+    seed, lane = tmp_path / 'seed', tmp_path / 'lane'
+    lean_fixture(seed)
+    monkeypatch.setattr(iso, 'check_space', lambda *a: None)
+    assert iso.main(['--from', str(seed), '--to', str(lane)]) == 0
+    assert (lane / 'runtime.dll').read_bytes() == b'fixture'
+    assert not (seed / 'runtime.dll').samefile(lane / 'runtime.dll')
+    assert (lane / 'runtime.dll').stat().st_nlink == 1

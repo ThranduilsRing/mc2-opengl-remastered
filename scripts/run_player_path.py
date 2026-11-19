@@ -34,7 +34,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
-from smoke_lib import nofocus  # noqa: E402
+from smoke_lib import fingerprint, nofocus  # noqa: E402
 from smoke_lib import via_menu  # noqa: E402
 
 SCEN_DIR = ROOT / "tests" / "player_path"
@@ -112,6 +112,18 @@ def build_env(extra: dict, script: Path) -> dict:
     env["MC2_INPUT_SCRIPT"] = str(script)
     env.update(extra)
     return env
+
+
+def fingerprint_problems(text: str, exe: Path) -> list:
+    """Refuse a run whose exe does not carry the build fingerprint of the worktree HEAD (as smoke does): a seed exe proves nothing."""
+    if os.environ.get("MC2_SMOKE_REQUIRE_FINGERPRINT", "1") == "0":
+        return []
+    try:
+        lines, bad = fingerprint.check_fingerprint(fingerprint.parse_fingerprint(text), None, repo_root=ROOT,
+                                                   reference=fingerprint.resolve_reference(ROOT), exe_path=exe)
+    except Exception as exc:  # an unverifiable exe is a failed verification
+        return [f"[DEPLOY_FINGERPRINT] check failed: {exc}"]
+    return [l for l in lines if "MISMATCH" in l or "absent" in l or "unavailable" in l] or (["[DEPLOY_FINGERPRINT] not OK"] if bad else [])
 
 
 def run_scenario(exe: Path, sc: dict, out: Path, extra_env: dict, show_window: bool = True) -> dict:
@@ -210,6 +222,7 @@ def run_scenario(exe: Path, sc: dict, out: Path, extra_env: dict, show_window: b
     (out / "game.log").write_text("\n".join(f"{t:9.3f} {x}" for t, x in all_lines), encoding="utf-8", errors="replace")
     text = "\n".join(x for _, x in all_lines)
     problems = [fail] if fail else []
+    problems += fingerprint_problems(text, exe)
     if rc is not None and rc != 0 and not done:
         problems.append(f"exit code {rc} (0x{rc & 0xFFFFFFFF:08X})")
     for m in re.finditer(r"\[SAVELOAD\] op=\S+ file=(\S+)", text):

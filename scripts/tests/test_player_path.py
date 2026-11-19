@@ -57,3 +57,14 @@ def test_save_redirect_is_required_and_per_run(tmp_path):
         pp.require_save_redirect({"MC2_SAVE_DIR": str(tmp_path.parent)}, tmp_path)
     ok = tmp_path / "savegame"
     assert pp.require_save_redirect({"MC2_SAVE_DIR": str(ok)}, tmp_path) == ok.resolve()
+
+
+def test_fingerprint_must_match_head(monkeypatch, tmp_path):
+    """merge-1119a gate1: player-path recorded PASS on the seed exe because it never checked the build fingerprint."""
+    monkeypatch.delenv("MC2_SMOKE_REQUIRE_FINGERPRINT", raising=False)
+    head = "a" * 40
+    monkeypatch.setattr(pp.fingerprint, "resolve_reference", lambda root: {"mode": "head", "sha": head})
+    banner = "[BUILD_FINGERPRINT v1] sha=%s dirty=0 branch=b built=now src=A:/x"
+    assert pp.fingerprint_problems(banner % head[:12], tmp_path / "mc2.exe") == []
+    assert any("MISMATCH" in p for p in pp.fingerprint_problems(banner % ("b" * 12), tmp_path / "mc2.exe"))
+    assert pp.fingerprint_problems("no banner here", tmp_path / "mc2.exe")
