@@ -1330,7 +1330,7 @@ def test_in_gate_flag_only_on_game_stages():
         assert gate.gate_env(name) == {}
     for name in ("tier1", "mods", "saveload-mc2_01", "determinism-mc2_03"):
         from smoke_lib import host_lease
-        assert gate.gate_env(name) == {"MC2_IN_GATE": "1", "MC2_VK_DEVICE": host_lease.lane_devices()[0]}   # the PC gate fallback pins slot 0's GPU
+        assert {k: v for k, v in gate.gate_env(name).items() if k != "MC2_LANE_SCRATCH"} == {"MC2_IN_GATE": "1", "MC2_VK_DEVICE": host_lease.lane_devices()[0]}   # the PC gate fallback pins slot 0's GPU
 
 
 def test_conftest_clears_inherited_gate_flag():
@@ -1397,6 +1397,6 @@ def test_failed_deploy_holds_every_exe_row_as_not_run(monkeypatch):
 def test_gate_children_get_a_private_lane_scratch(monkeypatch):
     import merge_gate as gate
     monkeypatch.delenv("MC2_LANE_SCRATCH", raising=False)
-    assert gate.gate_env("tier1")["MC2_LANE_SCRATCH"].replace("\\", "/").endswith("mc2-tmp/merge-gate")
+    assert gate.gate_env("tier1")["MC2_LANE_SCRATCH"].replace("\\", "/").endswith("build64-ninja/gate-scratch")
     monkeypatch.setenv("MC2_LANE_SCRATCH", "E:/mc2-tmp/slot06")
     assert gate.gate_env("tier1")["MC2_LANE_SCRATCH"] == "E:/mc2-tmp/slot06"

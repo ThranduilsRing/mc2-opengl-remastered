@@ -201,11 +201,11 @@ OFFLINE_STAGES = ("contracts", "harnesses", "pytest", "unit-msvc-build", "editor
 
 
 def gate_scratch():
-    """Scratch root for gate child runs: the caller's MC2_LANE_SCRATCH, else a private dir on G:/E: (never C: Temp)."""
+    """Scratch root for gate child runs: the caller's MC2_LANE_SCRATCH, else a private dir in the build tree (never C: Temp)."""
     given = os.environ.get("MC2_LANE_SCRATCH")
     if given:
         return given
-    return "G:/mc2-tmp/merge-gate" if Path("G:/").exists() else "E:/mc2-tmp/merge-gate"
+    return str(ROOT / "build64-ninja" / "gate-scratch")
 
 
 def gate_env(name, device=None):

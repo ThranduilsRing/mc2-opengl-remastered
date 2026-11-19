@@ -111,7 +111,7 @@ def test_merge_gate_stock_and_aux_rows_defer_to_the_lease(detected_pair):
     import merge_gate
     for row in ("tier1", "capture", "battle-bench", "fault-injection"):
         for requested in (None, "NVIDIA", f"AMD@{DISPLAY}", merge_gate.aux_device()):
-            assert merge_gate.gate_env(row, requested) == {"MC2_IN_GATE": "1"}
+            assert {k: v for k, v in merge_gate.gate_env(row, requested).items() if k != "MC2_LANE_SCRATCH"} == {"MC2_IN_GATE": "1"}
     assert merge_gate.gate_env("pytest") == {}
 
 
