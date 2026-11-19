@@ -467,9 +467,8 @@ void MechFlushFrame::validateMaterialTable() {
 }
 
 bool gpuMechPrewarmHasRoom() {
-    // Left free for terrain, props and the first frames. Low (shadowQuality 0: 512 MiB budget) is below this reserve, so mover prewarm
-    // never runs there. Medium (1024 MiB) can only prewarm while live+pending stays under 256 MiB, which a loaded mission rarely does;
-    // High (8 GiB cap, device-bounded) is the tier that runs it. Skipped movers upload lazily with the first flush.
+    // Left free for terrain, props and the first frames. Inert on Low/Medium: their budget (shadowQuality 0: 512 MiB) is below this reserve,
+    // so mover prewarm never runs there and the textures upload lazily with the first flush.
     constexpr uint64_t kReserve = 768ull << 20;
     const uint64_t room = mc2vk::infra::headroom();
     static bool s_first = true;
