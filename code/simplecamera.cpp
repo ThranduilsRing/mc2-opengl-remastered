@@ -430,7 +430,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 				}
 				const bool posted = labMech && postMechPreviewGpu( *this, labMech, offsetX, offsetY, viewMulX, viewMulY,
 				                                   haveGround_ ? groundC_[0] : 0.f, groundC_[1], ( haveGround_ && !( framed_ && fitIters_ > 0 ) ) ? groundH_ : 0.f,
-				                                   framed_ ? ( floorY_ > 0.f ? floorY_ : 0.5f * ( bounds[1] + bounds[3] ) + 0.5f * 0.95f * fillFrac_ * ( bounds[3] - bounds[1] ) ) : 0.f, bounds, framed_, framed_ && fitIters_ > 0 );
+				                                   framed_ ? ( floorY_ > 0.f ? floorY_ : 0.5f * ( bounds[1] + bounds[3] ) + 0.5f * fillFrac_ * ( bounds[3] - bounds[1] ) ) : 0.f, bounds, framed_, framed_ && fitIters_ > 0 );
 				if ( posted )
 					gpuDraws = mc2_vk_mech_preview_drew_last() != 0;
 				// With the GPU path drawing, PreviewDraw only projects (the framing bounds below).
@@ -619,8 +619,9 @@ long SimpleCamera::update()
 				{
 					// Size ~ 1/tan(fov/2) at a fixed distance (a long lens: moving the camera in distorts the
 					// model and pushes it into the near plane); then centre across and vertically.
-					const float s = std::clamp(std::max(h / (fillFrac_ * rh), w / (0.94f * rw)), 0.5f, 2.f);
-					floorY_ = 0.5f * ( bounds[1] + bounds[3] ) + 0.5f * h / s;	// predicted feet row after this fit step (centred, scaled by 1/s)
+					const float su = std::max(h / (fillFrac_ * rh), w / (0.94f * rw));	// unclamped: the converged size
+					const float s = std::clamp(su, 0.5f, 2.f);
+					floorY_ = 0.5f * ( bounds[1] + bounds[3] ) + 0.5f * h / su;	// predicted feet row after this fit step (centred, scaled by 1/s)
 					framedFov_ = 2.f * std::atan(std::tan(framedFov_ * 0.5f * DEGREES_TO_RADS) * s) / DEGREES_TO_RADS;
 					fudgeX += ( bounds[0] + bounds[2] ) * 0.5f - ( drawn_[0] + drawn_[2] ) * 0.5f;
 					fudgeY += ( bounds[1] + bounds[3] ) * 0.5f - ( drawn_[1] + drawn_[3] ) * 0.5f;
@@ -647,7 +648,7 @@ long SimpleCamera::update()
 						floorY_ = mid + ( floorY_ - mid ) / s;
 					}
 				}
-				else if ( fitIters_ == 0 )
+				else if ( fitIters_ == 0 && fitSweepYawHeld_ && drawn_[3] > drawn_[1] )	// the reveal step only (not a later manual rotate)
 				{
 					// The sweep ended on a base-yaw measurement: centre vertically at the base yaw and latch the floor
 					// at the revealed feet row (the backdrop floor then stays put; only the contact shadow follows).
