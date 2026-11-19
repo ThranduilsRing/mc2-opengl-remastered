@@ -2937,6 +2937,97 @@ GuiImage {
 }
 
 GuiButton {
+    key = "game.mcl_mb_layout.button.buy_drop_weight_button"
+    pageKey = "game.mcl_mb_layout"
+    legacyComment = "buy drop weight button (defs-only; message 58)"
+    role = "button"
+    layer = "control"
+    rect = "356,152,176,42"
+    legacyLocalRect = "356,152,176,42"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_MB_1.png"
+    legacyTexture = "MCL_MB_1"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "356,152,176,42"
+    hitRect = "356,152,176,42"
+    artRect = "356,152,176,42"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "362,161,164,23"
+    textRectMode = "explicit_legacy"
+    textOffset = "6,9"
+    visibleText = "BUY +5 T DROP WEIGHT"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = false
+    textX = 362
+    textY = 161
+    textWidth = 164
+    textHeight = 23
+    normalTextColorArgb = "0xffc66600"
+    normalOverlayColorArgb = "0xffc66600"
+    colorArgb = "0xffc66600"
+    pressedTextColorArgb = "0xffffffff"
+    pressedOverlayColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    highlightOverlayColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    disabledOverlayColorArgb = "0xff373737"
+    buttonOverlayEnabled = true
+    buttonOverlayAlpha = 0.30
+    legacyId = 58
+    legacyColor = 0xffc66600
+    legacyTextOutline = "TRUE"
+    legacyAnimateBmp = 0
+    legacyAnimateText = 0
+    uvX = 0
+    uvY = 0
+    uvWidth = 176
+    uvHeight = 42
+    uvPressedX = 0
+    uvPressedY = 42
+    uvHighlightX = 0
+    uvHighlightY = 0
+    uvDisabledX = 0
+    uvDisabledY = 42
+}
+
+GuiText {
+    key = "game.mcl_mb_layout.text.weight_warning"
+    pageKey = "game.mcl_mb_layout"
+    legacyComment = "over-limit reason line (runtime text; red)"
+    role = "text"
+    layer = "text"
+    rect = "356,300,300,20"
+    legacyLocalRect = "356,300,300,20"
+    legacyRectSource = "xywh"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "356,300,300,20"
+    textRect = "356,300,300,20"
+    textRectMode = "control_rect_fallback"
+    textOffset = "0,0"
+    visible = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffff3030"
+}
+
+GuiButton {
     key = "game.mcl_mb_layout.button.main_menu_button"
     pageKey = "game.mcl_mb_layout"
     legacySection = "MechBayButton4"
