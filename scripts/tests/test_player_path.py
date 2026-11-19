@@ -18,6 +18,14 @@ def test_stock_scenarios_parse_and_end_with_mark_done():
         assert not any(s.startswith("MC2_BOOT_TO") for s in sc["steps"]), "no boot shortcuts: the menu must be clicked"
 
 
+def test_mod_scenarios_are_outside_the_stock_dir_and_assert_something():
+    mods = ROOT / "tests" / "player_path_mods"
+    for f in sorted(mods.glob("*.pp")):
+        assert not (pp.SCEN_DIR / f.name).exists(), f"{f.name}: mod scenario also in the stock dir"
+        sc = pp.parse_scenario(f)
+        assert sc["steps"][-1] == "mark done" and sc["expect"], f.name
+
+
 def test_parse_scenario_directives(tmp_path):
     f = tmp_path / "x.pp"
     f.write_text("#! timeout 12\n#! expect foo\n#! forbid bar\n# comment\nawait ready 5\nclick 1 2\nmark done\n", encoding="utf-8")
