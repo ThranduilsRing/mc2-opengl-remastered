@@ -253,4 +253,31 @@ TEST_CASE("variants share immutable input bytes but own separate source identiti
     CHECK(mc2::textures::findAndRetain("paint-mask",gos_Texture_Solid,0,2)==b);
     CHECK(s.index->get(b)->users==2);
 }
+
+TEST_CASE("HITCH-ATTRIB-3: a unique per-instance copy of a resident texture opens no file") {
+    Sources s;
+    const auto shared=s.add("tgl/128/a_mechdam.tga",0);
+    const auto copy=s.index->cloneResident("tgl/128/a_mechdam.tga",1,gos_Texture_Solid,0,0);
+    REQUIRE(copy!=0xffffffffu);
+    CHECK(copy!=shared);
+    CHECK((s.index->get(copy)->bytes==s.index->get(shared)->bytes));
+    CHECK(s.index->get(copy)->variant==1);
+    CHECK(s.handle(copy)!=s.handle(shared));
+    // nothing resident for this name: the caller takes the cold path (file open) and counts it
+    CHECK(s.index->cloneResident("tgl/128/not_preloaded.tga",1,gos_Texture_Solid,0,0)==0xffffffffu);
+    // a resident base of another format is not cloned (the caller takes the cold path)
+    CHECK(s.index->cloneResident("tgl/128/a_mechdam.tga",1,gos_Texture_Alpha,0,0)==0xffffffffu);
+}
+
+TEST_CASE("HITCH-ATTRIB-3: a released base is not cloned, and a clone outlives its base") {
+    Sources s;
+    const auto base=s.add("tgl/128/a_gone.tga",0);
+    const auto copy=s.index->cloneResident("tgl/128/a_gone.tga",1,gos_Texture_Solid,0,0);
+    REQUIRE(copy!=0xffffffffu);
+    mc2::textures::release(base);
+    REQUIRE(s.index->get(copy)!=nullptr);
+    CHECK((s.index->get(copy)->bytes!=nullptr));
+    CHECK(s.index->get(copy)->bytes->size()==4);
+    CHECK(s.index->cloneResident("tgl/128/a_gone.tga",2,gos_Texture_Solid,0,0)==0xffffffffu);
+}
 }

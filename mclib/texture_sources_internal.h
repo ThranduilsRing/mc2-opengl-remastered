@@ -3,6 +3,7 @@
 #include "mc2_czstring.h"
 #include "texture_assets.h"
 #include "../RenderCore/TextureService.h"
+#include <atomic>
 #include <string>
 #include <mutex>
 #include <unordered_map>
@@ -46,6 +47,8 @@ public:
     }
     std::shared_ptr<TextureSource> find(mc2::czstring name, DWORD variant);
     DWORD publish(std::shared_ptr<TextureSource> source);
+    // Publishes a variant copy that shares the resident variant-0 source's bytes; kInvalidAsset when none is resident.
+    DWORD cloneResident(mc2::czstring name, DWORD variant, gos_TextureFormat format, DWORD hints, DWORD lifetime);
     bool retain(const std::shared_ptr<TextureSource>& source);
     void release(const std::shared_ptr<TextureSource>& source);
     void flush(bool all);

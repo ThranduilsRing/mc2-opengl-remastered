@@ -39,3 +39,7 @@ private:
 // Defined in bdactor.cpp. Memoised per VFS generation; textureProbeUncachedCount is the sum of uncached probes of both memos.
 bool textureTgaExistsMemo(mc2::czstring tgaPath);
 uint64_t textureProbeUncachedCount();
+
+class TG_TypeMultiShape;
+// Defined in bdactor.cpp. Loads (variant 0) every texture of a damage/fall shape at type init; ktxFallback accepts a .ktx2 sidecar.
+void preloadDamageShapeTextures(TG_TypeMultiShape* shape, bool ktxFallback);

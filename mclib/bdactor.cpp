@@ -90,6 +90,26 @@ bool textureTgaExistsMemo(mc2::czstring tgaPath)
 
 uint64_t textureProbeUncachedCount() { return s_ktxProbeMemo.uncachedCount() + s_tgaProbeMemo.uncachedCount(); }
 
+// Type-init preload of a destroy/fall damage shape's textures (shared variant 0). The destroy swap then finds them resident
+// (and per-instance unique copies clone the resident bytes), so it opens no file: a cold open was 20-50 ms per texture on the PC.
+void preloadDamageShapeTextures(TG_TypeMultiShape* shape, bool ktxFallback)
+{
+	if (!shape) return;
+	ZoneScopedN("Type.PreloadDamageTextures");
+	for (long i = 0; i < shape->GetNumTextures(); i++)
+	{
+		char txmName[1024];
+		shape->GetTextureName(i, txmName, 256);
+		char texturePath[1024];
+		mc2::fmt::to_buf(texturePath, "{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize));
+		FullPathFileName textureName;
+		textureName.init(texturePath, txmName, "");
+		if (!(ktxFallback ? textureOrKtxSidecarExists(textureName) : textureTgaExistsMemo(textureName))) continue;
+		mc2::textures::load(textureName, S_strnicmp(txmName, "a_", 2) == 0 ? gos_Texture_Alpha : gos_Texture_Solid,
+			gosHint_DisableMipmap | gosHint_DontShrink);
+	}
+}
+
 bool staticRegIsNaturalBuildingName(mc2::czstring name)
 {
     if (!name)
