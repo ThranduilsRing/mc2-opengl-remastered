@@ -422,17 +422,30 @@ void GpuMechBatcher::registerTypeLodImpl(const void* mechType, TG_TypeMultiShape
 //     to skip re-binding here.
 //
 // Called from: finalizeGeometry() (initial) and batcher_rebuildMechNormals() (live).
+// Nodes and packets are append-only and each node is processed alone, so a late type only needs its own nodes run: the finished prefix of the
+// previous result is reused (identical bytes) while the normals settings are unchanged.
+static size_t s_geomDoneNodes = 0, s_geomDonePackets = 0;
+static int s_geomDoneMode = -1;
+static float s_geomDoneDeg = 0.0f;
+
 void uploadMechGeometryVbo() {
+    ZoneScopedN("Mech.GeometryRebuild");
     // Build transient work copy of the staging VBO (s_stagingVbo = pristine cooked).
     // mode 0 means no recompute — work is byte-identical to cooked.
     std::vector<uint8_t> work = s_stagingVbo;
+    const bool resume = s_geomDoneNodes > 0 && s_geomDoneNodes <= s_nodeVboRanges.size() && s_geomDonePackets > 0 &&
+                        s_geomDonePackets <= s_packets.size() && s_geomDoneMode == s_mechNormalsMode && s_geomDoneDeg == s_mechNormalsSmoothDeg &&
+                        s_vkPacketBaseVertex.size() == s_geomDonePackets && s_vkPacketVertexCount.size() == s_geomDonePackets &&
+                        s_vkIboNativeCopy.size() >= s_geomDonePackets && !s_vkVboNativeCopy.empty();
+    const size_t firstNode = resume ? s_geomDoneNodes : 0;
 
     if (s_mechNormalsMode != 0) {
         // Apply recompute per-node using the recorded per-node byte ranges.
         // Each range is [start, end) in work; recomputeMechNodeNormals modifies
         // work in place over that range only (bounded by the endByte param added
         // in MECH-NORMALS-FIX-1 so normals from adjacent nodes are never blended).
-        for (const auto& [rngStart, rngEnd] : s_nodeVboRanges) {
+        for (size_t n = firstNode; n < s_nodeVboRanges.size(); ++n) {
+            const auto& [rngStart, rngEnd] = s_nodeVboRanges[n];
             recomputeMechNodeNormals(work, rngStart, rngEnd,
                                      s_mechNormalsMode, s_mechNormalsSmoothDeg);
         }
@@ -448,8 +461,24 @@ void uploadMechGeometryVbo() {
     std::vector<uint32_t> pktCount(s_packets.size(), 0);
     bool ok = !s_nodeVboRanges.empty() && !s_stagingIbo.empty();
     size_t pk = 0;
+    if (resume) {
+        const size_t doneIbo = static_cast<size_t>(s_packets[s_geomDonePackets - 1].firstIndex) + s_packets[s_geomDonePackets - 1].indexCount;
+        if (doneIbo <= s_vkIboNativeCopy.size() && doneIbo <= dibo.size()) {
+            std::copy(s_vkIboNativeCopy.begin(), s_vkIboNativeCopy.begin() + doneIbo, dibo.begin());
+            dvbo = s_vkVboNativeCopy;
+            std::copy(s_vkPacketBaseVertex.begin(), s_vkPacketBaseVertex.end(), pktBase.begin());
+            std::copy(s_vkPacketVertexCount.begin(), s_vkPacketVertexCount.end(), pktCount.begin());
+            pk = s_geomDonePackets;
+        }
+    }
+    const size_t startNode = pk ? firstNode : 0;
+    if (!pk && s_mechNormalsMode != 0 && firstNode > 0) {
+        // The reuse was refused after the normals ran only for the new nodes: redo the prefix so the full pass is exact.
+        for (size_t n = 0; n < firstNode; ++n)
+            recomputeMechNodeNormals(work, s_nodeVboRanges[n].first, s_nodeVboRanges[n].second, s_mechNormalsMode, s_mechNormalsSmoothDeg);
+    }
     dvbo.reserve(work.size());
-    for (size_t n = 0; ok && n < s_nodeVboRanges.size(); ++n) {
+    for (size_t n = startNode; ok && n < s_nodeVboRanges.size(); ++n) {
         const auto& [nodeStart, nodeEnd] = s_nodeVboRanges[n];
         const size_t soupBase = nodeStart / kStride;
         const size_t soupCount = (nodeEnd - nodeStart) / kStride;
@@ -500,7 +529,17 @@ void uploadMechGeometryVbo() {
         s_vkIboNativeCopy = std::move(dibo);
         s_vkPacketBaseVertex = std::move(pktBase);
         s_vkPacketVertexCount = std::move(pktCount);
+        s_geomDoneNodes = s_nodeVboRanges.size(); s_geomDonePackets = s_packets.size();
+        s_geomDoneMode = s_mechNormalsMode; s_geomDoneDeg = s_mechNormalsSmoothDeg;
+        if (mc2_diag::tagRequested("MECH_GEOM")) {
+            uint64_t h = 1469598103934665603ull;
+            for (uint8_t b : s_vkVboNativeCopy) h = (h ^ b) * 1099511628211ull;
+            for (uint32_t i : s_vkIboNativeCopy) h = (h ^ i) * 1099511628211ull;
+            mc2::fmt::print_err("[MECH_GEOM v1] rebuild resumed_nodes={:d} nodes={:d} hash={:016X}
+", mc2::fmt::as_size(startNode), mc2::fmt::as_size(s_nodeVboRanges.size()), mc2::fmt::as_u64(h));
+        }
     } else {
+        s_geomDoneNodes = 0;
         MC2_DIAGFE(stderr, "[MECHBATCHER v1] event=dedupe_skipped reason=node_packet_mismatch\n");
         s_vkVboNativeCopy = std::move(work);
         s_vkIboNativeCopy = s_stagingIbo;

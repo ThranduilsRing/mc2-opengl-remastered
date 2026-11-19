@@ -621,6 +621,8 @@ bool upload_geometry_once(MechIsland* s) {
     // A null source means a normals rebuild raced the accessor: decline before the waitIdle and the buffer destroy, so the old
     // buffers stay and no device stall is taken for a retry.
     if (feed.vboBytes == 0 || feed.iboBytes == 0 || !feed.vboCpu || !feed.iboCpu) return false;
+    ZoneScopedN("VKMech.GeometryUpload");
+    const bool regrow = s->geomUploaded;
     if (s->geomUploaded) {
         // A new map (or a normals rebuild) replaced the batcher's vertex and index sets: the draw runs index into the NEW
         // set, so a buffer kept from the previous map is read past its end (VUID-vkCmdDrawIndexed-robustBufferAccess2-08798).
@@ -636,6 +638,34 @@ bool upload_geometry_once(MechIsland* s) {
         vlog("ERROR: mech feed vertexStride %u != pipeline stride %u (mech geometry will explode).", feed.vertexStride, mc2_mech_vertex_stride());
     s->vertexStride = feed.vertexStride;
 
+    // A regrow (a late type or a normals rebuild) happens while frames run: stage in the frame's upload batch and let the graphics queue order
+    // the copy ahead of its consumers, instead of a one-shot that waits for the GPU backlog (about a frame) on the render thread.
+    if (regrow) {
+        auto& uctx = mc2vk::getOrCreateEngineVulkanContext();
+        const auto vs = uctx.uploads().stage(uctx, feed.vboBytes);
+        const auto is = vs ? uctx.uploads().stage(uctx, feed.iboBytes) : mc2vk::UploadBatch::Span{};
+        const bool created = vs && is &&
+            s->vbo.createDeviceLocal(s->allocator, s->device, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, "mech.vbo") &&
+            s->ibo.createDeviceLocal(s->allocator, s->device, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                                (uctx.rt().accel ? VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR : 0u), "mech.ibo");
+        if (created) {
+            std::memcpy(vs.ptr, feed.vboCpu, feed.vboBytes);
+            std::memcpy(is.ptr, feed.iboCpu, feed.iboBytes);
+            uctx.uploads().record([=, vbo = s->vbo.get(), ibo = s->ibo.get(), vb = feed.vboBytes, ib = feed.iboBytes](VkCommandBuffer cb) {
+                const VkBufferCopy vertices{vs.offset, 0, vb}, indices{is.offset, 0, ib};
+                vkCmdCopyBuffer(cb, vs.buffer, vbo, 1, &vertices); vkCmdCopyBuffer(cb, is.buffer, ibo, 1, &indices);
+                const VkMemoryBarrier barrier{VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_INDEX_READ_BIT | VK_ACCESS_SHADER_READ_BIT};
+                vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &barrier, 0, nullptr, 0, nullptr);
+            });
+            s->geomGen = feed.geomGen; s->vboBytes = feed.vboBytes; s->vertexStride = feed.vertexStride;
+            g_health.geomVerts = static_cast<unsigned long>((feed.vboBytes / (feed.vertexStride ? feed.vertexStride : 1))); s->geomUploaded = true;
+            mc2vk::bumpDescEpoch();
+            vlog("mech geometry uploaded once: vbo=%llu B ibo=%llu B stride=%u source=cpu-native (frame batch).",
+                 static_cast<unsigned long long>(feed.vboBytes), static_cast<unsigned long long>(feed.iboBytes), feed.vertexStride);
+            return true;
+        }
+        s->vbo.reset(); s->ibo.reset();   // no batch staging: fall back to the waiting one-shot below
+    }
     // A failed copy leaves both buffers empty, so the next frame retries from nothing. Static geometry is read every frame by the prepass, colour pass and shadow casters (mc2_vk_mech_island_shared_geometry): stage once into device-local memory.
     {
         mc2vk::OwnedBuffer stageVertices, stageIndices;
