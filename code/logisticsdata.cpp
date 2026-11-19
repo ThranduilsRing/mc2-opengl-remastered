@@ -9,6 +9,7 @@ LogisticsData.cpp			: Implementation of the LogisticsData component.
 #include "logisticsdata_internal.h"
 #include "mc2fmt.h"
 #include "vfs.h"
+#include "utils/mc2log.h"
 
 
 #ifdef VIEWER
