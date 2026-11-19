@@ -1201,6 +1201,7 @@
    "LG14": 1
   },
   "RenderCore/MissionEnvironment.h": {},
+  "RenderCore/MoverPrewarmSelect.h": {},
   "RenderCore/PipelineDesc.h": {},
   "RenderCore/PipelineRegistry.cpp": {
    "LG06": 1
@@ -3348,6 +3349,7 @@
    "LG05": 1
   },
   "mclib/texture_assets.h": {},
+  "mclib/texture_probe_memo.h": {},
   "mclib/texture_ref.h": {},
   "mclib/texture_sources.cpp": {
    "LG06": 1,
@@ -3462,7 +3464,7 @@
    "LG20": 1
   }
  },
- "head": "f57e92a03",
+ "head": "0fd5a36c6",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
