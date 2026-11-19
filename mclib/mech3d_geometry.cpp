@@ -3,6 +3,7 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "texture_assets.h"
 #include "mech3d_internal.h"
+#include "texture_probe_memo.h"
 #include "../GameOS/gameos/gos_frame_context.h"
 #include "footprints.h"
 #include "render_snap.h"
@@ -85,7 +86,7 @@ void Mech3DAppearance::setObjStatus (long oStatus)
 				FullPathFileName textureName;
 				textureName.init(texturePath,txmName,"");
 		
-				if (fileExists(textureName))
+				if (textureTgaExistsMemo(textureName))
 				{
 					if (S_strnicmp(txmName,"a_",2) == 0)
 					{
