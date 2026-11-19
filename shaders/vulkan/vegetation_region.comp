@@ -8,32 +8,60 @@
 #extension GL_KHR_shader_subgroup_ballot : require
 layout(local_size_x = 128) in;
 #include "include/vegetation_cull_common.glsl"
-shared uint s_sub[128];
+shared uint s_bin[128];      // this chunk's region bins (0xffffffff = not visible)
+shared uint s_start[128];    // running write position per distance bin
+// Visible regions are written NEAR TO FAR (128 bins, finer near the camera, stable region order inside a bin): the depth pre-pass (GREATER)
+// then rejects far overdraw at the early depth test. The result (nearest cutout wins) is order independent, counts[]/offsets[] are
+// indexed by position in visList, so only the draw order changes. Deterministic: no atomics decide the order.
+uint regionBin(uint r, bool force) {
+    VegRegion R = region[r];
+    float d = distance(R.sphere.xyz, P.cam.xyz);
+    if (!force) {
+        bool outside = false;
+        for (int k = 0; k < 4; ++k)
+            if (P.plane[k].x * R.sphere.x + P.plane[k].y * R.sphere.y + P.plane[k].z * R.sphere.z + P.plane[k].w < -R.sphere.w * P.planeLen[k]) outside = true;
+        // Mixed regions must reach the grass endpoint; per-instance LOD retains the woody range.
+        if (outside || d > 12.0 * P.cam.w + R.sphere.w) return 0xffffffffu;
+    }
+    return min(127u, uint(sqrt(clamp(d / (12.0 * P.cam.w + 1.0), 0.0, 1.0)) * 128.0));
+}
 void main() {
     uint lid = gl_LocalInvocationIndex, regions = P.counts.x;
     bool force = P.flags.x != 0u;
-    uint base = 0u;
+    s_start[lid] = 0u;
+    barrier();
+    // Pass 1: histogram of bins (shared atomics; only the counts, not the order, come from them).
     for (uint c = 0u; c < regions; c += 128u) {
         uint r = c + lid;
-        bool vis = false;
-        if (r < regions) {
-            VegRegion R = region[r];
-            vis = true;
-            if (!force) {
-                bool outside = false;
-                for (int k = 0; k < 4; ++k)
-                    if (P.plane[k].x * R.sphere.x + P.plane[k].y * R.sphere.y + P.plane[k].z * R.sphere.z + P.plane[k].w < -R.sphere.w * P.planeLen[k]) outside = true;
-                // Mixed regions must reach the grass endpoint; per-instance LOD retains the woody range.
-                vis = !outside && distance(R.sphere.xyz, P.cam.xyz) <= 12.0 * P.cam.w + R.sphere.w;
-            }
-        }
-        uvec4 ballot = subgroupBallot(vis);
-        if (subgroupElect()) s_sub[gl_SubgroupID] = subgroupBallotBitCount(ballot);
+        if (r < regions) { uint bn = regionBin(r, force); if (bn != 0xffffffffu) atomicAdd(s_start[bn], 1u); }
+    }
+    barrier();
+    // Exclusive prefix over the 128 bins, one thread per bin via a serial scan of the shared counts by thread 0.
+    uint mine = s_start[lid];
+    barrier();
+    if (lid == 0u) {
+        uint run = 0u;
+        for (uint i = 0u; i < 128u; ++i) { uint t = s_start[i]; s_start[i] = run; run += t; }
+        s_bin[0] = run;
+    }
+    barrier();
+    uint base = s_bin[0];
+    barrier();
+    // Pass 2: stable placement. A region's slot = bin start + same-bin regions of earlier chunks + same-bin lower lanes of its chunk.
+    for (uint c = 0u; c < regions; c += 128u) {
+        uint r = c + lid;
+        uint bn = r < regions ? regionBin(r, force) : 0xffffffffu;
+        s_bin[lid] = bn;
         barrier();
-        uint before = 0u, chunk = 0u;
-        for (uint s = 0u; s < gl_NumSubgroups; ++s) { uint t = s_sub[s]; if (s < gl_SubgroupID) before += t; chunk += t; }
-        if (vis) visList[base + before + subgroupBallotExclusiveBitCount(ballot)] = r;
-        base += chunk;
+        uint rank = 0u, inChunk = 0u;
+        for (uint j = 0u; j < 128u; ++j) {
+            uint o = s_bin[j];
+            if (o == lid) ++inChunk;          // this thread owns bin number lid for the running-offset update
+            if (j < lid && o == bn && bn != 0xffffffffu) ++rank;
+        }
+        if (bn != 0xffffffffu) visList[s_start[bn] + rank] = r;
+        barrier();
+        s_start[lid] += inChunk;
         barrier();
     }
     if (lid == 0u) {
