@@ -5,6 +5,8 @@
 #include <cstdio>
 #include <deque>
 #include <string>
+#include <string_view>
+#include <format>
 #include <initializer_list>
 #include <assert.h>
 #include "gos_input.h"
@@ -55,7 +57,7 @@ static void applyInputFocus(bool focused) {
 // (GUI hit-testing and button handlers run for real) and the keyboard state behind gos_GetKey. It never touches the OS:
 // no SendInput, no cursor, no focus, so it works with the window unfocused, minimised or parked off-screen.
 // The file is tailed every frame, so the harness can append commands as it sees log markers. One command per line:
-//   wait N | move X Y | down [l|r] | up [l|r] | click X Y [l|r] | wheel Y | focus lost|gained | keydown KEY | keyup KEY | key KEY | shot PATH.tga | mark TEXT
+//   wait N | move X Y | down [l|r] | up [l|r] | click X Y [l|r] | wheel Y | focus lost|gained | keydown KEY | keyup KEY | key KEY | text WORD | shot PATH.tga | mark TEXT
 // X Y are logical 800x600 canvas pixels (normalised x/800, y/600 the way gos_GetMouseInfo reports them); KEY is an SDL
 // key name (Return, Escape, Space, F1, A). Every executed command logs `[INPUT_SCRIPT v1] frame=N cmd=...`.
 // Inert (one cached string test per frame) when the variable is unset.
@@ -141,6 +143,14 @@ struct ScriptPlayer {
         else if (v == "key" && n >= 2) {
             const std::string name = line.substr(line.find(' ') + 1);
             push_front({"keydown " + name, "wait 4", "keyup " + name, "wait 4"});
+        }
+        else if (v == "text" && n >= 2) {   // typed text: a real SDL_TEXTINPUT event, the way a keyboard reaches an ImGui InputText
+            SDL_Event event = {};
+            extern SDL_Window* g_sdl_window;
+            event.type = SDL_TEXTINPUT;
+            event.text.windowID = g_sdl_window ? SDL_GetWindowID(g_sdl_window) : 0;   // ImGui drops events for an unknown window
+            (*std::format_to_n(event.text.text, sizeof(event.text.text) - 1, "{}", std::string_view(a)).out = '\0');
+            SDL_PushEvent(&event);
         }
         else if (v == "shot" && n >= 2) {   // a TGA of the next presented frame (the Vulkan readback the capture harness trusts)
             const std::string p = line.substr(line.find(' ') + 1);
