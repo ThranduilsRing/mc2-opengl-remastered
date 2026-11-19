@@ -364,6 +364,7 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 		// Must be a new move order, so let's first calc the actual
 		// move goal...
 		if (!escapeTile) {
+			ZoneScopedN("Warrior.Path.Goal");
 			long result = NO_ERR;
 			if ((myVehicle->getCommander() == Commander::home) && (curTacOrder.code != TACTICAL_ORDER_NONE) && (curTacOrder.origin == ORDER_ORIGIN_PLAYER))
 				moveParams |= MOVEPARAM_PLAYER;

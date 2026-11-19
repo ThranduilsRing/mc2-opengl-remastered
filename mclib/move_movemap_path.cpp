@@ -48,6 +48,7 @@ unsigned long long mc2_path_trace::hashMovePath (const MovePath* path) {
 
 long MoveMap::calcPath (const mc2_move::PathQuery& query, mc2_move::SolverScratch& scratch, MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell) {
 
+	ZoneScopedN("Warrior.Path.SolveLocal");
 	// PATHFINDING-FACTS-1: gated per-solve telemetry (default-OFF, byte-identical).
 	mc2_path_trace::SolveScope _pt("plain", scratch.openHeap);
 	_pt.out = path;
@@ -482,6 +483,7 @@ long MoveMap::calcPath (const mc2_move::PathQuery& query, mc2_move::SolverScratc
 
 long MoveMap::calcPathJUMP (const mc2_move::PathQuery& query, mc2_move::SolverScratch& scratch, MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell) {
 
+	ZoneScopedN("Warrior.Path.SolveJump");
 	// PATHFINDING-FACTS-1: gated per-solve telemetry (default-OFF, byte-identical).
 	mc2_path_trace::SolveScope _pt("jump", scratch.openHeap);
 	_pt.out = path;
@@ -527,7 +529,7 @@ long MoveMap::calcPathJUMP (const mc2_move::PathQuery& query, mc2_move::SolverSc
 
 	PQNode initialVertex;
 	initialVertex.key = curMapNode->fPrime;
-	initialVertex.id = curRow * MAX_MAPWIDTH + curCol;
+	initialVertex.id = openId(curRow, curCol);
 	initialVertex.row = curRow;
 	initialVertex.col = curCol;
 	scratch.openHeap.clear();
@@ -544,6 +546,8 @@ long MoveMap::calcPathJUMP (const mc2_move::PathQuery& query, mc2_move::SolverSc
 
     const int num_offsets_loc = numOffsets;
     const int jump_cost_loc = jumpCost;
+    const long max_hprime_loc = scratch.maxHPrime;      // fixed for the whole solve; a local avoids a reload after every node store
+    const bool jump_on_blocked_loc = scratch.jumpOnBlocked;
 
 	while (!scratch.openHeap.isEmpty()) {
 
@@ -593,7 +597,7 @@ long MoveMap::calcPathJUMP (const mc2_move::PathQuery& query, mc2_move::SolverSc
 					if (succMapNode->hPrime == HPRIME_NOT_CALCED)
 						succMapNode->hPrime = calcHPrime(succRow, succCol);
 
-					if (succMapNode->hPrime < scratch.maxHPrime) {
+					if (succMapNode->hPrime < max_hprime_loc) {
 
 						char dirToParent = reverseShift[dir];
 
@@ -601,7 +605,7 @@ long MoveMap::calcPathJUMP (const mc2_move::PathQuery& query, mc2_move::SolverSc
 						gosASSERT(cost > 0);
 						if (dir > 7) {
 							jumping = true;
-							if (scratch.jumpOnBlocked)   // PATHFINDING-SOLVER-ISOLATION-1
+							if (jump_on_blocked_loc)   // PATHFINDING-SOLVER-ISOLATION-1
 								cost = jump_cost_loc;
 							else
 								cost += jump_cost_loc;
@@ -616,7 +620,7 @@ long MoveMap::calcPathJUMP (const mc2_move::PathQuery& query, mc2_move::SolverSc
 
 						if (succMapNode->flags & MOVEFLAG_OPEN) {
 							if (succNodeG < succMapNode->g) {
-								updateOpenNode(scratch, *succMapNode, dirToParent, succNodeG, succRow * MAX_MAPWIDTH + succCol);
+								updateOpenNode(scratch, *succMapNode, dirToParent, succNodeG, openId(succRow, succCol));
 							}
 							}
 						else if (succMapNode->flags & MOVEFLAG_CLOSED) {
@@ -632,7 +636,7 @@ long MoveMap::calcPathJUMP (const mc2_move::PathQuery& query, mc2_move::SolverSc
 							succMapNode->fPrime = succNodeG + succMapNode->hPrime;
 							PQNode succPQNode;
 							succPQNode.key = succMapNode->fPrime;
-							succPQNode.id = succRow * MAX_MAPWIDTH + succCol;
+							succPQNode.id = openId(succRow, succCol);
 							succPQNode.row = succRow;
 							succPQNode.col = succCol;
 							scratch.openHeap.insert(succPQNode);

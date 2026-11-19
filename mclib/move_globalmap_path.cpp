@@ -256,6 +256,7 @@ long GlobalMap::calcPath (long startArea,
 						  long goalRow,
 						  long goalCol) {
 
+	ZoneScopedN("Warrior.Path.SolveGlobal");
 	mc2_path_trace::SolveScope _pt("global", openHeap);
 	MoveReconScope _recon_ag(&g_moveRecon_astar_global_ns, &g_moveRecon_frame_astar_global_ns);
 	if (g_moveReconEnabled) g_moveRecon_astar_global_calls++;
