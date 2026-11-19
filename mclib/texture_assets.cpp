@@ -1,4 +1,3 @@
-#include <atomic>
 #include "mc2_czstring.h"
 #include "../code/tick_commit.h"
 #include "../RenderCore/TextureService.h"
@@ -331,8 +330,7 @@ std::optional<RenderCore::KtxImage> loadCookedSidecar(std::string_view source) {
     return out;
 }
 
-static std::atomic<uint32_t> s_coldLoads{0};
-uint32_t coldLoadCount() noexcept { return s_coldLoads.load(std::memory_order_relaxed); }
+uint32_t coldLoadCount() noexcept { return sourceStore().coldLoads(); }
 
 TextureSources& sourceStore() { startSources(); return *sourcesIfReady(); }
 void startSources() {
@@ -355,23 +353,15 @@ DWORD load(mc2::czstring path, gos_TextureFormat format, DWORD hints, DWORD vari
     { ZoneScopedN("TextureSource.Load.Find");
       if (auto source=store.find(path,variant)) return store.retain(source) ? source->asset : kInvalidAsset; }
     if (variant!=0) {
-        // A per-instance unique copy (destroy swaps, first spawn of a type) of a texture whose shared source is already
-        // resident reuses its decoded bytes instead of re-opening and re-reading the file (20-50 ms per open on the PC).
-        gos_TextureFormat want=format;
-        if (want==gos_Texture_Alpha && Environment.Renderer==3) want=gos_Texture_Keyed;
-        if (auto base=store.find(path,0); base && base->bytes && base->format==static_cast<DWORD>(want)) {
-            auto copy=std::make_shared<TextureSource>();
-            copy->name=path; copy->variant=variant; copy->hints=hints; copy->lifetime=lifetime; copy->format=base->format;
-            copy->bytes=base->bytes; copy->key.source=base->key.source;
-            copy->width=base->width; copy->height=base->height; copy->logicalWidth=base->logicalWidth;
-            copy->logicalHeight=base->logicalHeight; copy->uvScale=base->uvScale; copy->file=base->file;
-            copy->cookedBc7=base->cookedBc7;
-            const DWORD asset=store.publish(std::move(copy));
+        // A per-instance unique copy (destroy swaps, first spawn of a type) of a resident texture reuses its bytes: no file open.
+        const auto want=(format==gos_Texture_Alpha && Environment.Renderer==3) ? gos_Texture_Keyed : format;
+        const DWORD asset=store.cloneResident(path,variant,want,hints,lifetime);
+        if (asset!=kInvalidAsset) {
             if (mc2::tick::collecting() || mc2::overlap::onSimWorker()) store.requestCreate(asset);
             return asset;
         }
     }
-    s_coldLoads.fetch_add(1,std::memory_order_relaxed);
+    store.noteColdLoad();
     if (mc2::gate::get<"MC2_TEXMGR_LOAD_TRACE">()) mc2::fmt::print_out("[TEXLOAD_COLD] uniq={:d} name={}\n",mc2::fmt::as_u32(variant),path);
     auto source=std::make_shared<TextureSource>();
     source->name=path; source->variant=variant; source->hints=hints; source->lifetime=lifetime;

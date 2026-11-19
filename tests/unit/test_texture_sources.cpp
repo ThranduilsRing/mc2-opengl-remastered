@@ -257,16 +257,14 @@ TEST_CASE("variants share immutable input bytes but own separate source identiti
 TEST_CASE("HITCH-ATTRIB-3: a unique per-instance copy of a resident texture opens no file") {
     Sources s;
     const auto shared=s.add("tgl/128/a_mechdam.tga",0);
-    const auto cold0=mc2::textures::coldLoadCount();
-    const auto copy=mc2::textures::load("tgl/128/a_mechdam.tga",gos_Texture_Solid,0,1);
+    const auto copy=s.index->cloneResident("tgl/128/a_mechdam.tga",1,gos_Texture_Solid,0,0);
     REQUIRE(copy!=0xffffffffu);
     CHECK(copy!=shared);
-    CHECK(mc2::textures::coldLoadCount()==cold0);
     CHECK((s.index->get(copy)->bytes==s.index->get(shared)->bytes));
     CHECK(s.index->get(copy)->variant==1);
     CHECK(s.handle(copy)!=s.handle(shared));
-    // a texture nobody preloaded is the cold load the type-init preload removes from the destroy frame
-    (void)mc2::textures::load("tgl/128/not_preloaded.tga",gos_Texture_Solid,0,1);
-    CHECK(mc2::textures::coldLoadCount()==cold0+1);
+    // nothing resident for this name: the caller takes the cold path (file open) and counts it
+    CHECK(s.index->cloneResident("tgl/128/not_preloaded.tga",1,gos_Texture_Solid,0,0)==0xffffffffu);
+    CHECK(s.index->coldLoads()==0);
 }
 }

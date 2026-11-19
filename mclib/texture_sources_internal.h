@@ -3,6 +3,7 @@
 #include "mc2_czstring.h"
 #include "texture_assets.h"
 #include "../RenderCore/TextureService.h"
+#include <atomic>
 #include <string>
 #include <mutex>
 #include <unordered_map>
@@ -46,6 +47,10 @@ public:
     }
     std::shared_ptr<TextureSource> find(mc2::czstring name, DWORD variant);
     DWORD publish(std::shared_ptr<TextureSource> source);
+    // Publishes a variant copy that shares the resident variant-0 source's bytes; kInvalidAsset when none is resident.
+    DWORD cloneResident(mc2::czstring name, DWORD variant, gos_TextureFormat format, DWORD hints, DWORD lifetime);
+    void noteColdLoad() { coldLoads_.fetch_add(1, std::memory_order_relaxed); }
+    uint32_t coldLoads() const { return coldLoads_.load(std::memory_order_relaxed); }
     bool retain(const std::shared_ptr<TextureSource>& source);
     void release(const std::shared_ptr<TextureSource>& source);
     void flush(bool all);
@@ -72,6 +77,7 @@ private:
     // indexMutex_ before calling into the service.
     mutable std::mutex indexMutex_;
     std::vector<DWORD> creates_;
+    std::atomic<uint32_t> coldLoads_{0};
     static std::string nameKey(mc2::czstring name, DWORD variant);
     // Weak indices never extend payload lifetime. IDs are monotonic for the session;
     // retiring a source cannot make a stale DWORD name a different source later.

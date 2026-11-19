@@ -101,6 +101,16 @@ DWORD TextureSources::publish(std::shared_ptr<TextureSource> source) {
     if (!source->name.empty()) named_[nameKey(source->name.c_str(),source->variant)]=id;
     return id;
 }
+DWORD TextureSources::cloneResident(mc2::czstring name, DWORD variant, gos_TextureFormat format, DWORD hints, DWORD lifetime) {
+    const auto base=find(name,0);
+    if (!base || !base->bytes || base->format!=static_cast<DWORD>(format)) return 0xffffffffu;
+    auto copy=std::make_shared<TextureSource>();
+    copy->name=name; copy->variant=variant; copy->hints=hints; copy->lifetime=lifetime; copy->format=base->format;
+    copy->bytes=base->bytes; copy->key.source=base->key.source;
+    copy->width=base->width; copy->height=base->height; copy->logicalWidth=base->logicalWidth;
+    copy->logicalHeight=base->logicalHeight; copy->uvScale=base->uvScale; copy->file=base->file; copy->cookedBc7=base->cookedBc7;
+    return publish(std::move(copy));
+}
 bool TextureSources::retain(const std::shared_ptr<TextureSource>& source) {
     if (source->users==(std::numeric_limits<DWORD>::max)() ||
         !RenderCore::textureService().retainSource(source->handle,source->asset)) return false;
