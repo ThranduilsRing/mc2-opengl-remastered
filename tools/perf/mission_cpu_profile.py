@@ -222,7 +222,7 @@ def capture_mission(install, mission, seconds, trace, extra_env, full_sweep=Fals
     with trace.with_suffix(".capture.log").open("w", encoding="utf-8") as log:
         # background-launch: allow Tracy console recorder, never an engine.
         recorder = subprocess.Popen([str(tracy.tracy_exe("tracy-capture.exe")),
-                                     "-a", "127.0.0.1", "-p", "8086", "-f", "-o", str(trace)],
+                                     "-a", "127.0.0.1", "-p", env.get("TRACY_PORT", tracy.TRACY_PORT), "-f", "-o", str(trace)],
                                     stdout=log, stderr=subprocess.STDOUT,
                                     **nofocus.hidden_kwargs(**flags))
         try:
