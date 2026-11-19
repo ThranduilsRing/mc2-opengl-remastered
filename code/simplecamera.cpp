@@ -57,7 +57,7 @@ void ProbeGatherLightsForList(TG_LightPtr* lights, unsigned long nLights, TG_HWL
 // panel mech per frame (the batcher snapshot holds one flush); a second camera that frame keeps its CPU draw.
 // Returns true when a request was posted; the CPU draw may still be needed until the island reports a draw.
 static bool postMechPreviewGpu( Camera& cam, Mech3DAppearance* mech, float vpX, float vpY, float vpW, float vpH,
-                                float groundX, float groundY, float groundH, const float* clipRect, bool backdrop, bool skipMech )
+                                float groundX, float groundY, float groundH, float floorY, const float* clipRect, bool backdrop, bool skipMech )
 {
 	static uint32_t s_lastFrame = 0xffffffffu;
 	static TG_InstanceId s_lastShape;
@@ -95,7 +95,7 @@ static bool postMechPreviewGpu( Camera& cam, Mech3DAppearance* mech, float vpX, 
 	// The mech panel only: the backdrop must not cover the other camera's box in the shared preview target.
 	q.clipX = static_cast<int>( lroundf( clipRect[0] ) ); q.clipY = static_cast<int>( lroundf( clipRect[1] ) );
 	q.clipW = static_cast<int>( lroundf( clipRect[2] - clipRect[0] ) ); q.clipH = static_cast<int>( lroundf( clipRect[3] - clipRect[1] ) );
-	q.groundX = groundX; q.groundY = groundY; q.groundH = groundH;
+	q.groundX = groundX; q.groundY = groundY; q.groundH = groundH; q.floorY = floorY;
 	q.backdrop = backdrop ? 1 : 0;
 	q.skipMech = skipMech ? 1 : 0;
 	if ( gosPostProcess* pp = getGosPostProcess() )
@@ -429,7 +429,8 @@ void SimpleCamera::render(long xOffset, long yOffset)
 					haveGround_ = true;
 				}
 				const bool posted = labMech && postMechPreviewGpu( *this, labMech, offsetX, offsetY, viewMulX, viewMulY,
-				                                   haveGround_ ? groundC_[0] : 0.f, groundC_[1], ( haveGround_ && !( framed_ && fitIters_ > 0 ) ) ? groundH_ : 0.f, bounds, framed_, framed_ && fitIters_ > 0 );
+				                                   haveGround_ ? groundC_[0] : 0.f, groundC_[1], ( haveGround_ && !( framed_ && fitIters_ > 0 ) ) ? groundH_ : 0.f,
+				                                   framed_ ? ( floorY_ > 0.f ? floorY_ : 0.5f * ( bounds[1] + bounds[3] ) + 0.5f * fillFrac_ * ( bounds[3] - bounds[1] ) ) : 0.f, bounds, framed_, framed_ && fitIters_ > 0 );
 				if ( posted )
 					gpuDraws = mc2_vk_mech_preview_drew_last() != 0;
 				// With the GPU path drawing, PreviewDraw only projects (the framing bounds below).
@@ -619,6 +620,7 @@ long SimpleCamera::update()
 					// Size ~ 1/tan(fov/2) at a fixed distance (a long lens: moving the camera in distorts the
 					// model and pushes it into the near plane); then centre across and vertically.
 					const float s = std::clamp(std::max(h / (fillFrac_ * rh), w / (0.94f * rw)), 0.5f, 2.f);
+					floorY_ = 0.5f * ( bounds[1] + bounds[3] ) + 0.5f * h / s;	// predicted feet row after this fit step (centred, scaled by 1/s)
 					framedFov_ = 2.f * std::atan(std::tan(framedFov_ * 0.5f * DEGREES_TO_RADS) * s) / DEGREES_TO_RADS;
 					fudgeX += ( bounds[0] + bounds[2] ) * 0.5f - ( drawn_[0] + drawn_[2] ) * 0.5f;
 					fudgeY += ( bounds[1] + bounds[3] ) * 0.5f - ( drawn_[1] + drawn_[3] ) * 0.5f;
@@ -639,6 +641,20 @@ long SimpleCamera::update()
 					framedFov_ = 2.f * std::atan(std::tan(framedFov_ * 0.5f * DEGREES_TO_RADS) * s) / DEGREES_TO_RADS;
 					fudgeY += ( bounds[1] + bounds[3] ) * 0.5f - ( drawn_[1] + drawn_[3] ) * 0.5f;
 					++widens_;
+					if ( floorY_ > 0.f )
+					{
+						const float mid = 0.5f * ( bounds[1] + bounds[3] );
+						floorY_ = mid + ( floorY_ - mid ) / s;
+					}
+				}
+				else if ( fitIters_ == 0 )
+				{
+					// The sweep ended on a base-yaw measurement: centre vertically at the base yaw and latch the floor
+					// at the revealed feet row (the backdrop floor then stays put; only the contact shadow follows).
+					const float dy = ( bounds[1] + bounds[3] ) * 0.5f - ( drawn_[1] + drawn_[3] ) * 0.5f;
+					fudgeY += dy;
+					groundC_[1] += dy;
+					floorY_ = drawn_[3] + dy;
 				}
 			}
 			if ( fitIters_ == 0 && fitSweepYawHeld_ )
@@ -650,7 +666,8 @@ long SimpleCamera::update()
 			{
 				fitSweepYawHeld_ = true;
 				static const float kSweepYaw[4] = { -30.f, 30.f, -15.f, 15.f };
-				rotation = swayBase_ + kSweepYaw[std::min( ( kSweepIters - fitIters_ ) / kSweepSeg, 3 )];
+				// The last fit frame measures at the base yaw (the reveal frame centres and latches the floor from it).
+				rotation = swayBase_ + ( fitIters_ == 1 ? 0.f : kSweepYaw[std::min( ( kSweepIters - fitIters_ ) / kSweepSeg, 3 )] );
 			}
 			const float sharedAlt = AltitudeTight;
 			AltitudeTight = framedAlt_;

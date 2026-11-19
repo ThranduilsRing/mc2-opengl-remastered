@@ -62,7 +62,7 @@ public:
 	// distance: Camera::AltitudeTight is static and a second camera on the
 	// same screen (the component picture) rewrites it.
 	void setFramedPose( float fillFrac, float yaw, float pitch )
-	{ fillFrac_ = fillFrac; framedPitch_ = pitch; rotation = swayBase_ = fitYaw_ = yaw; swayPhase_ = 0.f; framed_ = true; framedFov_ = 40.f; fudgeX = fudgeY = 0.f; fitIters_ = 40; haveDrawn_ = false; haveGround_ = false; turntableLastT_ = 0.0; maxHalf_ = turnAccum_ = 0.f; widens_ = 0; }
+	{ fillFrac_ = fillFrac; framedPitch_ = pitch; rotation = swayBase_ = fitYaw_ = yaw; swayPhase_ = 0.f; framed_ = true; framedFov_ = 40.f; fudgeX = fudgeY = 0.f; fitIters_ = 40; haveDrawn_ = false; haveGround_ = false; fitSweepYawHeld_ = fitPresented_ = false; floorY_ = 0.f; turntableLastT_ = 0.0; maxHalf_ = turnAccum_ = 0.f; widens_ = 0; }
 	// Mech-lab idle turntable (about 10 deg/s on a framed pose); paused while the player drags a component.
 	void setTurntablePaused( bool paused ) { turntablePaused_ = paused; }
 	void setScale( float newScale );
@@ -122,6 +122,7 @@ private:
 	double				turntableLastT_ = 0.0;	// steady-clock seconds of the previous turntable step (0 = none)
 	float				groundC_[2] = {}, groundH_ = 0.f;	// smoothed mech feet centre / height (panel logical px) for the contact shadow
 	bool				haveGround_ = false;
+	float				floorY_ = 0.f;	// backdrop floor row (panel logical px): predicted during the fit, latched at the reveal
 
     bool                bContextNotSet;
 

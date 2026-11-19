@@ -162,8 +162,6 @@ int ComponentListItem::init( FitIniFile& file )
 		const float dx = mc2::mechlab_loc::kDx;
 		auto& t = *s_templateItem;
 		t.outline.resize( t.outline.width() - static_cast<long>(dx), t.outline.height() );
-		t.name.resize( t.name.width() - static_cast<long>(dx), t.name.height() );
-		t.disabledText.resize( t.disabledText.width() - static_cast<long>(dx), t.disabledText.height() );
 
 	}
 

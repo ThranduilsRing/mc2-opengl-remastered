@@ -13,7 +13,7 @@ void main() {
     vec2 p = vec2(vUv.x, 1.0 - vUv.y);                       // panel space, y down
     vec2 c = p - vec2(0.5, 0.58);
     float vig = smoothstep(0.95, 0.15, length(c * vec2(1.0, 1.15)));
-    float hy = uFrame.poolF.w > 0.0001 ? min(uFrame.poolF.y - 0.035, 0.93) : 0.86;   // wall/floor line, just above the feet
+    float hy = uFrame.shadeC.z > 0.0 ? uFrame.shadeC.z : 0.86;   // wall/floor line: predicted during the fit, latched at the reveal (cpu side)
     vec3 col;
     if (p.y < hy) {
         float t = p.y / hy;
@@ -29,7 +29,7 @@ void main() {
         float depth = 1.0 / (0.12 + d);                      // large far away
         float line = max(band(fract((p.x - 0.5) * depth * 0.55 + 0.5) - 0.5, 0.035 * (0.3 + d)), band(fract(depth * 0.9) - 0.5, 0.05));
         col = mix(vec3(0.16, 0.17, 0.20), vec3(0.07, 0.08, 0.10), d);
-        col += vec3(0.16, 0.18, 0.22) * line * (1.0 - d * 0.6);
+        col += vec3(0.16, 0.18, 0.22) * line * (1.0 - d * 0.6) * smoothstep(0.0, 0.25, d);   // grid fades into the wall line (no bright cone at the far centre)
         float haz = 1.0 - smoothstep(0.0, 0.012, p.y - hy);   // hazard line where the wall meets the floor
         float stripe = step(0.5, fract((p.x + (p.y - hy) * 6.0) * 24.0));
         col = mix(col, mix(vec3(0.07, 0.055, 0.02), vec3(0.45, 0.32, 0.05), stripe), haz);

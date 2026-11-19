@@ -89,6 +89,12 @@ TEST_CASE("LogisticsUI/missing panel suppresses only its own composite") {
     bay.pObject = true;
     bay.drawPreviewToPanel(0, 0, 1, 1);
     CHECK(bay.composites == 2);
+    bay.framed_ = true; bay.fitIters_ = 3;
+    bay.drawPreviewToPanel(0, 0, 1, 1);
+    CHECK(bay.composites == 2);   // the hidden fit draws no composite
+    bay.fitPresented_ = true;
+    bay.drawPreviewToPanel(0, 0, 1, 1);
+    CHECK(bay.composites == 3);   // the presented fit frame does (the backdrop)
 }
 #ifdef _WIN32
 TEST_CASE("LogisticsUI/launch allocation failure closes acquired handles") {

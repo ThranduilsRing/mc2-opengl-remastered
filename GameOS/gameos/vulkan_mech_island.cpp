@@ -1311,6 +1311,8 @@ static int mech_preview_flush_impl(void* colorView, void* normalView, void* dept
           u.poolF[2] = 0.30f * q.groundH / bw;
           u.poolF[3] = 0.045f * q.groundH / bh;
       }
+      if (q.floorY > 0.0f && bh > 0)
+          u.shadeC[2] = std::min((q.floorY - by) / bh - 0.035f, 0.93f);   // backdrop wall/floor line (uv, y down), just above the feet
       for (int k = 0; k < 4; ++k) u.cameraWorldPos[k] = q.cameraWorldPos[k];
       u.shadeA[0] = feed.ambientStrength;  u.shadeA[1] = feed.specularStrength;
       u.shadeA[2] = feed.metalRoughness;   u.shadeA[3] = feed.glassRoughness;
