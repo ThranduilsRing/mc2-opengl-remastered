@@ -83,8 +83,8 @@ def lean_tool():
     return iso
 
 
-def lean_fixture(src):
-    payload = ['mc2.exe', 'runtime.dll', 'shaders_vk/a.spv', 'data/terrain_materials.json', 'mc2.pdb',
+def lean_fixture(src, root_dll=False):
+    payload = ['SDL2.dll'] * root_dll + ['mc2.exe', 'bin/runtime.dll', 'shaders_vk/a.spv', 'data/terrain_materials.json', 'mc2.pdb',
                'mods/deployed/mod.json']
     junk = ['debug_state/state.json', 'cache/content-model/temp.mci', 'harness.log',
             'data/textures/_txm_cache_bak/123.456.txm', 'tools/authoring.exe', 'mods/custom/mod.json']
@@ -203,7 +203,7 @@ def test_stale_inventory_still_copies_saved_bookmarks(tmp_path, monkeypatch):
 def test_seed_rejects_tampered_payload_and_missing_manifest(tmp_path):
     iso = lean_tool()
     lean_fixture(tmp_path)
-    (tmp_path / 'runtime.dll').write_bytes(b'tampered')
+    (tmp_path / 'bin' / 'runtime.dll').write_bytes(b'tampered')
     with pytest.raises(SystemExit):
         iso.verified_seed(tmp_path)
 
@@ -212,7 +212,7 @@ def test_seed_rejects_tampered_payload_and_missing_manifest(tmp_path):
         iso.verified_seed(tmp_path)
 
 
-@pytest.mark.parametrize('rel', ['mc2.exe', 'runtime.dll'])
+@pytest.mark.parametrize('rel', ['mc2.exe', 'bin/runtime.dll'])
 @pytest.mark.parametrize('after_verification', [False, True])
 def test_stale_seed_payload_rejected_before_or_during_copy(tmp_path, capsys, rel, after_verification):
     iso = lean_tool()
@@ -244,7 +244,7 @@ def test_verified_cache_rehashes_only_changed_members_and_rejects_corruption(tmp
     monkeypatch.setattr(iso, 'file_sha', lambda p: (calls.append(p), sha(p))[1])
     iso.verified_seed(tmp_path, use_cache=True)
     assert calls == []
-    victim = tmp_path / 'runtime.dll'
+    victim = tmp_path / 'bin' / 'runtime.dll'
     stat = victim.stat()
     victim.write_bytes(b'corrupt')  # same length; preserve mtime as well
     os.utime(victim, ns=(stat.st_atime_ns, stat.st_mtime_ns))
@@ -402,16 +402,16 @@ def test_fast_install_delta_keeps_unchanged_bytes_and_detaches_changes(tmp_path,
     lean_fixture(seed)
     monkeypatch.setattr(iso, 'check_space', lambda *a: None)
     assert iso.main(['--from', str(seed), '--to', str(lane)]) == 0
-    rels = ['mc2.exe', 'runtime.dll', 'shaders_vk/a.spv']
+    rels = ['mc2.exe', 'bin/runtime.dll', 'shaders_vk/a.spv']
     for rel in rels:
         path = repo / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b'fixture')
         assert (seed / rel).samefile(lane / rel) == (rel != 'mc2.exe')
     if change == 'source':
-        (repo / 'runtime.dll').write_bytes(b'updated')
+        (repo / 'bin/runtime.dll').write_bytes(b'updated')
     if change == 'corrupt':
-        victim = lane / 'runtime.dll'
+        victim = lane / 'bin' / 'runtime.dll'
         old = victim.stat()
         victim.write_bytes(b'corrupt')
         os.utime(victim, ns=(old.st_atime_ns, old.st_mtime_ns))
@@ -424,7 +424,7 @@ def test_fast_install_delta_keeps_unchanged_bytes_and_detaches_changes(tmp_path,
     items = [(str(repo / rel), rel, 'exe' if rel == 'mc2.exe' else 'support') for rel in rels]
     verified = dp.prepare_seed_delta(items, str(lane), full_verify=change == 'full')
     assert set(verified) == (set() if change == 'full' else set(rels) - {'mc2.exe'} -
-                             ({'runtime.dll'} if change not in ('none', 'relink') else set()))
+                             ({'bin/runtime.dll'} if change not in ('none', 'relink') else set()))
     dp.check_hardlink_isolation([i for i in items if i[1] not in verified], str(lane))
     monkeypatch.setattr(dp, 'ensure_terrain_materials', lambda *a: {})
     monkeypatch.setattr(dp, 'ensure_engine_normal_cooks', lambda *a: None)
@@ -435,7 +435,7 @@ def test_fast_install_delta_keeps_unchanged_bytes_and_detaches_changes(tmp_path,
         assert (lane / rel).read_bytes() == (repo / rel).read_bytes()
         assert (lane / rel).samefile(seed / rel) == (rel in verified)
     if change == 'source':
-        assert (seed / 'runtime.dll').read_bytes() == b'fixture'
+        assert (seed / 'bin/runtime.dll').read_bytes() == b'fixture'
 
 
 def test_lean_install_exe_swap_cannot_overwrite_seed(tmp_path, monkeypatch):
@@ -548,10 +548,10 @@ def test_link_creation_does_not_invalidate_seed_receipts(tmp_path, monkeypatch):
     iso = lean_tool()
     lean_fixture(tmp_path)
     iso.verified_seed(tmp_path, use_cache=True)
-    victim = tmp_path / 'runtime.dll'
+    victim = tmp_path / 'bin' / 'runtime.dll'
     other = tmp_path / 'link-of-runtime.dll'
     os.link(victim, other)  # bumps NTFS ChangeTime / link count like an install
-    shared = {'runtime.dll': {'stamp': iso.content_stamp(other)}}
+    shared = {'bin/runtime.dll': {'stamp': iso.content_stamp(other)}}
     iso.refresh_link_receipts(tmp_path, shared)
     calls = []
     sha = iso.file_sha
@@ -571,7 +571,7 @@ def test_delete_of_linked_install_then_restamp_avoids_rehash(tmp_path, monkeypat
     iso = lean_tool()
     lean_fixture(tmp_path)
     iso.verified_seed(tmp_path, use_cache=True)
-    victim = tmp_path / 'runtime.dll'
+    victim = tmp_path / 'bin' / 'runtime.dll'
     other = tmp_path / 'install-copy.dll'
     os.link(victim, other)
     other.unlink()  # install delete: link count / ChangeTime change on the seed inode
@@ -666,7 +666,7 @@ def _churned_lane(tmp_path, monkeypatch, receipt=True):
     monkeypatch.setenv('MC2_LEAN_SEED', str(seed))
     assert iso.main(['--from', str(seed), '--to', str(lane)]) == 0
     iso.verified_seed(seed, use_cache=True)
-    rels = ['runtime.dll', 'shaders_vk/a.spv']
+    rels = ['bin/runtime.dll', 'shaders_vk/a.spv']
     for rel in rels:
         (repo / rel).parent.mkdir(parents=True, exist_ok=True)
         (repo / rel).write_bytes(b'fixture')
@@ -708,13 +708,13 @@ def _hardlinks_share_inode():
 def test_seed_receipt_does_not_excuse_a_same_size_write_with_restored_mtime(tmp_path, monkeypatch):
     iso, seed, lane, _repo, rels, items = _churned_lane(tmp_path, monkeypatch)
     iso.restamp_seed(seed)
-    victim = lane / 'runtime.dll'
+    victim = lane / 'bin' / 'runtime.dll'
     old = victim.stat()
     victim.write_bytes(b'FIXTURE')  # same size, through the shared inode
     os.utime(victim, ns=(old.st_atime_ns, old.st_mtime_ns))
     verified = dp.prepare_seed_delta(items, str(lane), allow_legacy=True)
     assert set(verified) == {'shaders_vk/a.spv'}
-    assert not (lane / 'runtime.dll').samefile(seed / 'runtime.dll')
+    assert not (lane / 'bin' / 'runtime.dll').samefile(seed / 'bin/runtime.dll')
 
 
 def test_unconfirmed_churn_rehashes_once_and_remembers_the_stamp(tmp_path, monkeypatch):
@@ -727,3 +727,15 @@ def test_unconfirmed_churn_rehashes_once_and_remembers_the_stamp(tmp_path, monke
     calls.clear()
     assert set(dp.prepare_seed_delta(items, str(lane))) == set(rels)
     assert calls == []  # the lane receipt now carries the proven stamps
+
+
+def test_lean_install_root_binaries_are_private_copies(tmp_path, monkeypatch):
+    """A running game locks a hardlinked root DLL/exe; deploy's replace then dies with WinError 5 (merge-1119a gate1, SDL2.dll)."""
+    iso = lean_tool()
+    seed, lane = tmp_path / 'seed', tmp_path / 'lane'
+    lean_fixture(seed, root_dll=True)
+    monkeypatch.setattr(iso, 'check_space', lambda *a: None)
+    assert iso.main(['--from', str(seed), '--to', str(lane)]) == 0
+    assert (lane / 'SDL2.dll').read_bytes() == b'fixture'
+    assert not (seed / 'SDL2.dll').samefile(lane / 'SDL2.dll')
+    assert (lane / 'SDL2.dll').stat().st_nlink == 1

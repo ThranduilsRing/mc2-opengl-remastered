@@ -200,6 +200,14 @@ def promote_for_diff(steps, scheduled, planned, paths, asked, weekly):
 OFFLINE_STAGES = ("contracts", "harnesses", "pytest", "unit-msvc-build", "editor")
 
 
+def gate_scratch():
+    """Scratch root for gate child runs: the caller's MC2_LANE_SCRATCH, else a private dir in the build tree (never C: Temp)."""
+    given = os.environ.get("MC2_LANE_SCRATCH")
+    if given:
+        return given
+    return str(ROOT / "build64-ninja" / "gate-scratch")
+
+
 def gate_env(name, device=None):
     """A8: MC2_IN_GATE (lease priority, nested-gate refusal) belongs on game-launching stages only; the offline
     stages run test suites that must see the same environment a lane sees. PC game rows defer device choice to the lease.
@@ -207,12 +215,13 @@ def gate_env(name, device=None):
     if name in OFFLINE_STAGES:
         return {}
     from smoke_lib import host_lease
+    scratch = {"MC2_LANE_SCRATCH": gate_scratch()}  # private save dirs (nofocus.py), never the C: Temp fallback
     if host_lease.runtime_lane_adapter():
-        return {"MC2_IN_GATE": "1"}
+        return {"MC2_IN_GATE": "1", **scratch}
     chosen = host_lease.pin_device(device or host_lease.host_lane_device())
     if device and host_lease.device_on_host(device) is False:
         chosen = host_lease.pin_device(host_lease.host_lane_device())
-    env = {"MC2_IN_GATE": "1"}
+    env = {"MC2_IN_GATE": "1", **scratch}
     if chosen:
         env["MC2_VK_DEVICE"] = chosen
     return env
@@ -1571,6 +1580,12 @@ def publish(head, dry_run=False):
     return rc
 
 
+def deploy_failed_hold(steps):
+    """Every exe-dependent row after a failed deploy becomes a recorded SKIP 'NOT_RUN(deploy failed)' that never launches."""
+    why = "NOT_RUN(deploy failed)"
+    return [(n, c, dict(e, MC2_GATE_SKIP_REASON=why)) for n, c, e in steps if n not in OFFLINE_STAGES and n != "deploy"]
+
+
 def fail_fast_hold(steps):
     """The rows a red prerequisite holds back: every active non-offline row becomes a recorded SKIP that never launches."""
     why = f"prerequisite {PREREQUISITE} failed (fail-fast; --keep-going runs them)"
@@ -1666,6 +1681,12 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
         if result:
             if not keep_going:
                 return result  # do not launch runtime proofs after a failed deploy/offline check
+            if not stage_passed(completed.get("deploy", "PASS")):
+                # Every later row runs the exe the failed deploy left behind (the seed): never run, never recorded as PASS.
+                held = deploy_failed_hold(stock[boundary:] + mods + determinism + farm)
+                if held:
+                    result |= execute(held, head, runner=runner, completed=completed)
+                return result
             print("[merge_gate] --keep-going: deploy/pre-stage failure recorded; later stages still run", flush=True)
         if mods and not any(not s[2].get("MC2_GATE_SKIP_REASON") for s in mods):
             # Every mods row is skipped or inactive: record the SKIP, take no clone snapshot (r7 finding 1).
