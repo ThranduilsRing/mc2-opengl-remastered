@@ -51,7 +51,8 @@ def test_caller_value_wins(popen, tmp_path):
 def test_empty_or_real_value_is_replaced(popen, bad):
     nofocus.spawn(["mc2.exe"], env={"MC2_SAVE_DIR": bad})
     d = popen.call_args.kwargs["env"]["MC2_SAVE_DIR"]
-    assert d and Path(d) != REAL
+    assert d and d != bad and Path(d) != REAL
+    assert ".mechcommander2" not in Path(d).parts and Path(d) not in REAL.parents
 
 
 def test_empty_auto_dir_is_removed_at_cleanup(popen):
