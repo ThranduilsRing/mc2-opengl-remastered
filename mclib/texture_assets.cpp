@@ -236,10 +236,14 @@ static bool tryReadTgaLogicalSize(File& textureFile, mc2::czstring name, DWORD& 
 
 static bool txmLoadCooked(mc2::czstring source, mc2::czstring sidecar, bool prefer, RenderCore::KtxImage& out, std::string* resolvedProvider = nullptr)
 {
+    ZoneScopedN("TextureSource.Cooked.Total");
     File cooked;
-    if (cooked.open(sidecar) != NO_ERR) return false;
     File original;
-    const bool exists = original.open(source) == NO_ERR;
+    bool haveCooked, exists;
+    { ZoneScopedN("TextureSource.Cooked.Open");
+      haveCooked = cooked.open(sidecar) == NO_ERR;
+      exists = haveCooked && original.open(source) == NO_ERR; }
+    if (!haveCooked) return false;
     const int sourceRank = LookupModPriority(source) + (exists && !original.isLoadedFromDisk() ? 1 : 0);
     const int cookedRank = LookupModPriority(sidecar) + (!cooked.isLoadedFromDisk() ? 1 : 0);
     if (!RenderCore::preferCookedSource(exists, sourceRank, cookedRank, prefer)) return false;
@@ -336,7 +340,7 @@ void startSources() {
 
 DWORD load(mc2::czstring path, gos_TextureFormat format, DWORD hints, DWORD variant, DWORD lifetime) {
     ZoneScopedN("TextureSource.Load"); MC2_LOAD_SCOPE("TextureSource.Load");
-    graphics::pump_loading_events();
+    { ZoneScopedN("TextureSource.Load.Pump"); graphics::pump_loading_events(); }
     if (!RenderCore::activeTextureService || !path || !*path) return kInvalidAsset;
     ZoneText(path, std::min<size_t>(std::strlen(path), 192));
     if (mc2::gate::get<"MC2_TEXMGR_LOAD_TRACE">()) {
@@ -344,7 +348,8 @@ DWORD load(mc2::czstring path, gos_TextureFormat format, DWORD hints, DWORD vari
         std::fflush(stdout);
     }
     auto& store=sourceStore();
-    if (auto source=store.find(path,variant)) return store.retain(source) ? source->asset : kInvalidAsset;
+    { ZoneScopedN("TextureSource.Load.Find");
+      if (auto source=store.find(path,variant)) return store.retain(source) ? source->asset : kInvalidAsset; }
     auto source=std::make_shared<TextureSource>();
     source->name=path; source->variant=variant; source->hints=hints; source->lifetime=lifetime;
     if (format==gos_Texture_Alpha && Environment.Renderer==3) format=gos_Texture_Keyed;
