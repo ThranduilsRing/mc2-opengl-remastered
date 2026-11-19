@@ -325,10 +325,14 @@ void PilotReadyScreen::render(int xOffset, int yOffset )
 		}
 	}
 
+	// PILOT-METER-BRIDGE-1: AttributeMeter fills are raw gos quads, buried under the
+	// ImGui defs page unless drawn inside a GUI bridge (same as the Mech Bay meters).
+	aObject::beginGuiBridge( tbSx, tbSy, tbOx, tbOy );
 	for (auto & attributeMeter : attributeMeters)
 	{
 		attributeMeter.render( xOffset, yOffset );
 	}
+	aObject::endGuiBridge();
 
 	// MECH-ICON-BLANK-1: rank/skill/medal icons are textured quads too.
 	aObject::beginGuiBridge( tbSx, tbSy, tbOx, tbOy );
@@ -868,13 +872,13 @@ void PilotReadyScreen::setPilot( LogisticsPilot* pPilot )
 		(*std::format_to_n( str, sizeof(str) - 1, "{:d}", mc2::fmt::as_i32(static_cast<long>(pCurPilot->getGunnery())) ).out = '\0');
 		textObjects[5].setText( str );
 		setDefsElementText( "game.mcl_pr_layout.text.pilot_info_targeting_number", str );
-		attributeMeters[0].setValue( (pCurPilot->getGunnery())/80.f );
+		attributeMeters[0].setValue( std::clamp( static_cast<float>(pCurPilot->getGunnery())/80.f, 0.f, 1.f ) );
 
 		char number[64];
 		(*std::format_to_n( number, sizeof(number) - 1, "{:d}", mc2::fmt::as_i32(static_cast<long>(pCurPilot->getPiloting())) ).out = '\0');
 		textObjects[6].setText( number );
 		setDefsElementText( "game.mcl_pr_layout.text.pilot_info_piloting_number", number );
-		attributeMeters[1].setValue( pCurPilot->getPiloting()/80.f );
+		attributeMeters[1].setValue( std::clamp( static_cast<float>(pCurPilot->getPiloting())/80.f, 0.f, 1.f ) );
 
 		(*std::format_to_n( number, sizeof(number) - 1, "{:d}", mc2::fmt::as_i32(pCurPilot->getMechKills()) ).out = '\0');
 		textObjects[7].setText( number );
