@@ -1184,11 +1184,17 @@ bool record_mech_preview(MechIsland* s, VkCommandBuffer cb, const Mc2MechFrameFe
             VkViewport bvp{static_cast<float>(q.clipX) * sx, static_cast<float>(h) - static_cast<float>(q.clipY + q.clipH) * sy,
                            static_cast<float>(q.clipW) * sx, static_cast<float>(q.clipH) * sy, 0.0f, 1.0f};
             vkCmdSetViewport(cb, 0, 1, &bvp);
+            // The mech viewport's scissor is clamped to the fudged rect and would clip the band above it.
+            const int bx0 = std::clamp(static_cast<int>(bvp.x), 0, w - 1), by0 = std::clamp(static_cast<int>(bvp.y), 0, h - 1);
+            const int bx1 = std::clamp(static_cast<int>(bvp.x + bvp.width + 0.5f), bx0 + 1, w), by1 = std::clamp(static_cast<int>(bvp.y + bvp.height + 0.5f), by0 + 1, h);
+            const VkRect2D bsc{{bx0, by0}, {static_cast<uint32_t>(bx1 - bx0), static_cast<uint32_t>(by1 - by0)}};
+            vkCmdSetScissor(cb, 0, 1, &bsc);
         }
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->backdropPipe.get());
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->frameSets[par], 5, dynOffsets);
         vkCmdDraw(cb, 3, 1, 0, 0);
         vkCmdSetViewport(cb, 0, 1, &vp);
+        vkCmdSetScissor(cb, 0, 1, &scissor);
     }
     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->frameSets[par], 5, dynOffsets);
     dctx.textures().table().bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 2);
