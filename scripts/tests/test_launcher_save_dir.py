@@ -47,6 +47,20 @@ def test_caller_value_wins(popen, tmp_path):
     assert popen.call_args.kwargs["env"]["MC2_SAVE_DIR"] == str(tmp_path / "mine")
 
 
+@pytest.mark.parametrize("bad", ["", str(REAL)])
+def test_empty_or_real_value_is_replaced(popen, bad):
+    nofocus.spawn(["mc2.exe"], env={"MC2_SAVE_DIR": bad})
+    d = popen.call_args.kwargs["env"]["MC2_SAVE_DIR"]
+    assert d and Path(d) != REAL
+
+
+def test_empty_auto_dir_is_removed_at_cleanup(popen):
+    nofocus.spawn(["mc2.exe"], env={})
+    d = Path(popen.call_args.kwargs["env"]["MC2_SAVE_DIR"])
+    nofocus.cleanup_auto_save_dirs()
+    assert not d.exists()
+
+
 def test_via_menu_launch_is_redirected(popen, tmp_path):
     from smoke_lib import via_menu
     proc = popen.return_value

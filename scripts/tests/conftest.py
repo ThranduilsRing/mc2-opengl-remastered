@@ -36,6 +36,15 @@ if os.environ.get("PYTEST_XDIST_WORKER") or not os.environ.get("MC2_HOST_LEASE_P
 import pytest  # noqa: E402
 
 
+@pytest.fixture(autouse=True)
+def _no_save_dir_leak():
+    """nofocus.ensure_save_dir makes a mc2-save-* dir per engine spawn; remove the empty ones so the suite leaves nothing in %TEMP%."""
+    yield
+    for name in ("smoke_lib.nofocus", "scripts.smoke_lib.nofocus"):
+        if name in sys.modules:
+            sys.modules[name].cleanup_auto_save_dirs()
+
+
 @pytest.fixture
 def deploy_tmp_path(tmp_path):
     """Deploy fixtures must exercise permitted installs, never the system-drive refusal."""
