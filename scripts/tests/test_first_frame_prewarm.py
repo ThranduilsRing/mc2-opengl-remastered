@@ -33,7 +33,7 @@ def test_prewarm_uses_the_same_lookup_as_the_first_flush():
 
 def test_mover_prewarm_pumps_events_and_stops_on_short_headroom():
     loop = read("code/objmgr_io.cpp").split("void prewarmMoverGpuTextures", 1)[1].split("\n}\n", 1)[0]
-    assert loop.count("gpuMechPrewarmHasRoom()") == 2 and loop.count("pump_loading_events()") == 2
+    assert loop.count("gpuMechPrewarmHasRoom()") == 1 and loop.count("pump_loading_events()") == 1
     assert "infra::headroom()" in read("GameOS/gameos/gos_mech_batcher_flush.cpp")
 
 

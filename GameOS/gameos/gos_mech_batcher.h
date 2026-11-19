@@ -249,8 +249,6 @@ void gpuMechShadingParams(GpuMechShadingParams* out);
 void gpuMechPrewarmTextureSlot(uint32_t slot);
 // False once GPU headroom is short: the load-time mover prewarm stops so in-view content keeps priority on small cards.
 bool gpuMechPrewarmHasRoom();
-// Remaining GPU budget in bytes; the prewarm measures the bytes a mover's upload took from its drop.
-uint64_t gpuMechPrewarmRoomBytes();
 
 // Forward declarations so this header compiles without render_snapshot.h.
 struct ExtractedMechPacket;

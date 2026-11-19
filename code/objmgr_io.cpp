@@ -1554,8 +1554,8 @@ void prewarmMoverGpuTextures(GameObjectManager& objects)
 {
 	ZoneScopedN("GameObjectManager::prewarmMoverGpuTextures"); MC2_LOAD_SCOPE("GameObjectManager::prewarmMoverGpuTextures");
 	// Stop when GPU headroom is short: the rest upload lazily with the first flush, in-view content first.
-	// Pass 1: the player's own movers. Pass 2: only non-home movers within RenderCore::kPrewarmNearHomeRadius of the force (what the
-	// first frame can draw), capped at kPrewarmPass2ByteCap of device bytes; the other movers upload lazily when they come into view.
+	// Pass 1: the player's own movers (every mover when there is no home team, as before). Pass 2: only non-home movers within
+	// RenderCore::kPrewarmNearHomeRadius of the force (what the first frame can draw); the rest upload lazily when they come into view.
 	std::vector<GameObject*> movers;
 	std::vector<RenderCore::PrewarmMover> where;
 	const auto collect = [&](auto list) {
@@ -1566,26 +1566,21 @@ void prewarmMoverGpuTextures(GameObjectManager& objects)
 				where.push_back({p.x, p.y, Team::home && o->getTeamId() == Team::home->getId()});
 			}
 	};
-	if (objects.mechs) collect(std::span(objects.mechs, static_cast<size_t>(objects.numMechs)));
-	if (objects.vehicles) collect(std::span(objects.vehicles, static_cast<size_t>(objects.numVehicles)));
+	if (objects.mechs && objects.numMechs > 0) collect(std::span(objects.mechs, static_cast<size_t>(objects.numMechs)));
+	if (objects.vehicles && objects.numVehicles > 0) collect(std::span(objects.vehicles, static_cast<size_t>(objects.numVehicles)));
 	std::vector<size_t> order;
-	for (size_t i = 0; i < movers.size(); ++i) if (where[i].home) order.push_back(i);
+	for (size_t i = 0; i < movers.size(); ++i) if (where[i].home || !Team::home) order.push_back(i);
 	const size_t homeCount = order.size();
-	for (size_t i : RenderCore::prewarmNearHome(where)) order.push_back(i);
-	long uploaded = 0;
-	uint64_t spent = 0, pass2Spent = 0;
+	if (Team::home) for (size_t i : RenderCore::prewarmNearHome(where)) order.push_back(i);
+	size_t visited = 0;
 	for (size_t k = 0; k < order.size() && gpuMechPrewarmHasRoom(); ++k) {
-		if (k >= homeCount && pass2Spent >= RenderCore::kPrewarmPass2ByteCap) break;
 		GameObject* o = movers[order[k]];
-		const uint64_t before = gpuMechPrewarmRoomBytes();
 		if (auto* mech = dynamic_cast<Mech3DAppearance*>(o->getAppearance())) mech->prewarmGpuTextures();
 		else if (auto* gv = dynamic_cast<GVAppearance*>(o->getAppearance())) gv->prewarmGpuTextures();
 		else continue;
-		const uint64_t after = gpuMechPrewarmRoomBytes(), bytes = before > after ? before - after : 0;
-		if (bytes) { ++uploaded; spent += bytes; if (k >= homeCount) pass2Spent += bytes; }
+		++visited;
 		graphics::pump_loading_events();
 	}
 	if (mc2_diag::tagRequested("MECH_PREWARM"))
-		mc2::fmt::print_err("[MECH_PREWARM v1] uploaded={} selected={} home={} of mechs={} vehicles={} bytes_mb={}\n",
-			uploaded, order.size(), homeCount, objects.numMechs, objects.numVehicles, spent >> 20);
+		mc2::fmt::print_err("[MECH_PREWARM v1] selected={} home={} of mechs={} vehicles={}\n", visited, homeCount, objects.numMechs, objects.numVehicles);
 }

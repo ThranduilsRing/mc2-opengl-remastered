@@ -10,7 +10,6 @@ namespace RenderCore {
 // when it first comes into view.
 struct PrewarmMover { float x, y; bool home; };
 inline constexpr float kPrewarmNearHomeRadius = 2560.0f;        // 20 terrain vertices (128 units each): about one default view around the force
-inline constexpr uint64_t kPrewarmPass2ByteCap = 256ull << 20;   // backstop: pass 2 stops after this many device bytes
 
 // Indices into `movers` of the non-home movers pass 2 should upload, in input order.
 inline std::vector<size_t> prewarmNearHome(std::span<const PrewarmMover> movers, float radius = kPrewarmNearHomeRadius) {

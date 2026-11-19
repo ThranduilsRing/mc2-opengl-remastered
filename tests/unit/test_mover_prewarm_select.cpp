@@ -7,7 +7,7 @@ TEST_CASE("mover prewarm: pass 2 takes only non-home movers near a home mover") 
     const PrewarmMover movers[] = {
         {0, 0, true}, {100, 0, true},        // home force
         {2000, 0, false},                    // near the force: drawn in frame 1
-        {2100, 0, false},                    // within radius of the second home mover only
+        {2600, 0, false},                    // within radius of the second home mover only (not the first)
         {9000, 9000, false},                 // far enemy: lazy
         {-2559, 0, false},                   // just inside
         {-2561, 0, false},                   // just outside

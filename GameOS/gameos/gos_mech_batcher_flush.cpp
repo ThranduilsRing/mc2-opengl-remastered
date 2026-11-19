@@ -480,8 +480,6 @@ bool gpuMechPrewarmHasRoom() {
     return false;
 }
 
-uint64_t gpuMechPrewarmRoomBytes() { return mc2vk::infra::headroom(); }
-
 void gpuMechPrewarmTextureSlot(uint32_t slot) {
     if (slot == 0u || slot == UINT32_MAX || !mc2::textures::ready()) return;
     ZoneScopedN("DSP.MechPack.PrewarmTexture");
