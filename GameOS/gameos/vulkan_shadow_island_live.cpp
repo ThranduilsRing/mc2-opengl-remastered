@@ -1182,7 +1182,7 @@ extern "C" void mc2_vk_shadow_island_run_movers(const float cameraRows[16], cons
     if (!cameraRows || !sun || !mover_shadows_enabled() || !ensure_island(mc2shadow::shadowQuality().mapSide)) return;
     ShadowIsland* s=parkedIsland();
     if (!s || s->disabled) return;
-    { ZoneScopedN("DSP.GeomUpload"); if (!upload_geometry_once(s)) return; }
+    if (!upload_geometry_once(s)) return;
     { ZoneScopedN("DSP.BeginFrame"); if (!begin_frame(s,g_shadowFrameEpoch)) return; }
     { ZoneScopedN("DSP.AlphaCasters"); refresh_alpha_casters(s); }
     { ZoneScopedN("DSP.MechStage"); s->mech.stage(g_shadowFrameEpoch); s->mech.recordSkin(s->cbuf[s->parity]); }   // compute pre-skin ahead of every caster pass (no render pass open)

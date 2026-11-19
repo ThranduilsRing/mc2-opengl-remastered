@@ -640,7 +640,9 @@ bool upload_geometry_once(MechIsland* s) {
 
     // A regrow (a late type or a normals rebuild) happens while frames run: stage in the frame's upload batch and let the graphics queue order
     // the copy ahead of its consumers, instead of a one-shot that waits for the GPU backlog (about a frame) on the render thread.
-    if (regrow) {
+    // Load-time callers (the mission prewarm, load-game) run with no frame open and keep the one-shot (vk_upload.h).
+    // A failed batch stage leaves geomUploaded false (set only after the copy is recorded), so the next frame retries.
+    if (regrow && mc2vk::getOrCreateEngineVulkanContext().tracker().frameOpen()) {
         auto& uctx = mc2vk::getOrCreateEngineVulkanContext();
         const auto vs = uctx.uploads().stage(uctx, feed.vboBytes);
         const auto is = vs ? uctx.uploads().stage(uctx, feed.iboBytes) : mc2vk::UploadBatch::Span{};
