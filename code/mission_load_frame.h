@@ -12,6 +12,7 @@ struct MissionLoadFrame {
 	DWORD oldYLoc;
 	bool turnOffAsyncMouse;
 	bool incompatibleSave = false;
+	bool campaignRefused = false;   // incompatibleSave because the saved campaign file is gone or broken
 	PacketFile loadFile;
 	long result;
 	DWORD currentPacket;

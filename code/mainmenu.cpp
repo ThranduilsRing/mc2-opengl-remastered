@@ -38,6 +38,7 @@ struct DDSURFACEDESC2 {
 #include "imgui.h"
 #include "net/runtime.h"
 #include "diagnostic_trace.h"
+#include "utils/mc2log.h"
 #include <set>
 extern CPrefs prefs;
 #include "screen_settle_capture.h"
@@ -319,6 +320,16 @@ void MainMenu::setDrawBackground( bool bNewDrawBackground )
 	}
 }
 
+// A campaign that cannot start or load: tell the player with the existing one-button dialog (the host-left dialog slot) instead of silently doing nothing.
+static void showCampaignRefusal( bool& dialogFlag, mc2::czstring text )
+{
+	// The czstring setText leaves the button label unset; the 3-arg form sets it to OK, then the text is replaced.
+	LogisticsOneButtonDialog::instance()->setText( IDS_DIALOG_OK, IDS_DIALOG_OK, IDS_DIALOG_OK );
+	LogisticsOneButtonDialog::instance()->setText( text );
+	LogisticsOneButtonDialog::instance()->begin();
+	dialogFlag = true;
+}
+
 int	MainMenu::handleMessage( unsigned long what, unsigned long who )
 {
 	switch ( who )
@@ -347,6 +358,7 @@ int	MainMenu::handleMessage( unsigned long what, unsigned long who )
 						endAnim.end();
 						beginAnim.begin();
 						bLoadCampaign = false;
+						showCampaignRefusal( bHostLeftDlg, "This campaign could not be started: its campaign file is missing or damaged." );
 					}
 				}
 			}
@@ -524,6 +536,8 @@ void MainMenu::update()
         skipIntro();
         if (LogisticsData::instance->startNewCampaign(pickedCampaign.c_str()))
             status = RESTART;
+        else
+            showCampaignRefusal( bHostLeftDlg, "This campaign could not be started: its campaign file is missing or damaged." );
         return;
     }
 	// MC2_BOOT_TO_BAY=<campaign .fit basename> (e.g. "pictures of a rebellion"):
@@ -542,7 +556,11 @@ void MainMenu::update()
 		{
 			s_bootToBayFired = true;
 			if ( !LogisticsData::instance->startNewCampaign( bootCamp ) )
-				return;   // missing campaign: error already logged, stay on the main menu
+			{
+				// missing campaign: error already logged, stay on the main menu
+				showCampaignRefusal( bHostLeftDlg, "This campaign could not be started: its campaign file is missing or damaged." );
+				return;
+			}
 			// MC2_BOOT_TO_MISSION=<mission FileName>: jump to a specific mission's
 			// logistics instead of the campaign's first mission. Used to boot the
 			// LAST purchasing-enabled mission (fullest roster -> highest icon indices)
@@ -714,6 +732,7 @@ void MainMenu::update()
 				{
 					endAnim.end();
 					beginAnim.begin();
+					showCampaignRefusal( bHostLeftDlg, "This campaign could not be started: its campaign file is missing or damaged." );
 				}
 //				background.beginFadeOut( 1.0f );
 //				beginFadeOut( 1.0f );
@@ -727,13 +746,29 @@ void MainMenu::update()
 					char errorStr[1024];
 					(*std::format_to_n( errorStr, sizeof(errorStr) - 1, "couldn't open the file {}", mc2::fmt::safe(name) ).out = '\0');
 					Assert( 0, 0, errorStr );
+					MC2_LOG(Io, Error, "campaign save: could not open the save file {}, staying on the menu", mc2::fmt::safe(name));
+					endAnim.end();
+					beginAnim.begin();
+					LogisticsSaveDialog::instance()->end();
+					bSave = bLoad = 0;
+				}
+				else if ( !LogisticsData::instance->load( file ) )
+				{
+					// the save could not be loaded (logged by load; a campaign-file failure changes no state): stay on the menu
+					endAnim.end();
+					beginAnim.begin();
+					LogisticsSaveDialog::instance()->end();
+					bSave = bLoad = 0;
+					file.close();
+					showCampaignRefusal( bHostLeftDlg, "This saved game could not be loaded: its campaign file is missing or damaged." );
 				}
 				else
-					LogisticsData::instance->load( file );
-				LogisticsSaveDialog::instance()->end();
-				bSave = bLoad = 0;
-				status = RESTART;
-				file.close();
+				{
+					LogisticsSaveDialog::instance()->end();
+					bSave = bLoad = 0;
+					status = RESTART;
+					file.close();
+				}
 
 			}
 		}

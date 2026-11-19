@@ -76,6 +76,24 @@ bool				LogisticsData::startNewCampaign( mc2::czstring fileName )
 		return false;
 	}
 
+	// Parse and validate into a throwaway first: a broken campaign file must leave the running campaign, pilots and inventory untouched.
+	{
+		LogisticsMissionInfo probe;
+		if ( !probe.init( file ) )
+		{
+			MC2_LOG(Io, Error, "campaign: file {} could not be initialized as a campaign, nothing was changed", static_cast<const char*>(path));
+			return false;
+		}
+		int probeCount = 32;
+		const char* probeNames[32];
+		probe.getAvailableMissions( probeNames, probeCount );
+		if ( probeCount < 1 )
+		{
+			MC2_LOG(Io, Error, "campaign: file {} lists no available mission, nothing was changed", static_cast<const char*>(path));
+			return false;
+		}
+	}
+
 	ensureMechBayDataLoaded("campaign-start");
 #ifndef VIEWER
 	if ( MPlayer )

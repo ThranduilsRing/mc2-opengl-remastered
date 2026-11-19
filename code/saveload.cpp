@@ -21,6 +21,7 @@
 //===========================================================================//
 
 #include "saveload_internal.h"
+#include "logisticsmissioninfo.h"
 #include "save_layout_guard.h"
 #include "mc2fmt.h"
 #include "mission_load_frame.h"
@@ -546,6 +547,42 @@ void Mission::loadPrologue(MissionLoadFrame& f) {
 	AsynFunc = ProgressTimer;
 }
 
+// The campaign a save names must still load: probe the logistics packet before the running mission is torn down.
+static bool savedCampaignLoads(PacketFile& loadFile, int packet) {
+	if (loadFile.seekPacket(packet) != NO_ERR || loadFile.getPacketSize() <= 0)
+		return false;
+	const auto size = loadFile.getPacketSize();
+	std::vector<unsigned char> bytes(static_cast<size_t>(size));
+	if (loadFile.readPacket(packet, bytes.data()) != size)
+		return false;
+	FullPathFileName probeName;
+	probeName.init(savePath, "campaignprobe", ".fti");
+	{
+		File scratch;
+		if (scratch.create(probeName) != NO_ERR)
+			return false;
+		const bool wrote = scratch.write(bytes.data(), static_cast<size_t>(size)) == size;
+		scratch.close();
+		if (!wrote) {
+			// Fail open: a scratch that cannot be written is not a reason to refuse a valid save.
+			MC2_LOG(Io, Warn, "save: the campaign probe scratch could not be written, the probe is skipped");
+			removeSaveScratchFile(probeName);
+			return true;
+		}
+	}
+	bool ok = false;
+	{
+		FitIniFile logisticsFile;
+		if (logisticsFile.open(probeName) == NO_ERR) {
+			LogisticsMissionInfo probe;
+			ok = probe.load(logisticsFile).has_value();
+			logisticsFile.close();
+		}
+	}
+	removeSaveScratchFile(probeName);
+	return ok;
+}
+
 // Open the save packet file and reject a missing file or a wrong version stamp.
 bool Mission::openSaveFile(MissionLoadFrame& f) {
 	auto& loadFileName = f.loadFileName; auto& loadFile = f.loadFile; auto& result = f.result;
@@ -590,6 +627,11 @@ bool Mission::openSaveFile(MissionLoadFrame& f) {
 				why = "section_read";
 			else
 				mc2::save::decodeSections(bytes, f.sections, &why);
+		}
+		if (why.empty() && !savedCampaignLoads(loadFile, last - 3))
+		{
+			why = "campaign";   // the saved campaign is gone or broken (the probe logs the cause); the running mission stays
+			f.campaignRefused = true;
 		}
 		if (!why.empty()) {
 			mc2::fmt::print_err("[SAVE v2] event=reject reason={} file={}\n", why, mc2::fmt::safe(loadFileName));
@@ -1010,7 +1052,10 @@ void Mission::load (mc2::czstring loadFileName)
 		if (f.incompatibleSave) {
 			char message[1024]{};
 			char title[256]{};
-			cLoadString(IDS_QUICKSAVE_VERSION_WRONG, message, sizeof(message) - 1);
+			if (f.campaignRefused)
+				mc2::fmt::to_buf(message, "This saved game could not be loaded: its campaign file is missing or damaged.");
+			else
+				cLoadString(IDS_QUICKSAVE_VERSION_WRONG, message, sizeof(message) - 1);
 			cLoadString(IDS_GAME_ERROR, title, sizeof(title) - 1);
 			mc2MessageBox(message, title, MB_OK | MB_ICONWARNING, IDOK);
 			// Time spent in the dialog must not reach scenarioTime on the next update.
