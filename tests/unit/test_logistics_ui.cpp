@@ -29,6 +29,8 @@ struct aEdit {
 #include "edit_scroll.inc"
 struct SimpleCamera {
     bool pObject = true;
+    bool framed_ = false, fitPresented_ = false;
+    int fitIters_ = 0;
     mutable int composites = 0;
     void drawPreviewToPanel(float, float, float, float) const;
 };
@@ -87,6 +89,12 @@ TEST_CASE("LogisticsUI/missing panel suppresses only its own composite") {
     bay.pObject = true;
     bay.drawPreviewToPanel(0, 0, 1, 1);
     CHECK(bay.composites == 2);
+    bay.framed_ = true; bay.fitIters_ = 3;
+    bay.drawPreviewToPanel(0, 0, 1, 1);
+    CHECK(bay.composites == 2);   // the hidden fit draws no composite
+    bay.fitPresented_ = true;
+    bay.drawPreviewToPanel(0, 0, 1, 1);
+    CHECK(bay.composites == 3);   // the presented fit frame does (the backdrop)
 }
 #ifdef _WIN32
 TEST_CASE("LogisticsUI/launch allocation failure closes acquired handles") {

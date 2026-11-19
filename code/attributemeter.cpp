@@ -92,10 +92,13 @@ void AttributeMeter::render( long xOffset, long yOffset )
 			drawEmptyRect( r, c, c );
 	};
 
-	float barCount = percent * numBars;
+	// Armor/jump/stat values above the bar's range (and the added segment past it) stay inside the box.
+	const float fillPercent = percent > 1.f ? 1.f : percent;
+	const float fillAdded = addedPercent > 1.f - fillPercent ? 1.f - fillPercent : addedPercent;
+	float barCount = fillPercent * numBars;
 	int  nBarCount = static_cast<int>(barCount);
 
-	float remainder = addedPercent * numBars + (barCount - static_cast<float>(nBarCount));
+	float remainder = fillAdded * numBars + (barCount - static_cast<float>(nBarCount));
 	int nAddedCount = static_cast<int>(remainder);
 
 	GUI_RECT tmpOutside = outsideRect;

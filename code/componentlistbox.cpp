@@ -14,6 +14,7 @@ ComponentListBox.cpp			: Implementation of the ComponentListBox component.
 #include"mclib.h"
 #include"logisticsdata.h"
 #include"mechlabscreen.h"
+#include"mechlab_loc_layout.h"
 #include"gamesound.h"
 #include"logisticserrors.h"
 #include "mc2fmt.h"
@@ -60,19 +61,30 @@ ComponentListItem::ComponentListItem( LogisticsComponent* pComp )
 		icon.resize( sizeX * LogisticsComponent::XICON_FACTOR, sizeY * LogisticsComponent::YICON_FACTOR);
 		icon.setUVs( 0.f, 0.f, sizeX * 48.f, sizeY * 32.f );
 
-		// figure out the difference between this thing's size and
-		// the template objects
-		int deltaY = icon.height() - s_templateItem->icon.height();
-		int deltaX = icon.width() - s_templateItem->icon.width();
+		// Rects come from the pure table (mechlab_loc::componentItemRects): wider-than-one-cell icons get a header row
+		// for heat/cost above the icon, and the warning is confined to the icon.
+		namespace ml = mc2::mechlab_loc;
+		const ml::ItemRects R = ml::componentItemRects( sizeX, sizeY );
+		const float ox = static_cast<float>(outline.left()), oy = static_cast<float>(outline.top());   // the fit frame starts at the outline
+		const long rowDy = static_cast<long>(R.rowDy);
+		icon.moveTo( ox + R.icon.x, oy + R.icon.y );
+		name.moveTo( ox + R.name.x, oy + R.name.y );
+		name.resize( static_cast<long>(R.name.w), static_cast<long>(R.name.h) );
+		heatIcon.moveTo( ox + R.heatIcon.x, oy + R.heatIcon.y );
+		heatText.moveTo( ox + R.heat.x, oy + R.heat.y );
+		costText.moveTo( ox + R.cost.x, oy + R.cost.y );
+		costIcon.moveTo( ox + R.costIcon.x, oy + R.costIcon.y );
+		if ( rowDy )
+			heatText.alignment = 0;
 
-		// resize outlines and icon outlines
-		outline.resize(outline.width(), outline.height()+deltaY);
-		iconOutline.resize(iconOutline.width()+deltaX, iconOutline.height()+deltaY);
+		// outline and icon outline sizes come from the same table (so the layout test pins the real placement)
+		outline.resize( static_cast<long>(R.item.w), static_cast<long>(R.item.h) );
+		iconOutline.resize( static_cast<long>(R.iconOutline.w), static_cast<long>(R.iconOutline.h) );
 
-		// Stock look: the warning (HEAT EXCEEDED) is centred over the icon area, below the name line.
-		const long iconTop = icon.top() - outline.top();
-		disabledText.resize( outline.width(), icon.height() );
-		disabledText.moveTo( 0, iconTop );
+		// Warning (HEAT EXCEEDED): small face (agencyfb11), wraps to two lines, confined to the icon outline.
+		disabledText.font = name.font;
+		disabledText.resize( static_cast<long>(R.warn.w), static_cast<long>(R.warn.h) );
+		disabledText.moveTo( ox + R.warn.x, oy + R.warn.y );
 		disabledText.alignment = 2;
 
 
@@ -145,7 +157,12 @@ int ComponentListItem::init( FitIniFile& file )
 		assignAnimation( file, 5, animName, &s_templateItem->heatIcon );
 
 		s_templateItem->disabledText.init( &file, "ComponentDisabledText" );
-		
+
+		// The stock fit (read directly, not through the defs overlay) is 210 wide; the list is kDx narrower.
+		const float dx = mc2::mechlab_loc::kDx;
+		auto& t = *s_templateItem;
+		t.outline.resize( t.outline.width() - static_cast<long>(dx), t.outline.height() );
+
 	}
 
 	return 0;
@@ -179,8 +196,11 @@ void ComponentListItem::render( )
 	outline.setColor( animations[0].getCurrentColor( animations[0].getState() ) );
 	outline.render();
 
-	iconOutline.moveTo( globalX() + s_templateItem->iconOutline.left()
-		, globalY() + s_templateItem->iconOutline.top());
+	if ( pComponent )
+	{
+		const mc2::mechlab_loc::ItemRects R = mc2::mechlab_loc::componentItemRects( pComponent->getComponentWidth(), pComponent->getComponentHeight() );
+		iconOutline.moveTo( globalX() + R.iconOutline.x, globalY() + R.iconOutline.y );
+	}
 	iconOutline.setColor( animations[0].getCurrentColor( animations[0].getState() ) );
 	iconOutline.render();
 
@@ -391,9 +411,17 @@ void ComponentIconListBox::setType( int newType, int otherNewType, int orThis, i
 					 masterComponentElem->getComponent()->getType() == orThis ||
 					 ( orThis2 != -1 && masterComponentElem->getComponent()->getType() == orThis2 ) )
 				{
-					if ( masterComponentElem->globalX() > globalX() )
+					// Template items sit at the stock list origin; the list is kDx narrower on its left.
+					const long listOriginX = globalX() - static_cast<long>(mc2::mechlab_loc::kDx);
+					// A revisited item already sits at globalX() + offset: strip the current origin so AddItem puts it
+					// back at the same x every revisit (not +kDx each time).
+					if ( masterComponentElem->globalX() >= globalX() )
 					{
 						masterComponentElem->move( -globalX(), 0 );
+					}
+					else if ( masterComponentElem->globalX() > listOriginX )
+					{
+						masterComponentElem->move( -listOriginX, 0 );
 					}
 					addSortedItem( masterComponentElem.get() );
 				}

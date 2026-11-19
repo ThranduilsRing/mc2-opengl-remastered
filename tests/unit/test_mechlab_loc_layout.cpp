@@ -12,8 +12,9 @@ TEST_CASE("mechlab loc: record sheet uses the same contained geometry at every r
     for (const Canvas cv : {Canvas{1,1,0,0},Canvas{2.4f,1.8f,0,0},Canvas{4.8f,3.6f,0,0}}) {
         for (int p=0;p<8;++p) {
             const auto box=panelRect(p);
-            CHECK(box.x >= 217); CHECK(box.x+box.w <= 533);
+            CHECK(box.x >= 217+kDx); CHECK(box.x+box.w <= 533+kDx);
             CHECK(box.y >= 150); CHECK(box.y+box.h <= 476);
+            if (p != kDoll) { CHECK(box.x >= kPreview.x+kPreview.w); CHECK(box.x+box.w <= 620); }   // clear of the mech preview (right edge 281) and the list divider
             for (int q=p+1;q<8;++q) {
                 const auto other=panelRect(q);
                 CHECK((box.x+box.w<=other.x || other.x+other.w<=box.x || box.y+box.h<=other.y || other.y+other.h<=box.y));
@@ -35,6 +36,20 @@ TEST_CASE("mechlab loc: record sheet uses the same contained geometry at every r
                 CHECK(hit.y+hit.h<=box.y+box.h);
             }
         }
+    }
+}
+TEST_CASE("mechlab loc: list item cost/heat/warning rects stay inside the item and off the icon") {
+    auto overlap = [](const Rect& a, const Rect& b) { return a.x < b.x+b.w && b.x < a.x+a.w && a.y < b.y+b.h && b.y < a.y+a.h; };
+    auto inside = [](const Rect& a, const Rect& b) { return a.x >= b.x && a.y >= b.y && a.x+a.w <= b.x+b.w && a.y+a.h <= b.y+b.h; };
+    for (int cw = 1; cw <= 2; ++cw) for (int ch = 1; ch <= 6; ++ch) {
+        const ItemRects r = componentItemRects(cw, ch);
+        for (const Rect* t : {&r.cost, &r.costIcon, &r.heat, &r.heatIcon, &r.iconOutline, &r.warn}) CHECK(inside(*t, r.item));
+        for (const Rect* t : {&r.cost, &r.costIcon, &r.heat, &r.heatIcon}) CHECK(!overlap(*t, r.iconOutline));   // digits never cross the icon box
+        CHECK(!overlap(r.cost, r.heat)); CHECK(!overlap(r.cost, r.heatIcon)); CHECK(!overlap(r.heat, r.costIcon));
+        for (const Rect* t : {&r.cost, &r.costIcon, &r.heat, &r.heatIcon}) CHECK(!overlap(r.name, *t));   // a long name never runs into the header/cost row
+        CHECK(inside(r.name, r.item));
+        CHECK(inside(r.warn, r.iconOutline));    // HEAT EXCEEDED stays inside the icon outline (no wrap past the item edge)
+        CHECK(r.warn.x >= 0);
     }
 }
 namespace {

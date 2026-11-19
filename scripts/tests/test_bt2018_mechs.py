@@ -27,7 +27,7 @@ from tools.mc2data.stock_corpus import resolve, StockDataError  # noqa: E402
 
 def test_showcase_default_and_recipe_override():
     recipe = {"chassis_id": "test", "mc2": {"sockets": {}}}
-    assert C.emit_package_json({}, recipe)["clips"] == {"showcase": "atlas_moveCoreWalkFwd"}
+    assert C.emit_package_json({}, recipe)["clips"] == {"showcase": "atlas_moveCoreIdle"}
     recipe["mc2"]["showcase_clip"] = "custom"
     assert C.emit_package_json({}, recipe)["clips"] == {"showcase": "custom"}
 

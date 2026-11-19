@@ -150,7 +150,7 @@ def main():
             "schema": "bt2018-mech-package/2",
             "chassisId": bt,
             "sourceGlb": f"{bt}.glb",
-            "clips": {"showcase": "atlas_moveCoreWalkFwd"},
+            "clips": {"showcase": "atlas_moveCoreIdle"},
             "nodes": nodes,
             "materials": materials,
             "featureBits": feature_bits,

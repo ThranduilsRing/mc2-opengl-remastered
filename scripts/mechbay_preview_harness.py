@@ -87,6 +87,12 @@ def main():
     # Stock: explicitly unset any mod env so this never picks up an ambient
     # MC2_ACTIVE_MOD from the caller's shell.
     env = os.environ.copy()
+    # The auto-win writes after_mission_*.fit: never into the player's savegame folder (MC2_SAVE_DIR, engine redirect).
+    save_dir = Path(env.get("MC2_SAVE_DIR") or (out_tga.parent / "saves")).resolve()
+    if ".mechcommander2" in save_dir.as_posix().lower():
+        sys.exit(f"MC2_SAVE_DIR must be a private dir, not the player's save folder: {save_dir}")
+    save_dir.mkdir(parents=True, exist_ok=True)
+    env["MC2_SAVE_DIR"] = str(save_dir)
     for k in ("MC2_ACTIVE_MOD", "MC2_MOD_DEPS", "MC2_SOAK_AUTOWIN", "MC2_SOAK_AUTO_PURCHASE",
               "MC2_SOAK_LANCE_RANDOM", "MC2_SOAK_CHECK_SCREENS", "MC2_SOAK_KILL_ENEMY",
               "MC2_SOAK_PILOT_PROMOTE"):

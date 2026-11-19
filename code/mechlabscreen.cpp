@@ -168,8 +168,8 @@ int MechLabScreen::init( FitIniFile& file )
 	LogisticsScreen::init( file, "Static", "Text", "Rect", "Button" );
 	defsHelpTextKey = "game.mcl_mc.text.help_text";
 
-	componentListBox.init( rects[2].left(), rects[2].top(),
-							rects[2].width(), rects[2].height() );
+	// The stock list is x 548 (231 wide); the defs overlay may or may not have narrowed it, so place it absolutely.
+	componentListBox.init( 548 + ml::kDx, rects[2].top(), 231 - ml::kDx, rects[2].height() );
 
 	componentListBox.setHighlightFX( -1 ); // want to do this by hand.
 	
@@ -259,7 +259,7 @@ int MechLabScreen::init( FitIniFile& file )
 		rects[i].moveTo(ml::kAreaX + (i - 7) * ml::kCellW / 2, 364);
 		rects[i].resize(ml::kCellW, LogisticsComponent::YICON_FACTOR);
 	}
-	rects[6].moveTo(321, 409);
+	rects[6].moveTo(321 + ml::kDx, 409);
 	rects[6].resize(2 * ml::kCellW, 64);
 	rects[13].moveTo(ml::kAreaX, 130);
 	rects[13].resize(316, 344);
@@ -452,7 +452,7 @@ void MechLabScreen::begin()
 		if ( mechCamera.hasObject() && pVariant->getChassis() )
 			mechCamera.setScale( pVariant->getChassis()->getScale() );
 		if ( mechCamera.hasObject() )
-			mechCamera.setFramedPose( 0.88f, -35.f, 30.f );	// front three-quarter, 88% of the panel height
+			mechCamera.setFramedPose( 0.9f, -35.f, 15.f );	// front three-quarter, 90% of the panel height
 
 
 		for (int i = COMPONENT_FORM_WEAPON_ENERGY; i < COMPONENT_FORM_JUMPJET + 1; i++ )
@@ -605,6 +605,10 @@ void MechLabScreen::update()
 		setDefsElementVisible(
 			"game.mcl_mc.image.icon_for_armor_use_only_when_armor_is_selected", isArmor );
 	}
+
+	// The hidden fit advances in mechCamera.update(); a modal (or a paused status) must not leave it unfinished.
+	if ( mechCamera.fitting() && ( bSaveDlg || bErrorDlg || !pVariant || status != RUNNING ) )
+		mechCamera.update();
 
 	if ( bSaveDlg )
 	{

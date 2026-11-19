@@ -1212,10 +1212,23 @@ bool record_mech_preview(MechIsland* s, VkCommandBuffer cb, const Mc2MechFrameFe
     }
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
-    if (s->backdropPipe && !materials.empty()) {
+    if (s->backdropPipe && q.backdrop && !materials.empty()) {
+        // The backdrop belongs to the unfudged panel box (the mech viewport carries the centring fudge).
+        if (q.clipW > 0 && q.clipH > 0) {
+            VkViewport bvp{static_cast<float>(q.clipX) * sx, static_cast<float>(h) - static_cast<float>(q.clipY + q.clipH) * sy,
+                           static_cast<float>(q.clipW) * sx, static_cast<float>(q.clipH) * sy, 0.0f, 1.0f};
+            vkCmdSetViewport(cb, 0, 1, &bvp);
+            // The mech viewport's scissor is clamped to the fudged rect and would clip the band above it.
+            const int bx0 = std::clamp(static_cast<int>(bvp.x), 0, w - 1), by0 = std::clamp(static_cast<int>(bvp.y), 0, h - 1);
+            const int bx1 = std::clamp(static_cast<int>(bvp.x + bvp.width + 0.5f), bx0 + 1, w), by1 = std::clamp(static_cast<int>(bvp.y + bvp.height + 0.5f), by0 + 1, h);
+            const VkRect2D bsc{{bx0, by0}, {static_cast<uint32_t>(bx1 - bx0), static_cast<uint32_t>(by1 - by0)}};
+            vkCmdSetScissor(cb, 0, 1, &bsc);
+        }
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->backdropPipe.get());
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->frameSets[par], 5, dynOffsets);
         vkCmdDraw(cb, 3, 1, 0, 0);
+        vkCmdSetViewport(cb, 0, 1, &vp);
+        vkCmdSetScissor(cb, 0, 1, &scissor);
     }
     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->frameSets[par], 5, dynOffsets);
     dctx.textures().table().bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 2);
@@ -1227,7 +1240,7 @@ bool record_mech_preview(MechIsland* s, VkCommandBuffer cb, const Mc2MechFrameFe
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
         for (uint32_t r = 0; r < feed.runCount; ++r) {
             const Mc2MechDrawRun& run = feed.runs[r];
-            if (!run.indexCount || !run.instanceCount) continue;
+            if (!run.indexCount || !run.instanceCount || q.skipMech) continue;
             const MechRunPC pc = materials[r];
             vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
             vkCmdDrawIndexed(cb, run.indexCount, run.instanceCount, run.firstIndex, run.baseVertex, run.instanceBase);
@@ -1322,12 +1335,18 @@ static int mech_preview_flush_impl(void* colorView, void* normalView, void* dept
       u.sunAxisMc2Fix = mc2::options::current().sunAxisFix ? 1 : 0;
       u.fogColorRGB[3] = q.exposure;   // MECH_PREVIEW: panel exposure (the world pass leaves it 0)
       // Backdrop (mech_backdrop.frag): feet centre and contact-shadow ellipse radii in panel-rect uv, y down.
-      if (q.groundH > 1.0f && q.vpW > 0 && q.vpH > 0) {
-          u.poolF[0] = (q.groundX - static_cast<float>(q.vpX)) / static_cast<float>(q.vpW);
-          u.poolF[1] = (q.groundY - static_cast<float>(q.vpY)) / static_cast<float>(q.vpH);
-          u.poolF[2] = 0.30f * q.groundH / static_cast<float>(q.vpW);
-          u.poolF[3] = 0.045f * q.groundH / static_cast<float>(q.vpH);
+      // (uv relative to the unfudged panel box the backdrop is drawn in; the whole viewport when there is no clip box)
+      const bool boxed = q.clipW > 0 && q.clipH > 0;
+      const float bx = boxed ? static_cast<float>(q.clipX) : static_cast<float>(q.vpX), by = boxed ? static_cast<float>(q.clipY) : static_cast<float>(q.vpY);
+      const float bw = boxed ? static_cast<float>(q.clipW) : static_cast<float>(q.vpW), bh = boxed ? static_cast<float>(q.clipH) : static_cast<float>(q.vpH);
+      if (q.groundH > 1.0f && bw > 0 && bh > 0) {
+          u.poolF[0] = (q.groundX - bx) / bw;
+          u.poolF[1] = (q.groundY - by) / bh;
+          u.poolF[2] = 0.30f * q.groundH / bw;
+          u.poolF[3] = 0.045f * q.groundH / bh;
       }
+      if (q.floorY > 0.0f && bh > 0)
+          u.shadeC[2] = std::min((q.floorY - by) / bh - 0.035f, 0.93f);   // backdrop wall/floor line (uv, y down), just above the feet
       for (int k = 0; k < 4; ++k) u.cameraWorldPos[k] = q.cameraWorldPos[k];
       u.shadeA[0] = feed.ambientStrength;  u.shadeA[1] = feed.specularStrength;
       u.shadeA[2] = feed.metalRoughness;   u.shadeA[3] = feed.glassRoughness;
