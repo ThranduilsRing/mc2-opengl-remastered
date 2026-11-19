@@ -9,6 +9,7 @@
 #include <string>
 #include <unordered_map>
 #include "meshoptimizer.h"
+#include <tracy/Tracy.hpp>
 
 
 // ---------------------------------------------------------------------------
@@ -535,8 +536,7 @@ void uploadMechGeometryVbo() {
             uint64_t h = 1469598103934665603ull;
             for (uint8_t b : s_vkVboNativeCopy) h = (h ^ b) * 1099511628211ull;
             for (uint32_t i : s_vkIboNativeCopy) h = (h ^ i) * 1099511628211ull;
-            mc2::fmt::print_err("[MECH_GEOM v1] rebuild resumed_nodes={:d} nodes={:d} hash={:016X}
-", mc2::fmt::as_size(startNode), mc2::fmt::as_size(s_nodeVboRanges.size()), mc2::fmt::as_u64(h));
+            mc2::fmt::print_err("[MECH_GEOM v1] rebuild resumed_nodes={:d} nodes={:d} hash={:016X}\n", mc2::fmt::as_size(startNode), mc2::fmt::as_size(s_nodeVboRanges.size()), mc2::fmt::as_u64(h));
         }
     } else {
         s_geomDoneNodes = 0;
