@@ -26,6 +26,7 @@ namespace {
 
 constexpr uint32_t kMechInstanceBytes = 64;
 constexpr uint32_t kMechBoneBytes = 64;
+constexpr uint64_t kMaxDrawCommands = 1u << 17;   // bounded like the static draw ring; excess uses direct draws
 
 // A run that points outside the buffers it was staged with would make the GPU read past them; it is dropped with a log line instead.
 bool runFits(const Mc2MechDrawRun& r, uint64_t indexCount, uint64_t vertexCount, uint32_t instanceCount) {
@@ -143,6 +144,10 @@ bool ShadowMechCasters::init(VkDevice device, VmaAllocator allocator, VkFormat d
     nameObject(device_, pipeline_.get(), "shadow.mechPipe");
     // A failed pipeline build leaves the pre-skin off: the casters then blend bones inline as before.
     if (!skin_.init(device_, allocator_, spvDir) && mc2_diag::tagRequested("VK_SHADOW_MECH")) mc2::fmt::print_err("[VK_SHADOW_MECH] GPU pre-skin unavailable; casters blend bones inline.\n");
+    // Size the indirect-command buffers for the largest request stage() can make, here at load: growing them mid-mission was a
+    // 14-23 ms host-visible allocation on the render thread (m24, t=89-120 s, as the battle's mech count peaked).
+    for (uint32_t p = 0; p < kMaxFramesInFlight; ++p)
+        ensureBuffer(drawCmds_[p], drawCap_[p], static_cast<VkDeviceSize>(kMaxDrawCommands) * sizeof(VkDrawIndexedIndirectCommand), VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, "shadow.mechDraws");
     inited_ = true;
     return true;
 }
@@ -223,7 +228,7 @@ void ShadowMechCasters::stage(uint64_t epoch) {
     { ZoneScopedN("MechStage.InstUpload"); if (!instBuf_[parity].upload(skinInstances_.data(), instBytes)) { skin_.cancel(); runs_.clear(); stagedInstances_ = 0; } }
     // At most one command per staged instance per map. Reserve for the island's
     // 40 UBO slices, bounded like the static draw ring; excess uses direct draws.
-    const VkDeviceSize commands = (std::min<uint64_t>)(1u << 17, static_cast<uint64_t>(stagedInstances_) * 40);
+    const VkDeviceSize commands = (std::min<uint64_t>)(kMaxDrawCommands, static_cast<uint64_t>(stagedInstances_) * 40);
     if (commands) { ZoneScopedN("MechStage.DrawCmds"); ensureBuffer(drawCmds_[parity], drawCap_[parity], commands * sizeof(VkDrawIndexedIndirectCommand),
                                VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, "shadow.mechDraws"); }
 }
