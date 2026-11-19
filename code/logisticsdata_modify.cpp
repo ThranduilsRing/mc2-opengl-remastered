@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in logisticsdata_internal.h.
 #include "logisticsdata_internal.h"
 #include <algorithm>
+#include "dropweight_rules.h"
 
 
 const std::string& LogisticsData::getCurrentMission() const
@@ -67,7 +68,32 @@ int	LogisticsData::getPilots( LogisticsPilot** pArray, long& count )
 
 int LogisticsData::getMaxDropWeight() const
 {
-	return  missionInfo->getCurrentDropWeight();
+	return  missionInfo->getCurrentDropWeight() + dropweight::kTonsPerPurchase * missionInfo->getDropWeightPurchases();
+}
+
+bool LogisticsData::isOverDropLimit() const
+{
+	return dropweight::overLimit( getCurrentDropWeight(), getMaxDropWeight() );
+}
+
+int LogisticsData::getDropWeightPurchases() const
+{
+	return missionInfo->getDropWeightPurchases();
+}
+
+long LogisticsData::getDropWeightPrice() const
+{
+	return dropweight::priceForNext( missionInfo->getDropWeightPurchases() );
+}
+
+bool LogisticsData::buyDropWeight()
+{
+	const long price = getDropWeightPrice();
+	if ( !cheatInfiniteMoney() && missionInfo->getCBills() < price )
+		return false;
+	missionInfo->decrementCBills( static_cast<int>( price ) );
+	missionInfo->addDropWeightPurchase();
+	return true;
 }
 
 int LogisticsData::getCurrentDropWeight() const

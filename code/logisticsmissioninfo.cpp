@@ -120,6 +120,7 @@ std::expected<void, long> LogisticsMissionInfo::init( FitIniFile& file )
 	}
 
 	result = file.readIdLong( "CBills", CBills );
+	dropWeightPurchases = 0;
 
 	finalVideoName = objective_text::readPlain( file, "FinalVideo" ).value_or( std::string() );
 
@@ -362,6 +363,11 @@ std::expected<void, long> LogisticsMissionInfo::load( FitIniFile& file )
 	// reset rp
 	file.readIdLong( "CBills", CBills );
 
+	// bought drop weight (absent in older saves = none)
+	long dwPurchases = 0;
+	file.readIdLong( "DropWeightPurchases", dwPurchases );
+	dropWeightPurchases = static_cast<int>( std::clamp( dwPurchases, 0L, 1000L ) );
+
 	// set the current mission group
 	file.readIdLong( "Group", currentStage );
 
@@ -460,6 +466,8 @@ void LogisticsMissionInfo::save( FitIniFile& file )
 
 	// save the rp
 	file.writeIdLong( "CBills", CBills );
+	if ( dropWeightPurchases > 0 )
+		file.writeIdLong( "DropWeightPurchases", dropWeightPurchases );
 
 	// save the current mission group
 	file.writeIdLong( "Group", currentStage );

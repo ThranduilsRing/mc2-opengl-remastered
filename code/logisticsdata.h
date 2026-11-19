@@ -122,6 +122,10 @@ public:
 	int					comparePilots( LogisticsPilot* p1, LogisticsPilot* p2, long weight );
 	int					getCurrentDropWeight() const;
 	int					getMaxDropWeight() const;
+	bool				isOverDropLimit() const;
+	int					getDropWeightPurchases() const;
+	long				getDropWeightPrice() const;		// C-Bills for the next +5 t
+	bool				buyDropWeight();					// false when it cannot be afforded
 
 	std::expected<void, long> loadMech( FitIniFile& file, int& count );
 
@@ -345,7 +349,6 @@ private:
 	void addVehicle( long fitID, PacketFile& objectFile, float scale, long nameID = 0, std::string_view csvName = {} );
 	bool openLooseChassisFit( FitIniFile& file, std::string_view csvName ) const;
 	std::expected<void, int> addBuilding( long fitID, PacketFile& objectFile, float scale, std::string_view csvName = {} );
-	void removeDeadWeight();
 	void clearVariants();
 
 

@@ -32,6 +32,7 @@ inline constexpr int MB_MSG_BUY = 54;
 inline constexpr int MB_MSG_CHANGE_LOADOUT = 55;
 inline constexpr int MB_MSG_BUY_SELL = 56;
 inline constexpr int MB_MSG_MAINMENU = 57;
+inline constexpr int MB_MSG_BUY_WEIGHT = 58;	// defs-only button (no legacy aButton)
 
 
 class MechBayScreen : public LogisticsScreen

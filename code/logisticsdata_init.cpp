@@ -162,7 +162,6 @@ mc2::prewarm::Sequence LogisticsData::loadPhaseB()
 	// First availability pass now that variants/components are populated
 	updateAvailability();
 	resourcePoints = missionInfo->getCurrentRP();
-	removeDeadWeight();
 
 	m_phaseBComplete = true;
 	SMART_LOAD_TRACE_LOG("Phase B done");
@@ -740,7 +739,6 @@ std::expected<void, long> LogisticsData::setCurrentMissionAnyStage( mc2::czstrin
 	{
 		if ( !s_smartLoad || m_phaseBComplete ) {
 			updateAvailability();
-			removeDeadWeight();
 		}
 		resourcePoints = missionInfo->getCurrentRP();
 	}
@@ -755,7 +753,6 @@ std::expected<void, long> LogisticsData::setCurrentMission( mc2::czstring missio
 	{
 		if ( !s_smartLoad || m_phaseBComplete ) {
 			updateAvailability();
-			removeDeadWeight();
 		}
 		resourcePoints = missionInfo->getCurrentRP();
 	}
@@ -764,23 +761,5 @@ std::expected<void, long> LogisticsData::setCurrentMission( mc2::czstring missio
 	
 
 	return result;
-}
-
-void LogisticsData::removeDeadWeight()
-{
-	int maxDropWeight = getMaxDropWeight();
-	int curDropWeight = getCurrentDropWeight();
-
-	int i = 12;
-	while ( curDropWeight > maxDropWeight )
-	{
-		LogisticsData::removeMechFromForceGroup( i );
-		i--;
-
-		curDropWeight = getCurrentDropWeight();
-
-		if ( i == 0 )
-			break;
-	}
 }
 

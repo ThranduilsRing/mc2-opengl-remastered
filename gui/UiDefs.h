@@ -58,6 +58,9 @@ public:
     // Works for GuiText and GuiButton elements. Returns false if key not found.
     bool setElementText(const std::string& key, const std::string& text);
 
+    // Runtime text colour override (ARGB) of a GuiText/GuiButton element.
+    bool setElementTextColor(const std::string& key, unsigned int argb);
+
     // Runtime show/hide of any element by key (e.g. the Mech Lab weapon-info
     // icons that swap with the selected component type). Returns false if the
     // key is not found.

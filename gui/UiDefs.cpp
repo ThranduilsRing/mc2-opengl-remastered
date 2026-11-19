@@ -248,6 +248,18 @@ bool UiDefs::GameOSPage::setElementText(const std::string& elementKey, const std
     return false;
 }
 
+bool UiDefs::GameOSPage::setElementTextColor(const std::string& elementKey, unsigned int argb)
+{
+    if (!isLoaded()) return false;
+    for (UiElement& e : impl->elements) {
+        if (e.key == elementKey) {
+            e.textColor = argb;
+            return true;
+        }
+    }
+    return false;
+}
+
 bool UiDefs::GameOSPage::setElementVisible(const std::string& elementKey, bool visible)
 {
     if (!isLoaded()) return false;
