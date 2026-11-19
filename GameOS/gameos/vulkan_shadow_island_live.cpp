@@ -1181,22 +1181,24 @@ extern "C" void mc2_vk_shadow_island_run_movers(const float cameraRows[16], cons
     ++g_shadowFrameEpoch;
     if (!cameraRows || !sun || !mover_shadows_enabled() || !ensure_island(mc2shadow::shadowQuality().mapSide)) return;
     ShadowIsland* s=parkedIsland();
-    if (!s || s->disabled || !upload_geometry_once(s) || !begin_frame(s,g_shadowFrameEpoch)) return;
-    refresh_alpha_casters(s);
-    s->mech.stage(g_shadowFrameEpoch); s->mech.recordSkin(s->cbuf[s->parity]);   // compute pre-skin ahead of every caster pass (no render pass open)
+    if (!s || s->disabled) return;
+    { ZoneScopedN("DSP.GeomUpload"); if (!upload_geometry_once(s)) return; }
+    { ZoneScopedN("DSP.BeginFrame"); if (!begin_frame(s,g_shadowFrameEpoch)) return; }
+    { ZoneScopedN("DSP.AlphaCasters"); refresh_alpha_casters(s); }
+    { ZoneScopedN("DSP.MechStage"); s->mech.stage(g_shadowFrameEpoch); s->mech.recordSkin(s->cbuf[s->parity]); }   // compute pre-skin ahead of every caster pass (no render pass open)
     const auto light=mc2shadow::clampSunAltitude({sun[0],sun[1],sun[2]},mc2ShadowMinSunAltDeg());
-    s->mover.refreshMechActors(cameraRows,light);   // mech spheres for the per-map run masks below and for prepare()
-    record_bake(s);
-    record_local_shadows(s);   // LOCAL-LIGHTS-2
+    { ZoneScopedN("DSP.MechActors"); s->mover.refreshMechActors(cameraRows,light); }   // mech spheres for the per-map run masks below and for prepare()
+    { ZoneScopedN("DSP.RecordBake"); record_bake(s); }
+    { ZoneScopedN("DSP.LocalShadows"); record_local_shadows(s); }   // LOCAL-LIGHTS-2
     const auto start=std::chrono::steady_clock::now();
     const auto props=std::span(static_cast<const GpuStaticPropInstance*>(instances),instanceCount);
     { ZoneScopedN("DSP.MoverPrepare");
     if (!s->mover.prepare(s->size,cameraRows,light,props,s->bake.ready())) return;
     }
     const auto& selected=s->mover.props();
-    if (!stage_instances(s,selected.data(),static_cast<uint32_t>(selected.size()))) return;
+    { ZoneScopedN("DSP.StageInstances"); if (!stage_instances(s,selected.data(),static_cast<uint32_t>(selected.size()))) return; }
     const auto& frame=s->mover.frame();
-    if (!record_pass(s,s->size,frame.matrix,1.0f,2.0f,frame.flags[0]!=0)) return;
+    { ZoneScopedN("DSP.RecordPass"); if (!record_pass(s,s->size,frame.matrix,1.0f,2.0f,frame.flags[0]!=0)) return; }
     g_dynShadowReadyThisFrame=true;
     static uint64_t frames=0;
     if (++frames%600==1) {
