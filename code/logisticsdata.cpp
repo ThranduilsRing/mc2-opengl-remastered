@@ -9,6 +9,7 @@ LogisticsData.cpp			: Implementation of the LogisticsData component.
 #include "logisticsdata_internal.h"
 #include "mc2fmt.h"
 #include "vfs.h"
+#include "utils/mc2log.h"
 
 
 #ifdef VIEWER
@@ -60,8 +61,21 @@ LogisticsData::~LogisticsData()
 }*/
 
 
-void				LogisticsData::startNewCampaign( mc2::czstring fileName )
+bool				LogisticsData::startNewCampaign( mc2::czstring fileName )
 {
+	// A missing or unreadable campaign file is reported and refused BEFORE any state is cleared; it used to be a STOP (fatal).
+	ActivateCampaignMod(fileName);
+
+	FitIniFile file;
+
+	FullPathFileName path;
+	path.init( campaignPath, fileName, ".fit" );
+	if ( NO_ERR != file.open( path ) )
+	{
+		MC2_LOG(Io, Error, "campaign: could not find file {} to load campaign, staying on the current screen", static_cast<const char*>(path));
+		return false;
+	}
+
 	ensureMechBayDataLoaded("campaign-start");
 #ifndef VIEWER
 	if ( MPlayer )
@@ -76,27 +90,27 @@ void				LogisticsData::startNewCampaign( mc2::czstring fileName )
 	clearPilots();
 	initPilots();
 
-	ActivateCampaignMod(fileName);
-
-	FitIniFile file;
-
-	FullPathFileName path;
-	path.init( campaignPath, fileName, ".fit" );
-	if ( NO_ERR != file.open( path ) )
+	if ( !missionInfo->init( file ) )
 	{
-		STOP(("COuld not find file %s to load campaign",path));
+		MC2_LOG(Io, Error, "campaign: file {} could not be initialized as a campaign", static_cast<const char*>(path));
+		return false;
 	}
-	missionInfo->init( file );
 
 	// temporary, just so we can test
 	int count = 32;
 	const char* missionNames[32];
 	missionInfo->getAvailableMissions( missionNames, count );
+	if ( count < 1 )
+	{
+		MC2_LOG(Io, Error, "campaign: file {} lists no available mission", static_cast<const char*>(path));
+		return false;
+	}
 
 	setCurrentMission( missionNames[0] );
 
 	soundSystem->setMusicVolume( prefs.MusicVolume );
 	soundSystem->playDigitalMusic(missionInfo->getCurrentLogisticsTuneId().value_or(-1));
+	return true;
 }
 
 void LogisticsData::startMultiPlayer()

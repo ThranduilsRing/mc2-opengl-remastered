@@ -339,8 +339,15 @@ int	MainMenu::handleMessage( unsigned long what, unsigned long who )
 				LogisticsSaveDialog::instance()->beginCampaign();
 				if ( LogisticsSaveDialog::instance()->isDone() )
 				{
-					LogisticsData::instance->startNewCampaign( LogisticsSaveDialog::instance()->getFileName().c_str());
-					status = RESTART;
+					// a missing campaign file is logged by startNewCampaign; stay on the menu instead of RESTART
+					if ( LogisticsData::instance->startNewCampaign( LogisticsSaveDialog::instance()->getFileName().c_str()) )
+						status = RESTART;
+					else
+					{
+						endAnim.end();
+						beginAnim.begin();
+						bLoadCampaign = false;
+					}
 				}
 			}
 			break;
@@ -515,8 +522,8 @@ void MainMenu::update()
     const auto pickedCampaign = PlayerFrontEnd::takeCampaignStart();
     if (!pickedCampaign.empty() && LogisticsData::instance) {
         skipIntro();
-        LogisticsData::instance->startNewCampaign(pickedCampaign.c_str());
-        status = RESTART;
+        if (LogisticsData::instance->startNewCampaign(pickedCampaign.c_str()))
+            status = RESTART;
         return;
     }
 	// MC2_BOOT_TO_BAY=<campaign .fit basename> (e.g. "pictures of a rebellion"):
@@ -534,7 +541,8 @@ void MainMenu::update()
 		if ( !s_bootToBayFired && bootCamp[0] && LogisticsData::instance && !introMovie )
 		{
 			s_bootToBayFired = true;
-			LogisticsData::instance->startNewCampaign( bootCamp );
+			if ( !LogisticsData::instance->startNewCampaign( bootCamp ) )
+				return;   // missing campaign: error already logged, stay on the main menu
 			// MC2_BOOT_TO_MISSION=<mission FileName>: jump to a specific mission's
 			// logistics instead of the campaign's first mission. Used to boot the
 			// LAST purchasing-enabled mission (fullest roster -> highest icon indices)
@@ -700,8 +708,13 @@ void MainMenu::update()
 			}
 			else if ( bLoadCampaign )
 			{
-				LogisticsData::instance->startNewCampaign( LogisticsSaveDialog::instance()->getFileName().c_str());
-				status = endResult = RESTART;
+				if ( LogisticsData::instance->startNewCampaign( LogisticsSaveDialog::instance()->getFileName().c_str()) )
+					status = endResult = RESTART;
+				else
+				{
+					endAnim.end();
+					beginAnim.begin();
+				}
 //				background.beginFadeOut( 1.0f );
 //				beginFadeOut( 1.0f );
 				bLoadCampaign = 0;
