@@ -12,6 +12,8 @@ inline constexpr int INVALID_COMPONENT = 1001;
 inline constexpr int INVALID_PILOT = 1001;
 inline constexpr int INVALID_ID = 1001;
 inline constexpr int NEED_BIGGER_ARRAY = 1003;
+// LogisticsData::load / LogisticsMissionInfo::load: the save names a campaign file that is gone or broken (the only failure the pre-teardown probe must catch).
+inline constexpr long CAMPAIGN_FILE_UNAVAILABLE = -2;
 inline constexpr int INVALID_SKILL = 1004;
 inline constexpr int WRONG_PARAMS = 1005;
 inline constexpr int NOT_ENOUGH_RESOURCE_POINTS = 1006;

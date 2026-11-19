@@ -219,6 +219,7 @@ std::expected<void, long> LogisticsMissionInfo::setMissionAnyStage( mc2::czstrin
 void LogisticsMissionInfo::setSingleMission( mc2::czstring missionFileName )
 {
 	clear();
+	campaignName.clear();   // a skirmish save must not carry the last campaign's file name
 	bMultiplayer = true;
 	groups = std::make_unique_for_overwrite<MissionGroup[]>(1);
 

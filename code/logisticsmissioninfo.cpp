@@ -335,17 +335,18 @@ std::expected<void, long> LogisticsMissionInfo::load( FitIniFile& file )
 	}
 
 	const std::optional<std::string> campaignFileName = objective_text::readPlain( file, "CampaignFile", 63 );
-	if ( !campaignFileName )
+	if ( !campaignFileName || campaignFileName->empty() )
 	{
-		MC2_LOG(Io, Warn, "campaign save: the General block has no usable CampaignFile, the save is not loaded");
-		return std::unexpected(-1L);
+		// A skirmish save (or an old one) names no campaign: nothing to restore here, the rest of the logistics data loads as before.
+		MC2_LOG(Io, Warn, "campaign save: the General block names no CampaignFile, the campaign is left as it is");
+		return {};
 	}
 
 	FitIniFile campaignFile;
 	if ( NO_ERR != campaignFile.open( campaignFileName->c_str() ) )
 	{
 		MC2_LOG(Io, Error, "campaign save: the campaign file {} of this save cannot be opened, the save is not loaded", *campaignFileName);
-		return std::unexpected(-1L);
+		return std::unexpected(CAMPAIGN_FILE_UNAVAILABLE);
 	}
 
 	campaignName = *campaignFileName;
@@ -354,7 +355,7 @@ std::expected<void, long> LogisticsMissionInfo::load( FitIniFile& file )
 	if ( !init( campaignFile ) )
 	{
 		MC2_LOG(Io, Error, "campaign save: the campaign file {} of this save is broken, the save is not loaded", *campaignFileName);
-		return std::unexpected(-1L);
+		return std::unexpected(CAMPAIGN_FILE_UNAVAILABLE);
 	}
 	currentMission = 0;
 

@@ -561,8 +561,14 @@ static bool savedCampaignLoads(PacketFile& loadFile, int packet) {
 		File scratch;
 		if (scratch.create(probeName) != NO_ERR)
 			return false;
-		scratch.write(bytes.data(), size);
+		const bool wrote = scratch.write(bytes.data(), static_cast<size_t>(size)) == size;
 		scratch.close();
+		if (!wrote) {
+			// Fail open: a scratch that cannot be written is not a reason to refuse a valid save.
+			MC2_LOG(Io, Warn, "save: the campaign probe scratch could not be written, the probe is skipped");
+			removeSaveScratchFile(probeName);
+			return true;
+		}
 	}
 	bool ok = false;
 	{
@@ -623,7 +629,10 @@ bool Mission::openSaveFile(MissionLoadFrame& f) {
 				mc2::save::decodeSections(bytes, f.sections, &why);
 		}
 		if (why.empty() && !savedCampaignLoads(loadFile, last - 3))
+		{
 			why = "campaign";   // the saved campaign is gone or broken (the probe logs the cause); the running mission stays
+			f.campaignRefused = true;
+		}
 		if (!why.empty()) {
 			mc2::fmt::print_err("[SAVE v2] event=reject reason={} file={}\n", why, mc2::fmt::safe(loadFileName));
 			f.incompatibleSave = true;
@@ -1043,7 +1052,10 @@ void Mission::load (mc2::czstring loadFileName)
 		if (f.incompatibleSave) {
 			char message[1024]{};
 			char title[256]{};
-			cLoadString(IDS_QUICKSAVE_VERSION_WRONG, message, sizeof(message) - 1);
+			if (f.campaignRefused)
+				mc2::fmt::to_buf(message, "This saved game could not be loaded: its campaign file is missing or damaged.");
+			else
+				cLoadString(IDS_QUICKSAVE_VERSION_WRONG, message, sizeof(message) - 1);
 			cLoadString(IDS_GAME_ERROR, title, sizeof(title) - 1);
 			mc2MessageBox(message, title, MB_OK | MB_ICONWARNING, IDOK);
 			// Time spent in the dialog must not reach scenarioTime on the next update.

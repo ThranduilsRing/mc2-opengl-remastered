@@ -5,6 +5,7 @@
 #include <optional>
 #include <cstdlib>
 #include "gos_crashbundle.h"
+#include "utils/mc2log.h"
 #include "footprints.h"
 // Mission: the second half of the Mission::load sequence -- the managers, terrain, movement data and mission script,
 // the warriors, parts, teams and objects, the commanders, the HUD and the geometry finalize. The first half and the
@@ -633,11 +634,15 @@ void Mission::loadLogistics(MissionLoadFrame& f) {
 	if (result != NO_ERR)
 		STOP(("Logistics Data missing from IN-Mission Save 2"));
 
-	// A v2 save is probed in openSaveFile before teardown; this is a v1 save or a post-probe failure. The mission is already
-	// rebuilt and STOP is a no-op in RelWithDebInfo, so abort with a bundle instead of continuing on the old campaign's roster.
-	if (!LogisticsData::instance->load(logisticsFile)) {
-		crashbundle_fatal("In-mission save: the campaign of this save is missing or broken, the save cannot be loaded");
-		std::abort();
+	// A v2 save's campaign is probed in openSaveFile before teardown; this is a v1 save or a post-probe failure. The mission is
+	// already rebuilt and STOP is a no-op in RelWithDebInfo, so a missing campaign aborts with a bundle instead of continuing on
+	// the old campaign's roster. Any other failure (version, a variant whose chassis pack is absent) keeps the old behaviour: log and continue.
+	if (const auto restored = LogisticsData::instance->load(logisticsFile); !restored) {
+		if (restored.error() == CAMPAIGN_FILE_UNAVAILABLE) {
+			crashbundle_fatal("In-mission save: the campaign file this save names is missing or broken, the save cannot be loaded");
+			std::abort();
+		}
+		MC2_LOG(Io, Error, "in-mission save: the logistics data could not be fully restored (code {}), continuing", restored.error());
 	}
 	LogisticsData::instance->setResourcePoints(rps);
 

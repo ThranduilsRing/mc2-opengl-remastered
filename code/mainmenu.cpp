@@ -754,7 +754,7 @@ void MainMenu::update()
 				}
 				else if ( !LogisticsData::instance->load( file ) )
 				{
-					// the save's campaign file is gone or broken (logged by load): nothing changed, stay on the menu
+					// the save could not be loaded (logged by load; a campaign-file failure changes no state): stay on the menu
 					endAnim.end();
 					beginAnim.begin();
 					LogisticsSaveDialog::instance()->end();

@@ -195,10 +195,10 @@ std::expected<void, long> LogisticsData::load( FitIniFile& file )
 	// (later failures below, e.g. a bad version number, have already cleared it).
 	{
 		LogisticsMissionInfo probe;
-		if ( !probe.load( file ) )
+		if ( const auto probed = probe.load( file ); !probed )
 		{
 			MC2_LOG(Io, Error, "campaign save: the saved campaign cannot be restored, the save is not loaded and nothing was changed");
-			return std::unexpected(-1L);
+			return std::unexpected(probed.error());
 		}
 	}
 
@@ -213,10 +213,10 @@ std::expected<void, long> LogisticsData::load( FitIniFile& file )
 	if ( !missionInfo )
 		missionInfo = std::make_unique_for_overwrite<LogisticsMissionInfo>();
 
-	if ( !missionInfo->load( file ) )
+	if ( const auto restored = missionInfo->load( file ); !restored )
 	{
-		MC2_LOG(Io, Error, "campaign save: the saved campaign cannot be restored, the save is not loaded");
-		return std::unexpected(-1L);
+		MC2_LOG(Io, Error, "campaign save: the saved campaign cannot be restored after the roster was cleared (code {})", restored.error());
+		return std::unexpected(restored.error());
 	}
 
 	long result = file.seekBlock( "Version" );
