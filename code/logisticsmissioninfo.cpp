@@ -12,6 +12,7 @@ LogisticsMissionInfo.cpp			: Implementation of the LogisticsMissionInfo componen
 #include "objective_text.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 #include <optional>
@@ -363,10 +364,7 @@ std::expected<void, long> LogisticsMissionInfo::load( FitIniFile& file )
 	// set the current mission group
 	file.readIdLong( "Group", currentStage );
 
-	if ( currentStage >= groupCount )
-		currentStage = groupCount-1;
-	if ( currentStage < 0 )
-		currentStage = 0;
+	currentStage = std::clamp( currentStage, 0L, groupCount - 1 );
 
 	// set completed missions
 	long count;
