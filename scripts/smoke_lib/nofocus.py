@@ -444,6 +444,19 @@ def _vet_engine_exe(argv: Sequence[str]) -> None:
             raise ExeRefused(verdict.refusal())
 
 
+def ensure_save_dir(child_env: dict) -> str:
+    """Every engine launch gets a private MC2_SAVE_DIR: a caller's own value wins, else a fresh per-run dir under the lane scratch.
+
+    Without it the game writes the player's ~/.mechcommander2/savegame (after_mission_*.fit, testgame*.ims) and the merge gate's
+    player-path row reports "savegame folder changed during the run" (Fable 1118h P1-2)."""
+    if not child_env.get("MC2_SAVE_DIR"):
+        import tempfile
+        base = child_env.get("MC2_LANE_SCRATCH") or os.environ.get("MC2_LANE_SCRATCH") or tempfile.gettempdir()
+        os.makedirs(base, exist_ok=True)
+        child_env["MC2_SAVE_DIR"] = tempfile.mkdtemp(prefix="mc2-save-", dir=base)
+    return child_env["MC2_SAVE_DIR"]
+
+
 def spawn(argv: Sequence[str], *, show_window: bool = False,
           offscreen: "Optional[bool]" = None, small_window: bool = True,
           env: "Optional[dict]" = None, engine_default_workers: bool = False, **kw) -> "subprocess.Popen":
@@ -490,6 +503,8 @@ def spawn(argv: Sequence[str], *, show_window: bool = False,
         if child_env.get("MC2_VK_DEVICE"):   # two identical XTXs: preserve the acquired slot's UUID
             child_env["MC2_VK_DEVICE"] = host_lease.pin_device(child_env["MC2_VK_DEVICE"])
         engine = any(exe_guard.engine_kind(a) is not None for a in argv)
+        if engine:
+            ensure_save_dir(child_env)
         if engine and sys.platform == "win32":
             # Games must not inherit the lane harness's Idle priority. Replace
             # any caller priority bits while preserving window/console flags.
