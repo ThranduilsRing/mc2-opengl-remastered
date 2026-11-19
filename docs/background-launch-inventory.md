@@ -12,8 +12,8 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/camera_sweep_smoke.py` | 101 | `nofocus.spawn` | desktop-composite |
 | `scripts/game_auto.py` | 133 | `nofocus.spawn` | desktop-composite |
 | `scripts/mech_shot.py` | 87 | `nofocus.spawn` | offscreen |
-| `scripts/mechbay_preview_harness.py` | 165 | `nofocus.spawn` | offscreen |
-| `scripts/mechbay_preview_harness.py` | 179 | `nofocus.spawn` | offscreen |
+| `scripts/mechbay_preview_harness.py` | 171 | `nofocus.spawn` | offscreen |
+| `scripts/mechbay_preview_harness.py` | 185 | `nofocus.spawn` | offscreen |
 | `scripts/renderdoc_capture.py` | 237 | `nofocus.run` | offscreen |
 | `scripts/renderdoc_capture.py` | 265 | `subprocess.run` **raw, allowed:** renderdoccmd convert is a console file converter, not the game; windowless via hidden_kwargs | offscreen |
 | `scripts/run_battle_bench.py` | 494 | `subprocess.call` **raw, allowed:** re-runs this same bench script (python child); it launches the game through its own offscreen path | offscreen |
@@ -44,8 +44,8 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/tests/test_launcher_save_dir.py` | 41 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_launcher_save_dir.py` | 46 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_launcher_save_dir.py` | 52 | `nofocus.spawn` | offscreen |
-| `scripts/tests/test_launcher_save_dir.py` | 58 | `nofocus.spawn` | offscreen |
-| `scripts/tests/test_launcher_save_dir.py` | 75 | `nofocus.spawn` | offscreen |
+| `scripts/tests/test_launcher_save_dir.py` | 59 | `nofocus.spawn` | offscreen |
+| `scripts/tests/test_launcher_save_dir.py` | 76 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_nofocus_env.py` | 47 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_nofocus_env.py` | 78 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_shadow_bake_init.py` | 53 | `nofocus.run` | offscreen |
