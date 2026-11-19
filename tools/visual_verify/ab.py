@@ -243,18 +243,39 @@ def eol_equivalence(rel, sha_a, sha_b, *roots):
     return None
 
 
-def _data_mismatch_entries(ma, mb, target=None):
+# mc2res_64.dll is built only from these repo inputs (res/CMakeLists.txt: res/libmain*.cpp + test_scripts/res_conv strings,
+# plus the top-level CMakeLists.txt / cmake/ that set its compile options). It is a non-reproducible rebuild output (the MSVC
+# linker stamps a build time into the PE header; no /Brepro), so a sha delta with none of these changed is not a payload change.
+RESOURCE_DLL = "mc2res_64.dll"
+RESOURCE_DLL_SOURCES = ("res/", "test_scripts/res_conv/", "cmake/", "CMakeLists.txt")
+# crashpad_handler: out-of-process crash reporter, never affects pixels (same class as mc2.pdb).
+BUILD_OUTPUT_FILES = {"crashpad_handler.exe", "crashpad_handler"}
+
+
+def _data_mismatch_entries(ma, mb, target=None, changed=None, report=False):
     """[(relpath, line)] for every data file that differs between manifests A and B, ignoring the build under test: mc2.exe,
     everything under shaders/vulkan/ (the .spv and the sources they compile from ship together with the exe) and the build
     outputs that never change a capture's pixels (mc2.pdb pairs with mc2.exe; mc2_asset_viewer.exe is not launched by a
     capture). W135: the gate's capture-before (published exe) vs capture-after (candidate) differed only in mc2.pdb/asset
     viewer and failed; W136: a window that edits shaders/vulkan sources (.frag, include/*.glsl) failed the same way.
     W137: shaders/include (*.hglsl) and shaders/spv (prebuilt packages) ship with the exe the same way. Only these three
-    deployed shader dirs are exempt; any other file under shaders/ (data, fixtures) still refuses."""
+    deployed shader dirs are exempt; any other file under shaders/ (data, fixtures) still refuses.
+    crashpad_handler is a build output too; mc2res_64.dll only when `changed` (the repo paths changed between the two commits)
+    is known and touches none of RESOURCE_DLL_SOURCES (None = unknown: it still refuses). report=True prints one
+    [ab] BUILD-OUTPUT line per exempted file whose sha differs."""
     from deploy_payload import editor_only_payload
     game = target == "game" or (target is None and bool(EXECUTABLES.intersection(ma))
                                 and bool(EXECUTABLES.intersection(mb)))
-    build_outputs = EXECUTABLES | {"mc2.pdb", "mc2_asset_viewer.exe", "mc2_asset_viewer"}
+    build_outputs = EXECUTABLES | {"mc2.pdb", "mc2_asset_viewer.exe", "mc2_asset_viewer"} | BUILD_OUTPUT_FILES
+    res_src = None if changed is None else sorted(f for f in changed if f.startswith(RESOURCE_DLL_SOURCES))
+    if res_src == []:
+        build_outputs = build_outputs | {RESOURCE_DLL}
+    if report:
+        for name in sorted(build_outputs & ma.keys() & mb.keys()):
+            if ma[name] != mb[name] and name not in EXECUTABLES | {"mc2.pdb", "mc2_asset_viewer.exe", "mc2_asset_viewer"}:
+                why = ("crash reporter, never affects pixels" if name in BUILD_OUTPUT_FILES else
+                       "non-reproducible rebuild; no resource-DLL source changed between the commits")
+                print(f"[ab] BUILD-OUTPUT {name} sha256_A={ma[name]} sha256_B={mb[name]} exempt: {why}", flush=True)
     # Single-side absence is judged on canonical keys (slashes + casefold, as editor_only_payload does): a row present on
     # both sides under different spelling is not absent and stays in the strict comparison (it refuses as only-in-A/B).
     norm = lambda p: str(p).replace("\\", "/").casefold()
@@ -279,8 +300,10 @@ def manifest_mismatches(ma, mb):
 
 
 def candidate_mismatches(ma, mb, commit, install_b=None, baseline=None, install_a=None,
-                         identity_receipt=None, target=None):
-    """Only candidate declarations or proven text EOL equivalence excuse data drift."""
+                         identity_receipt=None, target=None, commit_a=None):
+    """Only candidate declarations or proven text EOL equivalence excuse data drift. commit_a (side A's commit) lets
+    mc2res_64.dll drift be excused when no resource-DLL source changed between commit_a and commit."""
+    changed = git_diff_files(commit_a, commit) if commit_a else None
     declared = asset_parity.intentional_changes(commit, ROOT)
     mb = dict(mb)
     if install_b is not None:
@@ -291,7 +314,7 @@ def candidate_mismatches(ma, mb, commit, install_b=None, baseline=None, install_
     accepted = {rel for rel, sha in declared.items() if mb.get(rel) == sha}
     baseline = Path(baseline) if baseline else asset_parity.default_ref()
     remaining = []
-    for rel, line in _data_mismatch_entries(ma, mb, target):
+    for rel, line in _data_mismatch_entries(ma, mb, target, changed, report=True):
         source_rel = "examples/" + rel if rel.startswith("mods/") else rel
         equivalent = None
         if (Path(rel).suffix.lower() in EOL_TEXT_EXTS and rel in ma and rel in mb
@@ -456,7 +479,7 @@ def base_problems(install_a=None, install_b=None, exe_a=None, exe_b=None, instal
             problems.append(f"{MANIFEST} missing in " + " and ".join(d for d, m in ((install_a, ma), (install_b, mb)) if not m))
         else:
             diffs = [line for _, line in candidate_mismatches(ma, mb, cb, install_b, install,
-                                                           install_a, identity_receipt)]
+                                                           install_a, identity_receipt, commit_a=ca)]
             if diffs:
                 problems.append(f"{len(diffs)} data/shader manifest mismatch(es) besides mc2.exe and shaders/vulkan/*.spv: "
                                 + "; ".join(diffs[:20]) + (" ..." if len(diffs) > 20 else ""))
@@ -1339,7 +1362,7 @@ def main(argv=None):
             sys.exit(f"ab.py: {exc}")
         bad = [p for p in [commit_order_problem(ia["commit"], ib["commit"], "capture A", "capture B")] if p]
         entries = candidate_mismatches(ia["manifest"], ib["manifest"], ib["commit"], baseline=a.install,
-                                       identity_receipt=identity_receipt)
+                                       identity_receipt=identity_receipt, commit_a=ia["commit"])
         accepted_delta = []
         if a.allow_data_delta and not bad:
             # the merge gate's before (published v0.4) vs after (candidate): B descends from A, so a data difference is the

@@ -468,3 +468,42 @@ def test_cooked_payload_malformed_pins_fail_closed(tmp_path, repo):
     _git(r, "commit", "-q", "-m", "bad pins")
     head = _git(r, "rev-parse", "HEAD")
     assert ab.cooked_payload({"data/kit/tree-upscale.json"}, head) == {}
+
+
+def _build_output_manifests(**diff):
+    a = {"mc2.exe": "e" * 64, "crashpad_handler.exe": "a" * 64, "mc2res_64.dll": "a" * 64, "SDL2.dll": "a" * 64}
+    return a, {**a, **{k: "b" * 64 for k in diff}}
+
+
+def _identity(monkeypatch, changed, a, b):
+    monkeypatch.setattr(ab.asset_parity, "intentional_changes", lambda *x: {})
+    monkeypatch.setattr(ab, "git_diff_files", lambda *x: changed)
+    return [p for p, _ in ab.candidate_mismatches(a, b, "b" * 40, commit_a="a" * 40)]
+
+
+def test_crashpad_handler_drift_is_a_build_output(monkeypatch, capsys):
+    a, b = _build_output_manifests(**{"crashpad_handler.exe": 1})
+    assert _identity(monkeypatch, {"data/x.fit"}, a, b) == []
+    assert "[ab] BUILD-OUTPUT crashpad_handler.exe" in capsys.readouterr().out
+
+
+def test_mc2res_drift_without_source_change_is_accepted(monkeypatch, capsys):
+    a, b = _build_output_manifests(**{"mc2res_64.dll": 1})
+    assert _identity(monkeypatch, {"data/x.fit", "GameOS/foo.cpp"}, a, b) == []
+    assert "[ab] BUILD-OUTPUT mc2res_64.dll" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("src", ["res/libmain.cpp", "test_scripts/res_conv/strings.res.cpp", "CMakeLists.txt"])
+def test_mc2res_drift_with_source_change_refuses(monkeypatch, src):
+    a, b = _build_output_manifests(**{"mc2res_64.dll": 1})
+    assert _identity(monkeypatch, {src}, a, b) == ["mc2res_64.dll"]
+
+
+def test_mc2res_drift_with_unknown_diff_refuses(monkeypatch):
+    a, b = _build_output_manifests(**{"mc2res_64.dll": 1})
+    assert _identity(monkeypatch, None, a, b) == ["mc2res_64.dll"]
+
+
+def test_other_dll_drift_still_refuses(monkeypatch):
+    a, b = _build_output_manifests(**{"SDL2.dll": 1, "crashpad_handler.exe": 1, "mc2res_64.dll": 1})
+    assert _identity(monkeypatch, set(), a, b) == ["SDL2.dll"]
