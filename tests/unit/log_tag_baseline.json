@@ -10778,6 +10778,16 @@
    "count": 1
   },
   {
+   "tag": "TEXLOAD_COLD",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "uniq",
+    "name"
+   ],
+   "count": 1
+  },
+  {
    "tag": "TEXMGR_MISSING",
    "ver": -1,
    "stream": "stdout",
