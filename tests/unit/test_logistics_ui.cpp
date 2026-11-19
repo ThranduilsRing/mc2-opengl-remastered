@@ -29,6 +29,8 @@ struct aEdit {
 #include "edit_scroll.inc"
 struct SimpleCamera {
     bool pObject = true;
+    bool framed_ = false, fitPresented_ = false;
+    int fitIters_ = 0;
     mutable int composites = 0;
     void drawPreviewToPanel(float, float, float, float) const;
 };
