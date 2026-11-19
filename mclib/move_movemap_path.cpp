@@ -48,6 +48,7 @@ unsigned long long mc2_path_trace::hashMovePath (const MovePath* path) {
 
 long MoveMap::calcPath (const mc2_move::PathQuery& query, mc2_move::SolverScratch& scratch, MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell) {
 
+	ZoneScopedN("Warrior.Path.SolveLocal");
 	// PATHFINDING-FACTS-1: gated per-solve telemetry (default-OFF, byte-identical).
 	mc2_path_trace::SolveScope _pt("plain", scratch.openHeap);
 	_pt.out = path;
@@ -482,6 +483,7 @@ long MoveMap::calcPath (const mc2_move::PathQuery& query, mc2_move::SolverScratc
 
 long MoveMap::calcPathJUMP (const mc2_move::PathQuery& query, mc2_move::SolverScratch& scratch, MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell) {
 
+	ZoneScopedN("Warrior.Path.SolveJump");
 	// PATHFINDING-FACTS-1: gated per-solve telemetry (default-OFF, byte-identical).
 	mc2_path_trace::SolveScope _pt("jump", scratch.openHeap);
 	_pt.out = path;

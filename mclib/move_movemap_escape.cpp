@@ -8,6 +8,7 @@
 #include "path_work.h"
 
 long MoveMap::calcEscapePath (const mc2_move::PathQuery& query, mc2_move::SolverScratch& scratch, MovePathPtr path, glm::vec3* goalWorldPos, long* goalCell) {
+	ZoneScopedN("Warrior.Path.SolveEscape");
 
 	// PATHFINDING-FACTS-1: gated per-solve telemetry (default-OFF, byte-identical).
 	mc2_path_trace::SolveScope _pt("escape", scratch.openHeap);
