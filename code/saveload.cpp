@@ -546,6 +546,36 @@ void Mission::loadPrologue(MissionLoadFrame& f) {
 	AsynFunc = ProgressTimer;
 }
 
+// The campaign a save names must still load: probe the logistics packet before the running mission is torn down.
+static bool savedCampaignLoads(PacketFile& loadFile, int packet) {
+	if (loadFile.seekPacket(packet) != NO_ERR || loadFile.getPacketSize() <= 0)
+		return false;
+	const auto size = loadFile.getPacketSize();
+	std::vector<unsigned char> bytes(static_cast<size_t>(size));
+	if (loadFile.readPacket(packet, bytes.data()) != size)
+		return false;
+	FullPathFileName probeName;
+	probeName.init(savePath, "campaignprobe", ".fti");
+	{
+		File scratch;
+		if (scratch.create(probeName) != NO_ERR)
+			return false;
+		scratch.write(bytes.data(), size);
+		scratch.close();
+	}
+	bool ok = false;
+	{
+		FitIniFile logisticsFile;
+		if (logisticsFile.open(probeName) == NO_ERR) {
+			LogisticsMissionInfo probe;
+			ok = probe.load(logisticsFile).has_value();
+			logisticsFile.close();
+		}
+	}
+	removeSaveScratchFile(probeName);
+	return ok;
+}
+
 // Open the save packet file and reject a missing file or a wrong version stamp.
 bool Mission::openSaveFile(MissionLoadFrame& f) {
 	auto& loadFileName = f.loadFileName; auto& loadFile = f.loadFile; auto& result = f.result;
@@ -591,6 +621,8 @@ bool Mission::openSaveFile(MissionLoadFrame& f) {
 			else
 				mc2::save::decodeSections(bytes, f.sections, &why);
 		}
+		if (why.empty() && !savedCampaignLoads(loadFile, last - 3))
+			why = "campaign";   // the saved campaign is gone or broken (the probe logs the cause); the running mission stays
 		if (!why.empty()) {
 			mc2::fmt::print_err("[SAVE v2] event=reject reason={} file={}\n", why, mc2::fmt::safe(loadFileName));
 			f.incompatibleSave = true;

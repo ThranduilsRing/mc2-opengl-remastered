@@ -191,7 +191,8 @@ void LogisticsData::clearVariants()
 
 std::expected<void, long> LogisticsData::load( FitIniFile& file )
 {
-	// Validate the save's campaign into a throwaway first: a save whose campaign file is gone or broken must leave the running state untouched.
+	// Validate the save's campaign into a throwaway first: a save whose campaign file is gone or broken leaves the running state untouched
+	// (later failures below, e.g. a bad version number, have already cleared it).
 	{
 		LogisticsMissionInfo probe;
 		if ( !probe.load( file ) )

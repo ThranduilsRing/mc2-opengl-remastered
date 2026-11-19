@@ -3,6 +3,8 @@
 #include "save_brain_section.h"
 #include "save_fix_section.h"
 #include <optional>
+#include <cstdlib>
+#include "gos_crashbundle.h"
 #include "footprints.h"
 // Mission: the second half of the Mission::load sequence -- the managers, terrain, movement data and mission script,
 // the warriors, parts, teams and objects, the commanders, the HUD and the geometry finalize. The first half and the
@@ -631,10 +633,12 @@ void Mission::loadLogistics(MissionLoadFrame& f) {
 	if (result != NO_ERR)
 		STOP(("Logistics Data missing from IN-Mission Save 2"));
 
-	// The mission is already rebuilt here, so a refused campaign cannot be undone: stop with a clear message instead of
-	// continuing the mission on the old campaign's roster (LogisticsData::load logs the cause and changes no state).
-	if (!LogisticsData::instance->load(logisticsFile))
-		STOP(("In-mission save: the campaign of this save is missing or broken, the save cannot be loaded"));
+	// A v2 save is probed in openSaveFile before teardown; this is a v1 save or a post-probe failure. The mission is already
+	// rebuilt and STOP is a no-op in RelWithDebInfo, so abort with a bundle instead of continuing on the old campaign's roster.
+	if (!LogisticsData::instance->load(logisticsFile)) {
+		crashbundle_fatal("In-mission save: the campaign of this save is missing or broken, the save cannot be loaded");
+		std::abort();
+	}
 	LogisticsData::instance->setResourcePoints(rps);
 
 	logisticsFile.close();

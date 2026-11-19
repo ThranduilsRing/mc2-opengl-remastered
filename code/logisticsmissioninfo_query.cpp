@@ -13,6 +13,10 @@ LogisticsMissionInfo::MissionInfo::~MissionInfo()
 
 const std::string& LogisticsMissionInfo::getCurrentPurchaseFile() const
 {
+	static const std::string empty;
+	if ( !groups || currentStage < 0 || currentStage >= groupCount )
+		return empty;
+
 	MissionGroup* pGroup = &groups[currentStage];
 
 	return pGroup->mission(currentMission)->purchaseFileName;

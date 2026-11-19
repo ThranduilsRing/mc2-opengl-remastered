@@ -38,6 +38,7 @@ struct DDSURFACEDESC2 {
 #include "imgui.h"
 #include "net/runtime.h"
 #include "diagnostic_trace.h"
+#include "utils/mc2log.h"
 #include <set>
 extern CPrefs prefs;
 #include "screen_settle_capture.h"
@@ -745,6 +746,9 @@ void MainMenu::update()
 					char errorStr[1024];
 					(*std::format_to_n( errorStr, sizeof(errorStr) - 1, "couldn't open the file {}", mc2::fmt::safe(name) ).out = '\0');
 					Assert( 0, 0, errorStr );
+					MC2_LOG(Io, Error, "campaign save: could not open the save file {}, staying on the menu", mc2::fmt::safe(name));
+					endAnim.end();
+					beginAnim.begin();
 					LogisticsSaveDialog::instance()->end();
 					bSave = bLoad = 0;
 				}
