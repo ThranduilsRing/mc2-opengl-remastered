@@ -61,11 +61,6 @@ ComponentListItem::ComponentListItem( LogisticsComponent* pComp )
 		icon.resize( sizeX * LogisticsComponent::XICON_FACTOR, sizeY * LogisticsComponent::YICON_FACTOR);
 		icon.setUVs( 0.f, 0.f, sizeX * 48.f, sizeY * 32.f );
 
-		// figure out the difference between this thing's size and
-		// the template objects
-		int deltaY = icon.height() - s_templateItem->icon.height();
-		int deltaX = icon.width() - s_templateItem->icon.width();
-
 		// Rects come from the pure table (mechlab_loc::componentItemRects): wider-than-one-cell icons get a header row
 		// for heat/cost above the icon, and the warning is confined to the icon.
 		namespace ml = mc2::mechlab_loc;
@@ -73,6 +68,8 @@ ComponentListItem::ComponentListItem( LogisticsComponent* pComp )
 		const float ox = static_cast<float>(outline.left()), oy = static_cast<float>(outline.top());   // the fit frame starts at the outline
 		const long rowDy = static_cast<long>(R.rowDy);
 		icon.moveTo( ox + R.icon.x, oy + R.icon.y );
+		name.moveTo( ox + R.name.x, oy + R.name.y );
+		name.resize( static_cast<long>(R.name.w), static_cast<long>(R.name.h) );
 		heatIcon.moveTo( ox + R.heatIcon.x, oy + R.heatIcon.y );
 		heatText.moveTo( ox + R.heat.x, oy + R.heat.y );
 		costText.moveTo( ox + R.cost.x, oy + R.cost.y );
@@ -83,12 +80,11 @@ ComponentListItem::ComponentListItem( LogisticsComponent* pComp )
 		// outline and icon outline sizes come from the same table (so the layout test pins the real placement)
 		outline.resize( static_cast<long>(R.item.w), static_cast<long>(R.item.h) );
 		iconOutline.resize( static_cast<long>(R.iconOutline.w), static_cast<long>(R.iconOutline.h) );
-		(void)deltaX; (void)deltaY;
 
 		// Warning (HEAT EXCEEDED): small face (agencyfb11), wraps to two lines, confined to the icon outline.
 		disabledText.font = name.font;
 		disabledText.resize( static_cast<long>(R.warn.w), static_cast<long>(R.warn.h) );
-		disabledText.moveTo( R.warn.x, R.warn.y );
+		disabledText.moveTo( ox + R.warn.x, oy + R.warn.y );
 		disabledText.alignment = 2;
 
 
@@ -168,8 +164,6 @@ int ComponentListItem::init( FitIniFile& file )
 		t.outline.resize( t.outline.width() - static_cast<long>(dx), t.outline.height() );
 		t.name.resize( t.name.width() - static_cast<long>(dx), t.name.height() );
 		t.disabledText.resize( t.disabledText.width() - static_cast<long>(dx), t.disabledText.height() );
-		for ( aObject* o : { static_cast<aObject*>(&t.costText), static_cast<aObject*>(&t.heatText), &t.costIcon, &t.heatIcon } )
-			o->move( -dx, 0 );
 
 	}
 
@@ -204,8 +198,11 @@ void ComponentListItem::render( )
 	outline.setColor( animations[0].getCurrentColor( animations[0].getState() ) );
 	outline.render();
 
-	iconOutline.moveTo( globalX() + s_templateItem->iconOutline.left()
-		, globalY() + s_templateItem->iconOutline.top() + ( icon.top() - s_templateItem->icon.top() ) );
+	if ( pComponent )
+	{
+		const mc2::mechlab_loc::ItemRects R = mc2::mechlab_loc::componentItemRects( pComponent->getComponentWidth(), pComponent->getComponentHeight() );
+		iconOutline.moveTo( globalX() + R.iconOutline.x, globalY() + R.iconOutline.y );
+	}
 	iconOutline.setColor( animations[0].getCurrentColor( animations[0].getState() ) );
 	iconOutline.render();
 

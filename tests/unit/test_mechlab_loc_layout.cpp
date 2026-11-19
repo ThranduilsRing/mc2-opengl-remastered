@@ -46,6 +46,8 @@ TEST_CASE("mechlab loc: list item cost/heat/warning rects stay inside the item a
         for (const Rect* t : {&r.cost, &r.costIcon, &r.heat, &r.heatIcon, &r.iconOutline, &r.warn}) CHECK(inside(*t, r.item));
         for (const Rect* t : {&r.cost, &r.costIcon, &r.heat, &r.heatIcon}) CHECK(!overlap(*t, r.iconOutline));   // digits never cross the icon box
         CHECK(!overlap(r.cost, r.heat)); CHECK(!overlap(r.cost, r.heatIcon)); CHECK(!overlap(r.heat, r.costIcon));
+        for (const Rect* t : {&r.cost, &r.costIcon, &r.heat, &r.heatIcon}) CHECK(!overlap(r.name, *t));   // a long name never runs into the header/cost row
+        CHECK(inside(r.name, r.item));
         CHECK(inside(r.warn, r.iconOutline));    // HEAT EXCEEDED stays inside the icon outline (no wrap past the item edge)
         CHECK(r.warn.x >= 0);
     }

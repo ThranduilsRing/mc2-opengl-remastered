@@ -162,6 +162,7 @@ struct Mc2MechPreviewRequest {
     float exposure;            // linear scale before the panel tonemap
     int sceneW, sceneH;        // shared scene target size (island init / world-run size match)
     float groundX, groundY, groundH;  // mech feet centre and screen height in the panel logical space (groundH 0 = no contact shadow)
+    int skipMech;              // 1 = backdrop only (the lab's hidden fit: bounds come from the CPU projection)
     int backdrop;              // 1 = draw the bay-interior backdrop (mech lab panel only; other screens keep their own background)
 };
 // Posts (r != NULL) or cancels (NULL) the pending panel draw. The request is consumed by the next flush.

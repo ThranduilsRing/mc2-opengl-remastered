@@ -606,6 +606,10 @@ void MechLabScreen::update()
 			"game.mcl_mc.image.icon_for_armor_use_only_when_armor_is_selected", isArmor );
 	}
 
+	// The hidden fit advances in mechCamera.update(); a modal (or a paused status) must not leave it unfinished.
+	if ( mechCamera.fitting() && ( bSaveDlg || bErrorDlg || !pVariant || status != RUNNING ) )
+		mechCamera.update();
+
 	if ( bSaveDlg )
 	{
 		pCurDialog->update();

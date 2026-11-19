@@ -72,13 +72,14 @@ inline constexpr Rect summaryRect() { return {324+kDx,404,102,72}; }
 // there, so it gets a header row (heat left, cost right) above the icon (rowDy). The warning sits on the icon.
 inline constexpr float kItemW = 210 - kDx, kItemRowDy = 17;
 struct ItemRects {
-    Rect item, icon, iconOutline, cost, costIcon, heat, heatIcon, warn;
+    Rect item, name, icon, iconOutline, cost, costIcon, heat, heatIcon, warn;
     float rowDy = 0;
 };
 inline ItemRects componentItemRects(int cellsW, int cellsH) {
     ItemRects r;
     r.rowDy = cellsW > 1 ? kItemRowDy : 0.f;
     r.item = {0, 0, kItemW, 60.f + 32.f * static_cast<float>(cellsH - 1) + r.rowDy};
+    r.name = {4, 3, kItemW - 5, 15};   // one line, ends where the cost/heat row starts (y 18); the stock box is 20 tall and ran into it
     r.icon = {4, 20 + r.rowDy, 48.f * static_cast<float>(cellsW), 32.f * static_cast<float>(cellsH)};
     r.iconOutline = {4, 20 + r.rowDy, r.icon.w + 4, r.icon.h + 4};
     r.cost = {149 - kDx, 18, 37, 15};   r.costIcon = {189 - kDx, 18, 15, 15};

@@ -55,6 +55,7 @@ public:
 	void drawPreviewToPanel( float panelX, float panelY, float panelW, float panelH ) const;
 
 	bool hasObject() const { return pObject != nullptr; }
+	bool fitting() const { return framed_ && fitIters_ > 0; }
 	// Mech-lab framing: the model fills fillFrac of the rect height with its feet near the bottom, turned yaw
 	// degrees and seen from pitch degrees, lit by key + fill + rim. Distance and offset converge over a few
 	// frames from the drawn height and full-turn horizontal radius. The camera keeps its own
@@ -114,6 +115,8 @@ private:
 	std::string			fitChassis_;
 	float				drawn_[4] = {};	// last PreviewDraw screen extents (framed only)
 	int					fitIters_ = 0;
+	bool				fitSweepYawHeld_ = false;	// the last sweep yaw is still on the model: reveal at the base yaw
+	bool				fitPresented_ = false;	// the GPU lab posted the backdrop-only fit frame
 	bool				framed_ = false, haveDrawn_ = false;
 	bool				turntablePaused_ = false;
 	double				turntableLastT_ = 0.0;	// steady-clock seconds of the previous turntable step (0 = none)

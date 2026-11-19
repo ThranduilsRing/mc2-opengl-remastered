@@ -1206,7 +1206,7 @@ bool record_mech_preview(MechIsland* s, VkCommandBuffer cb, const Mc2MechFrameFe
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
         for (uint32_t r = 0; r < feed.runCount; ++r) {
             const Mc2MechDrawRun& run = feed.runs[r];
-            if (!run.indexCount || !run.instanceCount) continue;
+            if (!run.indexCount || !run.instanceCount || q.skipMech) continue;
             const MechRunPC pc = materials[r];
             vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
             vkCmdDrawIndexed(cb, run.indexCount, run.instanceCount, run.firstIndex, run.baseVertex, run.instanceBase);

@@ -57,7 +57,7 @@ void ProbeGatherLightsForList(TG_LightPtr* lights, unsigned long nLights, TG_HWL
 // panel mech per frame (the batcher snapshot holds one flush); a second camera that frame keeps its CPU draw.
 // Returns true when a request was posted; the CPU draw may still be needed until the island reports a draw.
 static bool postMechPreviewGpu( Camera& cam, Mech3DAppearance* mech, float vpX, float vpY, float vpW, float vpH,
-                                float groundX, float groundY, float groundH, const float* clipRect, bool backdrop )
+                                float groundX, float groundY, float groundH, const float* clipRect, bool backdrop, bool skipMech )
 {
 	static uint32_t s_lastFrame = 0xffffffffu;
 	static TG_InstanceId s_lastShape;
@@ -97,6 +97,7 @@ static bool postMechPreviewGpu( Camera& cam, Mech3DAppearance* mech, float vpX, 
 	q.clipW = static_cast<int>( lroundf( clipRect[2] - clipRect[0] ) ); q.clipH = static_cast<int>( lroundf( clipRect[3] - clipRect[1] ) );
 	q.groundX = groundX; q.groundY = groundY; q.groundH = groundH;
 	q.backdrop = backdrop ? 1 : 0;
+	q.skipMech = skipMech ? 1 : 0;
 	if ( gosPostProcess* pp = getGosPostProcess() )
 	{
 		q.sceneW = pp->getWidth();
@@ -427,11 +428,13 @@ void SimpleCamera::render(long xOffset, long yOffset)
 					groundC_[0] += ( cx - groundC_[0] ) * k; groundC_[1] += ( cy - groundC_[1] ) * k; groundH_ += ( hh - groundH_ ) * k;
 					haveGround_ = true;
 				}
-				if ( labMech && postMechPreviewGpu( *this, labMech, offsetX, offsetY, viewMulX, viewMulY,
-				                                   haveGround_ ? groundC_[0] : 0.f, groundC_[1], haveGround_ ? groundH_ : 0.f, bounds, framed_ ) )
+				const bool posted = labMech && postMechPreviewGpu( *this, labMech, offsetX, offsetY, viewMulX, viewMulY,
+				                                   haveGround_ ? groundC_[0] : 0.f, groundC_[1], haveGround_ ? groundH_ : 0.f, bounds, framed_, framed_ && fitIters_ > 0 );
+				if ( posted )
 					gpuDraws = mc2_vk_mech_preview_drew_last() != 0;
 				// With the GPU path drawing, PreviewDraw only projects (the framing bounds below).
-				g_previewBoundsOnly = gpuDraws;
+				fitPresented_ = posted && framed_ && fitIters_ > 0;
+				g_previewBoundsOnly = gpuDraws || fitPresented_;
 				previewShape->PreviewDraw(view);
 				g_previewBoundsOnly = false;
 				if ( framed_ )
@@ -514,8 +517,8 @@ void SimpleCamera::drawPreviewToPanel( float panelX, float panelY, float panelW,
 {
 	// A missing selection owns no pixels in the shared preview target.
 	if (!pObject) return;
-	// The fit sweep turns the real mech through the swing extremes to measure it; those frames are measurement only.
-	if (framed_ && fitIters_ > 0) return;
+	// The fit sweep turns the real mech through the swing extremes to measure it; the GPU lab shows the backdrop only meanwhile.
+	if (framed_ && fitIters_ > 0 && !fitPresented_) return;
 #ifdef MC2_IMGUI
     const uint64_t tex=mc2vk::uiTextureServiceReady() ? mc2_vk_preview_texture() : 0;
 	const float u1 = bounds[0] / 800.f;
@@ -638,8 +641,14 @@ long SimpleCamera::update()
 					++widens_;
 				}
 			}
+			if ( fitIters_ == 0 && fitSweepYawHeld_ )
+			{
+				rotation = swayBase_;
+				fitSweepYawHeld_ = false;
+			}
 			if ( fitIters_ > 0 && fitIters_ <= kSweepIters )
 			{
+				fitSweepYawHeld_ = true;
 				static const float kSweepYaw[4] = { -30.f, 30.f, -15.f, 15.f };
 				rotation = swayBase_ + kSweepYaw[std::min( ( kSweepIters - fitIters_ ) / kSweepSeg, 3 )];
 			}
