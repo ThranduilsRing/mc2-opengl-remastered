@@ -1190,7 +1190,7 @@ void GVAppearance::setObjStatus (long oStatus)
 			FullPathFileName textureName;
 			textureName.init(texturePath,txmName,"");
 	
-			if (fileExists(textureName))
+			if (textureTgaExistsMemo(textureName))
 			{
 				if (S_strnicmp(txmName,"a_",2) == 0)
 				{

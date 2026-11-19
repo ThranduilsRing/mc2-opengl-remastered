@@ -265,6 +265,19 @@ TEST_CASE("HITCH-ATTRIB-3: a unique per-instance copy of a resident texture open
     CHECK(s.handle(copy)!=s.handle(shared));
     // nothing resident for this name: the caller takes the cold path (file open) and counts it
     CHECK(s.index->cloneResident("tgl/128/not_preloaded.tga",1,gos_Texture_Solid,0,0)==0xffffffffu);
-    CHECK(s.index->coldLoads()==0);
+    // a resident base of another format is not cloned (the caller takes the cold path)
+    CHECK(s.index->cloneResident("tgl/128/a_mechdam.tga",1,gos_Texture_Alpha,0,0)==0xffffffffu);
+}
+
+TEST_CASE("HITCH-ATTRIB-3: a released base is not cloned, and a clone outlives its base") {
+    Sources s;
+    const auto base=s.add("tgl/128/a_gone.tga",0);
+    const auto copy=s.index->cloneResident("tgl/128/a_gone.tga",1,gos_Texture_Solid,0,0);
+    REQUIRE(copy!=0xffffffffu);
+    mc2::textures::release(base);
+    REQUIRE(s.index->get(copy)!=nullptr);
+    CHECK((s.index->get(copy)->bytes!=nullptr));
+    CHECK(s.index->get(copy)->bytes->size()==4);
+    CHECK(s.index->cloneResident("tgl/128/a_gone.tga",2,gos_Texture_Solid,0,0)==0xffffffffu);
 }
 }

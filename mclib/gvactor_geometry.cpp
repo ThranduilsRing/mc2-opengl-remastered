@@ -10,6 +10,7 @@
 #include "appearance_rng.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
+#include "texture_probe_memo.h"
 #include "model_override_registry.h"
 #include "../RenderCore/SurfaceMaterial.h"
 #include "assimp_importer.h"
@@ -340,7 +341,7 @@ void GVAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 	DWORD cchighlight2 = ((blue >> 5) & 7) + (((blue >> 13) & 7) << 3) + (((blue >> 21) & 7) << 6);
 	DWORD paintInstance = (ccbase << 18) + (cchighlight1 << 9) + (cchighlight2);
 	
-	if (fileExists(textureName))
+	if (textureTgaExistsMemo(textureName))
 	{
 		if (S_strnicmp(txmName,"a_",2) == 0)
 		{
@@ -820,7 +821,7 @@ bool GVAppearance::recalcBounds (void)
 								FullPathFileName textureName;
 								textureName.init(texturePath,txmName,"");
 
-								if (fileExists(textureName))
+								if (textureTgaExistsMemo(textureName))
 								{
 									if (S_strnicmp(txmName,"a_",2) == 0)
 									{
@@ -871,7 +872,7 @@ bool GVAppearance::recalcBounds (void)
 								FullPathFileName textureName;
 								textureName.init(texturePath,txmName,"");
 										
-								if (fileExists(textureName))
+								if (textureTgaExistsMemo(textureName))
 								{
 									if (S_strnicmp(txmName,"a_",2) == 0)
 									{

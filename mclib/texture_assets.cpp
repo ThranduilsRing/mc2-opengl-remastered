@@ -330,7 +330,6 @@ std::optional<RenderCore::KtxImage> loadCookedSidecar(std::string_view source) {
     return out;
 }
 
-uint32_t coldLoadCount() noexcept { return sourceStore().coldLoads(); }
 
 TextureSources& sourceStore() { startSources(); return *sourcesIfReady(); }
 void startSources() {
@@ -361,7 +360,6 @@ DWORD load(mc2::czstring path, gos_TextureFormat format, DWORD hints, DWORD vari
             return asset;
         }
     }
-    store.noteColdLoad();
     if (mc2::gate::get<"MC2_TEXMGR_LOAD_TRACE">()) mc2::fmt::print_out("[TEXLOAD_COLD] uniq={:d} name={}\n",mc2::fmt::as_u32(variant),path);
     auto source=std::make_shared<TextureSource>();
     source->name=path; source->variant=variant; source->hints=hints; source->lifetime=lifetime;
