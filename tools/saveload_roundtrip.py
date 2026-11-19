@@ -37,7 +37,6 @@ sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import console_child  # noqa: E402
 import save_inspect as si  # noqa: E402
-import savegame_backup  # noqa: E402
 import sim_determinism as sd  # noqa: E402
 
 SAVE_AT, LOAD_AT = "1000", "1400"
@@ -311,18 +310,16 @@ def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str
     With `plant` (a save written by another exe, e.g. by tools/campaign_save_roundtrip.py) that file is put where the quickload reads it;
     `save_at` must be 0 (a quicksave would overwrite it), so the quickload loads it and it comes back as the first save, but the engine writes
     no re-save after a planted load.
-    The owner's quicksave is backed up first and put back afterwards."""
+    The engine saves into `save_dir`, default <out>/savegame (MC2_SAVE_DIR is always set), never the owner's folder."""
     if deploy:
         sd.build_and_deploy(install)
     dest = out or tempfile.mkdtemp(prefix="resave_")
     os.makedirs(dest, exist_ok=True)
-    sdir = save_dir or savegame_backup.default_dir()
+    sdir = os.path.abspath(save_dir or os.path.join(dest, "savegame"))   # the engine runs with cwd=exe_dir
+    os.makedirs(sdir, exist_ok=True)
     second_src = os.path.join(sdir, "testgame_resave.ims")
     env = dict(os.environ, **resave_env(save_at, load_at), **(extra_env or {}))
-    if save_dir:
-        # A private dir is also the engine's save path (MC2_SAVE_DIR), so concurrent gate rows never share quicksave names.
-        os.makedirs(save_dir, exist_ok=True)
-        env["MC2_SAVE_DIR"] = save_dir
+    env["MC2_SAVE_DIR"] = sdir   # the engine's save path: concurrent gate rows never share quicksave names, the owner's folder is never used
     # A movie defers BOTH fixtures, preserving their gap. mc2_03 saves about
     # 449 ticks late: load_at + 120 used to terminate before its quickload.
     # Keep fixed headroom; duration is a wall timeout, not a simulation budget.
@@ -330,37 +327,36 @@ def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str
     headless_ticks = load_at + 600
     if continuation:
         env["MC2_SIM_IDENTITY_TRACE_DETAIL"] = "1"
-    with savegame_backup.guarded(sdir):
-        if os.path.exists(second_src):
-            os.remove(second_src)
-        if not plant and os.path.exists(os.path.join(sdir, "testgame.ims")):
-            # A mission whose quicksave fixture never fires (the fixture waits out a movie or cut-scene camera) would otherwise hand back the previous
-            # run's file as "its" save: two baselines of 2026-10-14 held mc2_01 saves.
-            os.remove(os.path.join(sdir, "testgame.ims"))
-        if plant:
-            shutil.copy2(plant, os.path.join(sdir, "testgame.ims"))
-        r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", str(duration),
-                            *smoke_target(install, ref_exe, ref_commit), "--keep-logs", *speed_args(sim_speed),
-                            # headless: no window or GPU; the run ends on a tick budget past the quickload and its re-save
-                            *(["--headless", "--ticks", str(headless_ticks)] if headless else [])], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
-                           timeout=RUN_TIMEOUT, **console_child.child_kwargs(redirected=True))
-        with open(os.path.join(dest, "runner.txt"), "w", encoding="utf-8") as fh:
-            fh.write(r.stdout)
-        for line in r.stdout.splitlines():  # forward the perf WARN so the gate row shows it (merge_gate.perf_warn_status)
-            if "[PERF_COUNTER_WARN]" in line:
-                print(line.strip(), flush=True)
-        arts = [line.removeprefix("[runner] artifacts: ").strip() for line in r.stdout.splitlines() if line.startswith("[runner] artifacts: ")]
-        if not arts or not os.path.exists(os.path.join(arts[-1], mission + ".log")):
-            sys.exit("saveload_roundtrip: the smoke run produced no log:\n" + "\n".join(r.stdout.splitlines()[-8:]))
-        shutil.copytree(arts[-1], os.path.join(dest, "run"), dirs_exist_ok=True)
-        first = second = None
-        first_src = os.path.join(sdir, "testgame.ims")
-        if os.path.exists(first_src):
-            first = os.path.join(dest, "save1.ims")
-            shutil.copy2(first_src, first)
-        if os.path.exists(second_src):
-            second = os.path.join(dest, "save2.ims")
-            shutil.move(second_src, second)
+    if os.path.exists(second_src):
+        os.remove(second_src)
+    if not plant and os.path.exists(os.path.join(sdir, "testgame.ims")):
+        # A mission whose quicksave fixture never fires (the fixture waits out a movie or cut-scene camera) would otherwise hand back the previous
+        # run's file as "its" save: two baselines of 2026-10-14 held mc2_01 saves.
+        os.remove(os.path.join(sdir, "testgame.ims"))
+    if plant:
+        shutil.copy2(plant, os.path.join(sdir, "testgame.ims"))
+    r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", str(duration),
+                        *smoke_target(install, ref_exe, ref_commit), "--keep-logs", *speed_args(sim_speed),
+                        # headless: no window or GPU; the run ends on a tick budget past the quickload and its re-save
+                        *(["--headless", "--ticks", str(headless_ticks)] if headless else [])], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
+                       timeout=RUN_TIMEOUT, **console_child.child_kwargs(redirected=True))
+    with open(os.path.join(dest, "runner.txt"), "w", encoding="utf-8") as fh:
+        fh.write(r.stdout)
+    for line in r.stdout.splitlines():  # forward the perf WARN so the gate row shows it (merge_gate.perf_warn_status)
+        if "[PERF_COUNTER_WARN]" in line:
+            print(line.strip(), flush=True)
+    arts = [line.removeprefix("[runner] artifacts: ").strip() for line in r.stdout.splitlines() if line.startswith("[runner] artifacts: ")]
+    if not arts or not os.path.exists(os.path.join(arts[-1], mission + ".log")):
+        sys.exit("saveload_roundtrip: the smoke run produced no log:\n" + "\n".join(r.stdout.splitlines()[-8:]))
+    shutil.copytree(arts[-1], os.path.join(dest, "run"), dirs_exist_ok=True)
+    first = second = None
+    first_src = os.path.join(sdir, "testgame.ims")
+    if os.path.exists(first_src):
+        first = os.path.join(dest, "save1.ims")
+        shutil.copy2(first_src, first)
+    if os.path.exists(second_src):
+        second = os.path.join(dest, "save2.ims")
+        shutil.move(second_src, second)
     with open(os.path.join(dest, "run", mission + ".log"), encoding="utf-8", errors="replace") as fh:
         text = fh.read()
     m = _FINGERPRINT.search(text)
@@ -794,7 +790,7 @@ def main(argv=None) -> int:
                                         "(the engine writes no re-save after a planted load)")
         p.add_argument("--mask", help="legacy noise mask: resave ignores declared run/build bytes; baseline/check hash zeroed noise bytes and require the same mask policy (old hashes must be re-recorded)")
         p.add_argument("--install", type=sd.resolve_install, default=sd.INSTALL_DIR, metavar="NAME_OR_PATH", help="launch/deploy install, e.g. lane3")
-        p.add_argument("--save-dir", help="backup/capture directory matching the engine's savePath (Windows installs share ~/.mechcommander2/savegame)")
+        p.add_argument("--save-dir", help="private save directory handed to the engine as MC2_SAVE_DIR (default: <out>/savegame)")
         sd.add_ref_args(p)
         add_speed_arg(p)
         p.add_argument("--headless", action="store_true", help="run the fixture headless (no window, GPU or audio; --ticks past the load): the save bytes must match the windowed baseline")
@@ -827,7 +823,7 @@ def main(argv=None) -> int:
     r.add_argument("--deploy", action="store_true")
     r.add_argument("--out")
     r.add_argument("--install", type=sd.resolve_install, default=sd.INSTALL_DIR, metavar="NAME_OR_PATH")
-    r.add_argument("--save-dir", help="directory matching the engine's savePath")
+    r.add_argument("--save-dir", help="private save directory handed to the engine as MC2_SAVE_DIR")
     sd.add_ref_args(r)
     add_speed_arg(r)
     a = sub.add_parser("analyze")

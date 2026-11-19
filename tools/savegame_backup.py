@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """savegame_backup - keep the owner's quicksave safe while a fixture run overwrites it.
+Manual CLI only: the harness tools now use a private MC2_SAVE_DIR and no longer import this module.
 
 WHAT: `backup` copies ~/.mechcommander2/savegame/testgame.ims to a sibling `testgame.ims.bak_<YYYYMMDD_HHMMSS>` and writes a pending marker beside it;
 `restore` puts the backed-up file back (or removes the fixture's file when there was none) and clears the marker. A second `backup` while a marker is

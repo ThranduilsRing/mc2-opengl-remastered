@@ -3,6 +3,7 @@
   "nofocus_callers": {
     "scripts/run_mp_loopback_proof.py": "Explicitly authorized co-op proof: two nofocus off-screen peers at BelowNormal, one shared XTX lease for rendered peers, private user directories and only own-PID timeout cleanup.",
     "scripts/tests/test_nofocus_env.py": "Windows priority inheritance regression launches only a windowless Python child through nofocus.spawn; no game or host lease.",
+    "scripts/tests/test_launcher_save_dir.py": "MC2_SAVE_DIR regression for nofocus.spawn: Popen, exe vetting, host lease and child registry are monkeypatched; no engine and no window is launched.",
     "scripts/run_player_path.py": "Player-path harness: launches the real front end through nofocus.spawn (no OS input, no focus, no mouse; scripted input is read inside the engine from MC2_INPUT_SCRIPT), holds the smoke lease, and redirects saves with MC2_SAVE_DIR.",
     "scripts/tests/test_abl_static_alloc.py": "Runs the compiled ABL allocation fault-injection fixture through nofocus.run; no engine window is launched.",
     "scripts/screen_shot.py": "Front-end screen capture (box screen:<id> rows): launches the engine exe through nofocus.spawn (exe_guard vetting, host lease, offscreen placement), waits for the TGA, then reaps its own child.",

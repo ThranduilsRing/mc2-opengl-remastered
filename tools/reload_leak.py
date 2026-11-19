@@ -47,7 +47,6 @@ ROOT = HERE.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 import console_child  # noqa: E402  (windowless console children that still print)
 import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)
-import savegame_backup  # noqa: E402  (back the owner's quicksave up around the fixture)
 from configure_ninja import NINJA, find_cmake, under_vcvars  # noqa: E402
 from bootstrap_worktree_build import cache_args  # noqa: E402
 
@@ -241,12 +240,12 @@ def run_fixture(stage, args, logs):
     exe = Path(stage) / EXE_NAME
     env = dict(os.environ, **FIXTURE_ENV)
     env["S10_RELOADS"] = str(args.cycles)
+    env["MC2_SAVE_DIR"] = os.path.abspath(args.save_dir or Path(logs) / "savegame")   # private: never the owner's folder
     env.pop("MC2_BOOT_QUICKLOAD_AT", None)  # the fixture reloads; a second boot load would double-count
     cmd = [sys.executable, ROOT / "scripts" / "run_smoke.py", "--mission", args.mission,
            "--duration", str(args.duration), "--exe", exe, "--keep-logs"]
     out = Path(logs) / "run_smoke.log"
-    with savegame_backup.guarded(args.save_dir):
-        rc = _run(cmd, out, env=env)
+    rc = _run(cmd, out, env=env)
     artifacts = None
     if out.is_file():
         for line in out.read_text(encoding="utf-8", errors="replace").splitlines():
@@ -314,7 +313,7 @@ def main(argv=None):
                      help=f"proof build tree (default {DEFAULT_BUILD_TREE.as_posix()})")
     run.add_argument("--stage", default=None, help=f"staged install dir (default {STAGE_ROOT}/<stamp>)")
     run.add_argument("--log-dir", default=None, help="where build/run logs go (default <stage>_logs)")
-    run.add_argument("--save-dir", default=None, help="savegame dir for the fixture (default: engine's)")
+    run.add_argument("--save-dir", default=None, help="savegame dir for the fixture (default: <logs>/savegame)")
     run.add_argument("--jobs", type=int, default=int(os.environ.get("MC2_BUILD_JOBS", "2")),
                      help=f"ninja -j for the proof build (default {os.environ.get('MC2_BUILD_JOBS', '2')})")
     run.add_argument("--no-build", action="store_true", help="reuse the proof exe in --build-tree")

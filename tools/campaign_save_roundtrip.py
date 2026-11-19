@@ -34,7 +34,6 @@ ROOT = os.path.abspath(os.path.join(HERE, ".."))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import save_inspect as si  # noqa: E402
-import savegame_backup  # noqa: E402
 from smoke_lib import host_lease, nofocus  # noqa: E402
 
 DEFAULT_DEPLOY = "A:/Games/mc2-opengl/mc2-win64-v0.4"
@@ -170,36 +169,37 @@ def capture(args) -> int:
     out = os.path.abspath(args.out)
     shutil.rmtree(out, ignore_errors=True)
     os.makedirs(out)
-    sdir = savegame_backup.default_dir()
+    sdir = os.path.join(out, "savegame")   # private engine save dir (MC2_SAVE_DIR), never the owner's folder
+    os.makedirs(sdir)
     first_src, second_src = (os.path.join(sdir, n) for n in ("testgame.ims", "testgame_resave.ims"))
     loading = args.load is not None
     # With a load, the quicksave fixture is armed far out of reach: it only makes the engine write the re-save right after the load.
     env = campaign_env(args.campaign, args.win_after_sec, 10**9 if loading else args.save_at, args.load_at if loading else None,
                        check_screens=args.check_screens, salvage=args.salvage)
-    # Host game lease before the owner's saves are touched, held until this process exits (launch-to-kill included).
+    env["MC2_SAVE_DIR"] = sdir
+    # Host game lease before the engine launches (it saves into the private dir above), held until this process exits (launch-to-kill included).
     try:
         host_lease.acquire(LEASE_LABEL)
     except host_lease.HostLeaseBusy as busy:
         print(f"campaign_save_roundtrip: {busy}")
         return 2
-    with savegame_backup.guarded(sdir):
-        for stale in (first_src, second_src):
-            if os.path.exists(stale):
-                os.remove(stale)
-        if loading:
-            shutil.copy2(args.load, first_src)
-        with open(os.path.join(out, "stdout.txt"), "w") as fo, open(os.path.join(out, "stderr.txt"), "w") as fe:
-            p = nofocus.spawn([exe], cwd=deploy, stdout=fo, stderr=fe, env=env)
-            try:
-                p.wait(timeout=args.timeout)
-            except subprocess.TimeoutExpired:
-                p.kill()
-        want = second_src if loading else first_src
-        if os.path.exists(want):
-            shutil.copy2(want, os.path.join(out, "resave.ims" if loading else "save1.ims"))
-        elif not args.keep_going:
-            print(f"campaign_save_roundtrip: no save was written ({want}); see {out}/stdout.txt")
-            return 1
+    for stale in (first_src, second_src):
+        if os.path.exists(stale):
+            os.remove(stale)
+    if loading:
+        shutil.copy2(args.load, first_src)
+    with open(os.path.join(out, "stdout.txt"), "w") as fo, open(os.path.join(out, "stderr.txt"), "w") as fe:
+        p = nofocus.spawn([exe], cwd=deploy, stdout=fo, stderr=fe, env=env)
+        try:
+            p.wait(timeout=args.timeout)
+        except subprocess.TimeoutExpired:
+            p.kill()
+    want = second_src if loading else first_src
+    if os.path.exists(want):
+        shutil.copy2(want, os.path.join(out, "resave.ims" if loading else "save1.ims"))
+    elif not args.keep_going:
+        print(f"campaign_save_roundtrip: no save was written ({want}); see {out}/stdout.txt")
+        return 1
     print(f"campaign_save_roundtrip: wrote {out}")
     return 0
 

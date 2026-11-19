@@ -32,6 +32,25 @@ def compare_rc(tmp_path, **second):
     return mod.compare(a, b)
 
 
+def test_capture_saves_into_a_private_dir_under_out(tmp_path, monkeypatch):
+    """The capture sets MC2_SAVE_DIR=<out>/savegame and reads the save from there, never the owner's folder."""
+    seen = {}
+    class P:
+        def wait(self, timeout=None):
+            (tmp_path / "out" / "savegame" / "testgame.ims").write_bytes(b"s")
+    def spawn(argv, **kw):
+        seen["dir"] = kw["env"]["MC2_SAVE_DIR"]
+        return P()
+    (tmp_path / "dep").mkdir()
+    (tmp_path / "dep" / "mc2.exe").write_bytes(b"")
+    monkeypatch.setattr(mod.nofocus, "spawn", spawn)
+    monkeypatch.setattr(mod.host_lease, "acquire", lambda *_: None)
+    args = mod.argparse.Namespace(deploy=str(tmp_path / "dep"), out=str(tmp_path / "out"), load=None, campaign="c", win_after_sec=1,
+                                  save_at=1, load_at=2, check_screens=False, salvage=False, timeout=1, keep_going=False)
+    assert mod.capture(args) == 0
+    assert seen["dir"] == str(tmp_path / "out" / "savegame") and (tmp_path / "out" / "save1.ims").read_bytes() == b"s"
+
+
 def test_identical_saves_compare_equal(tmp_path):
     assert compare_rc(tmp_path) == 0
 

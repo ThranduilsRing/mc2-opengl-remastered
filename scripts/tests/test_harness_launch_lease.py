@@ -1,5 +1,4 @@
 """mechbay_preview_harness and campaign_save_roundtrip hold the host game lease (named holder) across spawn; spawn is mocked."""
-import contextlib
 import os
 import subprocess
 import sys
@@ -104,8 +103,6 @@ def test_mechbay_busy_lease_fails_without_spawning(seen, tmp_path, monkeypatch):
 
 def test_campaign_roundtrip_holds_named_lease(seen, tmp_path, monkeypatch):
     d = _deploy(tmp_path)
-    monkeypatch.setattr(csr.savegame_backup, "default_dir", lambda: str(tmp_path / "saves"))
-    monkeypatch.setattr(csr.savegame_backup, "guarded", lambda sdir: contextlib.nullcontext())
     (tmp_path / "saves").mkdir()
     rc = csr.main(["capture", "--out", str(tmp_path / "out"), "--deploy", str(d), "--keep-going"])
     assert rc == 0

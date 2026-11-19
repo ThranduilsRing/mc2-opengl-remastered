@@ -17,7 +17,7 @@ runway_overview bookmark only:
      differs after a load) is a few hundred pixels.
 WHY: Mission::load is a parallel init path to Mission::init; the per-frame tex_resolve memo made the cement atlas build see stale texture handles
 when the load ran mid-frame (BUGS-FOUND-FIXED row 56). Nothing else compares a loaded mission with a fresh one.
-The run replaces the owner's quicksave, so it goes through savegame_backup.guarded().
+Each capture saves into a private MC2_SAVE_DIR under its out dir, never the owner's folder.
 
   py -3 tools/visual_verify/quickload_cement_check.py [--exe PATH] [--out-dir DIR] [--max-px N] [--pose-tol T]
   py -3 tools/visual_verify/quickload_cement_check.py --selftest CONTROL.png          # negative controls only
@@ -37,7 +37,6 @@ ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import console_child  # noqa: E402  (windowless console children; scripts/console_child.py)
-import savegame_backup  # noqa: E402
 
 BOOKMARK = "mc2_01_runway_overview.png"
 BASELINE = os.path.join(HERE, "quickload_cement_baseline.png")
@@ -54,6 +53,8 @@ def capture(exe: str, out: str, load: bool) -> int:
         args += ["--exe", exe]
     if load:
         args += ["--env-declare", "MC2_BOOT_QUICKSAVE_AT=1000", "--env-declare", "MC2_BOOT_QUICKLOAD_AT=1100"]
+    # build_pinned_env scrubs ambient MC2_*, so the private save dir goes through the declared path.
+    args += ["--env-declare", "MC2_SAVE_DIR=" + os.path.abspath(os.path.join(out, "savegame"))]
     return subprocess.run(args, cwd=ROOT, **console_child.child_kwargs()).returncode
 
 
@@ -143,10 +144,9 @@ def main() -> int:
     if a.selftest:
         return 0 if selftest(a.selftest, a.max_px, a.pose_tol, os.path.join(a.out_dir, "selftest")) else 3
     ctl, ql = os.path.join(a.out_dir, "ctl"), os.path.join(a.out_dir, "ql")
-    with savegame_backup.guarded():
-        if capture(a.exe, ctl, False) or capture(a.exe, ql, True):
-            print("FAIL: a capture run failed")
-            return 2
+    if capture(a.exe, ctl, False) or capture(a.exe, ql, True):
+        print("FAIL: a capture run failed")
+        return 2
     ctl_png, ql_png = os.path.join(ctl, BOOKMARK), os.path.join(ql, BOOKMARK)
     if not (os.path.exists(ctl_png) and os.path.exists(ql_png)):
         print(f"FAIL: {BOOKMARK} was not captured")

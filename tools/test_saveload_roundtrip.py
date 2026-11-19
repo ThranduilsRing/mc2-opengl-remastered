@@ -229,17 +229,12 @@ def test_default_run_has_at_least_300_frames_between_save_and_load():
 
 def test_run_retains_failed_smoke_evidence_and_limits_liveness_fixture(tmp_path, monkeypatch):
     import subprocess
-    from contextlib import nullcontext
     artifact = tmp_path / "tests/smoke/artifacts/2026-fixture"
     artifact.mkdir(parents=True)
     (artifact / "mc2_01.log").write_text("fixture did not load")
     monkeypatch.setattr(rt, "ROOT", str(tmp_path))
-    monkeypatch.setattr(rt.savegame_backup, "guarded", lambda path: nullcontext())
     save_dir = tmp_path / "savegame"
     save_dir.mkdir()
-    def owner_dir_forbidden():
-        raise AssertionError("a mocked save guard must never reach the owner's save directory")
-    monkeypatch.setattr(rt.savegame_backup, "default_dir", owner_dir_forbidden)
     observed = []
     commands = []
     def smoke(*args, **kwargs):
@@ -261,6 +256,25 @@ def test_run_retains_failed_smoke_evidence_and_limits_liveness_fixture(tmp_path,
         # More startup allowance must not buy extra post-load simulation ticks.
         assert int(commands[-1][commands[-1].index("--ticks") + 1]) == 2000
         assert (dest / "run/mc2_01.log").read_text() == "fixture did not load"
+
+
+def test_run_fixture_without_save_dir_uses_a_private_dir_under_out(tmp_path, monkeypatch):
+    """No --save-dir: the engine still gets MC2_SAVE_DIR=<out>/savegame and the harness reads/deletes saves only there (never the owner's folder)."""
+    import subprocess
+    from pathlib import Path
+    artifact = tmp_path / "art"
+    artifact.mkdir()
+    (artifact / "m.log").write_text("log")
+    seen = {}
+    def smoke(*args, **kwargs):
+        seen["dir"] = kwargs["env"]["MC2_SAVE_DIR"]
+        (Path(seen["dir"]) / "testgame.ims").write_bytes(b"save")
+        return subprocess.CompletedProcess(args, 0, f"[runner] artifacts: {artifact}\n")
+    monkeypatch.setattr(rt.subprocess, "run", smoke)
+    out = tmp_path / "out"
+    _, first, _, _, _ = rt.run_fixture("m", 10, 20, False, str(out), headless=True)
+    assert seen["dir"] == str(out / "savegame") and Path(first).read_bytes() == b"save"
+    assert seen["dir"] != os.path.join(os.path.expanduser("~"), ".mechcommander2", "savegame")
 
 
 def test_camera_pose_runs_saved_then_moved_and_compares_the_save_bytes(tmp_path, monkeypatch, capsys):
