@@ -1374,7 +1374,7 @@ void MechLabScreen::updateHeatMeter()
 		mc2::fmt::to_buf(text, "{:d}/", mc2::fmt::as_i32(curHeat));
 
 	textObjects[12].setText( text );
-	attributeMeters[MECH_LAB_ATTRIBUTE_METER_COUNT-4].setValue( std::min( 1.f, fCurHeat/static_cast<float>(maxHeat) ) );	// over-heat (74/43) must not run the bar out of its box
+	attributeMeters[MECH_LAB_ATTRIBUTE_METER_COUNT-4].setValue( fCurHeat/static_cast<float>(maxHeat) );
 
 }
 

@@ -514,6 +514,8 @@ void SimpleCamera::drawPreviewToPanel( float panelX, float panelY, float panelW,
 {
 	// A missing selection owns no pixels in the shared preview target.
 	if (!pObject) return;
+	// The fit sweep turns the real mech through the swing extremes to measure it; those frames are measurement only.
+	if (framed_ && fitIters_ > 0) return;
 #ifdef MC2_IMGUI
     const uint64_t tex=mc2vk::uiTextureServiceReady() ? mc2_vk_preview_texture() : 0;
 	const float u1 = bounds[0] / 800.f;

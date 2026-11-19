@@ -72,17 +72,18 @@ ComponentListItem::ComponentListItem( LogisticsComponent* pComp )
 		const ml::ItemRects R = ml::componentItemRects( sizeX, sizeY );
 		const float ox = static_cast<float>(outline.left()), oy = static_cast<float>(outline.top());   // the fit frame starts at the outline
 		const long rowDy = static_cast<long>(R.rowDy);
+		icon.moveTo( ox + R.icon.x, oy + R.icon.y );
+		heatIcon.moveTo( ox + R.heatIcon.x, oy + R.heatIcon.y );
+		heatText.moveTo( ox + R.heat.x, oy + R.heat.y );
+		costText.moveTo( ox + R.cost.x, oy + R.cost.y );
+		costIcon.moveTo( ox + R.costIcon.x, oy + R.costIcon.y );
 		if ( rowDy )
-		{
-			icon.moveTo( ox + R.icon.x, oy + R.icon.y );
-			heatIcon.moveTo( ox + R.heatIcon.x, oy + R.heatIcon.y );
-			heatText.moveTo( ox + R.heat.x, oy + R.heat.y );
 			heatText.alignment = 0;
-		}
 
-		// resize outlines and icon outlines
-		outline.resize(outline.width(), outline.height()+deltaY+rowDy);
-		iconOutline.resize(iconOutline.width()+deltaX, iconOutline.height()+deltaY);
+		// outline and icon outline sizes come from the same table (so the layout test pins the real placement)
+		outline.resize( static_cast<long>(R.item.w), static_cast<long>(R.item.h) );
+		iconOutline.resize( static_cast<long>(R.iconOutline.w), static_cast<long>(R.iconOutline.h) );
+		(void)deltaX; (void)deltaY;
 
 		// Warning (HEAT EXCEEDED): small face (agencyfb11), wraps to two lines, confined to the icon outline.
 		disabledText.font = name.font;
@@ -417,7 +418,13 @@ void ComponentIconListBox::setType( int newType, int otherNewType, int orThis, i
 				{
 					// Template items sit at the stock list origin; the list is kDx narrower on its left.
 					const long listOriginX = globalX() - static_cast<long>(mc2::mechlab_loc::kDx);
-					if ( masterComponentElem->globalX() > listOriginX )
+					// A revisited item already sits at globalX() + offset: strip the current origin so AddItem puts it
+					// back at the same x every revisit (not +kDx each time).
+					if ( masterComponentElem->globalX() >= globalX() )
+					{
+						masterComponentElem->move( -globalX(), 0 );
+					}
+					else if ( masterComponentElem->globalX() > listOriginX )
 					{
 						masterComponentElem->move( -listOriginX, 0 );
 					}
