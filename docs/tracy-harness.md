@@ -37,7 +37,7 @@ check-env-registry.sh (retired in G8; the gate table is the registry) scope; its
 
 Every non-ASAN MC2 build compiles with `TRACY_ENABLE` + `TRACY_ON_DEMAND`
 (`CMakeLists.txt`): the Tracy client buffers **nothing** until a recorder
-connects. So the harness starts `tracy-capture.exe` first (it binds port 8086),
+connects. So the harness starts `tracy-capture.exe` first (it binds `TRACY_PORT`, default 8096; an open Tracy GUI holds 8086),
 then launches the game — the game streams zones to the already-listening
 recorder.
 
