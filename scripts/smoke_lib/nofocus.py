@@ -466,9 +466,12 @@ def ensure_save_dir(child_env: dict) -> str:
 
     Without it the game writes the player's ~/.mechcommander2/savegame (after_mission_*.fit, testgame*.ims) and the merge gate's
     player-path row reports "savegame folder changed during the run" (Fable 1118h P1-2)."""
-    real = os.path.normcase(os.path.abspath(os.path.join(os.path.expanduser("~"), ".mechcommander2", "savegame")))
+    def _canon(p):
+        return os.path.normcase(os.path.realpath(p))
+    home_mc2 = _canon(os.path.join(os.path.expanduser("~"), ".mechcommander2"))
     given = child_env.get("MC2_SAVE_DIR")
-    if given and os.path.normcase(os.path.abspath(given)) == real:
+    # Refuse the player's folder, anything under it, and its parent (realpath: case, trailing slash, 8.3 aliases, symlinks).
+    if given and (lambda g: g == home_mc2 or g.startswith(home_mc2 + os.sep) or home_mc2.startswith(g + os.sep))(_canon(given)):
         print(f"[save-dir] refused MC2_SAVE_DIR={given} (the player's savegame folder); using a private dir", file=sys.stderr, flush=True)
         given = None
     if not given:

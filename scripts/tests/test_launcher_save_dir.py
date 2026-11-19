@@ -47,7 +47,7 @@ def test_caller_value_wins(popen, tmp_path):
     assert popen.call_args.kwargs["env"]["MC2_SAVE_DIR"] == str(tmp_path / "mine")
 
 
-@pytest.mark.parametrize("bad", ["", str(REAL)])
+@pytest.mark.parametrize("bad", ["", str(REAL), str(REAL) + "/", str(REAL).upper(), str(REAL / "sub"), str(REAL.parent), str(REAL.parent.parent)])
 def test_empty_or_real_value_is_replaced(popen, bad):
     nofocus.spawn(["mc2.exe"], env={"MC2_SAVE_DIR": bad})
     d = popen.call_args.kwargs["env"]["MC2_SAVE_DIR"]
@@ -74,3 +74,13 @@ def test_via_menu_launch_is_redirected(popen, tmp_path):
 def test_non_engine_child_untouched(popen):
     nofocus.spawn(["python.exe"], env={})
     assert "MC2_SAVE_DIR" not in popen.call_args.kwargs["env"]
+
+
+def test_cement_check_declares_save_dir_to_capture(monkeypatch, tmp_path):
+    sys.path.insert(0, str(ROOT / "tools" / "visual_verify"))
+    import quickload_cement_check as qcc
+    run = Mock(return_value=Mock(returncode=0))
+    monkeypatch.setattr(qcc.subprocess, "run", run)
+    qcc.capture("", str(tmp_path / "o"), load=False)
+    args = run.call_args.args[0]
+    assert args[args.index("--env-declare") + 1] == "MC2_SAVE_DIR=" + str(tmp_path / "o" / "savegame")

@@ -63,19 +63,13 @@ def test_ref_flags_are_exclusive(capsys):
 
 @pytest.mark.parametrize("cmd", ["resave", "check"])
 def test_saveload_fixture_forwards_ref(cmd, tmp_path):
-    with patch.object(sl.savegame_backup, "guarded") as guarded:
-        guarded.return_value.__enter__ = lambda *_: None
-        guarded.return_value.__exit__ = lambda *_: False
-        argv = _capture_argv(sl, lambda: sl.main([cmd, "--mission", "mc2_01", "--install", "lane3", "--save-dir", str(tmp_path),
-                                                  "--out", str(tmp_path), "--ref-exe", "C:/ref/mc2.exe"]))
+    argv = _capture_argv(sl, lambda: sl.main([cmd, "--mission", "mc2_01", "--install", "lane3", "--save-dir", str(tmp_path),
+                                              "--out", str(tmp_path), "--ref-exe", "C:/ref/mc2.exe"]))
     assert argv[argv.index("--ref-exe") + 1] == "C:/ref/mc2.exe"
 
 
 def test_saveload_run_forwards_ref(tmp_path):
-    with patch.object(sl.savegame_backup, "guarded") as guarded:
-        guarded.return_value.__enter__ = lambda *_: None
-        guarded.return_value.__exit__ = lambda *_: False
-        argv = _capture_argv(sl, lambda: sl.main(["run", "--install", "lane3", "--save-dir", str(tmp_path), "--ref-commit", "abc1234"]))
+    argv = _capture_argv(sl, lambda: sl.main(["run", "--install", "lane3", "--save-dir", str(tmp_path), "--ref-commit", "abc1234"]))
     assert argv[argv.index("--ref-commit") + 1] == "abc1234"
 
 

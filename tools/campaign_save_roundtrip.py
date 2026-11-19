@@ -177,7 +177,7 @@ def capture(args) -> int:
     env = campaign_env(args.campaign, args.win_after_sec, 10**9 if loading else args.save_at, args.load_at if loading else None,
                        check_screens=args.check_screens, salvage=args.salvage)
     env["MC2_SAVE_DIR"] = sdir
-    # Host game lease before the owner's saves are touched, held until this process exits (launch-to-kill included).
+    # Host game lease before the engine launches (it saves into the private dir above), held until this process exits (launch-to-kill included).
     try:
         host_lease.acquire(LEASE_LABEL)
     except host_lease.HostLeaseBusy as busy:

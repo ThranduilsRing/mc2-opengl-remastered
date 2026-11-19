@@ -53,8 +53,9 @@ def capture(exe: str, out: str, load: bool) -> int:
         args += ["--exe", exe]
     if load:
         args += ["--env-declare", "MC2_BOOT_QUICKSAVE_AT=1000", "--env-declare", "MC2_BOOT_QUICKLOAD_AT=1100"]
-    env = dict(os.environ, MC2_SAVE_DIR=os.path.join(out, "savegame"))
-    return subprocess.run(args, cwd=ROOT, env=env, **console_child.child_kwargs()).returncode
+    # build_pinned_env scrubs ambient MC2_*, so the private save dir goes through the declared path.
+    args += ["--env-declare", "MC2_SAVE_DIR=" + os.path.abspath(os.path.join(out, "savegame"))]
+    return subprocess.run(args, cwd=ROOT, **console_child.child_kwargs()).returncode
 
 
 def _open(p):

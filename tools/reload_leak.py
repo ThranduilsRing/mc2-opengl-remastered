@@ -240,7 +240,7 @@ def run_fixture(stage, args, logs):
     exe = Path(stage) / EXE_NAME
     env = dict(os.environ, **FIXTURE_ENV)
     env["S10_RELOADS"] = str(args.cycles)
-    env["MC2_SAVE_DIR"] = str(args.save_dir or Path(logs) / "savegame")   # private: never the owner's folder
+    env["MC2_SAVE_DIR"] = os.path.abspath(args.save_dir or Path(logs) / "savegame")   # private: never the owner's folder
     env.pop("MC2_BOOT_QUICKLOAD_AT", None)  # the fixture reloads; a second boot load would double-count
     cmd = [sys.executable, ROOT / "scripts" / "run_smoke.py", "--mission", args.mission,
            "--duration", str(args.duration), "--exe", exe, "--keep-logs"]

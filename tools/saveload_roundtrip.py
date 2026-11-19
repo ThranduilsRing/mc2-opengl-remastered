@@ -315,7 +315,7 @@ def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str
         sd.build_and_deploy(install)
     dest = out or tempfile.mkdtemp(prefix="resave_")
     os.makedirs(dest, exist_ok=True)
-    sdir = save_dir or os.path.join(dest, "savegame")
+    sdir = os.path.abspath(save_dir or os.path.join(dest, "savegame"))   # the engine runs with cwd=exe_dir
     os.makedirs(sdir, exist_ok=True)
     second_src = os.path.join(sdir, "testgame_resave.ims")
     env = dict(os.environ, **resave_env(save_at, load_at), **(extra_env or {}))
