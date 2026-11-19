@@ -209,7 +209,7 @@ public:
 	// jump to any mission regardless of stage/progression, then updateAvailability.
 	std::expected<void, long> setCurrentMissionAnyStage( mc2::czstring missionName );
 
-	// false (and a logged error, no state change) when the campaign file is missing or unusable
+	// false (and a logged error) when the campaign file is missing or unusable; missing file: no state change
 	bool				startNewCampaign( mc2::czstring fileName = "campaign");
 	void				startMultiPlayer();
 	void				setPurchaseFile( mc2::czstring fileName );
