@@ -244,8 +244,10 @@ def main(argv=None) -> int:
     ap.add_argument("--out", default="", help="evidence root (default E:/mc2-archive-2026-10/proofs/player-path/<stamp>)")
     ap.add_argument("--env", action="append", default=[], metavar="K=V", help="extra engine env (e.g. MC2_SIM_OVERLAP=0)")
     ap.add_argument("--list", action="store_true")
+    ap.add_argument("--scenario-dir", default="", help="directory of .pp scenarios (default tests/player_path; mod-only scripts live in tests/player_path_mods so the stock sweeps never run them)")
     a = ap.parse_args(argv)
-    names = sorted(p.stem for p in SCEN_DIR.glob("*.pp"))
+    scen_dir = Path(a.scenario_dir) if a.scenario_dir else SCEN_DIR
+    names = sorted(p.stem for p in scen_dir.glob("*.pp"))
     if a.list:
         print("\n".join(names))
         return 0
@@ -266,7 +268,7 @@ def main(argv=None) -> int:
     root = Path(a.out) if a.out else DEFAULT_PROOFS / time.strftime("%Y%m%d-%H%M%S")
     results = []
     for n in want:
-        r = run_scenario(exe, parse_scenario(SCEN_DIR / f"{n}.pp"), root / n, extra)
+        r = run_scenario(exe, parse_scenario(scen_dir / f"{n}.pp"), root / n, extra)
         results.append(r)
         print(f"[PLAYER_PATH] {n}: {r['result']} wall={r['wall_s']}s videos={len(r['videos_opened'])} {'; '.join(r['problems'])}", flush=True)
     (root / "summary.json").write_text(json.dumps(results, indent=1), encoding="utf-8")
