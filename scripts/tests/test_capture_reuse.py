@@ -210,3 +210,16 @@ def test_effective_device_and_capture_helpers_invalidate_reuse(tmp_path):
     helper.parent.mkdir(parents=True)
     helper.write_text("changed")
     assert capture_reuse.restore(cmd, root, cache, "gpuA", env={"MC2_VK_DEVICE": "A"}) is None
+
+
+def test_lane_scratch_path_is_not_part_of_the_reuse_key(tmp_path, monkeypatch):
+    """gate_env() hands every child a per-worktree MC2_LANE_SCRATCH; a set stored from one slot must still hit from another."""
+    root, _install, out, cmd = _world(tmp_path)
+    cache = tmp_path / "cache"
+    monkeypatch.setenv("MC2_LANE_SCRATCH", str(tmp_path / "slotA" / "gate-scratch"))
+    _capture(out)
+    assert capture_reuse.store(cmd, root, cache, "gpuA")
+    import shutil
+    shutil.rmtree(out)
+    monkeypatch.setenv("MC2_LANE_SCRATCH", str(tmp_path / "slotB" / "gate-scratch"))
+    assert capture_reuse.restore(cmd, root, cache, "gpuA")

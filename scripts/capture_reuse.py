@@ -110,7 +110,7 @@ def identity(command: list, root: Path, gpu: str | None = None, env=None) -> dic
         "poses": poses,
         "args": [a for i, a in enumerate(command[2:], 2) if a not in ("--out", "--install") and command[i - 1] not in ("--out", "--install")],
         "harness": harness,
-        "env": {k: v for k, v in sorted((os.environ if env is None else env).items()) if k.startswith("MC2_") and k not in ("MC2_GATE_BASE", "MC2_CAPTURE_REUSE", "MC2_GATE_REASON", "MC2_GATE_TIER", "MC2_SMOKE_ARTIFACT_ROOT")},
+        "env": {k: v for k, v in sorted((os.environ if env is None else env).items()) if k.startswith("MC2_") and k not in ("MC2_GATE_BASE", "MC2_CAPTURE_REUSE", "MC2_GATE_REASON", "MC2_GATE_TIER", "MC2_SMOKE_ARTIFACT_ROOT", "MC2_LANE_SCRATCH")},
         "gpu": gpu,
     }
 

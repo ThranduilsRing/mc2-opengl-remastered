@@ -167,7 +167,7 @@ def mods_key(command, overrides, root, head, cache=None, mods=None):
     skip_values = {command[command.index(f) + 1] for f in ("--stage-root", "--exe") if f in command}
     norm = [a for a in norm if a not in skip_values]
     env = {k: v for k, v in list(os.environ.items()) + list(overrides.items())
-           if (k.startswith("MC2_") or k == "PYTHONPATH") and k != "MC2_SMOKE_ARTIFACT_ROOT"}
+           if (k.startswith("MC2_") or k == "PYTHONPATH") and k not in ("MC2_SMOKE_ARTIFACT_ROOT", "MC2_LANE_SCRATCH")}
     parts["command"] = _digest([norm, env])
     cache.save()
     return _digest(parts), parts
