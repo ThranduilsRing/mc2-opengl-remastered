@@ -227,7 +227,7 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
         return {};
     }
     OwnedBuffer staging;
-    { ZoneScopedN("TextureResidency.Stage");
+    { ZoneScopedN("TextureResidency.Stage"); ZoneValue(static_cast<int64_t>(image.pixels.size()));
       if (!staging.createFilled(ctx_.allocator(),ctx_.device(),image.pixels.data(),image.pixels.size(),VK_BUFFER_USAGE_TRANSFER_SRC_BIT,vegetation ? "veg.stage.atlas" : "texture.service.staging")) return {}; }
     auto resource=std::make_shared<Image>();
     { ZoneScopedN("TextureResidency.CreateImage"); if (arrayView) {
