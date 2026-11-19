@@ -1558,16 +1558,16 @@ void prewarmMoverGpuTextures(GameObjectManager& objects)
 	// first frame can draw), capped at kPrewarmPass2ByteCap of device bytes; the other movers upload lazily when they come into view.
 	std::vector<GameObject*> movers;
 	std::vector<RenderCore::PrewarmMover> where;
-	const auto collect = [&](auto* list, long count) {
-		for (long i = 0; list && i < count; ++i)
-			if (list[i] && list[i]->getExists()) {
-				const glm::vec3 p = list[i]->getPosition();
-				movers.push_back(list[i]);
-				where.push_back({p.x, p.y, Team::home && list[i]->getTeamId() == Team::home->getId()});
+	const auto collect = [&](auto list) {
+		for (auto* o : list)
+			if (o && o->getExists()) {
+				const glm::vec3 p = o->getPosition();
+				movers.push_back(o);
+				where.push_back({p.x, p.y, Team::home && o->getTeamId() == Team::home->getId()});
 			}
 	};
-	collect(objects.mechs, objects.numMechs);
-	collect(objects.vehicles, objects.numVehicles);
+	if (objects.mechs) collect(std::span(objects.mechs, static_cast<size_t>(objects.numMechs)));
+	if (objects.vehicles) collect(std::span(objects.vehicles, static_cast<size_t>(objects.numVehicles)));
 	std::vector<size_t> order;
 	for (size_t i = 0; i < movers.size(); ++i) if (where[i].home) order.push_back(i);
 	const size_t homeCount = order.size();
