@@ -14,6 +14,7 @@
 #include "vk_island_util.h"
 #include "vulkan_context.h"
 
+#include <tracy/Tracy.hpp>
 #include <algorithm>
 #include <cstring>
 #include <string>
@@ -190,10 +191,13 @@ void ShadowMechCasters::stage(uint64_t epoch) {
     const VkDeviceSize instBytes = static_cast<VkDeviceSize>(feed.instanceCount) * kMechInstanceBytes;
     const VkDeviceSize boneBytes = static_cast<VkDeviceSize>(feed.boneCount) * kMechBoneBytes;
     const VkBuffer oldInst = instBuf_[parity].get(), oldBone = boneBuf_[parity].get();
-    if (!ensureBuffer(instBuf_[parity], instCap_[parity], instBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "shadow.mechInst") ||
-        !ensureBuffer(boneBuf_[parity], boneCap_[parity], boneBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "shadow.mechBone")) return;
-    if (instBuf_[parity].get() != oldInst || boneBuf_[parity].get() != oldBone) writeDescriptors(parity);
-    if (!boneBuf_[parity].upload(feed.bones64, boneBytes)) return;
+    {
+        ZoneScopedN("MechStage.Ensure");
+        if (!ensureBuffer(instBuf_[parity], instCap_[parity], instBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "shadow.mechInst") ||
+            !ensureBuffer(boneBuf_[parity], boneCap_[parity], boneBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "shadow.mechBone")) return;
+        if (instBuf_[parity].get() != oldInst || boneBuf_[parity].get() != oldBone) writeDescriptors(parity);
+    }
+    { ZoneScopedN("MechStage.BoneUpload"); if (!boneBuf_[parity].upload(feed.bones64, boneBytes)) return; }
 
     const uint64_t vertexCount = feed.vboBytes / vertexStride_;
     uint32_t dropped = 0;
@@ -215,13 +219,13 @@ void ShadowMechCasters::stage(uint64_t epoch) {
     skinInstances_.assign(static_cast<const uint8_t*>(feed.instances64), static_cast<const uint8_t*>(feed.instances64) + instBytes);
     skinParity_ = parity;
     skinVboBytes_ = feed.vboBytes;
-    skin_.plan(parity, runs_, std::span<const uint8_t>(static_cast<const uint8_t*>(feed.instances64), static_cast<size_t>(feed.instanceCount) * 64), skinInstances_, vertexCount);
-    if (!instBuf_[parity].upload(skinInstances_.data(), instBytes)) { skin_.cancel(); runs_.clear(); stagedInstances_ = 0; }
+    { ZoneScopedN("MechStage.SkinPlan"); skin_.plan(parity, runs_, std::span<const uint8_t>(static_cast<const uint8_t*>(feed.instances64), static_cast<size_t>(feed.instanceCount) * 64), skinInstances_, vertexCount); }
+    { ZoneScopedN("MechStage.InstUpload"); if (!instBuf_[parity].upload(skinInstances_.data(), instBytes)) { skin_.cancel(); runs_.clear(); stagedInstances_ = 0; } }
     // At most one command per staged instance per map. Reserve for the island's
     // 40 UBO slices, bounded like the static draw ring; excess uses direct draws.
     const VkDeviceSize commands = (std::min<uint64_t>)(1u << 17, static_cast<uint64_t>(stagedInstances_) * 40);
-    if (commands) ensureBuffer(drawCmds_[parity], drawCap_[parity], commands * sizeof(VkDrawIndexedIndirectCommand),
-                               VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, "shadow.mechDraws");
+    if (commands) { ZoneScopedN("MechStage.DrawCmds"); ensureBuffer(drawCmds_[parity], drawCap_[parity], commands * sizeof(VkDrawIndexedIndirectCommand),
+                               VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, "shadow.mechDraws"); }
 }
 
 void ShadowMechCasters::recordSkin(VkCommandBuffer cb) {
