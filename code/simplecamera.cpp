@@ -430,7 +430,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 				}
 				const bool posted = labMech && postMechPreviewGpu( *this, labMech, offsetX, offsetY, viewMulX, viewMulY,
 				                                   haveGround_ ? groundC_[0] : 0.f, groundC_[1], ( haveGround_ && !( framed_ && fitIters_ > 0 ) ) ? groundH_ : 0.f,
-				                                   framed_ ? ( floorY_ > 0.f ? floorY_ : 0.5f * ( bounds[1] + bounds[3] ) + 0.5f * fillFrac_ * ( bounds[3] - bounds[1] ) ) : 0.f, bounds, framed_, framed_ && fitIters_ > 0 );
+				                                   framed_ ? ( floorY_ > 0.f ? floorY_ : 0.5f * ( bounds[1] + bounds[3] ) + 0.5f * 0.95f * fillFrac_ * ( bounds[3] - bounds[1] ) ) : 0.f, bounds, framed_, framed_ && fitIters_ > 0 );
 				if ( posted )
 					gpuDraws = mc2_vk_mech_preview_drew_last() != 0;
 				// With the GPU path drawing, PreviewDraw only projects (the framing bounds below).

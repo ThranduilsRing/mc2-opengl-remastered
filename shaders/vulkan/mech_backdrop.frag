@@ -27,7 +27,7 @@ void main() {
     } else {
         float d = (p.y - hy) / max(1.0 - hy, 0.001);         // 0 at the wall, 1 at the panel bottom
         float depth = 1.0 / (0.12 + d);                      // large far away
-        float line = max(band(fract((p.x - 0.5) * depth * 0.55 + 0.5) - 0.5, 0.035 * (0.3 + d)), band(fract(depth * 0.9) - 0.5, 0.05));
+        float line = max(0.35 * band(fract((p.x - 0.5) * depth * 0.55 + 0.5) - 0.5, 0.035 * (0.3 + d)),band(fract(depth * 0.9) - 0.5, 0.05));
         col = mix(vec3(0.16, 0.17, 0.20), vec3(0.07, 0.08, 0.10), d);
         col += vec3(0.16, 0.18, 0.22) * line * (1.0 - d * 0.6) * smoothstep(0.0, 0.25, d);   // grid fades into the wall line (no bright cone at the far centre)
         float haz = 1.0 - smoothstep(0.0, 0.012, p.y - hy);   // hazard line where the wall meets the floor
