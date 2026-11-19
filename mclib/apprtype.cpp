@@ -279,7 +279,8 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, mc2:
 	// Scan the registry (load order) for this appearance.
 	for (auto& known : types)
 	{
-		if (known && S_stricmp(known->name,appearFile) == 0)
+		// Same name in another class is a different type (a mod mech named "infantry" must not get the GV "infantry" and be cast to Mech3DAppearanceType).
+		if (known && static_cast<long>(known->appearanceNum >> 24) == appearanceClass && S_stricmp(known->name,appearFile) == 0)
 		{
 			appearanceType = known.get();
 			break;
