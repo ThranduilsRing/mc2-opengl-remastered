@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include "gos_crashbundle.h"
 #include "utils/mc2log.h"
+#include "logisticserrors.h"
 #include "footprints.h"
 // Mission: the second half of the Mission::load sequence -- the managers, terrain, movement data and mission script,
 // the warriors, parts, teams and objects, the commanders, the HUD and the geometry finalize. The first half and the
