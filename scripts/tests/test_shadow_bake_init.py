@@ -49,7 +49,8 @@ int main() {
                             capture_output=True, text=True, timeout=30,
                             **console_child.child_kwargs(redirected=True))
     assert result.returncode == 0, result.stderr
-    result = nofocus.run([str(exe)], capture_output=True, text=True, timeout=3)
+    # Hang guard only (the program asserts its own 1 s bound); the first launch of a fresh exe under a loaded board took > 3 s.
+    result = nofocus.run([str(exe)], capture_output=True, text=True, timeout=30)
     assert result.returncode == 0, result.stderr
 
 
