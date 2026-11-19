@@ -1201,7 +1201,6 @@
    "LG14": 1
   },
   "RenderCore/MissionEnvironment.h": {},
-  "RenderCore/MoverPrewarmSelect.h": {},
   "RenderCore/PipelineDesc.h": {},
   "RenderCore/PipelineRegistry.cpp": {
    "LG06": 1
@@ -3464,7 +3463,7 @@
    "LG20": 1
   }
  },
- "head": "47303582d",
+ "head": "24c5b5c07",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
