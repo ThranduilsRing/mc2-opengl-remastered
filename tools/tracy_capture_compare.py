@@ -131,6 +131,10 @@ VK_ENV = {
 }
 
 
+# Lane port: env TRACY_PORT wins; the default avoids 8086, which a running Tracy GUI
+# (owner or another lane) can hold, leaving tracy-capture with a 0-byte trace.
+TRACY_PORT = os.environ.get("TRACY_PORT", "8096")
+
 def tracy_dir() -> Path:
     return Path(os.environ.get("TRACY_TOOLS_DIR", str(DEFAULT_TRACY_DIR)))
 
@@ -202,7 +206,7 @@ def game_env(arm: str, fixed_timestep: bool, fps_cap, pose, extra_env, via_menu_
         if k.startswith("MC2_VK") or k == "MC2_RENDER_BACKEND":
             env.pop(k)
     env.update({
-        "TRACY_PORT": "8086",  # explicit opt-in to the loopback profiling listener
+        "TRACY_PORT": TRACY_PORT,  # explicit opt-in to the loopback listener (not 8086: an open Tracy GUI takes that)
         "MC2_NO_LAUNCHER": "1",
         "MC2_SMOKE_MODE": "1",
         # Never fullscreen / never grab the pointer.
@@ -460,7 +464,7 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
 
         owner_affinity = owner_capture_mode() if post_load else False
         # Post-load mode deliberately excludes startup from the recorder's -s window.
-        cap_cmd = [str(cap_exe), "-a", "127.0.0.1", "-p", "8086",
+        cap_cmd = [str(cap_exe), "-a", "127.0.0.1", "-p", TRACY_PORT,
                    *([] if ticks or spawn_game else ["-s", str(seconds)]), "-f", "-o", str(out)]
         cap_log = out.with_suffix(".capture.log")
         cap_lf = cleanup.enter_context(open(cap_log, "w", encoding="utf-8", errors="replace"))
