@@ -6212,8 +6212,7 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
-    "selected",
-    "home",
+    "prewarmed",
     "mechs",
     "vehicles"
    ],
