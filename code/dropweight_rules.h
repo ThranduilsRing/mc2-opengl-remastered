@@ -2,6 +2,7 @@
 // All balance constants live here; the campaign stores only the purchase count.
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 
 namespace dropweight {
@@ -13,8 +14,7 @@ inline constexpr double kLogK            = 0.75;    // growth: base * (1 + k * l
 // Price of the next purchase when n purchases were already made, rounded to 100 C-Bills.
 inline long priceForNext(int n)
 {
-	if (n < 0) n = 0;
-	const double p = kBasePrice * (1.0 + kLogK * std::log(1.0 + n));
+	const double p = kBasePrice * (1.0 + kLogK * std::log(1.0 + std::max(n, 0)));
 	return static_cast<long>(std::floor(p / 100.0 + 0.5)) * 100L;
 }
 

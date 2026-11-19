@@ -167,7 +167,7 @@ void MechBayScreen::update()
 	getButton( MB_MSG_NEXT )->disable( overLimit );
 
 	// Buy +5 t drop weight (price grows per purchase; label carries it).
-	sprintf( str, "BUY +5 T DROP WEIGHT  %ld", LogisticsData::instance->getDropWeightPrice() );
+	mc2::fmt::to_buf( str, "BUY +5 T DROP WEIGHT  {:d}", mc2::fmt::as_i32( LogisticsData::instance->getDropWeightPrice() ) );
 	setDefsElementText( "game.mcl_mb_layout.button.buy_drop_weight_button", str );
 
 
