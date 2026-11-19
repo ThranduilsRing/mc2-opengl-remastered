@@ -3,6 +3,7 @@
 #include "mc2_czstring.h"
 #include "mech3d_internal.h"
 #include "render_snap.h"
+#include "texture_probe_memo.h"
 #include "../RenderCore/axis_convert.h"
 #include "content_error.h"
 #include <format>
@@ -296,6 +297,9 @@ void Mech3DAppearanceType::init (mc2::czstring fileName)
 			mechBackwardDmgShape.reset();
 		}
 	}
+	// Fall swap loads these on the destroy frame; load them here behind the loading screen (Fable P1.4).
+	preloadDamageShapeTextures(mechForwardDmgShape.get(), false);
+	preloadDamageShapeTextures(mechBackwardDmgShape.get(), false);
 	GpuMechBatcher::instance().registerVehicleType(rightArm.get());
 	GpuMechBatcher::instance().registerVehicleType(leftArm.get());
 	GpuMechBatcher::instance().registerVehicleType(mechForwardDmgShape.get());

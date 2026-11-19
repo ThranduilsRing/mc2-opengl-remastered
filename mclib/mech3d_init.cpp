@@ -75,28 +75,6 @@ static void warmShapeProbes(TG_TypeMultiShape* shape, bool tgaOnly)
 	}
 }
 
-// Mech3DAppearance::setObjStatus probes every texture of the fall-damage shape on the destroy frame (raw fileExists, 5-11 ms per miss).
-// Priming the memo at appearance init (mission load) makes that swap probe-free for every loaded mech type; the memo makes repeats cheap.
-static void primeFallDamageProbes(Mech3DAppearanceType* type)
-{
-	if (!type) return;
-	for (TG_TypeMultiShape* shape : {type->mechForwardDmgShape.get(), type->mechBackwardDmgShape.get()})
-	{
-		if (!shape) continue;
-		for (long i = 0; i < shape->GetNumTextures(); i++)
-		{
-			char txmName[1024];
-			shape->GetTextureName(i, txmName, 256);
-			char texturePath[1024];
-			auto texturePathEnd = std::format_to_n(texturePath, sizeof(texturePath) - 1, "{}{}" PATH_SEPARATOR, static_cast<const char*>(tglPath), ObjectTextureSize).out;
-			*texturePathEnd = '\0';
-			FullPathFileName textureName;
-			textureName.init(texturePath, txmName, "");
-			textureTgaExistsMemo(textureName);
-		}
-	}
-}
-
 void Mech3DAppearanceType::warmTextureProbes (Mech3DAppearanceType* type)
 {
 	knownMissingTextures().clear();
@@ -115,7 +93,6 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	// accidental double-registration visible in debug builds.
 	mechRenderHandle = RenderCore::RenderObjectHandle::invalid();
 	mechType = static_cast<Mech3DAppearanceType *>(tree);
-	primeFallDamageProbes(mechType);
 
 	// C3: cache owner handle for GPU-cull node-position early-outs.
 	actorHandle_ = (obj != nullptr) ? obj->getHandle() : -1;

@@ -4,6 +4,7 @@
 #include "bdactor_internal.h"
 #include "content_error.h"
 #include "texture_assets.h"
+#include "texture_probe_memo.h"
 #include "mc2fmt.h"
 #include "gos_static_prop_batcher.h"
 #include <string_view>
@@ -850,19 +851,9 @@ void TreeAppearanceType::init (mc2::czstring fileName)
 		}
 		else
 		{
-			// TreeAppearance::setObjStatus probes every damage-shape texture on the destroy frame (cold: 181-626 ms). Prime the
-			// per-generation memo here, behind the loading screen, so the destroy swap is probe-free.
-			ZoneScopedN("Tree.WarmDamageProbes");
-			for (long i = 0; i < treeDmgShape->GetNumTextures(); i++)
-			{
-				char txmName[1024];
-				treeDmgShape->GetTextureName(i, txmName, 256);
-				char texturePath[1024];
-				mc2::fmt::to_buf(texturePath, "{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize));
-				FullPathFileName textureName;
-				textureName.init(texturePath, txmName, "");
-				textureOrKtxSidecarExists(textureName);
-			}
+			// TreeAppearance::setObjStatus probes and loads every damage-shape texture on the destroy frame (cold: 181-626 ms).
+			// Probe (memo) and load them here, behind the loading screen, so the destroy swap finds them resident.
+			preloadDamageShapeTextures(treeDmgShape.get(), true);
 		}
 		
 	}

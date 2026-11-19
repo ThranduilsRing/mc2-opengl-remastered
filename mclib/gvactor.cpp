@@ -15,6 +15,7 @@
 #include "../GameOS/gameos/gos_profiler.h"
 #include "gvactor_internal.h"
 #include "render_snap.h"
+#include "texture_probe_memo.h"
 #include "Gates/gate.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
@@ -260,6 +261,10 @@ void GVAppearanceType::init (mc2::czstring fileName)
 		if (!gvDmgShape->GetNumShapes())
 		{
 			gvDmgShape.reset();
+		}
+		else
+		{
+			preloadDamageShapeTextures(gvDmgShape.get(), false);
 		}
 	}
 	else
