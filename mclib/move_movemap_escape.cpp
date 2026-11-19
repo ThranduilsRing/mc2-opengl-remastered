@@ -59,7 +59,7 @@ long MoveMap::calcEscapePath (const mc2_move::PathQuery& query, mc2_move::Solver
 
 	PQNode initialVertex;
 	initialVertex.key = curMapNode->fPrime;
-	initialVertex.id = curRow * MAX_MAPWIDTH + curCol;
+	initialVertex.id = openId(curRow, curCol);
 	initialVertex.row = curRow;
 	initialVertex.col = curCol;
 	scratch.openHeap.clear();
@@ -139,7 +139,7 @@ long MoveMap::calcEscapePath (const mc2_move::PathQuery& query, mc2_move::Solver
 
 						if (succMapNode->flags & MOVEFLAG_OPEN) {
 							if (succNodeG < succMapNode->g) {
-								updateOpenNode(scratch, *succMapNode, dirToParent, succNodeG, succRow * MAX_MAPWIDTH + succCol);
+								updateOpenNode(scratch, *succMapNode, dirToParent, succNodeG, openId(succRow, succCol));
 							}
 							}
 						else if (succMapNode->flags & MOVEFLAG_CLOSED) {
@@ -155,7 +155,7 @@ long MoveMap::calcEscapePath (const mc2_move::PathQuery& query, mc2_move::Solver
 							succMapNode->fPrime = succNodeG + succMapNode->hPrime;
 							PQNode succPQNode;
 							succPQNode.key = succMapNode->fPrime;
-							succPQNode.id = succRow * MAX_MAPWIDTH + succCol;
+							succPQNode.id = openId(succRow, succCol);
 							succPQNode.row = succRow;
 							succPQNode.col = succCol;
 							scratch.openHeap.insert(succPQNode);

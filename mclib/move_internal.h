@@ -229,7 +229,7 @@ inline void MoveMap::propogateCostJUMP(mc2_move::SolverScratch& scratch, long r,
 		curMapNode->g = g + cost;
 		curMapNode->fPrime = curMapNode->g + curMapNode->hPrime;
 		if (curMapNode->flags & MOVEFLAG_OPEN) {
-			reKeyOpen(scratch, r * MAX_MAPWIDTH + c, curMapNode->fPrime);
+			reKeyOpen(scratch, openId(r, c), curMapNode->fPrime);
 			}
 		else {
 			long cellOffsetIndex = 0;

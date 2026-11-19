@@ -1872,6 +1872,9 @@ class MoveMap {
 			return std::mdspan<MoveMapNode, std::dextents<std::size_t, 2>>(map.data(), static_cast<std::size_t>(maxHeight), static_cast<std::size_t>(maxWidth))[row, col];
 		}
 
+		// OPEN-list id of a cell: its dense grid index, so it stays inside the heap's reserved id index (the old row * 1000 + col lay outside it for most cells and made every re-key a linear scan). Ids only locate a node; they never order the heap.
+		long openId (long row, long col) const { return row * maxWidth + col; }
+
 		char getCost (long row, long col) {
 			// Off-map: return a high (avoid) cost rather than indexing map[] OOB.
 			// Real paths are inBounds-gated elsewhere, so this only guards stray
