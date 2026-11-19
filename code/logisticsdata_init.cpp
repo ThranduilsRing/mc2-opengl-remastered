@@ -66,14 +66,19 @@ void LogisticsData::init()
 	{
 		Assert( 0, 0, "coudln't find the campaign file\n" );
 	}
-	missionInfo->init( file );
-
-	// temporary, just so we can test
-	int count = 32;
-	const char* missionNames[32];
-	missionInfo->getAvailableMissions( missionNames, count );
-
-	setCurrentMission( missionNames[0] );
+	// A campaign file that does not init or lists no mission leaves the current mission unset (missionNames would be uninitialised).
+	if ( !missionInfo->init( file ) )
+		MC2_LOG(Io, Error, "campaign: the default campaign file could not be initialized, no current mission is set");
+	else
+	{
+		int count = 32;
+		const char* missionNames[32];
+		missionInfo->getAvailableMissions( missionNames, count );
+		if ( count < 1 )
+			MC2_LOG(Io, Error, "campaign: the default campaign lists no available mission, no current mission is set");
+		else
+			setCurrentMission( missionNames[0] );
+	}
 	LOG_INIT_TIME("after_setCurrentMission_updateAvailability");
 
 #undef LOG_INIT_TIME
@@ -99,13 +104,19 @@ void LogisticsData::initPhaseA()
 	FitIniFile file;
 	if ( NO_ERR != file.open( "data" PATH_SEPARATOR "campaign" PATH_SEPARATOR "campaign.fit" ) )
 		Assert( 0, 0, "coudln't find the campaign file\n" );
-	missionInfo->init( file );
-
-	int count = 32;
-	const char* missionNames[32];
-	missionInfo->getAvailableMissions( missionNames, count );
-	// setCurrentMission skips updateAvailability while !m_phaseBComplete
-	setCurrentMission( missionNames[0] );
+	if ( !missionInfo->init( file ) )
+		MC2_LOG(Io, Error, "campaign: the default campaign file could not be initialized, no current mission is set");
+	else
+	{
+		int count = 32;
+		const char* missionNames[32];
+		missionInfo->getAvailableMissions( missionNames, count );
+		if ( count < 1 )
+			MC2_LOG(Io, Error, "campaign: the default campaign lists no available mission, no current mission is set");
+		else
+			// setCurrentMission skips updateAvailability while !m_phaseBComplete
+			setCurrentMission( missionNames[0] );
+	}
 
 	m_phaseAComplete = true;
 	SMART_LOAD_TRACE_LOG("Phase A done");

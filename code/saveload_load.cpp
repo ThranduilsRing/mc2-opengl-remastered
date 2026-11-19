@@ -631,7 +631,10 @@ void Mission::loadLogistics(MissionLoadFrame& f) {
 	if (result != NO_ERR)
 		STOP(("Logistics Data missing from IN-Mission Save 2"));
 
-	LogisticsData::instance->load(logisticsFile);
+	// The mission is already rebuilt here, so a refused campaign cannot be undone: stop with a clear message instead of
+	// continuing the mission on the old campaign's roster (LogisticsData::load logs the cause and changes no state).
+	if (!LogisticsData::instance->load(logisticsFile))
+		STOP(("In-mission save: the campaign of this save is missing or broken, the save cannot be loaded"));
 	LogisticsData::instance->setResourcePoints(rps);
 
 	logisticsFile.close();
