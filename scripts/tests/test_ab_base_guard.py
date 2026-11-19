@@ -507,3 +507,15 @@ def test_mc2res_drift_with_unknown_diff_refuses(monkeypatch):
 def test_other_dll_drift_still_refuses(monkeypatch):
     a, b = _build_output_manifests(**{"SDL2.dll": 1, "crashpad_handler.exe": 1, "mc2res_64.dll": 1})
     assert _identity(monkeypatch, set(), a, b) == ["SDL2.dll"]
+
+
+@pytest.mark.parametrize("name", ["mc2res_64.dll", "crashpad_handler.exe"])
+def test_build_output_missing_on_one_side_still_refuses(monkeypatch, name):
+    a, b = _build_output_manifests()
+    assert _identity(monkeypatch, set(), a, {k: v for k, v in b.items() if k != name}) == [name]
+
+
+def test_unknown_candidate_commit_does_not_crash(monkeypatch):
+    monkeypatch.setattr(ab.asset_parity, "intentional_changes", lambda *x: {})
+    a, b = _build_output_manifests(**{"mc2res_64.dll": 1})
+    assert [p for p, _ in ab.candidate_mismatches(a, b, None, commit_a="a" * 40)] == ["mc2res_64.dll"]

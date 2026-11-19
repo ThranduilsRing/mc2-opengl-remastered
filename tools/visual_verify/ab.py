@@ -266,10 +266,11 @@ def _data_mismatch_entries(ma, mb, target=None, changed=None, report=False):
     from deploy_payload import editor_only_payload
     game = target == "game" or (target is None and bool(EXECUTABLES.intersection(ma))
                                 and bool(EXECUTABLES.intersection(mb)))
-    build_outputs = EXECUTABLES | {"mc2.pdb", "mc2_asset_viewer.exe", "mc2_asset_viewer"} | BUILD_OUTPUT_FILES
+    # The newer exemptions (crashpad, mc2res) cover a sha delta only: a row missing on one side still refuses (Fable P0).
+    both = ma.keys() & mb.keys()
     res_src = None if changed is None else sorted(f for f in changed if f.startswith(RESOURCE_DLL_SOURCES))
-    if res_src == []:
-        build_outputs = build_outputs | {RESOURCE_DLL}
+    build_outputs = (EXECUTABLES | {"mc2.pdb", "mc2_asset_viewer.exe", "mc2_asset_viewer"}
+                     | ((BUILD_OUTPUT_FILES | ({RESOURCE_DLL} if res_src == [] else set())) & both))
     if report:
         for name in sorted(build_outputs & ma.keys() & mb.keys()):
             if ma[name] != mb[name] and name not in EXECUTABLES | {"mc2.pdb", "mc2_asset_viewer.exe", "mc2_asset_viewer"}:
@@ -303,7 +304,7 @@ def candidate_mismatches(ma, mb, commit, install_b=None, baseline=None, install_
                          identity_receipt=None, target=None, commit_a=None):
     """Only candidate declarations or proven text EOL equivalence excuse data drift. commit_a (side A's commit) lets
     mc2res_64.dll drift be excused when no resource-DLL source changed between commit_a and commit."""
-    changed = git_diff_files(commit_a, commit) if commit_a else None
+    changed = git_diff_files(commit_a, commit) if commit_a and commit else None
     declared = asset_parity.intentional_changes(commit, ROOT)
     mb = dict(mb)
     if install_b is not None:
