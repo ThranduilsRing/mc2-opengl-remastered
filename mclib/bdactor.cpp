@@ -14,6 +14,7 @@
 #include <string>
 #include <unordered_map>
 #include "vfs.h"
+#include "texture_probe_memo.h"
 #include "texture_assets.h"
 #ifndef BDACTOR_H
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
@@ -73,21 +74,21 @@ static bool textureOrKtxSidecarExistsUncached(mc2::czstring tgaPath)
 // shape for every building (6-25 ms on the presentation thread, one frame each; a missing texture costs a full
 // failed ladder every time). Both results are remembered per VFS index generation; vfs::noteWrite does not bump
 // the generation, so a texture dropped in after a remembered miss is seen only after a restart or mod reload.
+static mc2::TextureProbeMemo s_ktxProbeMemo;
+static mc2::TextureProbeMemo s_tgaProbeMemo;
+
 bool textureOrKtxSidecarExists(mc2::czstring tgaPath)
 {
-	static std::mutex memoMutex;
-	static std::unordered_map<std::string, bool> memo;
-	static uint64_t memoGeneration = ~uint64_t{0};
-	{
-		const std::lock_guard lock(memoMutex);
-		const uint64_t generation = mc2::vfs::generation();
-		if (generation != memoGeneration) { memo.clear(); memoGeneration = generation; }
-		if (memo.contains(tgaPath)) return memo.at(tgaPath);
-	}
-	const bool exists = textureOrKtxSidecarExistsUncached(tgaPath);
-	{ const std::lock_guard lock(memoMutex); if (mc2::vfs::generation() == memoGeneration) memo.insert_or_assign(tgaPath, exists); }
-	return exists;
+	return s_ktxProbeMemo.resolve(tgaPath, mc2::vfs::generation(), [](mc2::czstring p) { return textureOrKtxSidecarExistsUncached(p); });
 }
+
+// Memoised .tga-only probe (mech fall-damage shapes: paint must stay .tga, so no sidecar fallback).
+bool textureTgaExistsMemo(mc2::czstring tgaPath)
+{
+	return s_tgaProbeMemo.resolve(tgaPath, mc2::vfs::generation(), [](mc2::czstring p) { ZoneScopedN("Bldg.TextureExistsProbe"); return fileExists(p) != 0; });
+}
+
+uint64_t textureProbeUncachedCount() { return s_ktxProbeMemo.uncachedCount() + s_tgaProbeMemo.uncachedCount(); }
 
 bool staticRegIsNaturalBuildingName(mc2::czstring name)
 {

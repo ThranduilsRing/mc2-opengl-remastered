@@ -123,6 +123,7 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/mission_environment_gpu.cpp
     test_mech_up_axis.cpp        # mech-up-axis: which component of the mech/prop world normal is up
     test_static_prop_origin.cpp  # prop instance origin layout: translation at [3][7][11]
+    test_texture_probe_memo.cpp  # HITCH-ATTRIB-2: destroy-time probe memo primed at load
     test_prop_record_cache.cpp  # prop scene generations and per-frame-slot cache keys
     test_prop_list_route.cpp  # colour-prop draw-list routing per packet, tier fringe skip
     test_prop_lod_state.cpp  # flat per-instance LOD hysteresis table equals the unordered_map it replaced
