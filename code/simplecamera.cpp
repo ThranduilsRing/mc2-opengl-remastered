@@ -424,12 +424,12 @@ void SimpleCamera::render(long xOffset, long yOffset)
 				if ( framed_ && drawn_[3] - drawn_[1] > 8.f )
 				{
 					const float cx = ( drawn_[0] + drawn_[2] ) * 0.5f, cy = drawn_[3], hh = drawn_[3] - drawn_[1];
-					const float k = haveGround_ ? 0.08f : 1.f;
+					const float k = ( haveGround_ && fitIters_ == 0 ) ? 0.08f : 1.f; // track exactly during the fit: settled at reveal
 					groundC_[0] += ( cx - groundC_[0] ) * k; groundC_[1] += ( cy - groundC_[1] ) * k; groundH_ += ( hh - groundH_ ) * k;
 					haveGround_ = true;
 				}
 				const bool posted = labMech && postMechPreviewGpu( *this, labMech, offsetX, offsetY, viewMulX, viewMulY,
-				                                   haveGround_ ? groundC_[0] : 0.f, groundC_[1], haveGround_ ? groundH_ : 0.f, bounds, framed_, framed_ && fitIters_ > 0 );
+				                                   haveGround_ ? groundC_[0] : 0.f, groundC_[1], ( haveGround_ && !( framed_ && fitIters_ > 0 ) ) ? groundH_ : 0.f, bounds, framed_, framed_ && fitIters_ > 0 );
 				if ( posted )
 					gpuDraws = mc2_vk_mech_preview_drew_last() != 0;
 				// With the GPU path drawing, PreviewDraw only projects (the framing bounds below).
