@@ -59,3 +59,6 @@ TEST_CASE("campaign accessors with no groups answer empty") {
     CHECK(info.getCurrentPurchaseFile().empty());
     CHECK_FALSE(info.setNextMission("m0101").has_value());
 }
+
+// Game global the campaign class reads (defined in the game executable, not in the unit support set).
+char missionName[1024] = {};
