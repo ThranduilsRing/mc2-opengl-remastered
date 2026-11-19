@@ -16,6 +16,7 @@
 #include "mech3d.h"
 #include "gvactor.h"
 #include "static_prop_prewarm.h"
+#include "../RenderCore/MoverPrewarmSelect.h"
 #include "terrain_dirty_queue.h"
 #include "saved_objects_check.h"
 #include "object_slot_codec.h"
@@ -1553,16 +1554,38 @@ void prewarmMoverGpuTextures(GameObjectManager& objects)
 {
 	ZoneScopedN("GameObjectManager::prewarmMoverGpuTextures"); MC2_LOAD_SCOPE("GameObjectManager::prewarmMoverGpuTextures");
 	// Stop when GPU headroom is short: the rest upload lazily with the first flush, in-view content first.
-	// Two passes: the player's own movers first, so a tripped guard never spends the headroom on undrawn enemies.
-	long done = 0;
-	for (int pass = 0; pass < 2; ++pass) {
-		const auto wanted = [pass](GameObject* o) { return (Team::home && o->getTeamId() == Team::home->getId()) == (pass == 0); };
-		for (long i = 0; objects.mechs && i < objects.numMechs && gpuMechPrewarmHasRoom(); ++i)
-			if (objects.mechs[i] && objects.mechs[i]->getExists() && wanted(objects.mechs[i]))
-				if (auto* app = dynamic_cast<Mech3DAppearance*>(objects.mechs[i]->getAppearance())) { app->prewarmGpuTextures(); ++done; graphics::pump_loading_events(); }
-		for (long i = 0; objects.vehicles && i < objects.numVehicles && gpuMechPrewarmHasRoom(); ++i)
-			if (objects.vehicles[i] && objects.vehicles[i]->getExists() && wanted(objects.vehicles[i]))
-				if (auto* app = dynamic_cast<GVAppearance*>(objects.vehicles[i]->getAppearance())) { app->prewarmGpuTextures(); ++done; graphics::pump_loading_events(); }
+	// Pass 1: the player's own movers. Pass 2: only non-home movers within RenderCore::kPrewarmNearHomeRadius of the force (what the
+	// first frame can draw), capped at kPrewarmPass2ByteCap of device bytes; the other movers upload lazily when they come into view.
+	std::vector<GameObject*> movers;
+	std::vector<RenderCore::PrewarmMover> where;
+	const auto collect = [&](auto* list, long count) {
+		for (long i = 0; list && i < count; ++i)
+			if (list[i] && list[i]->getExists()) {
+				const glm::vec3 p = list[i]->getPosition();
+				movers.push_back(list[i]);
+				where.push_back({p.x, p.y, Team::home && list[i]->getTeamId() == Team::home->getId()});
+			}
+	};
+	collect(objects.mechs, objects.numMechs);
+	collect(objects.vehicles, objects.numVehicles);
+	std::vector<size_t> order;
+	for (size_t i = 0; i < movers.size(); ++i) if (where[i].home) order.push_back(i);
+	const size_t homeCount = order.size();
+	for (size_t i : RenderCore::prewarmNearHome(where)) order.push_back(i);
+	long uploaded = 0;
+	uint64_t spent = 0, pass2Spent = 0;
+	for (size_t k = 0; k < order.size() && gpuMechPrewarmHasRoom(); ++k) {
+		if (k >= homeCount && pass2Spent >= RenderCore::kPrewarmPass2ByteCap) break;
+		GameObject* o = movers[order[k]];
+		const uint64_t before = gpuMechPrewarmRoomBytes();
+		if (auto* mech = dynamic_cast<Mech3DAppearance*>(o->getAppearance())) mech->prewarmGpuTextures();
+		else if (auto* gv = dynamic_cast<GVAppearance*>(o->getAppearance())) gv->prewarmGpuTextures();
+		else continue;
+		const uint64_t after = gpuMechPrewarmRoomBytes(), bytes = before > after ? before - after : 0;
+		if (bytes) { ++uploaded; spent += bytes; if (k >= homeCount) pass2Spent += bytes; }
+		graphics::pump_loading_events();
 	}
-	if (mc2_diag::tagRequested("MECH_PREWARM")) std::fprintf(stderr, "[MECH_PREWARM v1] prewarmed=%ld of mechs=%ld vehicles=%ld\n", done, objects.numMechs, objects.numVehicles);
+	if (mc2_diag::tagRequested("MECH_PREWARM"))
+		mc2::fmt::print_err("[MECH_PREWARM v1] uploaded={} selected={} home={} of mechs={} vehicles={} bytes_mb={}\n",
+			uploaded, order.size(), homeCount, objects.numMechs, objects.numVehicles, spent >> 20);
 }
