@@ -1617,7 +1617,7 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
         if farm_determinism:
             print("[merge_gate] farm determinism off: an inherited host batch reservation forces local serial execution", flush=True)
         print("Coverage plan: inherited batch reservation requires serial execution")
-        return execute(steps, head)
+        return execute(steps, head, runner=run_child, hold_after_failed_deploy=True)
     pending = []
     completed = {}
     reused = [s for s in steps if s[2].get("MC2_GATE_REUSE_STAGE")]
@@ -1861,7 +1861,7 @@ def check_capture_commit(name, command, head):
     print(f"[merge_gate] {name} provenance PASS src_commit={commit} HEAD={head}", flush=True)
 
 
-def execute(steps, head, dry_run=False, runner=run_child, completed=None, device=None):
+def execute(steps, head, dry_run=False, runner=run_child, completed=None, device=None, hold_after_failed_deploy=False):
     """Run every stage and return nonzero if any stage failed. device: MC2_VK_DEVICE for this chain's game rows (None = gate GPU)."""
     if not steps:
         raise ValueError("no stages selected; gate requires at least one stage")
@@ -1870,6 +1870,9 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
     completed = {} if completed is None else completed
     failed = False
     for name, command, overrides in steps:
+        if (hold_after_failed_deploy and "deploy" in completed and not stage_passed(completed["deploy"])
+                and name not in OFFLINE_STAGES and name != "deploy" and not overrides.get("MC2_GATE_SKIP_REASON")):
+            overrides = dict(overrides, MC2_GATE_SKIP_REASON="NOT_RUN(deploy failed)")  # serial path: same hold as execute_parallel
         if not dry_run and STOP_REQUESTED.is_set():
             status = "FAIL: not run, gate interrupted after the previous stage (rerun reuses finished stages)"
             print(f"[merge_gate] {name}: {status}", flush=True)

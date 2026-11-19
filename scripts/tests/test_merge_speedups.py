@@ -1400,3 +1400,23 @@ def test_gate_children_get_a_private_lane_scratch(monkeypatch):
     assert gate.gate_env("tier1")["MC2_LANE_SCRATCH"].replace("\\", "/").endswith("build64-ninja/gate-scratch")
     monkeypatch.setenv("MC2_LANE_SCRATCH", "E:/mc2-tmp/slot06")
     assert gate.gate_env("tier1")["MC2_LANE_SCRATCH"] == "E:/mc2-tmp/slot06"
+
+
+def test_serial_batch_path_holds_exe_rows_after_failed_deploy(monkeypatch):
+    """Fable 1119b P2-3: with an inherited batch lease the serial path must hold exe rows after a failed deploy too."""
+    import merge_gate as gate
+    monkeypatch.setenv("MC2_HOST_LEASE_BATCH", "parent")
+    monkeypatch.setattr(gate, "git", lambda *a: "head")
+    monkeypatch.setattr(gate, "log_lease_holders", lambda: None)
+    calls = []
+    def runner(command, **kw):
+        calls.append(command[0])
+        return _r(int(command[0] == "deploy"))
+    monkeypatch.setattr(gate, "run_child", runner)
+    monkeypatch.setattr(gate, "ROW_RESULTS", {})
+    names = ["deploy", "contracts", "tier1", "determinism-mc2_24", "saveload-mc2_01"]
+    assert gate.execute_parallel([(n, [n], {}) for n in names], "head", keep_going=True) == 1
+    assert calls == ["deploy", "contracts"]
+    for n in names[2:]:
+        status = gate.ROW_RESULTS[n]["status"]
+        assert "NOT_RUN(deploy failed)" in status and not gate.stage_passed(status), (n, status)
