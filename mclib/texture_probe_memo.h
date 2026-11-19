@@ -1,6 +1,7 @@
 // Per-VFS-generation memo for texture existence probes. A miss walks the whole VFS ladder (loose, FST, stat), so the
 // answer is remembered; the load path primes it so destroy-time swaps (mech fall shapes, tree damage shapes) never probe.
 #pragma once
+#include "mc2_czstring.h"
 #include <cstdint>
 #include <mutex>
 #include <string>
@@ -11,11 +12,11 @@ class TextureProbeMemo {
 public:
 	// probe(path) runs only on a memo miss (outside the lock); generation is mc2::vfs::generation().
 	template <class Probe>
-	bool get(const char* path, uint64_t generation, Probe&& probe) {
+	bool resolve(mc2::czstring path, uint64_t generation, const Probe& probe) {
 		{
 			const std::lock_guard lock(mutex_);
 			if (generation != generation_) { memo_.clear(); generation_ = generation; }
-			if (auto it = memo_.find(path); it != memo_.end()) return it->second;
+			if (memo_.contains(path)) return memo_.at(path);
 		}
 		const bool exists = probe(path);
 		{
@@ -35,7 +36,6 @@ private:
 };
 }
 
-#include "mc2_czstring.h"
 // Defined in bdactor.cpp. Memoised per VFS generation; textureProbeUncachedCount is the sum of uncached probes of both memos.
 bool textureTgaExistsMemo(mc2::czstring tgaPath);
 uint64_t textureProbeUncachedCount();

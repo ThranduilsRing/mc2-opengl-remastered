@@ -22,14 +22,14 @@ TEST_CASE("texture_probe_memo: after the load-time prime, destroying every type 
 	// load: prime (production calls the memo from Mech3DAppearance::init / TreeAppearanceType::init)
 	for (const auto* group : {&mechs, &trees})
 		for (const Type& t : *group)
-			for (const std::string& p : t) memo.get(p.c_str(), 1, std::ref(vfs));
+			for (const std::string& p : t) memo.resolve(p.c_str(), 1, std::ref(vfs));
 	const uint64_t uncachedAfterLoad = memo.uncachedCount();
 	const unsigned rawAfterLoad = vfs.rawProbes;
 	CHECK(uncachedAfterLoad == 5);
 	// destroy every type: the same queries the setObjStatus paths make
 	for (const auto* group : {&mechs, &trees})
 		for (const Type& t : *group)
-			for (const std::string& p : t) (void)memo.get(p.c_str(), 1, std::ref(vfs));
+			for (const std::string& p : t) (void)memo.resolve(p.c_str(), 1, std::ref(vfs));
 	CHECK(memo.uncachedCount() - uncachedAfterLoad == 0);
 	CHECK(vfs.rawProbes - rawAfterLoad == 0);
 }
@@ -37,7 +37,7 @@ TEST_CASE("texture_probe_memo: after the load-time prime, destroying every type 
 TEST_CASE("texture_probe_memo: unprimed destroy probes (the base behaviour the prime removes)") {
 	mc2::TextureProbeMemo memo;
 	FakeVfs vfs;
-	CHECK_FALSE(memo.get("tgl/256/missing_a.tga", 1, std::ref(vfs)));
+	CHECK_FALSE(memo.resolve("tgl/256/missing_a.tga", 1, std::ref(vfs)));
 	CHECK(memo.uncachedCount() == 1);
 	CHECK(vfs.rawProbes == 1);
 }
@@ -45,7 +45,7 @@ TEST_CASE("texture_probe_memo: unprimed destroy probes (the base behaviour the p
 TEST_CASE("texture_probe_memo: a new VFS generation drops remembered answers") {
 	mc2::TextureProbeMemo memo;
 	FakeVfs vfs;
-	memo.get("tgl/256/a.tga", 1, std::ref(vfs));
-	memo.get("tgl/256/a.tga", 2, std::ref(vfs));
+	memo.resolve("tgl/256/a.tga", 1, std::ref(vfs));
+	memo.resolve("tgl/256/a.tga", 2, std::ref(vfs));
 	CHECK(vfs.rawProbes == 2);
 }

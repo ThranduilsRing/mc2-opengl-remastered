@@ -79,13 +79,13 @@ static mc2::TextureProbeMemo s_tgaProbeMemo;
 
 bool textureOrKtxSidecarExists(mc2::czstring tgaPath)
 {
-	return s_ktxProbeMemo.get(tgaPath, mc2::vfs::generation(), [](const char* p) { return textureOrKtxSidecarExistsUncached(p); });
+	return s_ktxProbeMemo.resolve(tgaPath, mc2::vfs::generation(), [](mc2::czstring p) { return textureOrKtxSidecarExistsUncached(p); });
 }
 
 // Memoised .tga-only probe (mech fall-damage shapes: paint must stay .tga, so no sidecar fallback).
 bool textureTgaExistsMemo(mc2::czstring tgaPath)
 {
-	return s_tgaProbeMemo.get(tgaPath, mc2::vfs::generation(), [](const char* p) { ZoneScopedN("Bldg.TextureExistsProbe"); return fileExists(p) != 0; });
+	return s_tgaProbeMemo.resolve(tgaPath, mc2::vfs::generation(), [](mc2::czstring p) { ZoneScopedN("Bldg.TextureExistsProbe"); return fileExists(p) != 0; });
 }
 
 uint64_t textureProbeUncachedCount() { return s_ktxProbeMemo.uncachedCount() + s_tgaProbeMemo.uncachedCount(); }
