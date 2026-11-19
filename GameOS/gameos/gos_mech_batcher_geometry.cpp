@@ -475,8 +475,10 @@ void uploadMechGeometryVbo() {
     const size_t startNode = pk ? firstNode : 0;
     if (!pk && s_mechNormalsMode != 0 && firstNode > 0) {
         // The reuse was refused after the normals ran only for the new nodes: redo the prefix so the full pass is exact.
-        for (size_t n = 0; n < firstNode; ++n)
-            recomputeMechNodeNormals(work, s_nodeVboRanges[n].first, s_nodeVboRanges[n].second, s_mechNormalsMode, s_mechNormalsSmoothDeg);
+        for (size_t n = 0; n < firstNode; ++n) {
+            const auto& [rngStart, rngEnd] = s_nodeVboRanges[n];
+            recomputeMechNodeNormals(work, rngStart, rngEnd, s_mechNormalsMode, s_mechNormalsSmoothDeg);
+        }
     }
     dvbo.reserve(work.size());
     for (size_t n = startNode; ok && n < s_nodeVboRanges.size(); ++n) {
