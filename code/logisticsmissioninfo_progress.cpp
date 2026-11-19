@@ -7,6 +7,12 @@
 
 long LogisticsMissionInfo::getAvailableMissions( const char** missions, int& numberOfEm )
 {
+	if ( !groups || currentStage < 0 || currentStage >= groupCount )
+	{
+		numberOfEm = 0;
+		return 0;
+	}
+
 	MissionGroup* pGroup = &groups[currentStage];
 
 	int count = 0;
@@ -41,6 +47,12 @@ long LogisticsMissionInfo::getAvailableMissions( const char** missions, int& num
 
 long LogisticsMissionInfo::getCurrentMissions( const char** missions, int& numberOfEm )
 {
+	if ( !groups || currentStage < 0 || currentStage >= groupCount )
+	{
+		numberOfEm = 0;
+		return 0;
+	}
+
 	MissionGroup* pGroup = &groups[currentStage];
 
 	int count = 0;
@@ -129,6 +141,8 @@ std::expected<void, long> LogisticsMissionInfo::setNextMission( mc2::czstring mi
 	}
 	else
 	{
+		if ( !groups || currentStage < 0 || currentStage >= groupCount )
+			return std::unexpected(INVALID_MISSION);
 		MissionGroup* pGroup = &groups[currentStage];
 
 		int count = 0;

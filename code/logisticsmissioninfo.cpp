@@ -101,15 +101,20 @@ std::expected<void, long> LogisticsMissionInfo::init( FitIniFile& file )
 	else
 	{
 		const std::optional<std::string> displayName = objective_text::readPlain( file, "CampaignName" );
-		Assert( displayName.has_value(), 0, "couldn't find the missionName" );
-		campaignDisplayName = displayName.value_or( std::string() );
+		if ( !displayName )
+		{
+			MC2_LOG(Io, Error, "campaign: {} has no CampaignName (broken or truncated file)", campaignName);
+			return std::unexpected(-1L);
+		}
+		campaignDisplayName = *displayName;
 	}
 
 
 	result = file.readIdLong( "GroupCount", groupCount );
-	if ( result != NO_ERR )
+	if ( result != NO_ERR || groupCount < 1 )
 	{
-		Assert( 0, 0, "No group count in campaign file" );
+		MC2_LOG(Io, Error, "campaign: {} has no usable GroupCount ({}), no mission group to play", campaignName, groupCount);
+		groupCount = 0;
 		return std::unexpected(-1L);
 	}
 
@@ -132,8 +137,8 @@ std::expected<void, long> LogisticsMissionInfo::init( FitIniFile& file )
 		mc2::fmt::to_buf(blockName, "Group{:d}", mc2::fmt::as_i32(i));
 		if ( NO_ERR != file.seekBlock( blockName ) )
 		{
-			Assert( 0, i, "couldn't find this group in the campaign file" );
-			continue;
+			MC2_LOG(Io, Error, "campaign: {} has no block {}", campaignName, blockName);
+			return std::unexpected(-1L);
 		}
 
 		file.readIdLong( "NumberToComplete", groups[i].numberToBeCompleted );
@@ -145,10 +150,7 @@ std::expected<void, long> LogisticsMissionInfo::init( FitIniFile& file )
 		const std::optional<std::string> video = objective_text::readPlain( file, "Video" );
 		if ( !video )
 		{
-			char errorStr[256];
-			mc2::fmt::to_buf(errorStr, "couldn't find the video for operation {:d}", mc2::fmt::as_i32(i));
-			Assert( 0, 0, errorStr );
-
+			MC2_LOG(Io, Warn, "campaign: {} group {} has no Video", campaignName, i);
 		}
 		groups[i].videoFileName = video.value_or( std::string() );
 		groups[i].videoShown = 0;
@@ -177,8 +179,8 @@ std::expected<void, long> LogisticsMissionInfo::init( FitIniFile& file )
 				const std::optional<std::string> fileName = objective_text::readPlain( file, "FileName", 1023 );
 				if ( !fileName )
 				{
-					Assert( 0, j, "couldn't find a mission file name in the campaign file" );
-					continue;
+					MC2_LOG(Io, Error, "campaign: {} block {} has no FileName", campaignName, blockName);
+					return std::unexpected(-1L);
 				}
 
 				MissionInfo* pInfo = info.get();
@@ -195,10 +197,8 @@ std::expected<void, long> LogisticsMissionInfo::init( FitIniFile& file )
 
 				if ( NO_ERR != missionFile.open( path.c_str() ) )
 				{
-					char errorStr[256];
-					mc2::fmt::to_buf(errorStr, "couldn't open file {}", *fileName);
-					Assert( 0, 0, errorStr );
-					continue;
+					MC2_LOG(Io, Error, "campaign: {} lists mission file {} which cannot be opened", campaignName, path);
+					return std::unexpected(-1L);
 				}
 
 				readMissionInfo( missionFile, pInfo );
@@ -327,7 +327,11 @@ std::expected<void, long> LogisticsMissionInfo::load( FitIniFile& file )
 {
 	// read the campaign file name
 	long result = file.seekBlock( "General" );
-	Assert( result == NO_ERR, 0, "couldn't find general block in campaign file" );
+	if ( result != NO_ERR )
+	{
+		MC2_LOG(Io, Error, "campaign save: no General block, the save is not loaded");
+		return std::unexpected(-1L);
+	}
 
 	const std::optional<std::string> campaignFileName = objective_text::readPlain( file, "CampaignFile", 63 );
 	if ( !campaignFileName )
@@ -339,8 +343,7 @@ std::expected<void, long> LogisticsMissionInfo::load( FitIniFile& file )
 	FitIniFile campaignFile;
 	if ( NO_ERR != campaignFile.open( campaignFileName->c_str() ) )
 	{
-		char errorStr[256];
-		mc2::fmt::to_buf(errorStr, "couldn't find file {}", *campaignFileName);
+		MC2_LOG(Io, Error, "campaign save: the campaign file {} of this save cannot be opened, the save is not loaded", *campaignFileName);
 		return std::unexpected(-1L);
 	}
 
@@ -349,7 +352,7 @@ std::expected<void, long> LogisticsMissionInfo::load( FitIniFile& file )
 	// initialize this with campaign info
 	if ( !init( campaignFile ) )
 	{
-		Assert( 0, 0, "couldn't initialize the campaign" );
+		MC2_LOG(Io, Error, "campaign save: the campaign file {} of this save is broken, the save is not loaded", *campaignFileName);
 		return std::unexpected(-1L);
 	}
 	currentMission = 0;
@@ -362,6 +365,8 @@ std::expected<void, long> LogisticsMissionInfo::load( FitIniFile& file )
 
 	if ( currentStage >= groupCount )
 		currentStage = groupCount-1;
+	if ( currentStage < 0 )
+		currentStage = 0;
 
 	// set completed missions
 	long count;

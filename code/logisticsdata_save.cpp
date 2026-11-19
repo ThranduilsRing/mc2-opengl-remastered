@@ -191,6 +191,16 @@ void LogisticsData::clearVariants()
 
 std::expected<void, long> LogisticsData::load( FitIniFile& file )
 {
+	// Validate the save's campaign into a throwaway first: a save whose campaign file is gone or broken must leave the running state untouched.
+	{
+		LogisticsMissionInfo probe;
+		if ( !probe.load( file ) )
+		{
+			MC2_LOG(Io, Error, "campaign save: the saved campaign cannot be restored, the save is not loaded and nothing was changed");
+			return std::unexpected(-1L);
+		}
+	}
+
 	ensureMechBayDataLoaded("save-load");
 	clearInventory();
 	resourcePoints = 0;
@@ -202,7 +212,11 @@ std::expected<void, long> LogisticsData::load( FitIniFile& file )
 	if ( !missionInfo )
 		missionInfo = std::make_unique_for_overwrite<LogisticsMissionInfo>();
 
-	missionInfo->load( file );
+	if ( !missionInfo->load( file ) )
+	{
+		MC2_LOG(Io, Error, "campaign save: the saved campaign cannot be restored, the save is not loaded");
+		return std::unexpected(-1L);
+	}
 
 	long result = file.seekBlock( "Version" );
 	if (result != NO_ERR)
