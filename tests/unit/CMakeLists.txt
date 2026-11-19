@@ -190,6 +190,7 @@ add_executable(mc2_tests
     test_logistics_save_version.cpp  # MECHLAB-LOC-1: save version 10005 + variant chassis key boundary for revised layouts (offline)
     test_package_chassis.cpp  # BT2018-FIRST-CLASS P3/P7: package chassis regions/mounts/payload + type-number allocation (offline)
     test_purchase_catalog.cpp
+    test_dropweight_rules.cpp
     test_mech_clip_state.cpp  # BT2018-FIRST-CLASS P9: imported-mech clip state machine + stride matching (offline)
     test_mech_wreck.cpp
     test_getweaponnode_adapter.cpp  # GETWEAPONNODE-HARDPOINT-ADAPTER-1: chooseWeaponNode() authoritative-with-fallback (offline)
@@ -1007,7 +1008,7 @@ target_sources(mc2_tests PRIVATE test_veg_population_cache.cpp)
 # Campaign guards: LogisticsMissionInfo init rejection and null-groups accessors (the class TUs, game-free).
 target_sources(mc2_tests PRIVATE
     test_logistics_mission_info_guards.cpp
-    test_dropweight_rules.cpp
+    test_dropweight_save.cpp
     ${MC2_WORKTREE_ROOT}/code/logisticsmissioninfo.cpp
     ${MC2_WORKTREE_ROOT}/code/logisticsmissioninfo_progress.cpp
     ${MC2_WORKTREE_ROOT}/code/logisticsmissioninfo_query.cpp
