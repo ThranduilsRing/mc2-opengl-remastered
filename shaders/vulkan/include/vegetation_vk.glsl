@@ -1,8 +1,10 @@
 // Native crossed-card geometry. Instance culling uses the same CPU block/distance inputs.
 #include "vegetation_card_trim.glsl"
-void mc2VegetationVertex(vec3 i_worldPos, float i_yaw, float i_scale, float i_seed, uint i_atlasFrame, float lodFade, float windFade, float lightZ, float time, float widthScale, bool nearFoot) {
+void mc2VegetationVertex(vec3 i_worldPos, float i_yaw, float i_scale, float i_seed, uint i_atlasFrame, float lodFade, float windFade, float lightZ, float time, float widthScale, bool nearFoot, bool collapseMid) {
     uint vi = uint(gl_VertexIndex);
     uint row = (vi%8u)/2u;
+    // A card under ~1.5 px tall: its middle rows land on the top row, so four of the six strip triangles are degenerate and dropped before raster.
+    if (collapseMid && row != 0u) row = 3u;
     // Bit 3 marks a meadow-field blade (vegetation_clumps.h kFieldBladeBit); its low bits keep the grass layer.
     bool fieldBlade = (i_atlasFrame & 8u) != 0u;
     uint atlasIdx = fieldBlade ? (i_atlasFrame & 3u) : min(i_atlasFrame & 0x0fu, 7u);

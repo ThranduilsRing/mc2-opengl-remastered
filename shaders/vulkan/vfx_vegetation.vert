@@ -56,5 +56,5 @@ void main() {
     v_color = vec4(0.0);
     // Woody cards retain their silhouette while the fragment stage fades coverage.
     bool woody = (frame & 8u) == 0u && (frame & 15u) >= 4u;
-    mc2VegetationVertex(i.pos, i.yaw, i.scale * (woody ? 1.0 : shrink), i.seed, frame, shrink, windFade, D.misc.z, D.misc.w, widthScale, (denseId & 0x80000000u) != 0u);
+    mc2VegetationVertex(i.pos, i.yaw, i.scale * (woody ? 1.0 : shrink), i.seed, frame, shrink, windFade, D.misc.z, D.misc.w, widthScale, (denseId & 0x80000000u) != 0u, vegPixels(i, D) < 1.5);
 }
