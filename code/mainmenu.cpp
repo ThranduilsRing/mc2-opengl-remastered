@@ -174,6 +174,7 @@ MainMenu::MainMenu(  )
 	bLoadSingle = 0;
 	bLoadCampaign = 0;
 	bRulesDlg = false;
+	rulesForSolo = false;
 	introOver = 0;
 	bHostLeftDlg = 0;
 
@@ -544,6 +545,7 @@ void MainMenu::update()
     if (!pickedMission.empty() && LogisticsData::instance) {
         skipIntro();
         LogisticsData::instance->setSingleMission(pickedMission.c_str());
+        LogisticsData::instance->setRules(prefs.gameRules);
         status = SKIPONENEXT;
         return;
     }
@@ -709,7 +711,17 @@ void MainMenu::update()
 		if ( dlg->isDone() )
 		{
 			bRulesDlg = false;
-			if ( dlg->getStatus() == LogisticsScreen::YES )
+			if ( rulesForSolo )
+			{
+				// Solo: the map list stays up; ACCEPT remembers the rules, they are applied when the mission is picked.
+				rulesForSolo = false;
+				if ( dlg->getStatus() == LogisticsScreen::YES )
+				{
+					prefs.gameRules = dlg->rules();
+					(void)prefs.save();
+				}
+			}
+			else if ( dlg->getStatus() == LogisticsScreen::YES )
 			{
 				const mc2::rules::GameRules chosen = dlg->rules();
 				prefs.gameRules = chosen;	// remembered as the next new campaign's starting point
@@ -842,7 +854,13 @@ void MainMenu::update()
 	else if ( bLoadSingle && endAnim.isDone())
 	{
 		singleLoadDlg.update();
-		if ( singleLoadDlg.isDone() )
+		if ( singleLoadDlg.takeRulesRequest() && !MPlayer && !mc2::net::active() && GameRulesDialog::init() )
+		{
+			rulesForSolo = true;
+			bRulesDlg = true;
+			GameRulesDialog::instance()->begin( prefs.gameRules );
+		}
+		else if ( singleLoadDlg.isDone() )
 		{
 			if ( singleLoadDlg.getStatus() == YES )
 			{
@@ -850,6 +868,7 @@ void MainMenu::update()
 				if (pName)
 				{
 					LogisticsData::instance->setSingleMission( pName );
+					LogisticsData::instance->setRules( prefs.gameRules );	// solo remembers the last chosen rules
 					status = SKIPONENEXT;
 				}
 			}

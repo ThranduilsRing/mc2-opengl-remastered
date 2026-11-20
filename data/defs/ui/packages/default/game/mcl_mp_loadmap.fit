@@ -1417,3 +1417,30 @@ GuiAnimation {
     keyframe1X = 0
     keyframe1Y = -600
 }
+
+GuiButton {
+    key = "game.mcl_mp_loadmap.button.rules"
+    pageKey = "game.mcl_mp_loadmap"
+    role = "button"
+    layer = "control"
+    rect = "300,544,200,40"
+    controlRect = "300,544,200,40"
+    hitRect = "300,544,200,40"
+    textRect = "300,544,200,40"
+    visibleText = "RULES"
+    legacyId = 7701
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = false
+    normalTextColorArgb = "0xff5C96C2"
+    colorArgb = "0xff5C96C2"
+    pressedTextColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    fillColorArgb = "0xff101c28"
+    borderColorArgb = "0xff005392"
+    legacyAnimateBmp = false
+    legacyAnimateText = false
+}

@@ -14,6 +14,8 @@
 #include "Gates/preferences_values.h"
 
 #include <cstdio>
+#include <fstream>
+#include <sstream>
 #include <string>
 
 using namespace mc2::rules;
@@ -283,4 +285,31 @@ TEST_CASE("game rules: the published snapshot defaults and republishes") {
     CHECK(current() == battleTechPreset());
     publish(GameRules{});
     CHECK(current() == GameRules{});
+}
+
+// Dialog contract (code/gamerulesdialog.cpp): the page supplies one value button per descriptor row, and DEFAULTS / BATTLETECH PRESET
+// are plain assignments that the cfg text must round trip. Every rule's default option is identifiable as "MC2 Default" in the dialog.
+TEST_CASE("game rules: dialog page rows equal the descriptor table, presets round trip, the default option says MC2 Default") {
+    std::ifstream in(std::string(MC2_REPO_ROOT) + "/data/defs/ui/packages/default/game/mcl_gamerules.fit", std::ios::binary);
+    REQUIRE(in.good());
+    std::ostringstream ss;
+    ss << in.rdbuf();
+    const std::string page = ss.str();
+    const std::string needle = "key = \"game.mcl_gamerules.button.row";
+    std::size_t buttons = 0;
+    for (std::size_t at = page.find(needle); at != std::string::npos; at = page.find(needle, at + 1)) ++buttons;
+    CHECK(buttons == kRuleCount);
+
+    for (const GameRules& preset : {GameRules{}, battleTechPreset()}) {
+        std::string text;
+        for (const CfgEntry& e : cfgEntries(preset)) text += e.key + "=" + e.text + "\n";
+        GameRules back;
+        loadCfgText(back, text);
+        CHECK(back == preset);
+    }
+
+    const GameRules defaults;
+    for (const Rule& r : kRules)
+        if (r.kind == Kind::Enum)
+            CHECK(std::string(r.labels[getLong(defaults, r) - r.lo]).rfind("MC2 Default", 0) == 0);
 }

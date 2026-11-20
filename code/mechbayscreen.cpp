@@ -322,5 +322,7 @@ void MechBayScreen::render(int xOffset, int yOffset)
 	if ( pDragMech )
 		dragIcon.render();
 
+	if ( rulesOpen )
+		GameRulesDialog::instance()->render();
 
 }

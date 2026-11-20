@@ -4394,3 +4394,30 @@ GuiList {
     fillColorArgb = "0xff000000"
     borderColorArgb = "0xff2d6ca6"
 }
+
+GuiButton {
+    key = "game.mcl_mb_layout.button.rules"
+    pageKey = "game.mcl_mb_layout"
+    role = "button"
+    layer = "control"
+    rect = "636,9,150,30"
+    controlRect = "636,9,150,30"
+    hitRect = "636,9,150,30"
+    textRect = "636,9,150,30"
+    visibleText = "RULES"
+    legacyId = 58
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = false
+    normalTextColorArgb = "0xff5C96C2"
+    colorArgb = "0xff5C96C2"
+    pressedTextColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    fillColorArgb = "0xff101c28"
+    borderColorArgb = "0xff005392"
+    legacyAnimateBmp = false
+    legacyAnimateText = false
+}

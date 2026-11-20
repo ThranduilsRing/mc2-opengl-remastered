@@ -41,10 +41,21 @@ std::string labelFor( std::string_view key )
 std::string valueText( const mc2::rules::GameRules& g, const mc2::rules::Rule& r )
 {
 	const long v = mc2::rules::getLong( g, r );
-	if ( r.kind == mc2::rules::Kind::Bool ) return v ? "ON" : "OFF";
-	if ( r.kind == mc2::rules::Kind::Enum ) return std::string( r.labels[v - r.lo] );
-	return std::to_string( v ) + ( r.kind == mc2::rules::Kind::Percent ? "%" : "" );
+	if ( r.kind == mc2::rules::Kind::Enum ) return std::string( r.labels[v - r.lo] );	// the default option's label already says "MC2 Default"
+	std::string text;
+	if ( r.kind == mc2::rules::Kind::Bool ) text = v ? "On" : "Off";
+	else text = std::to_string( v ) + ( r.kind == mc2::rules::Kind::Percent ? "%" : "" );
+	return v == mc2::rules::getLong( mc2::rules::GameRules{}, r ) ? "MC2 Default (" + text + ")" : text;
 }
+
+// Rules no sim/economy code reads yet (the drop-limit and combat lanes consume them later): shown greyed, "(not yet active)".
+bool ruleActive( std::string_view key )
+{
+	for ( std::string_view k : { "DropLimitMode", "DropWeightPurchase", "DropWeightStep", "Heat", "AmmoExplosions" } )
+		if ( k == key ) return false;
+	return true;
+}
+constexpr unsigned int kActiveColor = 0xffc66600, kGreyColor = 0xff6b6b6b, kActiveValueColor = 0xff5C96C2;
 }  // namespace
 
 GameRulesDialog::GameRulesDialog() = default;
@@ -89,8 +100,11 @@ void GameRulesDialog::refreshRows()
 		setDefsElementVisible( rowKey( "button", i ), used );
 		if ( !used ) continue;
 		const mc2::rules::Rule& r = mc2::rules::kRules[i];
-		setDefsElementText( rowKey( "text", i ), labelFor( r.key ) );
+		const bool active = ruleActive( r.key );
+		setDefsElementText( rowKey( "text", i ), labelFor( r.key ) + ( active ? "" : "  (not yet active)" ) );
 		setDefsElementText( rowKey( "button", i ), valueText( working, r ) );
+		setDefsElementTextColor( rowKey( "text", i ), active ? kActiveColor : kGreyColor );
+		setDefsElementTextColor( rowKey( "button", i ), active ? kActiveValueColor : kGreyColor );
 	}
 }
 
