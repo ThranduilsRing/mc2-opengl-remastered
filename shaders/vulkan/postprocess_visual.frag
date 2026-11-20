@@ -103,7 +103,7 @@ vec3 casFilter(vec2 uv) {
 
     vec3 rcpWeight = 1.0 / (1.0 + 4.0 * w);
     vec3 outColor = (b * w + d * w + f * w + h * w + e) * rcpWeight;
-    return clamp(outColor, 0.0, 1.0);
+    return max(outColor, 0.0);
 }
 
 // Options.cfg TonemapMode: filmic curves on the final graded colour (1 AgX, 2 Hable, 3 Reinhard; 0 leaves the colour alone).
@@ -197,7 +197,7 @@ void main() {
         vec3 nv = boosted * vec3(u.p2.z, u.p2.w, u.p3.x);
         vec2 vd = TexCoord - vec2(0.5);
         float vdist = length(vd * vec2(1.0, 0.75));
-        float nvVignette = smoothstep(0.70, 0.20, vdist);
+        float nvVignette = 1.0 - smoothstep(0.20, 0.70, vdist);
         color = nv * mix(0.65, 1.0, nvVignette);
     }
 
