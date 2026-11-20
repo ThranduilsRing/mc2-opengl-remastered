@@ -17,6 +17,7 @@ LogisticsMissionInfo.h			: Interface for the LogisticsMissionInfo component.
 #include <functional>
 #include <vector>
 #include <memory>
+#include "game_rules.h"
 
 inline constexpr int MAX_PLAYER_NAME_LENGTH = 64;
 
@@ -81,6 +82,11 @@ class LogisticsMissionInfo
 
 		const std::string& 	getCampaignName( ) const { return campaignName; }
 		const std::string&	getCampaignDisplayName() const { return campaignDisplayName; }
+
+		// The game rules this campaign / skirmish plays under (code/game_rules.h). clear() resets them to today's behaviour; load() restores
+		// them from the optional [GameRules] block; LogisticsData seeds them from options.cfg at campaign / skirmish start.
+		const mc2::rules::GameRules& getRules() const { return rules; }
+		void				setRules( const mc2::rules::GameRules& r ) { rules = r; mc2::rules::sanitize( rules ); }
 
 		bool				campaignOver() const;
 
@@ -222,6 +228,7 @@ class LogisticsMissionInfo
 		long					groupCount;
 
 		long					CBills;
+		mc2::rules::GameRules	rules;
 
 		void					clear();
 		bool					bMultiplayer;

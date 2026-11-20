@@ -8,6 +8,9 @@ LogisticsData.cpp			: Implementation of the LogisticsData component.
 
 #include "logisticsdata_internal.h"
 #include "mc2fmt.h"
+#ifndef VIEWER
+#include "net/runtime.h"
+#endif
 #include "vfs.h"
 #include "utils/mc2log.h"
 
@@ -52,6 +55,28 @@ LogisticsData::~LogisticsData()
 
 #ifndef VIEWER
 	ChatWindow::static_destroy();
+#endif
+}
+
+const mc2::rules::GameRules& LogisticsData::rules() const
+{
+	static const mc2::rules::GameRules defaults;
+	return missionInfo ? missionInfo->getRules() : defaults;
+}
+
+void LogisticsData::setRules( const mc2::rules::GameRules& r )
+{
+	if ( missionInfo )
+		missionInfo->setRules( r );
+}
+
+void LogisticsData::publishRules() const
+{
+#ifndef VIEWER
+	// Multiplayer (the legacy MPlayer or the lockstep mc2::net session) plays under the defaults: the wire carries no rules.
+	mc2::rules::publish( mc2::rules::rulesToPublish( MPlayer || mc2::net::active(), rules() ) );
+#else
+	mc2::rules::publish( rules() );
 #endif
 }
 
@@ -113,6 +138,7 @@ bool				LogisticsData::startNewCampaign( mc2::czstring fileName )
 		MC2_LOG(Io, Error, "campaign: file {} could not be initialized as a campaign", static_cast<const char*>(path));
 		return false;
 	}
+	missionInfo->setRules( prefs.gameRules );	// the last-used rules from options.cfg (defaults until the rules dialog saves some)
 
 	// temporary, just so we can test
 	int count = 32;
@@ -485,6 +511,7 @@ bool				LogisticsData::showChooseMission()
 void	LogisticsData::setSingleMission( mc2::czstring pName )
 {
 	missionInfo->setSingleMission( pName );
+	missionInfo->setRules( prefs.gameRules );	// after clear(): solo remembers the last-used rules (options.cfg)
 	clearVariants();
 	clearInventory();
 	initPilots(); // reset pilotsb
