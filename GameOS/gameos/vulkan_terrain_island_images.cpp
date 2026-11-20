@@ -638,7 +638,7 @@ bool snapshot_visual_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if (!feed.visualHeightCpu || !feed.waterShoreCellsCpu || feed.visualHeightBytes == 0) return false;
     // Planes: [V*V visual][2*V*V shore][(V+2)^2 filtered visual heights with a one-cell apron, terrain_tier1.frag fine-normal fetch].
     const int side = feed.visualSide;
-    if (side < 2 || feed.visualHeightBytes < static_cast<uint64_t>(side) * static_cast<uint64_t>(side) * sizeof(float)) return false;
+    if (side < 2 || feed.visualHeightBytes != static_cast<uint64_t>(side) * static_cast<uint64_t>(side) * sizeof(float)) return false;
     const VkDeviceSize filteredBytes = static_cast<VkDeviceSize>(terrain_fine_height::apronCount(side) * sizeof(float));
     const VkDeviceSize bytes = 3 * static_cast<VkDeviceSize>(feed.visualHeightBytes) + filteredBytes;
     if (feed.visualHeightVersion == s->visualHeightVersionCopied && s->visualHeightReady) return true;
