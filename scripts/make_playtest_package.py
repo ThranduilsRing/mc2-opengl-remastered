@@ -22,7 +22,7 @@ REPOSITORY = PERMISSIONS.parents[2]
 # BT2018-derived loose files flagged by release_asset_guard: extractor-only, never packaged.
 # Keyed by physical path (case-folded); the loader falls back to the stock model when absent.
 BT2018_REASON = 'BT2018 extractor-only'
-BT2018_LIST = PERMISSIONS.with_name('bt2018_extractor_only.txt')
+BT2018_LIST = PERMISSIONS.with_name('extractor_only_paths.txt')
 
 
 def bt2018_extractor_only(rel):
