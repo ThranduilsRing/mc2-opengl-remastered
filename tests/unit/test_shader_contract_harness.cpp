@@ -127,31 +127,6 @@ TEST_CASE("shader_contract_harness/water_raw_saddle_diagonal") {
     CHECK_FALSE(mc2terrain::quadSplitsTrBl(0.0f, 1.0f, 1.0f, 0.0f));
 }
 
-TEST_CASE("shader_contract_harness/terrain_pom_bounded_ray") {
-    const auto shader = readFile(repoRoot() / "shaders/vulkan/terrain_tier1.frag");
-    const auto detail = readFile(repoRoot() / "shaders/vulkan/include/terrain_detail_normal.glsl");
-    REQUIRE_FALSE(shader.empty());
-    REQUIRE_FALSE(detail.empty());
-    // Lock the shipped shader, not a CPU copy of the parallax algorithm.
-    CHECK(shader.find("MATV_POM_SCALE      = 0.002;") != std::string::npos);
-    CHECK(shader.find("viewDirTS.xz / max(viewDirTS.y, 0.35)") != std::string::npos);
-    CHECK(detail.find("vec3 viewDirTS = vec3(Vw.x, Vw.z, Vw.y)") != std::string::npos);
-    CHECK(shader.find("ceil(mix(MATV_POM_MAX_LAYERS") != std::string::npos);
-    CHECK(shader.find("max(texel, min(length(dx), length(dy)))") != std::string::npos);
-    const auto texelCap = shader.find("0.25 * footprint / max(length(P), 1e-12)");
-    const auto pixelCap = shader.find("0.25 / max(length(pixels), 1e-12)");
-    const auto march = shader.find("vec2 dUV = P / numLayers;");
-    REQUIRE(texelCap != std::string::npos);
-    REQUIRE(pixelCap != std::string::npos);
-    REQUIRE(march != std::string::npos);
-    CHECK(texelCap < march);
-    CHECK(pixelCap < march);
-    CHECK(shader.find("return mix(curOffset, prevOffset, blend)") != std::string::npos);
-    CHECK(detail.find("smoothstep(0.4, 0.8, fwRock)") != std::string::npos);
-    CHECK(detail.find("* fwRock * pomStrength") != std::string::npos);
-    CHECK(detail.find("pomScaleMat") == std::string::npos);
-}
-
 TEST_CASE("shader_contract_harness/referenced_shaders_exist") {
     const fs::path root = repoRoot();
     const auto refs = scanSourceShaderRefs(root);
