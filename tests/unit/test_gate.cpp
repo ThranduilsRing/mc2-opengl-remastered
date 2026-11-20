@@ -33,10 +33,16 @@
 #include "owned_handle.h"       // the move-only owner the Vulkan islands hold their objects in (header-only, Vulkan-free)
 
 // Verbatim production blocks; template instances isolate their first-use static caches.
-template<int Mode> auto calledShotFloors() {
+#include "../../code/called_shot_floor.h"
+enum MechBodyLocationType : int { MECH_BODY_LOCATION_ANY = -1, MECH_BODY_LOCATION_HEAD, MECH_BODY_LOCATION_CTORSO, MECH_BODY_LOCATION_LTORSO,
+    MECH_BODY_LOCATION_RTORSO, MECH_BODY_LOCATION_LARM, MECH_BODY_LOCATION_RARM, MECH_BODY_LOCATION_LLEG, MECH_BODY_LOCATION_RLEG };
+// The slice runs from the gate read through the aimed-chance floor block (up to the Sharpshooter bonus): modifiers and final chance.
+template<int Mode> auto calledShotFloors(long aimLocation = MECH_BODY_LOCATION_HEAD, float unaimed = 60.0f) {
     const float HeadShotModifier = .08f, ArmShotModifier = .15f, LegShotModifier = .20f;
+    float attackChance = unaimed;
+    const float unaimedChance = attackChance;
 #include "called_floors.inc"
-    return std::array{headMod, armMod, legMod};
+    return std::array{headMod, armMod, legMod, attackChance};
 }
 template<int Mode> bool calledShotHit(bool vehicle, long aimLocation = 0) {
     struct Target { int getWatchID() { return 7; } } victim;
@@ -49,7 +55,6 @@ template<int Mode> bool calledShotHit(bool vehicle, long aimLocation = 0) {
     }
     return bolt.aimed == 7;
 }
-#include "../../code/called_shot_floor.h"
 TEST_CASE("called shot/absolute aimed-chance floors") {
     using namespace called_shot;
     CHECK(kHeadFloorPct == 30.0f); CHECK(kArmFloorPct == 45.0f); CHECK(kLegFloorPct == 50.0f);
@@ -61,11 +66,23 @@ TEST_CASE("called shot/absolute aimed-chance floors") {
 TEST_CASE("called shot/default floors and both aimed-hit paths; kill-switch restores stock") {
     mc2::gate::ScopedOverride<"MC2_CALLED_SHOT_FIX"> defaults(nullptr);
     CHECK(mc2::gate::get<"MC2_CALLED_SHOT_FIX">());
-    CHECK(calledShotFloors<0>() == std::array{.30f, .45f, .50f});
+    const auto on = [](long loc, float unaimed) { return calledShotFloors<0>(loc, unaimed); };
+    CHECK(on(MECH_BODY_LOCATION_HEAD, 60.0f)[0] == .30f); CHECK(on(MECH_BODY_LOCATION_HEAD, 60.0f)[1] == .45f); CHECK(on(MECH_BODY_LOCATION_HEAD, 60.0f)[2] == .50f);
+    // Final aimed chance at unaimed 60: modifier product lifted to the floor; torso is the plain chance; a low unaimed chance caps the lift.
+    CHECK(on(MECH_BODY_LOCATION_HEAD, 60.0f)[3] == 30.0f);
+    CHECK(on(MECH_BODY_LOCATION_LARM, 60.0f)[3] == 45.0f);
+    CHECK(on(MECH_BODY_LOCATION_RLEG, 60.0f)[3] == 50.0f);
+    CHECK(on(MECH_BODY_LOCATION_CTORSO, 60.0f)[3] == 60.0f);
+    CHECK(on(MECH_BODY_LOCATION_HEAD, 20.0f)[3] == 20.0f);
     for (bool vehicle : {false, true}) { CHECK(calledShotHit<0>(vehicle)); CHECK_FALSE(calledShotHit<0>(vehicle, -1)); }
     mc2::gate::ScopedOverride<"MC2_CALLED_SHOT_FIX"> stock("0");
     CHECK_FALSE(mc2::gate::get<"MC2_CALLED_SHOT_FIX">());
-    CHECK(calledShotFloors<1>() == std::array{.08f, .15f, .20f});
+    const auto stockChance = [](long loc) { return calledShotFloors<1>(loc, 60.0f); };
+    CHECK(stockChance(MECH_BODY_LOCATION_HEAD)[0] == .08f); CHECK(stockChance(MECH_BODY_LOCATION_HEAD)[1] == .15f); CHECK(stockChance(MECH_BODY_LOCATION_HEAD)[2] == .20f);
+    CHECK(stockChance(MECH_BODY_LOCATION_HEAD)[3] == doctest::Approx(60.0f * .08f));
+    CHECK(stockChance(MECH_BODY_LOCATION_LARM)[3] == doctest::Approx(60.0f * .15f));
+    CHECK(stockChance(MECH_BODY_LOCATION_LLEG)[3] == doctest::Approx(60.0f * .20f));
+    CHECK(stockChance(MECH_BODY_LOCATION_LTORSO)[3] == 60.0f);
     for (bool vehicle : {false, true}) CHECK_FALSE(calledShotHit<1>(vehicle));
 }
 

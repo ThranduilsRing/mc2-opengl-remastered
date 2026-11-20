@@ -221,6 +221,34 @@ TEST_CASE("Preferences/real CPrefs load-save is byte identical and publishes sta
     std::printf("CPrefs round-trip: %zu bytes identical; edited value reloaded; backup identical\n", text.size());
 }
 
+TEST_CASE("Preferences/fresh options.cfg writes no GameRules key until one differs from the default") {
+    namespace fs = std::filesystem;
+    const auto originalDirectory = fs::current_path();
+    const auto directory = fs::temp_directory_path() / ("mc2-prefs-rules-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+    REQUIRE(fs::create_directory(directory));
+    const auto originalRuntime = mc2::options::runtimePreferences();
+    const CPrefs originalPrefs = prefs;
+    struct Restore {
+        fs::path original, scratch;
+        mc2::options::Preferences runtime;
+        CPrefs previous;
+        ~Restore() { prefs = previous; mc2::options::runtimePreferences() = runtime; fs::current_path(original); fs::remove_all(scratch); }
+    } restore{originalDirectory, directory, originalRuntime, originalPrefs};
+    fs::current_path(directory);
+    CPrefs fresh; REQUIRE(fresh.load() == 0);   // no options.cfg: the create path
+    REQUIRE(fresh.save().has_value());
+    CHECK(mc2::options::cfg::readTextFile("options.cfg").find("GameRules") == std::string::npos);
+    fresh.gameRules.heat = mc2::rules::kHeatHarsh;
+    REQUIRE(fresh.save().has_value());
+    const auto text = mc2::options::cfg::readTextFile("options.cfg");
+    CHECK(text.find("GameRulesHeat") != std::string::npos);
+    CHECK(text.find("GameRulesSalvage") == std::string::npos);
+    fresh.gameRules.heat = mc2::rules::kHeatMC2;   // revert to the default: the stored key follows
+    REQUIRE(fresh.save().has_value());
+    CPrefs reloaded; REQUIRE(reloaded.load() == 0);
+    CHECK(reloaded.gameRules.heat == mc2::rules::kHeatMC2);
+}
+
 TEST_CASE("Preferences/explicit empty indexed names override the legacy fallback") {
     const std::string text = "FITini\n[MechCommander2]\nST PlayerName0 = \"\"\nst PlayerName = \"Legacy\"\nFITend\n";
     Preferences settings; RenderOptions render;

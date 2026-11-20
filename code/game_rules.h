@@ -34,7 +34,7 @@ struct GameRules {
     long dropWeightStep       = 5;              // tons (or BV points per ton-equivalent later) per purchase
     long heat                 = kHeatMC2;
     long ammoExplosions       = kAmmoExplMC2;
-    long calledShots          = kCalledClassic; // Classic = the shipped behaviour; Floors is the called-shot-floors lane
+    long calledShots          = kCalledFloors;  // Floors = the shipped behaviour (MC2_CALLED_SHOT_FIX default ON since 1120b); Classic = stock
     long pilotSkillWeight     = 100;            // percent of today's skill influence on to-hit
     long salvage              = kSalvageMC2;
     long cbillMultiplier      = 100;            // percent of mission and salvage C-Bill income, 50..200
@@ -189,6 +189,7 @@ inline void loadCfgText(GameRules& g, std::string_view text) {
         const std::size_t nl = text.find('\n');
         std::string_view line = detail::trim(text.substr(0, nl));
         text = nl == std::string_view::npos ? std::string_view{} : text.substr(nl + 1);
+        if (line.starts_with("//") || line.starts_with(';') || line.starts_with('#')) continue;   // a commented-out key does not count
         const std::size_t eq = line.find('=');
         if (eq == std::string_view::npos) continue;
         std::string_view name = detail::trim(line.substr(0, eq));

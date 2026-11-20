@@ -807,7 +807,7 @@ file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/carbon_difficulty.inc" CONTENT
 target_sources(mc2_tests PRIVATE test_carbon_correctness.cpp)
 set_source_files_properties(test_carbon_correctness.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 # Trigger paths: Gates/gate_rows_0.inc, code/{mover_attack,mech_weapons,gvehicl_weapons}.cpp.
-mc2_height_slice(called_floors code/mover_attack.cpp "static const bool s_calledShotFix =" "\t\tswitch (aimLocation)")
+mc2_height_slice(called_floors code/mover_attack.cpp "static const bool s_calledShotFix =" "if (pilot && pilot->isSharpShooter())")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/called_floors.inc" CONTENT "${called_floors}")
 foreach(shooter mech gvehicl)
     mc2_height_slice(called_hit code/${shooter}_weapons.cpp "static const bool s_calledShotFix =" "\n\t\t\t\t}\n\t\t\t\telse {\n\t\t\t\t\tweaponFX->connect(this, *targetPoint")
