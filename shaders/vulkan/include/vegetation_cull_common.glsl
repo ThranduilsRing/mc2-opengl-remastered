@@ -14,15 +14,12 @@ float vegSmooth(float a, float b, float x) {
     float t = clamp((x - a) / (b - a), 0.0, 1.0);
     return t * t * (3.0 - 2.0 * t);
 }
-// Frustum bound in instance scales: a blade widens up to 1.6 x 2 x 1/sqrt(kept) in vfx_vegetation.vert (~3x). Keep equal to
-// kCullBoundScale in GameAdapters/vegetation_population_cache.h (the region sphere pad that vegetation_region.comp tests).
-const float VEG_CULL_BOUND_SCALE = 3.0;
 bool survives(VegInstance i, bool force) {
     uint role = (i.atlasFrame & 8u) != 0u ? 0u : (i.atlasFrame >> 4u) & 3u;
     float scale = i.scale * (role == 3u ? 0.25 : role == 2u ? 0.6 : 1.0);
     if (force) return true;
     for (int k = 0; k < 4; ++k)
-        if (P.plane[k].x * i.pos.x + P.plane[k].y * i.pos.y + P.plane[k].z * i.pos.z + P.plane[k].w < -VEG_CULL_BOUND_SCALE * scale * P.planeLen[k]) return false;
+        if (P.plane[k].x * i.pos.x + P.plane[k].y * i.pos.y + P.plane[k].z * i.pos.z + P.plane[k].w < -1.5 * scale * P.planeLen[k]) return false;
     uint block = vegBlockIndex(i, P);
     uint visibility = block < P.counts.z ? blockVis[block] : 2u;
     return visibility != 0u && vegLodScale(i, P) > 0.0;
