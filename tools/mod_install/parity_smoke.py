@@ -122,12 +122,18 @@ def load_trace(path: str) -> List[dict]:
 # Skip-list evaluation
 # ---------------------------------------------------------------------------
 
+def _engine_layer(engine_rec: dict) -> str:
+    """The engine's "pak" layer is the FST rung served from paks/stock.mc2pak: the static resolver's "fastfile"."""
+    layer = engine_rec.get("layer", "")
+    return "fastfile" if layer == "pak" else layer
+
+
 def _classify_skip(engine_rec: dict, static_rec: dict, fst_set_empty: bool) -> Optional[str]:
     """
     Return a skip-rule tag if this mismatch is a known-acceptable divergence,
     or None if it is a real unexpected mismatch.
     """
-    engine_layer = engine_rec.get("layer", "")
+    engine_layer = _engine_layer(engine_rec)
     static_layer = static_rec.get("layer", "")
     key = static_rec.get("key", "")
 
@@ -184,7 +190,7 @@ def run_parity(
 
         static_rec = resolve(req, config)
 
-        eng_layer = eng_rec.get("layer", "")
+        eng_layer = _engine_layer(eng_rec)
         sta_layer = static_rec.get("layer", "")
         eng_path = eng_rec.get("path", "")
         sta_path = static_rec.get("path", "")

@@ -204,6 +204,37 @@ const PakZip::Entry* PakZip::find(std::string_view k) const {
     const auto& [entryKey, e] = *it;
     return e.failed.load() ? nullptr : &e;
 }
+// One decoder context per thread (a ZSTD_DCtx costs ~100 KB to create per entry). Raw page-in
+// failures of the mapped file surface as EXCEPTION_IN_PAGE_ERROR; no C++ unwinding objects in this frame.
+static bool decodeEntryGuarded(const uint8_t* input, uint64_t packed, uint64_t size, uint16_t method, uint8_t* out, size_t outCap) {
+    struct Dctx { ZSTD_DCtx* p = ZSTD_createDCtx(); ~Dctx() { ZSTD_freeDCtx(p); } };
+    static thread_local Dctx dctx;
+#ifdef _MSC_VER
+    __try {
+#endif
+        if (method == 0) {
+            if (size != packed) return false;
+            std::memcpy(out, input, static_cast<size_t>(size));
+        } else if (method == 8) {
+            z_stream z{};
+            z.next_in = const_cast<Bytef*>(input); z.avail_in = static_cast<uInt>(packed);
+            z.next_out = out; z.avail_out = static_cast<uInt>(outCap);
+            if (inflateInit2(&z, -MAX_WBITS) != Z_OK) return false;
+            const auto result = inflate(&z, Z_FINISH); inflateEnd(&z);
+            return result == Z_STREAM_END && z.total_out == size && z.total_in == packed;
+        } else {
+            const auto fsize = ZSTD_getFrameContentSize(input, static_cast<size_t>(packed));
+            if (fsize == ZSTD_CONTENTSIZE_ERROR || !(fsize == ZSTD_CONTENTSIZE_UNKNOWN || fsize == size) || !dctx.p) return false;
+            const auto result = ZSTD_decompressDCtx(dctx.p, out, static_cast<size_t>(size), input, static_cast<size_t>(packed));
+            return !ZSTD_isError(result) && result == size;
+        }
+        return true;
+#ifdef _MSC_VER
+    } __except (GetExceptionCode() == EXCEPTION_IN_PAGE_ERROR ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH) {
+        return false;
+    }
+#endif
+}
 std::optional<std::vector<uint8_t>> PakZip::read(const Entry& e) const {
     if (e.failed.load()) return std::nullopt;
     const auto begin = ioNow();
@@ -211,21 +242,7 @@ std::optional<std::vector<uint8_t>> PakZip::read(const Entry& e) const {
     try {
         require(e.size <= kMaxInRamImage && e.packed <= kMaxInRamImage);
         std::vector<uint8_t> out(static_cast<size_t>(std::max<uint64_t>(e.size, 1)));
-        const auto* input = mapping_->data + e.offset;
-        if (e.method == 0) { require(e.size == e.packed); std::memcpy(out.data(), input, e.size); }
-        else if (e.method == 8) {
-            z_stream z{};
-            z.next_in = const_cast<Bytef*>(input); z.avail_in = static_cast<uInt>(e.packed);
-            z.next_out = out.data(); z.avail_out = static_cast<uInt>(out.size());
-            require(inflateInit2(&z, -MAX_WBITS) == Z_OK);
-            auto result = inflate(&z, Z_FINISH); inflateEnd(&z);
-            require(result == Z_STREAM_END && z.total_out == e.size && z.total_in == e.packed);
-        } else {
-            auto size = ZSTD_getFrameContentSize(input, e.packed);
-            require(size != ZSTD_CONTENTSIZE_ERROR && (size == ZSTD_CONTENTSIZE_UNKNOWN || size == e.size));
-            auto result = ZSTD_decompress(out.data(), e.size, input, e.packed);
-            require(!ZSTD_isError(result) && result == e.size);
-        }
+        require(decodeEntryGuarded(mapping_->data + e.offset, e.packed, e.size, e.method, out.data(), out.size()));
         const auto crcBegin = ioNow(); pakIo.decodeNs += crcBegin - begin;
         const auto crc = crc32(0, out.data(), static_cast<uInt>(e.size));
         pakIo.crcNs += ioNow() - crcBegin;

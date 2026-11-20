@@ -55,6 +55,7 @@ L(Presence, "MC2_OS_CURSOR", Bool, false, "unclassified", "", "Hide the OS curso
 // OVERLAY-TILE-HIRES-1: high-resolution terrain overlay tiles.
 // history: docs/gate-history.md#MC2_OVERLAY_TILE_HIRES
 G("MC2_OVERLAY_TILE_HIRES", String, "256", "terrain", "", "OVERLAY-TILE-HIRES-1: honor the overlay tile TGA's actual dimensions instead of the legacy hard-assumed 64px (initOverlay header resync mirrors...", passthrough | registry(Feature, "MC2_OVERLAY_TILE_HIRES", -1, true) | verified),
+L(Lead0Kill, "MC2_PAK", Bool, true, "code", "", "Temporary kill-switch: MC2_PAK=0 forces the FST archives (no pak mount). Default ON. Remove at M5.", passthrough | verified),
 G("MC2_PLAYTEST_EXE", String, "", "editor", "", "", verified),
 G("MC2_PLAY_MISSION", Bool, false, "code", "", "Dev-only scripted mission commander and objective verdict reporting.", passthrough | verified),
 G("MC2_PLAY_MISSION_GOTO", String, "", "code", "", "Dev-only: order the home lance to world position x,y during a mission test.", passthrough | verified),

@@ -17,6 +17,7 @@
 #ifndef FILE_H
 #include"file.h"
 #include "pak_zip.h"
+#include <filesystem>
 #endif
 #include <algorithm>
 
@@ -90,6 +91,21 @@ std::string LookupArchivePath(std::string_view dataPath)
 {
 	std::string key(dataPath);
 	fst_normalize_loose_key_inplace(key.data());
+	// A pak candidate answers with its SOURCE FST (callers CRC it against the stock list): the registered FST on disk,
+	// or empty when that FST is absent. Never the pak path, which would turn stock assets into "user archives".
+	for (const auto& candidate : mc2::vfs::candidates(key)) {
+		if (candidate.provider != mc2::vfs::Provider::Pak || !candidate.pak) continue;
+		const auto* pakEntry = candidate.pak->find(candidate.key);
+		if (!pakEntry) break;
+		for (long a = 0; fastFiles && a < numFastFiles; ++a) {
+			if (!fastFiles[a]) continue;
+			std::error_code ec;
+			const std::string name = fastFiles[a]->getFileName();
+			if (mc2::vfs::key(std::filesystem::path(name).filename().string()) == pakEntry->source && std::filesystem::is_regular_file(name, ec))
+				return name;
+		}
+		return {};
+	}
 	long member = -1;
 	if (auto* archive = FastFileFind(key.c_str(), member)) {
 		archive->closeFast(member);
@@ -454,6 +470,9 @@ long File::open (mc2::czstring fName, FileMode _mode, long numChild, bool doNotL
 //---------------------------------------------------------------------------
 long File::open (FilePtr _parent, unsigned long fileSize, long numChild)
 {
+	// A RAM-image parent without a descriptor (a pak-backed File) has no handle to share: refuse it rather than _read() a dead fd.
+	if (_parent && _parent->fastFile == nullptr && _parent->inRAM && (_parent->handle == INVALID_HANDLE_VALUE || _parent->handle == CLOSED_HANDLE_VALUE))
+		return(PARENT_NULL);
 	if (_parent && (_parent->fastFile == nullptr))
 	{
 		if (numChild == -1 && fileSize > _parent->getLength())

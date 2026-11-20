@@ -12,6 +12,7 @@
 #include <chrono>
 #include <cstdio>
 #include <cstring>
+#include <filesystem>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -108,6 +109,10 @@ void startStartupPreload()
 	for (long i = 0; i < numFastFiles; ++i)
 		if (fastFiles && fastFiles[i] && fastFiles[i]->getFileName())
 			plan.push_back({fastFiles[i]->getFileName(), false});
+	{
+		std::error_code pakEc;
+		if (std::filesystem::is_regular_file("paks/stock.mc2pak", pakEc)) plan.push_back({"paks/stock.mc2pak", false});
+	}
 	const size_t archives = plan.size();
 	// Then every mod-winning data file (the worker applies the mod size budget).
 	EnumerateModFiles("data/", &collectModFile<const char*>, &plan);

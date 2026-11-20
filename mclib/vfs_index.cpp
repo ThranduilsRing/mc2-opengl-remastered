@@ -248,7 +248,7 @@ void buildLocked()
 	// A representation replaces its source at that archive's rank. In particular a matching
 	// later source must never jump over an earlier FST that has since gained the same key.
 	std::error_code pakEc;
-	if (std::filesystem::is_regular_file("paks/stock.mc2pak", pakEc)) {
+	if (mc2::gate::get<"MC2_PAK">() && std::filesystem::is_regular_file("paks/stock.mc2pak", pakEc)) {
 		auto pak = std::make_shared<PakZip>("paks/stock.mc2pak");
 		if (pak->valid()) {
 			std::map<std::string, bool> eligible;
@@ -257,6 +257,8 @@ void buildLocked()
 				for (long a = 0; fastFiles && a < numFastFiles; ++a) {
 					auto* ff = fastFiles[a];
 					if (!ff || key(std::filesystem::path(ff->getFileName()).filename().string()) != src.name) continue;
+					std::error_code presentEc;
+					if (!std::filesystem::is_regular_file(ff->getFileName(), presentEc)) continue; // registered but missing on disk: absent, not modified
 					std::ifstream in(ff->getFileName(), std::ios::binary); // path-audit: loose-only (root FST container TOC hash)
 					const auto len = uint64_t{8} + static_cast<uint64_t>(ff->getNumFiles()) * 266;
 					std::vector<uint8_t> toc(static_cast<size_t>(len));
@@ -456,12 +458,33 @@ uint64_t contentDigest(std::string_view path, bool verify)
 		return std::filesystem::is_regular_file(candidate.physicalPath, ec) && std::ifstream(candidate.physicalPath, std::ios::binary).is_open(); // path-audit: loose-only; probe the normalized ladder candidate's physical file.
 	})) {
 		if (e->provider == Provider::Pak) {
-			// Hash the actual served bytes, including fallback after a corrupt pak entry.
+			// Memoized by the pak file stamp; a miss hashes the actual served bytes (fallback after a corrupt entry included).
+			constexpr const char* pakFile = "paks/stock.mc2pak";
+			std::error_code pec;
+			DigestStamp pstamp;
+			pstamp.size = std::filesystem::file_size(pakFile, pec);
+			if (pec) return 0;
+			const auto pmt = std::filesystem::last_write_time(pakFile, pec);
+			if (pec) return 0;
+			pstamp.mtime = static_cast<int64_t>(pmt.time_since_epoch().count());
+			const std::string pakMemoKey = "pak:" + std::filesystem::absolute(pakFile, pec).lexically_normal().generic_string() + "\n" + k;
+			{
+				std::lock_guard<std::mutex> dl(g_digestMutex);
+				loadDigestsLocked();
+				const auto it = g_digestMemo.find(pakMemoKey);
+				if (!verify && it != g_digestMemo.end() && it->second.first.size == pstamp.size && it->second.first.mtime == pstamp.mtime)
+					return it->second.second;
+			}
 			File input;
 			if (input.open(std::string(path).c_str()) != NO_ERR) return 0;
 			std::vector<uint8_t> bytes(input.fileSize());
 			if (input.read(bytes.data(), static_cast<long>(bytes.size())) != static_cast<long>(bytes.size())) return 0;
-			return mc2::content::fastHash(bytes);
+			uint64_t digest = mc2::content::fastHash(bytes);
+			if (!digest) digest = 1;
+			std::lock_guard<std::mutex> dl(g_digestMutex);
+			g_digestMemo[pakMemoKey] = {pstamp, digest};
+			g_digestDirty = true;
+			return digest;
 		}
 		if (e->provider == Provider::Fst) {
 			fst = true;

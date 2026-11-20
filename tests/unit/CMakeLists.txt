@@ -259,6 +259,7 @@ add_executable(mc2_tests
     test_mod_regressions.cpp # quick synthetic regressions; no installed mods or game required
     ${MC2_WORKTREE_ROOT}/mclib/model_override_registry.cpp
     test_vfs_content_digest.cpp  # container plan M1: SourceRecord authority rank + content digest (same-size edit, mod order, FST registration order)
+    test_pak_default.cpp    # pak-default carry: digest memo, missing FST absent, LookupArchivePath/ReadArchiveBytes pak probes
     test_pilot_profile_preserve.cpp  # PILOT-PROFILE-PRESERVE-1: editor Profile save decision kernel (offline)
     test_pilot_pick.cpp  # getBestPilot out-of-pool kernel (offline)
     test_ui_defs_lockstep.cpp  # UI-DEFS-LOCKSTEP-HARDEN-1: defs/ui package version + zero-element/zero-draw fail-soft (offline)

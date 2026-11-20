@@ -2907,6 +2907,91 @@ def prepare_seed_delta(items, target, full_verify=False, allow_legacy=False):
     return verified
 
 
+PAK_CACHE_ROOT = Path(os.environ.get("MC2_PAK_CACHE", "E:/mc2-installs/_pak-cache"))
+PAK_REL = "paks/stock.mc2pak"
+
+
+def _mc2pak_python():
+    """The interpreter that can run tools/mc2pak.py (ZIP Zstandard needs Python 3.14), or None."""
+    if sys.version_info >= (3, 14):
+        return [sys.executable]
+    try:
+        r = subprocess.run(["py", "-3.14", "-c", "import sys"], capture_output=True, timeout=30,
+                           **console_child.child_kwargs(redirected=True))
+        return ["py", "-3.14"] if r.returncode == 0 else None
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def stock_pak_key(src_root, target):
+    """Cache key: every registered FST's name+size+sha256 plus the packer's own sha256; None without a system.cfg."""
+    cfg = Path(target) / "system.cfg"
+    if not cfg.is_file():
+        return None
+    section = re.search(r"(?ims)^\[FastFiles\](.*?)(?=^\[|\Z)", cfg.read_text(encoding="latin-1"))
+    names = re.findall(r'(?im)^\s*st\s+File(\d+)\s*=\s*"([^"]+)"', section[1]) if section else []
+    if not names:
+        return None
+    h = hashlib.sha256()
+    for _, name in sorted(names, key=lambda item: int(item[0])):
+        path = next((p for p in (Path(target) / name, Path(target) / "data/assets" / name) if p.is_file()), None)
+        if path is None:
+            return None
+        h.update(f"{name.lower()}\0{path.stat().st_size}\0{sha256_file(path)}\n".encode())
+    for tool in ("tools/mc2pak.py", "tools/mc2x_import/fst.py"):
+        h.update(f"{tool}\0{sha256_file(Path(src_root) / tool)}\n".encode())
+    return h.hexdigest()[:32]
+
+
+def ensure_stock_pak(src_root, target, hashes):
+    """Default pak deploy: pack once per FST set into the shared cache, hardlink it to <target>/paks/stock.mc2pak
+    (replace by rename) and record it in `hashes`. Any failure is a loud log line; the FSTs still ship and rc stays 0."""
+    try:
+        key = stock_pak_key(src_root, target)
+        if key is None:
+            log("WARN [PAK_DEPLOY] no system.cfg [FastFiles] / FST set to pack; FST only")
+            return
+        py = _mc2pak_python()
+        if py is None:
+            log("WARN [PAK_DEPLOY] Python 3.14 is not available (tools/mc2pak.py needs ZIP Zstandard); deploy is FST only")
+            return
+        cache = PAK_CACHE_ROOT / key
+        pak = cache / "stock.mc2pak"
+        digest_file = cache / "stock.mc2pak.sha256"
+        if not (pak.is_file() and digest_file.is_file()):
+            cache.mkdir(parents=True, exist_ok=True)
+            partial = cache / f"stock.{os.getpid()}.partial"
+            started = time.perf_counter()
+            log(f"[PAK_DEPLOY] cache miss key={key}: packing (about 9 minutes)")
+            with deploy_phase("stock pak pack", 1500):
+                r = subprocess.run([*py, str(Path(src_root) / "tools/mc2pak.py"), "pack", "--install", str(target),
+                                    "--out", str(partial)], capture_output=True, text=True,
+                                   **console_child.child_kwargs(redirected=True))
+            if r.returncode != 0 or not partial.is_file():
+                partial.unlink(missing_ok=True)
+                log(f"WARN [PAK_DEPLOY] mc2pak pack failed rc={r.returncode}: {(r.stderr or r.stdout).strip()[-300:]}; deploy is FST only")
+                return
+            digest_file.write_text(sha256_file(partial))
+            os.replace(partial, pak)
+            log(f"[PAK_DEPLOY] packed {pak.stat().st_size} bytes in {time.perf_counter() - started:.1f}s")
+        else:
+            log(f"[PAK_DEPLOY] cache hit key={key}")
+        dst = Path(target) / PAK_REL
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        if not (dst.is_file() and os.path.samefile(dst, pak)):
+            tmp = dst.with_name(f".stock.mc2pak.new-{os.getpid()}")
+            tmp.unlink(missing_ok=True)
+            try:
+                os.link(pak, tmp)
+            except OSError:
+                shutil.copy2(pak, tmp)
+            replace_file(str(tmp), str(dst))
+        hashes[PAK_REL] = (digest_file.read_text().strip(), dst.stat().st_size, dst.stat().st_mtime_ns)
+        log(f"[PAK_DEPLOY] OK {PAK_REL} key={key}")
+    except Exception as exc:  # noqa: BLE001 -- the FSTs still ship; a pak failure never fails the deploy
+        log(f"WARN [PAK_DEPLOY] pak step failed ({type(exc).__name__}: {exc}); deploy is FST only")
+
+
 def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     with deploy_phase("deploy", 1800):
         return _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name)
@@ -3108,6 +3193,8 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
             fail("deployed SPIR-V is not the build's SPIR-V:\n  " + "\n  ".join(spv_fails), 4)
         log(f"deployed SPIR-V audit OK: {spv_n} .spv identical to the build, descriptor/push ABI matches")
     hashes = {rel: row for rel, row in hashes.items() if not asset_parity.is_deploy_artifact(rel)}
+    if exe_name.casefold() != "mission editor.exe":
+        ensure_stock_pak(src_root, target, hashes)
     write_manifest(target, hashes, src_commit)
     if reuse:
         # Preserve the verified external source inventory across code-only deploys.

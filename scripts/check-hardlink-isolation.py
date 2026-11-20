@@ -296,6 +296,9 @@ def classify(rel: str) -> str:
     # Native recipes publish by temp+rename (cook_cache.cpp), never through an existing inode (a read touches the LRU mtime only when nlink == 1).
     if rel.startswith("cache/content-model/model-") and rel.endswith(".mci"):
         return "data"
+    # The deploy hardlinks the cached stock pak into every install and replaces it by rename; the engine only reads it.
+    if rel.startswith("paks/") and rel.endswith(".mc2pak") and rel.count("/") == 1:
+        return "data"
     if "/" not in rel:
         # Anything sitting in the target root, except the stock read-only
         # asset archives that happen to live there (see DATA_EXTS_AT_ROOT).
@@ -630,6 +633,8 @@ def selftest() -> int:
               classify("textures.fst") == "data")
         check("classify(): root .pak archive is data",
               classify("mc2_01.pak") == "data")
+        check("classify(): paks/*.mc2pak is data (deploy hardlinks the cached pak)",
+              classify("paks/stock.mc2pak") == "data")
         check("classify(): the carve-out is extension-pinned, not a hole",
               classify("mc2.exe") == "mutated" and
               classify("options.cfg") == "mutated" and
