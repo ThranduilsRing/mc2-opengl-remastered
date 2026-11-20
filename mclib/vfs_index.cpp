@@ -387,21 +387,32 @@ std::vector<Entry> candidates(std::string_view logicalKey)
 				}
 		}
 	}
-	// Last rung: weapon/FX art that a campaign mod (MCO) ships only as data/tgl/512/<name>.tga, never under 128.
-	if (out.empty() && k.rfind("data/tgl/128/", 0) == 0) {
-		const auto hit = g_index.entries.find("data/tgl/512/" + k.substr(13));
-		if (hit != g_index.entries.end()) {
-			const auto& [hitKey, hitEntries] = *hit;
-			for (const Entry& c : hitEntries) {
-				Entry a = c;
-				a.key = k;
-				out.push_back(std::move(a));
-			}
-		}
-	}
 	out.erase(std::remove_if(out.begin(), out.end(), [](const Entry& e) {
 		return e.provider == Provider::Pak && !e.pak->find(e.key);
 	}), out.end());
+	// Last rung (after the stale-pak erase): weapon/FX art that a campaign mod (MCO) ships only under a larger
+	// data/tgl/<N>/ size dir than the requested one (ObjectTextureSize). Only Mod/Loose can serve it: an FST member is
+	// opened by the requested path and a pak member by the requested key, so those stay ghosts and are not carried.
+	if (out.empty() && k.rfind("data/tgl/", 0) == 0) {
+		size_t q = 9;
+		while (q < k.size() && k[q] >= '0' && k[q] <= '9') ++q;
+		if (q > 9 && q < k.size() && k[q] == '/' && q - 9 <= 5) {
+			const unsigned want = static_cast<unsigned>(std::stoul(k.substr(9, q - 9)));
+			for (const unsigned sz : {64u, 128u, 256u, 512u, 1024u, 2048u, 4096u, 8192u}) {   // nearest larger size first
+				if (sz <= want) continue;
+				const auto hit = g_index.entries.find("data/tgl/" + std::to_string(sz) + k.substr(q));
+				if (hit == g_index.entries.end()) continue;
+				const auto& [hitKey, hitEntries] = *hit;
+				for (const Entry& c : hitEntries) {
+					if (c.provider != Provider::Mod && c.provider != Provider::Loose) continue;
+					Entry a = c;
+					a.key = k;
+					out.push_back(std::move(a));
+				}
+				if (!out.empty()) break;
+			}
+		}
+	}
 	for (size_t i = 0; i < out.size(); ++i) {
 		out[i].shadowed = static_cast<unsigned>(out.size() - 1 - i);
 		out[i].source.authorityRank = static_cast<unsigned>(i);
