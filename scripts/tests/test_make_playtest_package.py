@@ -187,6 +187,8 @@ def test_bt2018_extractor_only_files_are_never_packaged(tmp_path, monkeypatch):
 
 
 def test_committed_bt2018_list_matches_inventory_exclusion():
+    if not package.INVENTORY.is_file():
+        pytest.skip('needs a generated inventory (generate_inventory.py --inventory)')
     listed = [x for x in package.BT2018_LIST.read_text().splitlines() if x]
     inventory = json.loads(package.INVENTORY.read_text())
     assert len(listed) == 111 == inventory['excluded'][package.BT2018_REASON]

@@ -279,6 +279,8 @@ def test_cont6_synthetic_inventory(tmp_path, repository, monkeypatch):
     for folder in (source, golden, config):
         folder.mkdir()
     rules = gen.tier_rules()
+    if not package.INVENTORY.is_file():
+        pytest.skip('needs a generated inventory (generate_inventory.py --inventory)')
     baseline = json.loads(package.INVENTORY.read_text())
     (config / 'tier_rules.json').write_text(json.dumps(rules))
     (config / 'kit_cc0_sources.json').write_text(json.dumps(
@@ -309,6 +311,8 @@ def test_cont6_synthetic_inventory(tmp_path, repository, monkeypatch):
         + 'data/tgl/32/a_cp_island_tree_01_1.tga,' + pins['data/tgl/32/a_cp_island_tree_01_1.tga'] + ',\n')
     monkeypatch.setattr(package, 'PERMISSIONS', config / 'bundle_permissions.json')
     monkeypatch.setattr(package, 'CREDITS_SOURCE', source)
+    monkeypatch.setattr(package, 'GENERATED', config)
+    monkeypatch.setattr(package, 'INVENTORY', config / 'inventory.json')
     monkeypatch.setattr(gen, 'verify_tgl', lambda *a: baseline['tgl'])
     result = gen.generate_inventory(source, golden, source)
     assert result['unmatched'] == 0

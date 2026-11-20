@@ -14,7 +14,10 @@ import console_child
 import release_asset_guard
 
 PERMISSIONS = Path(__file__).resolve().parents[1] / 'tools/playtest/bundle_permissions.json'
-INVENTORY = PERMISSIONS.with_name('inventory.json')
+# Generated inventory outputs never live in the repo: MC2_PLAYTEST_OUT, else $MC2_LANE_SCRATCH, else the temp dir.
+GENERATED = Path(os.environ.get('MC2_PLAYTEST_OUT') or os.environ.get('MC2_LANE_SCRATCH')
+                 or os.environ.get('TEMP', '.')) / 'playtest-generated'
+INVENTORY = GENERATED / 'inventory.json'
 REPOSITORY = PERMISSIONS.parents[2]
 # BT2018-derived loose files flagged by release_asset_guard: extractor-only, never packaged.
 # Keyed by physical path (case-folded); the loader falls back to the stock model when absent.

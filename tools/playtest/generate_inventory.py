@@ -312,9 +312,11 @@ def generate_inventory(source, golden, extract):
         credits_sha256=package.sha256(package.safe_path(package.CREDITS_SOURCE, 'CREDITS.txt')),
         provenance='tools/playtest/kit_cc0_sources.json#Poly-Haven-trees', sources=trees)
     package.PERMISSIONS.write_text(json.dumps(permissions, indent=2) + '\n', encoding='utf-8')
-    (root / 'inventory.json').write_text(json.dumps(result, indent=2) + '\n')
-    (root / 'parity_classes.json').write_text(json.dumps(classes, indent=2) + '\n')
-    (root / 'unmatched_by_class.json').write_text(json.dumps(summary, indent=2) + '\n')
+    out = package.GENERATED
+    out.mkdir(parents=True, exist_ok=True)
+    package.INVENTORY.write_text(json.dumps(result, indent=2) + '\n')
+    (out / 'parity_classes.json').write_text(json.dumps(classes, indent=2) + '\n')
+    (out / 'unmatched_by_class.json').write_text(json.dumps(summary, indent=2) + '\n')
     return result
 
 
