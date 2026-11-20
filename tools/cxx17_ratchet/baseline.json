@@ -1408,6 +1408,7 @@
   "code/brain_task_queue.h": {},
   "code/brain_world_snapshot.h": {},
   "code/building_value_codec.h": {},
+  "code/called_shot_floor.h": {},
   "code/camera_start_pick.h": {},
   "code/capability.h": {},
   "code/carnage.cpp": {
@@ -1569,6 +1570,7 @@
   },
   "code/frame_jobs.h": {},
   "code/fx_fixture_aim.h": {},
+  "code/game_rules.h": {},
   "code/gamecam.cpp": {
    "LG11": 2,
    "LG17": 2
@@ -3463,7 +3465,7 @@
    "LG20": 1
   }
  },
- "head": "feac1decc",
+ "head": "1e2b5735f",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
