@@ -9,7 +9,9 @@
 layout(local_size_x = 128) in;
 #include "include/vegetation_cull_common.glsl"
 shared uint s_bin[128];      // this chunk's region bins (0xffffffff = not visible)
-shared uint s_start[128];    // running write position per distance bin
+shared uint s_start[128];    // first write position per distance bin
+shared uint s_reg[128];      // this chunk's visible regions, compacted in lane order
+shared uint s_sub[128];      // visible count per subgroup
 // Visible regions are written NEAR TO FAR (128 bins, finer near the camera, stable region order inside a bin): the depth pre-pass (GREATER)
 // then rejects far overdraw at the early depth test. The result (nearest cutout wins) is order independent, counts[]/offsets[] are
 // indexed by position in visList, so only the draw order changes. Deterministic: no atomics decide the order.
@@ -37,8 +39,6 @@ void main() {
     }
     barrier();
     // Exclusive prefix over the 128 bins, one thread per bin via a serial scan of the shared counts by thread 0.
-    uint mine = s_start[lid];
-    barrier();
     if (lid == 0u) {
         uint run = 0u;
         for (uint i = 0u; i < 128u; ++i) { uint t = s_start[i]; s_start[i] = run; run += t; }
@@ -48,20 +48,22 @@ void main() {
     uint base = s_bin[0];
     barrier();
     // Pass 2: stable placement. A region's slot = bin start + same-bin regions of earlier chunks + same-bin lower lanes of its chunk.
+    // Each chunk's visible regions are ballot-compacted (lane order kept) into s_bin/s_reg, then thread lid (the owner of bin lid) walks only
+    // the visible entries and appends its bin's regions in order: the same slots as a per-lane rank, without a 128-wide scan per chunk.
+    uint pos = s_start[lid];
     for (uint c = 0u; c < regions; c += 128u) {
         uint r = c + lid;
         uint bn = r < regions ? regionBin(r, force) : 0xffffffffu;
-        s_bin[lid] = bn;
+        bool vis = bn != 0xffffffffu;
+        uvec4 ballot = subgroupBallot(vis);
+        if (subgroupElect()) s_sub[gl_SubgroupID] = subgroupBallotBitCount(ballot);
         barrier();
-        uint rank = 0u, inChunk = 0u;
-        for (uint j = 0u; j < 128u; ++j) {
-            uint o = s_bin[j];
-            if (o == lid) ++inChunk;          // this thread owns bin number lid for the running-offset update
-            if (j < lid && o == bn && bn != 0xffffffffu) ++rank;
-        }
-        if (bn != 0xffffffffu) visList[s_start[bn] + rank] = r;
+        uint before = 0u, chunk = 0u;
+        for (uint s = 0u; s < gl_NumSubgroups; ++s) { uint t = s_sub[s]; if (s < gl_SubgroupID) before += t; chunk += t; }
+        if (vis) { uint k = before + subgroupBallotExclusiveBitCount(ballot); s_bin[k] = bn; s_reg[k] = r; }
         barrier();
-        s_start[lid] += inChunk;
+        for (uint k = 0u; k < chunk; ++k)
+            if (s_bin[k] == lid) visList[pos++] = s_reg[k];
         barrier();
     }
     if (lid == 0u) {
