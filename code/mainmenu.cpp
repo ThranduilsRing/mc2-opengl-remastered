@@ -998,7 +998,7 @@ void MainMenu::render()
     if (!introMovie && !bOptions && !bDrawMechlopedia && !coopOpen)
         // Owner 11-15: the community/credits panel appears only once the real menu
         // does, i.e. after the splash logo animation (render() returns early until then).
-        PlayerFrontEnd::drawMainMenu(bDrawBackground && !bLegal &&
+        PlayerFrontEnd::drawMainMenu(bDrawBackground && !bLegal && !bRulesDlg &&
                                      (intro.allAnimObjectsDone() || introOver || bHostLeftDlg));
     if (!introMovie && bDrawBackground && !bOptions && !bDrawMechlopedia)
         if (coopOpen) drawCoopLobby();
