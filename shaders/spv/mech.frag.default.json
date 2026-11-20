@@ -6,8 +6,8 @@
   "specializationParams": [],
   "artifact": "mech.frag.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "2bb8531e60e46a08ce725d5cad72c6f660102b76cb2902f641fc603f19d2f6c6",
-  "spirv_sha256": "0609219d01919363d55bf2c6556b4946bc20eed756692c5d2c8b23af7004ea46",
+  "source_sha256": "32083e4703ca6d48224cfd211d7fca26fc0cd65f9d6ed9ba6356c057a27bb7cc",
+  "spirv_sha256": "c8823871f2791cf3a89e3da9aa1f6c0b9dd4185a602b5015e4731fc1056b0415",
   "bindings": {
     "ubos": [
       {
@@ -34,7 +34,7 @@
       {
         "type": "_1597",
         "name": "MoverShadowFrame",
-        "block_size": 8336,
+        "block_size": 14544,
         "set": 0,
         "binding": 25
       }
@@ -1028,7 +1028,7 @@
           "name": "coverage",
           "type": "uvec4",
           "array": [
-            512
+            900
           ],
           "array_size_is_literal": [
             true
