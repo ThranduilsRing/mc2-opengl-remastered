@@ -16,6 +16,7 @@
 #include "ArchivePanel.h"
 #include "ShapePanel.h"
 #include "TerrainMaterialPanel.h"
+#include "VfxPanel.h"
 
 class AssetViewerApp {
 public:
@@ -58,6 +59,7 @@ private:
     ArchivePanel       archivePanel_;
     ShapePanel         shapePanel_;
     TerrainMaterialPanel terrainPanel_;
+    VfxPanel           vfxPanel_;
     AssetType          prevActive_ = AssetType::Textures;
     bool materialsAutoLoaded_ = false;
 };

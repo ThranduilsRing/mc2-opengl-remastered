@@ -151,6 +151,12 @@ set(ASSET_VIEWER_SOURCES
     ShapeCatalog.cpp
     ShapePanel.cpp
     TerrainMaterialPanel.cpp
+    # VFX panel: native .fx catalog reader (self-contained TUs, no gosFX/legacy engine)
+    VfxPanel.cpp
+    "${CMAKE_SOURCE_DIR}/mclib/fx/fx_format.cpp"
+    "${CMAKE_SOURCE_DIR}/mclib/fx/fx_catalog.cpp"
+    "${CMAKE_SOURCE_DIR}/mclib/fx/fx_curve.cpp"
+    "${CMAKE_SOURCE_DIR}/mclib/fx/fx_mesh_data.cpp"
     # remaining sources added in later tasks
     TextureExtensions.cpp
     TextureMetadata.cpp

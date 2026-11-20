@@ -66,6 +66,8 @@ void AssetViewerApp::drawUi()
         shapePanel_.drawBrowser(ShapeCategory::Trees);
     } else if (sidebar_.active() == AssetType::TerrainMaterials) {
         terrainPanel_.drawBrowser();
+    } else if (sidebar_.active() == AssetType::Vfx) {
+        vfxPanel_.drawBrowser();
     } else if (sidebar_.active() == AssetType::StaticProps) {
         modelBrowser_.draw();
         if (modelBrowser_.hasSelection()) {
@@ -122,6 +124,9 @@ void AssetViewerApp::drawUi()
         break;
       case AssetType::TerrainMaterials:
         terrainPanel_.drawDetails();
+        break;
+      case AssetType::Vfx:
+        vfxPanel_.drawDetails();
         break;
     }
     ImGui::EndChild();
@@ -1023,6 +1028,9 @@ void AssetViewerApp::scriptedView(const char* kind, const char* arg) {
     } else if (k == "terrain") {
         sidebar_.setActive(AssetType::TerrainMaterials);
         if (arg) terrainPanel_.select(arg);
+    } else if (k == "vfx") {
+        sidebar_.setActive(AssetType::Vfx);
+        if (arg) vfxPanel_.select(arg);
     } else if (k == "archives") {
         sidebar_.setActive(AssetType::Archives);
         if (arg) onFileDropped(arg);
