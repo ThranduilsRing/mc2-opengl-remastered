@@ -50,6 +50,10 @@ TEST_CASE("pakdefault/digest of a pak winner is memoized by the pak stamp") {
     CHECK(mc2::vfs::pakIo.pakOpens.load() == opens);          // the hit decoded nothing
     CHECK(mc2::vfs::contentDigest(kKey, true) == first);      // verify bypasses the memo
     CHECK(mc2::vfs::pakIo.pakOpens.load() == opens + 1);
+    // A changed pak stamp (mtime) invalidates the memo: the digest is recomputed from the served bytes.
+    fs::last_write_time("paks/stock.mc2pak", fs::last_write_time("paks/stock.mc2pak") + std::chrono::seconds(7));
+    CHECK(mc2::vfs::contentDigest(kKey) == first);
+    CHECK(mc2::vfs::pakIo.pakOpens.load() == opens + 2);
 }
 TEST_CASE("pakdefault/a registered FST missing on disk is absent, not modified") {
     Scratch s(false);

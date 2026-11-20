@@ -161,6 +161,8 @@ TEST_CASE("pak/corruption structural bounds and unsupported fallback") {
     Scratch s; auto bytes=load("paks/stock.mc2pak"); const auto k=payloads[0].first;
     const auto c=central(bytes,k), l=static_cast<size_t>(get(bytes,c+42,4)); bool reject=false, zstd=false;
     SUBCASE("CRC entry eviction") { bytes[dataOffset(bytes,c)]^=1; }
+    SUBCASE("lazy local header signature (mount stays valid, entry evicted on first read)") { bytes[l]^=1; }
+    SUBCASE("lazy local header name") { bytes[l+30]^=1; }
     SUBCASE("central directory signature") { bytes[c]^=1; reject=true; }
     SUBCASE("truncated EOCD") { bytes.resize(bytes.size()-10); reject=true; }
     SUBCASE("oversized allocation claim") { set(bytes,c+24,(1ull<<30)+1,4); set(bytes,l+22,(1ull<<30)+1,4); reject=true; }

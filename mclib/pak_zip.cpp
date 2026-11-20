@@ -9,6 +9,7 @@
 #include <cstring>
 #include <limits>
 #include <set>
+#include <span>
 #include <stdexcept>
 #ifdef _WIN32
 #include <windows.h>
@@ -140,7 +141,7 @@ void PakZip::parse() {
     std::set<std::string> names;
     uint64_t at = cd;
     std::map<uint64_t, size_t> skipped;
-    std::map<uint64_t, uint64_t> ranges;
+    std::map<uint64_t, std::string> ranges; // local header offset -> key
     for (uint64_t i = 0; i < count; ++i) {
         v.bounds(at, 46); require(v.get(at, 4) == 0x02014b50);
         auto flags = v.get(at + 8, 2), method = v.get(at + 10, 2);
@@ -154,32 +155,31 @@ void PakZip::parse() {
         names.insert(k);
         zip64({v.p + at + 46 + nl, xl}, size, packed, local, disk);
         require(disk == 0 && size <= kMaxInRamImage && packed <= kMaxInRamImage);
-        v.bounds(local, 30); require(local < cd && v.get(local, 4) == 0x04034b50);
-        require(v.get(local + 6, 2) == flags && v.get(local + 8, 2) == method);
-        require(v.get(local + 14, 4) == crc && v.get(local + 26, 2) == nl);
-        auto lx = v.get(local + 28, 2);
-        v.bounds(local + 30, nl + lx); require(v.str(local + 30, nl) == name);
-        auto lp = v.get(local + 18, 4), ls = v.get(local + 22, 4);
-        uint64_t unusedOffset = 0, unusedDisk = 0;
-        zip64({v.p + local + 30 + nl, lx}, ls, lp, unusedOffset, unusedDisk);
-        require(lp == packed && ls == size);
-        auto data = local + 30 + nl + lx;
-        require(data <= cd && packed <= cd - data);
-        auto next = ranges.lower_bound(local);
-        if (next != ranges.end()) { const auto& [start, stop] = *next; require(data + packed <= start); }
-        if (next != ranges.begin()) { const auto& [start, stop] = *std::prev(next); require(stop <= local); }
-        const auto [rangeIt, inserted] = ranges.emplace(local, data + packed); require(inserted);
+        // The local header is NOT touched here (8k scattered page-ins of the mapping on the main thread);
+        // dataOffset() validates it on the entry's first read. Only offsets are checked structurally.
+        require(local < cd && local + 30 <= cd);
+        const auto [rangeIt, inserted] = ranges.emplace(local, k); require(inserted);
         if (method == 0 || method == 8 || method == 93) {
             const auto [it, added] = entries_.try_emplace(k);
             auto& [entryKey, e] = *it;
             e.key = k; e.source = v.str(at + 46 + nl + xl, cl);
-            e.offset = data; e.packed = packed; e.size = size;
+            e.offset = local; e.packed = packed; e.size = size;
+            e.flags = static_cast<uint16_t>(flags); e.nameLen = static_cast<uint16_t>(nl);
             e.crc = static_cast<uint32_t>(crc); e.method = static_cast<uint16_t>(method);
         } else ++skipped[method];
         if (i == 0) require(name == "mc2pak.json" && method == 0 && local == 0);
         at += 46 + nl + xl + cl;
     }
     require(at == tail);
+    for (auto it = ranges.begin(); it != ranges.end(); ++it) {
+        const auto& [localAt, entryKey] = *it;
+        const auto nextIt = std::next(it);
+        const uint64_t limitAt = nextIt == ranges.end() ? cd : std::get<0>(*nextIt);
+        const auto found = entries_.find(entryKey);
+        if (found == entries_.end()) continue;
+        auto& [foundKey, entry] = *found;
+        if (entry.offset == localAt) entry.limit = limitAt;
+    }
     for (const auto& [method, n] : skipped)
         mc2::fmt::print_out("[PAK] skipped entries={} method={}\n", n, method);
     auto manifest = find("mc2pak.json"); require(manifest != nullptr);
@@ -204,11 +204,46 @@ const PakZip::Entry* PakZip::find(std::string_view k) const {
     const auto& [entryKey, e] = *it;
     return e.failed.load() ? nullptr : &e;
 }
+// Page-in failures of the mapped file surface as EXCEPTION_IN_PAGE_ERROR; copy raw bytes under the guard.
+static bool copyGuarded(std::span<uint8_t> dst, const uint8_t* src) {
+#ifdef _MSC_VER
+    __try { std::memcpy(dst.data(), src, dst.size()); return true; }
+    __except (GetExceptionCode() == EXCEPTION_IN_PAGE_ERROR ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH) { return false; }
+#else
+    std::memcpy(dst.data(), src, dst.size()); return true;
+#endif
+}
+// Lazy local-header validation (formerly done for every entry at mount): same checks, first read only.
+uint64_t PakZip::dataOffset(const Entry& e) const {
+    if (const auto cached = e.dataOff.load(std::memory_order_acquire)) return cached;
+    View file{mapping_->data, mapping_->size};
+    file.bounds(e.offset, 30);
+    uint8_t fixed[30];
+    require(copyGuarded(fixed, mapping_->data + e.offset));
+    View f{fixed, 30};
+    require(f.get(0, 4) == 0x04034b50 && f.get(6, 2) == e.flags && f.get(8, 2) == e.method);
+    require(f.get(14, 4) == e.crc && f.get(26, 2) == e.nameLen);
+    const uint64_t nl = e.nameLen, lx = f.get(28, 2);
+    file.bounds(e.offset, 30 + nl + lx);
+    std::vector<uint8_t> h(static_cast<size_t>(30 + nl + lx));
+    require(copyGuarded(h, mapping_->data + e.offset));
+    View v{h.data(), h.size()};
+    require(key(v.str(30, nl)) == e.key);
+    auto lp = v.get(18, 4), ls = v.get(22, 4);
+    uint64_t unusedOffset = 0, unusedDisk = 0;
+    zip64({h.data() + 30 + nl, lx}, ls, lp, unusedOffset, unusedDisk);
+    require(lp == e.packed && ls == e.size);
+    const auto data = e.offset + 30 + nl + lx;
+    require(data <= e.limit && e.packed <= e.limit - data);
+    e.dataOff.store(data, std::memory_order_release);
+    return data;
+}
 // One decoder context per thread (a ZSTD_DCtx costs ~100 KB to create per entry). Raw page-in
 // failures of the mapped file surface as EXCEPTION_IN_PAGE_ERROR; no C++ unwinding objects in this frame.
 static bool decodeEntryGuarded(const uint8_t* input, uint64_t packed, uint64_t size, uint16_t method, uint8_t* out, size_t outCap) {
-    struct Dctx { ZSTD_DCtx* p = ZSTD_createDCtx(); ~Dctx() { ZSTD_freeDCtx(p); } };
+    struct Dctx { ZSTD_DCtx* p = ZSTD_createDCtx(); ~Dctx() { ZSTD_freeDCtx(p); p = nullptr; } };
     static thread_local Dctx dctx;
+    z_stream z{}; bool inflating = false; // ended on every path, including a page fault mid-inflate
 #ifdef _MSC_VER
     __try {
 #endif
@@ -216,11 +251,11 @@ static bool decodeEntryGuarded(const uint8_t* input, uint64_t packed, uint64_t s
             if (size != packed) return false;
             std::memcpy(out, input, static_cast<size_t>(size));
         } else if (method == 8) {
-            z_stream z{};
             z.next_in = const_cast<Bytef*>(input); z.avail_in = static_cast<uInt>(packed);
             z.next_out = out; z.avail_out = static_cast<uInt>(outCap);
             if (inflateInit2(&z, -MAX_WBITS) != Z_OK) return false;
-            const auto result = inflate(&z, Z_FINISH); inflateEnd(&z);
+            inflating = true;
+            const auto result = inflate(&z, Z_FINISH); inflateEnd(&z); inflating = false;
             return result == Z_STREAM_END && z.total_out == size && z.total_in == packed;
         } else {
             const auto fsize = ZSTD_getFrameContentSize(input, static_cast<size_t>(packed));
@@ -231,6 +266,7 @@ static bool decodeEntryGuarded(const uint8_t* input, uint64_t packed, uint64_t s
         return true;
 #ifdef _MSC_VER
     } __except (GetExceptionCode() == EXCEPTION_IN_PAGE_ERROR ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH) {
+        if (inflating) inflateEnd(&z);
         return false;
     }
 #endif
@@ -242,7 +278,8 @@ std::optional<std::vector<uint8_t>> PakZip::read(const Entry& e) const {
     try {
         require(e.size <= kMaxInRamImage && e.packed <= kMaxInRamImage);
         std::vector<uint8_t> out(static_cast<size_t>(std::max<uint64_t>(e.size, 1)));
-        require(decodeEntryGuarded(mapping_->data + e.offset, e.packed, e.size, e.method, out.data(), out.size()));
+        const auto dataAt = dataOffset(e);
+        require(decodeEntryGuarded(mapping_->data + dataAt,e.packed, e.size, e.method, out.data(), out.size()));
         const auto crcBegin = ioNow(); pakIo.decodeNs += crcBegin - begin;
         const auto crc = crc32(0, out.data(), static_cast<uInt>(e.size));
         pakIo.crcNs += ioNow() - crcBegin;

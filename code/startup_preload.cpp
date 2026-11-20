@@ -4,6 +4,7 @@
 #include "startup_preload.h"
 
 #include "diagnostic_trace.h"
+#include "Gates/gate.h"
 
 #include "../mclib/fastfile.h"
 #include "../mclib/ffile.h"
@@ -106,13 +107,14 @@ void startStartupPreload()
 		return;
 	std::vector<Entry> plan;
 	// Base archives first: they back every mission.
-	for (long i = 0; i < numFastFiles; ++i)
-		if (fastFiles && fastFiles[i] && fastFiles[i]->getFileName())
-			plan.push_back({fastFiles[i]->getFileName(), false});
-	{
-		std::error_code pakEc;
-		if (std::filesystem::is_regular_file("paks/stock.mc2pak", pakEc)) plan.push_back({"paks/stock.mc2pak", false});
-	}
+	// Warm only the active source: the pak when it serves (MC2_PAK on and present), else the FSTs.
+	std::error_code pakEc;
+	if (mc2::gate::get<"MC2_PAK">() && std::filesystem::is_regular_file("paks/stock.mc2pak", pakEc))
+		plan.push_back({"paks/stock.mc2pak", false});
+	else
+		for (long i = 0; i < numFastFiles; ++i)
+			if (fastFiles && fastFiles[i] && fastFiles[i]->getFileName())
+				plan.push_back({fastFiles[i]->getFileName(), false});
 	const size_t archives = plan.size();
 	// Then every mod-winning data file (the worker applies the mod size budget).
 	EnumerateModFiles("data/", &collectModFile<const char*>, &plan);

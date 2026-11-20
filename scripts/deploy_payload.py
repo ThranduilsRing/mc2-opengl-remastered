@@ -2958,7 +2958,11 @@ def ensure_stock_pak(src_root, target, hashes):
         cache = PAK_CACHE_ROOT / key
         pak = cache / "stock.mc2pak"
         digest_file = cache / "stock.mc2pak.sha256"
-        if not (pak.is_file() and digest_file.is_file()):
+        hit = pak.is_file() and digest_file.is_file()
+        if hit and sha256_file(pak) != digest_file.read_text().strip():
+            log(f"WARN [PAK_DEPLOY] cached pak digest mismatch key={key}; repacking")
+            hit = False
+        if not hit:
             cache.mkdir(parents=True, exist_ok=True)
             partial = cache / f"stock.{os.getpid()}.partial"
             started = time.perf_counter()
@@ -2987,7 +2991,7 @@ def ensure_stock_pak(src_root, target, hashes):
                 shutil.copy2(pak, tmp)
             replace_file(str(tmp), str(dst))
         hashes[PAK_REL] = (digest_file.read_text().strip(), dst.stat().st_size, dst.stat().st_mtime_ns)
-        log(f"[PAK_DEPLOY] OK {PAK_REL} key={key}")
+        log(f"[PAK_DEPLOY] OK {PAK_REL} key={key} sha256={hashes[PAK_REL][0][:16]}")
     except Exception as exc:  # noqa: BLE001 -- the FSTs still ship; a pak failure never fails the deploy
         log(f"WARN [PAK_DEPLOY] pak step failed ({type(exc).__name__}: {exc}); deploy is FST only")
 
