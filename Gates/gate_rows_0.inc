@@ -8,6 +8,7 @@ L(Presence, "MC2_ABL_TRACE", Bool, false, "code", "", "", verified),
 L(Lead0, "MC2_ABL_VM_FACTS", Bool, false, "code", "", "", verified),
 G("MC2_ACTIVE_MOD", String, "", "code", "", "", reread | passthrough | verified),
 // history: docs/gate-history.md#MC2_AIMED_FIRE_FIXTURE
+G("MC2_AIMED_FIRE_FIXTURE", Bool, false, "code", "", "ISSUE-9 probe: home mechs without orders get an aimed-HEAD attack at the nearest enemy; pair with MC2_DIAG_TAGS=COMBAT.", passthrough | verified),
 // -------------------------------------------------------------------
 // ENV-REGISTRY-LEGACY-SWEEP-1: promotions from the legacy-var registry
 // sweep (scripts/check-env-registry.sh ALLOWLIST). These are genuinely
