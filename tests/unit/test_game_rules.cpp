@@ -137,7 +137,7 @@ TEST_CASE("game rules: campaign save round trip through LogisticsMissionInfo") {
     std::remove(path.c_str());
 }
 
-TEST_CASE("game rules: an old save without [GameRules] loads with the defaults and default saves stay byte-identical") {
+TEST_CASE("game rules: an old save without GameRules loads with the defaults and default saves stay byte-identical") {
     LogisticsMissionInfo info;
     const std::string path = saveToFile(info, "game_rules_old_save");
     CHECK_FALSE(hasRulesBlock(path));   // a default campaign writes no block: identical to a pre-rules save
@@ -152,7 +152,7 @@ TEST_CASE("game rules: an old save without [GameRules] loads with the defaults a
     std::remove(path.c_str());
 }
 
-TEST_CASE("game rules: a partly damaged [GameRules] block keeps the good keys and defaults the bad ones") {
+TEST_CASE("game rules: a partly damaged GameRules block keeps the good keys and defaults the bad ones") {
     const std::string path = "game_rules_damaged.fit";
     {
         FitIniFile out;
@@ -173,7 +173,7 @@ TEST_CASE("game rules: a partly damaged [GameRules] block keeps the good keys an
     CHECK(g.dropLimitMode == kDropTonnage);
 }
 
-TEST_CASE("game rules: options.cfg keys round trip, garbage and out-of-range values keep the default") {
+TEST_CASE("game rules: options.cfg keys round trip garbage and out-of-range values keep the default") {
     using namespace mc2::options;
     auto snapshot = preferenceSnapshot(Preferences{}, RenderOptions{});
     const auto base = snapshot.size();
@@ -221,7 +221,7 @@ TEST_CASE("game rules: options.cfg keys round trip, garbage and out-of-range val
     CHECK(commented.salvage == kSalvageMC2);
 }
 
-TEST_CASE("game rules: static layout, labels and the publish decision") {
+TEST_CASE("game rules: static layout labels and the publish decision") {
     for (const Rule& r : kRules)
         if (r.kind == Kind::Enum) {
             REQUIRE(r.labels != nullptr);
@@ -232,7 +232,7 @@ TEST_CASE("game rules: static layout, labels and the publish decision") {
     CHECK(rulesToPublish(false, battleTechPreset()) == battleTechPreset());
 }
 
-TEST_CASE("game rules: clear() resets and a campaign save names its campaign file, the rules read on that path") {
+TEST_CASE("game rules: clear resets and a campaign save names its campaign file the rules read on that path") {
     LogisticsMissionInfo info;
     info.setRules(battleTechPreset());
 
@@ -289,7 +289,7 @@ TEST_CASE("game rules: the published snapshot defaults and republishes") {
 
 // Dialog contract (code/gamerulesdialog.cpp): the page supplies one value button per descriptor row, and DEFAULTS / BATTLETECH PRESET
 // are plain assignments that the cfg text must round trip. Every rule's default option is identifiable as "MC2 Default" in the dialog.
-TEST_CASE("game rules: dialog page rows equal the descriptor table, presets round trip, the default option says MC2 Default") {
+TEST_CASE("game rules: dialog page rows equal the descriptor table presets round trip the default option says MC2 Default") {
     std::ifstream in(std::string(MC2_REPO_ROOT) + "/data/defs/ui/packages/default/game/mcl_gamerules.fit", std::ios::binary);
     REQUIRE(in.good());
     std::ostringstream ss;
