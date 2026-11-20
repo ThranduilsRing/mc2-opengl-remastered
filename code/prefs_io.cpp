@@ -17,7 +17,7 @@ std::vector<mc2::options::PreferenceValue> CPrefs::snapshotValues() const {
     const auto defaults = mc2::rules::cfgEntries(mc2::rules::GameRules{});
     const auto current = mc2::rules::cfgEntries(gameRules);
     for (std::size_t i = 0; i < current.size(); ++i) {
-        if (current[i].text == defaults[i].text && sourceText_.find(current[i].key) == std::string::npos) continue;
+        if (current[i].text == defaults[i].text && !mc2::options::cfg::get(sourceText_, current[i].key).has_value()) continue;
         out.push_back({current[i].key, current[i].text, current[i].type});
     }
     return out;

@@ -7,6 +7,9 @@
 #include "mc2fmt.h"
 #include "camera_elevation.h"
 #include "sim_speed.h"
+#include "Gates/gate.h"
+#include "called_shot_floor.h"
+#include "game_rules.h"
 #include <algorithm>
 #include <span>
 #include <string_view>
@@ -454,8 +457,18 @@ int MissionInterfaceManager::addVisibleToSelection()
 
 	return 1;
 }
+// GameRules CalledShots Off: the aimed-order commands show the refused cursor and issue nothing (fire-time aim is dropped too, mover_attack.cpp).
+static bool calledShotsOff()
+{
+	return called_shot::mode(mc2::gate::get<"MC2_CALLED_SHOT_FIX">(), mc2::rules::current().calledShots) == called_shot::kOff;
+}
 int MissionInterfaceManager::aimLeg()
 {
+	if ( calledShotsOff() )
+	{
+		userInput->setMouseCursor( mState_DONT );
+		return 1;
+	}
 	if ( target )
 	{
 		BattleMech* pMech = dynamic_cast<BattleMech*>(target );
@@ -511,6 +524,11 @@ int MissionInterfaceManager::aimLeg()
 
 int MissionInterfaceManager::aimArm()
 {
+	if ( calledShotsOff() )
+	{
+		userInput->setMouseCursor( mState_DONT );
+		return 1;
+	}
 	BattleMech* pMech = dynamic_cast<BattleMech*>(target);
 		
 	if ( pMech && pMech->getMoveType() == MOVETYPE_GROUND)
@@ -560,6 +578,11 @@ int MissionInterfaceManager::aimArm()
 
 int MissionInterfaceManager::aimHead()
 {
+	if ( calledShotsOff() )
+	{
+		userInput->setMouseCursor( mState_DONT );
+		return 1;
+	}
 	if ( target )
 	{
 		BattleMech* pMech = dynamic_cast<BattleMech*>(target);

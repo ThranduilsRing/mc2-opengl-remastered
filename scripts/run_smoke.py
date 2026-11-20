@@ -218,6 +218,23 @@ def _check_order_liveness_floor(stem: str, ol: dict | None) -> list[str]:
     return fails
 
 
+#: The [GAME_RULES] snapshot fields at the shipped defaults (code/game_rules.h GameRules{}): calledShots Floors, skill weight 100 %,
+#: salvage MC2, C-Bill multiplier 100 %. A run under anything else simulates different rules than every baseline pins.
+_RULES_DEFAULTS = {"calledShots": "1", "pilotSkillWeight": "100", "salvage": "1", "cbillMultiplier": "100"}
+
+
+def _nondefault_rules(stdout_text: str) -> list[str]:
+    """One description per [GAME_RULES] snapshot line that shows a non-default rule. A snapshot from an older exe without the salvage and
+    cbillMultiplier fields is judged on the fields it has."""
+    found = []
+    for m in re.finditer(r"\[GAME_RULES\] snapshot (.*)", stdout_text):
+        kv = dict(re.findall(r"(\w+)=(\S+)", m.group(1)))
+        bad = [f"{k}={kv[k]} (default {d})" for k, d in _RULES_DEFAULTS.items() if k in kv and kv[k] != d]
+        if bad:
+            found.append(", ".join(bad))
+    return found
+
+
 def _norm_path(p: str) -> str:
     """Normalize an exe path for comparison: resolve, forward-slash, casefold.
     Windows paths are case-insensitive and may mix slashes; an unresolvable
@@ -695,6 +712,9 @@ def main():
     ap.add_argument("--sim-determinism", action="store_true",
                     help="set only by tools/sim_determinism.py: raises the --duration cap from 30 to 60 s (owner ruling 2026-10-13: determinism pairs "
                          "need the longer window; tier smokes and captures keep the 30 s cap)")
+    ap.add_argument("--allow-nondefault-rules", action="store_true",
+                    help="opt in to a run whose [GAME_RULES] snapshot shows non-default rules (calledShots, pilotSkillWeight, salvage, "
+                         "cbillMultiplier); without it such a run is a HARD FAIL, because every baseline pins the default rules")
     ap.add_argument("--sim-speed", type=int, choices=(1, 2, 3, 4), default=None, metavar="N",
                     help="non-visual proofs only (sim_determinism, saveload_roundtrip): MC2_SIM_SPEED=N runs N fixed 1/30 s sim steps per drawn "
                          "frame under the fixed-step clock, so the same sim frames take about 1/N of the host time; step size and RNG draws are those of 1x")
@@ -1404,6 +1424,14 @@ def main():
         summary = _via.run_via_menu(Path(args.exe), artifact_dir, timeout_s=float(args.duration), skip_intro=args.skip_intro, bay_mission=args.via_bay)
         if cold_result is not None:
             summary["cold_cache"] = cold_result
+        # The menu path starts a campaign under the options.cfg rules (the direct --mission path always runs the defaults).
+        if not (args.allow_nondefault_rules or os.environ.get("MC2_SMOKE_ALLOW_NONDEFAULT_RULES") == "1"):
+            _vm_log = artifact_dir / "via_menu.log"
+            _vm_bad = _nondefault_rules(_vm_log.read_text(encoding="utf-8", errors="replace") if _vm_log.exists() else "")
+            if _vm_bad:
+                print(f"[runner] [RULES] HARD FAIL: via-menu: [GAME_RULES] snapshot shows non-default rules: {'; '.join(_vm_bad)}; "
+                      f"pass --allow-nondefault-rules to run on purpose", file=sys.stderr)
+                summary["result"], summary["reason"] = "fail", "nondefault_rules"
         (artifact_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
         _f = summary["first60"]
         print(f"[via-menu] {summary['result'].upper()} {summary['reason']} time_to_menu_s={summary['time_to_menu_s']} "
@@ -1564,6 +1592,7 @@ def main():
     rows: list[report.Row] = []
     _resolution_failures: list[str] = []
     _gpu_failures: list[str] = []
+    _rules_failures: list[str] = []
     # MC2_DIAGNOSTIC_TRACE_FILE: normalise to absolute once, outside the
     # per-mission loop.  The game launches with cwd=exe_dir (not the runner
     # cwd), so a relative path would land in the deploy dir rather than the
@@ -1857,6 +1886,10 @@ def main():
             [p.device for p in result.summary.vk_profile], result.stdout_text)
         if _gpu_msg:
             _gpu_failures.append(f"{label}: {_gpu_msg}")
+        # Non-default game rules change the sim: refuse the run unless the caller opted in (FABLE 1120d P1-a).
+        if not (args.allow_nondefault_rules or os.environ.get("MC2_SMOKE_ALLOW_NONDEFAULT_RULES") == "1"):
+            for _rd in _nondefault_rules(result.stdout_text):
+                _rules_failures.append(f"{label}: [GAME_RULES] snapshot shows non-default rules: {_rd}")
         # The options the engine saw: the exe's options.cfg plus the MC2_OPTIONS_OVERRIDE of this run's environment (the runner passes the
         # ambient environment through and applies cfg.env_extra last).
         _options = render_options_pin.record(Path(args.exe).resolve().parent, {**os.environ, **cfg.env_extra})
@@ -1987,6 +2020,8 @@ def main():
         _run_failures.append("RESOLUTION: " + "; ".join(_resolution_failures))
     if _gpu_failures:
         _run_failures.append("GPU: " + "; ".join(_gpu_failures))
+    if _rules_failures:
+        _run_failures.append("RULES: " + "; ".join(_rules_failures))
     _fp_record = {"reference": _fp_reference, "description": _fp_reference_text,
                   "required": _fp_require, "hard_fail": _fp_hard_fail,
                   "checks": _fp_checks}
@@ -2054,6 +2089,11 @@ def main():
     # (W131/W132: the laptop forced AMD on a 1050 Ti, the report said FAIL, the exit was 0 and merge_gate recorded PASS).
     if _gpu_failures:
         print(f"[runner] [GPU] HARD FAIL: {'; '.join(_gpu_failures)}", file=sys.stderr)
+        passed = False
+
+    if _rules_failures:
+        print(f"[runner] [RULES] HARD FAIL: {'; '.join(_rules_failures)}; pass --allow-nondefault-rules to run on purpose "
+              f"(sim_determinism: --allow-nondefault-rules)", file=sys.stderr)
         passed = False
 
     # SMOKE-GATE-GUARD-1: --require-gate assertion.

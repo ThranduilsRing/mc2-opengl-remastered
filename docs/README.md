@@ -30,6 +30,7 @@
 - [docs/disciplines.md](disciplines.md)
 - [docs/deploy-isolation.md](deploy-isolation.md) — hardlinked deploy dirs: why a "free" lane dir can be someone else's install
 - [docs/known_issues.md](known_issues.md)
+- [docs/game-rules.md](game-rules.md) — the Game Rules (called shots, skill weight, salvage, C-Bill multiplier) and how the harness refuses non-default runs
 - [ARCHITECTURE-MAP.md](ARCHITECTURE-MAP.md) - MC2 Architecture Map (orientation, not reference)
 - [architecture.md](architecture.md) - MC2 OpenGL Architecture Reference
 - [render-pipeline-map.md](render-pipeline-map.md) - Render Pipeline Map
