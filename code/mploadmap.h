@@ -48,6 +48,8 @@ public:
 	virtual int			handleMessage( unsigned long, unsigned long );
 
 	void				beginSingleMission();
+	// The solo RULES button (defs page) was pressed; the menu opens the Game Rules dialog on top of this one.
+	bool				takeRulesRequest() { const bool r = rulesRequested; rulesRequested = false; return r; }
 
 	const char* getMapFileName(){ return selMapName.empty() ? nullptr : selMapName.c_str(); }
 
@@ -76,6 +78,7 @@ private:
 	std::string					selMapName;
 
 	bool					bIsSingle;
+	bool					rulesRequested = false;
 
 
 

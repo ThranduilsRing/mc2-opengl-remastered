@@ -75,11 +75,11 @@ template <std::size_t N>
 constexpr Rule enumRule(std::string_view k, long GameRules::*m, long hi, const std::string_view (&labels)[N]) { return {k, Kind::Enum, 0, hi, nullptr, m, labels, N}; }
 constexpr Rule intRule(std::string_view k, long GameRules::*m, long lo, long hi) { return {k, Kind::Int, lo, hi, nullptr, m, nullptr, 0}; }
 constexpr Rule pctRule(std::string_view k, long GameRules::*m, long lo, long hi) { return {k, Kind::Percent, lo, hi, nullptr, m, nullptr, 0}; }
-inline constexpr std::string_view kDropLabels[]    = {"Tonnage", "Battle Value", "None"};
-inline constexpr std::string_view kHeatLabels[]    = {"Off", "MC2", "Harsh"};
-inline constexpr std::string_view kAmmoLabels[]    = {"Off", "MC2", "Lethal"};
-inline constexpr std::string_view kCalledLabels[]  = {"Off", "Floors", "Classic"};
-inline constexpr std::string_view kSalvageLabels[] = {"Generous", "MC2", "Scarce"};
+inline constexpr std::string_view kDropLabels[]    = {"MC2 Default (Tonnage)", "Battle Value", "None"};
+inline constexpr std::string_view kHeatLabels[]    = {"Off", "MC2 Default (On)", "Harsh"};
+inline constexpr std::string_view kAmmoLabels[]    = {"Off", "MC2 Default (On)", "Lethal"};
+inline constexpr std::string_view kCalledLabels[]  = {"Off", "MC2 Default (Floors)", "Classic"};
+inline constexpr std::string_view kSalvageLabels[] = {"Generous", "MC2 Default", "Scarce"};
 }  // namespace detail
 
 inline constexpr Rule kRules[] = {

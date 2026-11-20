@@ -1,0 +1,589 @@
+// Game Rules dialog page (hand-authored, defs-only: no legacy FIT). Rows 0..8 are filled at runtime from the
+// mc2::rules::kRules descriptor table by code/gamerulesdialog.cpp (labels, values and visibility); this file only holds the frame.
+
+GuiPage {
+    key = "game.mcl_gamerules"
+    title = "Game Rules"
+    sourceSystem = "game"
+    sourceScreen = "mcl_gamerules"
+    sourceKind = "defs_only_screen"
+    layout = "absolute"
+    coordinateSpace = "screen_absolute"
+    localWidth = 800
+    localHeight = 600
+    mountOffset = "0,0"
+    overlayGameOS = true
+    renderMode = "gameos_overlay"
+    backgroundPolicy = "transparent_overlay"
+}
+
+GuiRect {
+    key = "game.mcl_gamerules.rect.panel"
+    pageKey = "game.mcl_gamerules"
+    role = "rect"
+    layer = "layout"
+    rect = "100,50,600,500"
+    controlRect = "100,50,600,500"
+    legacyColor = 0
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0xf0080c10"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xf0080c10"
+}
+
+GuiRect {
+    key = "game.mcl_gamerules.rect.panel_outline"
+    pageKey = "game.mcl_gamerules"
+    role = "rect"
+    layer = "layout"
+    rect = "108,58,584,484"
+    controlRect = "108,58,584,484"
+    legacyColor = 0
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0xff5f6f80"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xff5f6f80"
+}
+
+GuiText {
+    key = "game.mcl_gamerules.text.title"
+    pageKey = "game.mcl_gamerules"
+    role = "text"
+    layer = "text"
+    rect = "125,66,550,32"
+    controlRect = "125,66,550,32"
+    textRect = "125,66,550,32"
+    visibleText = "GAME RULES"
+    font = "Agency Regular"
+    fontSize = 22
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = false
+    colorArgb = "0xffc66600"
+    legacyColor = 0
+    outline = "FALSE"
+}
+
+GuiText {
+    key = "game.mcl_gamerules.text.row0"
+    pageKey = "game.mcl_gamerules"
+    role = "text"
+    layer = "text"
+    rect = "130,112,290,32"
+    controlRect = "130,112,290,32"
+    textRect = "130,112,290,32"
+    visibleText = "RULE 0"
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "left"
+    textAnchor = "left"
+    wrapText = false
+    colorArgb = "0xffc66600"
+    legacyColor = 0
+    outline = "FALSE"
+}
+
+GuiButton {
+    key = "game.mcl_gamerules.button.row0"
+    pageKey = "game.mcl_gamerules"
+    role = "button"
+    layer = "control"
+    rect = "440,112,230,32"
+    controlRect = "440,112,230,32"
+    hitRect = "440,112,230,32"
+    textRect = "440,112,230,32"
+    visibleText = "-"
+    legacyId = 100
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = false
+    normalTextColorArgb = "0xff5C96C2"
+    colorArgb = "0xff5C96C2"
+    pressedTextColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    fillColorArgb = "0xff101c28"
+    borderColorArgb = "0xff005392"
+    legacyAnimateBmp = false
+    legacyAnimateText = false
+}
+
+GuiText {
+    key = "game.mcl_gamerules.text.row1"
+    pageKey = "game.mcl_gamerules"
+    role = "text"
+    layer = "text"
+    rect = "130,152,290,32"
+    controlRect = "130,152,290,32"
+    textRect = "130,152,290,32"
+    visibleText = "RULE 1"
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "left"
+    textAnchor = "left"
+    wrapText = false
+    colorArgb = "0xffc66600"
+    legacyColor = 0
+    outline = "FALSE"
+}
+
+GuiButton {
+    key = "game.mcl_gamerules.button.row1"
+    pageKey = "game.mcl_gamerules"
+    role = "button"
+    layer = "control"
+    rect = "440,152,230,32"
+    controlRect = "440,152,230,32"
+    hitRect = "440,152,230,32"
+    textRect = "440,152,230,32"
+    visibleText = "-"
+    legacyId = 101
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = false
+    normalTextColorArgb = "0xff5C96C2"
+    colorArgb = "0xff5C96C2"
+    pressedTextColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    fillColorArgb = "0xff101c28"
+    borderColorArgb = "0xff005392"
+    legacyAnimateBmp = false
+    legacyAnimateText = false
+}
+
+GuiText {
+    key = "game.mcl_gamerules.text.row2"
+    pageKey = "game.mcl_gamerules"
+    role = "text"
+    layer = "text"
+    rect = "130,192,290,32"
+    controlRect = "130,192,290,32"
+    textRect = "130,192,290,32"
+    visibleText = "RULE 2"
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "left"
+    textAnchor = "left"
+    wrapText = false
+    colorArgb = "0xffc66600"
+    legacyColor = 0
+    outline = "FALSE"
+}
+
+GuiButton {
+    key = "game.mcl_gamerules.button.row2"
+    pageKey = "game.mcl_gamerules"
+    role = "button"
+    layer = "control"
+    rect = "440,192,230,32"
+    controlRect = "440,192,230,32"
+    hitRect = "440,192,230,32"
+    textRect = "440,192,230,32"
+    visibleText = "-"
+    legacyId = 102
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = false
+    normalTextColorArgb = "0xff5C96C2"
+    colorArgb = "0xff5C96C2"
+    pressedTextColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    fillColorArgb = "0xff101c28"
+    borderColorArgb = "0xff005392"
+    legacyAnimateBmp = false
+    legacyAnimateText = false
+}
+
+GuiText {
+    key = "game.mcl_gamerules.text.row3"
+    pageKey = "game.mcl_gamerules"
+    role = "text"
+    layer = "text"
+    rect = "130,232,290,32"
+    controlRect = "130,232,290,32"
+    textRect = "130,232,290,32"
+    visibleText = "RULE 3"
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "left"
+    textAnchor = "left"
+    wrapText = false
+    colorArgb = "0xffc66600"
+    legacyColor = 0
+    outline = "FALSE"
+}
+
+GuiButton {
+    key = "game.mcl_gamerules.button.row3"
+    pageKey = "game.mcl_gamerules"
+    role = "button"
+    layer = "control"
+    rect = "440,232,230,32"
+    controlRect = "440,232,230,32"
+    hitRect = "440,232,230,32"
+    textRect = "440,232,230,32"
+    visibleText = "-"
+    legacyId = 103
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = false
+    normalTextColorArgb = "0xff5C96C2"
+    colorArgb = "0xff5C96C2"
+    pressedTextColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    fillColorArgb = "0xff101c28"
+    borderColorArgb = "0xff005392"
+    legacyAnimateBmp = false
+    legacyAnimateText = false
+}
+
+GuiText {
+    key = "game.mcl_gamerules.text.row4"
+    pageKey = "game.mcl_gamerules"
+    role = "text"
+    layer = "text"
+    rect = "130,272,290,32"
+    controlRect = "130,272,290,32"
+    textRect = "130,272,290,32"
+    visibleText = "RULE 4"
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "left"
+    textAnchor = "left"
+    wrapText = false
+    colorArgb = "0xffc66600"
+    legacyColor = 0
+    outline = "FALSE"
+}
+
+GuiButton {
+    key = "game.mcl_gamerules.button.row4"
+    pageKey = "game.mcl_gamerules"
+    role = "button"
+    layer = "control"
+    rect = "440,272,230,32"
+    controlRect = "440,272,230,32"
+    hitRect = "440,272,230,32"
+    textRect = "440,272,230,32"
+    visibleText = "-"
+    legacyId = 104
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = false
+    normalTextColorArgb = "0xff5C96C2"
+    colorArgb = "0xff5C96C2"
+    pressedTextColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    fillColorArgb = "0xff101c28"
+    borderColorArgb = "0xff005392"
+    legacyAnimateBmp = false
+    legacyAnimateText = false
+}
+
+GuiText {
+    key = "game.mcl_gamerules.text.row5"
+    pageKey = "game.mcl_gamerules"
+    role = "text"
+    layer = "text"
+    rect = "130,312,290,32"
+    controlRect = "130,312,290,32"
+    textRect = "130,312,290,32"
+    visibleText = "RULE 5"
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "left"
+    textAnchor = "left"
+    wrapText = false
+    colorArgb = "0xffc66600"
+    legacyColor = 0
+    outline = "FALSE"
+}
+
+GuiButton {
+    key = "game.mcl_gamerules.button.row5"
+    pageKey = "game.mcl_gamerules"
+    role = "button"
+    layer = "control"
+    rect = "440,312,230,32"
+    controlRect = "440,312,230,32"
+    hitRect = "440,312,230,32"
+    textRect = "440,312,230,32"
+    visibleText = "-"
+    legacyId = 105
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = false
+    normalTextColorArgb = "0xff5C96C2"
+    colorArgb = "0xff5C96C2"
+    pressedTextColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    fillColorArgb = "0xff101c28"
+    borderColorArgb = "0xff005392"
+    legacyAnimateBmp = false
+    legacyAnimateText = false
+}
+
+GuiText {
+    key = "game.mcl_gamerules.text.row6"
+    pageKey = "game.mcl_gamerules"
+    role = "text"
+    layer = "text"
+    rect = "130,352,290,32"
+    controlRect = "130,352,290,32"
+    textRect = "130,352,290,32"
+    visibleText = "RULE 6"
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "left"
+    textAnchor = "left"
+    wrapText = false
+    colorArgb = "0xffc66600"
+    legacyColor = 0
+    outline = "FALSE"
+}
+
+GuiButton {
+    key = "game.mcl_gamerules.button.row6"
+    pageKey = "game.mcl_gamerules"
+    role = "button"
+    layer = "control"
+    rect = "440,352,230,32"
+    controlRect = "440,352,230,32"
+    hitRect = "440,352,230,32"
+    textRect = "440,352,230,32"
+    visibleText = "-"
+    legacyId = 106
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = false
+    normalTextColorArgb = "0xff5C96C2"
+    colorArgb = "0xff5C96C2"
+    pressedTextColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    fillColorArgb = "0xff101c28"
+    borderColorArgb = "0xff005392"
+    legacyAnimateBmp = false
+    legacyAnimateText = false
+}
+
+GuiText {
+    key = "game.mcl_gamerules.text.row7"
+    pageKey = "game.mcl_gamerules"
+    role = "text"
+    layer = "text"
+    rect = "130,392,290,32"
+    controlRect = "130,392,290,32"
+    textRect = "130,392,290,32"
+    visibleText = "RULE 7"
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "left"
+    textAnchor = "left"
+    wrapText = false
+    colorArgb = "0xffc66600"
+    legacyColor = 0
+    outline = "FALSE"
+}
+
+GuiButton {
+    key = "game.mcl_gamerules.button.row7"
+    pageKey = "game.mcl_gamerules"
+    role = "button"
+    layer = "control"
+    rect = "440,392,230,32"
+    controlRect = "440,392,230,32"
+    hitRect = "440,392,230,32"
+    textRect = "440,392,230,32"
+    visibleText = "-"
+    legacyId = 107
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = false
+    normalTextColorArgb = "0xff5C96C2"
+    colorArgb = "0xff5C96C2"
+    pressedTextColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    fillColorArgb = "0xff101c28"
+    borderColorArgb = "0xff005392"
+    legacyAnimateBmp = false
+    legacyAnimateText = false
+}
+
+GuiText {
+    key = "game.mcl_gamerules.text.row8"
+    pageKey = "game.mcl_gamerules"
+    role = "text"
+    layer = "text"
+    rect = "130,432,290,32"
+    controlRect = "130,432,290,32"
+    textRect = "130,432,290,32"
+    visibleText = "RULE 8"
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "left"
+    textAnchor = "left"
+    wrapText = false
+    colorArgb = "0xffc66600"
+    legacyColor = 0
+    outline = "FALSE"
+}
+
+GuiButton {
+    key = "game.mcl_gamerules.button.row8"
+    pageKey = "game.mcl_gamerules"
+    role = "button"
+    layer = "control"
+    rect = "440,432,230,32"
+    controlRect = "440,432,230,32"
+    hitRect = "440,432,230,32"
+    textRect = "440,432,230,32"
+    visibleText = "-"
+    legacyId = 108
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = false
+    normalTextColorArgb = "0xff5C96C2"
+    colorArgb = "0xff5C96C2"
+    pressedTextColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    fillColorArgb = "0xff101c28"
+    borderColorArgb = "0xff005392"
+    legacyAnimateBmp = false
+    legacyAnimateText = false
+}
+
+GuiButton {
+    key = "game.mcl_gamerules.button.accept"
+    pageKey = "game.mcl_gamerules"
+    role = "button"
+    layer = "control"
+    rect = "125,488,135,40"
+    controlRect = "125,488,135,40"
+    hitRect = "125,488,135,40"
+    textRect = "125,488,135,40"
+    visibleText = "ACCEPT"
+    legacyId = 90
+    font = "Agency Regular"
+    fontSize = 16
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = false
+    normalTextColorArgb = "0xffc66600"
+    colorArgb = "0xffc66600"
+    pressedTextColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    fillColorArgb = "0xff101c28"
+    borderColorArgb = "0xff005392"
+    legacyAnimateBmp = false
+    legacyAnimateText = false
+}
+
+GuiButton {
+    key = "game.mcl_gamerules.button.defaults"
+    pageKey = "game.mcl_gamerules"
+    role = "button"
+    layer = "control"
+    rect = "269,488,135,40"
+    controlRect = "269,488,135,40"
+    hitRect = "269,488,135,40"
+    textRect = "269,488,135,40"
+    visibleText = "DEFAULTS"
+    legacyId = 91
+    font = "Agency Regular"
+    fontSize = 16
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = false
+    normalTextColorArgb = "0xffc66600"
+    colorArgb = "0xffc66600"
+    pressedTextColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    fillColorArgb = "0xff101c28"
+    borderColorArgb = "0xff005392"
+    legacyAnimateBmp = false
+    legacyAnimateText = false
+}
+
+GuiButton {
+    key = "game.mcl_gamerules.button.preset"
+    pageKey = "game.mcl_gamerules"
+    role = "button"
+    layer = "control"
+    rect = "413,488,135,40"
+    controlRect = "413,488,135,40"
+    hitRect = "413,488,135,40"
+    textRect = "413,488,135,40"
+    visibleText = "BATTLETECH PRESET"
+    legacyId = 92
+    font = "Agency Regular"
+    fontSize = 16
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = false
+    normalTextColorArgb = "0xffc66600"
+    colorArgb = "0xffc66600"
+    pressedTextColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    fillColorArgb = "0xff101c28"
+    borderColorArgb = "0xff005392"
+    legacyAnimateBmp = false
+    legacyAnimateText = false
+}
+
+GuiButton {
+    key = "game.mcl_gamerules.button.back"
+    pageKey = "game.mcl_gamerules"
+    role = "button"
+    layer = "control"
+    rect = "557,488,135,40"
+    controlRect = "557,488,135,40"
+    hitRect = "557,488,135,40"
+    textRect = "557,488,135,40"
+    visibleText = "BACK"
+    legacyId = 93
+    font = "Agency Regular"
+    fontSize = 16
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = false
+    normalTextColorArgb = "0xffc66600"
+    colorArgb = "0xffc66600"
+    pressedTextColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    fillColorArgb = "0xff101c28"
+    borderColorArgb = "0xff005392"
+    legacyAnimateBmp = false
+    legacyAnimateText = false
+}

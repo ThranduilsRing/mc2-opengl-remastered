@@ -233,6 +233,11 @@ void MechBayScreen::begin()
 }
 void MechBayScreen::render(int xOffset, int yOffset)
 {
+	if ( rulesOpen )	// the dialog replaces the bay while it is up (the bay's defs page would draw over it)
+	{
+		GameRulesDialog::instance()->render();
+		return;
+	}
 	// Legacy->display scale for the text bridge (crisp TTF labels on the mech-
 	// storage list + deployment icons, matching the data/defs UI layer).
 	// UI-ASPECT-ANCHOR-1: canvas-aware transform (scale + pad origin) so

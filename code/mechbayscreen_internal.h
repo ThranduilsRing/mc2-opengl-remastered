@@ -18,6 +18,8 @@
 #include"prefs.h"
 #include"../GuiRuntime/GuiRuntime.h"
 #include "Gates/gate.h"
+#include "gamerulesdialog.h"
+#include "net/runtime.h"
 
 // Globals defined in mechbayscreen.cpp (or elsewhere in the engine) that the split pieces share.
 

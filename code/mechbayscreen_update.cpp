@@ -101,6 +101,18 @@ void MechBayScreen::drawWeightMeter(long xOffset, long yOffset)
 
 void MechBayScreen::update()
 {
+	if ( rulesOpen )
+	{
+		GameRulesDialog* dlg = GameRulesDialog::instance();
+		dlg->update();
+		if ( dlg->isDone() )
+		{
+			rulesOpen = false;
+			if ( dlg->getStatus() == LogisticsScreen::YES )
+				LogisticsData::instance->setRules( dlg->rules() );	// saved with the campaign; published at the next mission start
+		}
+		return;
+	}
 	if (std::getenv("MECH_PREVIEW_CAPTURE") && !pCurMech) {
 		auto group = LogisticsData::instance->getForceGroup();
 		if (!group.empty()) setMech(group.front(), false);
@@ -416,6 +428,14 @@ int	MechBayScreen::handleMessage( unsigned long message, unsigned long who )
 
 	case MB_MSG_MAINMENU:
 		status = MAINMENU;
+		break;
+
+	case MB_MSG_RULES:
+		if ( !MPlayer && !mc2::net::active() && GameRulesDialog::init() )
+		{
+			rulesOpen = true;
+			GameRulesDialog::instance()->begin( LogisticsData::instance->rules() );
+		}
 		break;
 	}
 

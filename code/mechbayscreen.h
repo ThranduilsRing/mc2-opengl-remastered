@@ -32,6 +32,7 @@ inline constexpr int MB_MSG_BUY = 54;
 inline constexpr int MB_MSG_CHANGE_LOADOUT = 55;
 inline constexpr int MB_MSG_BUY_SELL = 56;
 inline constexpr int MB_MSG_MAINMENU = 57;
+inline constexpr int MB_MSG_RULES = 58;	// legacyId of the defs-only RULES button in the title bar (opens the Game Rules dialog)
 
 
 class MechBayScreen : public LogisticsScreen
@@ -61,6 +62,7 @@ private:
 	std::unique_ptr<LogisticsMechIcon[]>	pIcons;
 	aObject				dragIcon;
 	bool				dragLeft;
+	bool				rulesOpen = false;	// the Game Rules dialog is up over the bay (rules stay editable between missions)
 	long				forceGroupCount;
 
 	AttributeMeter		attributeMeters[3];
