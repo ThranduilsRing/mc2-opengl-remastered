@@ -129,17 +129,6 @@ void MechBayScreen::update()
 		}
 	}
 
-	// TEST-ONLY proof hook (lance-weight-warn-2): MC2_PROOF_DW="poor" zeroes C-Bills, "buy" clicks BUY +5 T once.
-	if ( const char* proof = std::getenv( "MC2_PROOF_DW" ); proof && *proof && status == RUNNING )
-	{
-		static int s_proofFrame = 0;
-		++s_proofFrame;
-		if ( s_proofFrame == 40 && std::strstr( proof, "poor" ) )
-			LogisticsData::instance->addCBills( -LogisticsData::instance->getCBills() );
-		if ( s_proofFrame == 45 && std::strstr( proof, "buy" ) )
-			handleMessage( aMSG_LEFTMOUSEDOWN, MB_MSG_BUY_WEIGHT );
-	}
-
 	mechListBox.disableItemsThatCanNotGoInFG();
 
 	if ( !pIcons[0].getMech() )

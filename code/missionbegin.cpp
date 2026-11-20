@@ -1114,7 +1114,7 @@ void MissionBegin::updateSoakAutoPurchase() {
 		// [2][1]; the latch resets whenever we leave the bay (next mission re-buys).
 		static bool  s_autoPurchasedThisBay = false;
 		static float s_purchaseSettle       = 0.0f;
-		if ( s_soakAutoPurchase && ( ( curScreenX == 2 && curScreenY == 1 ) || ( curScreenX == 3 && curScreenY == 1 && std::getenv( "MC2_PROOF_DW" ) ) ) )
+		if ( s_soakAutoPurchase && curScreenX == 2 && curScreenY == 1 )
 		{
 			s_purchaseSettle += frameLength;
 			if ( !s_autoPurchasedThisBay && s_purchaseSettle >= 0.3f &&
