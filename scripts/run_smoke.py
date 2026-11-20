@@ -1698,7 +1698,7 @@ def main():
         _all_unregistered = _smoke_runner.unregistered_ambient(os.environ, cfg.env_extra)
         _unregistered = _smoke_runner.reportable_unregistered(os.environ, cfg.env_extra)  # harness plumbing is dropped silently
         if _unregistered:
-            _env_manifest["dropped_unregistered_env"] = dict(_unregistered)
+            _env_manifest["dropped_unregistered_env"] = dict(_all_unregistered)  # full dropped set, harness names included
             print(
                 f"[runner] [ENV-DROPPED] WARNING: {len(_unregistered)} ambient MC2_* name(s) are not gates in "
                 f"Gates/gate_table.json and are NOT forwarded to mc2.exe (the run does NOT test them): "

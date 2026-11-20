@@ -2,6 +2,7 @@
 #include "gameos/shadow_mover_fit.h"
 #include "gameos/shadow_mover_feed.h"
 #include "gameos/vulkan_shadow_island_live_algo.h"
+#include <memory>
 #include <vector>
 
 using namespace mc2shadow;
@@ -120,24 +121,30 @@ TEST_CASE("mover coverage: the blocker-search reach grows a caster's footprint p
     const LightBasis basis = lightBasis(clampSunAltitude({1,1,0},15));
     const Vec3 q = toLight(basis, s.center);
     const int n = kMoverCoverageSide;
-    // 120 cells of 1 light-space unit; lx0 puts the sphere's +x edge 0.001 below the edge of cell 60, so only the reach margin can reach cell 60.
-    Window w{};
-    w.texelWorld = 0.01f; w.dMin = 0; w.dMax = 400;
-    w.lx0 = q.x + s.radius - (60.0f - 0.001f); w.lx1 = w.lx0 + float(n);
-    w.ly0 = q.y - 60.0f;                       w.ly1 = w.ly0 + float(n);
-    MoverShadowFrame frame{};
+    // 120 cells of 1 light-space unit. Each window puts one sphere edge 0.001 inside one side of a cell boundary, so the point 0.01 beyond that edge
+    // lies in the NEXT cell and only the reach margin can cover it (a point in the same cell as the edge would pass without any reach).
     const std::array spheres{s};
-    buildMoverCoverage(frame, spheres, basis, w);
-    auto coverageAt = [&](float lx, float ly) {
-        const int x = int(std::floor((lx - w.lx0) * float(n) / (w.lx1 - w.lx0)));
-        const int y = int(std::floor((ly - w.ly0) * float(n) / (w.ly1 - w.ly0)));
-        const unsigned cell = static_cast<unsigned>(y * n + x);
-        return (frame.coverage[cell / 4] >> ((cell & 3u) * 8u)) & 255u;
+    auto coverageIn = [&](float lx0) {
+        Window w{};
+        w.texelWorld = 0.01f; w.dMin = 0; w.dMax = 400;
+        w.lx0 = lx0;         w.lx1 = w.lx0 + float(n);
+        w.ly0 = q.y - 60.0f; w.ly1 = w.ly0 + float(n);
+        auto frame = std::make_shared<MoverShadowFrame>();
+        buildMoverCoverage(*frame, spheres, basis, w);
+        return [frame, w, n](float lx, float ly) {
+            const int x = int(std::floor((lx - w.lx0) * float(n) / (w.lx1 - w.lx0)));
+            const int y = int(std::floor((ly - w.ly0) * float(n) / (w.ly1 - w.ly0)));
+            const unsigned cell = static_cast<unsigned>(y * n + x);
+            return (frame->coverage[cell / 4] >> ((cell & 3u) * 8u)) & 255u;
+        };
     };
-    CHECK(coverageAt(q.x, q.y) != 255u);                          // under the caster
-    CHECK(coverageAt(q.x + s.radius + 0.01f, q.y) != 255u);       // just off its edge: only the reach margin covers it
-    CHECK(coverageAt(q.x - s.radius - 0.01f, q.y) != 255u);
-    CHECK(coverageAt(q.x + s.radius + 8.0f, q.y) == 255u);        // far beyond the reach: empty
+    const auto plusX = coverageIn(q.x + s.radius - (60.0f - 0.001f));   // +x edge 0.001 below the edge of cell 60
+    CHECK(plusX(q.x, q.y) != 255u);                                      // under the caster
+    CHECK(plusX(q.x + s.radius + 0.01f, q.y) != 255u);                   // just off its edge: only the reach margin covers it
+    CHECK(plusX(q.x + s.radius + 8.0f, q.y) == 255u);                    // far beyond the reach: empty
+    const auto minusX = coverageIn(q.x - s.radius - 30.001f);            // -x edge 0.001 above the edge of cell 30
+    CHECK(minusX(q.x - s.radius - 0.01f, q.y) != 255u);
+    CHECK(minusX(q.x - s.radius - 8.0f, q.y) == 255u);
 }
 
 TEST_CASE("mover fit: a hundred spread movers use one count independent window") {

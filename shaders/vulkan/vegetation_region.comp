@@ -47,9 +47,11 @@ void main() {
     barrier();
     uint base = s_bin[0];
     barrier();
-    // Pass 2: stable placement. A region's slot = bin start + same-bin regions of earlier chunks + same-bin lower lanes of its chunk.
-    // Each chunk's visible regions are ballot-compacted (lane order kept) into s_bin/s_reg, then thread lid (the owner of bin lid) walks only
-    // the visible entries and appends its bin's regions in order: the same slots as a per-lane rank, without a 128-wide scan per chunk.
+    // Pass 2: placement. Slots are unique (each visible region gets exactly one slot in its bin); only the ORDER within a bin is at stake:
+    // it follows chunk order, and within a chunk the ballot/subgroup compaction order, which the spec does not pin, so treat in-bin order as
+    // implementation-defined and never depend on it.
+    // Each chunk's visible regions are ballot-compacted into s_bin/s_reg, then thread lid (the owner of bin lid) walks only
+    // the visible entries and appends its bin's regions, without a 128-wide scan per chunk.
     uint pos = s_start[lid];
     for (uint c = 0u; c < regions; c += 128u) {
         uint r = c + lid;

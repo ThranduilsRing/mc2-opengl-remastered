@@ -55,3 +55,11 @@ def test_merge_gate_passes_flag():
     text = (ROOT / "scripts" / "merge_gate.py").read_text(encoding="utf-8")
     line = next(l for l in text.splitlines() if '"tools/sim_determinism.py", "check"' in l)
     assert '"--allow-owner-install"' in line
+
+
+def test_battery_requires_an_explicit_install(capsys):
+    import battery
+    assert not hasattr(battery, "DEFAULT_INSTALL")
+    with pytest.raises(SystemExit) as exc:
+        battery.main(["--dry-run"])
+    assert exc.value.code == 2 and "--install is required" in capsys.readouterr().err
