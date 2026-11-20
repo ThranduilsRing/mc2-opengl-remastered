@@ -123,8 +123,8 @@ def owned_paths(install: Path | str, payload: dict[str, str] | None = None,
            if not (install / rel).is_file() or _sha(install / rel) != sha]
     if bad:
         raise ValueError(_bad_message("INTENTIONAL ASSET hash mismatch", bad))
-    for rel, sha in (declared or {}).items():
-        print(f"{PREFIX} INTENTIONAL ASSET ACCEPTED {rel} sha256={sha}", flush=True)
+    if declared:
+        print(f"{PREFIX} INTENTIONAL ASSET ACCEPTED {len(declared)} files (hash-verified)", flush=True)
     owned = set()
     bad = []
     for rel, sha in expected.items():

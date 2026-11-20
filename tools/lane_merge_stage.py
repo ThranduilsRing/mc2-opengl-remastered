@@ -158,6 +158,10 @@ def missing_visual_evidence(verdict: dict, vpath: Path) -> list[str]:
     gone = [str(p.relative_to(root)) for p in need if not (p.is_file() and p.stat().st_size)]
     if gone:
         return [f"capture evidence incomplete in {root}: missing or empty " + ", ".join(gone)]
+    for b in COMPARE_BOOKMARKS:   # per-pose montages (ab/<bm>/<pose>/montage.jpg) are optional extra evidence
+        extra = sorted((root / "ab" / b).glob("*/montage.jpg")) if (root / "ab" / b).is_dir() else []
+        if extra:
+            print(f"[promote] {len(extra)} per-pose montages under {root / 'ab' / b}")
     print("[promote] day/night evidence to view: " + ", ".join(str(root / "ab" / b / "montage.jpg") for b in COMPARE_BOOKMARKS))
     return []
 

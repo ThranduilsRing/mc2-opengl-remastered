@@ -621,6 +621,13 @@ def evidence_problems(a_dir: Path, b_dir: Path, bookmarks) -> list:
     if not bookmarks:
         return ["no bookmarks were compared"]
     out = []
+    for name, d in (("A", a_dir), ("B", b_dir)):   # a pose the capture never produced is absent on BOTH sides
+        try:
+            poses = json.loads((Path(d) / "capture_run.json").read_text(encoding="utf-8")).get("poses") or []
+        except (OSError, ValueError, AttributeError):
+            poses = []
+        out += [f"{p.get('bookmark')}: side {name} capture_run.json all_present=false"
+                for p in poses if p.get("bookmark") in bookmarks and p.get("all_present") is False]
     for bm in bookmarks:
         pairs = pose_pairs(a_dir, b_dir, bm)
         if not pairs:
@@ -673,7 +680,7 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None, cross_
         size_mismatch = None
         if a.size != b.size:
             size_mismatch = {}
-            print(f"[ab] WARNING {bm}: image size mismatch A={a.size} B={b.size}; resizing B (metrics unreliable)", flush=True)
+            print(f"[ab] WARNING {label}: image size mismatch A={a.size} B={b.size}; resizing B (metrics unreliable)", flush=True)
             b = b.resize(a.size, Image.LANCZOS)
         A, B = np.asarray(a).astype(np.int16), np.asarray(b).astype(np.int16)
         D = np.abs(A - B)

@@ -135,6 +135,11 @@ def verify_artifacts(directory: Path) -> str | None:
         path = directory / Path(pose.get("pose_dir", "")).name / Path(png).name   # the set's own copy, never the original it was cut from
         if not path.is_file() or path.stat().st_size == 0 or _sha(path) != want:
             return f"{pose.get('bookmark')}: png missing, empty or hash differs"
+        if pose.get("all_present") is False:
+            return f"{pose.get('bookmark')}: a pose png was not captured"
+        for extra in path.parent.glob("*.png"):   # every pose png of the set, not only the primary
+            if extra.stat().st_size == 0:
+                return f"{pose.get('bookmark')}: {extra.name} is empty"
     return None
 
 

@@ -1534,7 +1534,7 @@ def mad_flags(output, declared=(), expected=()):
     bad, seen, col = [], set(), 1  # ab.py's header names the MAD column ('bookmark | FLIP mean | FLIP p99 | MAD | %>24')
     raw = raw_mads(output)
     for line in (output or "").splitlines():
-        if "missing png" in line or "size mismatch" in line:
+        if "missing png" in line or "missing or empty png" in line or "size mismatch" in line:
             bad.append(line.strip().replace("[ab] ", "")[:80])
             continue
         if line.startswith("[pixel_hist] "):
@@ -1556,7 +1556,7 @@ def mad_flags(output, declared=(), expected=()):
         seen.add(cells[0])
         seen.add(cells[0].split("/")[0])   # a per-pose row 'bm/pose' also counts as a row for 'bm'
         mad = max(mad, raw.get(cells[0], mad))   # the unrounded value can only raise the printed one: a printed 0.05 can be a real 0.0539
-        limit = declared.get(cells[0], declared.get(cells[0].split("/")[0], MAD_LIMIT))
+        limit = declared.get(cells[0], MAD_LIMIT)   # a declared bound is for its exact name; poses are declared as bm/pose
         if mad > limit:
             bad.append(f"{cells[0]}={cell}" + (f" (declared bound {limit})" if cells[0] in declared else ""))
     bad.extend(f"{name}=no compare row" for name in expected if name not in seen)
