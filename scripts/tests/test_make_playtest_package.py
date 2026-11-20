@@ -9,6 +9,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import make_playtest_package as package
 
 
+@pytest.fixture(autouse=True)
+def _isolated_generated(tmp_path, monkeypatch):
+    # Tests never read a shared generated inventory (env or TEMP fallback).
+    monkeypatch.setattr(package, 'GENERATED', tmp_path / 'generated')
+    monkeypatch.setattr(package, 'INVENTORY', tmp_path / 'generated/inventory.json')
+
+
 def test_permission_allowlist_and_unlisted_refusal(tmp_path):
     mod = tmp_path / 'mods/community'
     mod.mkdir(parents=True)
@@ -184,12 +191,3 @@ def test_bt2018_extractor_only_files_are_never_packaged(tmp_path, monkeypatch):
     result = package.assemble(source, tmp_path / 'out', record, ['mod-a'], inventory=inventory)
     assert not (tmp_path / 'out/data/tgl/Zeus.glb').exists()
     assert result['excluded'][package.BT2018_REASON] == 1
-
-
-def test_committed_bt2018_list_matches_inventory_exclusion():
-    if not package.INVENTORY.is_file():
-        pytest.skip('needs a generated inventory (generate_inventory.py --inventory)')
-    listed = [x for x in package.BT2018_LIST.read_text().splitlines() if x]
-    inventory = json.loads(package.INVENTORY.read_text())
-    assert len(listed) == 111 == inventory['excluded'][package.BT2018_REASON]
-    assert not any(package.bt2018_extractor_only(rel) for rel in inventory['files'])
