@@ -24,9 +24,17 @@ import time
 from pathlib import Path
 from typing import Callable, List, Optional
 
-_DEFAULT_DIR = Path("A:/Games/mc2-opengl/.smoke_children")
-if sys.platform == "linux":
-    _DEFAULT_DIR = Path.home() / ".cache/mc2/smoke_children"
+def default_registry_dir(root: Path, platform: str = sys.platform) -> Path:
+    """Dev checkouts (a .git at the root) keep the machine-wide registry so cross-worktree orphan reaping works;
+    a shipped package (no .git) keeps a per-root one. MC2_CHILD_REGISTRY_DIR overrides both."""
+    if platform == "linux":
+        return Path.home() / ".cache/mc2/smoke_children"
+    if (root / ".git").exists():
+        return Path("A:/Games/mc2-opengl/.smoke_children")  # drive-path: ok machine-wide dev registry, unchanged from before
+    return root / ".smoke_children"
+
+
+_DEFAULT_DIR = default_registry_dir(Path(__file__).resolve().parents[2])
 REGISTRY_DIR = Path(os.environ.get("MC2_CHILD_REGISTRY_DIR") or _DEFAULT_DIR)
 
 _PROCESS_QUERY_LIMITED_INFORMATION = 0x1000

@@ -6,10 +6,10 @@ reimplements none of them. A step whose tool is not in this tree is reported NEE
 WHY: a battery session is a fixed sequence with a fixed budget; a driver keeps the order, the staging dirs and the verdicts
 in one place instead of a hand-typed list of commands.
 
-  py -3 tools/battery.py --owner-present
-  py -3 tools/battery.py --dry-run
-  py -3 tools/battery.py --only preflight,resave --install A:/Games/mc2-opengl/mc2-win64-v0.4
-  py -3 tools/battery.py --skip perf,simtrace
+  py -3 tools/battery.py --install E:/mc2-installs/<lane> --owner-present
+  py -3 tools/battery.py --install E:/mc2-installs/<lane> --dry-run
+  py -3 tools/battery.py --only preflight,resave --install E:/mc2-installs/<lane>
+  py -3 tools/battery.py --install E:/mc2-installs/<lane> --skip perf,simtrace
   py -3 tools/battery.py --list
 
 Steps (run-book order): preflight, resave, campaign, sound, determinism, mods, tools, perf, reload, simtrace, triage.
@@ -37,7 +37,6 @@ import console_child  # noqa: E402  (stdio-inheriting children keep their output
 import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)
 
 DEFAULT_STAGE = str(stages.default_root("battery"))
-DEFAULT_INSTALL = "A:/Games/mc2-opengl/mc2-win64-v0.4"
 FORBIDDEN_INSTALL = "mc2-win64-v0.4c"
 #: Mirrors sim_determinism.RC_OWNER_INSTALL / OWNER_INSTALL_ROOT (that tool refuses the owner's installs with this rc, distinct from starved rc 2).
 RC_OWNER_INSTALL = 78
@@ -442,8 +441,8 @@ def main(argv=None):
                     help="comma-separated step ids to skip")
     ap.add_argument("--dry-run", action="store_true",
                     help="print the commands and launch nothing")
-    ap.add_argument("--install", default=DEFAULT_INSTALL,
-                    help=f"game install the runners deploy to and launch (default: {DEFAULT_INSTALL})")
+    ap.add_argument("--install", default=None,
+                    help="game install the runners deploy to and launch (required; a lane or seed install, never the owner's)")
     ap.add_argument("--stage-root", default=DEFAULT_STAGE,
                     help=f"disposable staging root, one dir per step (default: {DEFAULT_STAGE})")
     ap.add_argument("--tools-tree", default="build-alltargets",
@@ -463,6 +462,8 @@ def main(argv=None):
             print(f"{s.id:12s} {s.budget:12s} {s.title}")
         return 0
 
+    if not args.install:
+        ap.error("--install is required (a lane or seed install; the owner's installs are refused by the determinism step)")
     only = [x.strip() for x in args.only.split(",") if x.strip()]
     skip = [x.strip() for x in args.skip.split(",") if x.strip()]
     unknown = [x for x in only + skip if x not in ids]

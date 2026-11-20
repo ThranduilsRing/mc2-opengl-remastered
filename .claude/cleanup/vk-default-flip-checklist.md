@@ -72,7 +72,7 @@ Note: ab.py MAD is not a pass signal; always view montages, A/B one day + one ni
 GL promoted these features to always-on and deleted their gates, so `tools/vk_not_ported.allowlist` and `gl_vk_feature_coverage.py --flip-check` no longer see them (a
 row for a deleted gate is STALE). Each is a GL-only behaviour today: flipping the default to VK without porting it changes what the player sees. Full rows with the
 VK file to change: `.claude/VK-PARITY-GAPS.md` rows 13-19. GL lines as of b629795cc.
-- [ ] 13 Terrain POM real-view march + distance fade: GL `shaders/terrain_lod_chunk.frag:540` (`chunkParallaxView`), `:599-640`; VK `shaders/vulkan/terrain_tier1.frag` still carries the DELETED faux-view `mv_parallax` (:172). Port, do not just delete.
+- [ ] 13 Terrain POM real-view march + distance fade: GL `shaders/terrain_lod_chunk.frag:540` (`chunkParallaxView`), `:599-640`; VK: SUPERSEDED, POM was REMOVED from `shaders/vulkan/terrain_tier1.frag` later (its offset was clamped to 1/4 px, so it moved nothing visible; see the header there); `mv_parallax` no longer exists. Nothing to port (GL is removed).
 - [ ] 14 Cliff material (triplanar + height normal + cliff POM): GL `shaders/terrain_lod_chunk.frag:424-436`, `:1494-1600`; VK none.
 - [ ] 15 Night tags + fixture emission: GL `shaders/static_prop.vert:82-84`, `:507-516`; VK `shaders/vulkan/color_prop_tier1.vert:148-175` stubs the daytime arm (no lit windows or runway lights at night).
 - [ ] 16 Base-light direction 0.45: GL `shaders/static_prop.vert:749-754`, `GameOS/gameos/gos_static_prop_batcher_state.cpp:217`; VK none.

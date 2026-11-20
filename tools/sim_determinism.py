@@ -886,6 +886,8 @@ def main(argv=None) -> int:
                        help="install for runs and data fingerprint (default: the owner's v0.4, REFUSED unless --allow-owner-install)")
         p.add_argument("--allow-owner-install", action="store_true",
                        help="merge gate only: permit an install under " + OWNER_INSTALL_ROOT)
+        p.add_argument("--allow-nondefault-rules", action="store_true",
+                       help="opt in to runs whose [GAME_RULES] snapshot shows non-default rules (run_smoke refuses them otherwise)")
 
     r = sub.add_parser("run")
     r.add_argument("mission")
@@ -932,6 +934,8 @@ def main(argv=None) -> int:
     install_arg(o)
     sub.add_parser("selftest")
     args = ap.parse_args(argv)
+    if getattr(args, "allow_nondefault_rules", False):
+        os.environ["MC2_SMOKE_ALLOW_NONDEFAULT_RULES"] = "1"  # read by run_smoke.py; the children inherit it
     if hasattr(args, "install"):
         why = owner_install_refusal(args.install, getattr(args, "allow_owner_install", False))
         if why:

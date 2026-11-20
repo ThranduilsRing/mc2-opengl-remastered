@@ -12,7 +12,14 @@ extern unsigned long long preferenceHotKeysFingerprint();
 // The Gates snapshot plus the game-rules keys (owned here, see prefs.h).
 std::vector<mc2::options::PreferenceValue> CPrefs::snapshotValues() const {
     auto out = mc2::options::preferenceSnapshot(*this, render);
-    for (const auto& e : mc2::rules::cfgEntries(gameRules)) out.push_back({e.key, e.text, e.type});
+    // A rule key equal to the default is never added to options.cfg; a key already in the file stays tracked so a revert to the default
+    // still rewrites the stored non-default value.
+    const auto defaults = mc2::rules::cfgEntries(mc2::rules::GameRules{});
+    const auto current = mc2::rules::cfgEntries(gameRules);
+    for (std::size_t i = 0; i < current.size(); ++i) {
+        if (current[i].text == defaults[i].text && !mc2::options::cfg::get(sourceText_, current[i].key).has_value()) continue;
+        out.push_back({current[i].key, current[i].text, current[i].type});
+    }
     return out;
 }
 int CPrefs::load(mc2::czstring name) {

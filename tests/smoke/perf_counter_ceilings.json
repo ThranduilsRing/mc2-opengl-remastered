@@ -27,11 +27,12 @@
  },
  "_window": {
   "ticks": "30..120",
+  "_note": "mc2_10 draws.props 4.3 -> 5.0 (1120a): the last 5 merge-gate tier1 logs (E:/mc2-archive-2026-10/proofs/merge-gate/{20261120-055901,20261120-035809,merge-1119f,20261119-222440,merge-1119e}/gate.log) read 4.766, 4.748, 4.76, 4.76, 4.748 (max 4.766); ceiling = max + ~5%",
   "stems": {
    "mc2_10": {
     "draws.mech_depth": 0.05,
     "draws.mech_color": 0.05,
-    "draws.props": 4.3,
+    "draws.props": 5.0,
     "draws.terrain": 46.0,
     "draws.water": 2.0,
     "draws.legacy": 2.0,

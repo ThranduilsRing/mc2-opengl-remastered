@@ -807,10 +807,10 @@ file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/carbon_difficulty.inc" CONTENT
 target_sources(mc2_tests PRIVATE test_carbon_correctness.cpp)
 set_source_files_properties(test_carbon_correctness.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 # Trigger paths: Gates/gate_rows_0.inc, code/{mover_attack,mech_weapons,gvehicl_weapons}.cpp.
-mc2_height_slice(called_floors code/mover_attack.cpp "static const bool s_calledShotFix =" "\t\tswitch (aimLocation)")
+mc2_height_slice(called_floors code/mover_attack.cpp "float headMod = HeadShotModifier;" "if (pilot && pilot->isSharpShooter())")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/called_floors.inc" CONTENT "${called_floors}")
 foreach(shooter mech gvehicl)
-    mc2_height_slice(called_hit code/${shooter}_weapons.cpp "static const bool s_calledShotFix =" "\n\t\t\t\t}\n\t\t\t\telse {\n\t\t\t\t\tweaponFX->connect(this, *targetPoint")
+    mc2_height_slice(called_hit code/${shooter}_weapons.cpp "if (calledMode == called_shot::kFloors && (aimLocation != -1))" "\n\t\t\t\t}\n\t\t\t\telse {\n\t\t\t\t\tweaponFX->connect(this, *targetPoint")
     file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/called_${shooter}.inc" CONTENT "${called_hit}")
 endforeach()
 set_source_files_properties(test_gate.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
@@ -936,6 +936,8 @@ file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/terrain_tick.inc" CONTENT "${t
 mc2_height_slice(terrain_gesture_status mclib/bdactor.cpp "\t// Check if object destroyed.  If so, no animation!" "\tif (gestureId ==")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/terrain_gesture_status.inc" CONTENT "${terrain_gesture_status}")
 set_source_files_properties(test_terrain_dirty_queue.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
+# Header-only economy rule helpers (code/economy_rules.h); before the selected-tier snapshot below so `--only` can select it.
+target_sources(mc2_tests PRIVATE test_economy_rules.cpp)
 
 # Keep all production objects in the full tier; scoped links extract only needed
 # objects from the same archive. Stubs (including allocation overrides) are

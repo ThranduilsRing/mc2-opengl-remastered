@@ -15,6 +15,7 @@ SalvageMechArea.cpp			: Implementation of the SalvageMechArea component.
 #include"logisticsvariant.h"
 #include"mechicon.h"
 #include"logisticsdata.h"
+#include "economy_rules.h"
 #include "../resource.h"
 #include"gamesound.h"
 #include"mc2str.h"
@@ -419,7 +420,7 @@ SalvageListItem::SalvageListItem( BattleMech* pMech )
 	if ( !pVariant )
 		return;
 
-	costToSalvage = .8f * static_cast<float>(pVariant->getCost());
+	costToSalvage = mc2::rules::salvagePriceFactor( mc2::rules::current().salvage ) * static_cast<float>(pVariant->getCost());
 
 
 	// add the chassis

@@ -74,7 +74,10 @@ void LogisticsData::publishRules() const
 {
 #ifndef VIEWER
 	// Multiplayer (the legacy MPlayer or the lockstep mc2::net session) plays under the defaults: the wire carries no rules.
-	mc2::rules::publish( mc2::rules::rulesToPublish( MPlayer || mc2::net::active(), rules() ) );
+	const bool networked = MPlayer || mc2::net::active();
+	const mc2::rules::GameRules published = mc2::rules::rulesToPublish( networked, rules() );
+	mc2::rules::publish( published );
+	MC2_LOG(Io, Info, "[GAME_RULES] snapshot networked={} calledShots={} pilotSkillWeight={} salvage={} cbillMultiplier={}", networked, published.calledShots, published.pilotSkillWeight, published.salvage, published.cbillMultiplier);
 #else
 	mc2::rules::publish( rules() );
 #endif

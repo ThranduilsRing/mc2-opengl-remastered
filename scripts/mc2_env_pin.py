@@ -158,12 +158,43 @@ def ambient_mc2(environ: Mapping[str, str] | None = None) -> dict[str, str]:
 HARNESS_ONLY_NAMES = frozenset({
     "MC2_IN_GATE", "MC2_LANE_SCRATCH", "MC2_LANE_UUID", "MC2_SLOT", "MC2_SMOKE_ARTIFACT_ROOT",
     "MC2_HARNESS_GPU", "MC2_DEPLOY_LEASE_PATH", "MC2_CHILD_REGISTRY_DIR", "MC2_OWNER_NO_LEASE", "MC2_NO_CPU_PIN",
+    "MC2_SMOKE_ALLOW_NONDEFAULT_RULES",
+    # Exact names (gate/host-lease plumbing); a prefix would exempt typos like MC2_GATE_FOO.
+    "MC2_GATE_BASE",
+    "MC2_GATE_CAPTURE_REFERENCE",
+    "MC2_GATE_COVERAGE",
+    "MC2_GATE_EROOT",
+    "MC2_GATE_GPU",
+    "MC2_GATE_HOST",
+    "MC2_GATE_INSTALL",
+    "MC2_GATE_MODS_ROOT",
+    "MC2_GATE_MODS_SOURCE",
+    "MC2_GATE_NIGHTLY",
+    "MC2_GATE_PROOFS",
+    "MC2_GATE_REASON",
+    "MC2_GATE_REUSE_ROOT",
+    "MC2_GATE_REUSE_STAGE",
+    "MC2_GATE_SKIP_REASON",
+    "MC2_GATE_TIER",
+    "MC2_HOST_CORES_PER_SLOT",
+    "MC2_HOST_GAME_SLOTS",
+    "MC2_HOST_INFRA_OK",
+    "MC2_HOST_LEASE",
+    "MC2_HOST_LEASE_BATCH",
+    "MC2_HOST_LEASE_EXCLUSIVE",
+    "MC2_HOST_LEASE_IDLE_S",
+    "MC2_HOST_LEASE_PATH",
+    "MC2_HOST_LEASE_TIMEOUT",
+    "MC2_HOST_LOAD",
+    "MC2_HOST_LOAD_BUILD_MAX",
+    "MC2_HOST_LOAD_DEFENDER_PCT",
+    "MC2_HOST_LOAD_WAIT_S",
+    "MC2_HOST_MFC",
 })
-HARNESS_ONLY_PREFIXES = ("MC2_GATE_", "MC2_HOST_")
 
 
 def is_harness_only(name: str) -> bool:
-    return name in HARNESS_ONLY_NAMES or name.startswith(HARNESS_ONLY_PREFIXES)
+    return name in HARNESS_ONLY_NAMES
 
 
 def scrubbable_ambient(environ: Mapping[str, str] | None = None) -> dict[str, str]:

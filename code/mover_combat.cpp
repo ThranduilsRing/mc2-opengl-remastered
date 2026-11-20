@@ -6,6 +6,8 @@
 #include "mover_internal.h"
 #include "fx_fixture_aim.h"
 #include "Gates/gate.h"
+#include "called_shot_floor.h"
+#include "game_rules.h"
 #include "mc2fmt.h"
 #include "score_sort.h"
 #include "component_rules.h"
@@ -123,7 +125,9 @@ if (queuePlayerOrder)
 				if (target)
 					tacOrder.setWayPoint(0, target->getPosition());
 			}
-			if (tacOrder.attackParams.aimLocation != -1)
+			// CalledShots Off: no called shots exist, so no called-shot voice line (the aim is dropped at fire time, mover_attack.cpp).
+			if (tacOrder.attackParams.aimLocation != -1 &&
+				called_shot::mode(mc2::gate::get<"MC2_CALLED_SHOT_FIX">(), mc2::rules::current().calledShots) != called_shot::kOff)
 			{
 				message = RADIO_CALLED_SHOT;
 			}

@@ -5,6 +5,8 @@
 #include "mover_internal.h"
 #include "Gates/gate.h"
 #include "called_shot_floor.h"
+#include "game_rules.h"
+static_assert(called_shot::kOff == mc2::rules::kCalledOff && called_shot::kFloors == mc2::rules::kCalledFloors && called_shot::kClassic == mc2::rules::kCalledClassic);
 
 
 constexpr float MAX_SHORT_RANGE_METERS = 60.0f;
@@ -18,6 +20,10 @@ float Mover::calcAttackChance (GameObjectPtr target, long aimLocation, float tar
 {
 	if ((weaponIndex < numOther) || (weaponIndex >= numOther + numWeapons))
 		return(-9999.0);
+
+	// GameRules CalledShots (read per call, never cached): Off drops the aim for both sides.
+	const long calledMode = called_shot::mode(mc2::gate::get<"MC2_CALLED_SHOT_FIX">(), mc2::rules::current().calledShots);
+	aimLocation = called_shot::aim(aimLocation, calledMode);
 
 	glm::vec3 targetPosition;
 	BattleMechPtr mech = nullptr;
@@ -42,7 +48,8 @@ float Mover::calcAttackChance (GameObjectPtr target, long aimLocation, float tar
 	else
 		return(-9999.0);
 
-	float attackChance = pilot->getSkill(MWS_GUNNERY);
+	// GameRules PilotSkillWeight: scales the skill before the difficulty scale (100 = unchanged).
+	float attackChance = called_shot::weightSkill(pilot->getSkill(MWS_GUNNERY), mc2::rules::current().pilotSkillWeight);
 	
 	if (!MPlayer && (getCommanderId() == Commander::home->getId()))		//Up the gunnery Skill by the difficulty modifier
 		attackChance = applyDifficultySkill(attackChance,TRUE);
@@ -193,12 +200,10 @@ float Mover::calcAttackChance (GameObjectPtr target, long aimLocation, float tar
 		// called shot is statistically invisible (issue #9). Under the gate the
 		// aimed modifiers are FLOORED at 0.30/0.45/0.50 (data value wins if a
 		// mod raised it higher); Sharpshooter +20 and the 5-95 clamp unchanged.
-		static const bool s_calledShotFix =
-			mc2::gate::get<"MC2_CALLED_SHOT_FIX">();
 		float headMod = HeadShotModifier;
 		float armMod  = ArmShotModifier;
 		float legMod  = LegShotModifier;
-		if (s_calledShotFix) {
+		if (calledMode == called_shot::kFloors) {
 			headMod = std::max(headMod, 0.30f);
 			armMod = std::max(armMod, 0.45f);
 			legMod = std::max(legMod, 0.50f);
@@ -225,7 +230,7 @@ float Mover::calcAttackChance (GameObjectPtr target, long aimLocation, float tar
 
 		// Absolute floor on the final aimed chance (owner 2026-11-20: "yeah add it").
 		// Values live in called_shot_floor.h.
-		if (s_calledShotFix) {
+		if (calledMode == called_shot::kFloors) {
 			float floorPct = 0.0f;
 			switch (aimLocation)
 			{

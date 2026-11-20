@@ -1,0 +1,123 @@
+{
+  "mco-compat": {
+    "permission_source": "Magic (MCO author), Discord, 2026-11-15",
+    "terms": "with attribution",
+    "author": "Magic and the MCO team",
+    "credits_file": "mods/mcosetup628(1)/MCO EULA.txt",
+    "credits_sha256": "e66a338d6793a0a8bcf48432beb4e3dbfe715e33a0b343f04e288746e85943d2"
+  },
+  "exodus-dca4afc8": {
+    "permission_source": "Magic (MCO author), Discord, 2026-11-15",
+    "terms": "with attribution",
+    "author": "Magic and the MCO campaign contributors (Exodus and MechWarrior 2 Mercenaries)",
+    "credits_file": "mods/mcosetup628(1)/End install text.txt",
+    "credits_sha256": "8f4fe00b1cbe6d4308b468f4158c1e5eeeeea6badb553100d4cfce16c5fddf7a"
+  },
+  "desert-fox-478ca2f8": {
+    "permission_source": "Magic (MCO author), Discord, 2026-11-15",
+    "terms": "with attribution",
+    "author": "Mechlab; MCO adaptation by the MCO team",
+    "credits_file": "mods/desertfoxformcosetup/Readme.txt",
+    "credits_sha256": "8d172783f9ec84689456edfea0e0635f60376dd8ba475d87156e0ca2a359b9be",
+    "eula_sha256": "e66a338d6793a0a8bcf48432beb4e3dbfe715e33a0b343f04e288746e85943d2"
+  },
+  "magic-ballistic-weapons": {
+    "permission_source": "Magic (MCO author), Discord, 2026-11-15",
+    "terms": "with attribution",
+    "author": "Magic",
+    "credits_file": "mods/magic-ballistic-weapons/README.txt",
+    "credits_sha256": "e10bc00b88595c6f7efbf917e9dacb82f2f297526cf4b0035dbf8f8bbfbf960c"
+  },
+  "magic-gamesys-tweaks": {
+    "permission_source": "Magic (MCO author), Discord, 2026-11-15",
+    "terms": "with attribution",
+    "author": "Magic",
+    "credits_file": "mods/magic-gamesys-tweaks/README.txt",
+    "credits_sha256": "0ea4102955ca6aa5c267d292669dc4bd4d5093042ca2349bb7afd503f92649de"
+  },
+  "mc2-industrial-kit": {
+    "bundle": true,
+    "permission_source": "Owner playtester-build-1 brief, 2026-11-15; owner CC0 source ruling 2026-10-21",
+    "terms": "CC0 1.0 sources; original kit geometry/shaders; attribution given",
+    "author": "MC2 remaster asset contributors; Poly Haven; ambientCG",
+    "credits_file": "CREDITS.txt",
+    "provenance": "tools/playtest/kit_cc0_sources.json",
+    "credits_sha256": "c6a7672c5c756c6d8bc06905ec39a3b9eea07a362279dfd9f8116834de214433"
+  },
+  "mc2-vehicle-kit": {
+    "bundle": true,
+    "permission_source": "Owner playtester-build-1 brief, 2026-11-15; owner CC0 source ruling 2026-10-21",
+    "terms": "CC0 1.0 sources; original kit geometry/shaders; attribution given",
+    "author": "MC2 remaster asset contributors; Poly Haven; ambientCG",
+    "credits_file": "CREDITS.txt",
+    "provenance": "tools/playtest/kit_cc0_sources.json",
+    "credits_sha256": "c6a7672c5c756c6d8bc06905ec39a3b9eea07a362279dfd9f8116834de214433"
+  },
+  "owner-cc0-trees": {
+    "bundle": true,
+    "kind": "loose",
+    "permission_source": "Owner ruling 2026-11-16 (CGTrader Broadleaf pack is CC0)",
+    "terms": "CC0 1.0",
+    "author": "CGTrader Broadleaf pack contributors; MC2 remaster asset contributors",
+    "credits_file": "CREDITS.txt",
+    "provenance": "tools/playtest/kit_cc0_sources.json#uploads_files_4996646_Broadleaf_GLTF",
+    "credits_sha256": "c6a7672c5c756c6d8bc06905ec39a3b9eea07a362279dfd9f8116834de214433"
+  },
+  "polyhaven-cc0-trees": {
+    "bundle": true,
+    "kind": "loose",
+    "permission_source": "Owner confirmation 2026-11-16 ~22:00",
+    "terms": "CC0 1.0",
+    "author": "Poly Haven contributors; MC2 remaster asset contributors",
+    "credits_file": "CREDITS.txt",
+    "credits_sha256": "c6a7672c5c756c6d8bc06905ec39a3b9eea07a362279dfd9f8116834de214433",
+    "provenance": "tools/playtest/kit_cc0_sources.json#Poly-Haven-trees",
+    "sources": [
+      {
+        "asset": "island_tree_01",
+        "site": "Poly Haven",
+        "URL": "https://polyhaven.com/a/island_tree_01",
+        "licence": "CC0 1.0",
+        "evidence": [
+          "owner directive 2026-11-14 06:55 / 09:10; owner confirmation 2026-11-16 ~22:00; intentional-asset-changes.json"
+        ]
+      },
+      {
+        "asset": "island_tree_02",
+        "site": "Poly Haven",
+        "URL": "https://polyhaven.com/a/island_tree_02",
+        "licence": "CC0 1.0",
+        "evidence": [
+          "owner directive 2026-11-14 06:55 / 09:10; owner confirmation 2026-11-16 ~22:00; intentional-asset-changes.json"
+        ]
+      },
+      {
+        "asset": "island_tree_03",
+        "site": "Poly Haven",
+        "URL": "https://polyhaven.com/a/island_tree_03",
+        "licence": "CC0 1.0",
+        "evidence": [
+          "owner directive 2026-11-14 06:55 / 09:10; owner confirmation 2026-11-16 ~22:00; intentional-asset-changes.json"
+        ]
+      },
+      {
+        "asset": "jacaranda_tree",
+        "site": "Poly Haven",
+        "URL": "https://polyhaven.com/a/jacaranda_tree",
+        "licence": "CC0 1.0",
+        "evidence": [
+          "owner directive 2026-11-14 06:55 / 09:10; owner confirmation 2026-11-16 ~22:00; intentional-asset-changes.json"
+        ]
+      },
+      {
+        "asset": "tree_small_02",
+        "site": "Poly Haven",
+        "URL": "https://polyhaven.com/a/tree_small_02",
+        "licence": "CC0 1.0",
+        "evidence": [
+          "owner directive 2026-11-14 06:55 / 09:10; owner confirmation 2026-11-16 ~22:00; intentional-asset-changes.json"
+        ]
+      }
+    ]
+  }
+}
