@@ -41,6 +41,7 @@ template<class P, class F> void forEachPreference(P& p, F&& f) {
         f("UnitName" + std::to_string(i), p.unitName[i], 's');
         f("IPAddress" + std::to_string(i), p.ipAddresses[i], 's');
     }
+    mc2::rules::forEachField(p.gameRules, f);
 }
 
 // FitIniFile owns the legacy number/string grammar. Read from the one caller-owned file buffer.
@@ -68,6 +69,7 @@ template<class File, class P> void loadPreferences(File& file, P& p) {
             if (result == 0) value = candidate;
         }
     });
+    mc2::rules::sanitize(p.gameRules);   // a hand-edited out-of-range rule falls back to its default
     if (!hasPrimaryName) {
         file.readIdString("PlayerName", p.playerName[0], sizeof(p.playerName[0]) - 1);
         file.readIdString("UnitName", p.unitName[0], sizeof(p.unitName[0]) - 1);

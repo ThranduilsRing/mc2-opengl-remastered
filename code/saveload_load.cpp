@@ -646,6 +646,7 @@ void Mission::loadLogistics(MissionLoadFrame& f) {
 		MC2_LOG(Io, Error, "in-mission save: the logistics data could not be fully restored (code {}), continuing", restored.error());
 	}
 	LogisticsData::instance->setResourcePoints(rps);
+	LogisticsData::instance->publishRules(); // the restored save's rules replace the snapshot Mission::init published
 
 	logisticsFile.close();
 

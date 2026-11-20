@@ -1006,6 +1006,7 @@ target_sources(mc2_tests PRIVATE test_veg_population_cache.cpp)
 # Campaign guards: LogisticsMissionInfo init rejection and null-groups accessors (the class TUs, game-free).
 target_sources(mc2_tests PRIVATE
     test_logistics_mission_info_guards.cpp
+    test_game_rules.cpp
     ${MC2_WORKTREE_ROOT}/code/logisticsmissioninfo.cpp
     ${MC2_WORKTREE_ROOT}/code/logisticsmissioninfo_progress.cpp
     ${MC2_WORKTREE_ROOT}/code/logisticsmissioninfo_query.cpp
