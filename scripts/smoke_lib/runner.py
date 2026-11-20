@@ -226,6 +226,15 @@ def unregistered_ambient(environ: dict, env_extra: "dict | None" = None) -> dict
             if k.startswith("MC2_") and k not in names and k not in keep}
 
 
+def reportable_unregistered(environ: dict, env_extra: "dict | None" = None) -> dict:
+    """unregistered_ambient() minus the harness-only names (slot/gate/host-lease plumbing every lane shell sets). Callers still
+    DROP the full unregistered set from the engine env; only the ENV-DROPPED warning and --strict-env use this narrower view."""
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    import mc2_env_pin
+    return {k: v for k, v in unregistered_ambient(environ, env_extra).items() if not mc2_env_pin.is_harness_only(k)}
+
+
 @dataclass
 class RunConfig:
     exe: List[str]                    # argv[0..n]; usually [exe_path, --profile, stock, --mission, stem, --duration, d]

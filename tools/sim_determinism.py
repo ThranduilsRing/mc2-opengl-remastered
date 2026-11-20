@@ -437,6 +437,8 @@ def _git_sha() -> str:
 
 #: Installs under this root belong to the owner (play install, golden, mods); only the merge gate may point a run at them.
 OWNER_INSTALL_ROOT = "A:/Games/mc2-opengl/"
+#: Exit code of the owner-install refusal; rc 2 means "host starved" (a caller may retry or mark NEEDS_REVIEW), this never does.
+RC_OWNER_INSTALL = 78
 
 
 def owner_install_refusal(install: str, allowed: bool) -> str:
@@ -934,7 +936,7 @@ def main(argv=None) -> int:
         why = owner_install_refusal(args.install, getattr(args, "allow_owner_install", False))
         if why:
             print("sim_determinism: " + why, file=sys.stderr)
-            return 2
+            return RC_OWNER_INSTALL
     if getattr(args, "headless_both", False):
         args.headless = "both"
         if getattr(args, "cmd", "") == "check":

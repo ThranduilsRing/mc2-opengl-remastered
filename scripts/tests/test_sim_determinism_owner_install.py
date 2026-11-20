@@ -26,9 +26,29 @@ def test_flag_allows_owner_path():
 
 
 @pytest.mark.parametrize("argv", [["check", "mc2_03"], ["run", "mc2_03", "--install", OWNER]])
-def test_default_and_explicit_owner_install_exit_2(argv, capsys):
-    assert sim.main(argv) == 2
+def test_default_and_explicit_owner_install_exit_own_rc(argv, capsys):
+    assert sim.main(argv) == sim.RC_OWNER_INSTALL
     assert "refusing install" in capsys.readouterr().err
+
+
+def test_refusal_rc_is_not_the_starved_rc():
+    assert sim.RC_OWNER_INSTALL not in (0, 1, 2)
+
+
+def test_battery_determinism_refuses_owner_install_loudly():
+    import battery
+    assert battery.RC_OWNER_INSTALL == sim.RC_OWNER_INSTALL and battery.OWNER_INSTALL_ROOT == sim.OWNER_INSTALL_ROOT
+    assert battery.install_is_owner_owned(OWNER) and not battery.install_is_owner_owned("E:/mc2-installs/x")
+
+    class Ctx:
+        install = OWNER
+        dry = False
+
+        def stage_dir(self, name):
+            return Path(name)
+
+    res = battery.step_determinism(Ctx())
+    assert res.verdict == battery.FAIL and res.rc == sim.RC_OWNER_INSTALL
 
 
 def test_merge_gate_passes_flag():

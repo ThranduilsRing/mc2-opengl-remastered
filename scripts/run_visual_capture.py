@@ -930,7 +930,7 @@ def main() -> int:
                          "frames instead of a mission bookmark sweep; delegates to scripts/screen_shot.py")
     args = ap.parse_args()
     if args.strict_env:
-        _dirty = env_pin.scrubbable_ambient()
+        _dirty = {k: v for k, v in env_pin.scrubbable_ambient().items() if not env_pin.is_harness_only(k)}
         if _dirty:
             print("[viscap] ENV-DROPPED FATAL (--strict-env): ambient MC2_* name(s) would be scrubbed, not forwarded: "
                   + ", ".join(sorted(_dirty)), file=sys.stderr)

@@ -39,6 +39,13 @@ import stage_root as stages  # noqa: E402  (default staging roots on E:, free-sp
 DEFAULT_STAGE = str(stages.default_root("battery"))
 DEFAULT_INSTALL = "A:/Games/mc2-opengl/mc2-win64-v0.4"
 FORBIDDEN_INSTALL = "mc2-win64-v0.4c"
+#: Mirrors sim_determinism.RC_OWNER_INSTALL / OWNER_INSTALL_ROOT (that tool refuses the owner's installs with this rc, distinct from starved rc 2).
+RC_OWNER_INSTALL = 78
+OWNER_INSTALL_ROOT = "A:/Games/mc2-opengl/"
+
+
+def install_is_owner_owned(install):
+    return (os.path.abspath(str(install)).replace("\\", "/").lower().rstrip("/") + "/").startswith(OWNER_INSTALL_ROOT.lower())
 RESAVE_MISSIONS = ("mc2_01", "mc2_03", "mc2_10", "mc2_16", "mc2_24")
 #: mc2_10 last: it is the slow one under host load (run-book step 5).
 DET_MISSIONS = ("mc2_01", "mc2_03", "mc2_16", "mc2_17", "mc2_24", "mc2_10")
@@ -250,6 +257,8 @@ def step_sound(ctx):
 
 def step_determinism(ctx):
     out = ctx.stage_dir("det")
+    if install_is_owner_owned(ctx.install):
+        return Result(FAIL, f"determinism refuses the owner's install {ctx.install}; pass --install <lane or seed install>", out, RC_OWNER_INSTALL)
     bad, starved, rc = [], [], 0
     for m in DET_MISSIONS:
         r = ctx.run([sys.executable, ROOT / "tools/sim_determinism.py", "pairs-until-fail",
@@ -258,6 +267,8 @@ def step_determinism(ctx):
                     out=out / m / "run", timeout=3600)
         if r.dry:
             continue
+        if r.rc == RC_OWNER_INSTALL:
+            return Result(FAIL, f"{m}: sim_determinism refused the install (owner install)", out, r.rc)
         if r.rc == 2:
             starved.append(m)
         elif r.rc == RC_TIMEOUT:
