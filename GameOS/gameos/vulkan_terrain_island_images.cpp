@@ -7,6 +7,7 @@
 #include "load_scope.h"
 #include "terrain_field_store.h"
 #include "cement_layers.h"
+#include "terrain_fine_height_bake.h"
 #include "gameos.hpp"
 #include "gos_render.h"
 #include <array>
@@ -635,7 +636,11 @@ bool snapshot_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
 // visualHeightReady stays false -> UBO visualMode forced 0 -> VS draws undisplaced.
 bool snapshot_visual_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if (!feed.visualHeightCpu || !feed.waterShoreCellsCpu || feed.visualHeightBytes == 0) return false;
-    const VkDeviceSize bytes = 3 * static_cast<VkDeviceSize>(feed.visualHeightBytes);
+    // Planes: [V*V visual][2*V*V shore][(V+2)^2 filtered visual heights with a one-cell apron, terrain_tier1.frag fine-normal fetch].
+    const int side = feed.visualSide;
+    if (side < 2 || feed.visualHeightBytes < static_cast<uint64_t>(side) * static_cast<uint64_t>(side) * sizeof(float)) return false;
+    const VkDeviceSize filteredBytes = static_cast<VkDeviceSize>(terrain_fine_height::apronCount(side) * sizeof(float));
+    const VkDeviceSize bytes = 3 * static_cast<VkDeviceSize>(feed.visualHeightBytes) + filteredBytes;
     if (feed.visualHeightVersion == s->visualHeightVersionCopied && s->visualHeightReady) return true;
     // Ensure capacity (grow-only, like the cement buffer).
     if (!s->visualHeightBuf || bytes > s->visualHeightCapBytes) {
@@ -656,6 +661,10 @@ bool snapshot_visual_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     std::memcpy(p, feed.visualHeightCpu, static_cast<size_t>(feed.visualHeightBytes));
     std::memcpy(static_cast<char*>(p) + feed.visualHeightBytes, feed.waterShoreCellsCpu,
                 static_cast<size_t>(2 * feed.visualHeightBytes));
+    // The fragment indexes this plane at 3*V*V, so it must sit right after the shore planes (visualHeightBytes == V*V*4, gos_terrain_lod_chunk_feed.cpp).
+    std::vector<float> filtered(terrain_fine_height::apronCount(side));
+    terrain_fine_height::bake(feed.visualHeightCpu, side, filtered.data());
+    std::memcpy(static_cast<char*>(p) + 3 * static_cast<size_t>(feed.visualHeightBytes), filtered.data(), static_cast<size_t>(filteredBytes));
     vmaUnmapMemory(s->allocator, s->visualHeightBuf.allocation());
     s->visualHeightVersionCopied = feed.visualHeightVersion;
     s->visualHeightReady = true;
