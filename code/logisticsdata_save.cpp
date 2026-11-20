@@ -10,6 +10,7 @@
 #include "mc2str.h"
 #include "objective_text.h"
 #include "purchase_catalog.h"
+#include "economy_rules.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
 #include <optional>
@@ -511,7 +512,11 @@ void	LogisticsData::setMissionCompleted( )
 		if ( pObjective->Status(Team::home->objectives) == OS_SUCCESSFUL )
 		{
 			const int beforeObjective = observation ? getCBills() : 0;
-			addCBills( pObjective->ResourcePoints() );
+			const int payoutBase = pObjective->ResourcePoints();
+			const long payoutPct = mc2::rules::current().cbillMultiplier;
+			const int payoutCredited = mc2::rules::payoutScaled(payoutBase, payoutPct);
+			MC2_LOG(Core, Info, "[GAME_RULES] payout base={} pct={} credited={}", payoutBase, payoutPct, payoutCredited);
+			addCBills( payoutCredited );
 			if (observation) {
 				pObjective->ObserveCBills(beforeObjective, getCBills());
 			}
