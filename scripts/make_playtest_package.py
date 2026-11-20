@@ -45,6 +45,8 @@ SKIP_DIRS = {'cache', 'cook-cache', '_aoktxtmp', 'terrain_gen_out', 'dev_shell_o
              'debug_state', 'crashes', 'savegame', '_txm_cache_bak', 'txm_backup'}
 MACHINE = re.compile(r'(?<![A-Za-z])[A-Z]:[/\\]', re.I)  # any drive letter (covers C:\Users); not URL schemes
 PLAY_REF = 'claude/play-1113'
+# Reviewed: dev-checkout-only registry branch (unused in a package, no .git) and D:\Downloads placeholders in the import guide.
+MACHINE_OK = {'scripts/smoke_lib/child_registry.py', 'docs/modding/IMPORT-CAMPAIGNS.md'}
 
 
 def verified_exe_commit(source, manifest_commit, repository=None, ref=None):
@@ -202,7 +204,7 @@ def scan(tree):
             texts = [raw.decode('utf-8', errors='replace')]
             if raw[:2] in (b'\xff\xfe', b'\xfe\xff'):
                 texts.append(raw.decode('utf-16', errors='replace'))
-            if any(MACHINE.search(t) for t in texts):
+            if rel not in MACHINE_OK and any(MACHINE.search(t) for t in texts):
                 failures.append('machine path: ' + rel)
     if failures:
         raise ValueError('\n'.join(failures))
