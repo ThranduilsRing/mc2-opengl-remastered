@@ -13,15 +13,13 @@ fixes what the 2026-11-19 Fable review found (A:/Games/mc2-ops/studies/fable-rgp
      holds its first launch, and an unanchored run that launches in a gap between markers gets an explicit "(unlabelled: A..B)" row
      instead of a lump spanning several passes (the "9.4 ms water lump" and "LightLists lump" were that).
 
-usage (extract/decode need the research toolchain, RGP_RESEARCH_ROOT; pass paths as arguments, run with -I):
-  py -3 -I rgp_report_v3.py all <capture.rgp> <workdir>      extract + decode + report
+usage (extract/decode stay v2's: `rgp_report_v2.py extract <capture.rgp> <workdir>` then `decode <workdir>`, research toolchain under
+RGP_RESEARCH_ROOT; pass paths as arguments, run with -I):
   py -3 -I rgp_report_v3.py report <workdir> [--csv out.csv] report a decoded workdir
   py -3 -I rgp_report_v3.py summary <workdir>...             one CSV row per capture
 """
-import argparse, bisect, collections, csv, os, re, struct, subprocess, sys
+import argparse, bisect, collections, csv, os, re, struct, sys
 
-ROOT = os.environ.get("RGP_RESEARCH_ROOT", "E:/mc2-archive-2026-10/from-G/rgp_research")
-V2 = f"{ROOT}/scripts/rgp_report_v2.py"
 PGM_REGS = ("2c08", "2c48", "2c88", "2cc8", "2e0c")   # SPI_SHADER_PGM_LO_{PS,VS,HS/ES,GS}, COMPUTE_PGM_LO
 STAGE = {"cs": "CS", "ps": "PS", "gs": "VS", "vs": "VS", "es": "VS", "hs": "VS", "ls": "VS"}   # NGG gs_main is the vertex-side stage
 CARRY = "(carry-over from previous frame)"
@@ -430,7 +428,7 @@ def summary_row(wd):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["all", "report", "summary"])
+    ap.add_argument("cmd", choices=["report", "summary"])
     ap.add_argument("a", nargs="+")
     ap.add_argument("--csv")
     args = ap.parse_args()
@@ -439,10 +437,7 @@ def main():
         for wd in args.a:
             w.writerow(summary_row(wd))
         return
-    if args.cmd == "all":                                     # extract + decode with v2's unchanged steps
-        for step in ("extract", "decode"):
-            subprocess.run([sys.executable, "-I", V2, step, args.a[0], args.a[1]] if step == "extract" else [sys.executable, "-I", V2, step, args.a[1]], check=True)
-    report(args.a[1] if args.cmd == "all" else args.a[0], args.csv)
+    report(args.a[0], args.csv)
 
 
 if __name__ == "__main__":
