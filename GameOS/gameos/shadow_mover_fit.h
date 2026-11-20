@@ -10,6 +10,9 @@ namespace mc2shadow {
 // (owner 2026-11-09) while the penumbra still grows with blocker distance.
 inline constexpr float kMoverSunAngularRadiusDeg = 0.75f;
 struct MoverSphere { Vec3 center; float radius; };
+// Coverage grid side. shaders/vulkan/include/mover_shadow.glsl hardcodes 120 / 119 / 120.0 and uvec4 coverage[900] (= side^2 / 16 uvec4);
+// scripts/tests/test_mover_shadow_crisp.py pins those literals to this constant, so change all together.
+inline constexpr int kMoverCoverageSide = 120;
 struct alignas(16) MoverShadowFrame {
     float matrix[16]{};
     float params[4]{}; // world texel, reciprocal depth span, normal offset, reciprocal map side
@@ -17,8 +20,9 @@ struct alignas(16) MoverShadowFrame {
     float mask[4]{};   // west, north, reciprocal world span, ready
     int32_t flags[4]{}; // active, coverage enabled, quality, union path
     float light[4]{};   // x: night fade (static); y: spatial filter sample count; z: mover night fade; w reserved
-    std::array<uint32_t, 3600> coverage{}; // 120x120 cells, one UNORM8 nearest-caster depth per byte; 255 = empty
+    std::array<uint32_t, kMoverCoverageSide * kMoverCoverageSide / 4> coverage{}; // 120x120 cells, one UNORM8 nearest-caster depth per byte; 255 = empty
 };
+static_assert(kMoverCoverageSide * kMoverCoverageSide % 16 == 0 && kMoverCoverageSide * kMoverCoverageSide / 16 == 900); // GLSL uvec4 coverage[900]
 static_assert(sizeof(MoverShadowFrame) == 14544);
 static_assert(offsetof(MoverShadowFrame, coverage) == 144);
 
@@ -102,7 +106,6 @@ inline Window fitMoverWindow(std::span<const MoverSphere> spheres, const LightBa
     return w;
 }
 
-inline constexpr int kMoverCoverageSide = 120;
 // A cell holds the nearest caster depth (UNORM8, 254 max) of every sphere whose light-space footprint,
 // grown by the receiver's blocker-search reach, touches it; 255 = no caster. mover_shadow.glsl skips the
 // blocker search where nothing can sit in front of the receiver.

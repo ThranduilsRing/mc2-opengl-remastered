@@ -115,7 +115,7 @@ def run_sim_rows(root: str, sha: str, install: str | None, proof: str | None = N
     steps = {n: (c, e) for n, c, e in merge_gate.plan(1, proof or os.path.join(SIM_PROOF_BASE, sha[:12]))}
     for row in SIM_ROWS:
         command, extra = steps[row]
-        command = list(command)
+        command = [a for a in command if a != "--allow-owner-install"]  # the gate's flag; a lane install never needs it (farm_stage strips it too)
         command[command.index("--install") + 1] = install
         r = runner(root, command, env=dict(os.environ, **extra))
         out = r.stdout or ""

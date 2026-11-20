@@ -54,3 +54,13 @@ def test_rigid_casters_do_not_depend_on_nearby_mechs_or_bake_readiness():
     assert "props_.push_back(prop)" in loop
     assert "maskReady" not in loop, "bake readiness cannot suppress unbaked rigid casters"
     assert "propShadowReachesMover" not in loop, "a nearby mech cannot control a turret's shadow"
+
+
+def test_coverage_grid_literals_follow_kMoverCoverageSide():
+    side = int(re.search(r"constexpr\s+int\s+kMoverCoverageSide\s*=\s*(\d+)", FIT.read_text(encoding="utf-8")).group(1))
+    glsl = _code(SHADER)
+    assert f"uvec4 coverage[{side * side // 16}]" in glsl
+    assert f"pc.xy * {side}.0" in glsl and f"uvec2({side - 1})" in glsl and f"* {side}u" in glsl
+    live = (ROOT / "GameOS/gameos/vulkan_shadow_island_live.cpp").read_text(encoding="utf-8")
+    kb = int(re.search(r"coverage_kb=(\d+)", live).group(1))
+    assert kb == round(side * side / 1024), "the movers log line's coverage_kb is stale"

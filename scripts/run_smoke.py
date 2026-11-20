@@ -1695,7 +1695,8 @@ def main():
         _undriveable = _smoke_runner.undriveable_ambient(os.environ, cfg.env_extra)
         # Harness-only knobs (MC2_CURSOR_NO_PARK, ...) and typos are not gates: the runner does not forward them
         # (the engine runs under MC2_CONFIG_STRICT=1) and says so here.
-        _unregistered = _smoke_runner.unregistered_ambient(os.environ, cfg.env_extra)
+        _all_unregistered = _smoke_runner.unregistered_ambient(os.environ, cfg.env_extra)
+        _unregistered = _smoke_runner.reportable_unregistered(os.environ, cfg.env_extra)  # harness plumbing is dropped silently
         if _unregistered:
             _env_manifest["dropped_unregistered_env"] = dict(_unregistered)
             print(
@@ -1711,7 +1712,7 @@ def main():
                 sys.exit(2)
         _ambient_gates = sorted(
             k for k in os.environ
-            if k.startswith("MC2_") and k not in _undriveable and k not in _unregistered
+            if k.startswith("MC2_") and k not in _undriveable and k not in _all_unregistered
         )
         if _ambient_gates:
             # Case (b). Not an error -- but never silent: an unrecorded ambient

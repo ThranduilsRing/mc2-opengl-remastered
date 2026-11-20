@@ -153,6 +153,19 @@ def ambient_mc2(environ: Mapping[str, str] | None = None) -> dict[str, str]:
     return {k: v for k, v in sorted(src.items()) if k.startswith(PREFIX)}
 
 
+#: Harness/lane/gate plumbing the Python harness reads itself (host lease, slot scratch, gate base). Never an engine gate,
+#: so --strict-env and the ENV-DROPPED warning must not fire on them (every slot and merge-gate shell sets several).
+HARNESS_ONLY_NAMES = frozenset({
+    "MC2_IN_GATE", "MC2_LANE_SCRATCH", "MC2_LANE_UUID", "MC2_SLOT", "MC2_SMOKE_ARTIFACT_ROOT",
+    "MC2_HARNESS_GPU", "MC2_DEPLOY_LEASE_PATH", "MC2_CHILD_REGISTRY_DIR", "MC2_OWNER_NO_LEASE", "MC2_NO_CPU_PIN",
+})
+HARNESS_ONLY_PREFIXES = ("MC2_GATE_", "MC2_HOST_")
+
+
+def is_harness_only(name: str) -> bool:
+    return name in HARNESS_ONLY_NAMES or name.startswith(HARNESS_ONLY_PREFIXES)
+
+
 def scrubbable_ambient(environ: Mapping[str, str] | None = None) -> dict[str, str]:
     """Ambient MC2_* vars that are NOT transport plumbing -- i.e. the ones that
     can change what the engine renders. These are the contaminants."""
