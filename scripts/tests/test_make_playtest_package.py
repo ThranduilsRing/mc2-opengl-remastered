@@ -53,22 +53,20 @@ def test_scan_rejects_machine_paths_and_preserves_normal_assets(tmp_path, suffix
         package.scan(tmp_path)
 
 
-def test_scan_drive_path_marker_is_per_line(tmp_path):
+def test_scan_drive_path_marker_is_not_an_exemption(tmp_path):
     (tmp_path / 'reg.py').write_text('a = "A:/x"  # drive-path: ok dev\n')
-    package.scan(tmp_path)
-    (tmp_path / 'reg.py').write_text('a = "A:/x"  # drive-path: ok dev\nb = "C:\\Users\\Owner"\n')
     with pytest.raises(ValueError, match='machine path'):
         package.scan(tmp_path)
 
 
-def test_scan_guide_downloads_placeholder_passes(tmp_path):
+def test_scan_guide_drive_placeholder_is_rejected(tmp_path):
     guide = tmp_path / 'docs/modding/IMPORT-CAMPAIGNS.md'
     guide.parent.mkdir(parents=True)
-    guide.write_text('run "D:\\Downloads\\x.exe" or "D:\\Campaigns\\y"\n')
-    package.scan(tmp_path)
-    guide.write_text('run "D:\\Downloads\\x.exe" "C:\\Users\\Owner"\n')
+    guide.write_text('run "D:\\Downloads\\x.exe"\n')
     with pytest.raises(ValueError, match='machine path'):
         package.scan(tmp_path)
+    guide.write_text('run "<your Downloads folder>\\x.exe"\n')
+    package.scan(tmp_path)
 
 
 def test_clean_staging_bundles_only_permitted_mods(tmp_path, monkeypatch):
