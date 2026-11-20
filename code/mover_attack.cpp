@@ -4,6 +4,7 @@
 
 #include "mover_internal.h"
 #include "Gates/gate.h"
+#include "called_shot_floor.h"
 
 
 constexpr float MAX_SHORT_RANGE_METERS = 60.0f;
@@ -185,6 +186,7 @@ float Mover::calcAttackChance (GameObjectPtr target, long aimLocation, float tar
 	// Therefore, must go here after all modifiers...
 	if ((aimLocation > -1) && (mech))
 	{
+		const float unaimedChance = attackChance;
 		// ISSUE-9 S1 (MC2_CALLED_SHOT_FIX, default ON; =0 restores stock): the stock
 		// gamesys.fit modifiers (Head=0.08/Arm=0.15/Leg=0.20) put an aimed head
 		// shot at the 5% clamp floor for most engagements, so per-shot the
@@ -219,6 +221,28 @@ float Mover::calcAttackChance (GameObjectPtr target, long aimLocation, float tar
 			case MECH_BODY_LOCATION_RLEG:
 				attackChance *= legMod;
 				break;
+		}
+
+		// Absolute floor on the final aimed chance (owner 2026-11-20: "yeah add it").
+		// Values live in called_shot_floor.h.
+		if (s_calledShotFix) {
+			float floorPct = 0.0f;
+			switch (aimLocation)
+			{
+				case MECH_BODY_LOCATION_HEAD:
+					floorPct = called_shot::kHeadFloorPct;
+					break;
+				case MECH_BODY_LOCATION_LARM:
+				case MECH_BODY_LOCATION_RARM:
+					floorPct = called_shot::kArmFloorPct;
+					break;
+				case MECH_BODY_LOCATION_LLEG:
+				case MECH_BODY_LOCATION_RLEG:
+					floorPct = called_shot::kLegFloorPct;
+					break;
+			}
+			if (floorPct > 0.0f)
+				attackChance = called_shot::applyFloor(attackChance, unaimedChance, floorPct);
 		}
 
 		if (pilot && pilot->isSharpShooter())
