@@ -1586,6 +1586,8 @@
   },
   "code/gameplay_pick.cpp": {},
   "code/gameplay_pick.h": {},
+  "code/gamerulesdialog.cpp": {},
+  "code/gamerulesdialog.h": {},
   "code/gamesound.cpp": {
    "LG03": 1
   },
@@ -3151,6 +3153,7 @@
    "LG05": 1
   },
   "mclib/pak_zip.h": {},
+  "mclib/pak_zip_writer.cpp": {},
   "mclib/particles/batcher.cpp": {
    "LG03": 1
   },
@@ -3466,7 +3469,7 @@
    "LG20": 1
   }
  },
- "head": "a051e687b",
+ "head": "8807990e0",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

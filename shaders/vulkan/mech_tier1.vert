@@ -175,7 +175,7 @@ void main() {
 
     vec4 clip = uFrame.worldToClipGL * vec4(worldMC2, 1.0);
     vCurClip = clip;
-    vPrevClip = clip;
+    vPrevClip = preskinned ? uFrame.prevFromCurClip * clip : clip;
     if (uFrame.miscI.z > 0 && !preskinned) {
         // The same vertex skinned with last frame's bone palette (stored after the current one; miscI.z = bone count): pose motion
         // (root rotation and translation, limbs) in one step. Unkeyed actors carry the current pose there, so they get the camera vector.

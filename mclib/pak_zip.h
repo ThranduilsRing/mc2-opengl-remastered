@@ -27,6 +27,7 @@ class PakZip {
 public:
     struct Entry {
         std::string key, source;
+        std::string aliasOf;  // non-empty: a mc2pak.aliases name sharing that entry's stored bytes (no second local header)
         uint64_t offset = 0, packed = 0, size = 0; // offset = local header; validated lazily on first read
         uint64_t limit = 0; // start of the next local header (or central directory): data must end before it
         uint16_t flags = 0, nameLen = 0;
@@ -55,4 +56,31 @@ private:
     void parse();
     uint64_t dataOffset(const Entry& e) const; // throws on a bad local header
 };
+
+// Writer (mclib/pak_zip_writer.cpp, compiled only into targets that link mc2_zstd_compress: asset viewer, unit tests).
+struct PakWriteOptions { int level = 19; bool forceZip64 = false; bool dryRun = false; };
+struct PakFolderStat { uint64_t files = 0, aliases = 0, rawBytes = 0, uniqueBytes = 0, packedBytes = 0; };
+struct PakWriteStats {
+    PakFolderStat total;
+    std::map<std::string, PakFolderStat> folders;  // "data/<x>" for data/*, else the first path component
+    uint64_t archiveBytes = 0;
+};
+// Streams one deterministic archive: mc2pak.json first, entries in add() order, mc2pak.aliases last (only when a
+// payload repeats). Identical payloads (SHA-256) are stored once; later names become alias-table lines.
+class PakWriter {
+public:
+    PakWriter(std::string outPath, std::vector<PakZip::Source> sources, PakWriteOptions options = {});
+    ~PakWriter();
+    PakWriter(const PakWriter&) = delete;
+    PakWriter& operator=(const PakWriter&) = delete;
+    bool add(std::string_view name, std::string_view source, const std::vector<uint8_t>& bytes, std::string* error);
+    bool finish(std::string* error);  // writes the central directory and renames the temp file into place
+    const PakWriteStats& stats() const;
+private:
+    struct Impl;
+    std::unique_ptr<Impl> impl_;
+};
+// Packs every file under dir (logical key = lowercase relative path with '/'), one source named "loose".
+bool packDirectory(std::string_view dir, std::string_view outPath, const PakWriteOptions& options,
+                   PakWriteStats* stats, std::string* error);
 } // namespace mc2::vfs

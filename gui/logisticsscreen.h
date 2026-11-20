@@ -150,6 +150,7 @@ class LogisticsScreen : public aObject
 	// Override the display text of any GuiText or GuiButton element at runtime.
 	// Used to switch Save/Load dialog title and button label dynamically.
 	bool setDefsElementText(const std::string& key, const std::string& text);
+	bool setDefsElementTextColor(const std::string& key, unsigned int argb);
 
 	// Runtime show/hide of a defs element by key (mirrors legacy statics[].
 	// showGUIWindow onto the equivalent defs element).

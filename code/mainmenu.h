@@ -2,6 +2,7 @@
 #define MAINMENU_H
 #include "mc2_czstring.h"
 #include <memory>
+#include <string_view>
 /*************************************************************************************************\
 MainMenu.h			: Interface for the MainMenu component.
 //---------------------------------------------------------------------------//
@@ -97,6 +98,10 @@ class MainMenu: public LogisticsScreen
 		bool	bLoad;
 		bool	bLoadSingle;
 		bool	bLoadCampaign;
+		bool	bRulesDlg;				// the Game Rules dialog is up between the campaign picker and startNewCampaign
+		std::string rulesCampaign;		// the campaign picked in the picker
+		bool	rulesForSolo;			// the dialog was opened from the solo map list: ACCEPT stores the rules, nothing starts
+		bool	beginCampaignRules( std::string_view campaignFile );	// true = dialog shown; false = caller starts the campaign now
 		bool	promptToDisconnect;
 		bool	bLegal;
 

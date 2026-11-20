@@ -30,6 +30,8 @@ static int connectionType = 0;
 static const int FIRST_BUTTON_ID = 1000010;
 static const int OK_BUTTON_ID = 1000001;
 static const int CANCEL_BUTTON_ID = 1000002;
+static const int RULES_BUTTON_ID = 7701;	// legacyId of game.mcl_mp_loadmap.button.rules (defs-only button)
+static const char* const kMpRulesButtonKey = "game.mcl_mp_loadmap.button.rules";
 
 // Keys for the v2 mcl_mp_loadmap.fit page text elements (map info panel).
 static const char* const kMpMaxPlayersKey  = "game.mcl_mp_loadmap.text.maximum_players";
@@ -133,6 +135,7 @@ void MPLoadMap::begin()
 	LogisticsDialog::begin();
 
 	seedDialog( 0 );
+	setDefsElementVisible( kMpRulesButtonKey, false );
 
 
 	bIsSingle = false;
@@ -146,6 +149,8 @@ void MPLoadMap::beginSingleMission()
 	LogisticsDialog::begin();
 
 	seedDialog( 1 );
+	setDefsElementVisible( kMpRulesButtonKey, true );
+	rulesRequested = false;
 	bIsSingle = true;
 }
 
@@ -471,6 +476,11 @@ void MPLoadMap::render()
 
 int	MPLoadMap::handleMessage( unsigned long message, unsigned long who)
 {
+	if ( who == RULES_BUTTON_ID )
+	{
+		rulesRequested = bIsSingle;	// not a dialog exit: the menu opens the rules dialog over this one
+		return 1;
+	}
 
 	status = who;
 	end();

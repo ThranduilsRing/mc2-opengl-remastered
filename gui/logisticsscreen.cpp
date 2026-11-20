@@ -1236,6 +1236,12 @@ bool LogisticsScreen::setDefsElementText(const std::string& key, const std::stri
 	return defsUiPage->setElementText(key, text);
 }
 
+bool LogisticsScreen::setDefsElementTextColor(const std::string& key, unsigned int argb)
+{
+	if (!defsUiPage || !defsUiPage->isLoaded()) return false;
+	return defsUiPage->setElementTextColor(key, argb);
+}
+
 bool LogisticsScreen::setDefsElementVisible(const std::string& key, bool visible)
 {
 	if (!defsUiPage || !defsUiPage->isLoaded()) return false;

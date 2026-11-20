@@ -394,6 +394,7 @@ include(cmake/Mc2SimFpContract.cmake)
 add_subdirectory("./Gates" "./out/Gates")
 add_subdirectory("./mclib/" "./out/mclib")
 add_subdirectory("./3rdparty/basisu" "./out/3rdparty/basisu")
+add_subdirectory("./3rdparty/zstd" "./out/3rdparty/zstd")   # compressor-only, symbols renamed; linked into the asset viewer and unit tests only
 add_subdirectory("./RenderCore" "./out/RenderCore")
 add_subdirectory("./RenderWorld" "./out/RenderWorld")
 add_subdirectory("./GameAdapters" "./out/GameAdapters")
@@ -638,6 +639,7 @@ set(SOURCES
     "code/logisticsdata_availability.cpp"
     "code/logisticsdata_modify.cpp"
     "code/logisticsdialog.cpp"
+    "code/gamerulesdialog.cpp"
     "code/logisticsmech.cpp"
     "code/logisticsmechdisplay.cpp"
     "code/logisticsmechicon.cpp"
