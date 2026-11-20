@@ -302,6 +302,16 @@ TEST_CASE("hzb ref: the 1/256 px grid rounds outward and tiny rejection never ap
     CHECK_FALSE(hidden(project(boxNdc(0.5f, 1.5f, 0.0f, 0.001f)), empty));   // crosses x = 1: kept whole, never tiny-culled
 }
 
+TEST_CASE("hzb ref: tiny test runs on a 1080p reference grid") {
+    CHECK(mc2hzb::ref_scale(1080) == 1.0f);
+    CHECK(mc2hzb::ref_scale(720) == 1.0f);
+    CHECK(mc2hzb::ref_scale(2160) == 0.5f);
+    const float s4k = mc2hzb::ref_scale(2160);
+    CHECK_FALSE(mc2hzb::tiny_box(10.3f, 10.3f, 10.7f, 10.7f, 1.0f));          // identical to the old test at 1080
+    CHECK(mc2hzb::tiny_box(21.2f, 21.2f, 22.7f, 22.7f, s4k));                 // 1.5 px at 4K = 0.75 ref px, no centre
+    CHECK_FALSE(mc2hzb::tiny_box(21.0f, 21.0f, 23.5f, 23.5f, s4k));           // 2.5 px at 4K = 1.25 ref px, always a centre
+}
+
 TEST_CASE("hzb ref: side planes reject near-straddling boxes (props-cull-sideplanes)") {
     Pyramid py(0.9f);
     Mat m = flatMatrix();
