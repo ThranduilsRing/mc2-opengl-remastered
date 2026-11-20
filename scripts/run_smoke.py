@@ -660,6 +660,8 @@ def main():
     ap.add_argument("--fail-fast", action="store_true")
     ap.add_argument("--continue", dest="cont", action="store_true", default=True)
     ap.add_argument("--keep-logs", action="store_true")
+    ap.add_argument("--strict-env", action="store_true",
+                    help="exit 2 instead of warning when an ambient MC2_* name is not a registered gate and would be dropped")
     ap.add_argument("--allow-env-drop", action="store_true",
                     help="proceed even when MC2_* vars set in the environment "
                          "cannot be passed through to mc2.exe. Default is to "
@@ -1697,11 +1699,16 @@ def main():
         if _unregistered:
             _env_manifest["dropped_unregistered_env"] = dict(_unregistered)
             print(
-                f"[runner] [ENV-DROPPED] {len(_unregistered)} ambient MC2_* name(s) are not gates in "
-                f"Gates/gate_table.json and are NOT forwarded to mc2.exe: "
-                + ", ".join(f"{k}={v}" for k, v in sorted(_unregistered.items())),
+                f"[runner] [ENV-DROPPED] WARNING: {len(_unregistered)} ambient MC2_* name(s) are not gates in "
+                f"Gates/gate_table.json and are NOT forwarded to mc2.exe (the run does NOT test them): "
+                + ", ".join(f"{k}={v}" for k, v in sorted(_unregistered.items()))
+                + ". Register the gate, or pass --strict-env to fail instead.",
                 file=sys.stderr,
             )
+            if getattr(args, "strict_env", False):
+                print("[runner] [ENV-DROPPED] FATAL (--strict-env): refusing to run with dropped MC2_* names: "
+                      + ", ".join(sorted(_unregistered)), file=sys.stderr)
+                sys.exit(2)
         _ambient_gates = sorted(
             k for k in os.environ
             if k.startswith("MC2_") and k not in _undriveable and k not in _unregistered

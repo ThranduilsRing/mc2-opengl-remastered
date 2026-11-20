@@ -954,6 +954,7 @@ run_check "gate_gen_check"                  "py -3 tools/gate_gen.py --check --r
 # Class-type template parameters and consteval (Gates/gate.h) need C++20: a standalone CMake
 # project that compiles a source reading MC2_* gates must reach it, or it stops building the day
 # that source migrates. Self-maintaining: the list is derived from the sources, not enumerated.
+run_nightly "hardcoded_false_gates"           "py -3 -B -m pytest scripts/tests/test_no_hardcoded_false_gates.py -q -p no:cacheprovider"   # a documented MC2_* gate must be read, not a hardcoded 'static const bool = false' (ratchet allowlist, count only goes down)
 run_nightly "sim_fp_contract"                 "py -3 scripts/check-sim-fp-contract.py && py -3 -B -m pytest scripts/tests/test_check_sim_fp_contract.py -q -p no:cacheprovider"   # every sim TU /fp:precise, no contraction (MSVC + clang-cl); rejection probes
 run_nightly "glm_convention"                  "py -3 scripts/check-glm-convention.py && py -3 -B -m pytest scripts/tests/test_check_glm_convention.py -q -p no:cacheprovider"   # engine matrices keep the row-vector convention (no glm column helpers, no w-first quat); negative control
 run_nightly "cxx_standard_floor"              "py -3 scripts/check-cxx-standard-floor.py && py -3 -B -m pytest scripts/tests/test_check_cxx_standard_floor.py -q -p no:cacheprovider"

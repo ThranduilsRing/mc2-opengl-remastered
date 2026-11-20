@@ -15,6 +15,12 @@ sys.path.insert(0, HERE)
 import sim_determinism as sd  # noqa: E402
 
 
+@pytest.fixture(autouse=True)
+def _no_owner_root(monkeypatch):
+    """These CLI tests stub the runner and use owner-style install paths; the owner-install refusal has its own tests."""
+    monkeypatch.setattr(sd, "OWNER_INSTALL_ROOT", "Z:/no-owner-root/")
+
+
 def test_selftest_passes():
     assert sd.selftest() == 0
 

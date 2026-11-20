@@ -17,6 +17,12 @@ import sim_determinism as sd  # noqa: E402
 import saveload_roundtrip as sl  # noqa: E402
 
 
+@pytest.fixture(autouse=True)
+def _no_owner_root(monkeypatch):
+    """'lane3' resolves to an install under the owner root; the owner-install refusal has its own tests."""
+    monkeypatch.setattr(sd, "OWNER_INSTALL_ROOT", "Z:/no-owner-root/")
+
+
 class _Stop(Exception):
     pass
 
