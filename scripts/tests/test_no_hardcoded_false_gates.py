@@ -20,7 +20,6 @@ NAME = re.compile(r"MC2_[A-Z0-9_]{4,}")
 KNOWN_OFFENDERS = {
     # known dead gates (documented env var, no read)
     ("mech_update.cpp", "s_linkupTrace"): "MC2_LINKUP_TRACE",
-    ("warrior_brain.cpp", "s_aiFreezeTrace"): "MC2_BRAIN_FREEZE_TRACE",  # fixed on claude/gh10-scripted-moves-1: delete this line when it lands
     ("warrior_combat.cpp", "s_aimedFireFixture"): "MC2_AIMED_FIRE_FIXTURE",
     # heuristic hits (a gate name is only nearby); review each, delete the line once it is a gate read or judged intentional
     ("controlgui_objectives.cpp", "s_on"): "MC2_IMGUI",
