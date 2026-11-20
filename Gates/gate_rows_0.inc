@@ -46,6 +46,7 @@ L(Lead0, "MC2_BOOT_VIDEO", Bool, false, "code", "", "VIDEO-CAPTURE fixture: =1 o
 // SAVE/LOAD-AIFREEZE-TRACE-1: runBrain post-exec diagnostic.
 // history: docs/gate-history.md#MC2_BRAIN_FREEZE_TRACE
 G("MC2_BOX_QUOTA_CPUS", String, "", "harness", "", "Harness-owned box wrapper metadata; ignored by the engine.", passthrough),
+G("MC2_BRAIN_FREEZE_TRACE", Bool, false, "code", "", "Per-tick [BRAIN_FREEZE_TRACE] stderr line per warrior at the end of runBrain (stall classification, ISSUE-10); default off, high volume.", verified),
 G("MC2_BRAIN_MISSION_SEED", String, "", "code", "", "Tactic-weights mission seed text (decimal, 0x hex, leading-0 octal; strtoul base 0 at the reader); empty = the built-in seed.", passthrough | verified),
 G("MC2_BRAIN_POLICY", Enum, "", "code", "", "Brain execution policy override: legacy forces stock ABL, techbrain forces TechBrain; unset or auto decides per mission at load.", passthrough | tokens("|auto|legacy|techbrain") | verified),
 G("MC2_BRAIN_RUNTIME_FORCE_MODE", Enum, "", "code", "", "MC2_BRAIN_RUNTIME_FORCE_MODE overrides all per-unit modes (post-load global override).", passthrough | tokens("|legacy|enhanced|hybrid") | verified),

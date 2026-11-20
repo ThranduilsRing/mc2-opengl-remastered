@@ -583,7 +583,7 @@ long MechWarrior::runBrain (void) {
 	//   lastMoveErr       LastMoveCalcErr: no-path (LR path fail / MOVE-data
 	//                     area-graph misread) class.
 	{
-		static const bool s_aiFreezeTrace = false;
+		static const bool s_aiFreezeTrace = mc2::gate::get<"MC2_BRAIN_FREEZE_TRACE">();
 		if (s_aiFreezeTrace) {
 			MovePathPtr mp = getMovePath();
 			MoverPtr traceVehicle = getVehicle();
