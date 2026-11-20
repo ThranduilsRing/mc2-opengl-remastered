@@ -60,6 +60,8 @@ void AssetViewerApp::drawUi()
     ImGui::BeginChild("browser", ImVec2(browserW, 0), true);
     if (sidebar_.active() == AssetType::Mechs) {
         shapePanel_.drawBrowser(ShapeCategory::Mechs);
+    } else if (sidebar_.active() == AssetType::Vehicles) {
+        shapePanel_.drawBrowser(ShapeCategory::Vehicles);
     } else if (sidebar_.active() == AssetType::StaticProps) {
         modelBrowser_.draw();
         if (modelBrowser_.hasSelection()) {
@@ -107,6 +109,9 @@ void AssetViewerApp::drawUi()
         break;
       case AssetType::Mechs:
         shapePanel_.drawDetails(ShapeCategory::Mechs, meshSurface_);
+        break;
+      case AssetType::Vehicles:
+        shapePanel_.drawDetails(ShapeCategory::Vehicles, meshSurface_);
         break;
     }
     ImGui::EndChild();
@@ -999,6 +1004,9 @@ void AssetViewerApp::scriptedView(const char* kind, const char* arg) {
     } else if (k == "mechs") {
         sidebar_.setActive(AssetType::Mechs);
         if (arg) shapePanel_.select(ShapeCategory::Mechs, arg);
+    } else if (k == "vehicles") {
+        sidebar_.setActive(AssetType::Vehicles);
+        if (arg) shapePanel_.select(ShapeCategory::Vehicles, arg);
     } else if (k == "archives") {
         sidebar_.setActive(AssetType::Archives);
         if (arg) onFileDropped(arg);
