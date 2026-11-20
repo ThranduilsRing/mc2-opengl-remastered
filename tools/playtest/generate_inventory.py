@@ -18,7 +18,7 @@ sys.path.insert(0, str(package.REPOSITORY))
 from tools.mc2data import stock_missions, stock_corpus
 
 GOLDEN = Path(os.environ.get('MC2_PLAYTEST_GOLDEN', 'A:/Games/mc2-opengl/mc2-win64-v0.4c'))
-EXTRACT = Path(os.environ.get('MC2_PLAYTEST_EXTRACT', 'A:/Games/mc2-opengl/mc2srcdata-fresh/tgl'))
+EXTRACT = Path(os.environ['MC2_PLAYTEST_EXTRACT']) if os.environ.get('MC2_PLAYTEST_EXTRACT') else None
 _ENGINE_TEXT = []
 
 
@@ -414,6 +414,8 @@ def main():
     parser.add_argument('--permissions', type=Path, default=package.PERMISSIONS)
     args = parser.parse_args()
     if args.inventory:
+        if args.extract is None:
+            parser.error('--extract (or MC2_PLAYTEST_EXTRACT) is required with --inventory')
         result = generate_inventory(args.source, args.golden, args.extract)
         receipt = {k: v for k, v in result.items() if k != 'files'}
         args.receipt.write_text(json.dumps(receipt, indent=2) + '\n', encoding='utf-8')
