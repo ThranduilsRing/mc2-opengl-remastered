@@ -3193,8 +3193,7 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
             fail("deployed SPIR-V is not the build's SPIR-V:\n  " + "\n  ".join(spv_fails), 4)
         log(f"deployed SPIR-V audit OK: {spv_n} .spv identical to the build, descriptor/push ABI matches")
     hashes = {rel: row for rel, row in hashes.items() if not asset_parity.is_deploy_artifact(rel)}
-    if exe_name.casefold() != "mission editor.exe":
-        ensure_stock_pak(src_root, target, hashes)
+    ensure_stock_pak(src_root, target, hashes)  # editor deploys too: retire_unowned would prune the pak otherwise
     write_manifest(target, hashes, src_commit)
     if reuse:
         # Preserve the verified external source inventory across code-only deploys.
