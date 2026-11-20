@@ -472,8 +472,12 @@ uint64_t contentDigest(std::string_view path, bool verify)
 				std::lock_guard<std::mutex> dl(g_digestMutex);
 				loadDigestsLocked();
 				const auto it = g_digestMemo.find(pakMemoKey);
-				if (!verify && it != g_digestMemo.end() && it->second.first.size == pstamp.size && it->second.first.mtime == pstamp.mtime)
-					return it->second.second;
+				if (!verify && it != g_digestMemo.end()) {
+					const auto& [memoKey, memo] = *it;
+					const auto& [memoStamp, memoDigest] = memo;
+					(void)memoKey;
+					if (memoStamp.size == pstamp.size && memoStamp.mtime == pstamp.mtime) return memoDigest;
+				}
 			}
 			File input;
 			if (input.open(std::string(path).c_str()) != NO_ERR) return 0;
