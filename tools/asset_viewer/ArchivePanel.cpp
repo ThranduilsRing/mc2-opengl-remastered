@@ -122,7 +122,7 @@ void ArchivePanel::draw() {
     ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed, fs * 5.0f);
     ImGui::TableSetupColumn("Packed", ImGuiTableColumnFlags_WidthFixed, fs * 5.0f);
     ImGui::TableSetupColumn("Method", ImGuiTableColumnFlags_WidthFixed, fs * 4.5f);
-    ImGui::TableSetupColumn("Source", ImGuiTableColumnFlags_WidthFixed, fs * 7.0f);
+    ImGui::TableSetupColumn("Source", ImGuiTableColumnFlags_WidthFixed, fs * 5.0f);
     ImGui::TableHeadersRow();
     ImGuiListClipper clip; clip.Begin(static_cast<int>(shown_.size()));
     while (clip.Step())

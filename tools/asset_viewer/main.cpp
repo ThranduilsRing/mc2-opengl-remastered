@@ -104,10 +104,12 @@ int main(int argc, char* argv[])
 
     Uint32 winFlags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
     if (toolvk::captureRequested()) winFlags |= SDL_WINDOW_HIDDEN;
+    int winW = 1280, winH = 720;
+    if (toolvk::captureRequested()) if (const char* sz = getenv("MC2_TOOL_WINDOW_SIZE")) sscanf(sz, "%dx%d", &winW, &winH);   // screenshot runs only
     SDL_Window* window = SDL_CreateWindow(
         "MC2 Asset Viewer",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-        1280, 720,
+        winW, winH,
         winFlags
     );
     if (!window)
