@@ -99,20 +99,18 @@ TEST_CASE("mover coverage: packed intervals include receivers behind every caste
     windowMatrix(basis, window, frame.matrix);
     buildMoverCoverage(frame, spheres, basis, window);
     unsigned empty = 0;
-    for (uint32_t word : frame.coverage) {
-        if ((word & 255u) > ((word >> 8) & 255u)) ++empty;
-        if (((word >> 16) & 255u) > (word >> 24)) ++empty;
-    }
+    for (uint32_t word : frame.coverage) for (int i = 0; i < 4; ++i) if (((word >> (i*8)) & 255u) == 255u) ++empty;
     CHECK(empty > 0);
     for (const auto& s : spheres) {
         const Vec3 receiver = shadowEnd(s,basis.toward,-20);
         const Vec3 pc = applyMatrix(frame.matrix,receiver);
-        const int x = (std::clamp)(int((pc.x*0.5f+0.5f)*64),0,63);
-        const int y = (std::clamp)(int((pc.y*0.5f+0.5f)*64),0,63);
-        const unsigned cell = static_cast<unsigned>(y*64+x);
-        const uint32_t interval = (frame.coverage[cell/2] >> ((cell&1u)*16u)) & 65535u;
-        CHECK(float(interval&255u) <= pc.z*255);
-        CHECK(float(interval>>8u) >= pc.z*255);
+        const int n = kMoverCoverageSide;
+        const int x = (std::clamp)(int((pc.x*0.5f+0.5f)*n),0,n-1);
+        const int y = (std::clamp)(int((pc.y*0.5f+0.5f)*n),0,n-1);
+        const unsigned cell = static_cast<unsigned>(y*n+x);
+        const uint32_t lo = (frame.coverage[cell/4] >> ((cell&3u)*8u)) & 255u;
+        CHECK(lo != 255u);
+        CHECK(float(lo) <= pc.z*255);
     }
     CHECK(sizeof(frame) <= 16384); // Vulkan's minimum maxUniformBufferRange
 }
@@ -128,7 +126,7 @@ TEST_CASE("mover fit: a hundred spread movers use one count independent window")
     CHECK(window.texelWorld<3.0f);
     MoverShadowFrame frame{};
     buildMoverCoverage(frame,spheres,basis,window);
-    CHECK(frame.coverage.size()==2048);
+    CHECK(frame.coverage.size()==3600);
 }
 
 TEST_CASE("mover fit: a caster reaches a mover only when its swept shadow passes within their combined radii") {

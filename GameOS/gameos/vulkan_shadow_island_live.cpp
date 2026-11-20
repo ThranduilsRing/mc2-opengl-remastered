@@ -1203,7 +1203,7 @@ extern "C" void mc2_vk_shadow_island_run_movers(const float cameraRows[16], cons
     static uint64_t frames=0;
     if (++frames%600==1) {
         const double us=std::chrono::duration<double,std::micro>(std::chrono::steady_clock::now()-start).count();
-        vlog("movers actors_feed=%u actors_visible=%u rigid_leaves=%zu map=%d format=D16 texel_wu=%.3f depth_span=%.1f cpu_fit_and_record_us=%.1f resident_mb=%.1f coverage_kb=8",
+        vlog("movers actors_feed=%u actors_visible=%u rigid_leaves=%zu map=%d format=D16 texel_wu=%.3f depth_span=%.1f cpu_fit_and_record_us=%.1f resident_mb=%.1f coverage_kb=14",
              s->mover.actorCount(),s->mover.visibleActorCount(),selected.size(),s->size,frame.params[0],frame.params[1]>0?1.0f/frame.params[1]:0.0f,us,static_cast<double>(s->size)*s->size*2/1048576.0);
     }
 }
