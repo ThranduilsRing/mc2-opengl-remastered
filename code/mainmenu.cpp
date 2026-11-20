@@ -21,6 +21,7 @@ struct DDSURFACEDESC2 {
 #include"logisticsdata.h"
 #include "prewarm.h"
 #include"logisticsdialog.h"
+#include"gamerulesdialog.h"
 #include"abutton.h"
 #include"optionsscreenwrapper.h"
 #include "../resource.h"
@@ -170,8 +171,9 @@ MainMenu::MainMenu(  )
 	mechlopedia = nullptr;
 	bDrawMechlopedia = 0;
 	tuneId = -1;
-	bLoadSingle = 0; 
+	bLoadSingle = 0;
 	bLoadCampaign = 0;
+	bRulesDlg = false;
 	introOver = 0;
 	bHostLeftDlg = 0;
 
@@ -254,7 +256,8 @@ void MainMenu::begin()
 	musicStarted = false;
 	bLoadSingle = 0;
 	bLoadCampaign = 0;
-	promptToDisconnect = 0; 
+	bRulesDlg = false;
+	promptToDisconnect = 0;
 	bLegal = 0;
 
 	// no host left dlg, sometimes we get this begin call 2x's due to netlib weirdness
@@ -330,6 +333,18 @@ static void showCampaignRefusal( bool& dialogFlag, mc2::czstring text )
 	dialogFlag = true;
 }
 
+// New Campaign: after the picker, the Game Rules dialog (hidden in multiplayer: rules are forced to the defaults there).
+bool MainMenu::beginCampaignRules( std::string_view campaignFile )
+{
+	if ( MPlayer || mc2::net::active() || !GameRulesDialog::init() )
+		return false;
+	rulesCampaign = campaignFile;
+	bLoadCampaign = false;
+	bRulesDlg = true;
+	GameRulesDialog::instance()->begin( prefs.gameRules );
+	return true;
+}
+
 int	MainMenu::handleMessage( unsigned long what, unsigned long who )
 {
 	switch ( who )
@@ -351,7 +366,9 @@ int	MainMenu::handleMessage( unsigned long what, unsigned long who )
 				if ( LogisticsSaveDialog::instance()->isDone() )
 				{
 					// a missing campaign file is logged by startNewCampaign; stay on the menu instead of RESTART
-					if ( LogisticsData::instance->startNewCampaign( LogisticsSaveDialog::instance()->getFileName().c_str()) )
+					if ( beginCampaignRules( LogisticsSaveDialog::instance()->getFileName() ) )
+						;	// the Game Rules dialog takes over; ACCEPT starts the campaign
+					else if ( LogisticsData::instance->startNewCampaign( LogisticsSaveDialog::instance()->getFileName().c_str()) )
 						status = RESTART;
 					else
 					{
@@ -685,6 +702,39 @@ void MainMenu::update()
 		return;
 	}
 
+	if ( bRulesDlg )
+	{
+		GameRulesDialog* dlg = GameRulesDialog::instance();
+		dlg->update();
+		if ( dlg->isDone() )
+		{
+			bRulesDlg = false;
+			if ( dlg->getStatus() == LogisticsScreen::YES )
+			{
+				const mc2::rules::GameRules chosen = dlg->rules();
+				prefs.gameRules = chosen;	// remembered as the next new campaign's starting point
+				(void)prefs.save();
+				if ( LogisticsData::instance->startNewCampaign( rulesCampaign.c_str() ) )
+				{
+					LogisticsData::instance->setRules( chosen );
+					status = endResult = RESTART;
+				}
+				else
+				{
+					endAnim.end();
+					beginAnim.begin();
+					showCampaignRefusal( bHostLeftDlg, "This campaign could not be started: its campaign file is missing or damaged." );
+				}
+			}
+			else
+			{
+				endAnim.end();
+				beginAnim.begin();
+			}
+		}
+		return;
+	}
+
 	if ( (bSave || bLoad || bLoadCampaign) && endAnim.isDone() )
 	{
 		LogisticsSaveDialog::instance()->update();
@@ -726,7 +776,9 @@ void MainMenu::update()
 			}
 			else if ( bLoadCampaign )
 			{
-				if ( LogisticsData::instance->startNewCampaign( LogisticsSaveDialog::instance()->getFileName().c_str()) )
+				if ( beginCampaignRules( LogisticsSaveDialog::instance()->getFileName() ) )
+					;	// the Game Rules dialog takes over; ACCEPT starts the campaign
+				else if ( LogisticsData::instance->startNewCampaign( LogisticsSaveDialog::instance()->getFileName().c_str()) )
 					status = endResult = RESTART;
 				else
 				{
@@ -1081,6 +1133,10 @@ void MainMenu::render()
 	if ( bLegal )
 	{
 		LogisticsLegalDialog::instance()->render();
+	}
+	if ( bRulesDlg )
+	{
+		GameRulesDialog::instance()->render();
 	}
 	if ( bHostLeftDlg )
 	{

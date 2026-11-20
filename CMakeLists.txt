@@ -638,6 +638,7 @@ set(SOURCES
     "code/logisticsdata_availability.cpp"
     "code/logisticsdata_modify.cpp"
     "code/logisticsdialog.cpp"
+    "code/gamerulesdialog.cpp"
     "code/logisticsmech.cpp"
     "code/logisticsmechdisplay.cpp"
     "code/logisticsmechicon.cpp"
