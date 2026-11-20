@@ -158,7 +158,7 @@ def generate_inventory(source, golden, extract):
         if next(reader)[:2] != ['manifest_version', 'v1']:
             raise ValueError('unsupported deploy manifest')
         payload = {row['relpath']: row for row in csv.DictReader(stream)}
-    package.refuse_self_parity(source, package.CREDITS_SOURCE)
+    basis = package.parity_basis(source, package.CREDITS_SOURCE)
     executable = package.verified_exe_commit(source, payload.get('mc2.exe', {}).get('src_commit'))
     permissions = json.loads(package.PERMISSIONS.read_text())
     intentional = json.loads(git('show', executable + ':intentional-asset-changes.json'))
@@ -226,10 +226,13 @@ def generate_inventory(source, golden, extract):
             if digest == golden_hashes.get(rel):
                 row['tier'] = 'B'
             elif bundled_mod or tree_asset(rel):
-                # The canonical source is also the parity reference; compare the
-                # same relpath explicitly so an alternate source cannot qualify.
-                if digest != package.sha256(package.safe_path(package.CREDITS_SOURCE, rel)):
-                    raise ValueError('tier C differs from v0.4: ' + rel)
+                if bundled_mod:
+                    # Snapshot of the owner install (parity_basis ties the source to live v0.4).
+                    if digest != package.sha256(package.safe_path(package.CREDITS_SOURCE, rel)):
+                        raise ValueError('tier C differs from v0.4: ' + rel)
+                elif intentional.get(rel) != digest:
+                    # Independent reference: intentional-asset-changes.json at the verified exe commit.
+                    raise ValueError('tree asset not pinned by intentional-asset-changes.json: ' + rel)
                 row['tier'] = 'C'
             else:
                 cls, evidence = parity_class(rel, terrain)
@@ -283,7 +286,7 @@ def generate_inventory(source, golden, extract):
             count=class_counts[cls], files=[dict(path=rel, evidence=row['evidence']) for rel, row in files.items()
                 if row.get('parity_class') == cls]))
     result = dict(status='STOP' if summary else 'PASS', executable_commit=executable,
-        references=dict(golden=str(golden), extract=str(extract), credits_source=str(package.CREDITS_SOURCE),
+        parity_basis=basis, references=dict(golden=str(golden), extract=str(extract), credits_source=str(package.CREDITS_SOURCE),
                         permissions=str(package.PERMISSIONS), source=str(source)),
         source_manifest_sha256=package.sha256(source / '.deployed_manifest.csv'),
         files=files, counts=dict(Counter(row['tier'] for row in files.values())),

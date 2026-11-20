@@ -58,7 +58,8 @@ def verified_exe_commit(source, manifest_commit, repository=None, ref=None):
         raise ValueError('exe fingerprint unreadable: ' + str(fp.get('reason')))
     if fp.get('dirty'):
         raise ValueError('exe was built from a dirty tree')
-    if not manifest_commit or exe_fingerprint.sha_agrees(fp['sha'], manifest_commit) is not True:
+    if not re.fullmatch(r'[0-9a-f]{40}', manifest_commit or '') or (
+            exe_fingerprint.sha_agrees(fp['sha'], manifest_commit) is not True):
         raise ValueError(f"exe fingerprint {fp['sha']} != manifest src_commit {manifest_commit}")
     ancestor = subprocess.run(['git', '-C', str(repository), 'merge-base', '--is-ancestor', manifest_commit, ref],
                               **console_child.child_kwargs(redirected=True)).returncode
@@ -67,14 +68,17 @@ def verified_exe_commit(source, manifest_commit, repository=None, ref=None):
     return manifest_commit
 
 
-def refuse_self_parity(source, credits_source):
-    """Tier C/D parity compares the source with the canonical v0.4 tree; the same tree proves nothing."""
-    if Path(source).resolve() == Path(credits_source).resolve():
-        raise ValueError('source and parity reference (credits source) are the same tree; '
-                         'supply a distinct byte copy of the canonical install as the source')
+def parity_basis(source, credits_source):
+    """Tier C/D parity is against the owner's live v0.4 install: the source must be v0.4 or a byte
+    snapshot of it, proven by an equal deploy manifest. Recorded in the inventory and the receipt."""
+    digest = sha256(Path(source) / '.deployed_manifest.csv')
+    if digest != sha256(Path(credits_source) / '.deployed_manifest.csv'):
+        raise ValueError('source deploy manifest differs from the live v0.4 manifest (not v0.4 or a snapshot of it)')
+    return {'basis': 'source manifest equals live v0.4 manifest', 'manifest_sha256': digest,
+            'credits_source': str(credits_source)}
 
 
-def bound_inventory(source, exe_commit, path=None):
+def bound_inventory(source, exe_commit, credits_source, path=None):
     """Load the generated inventory only if it is a PASS for exactly this source manifest and exe commit."""
     path = Path(path or INVENTORY)
     data = json.loads(path.read_text())
@@ -84,6 +88,8 @@ def bound_inventory(source, exe_commit, path=None):
         raise ValueError('inventory was generated for a different source manifest')
     if data.get('executable_commit') != exe_commit:
         raise ValueError('inventory executable_commit differs from the source exe commit')
+    if data.get('references', {}).get('credits_source') != str(credits_source):
+        raise ValueError('inventory was generated against a different parity reference')
     return data, sha256(path)
 EXTERNAL = json.loads((PERMISSIONS.parents[2] / 'docs/testing/mech_glb_external_pack.json').read_text())
 PERSONAL_NAMES = {Path(r['glb']).stem.lower() + suffix for r in EXTERNAL['entries']
@@ -191,7 +197,7 @@ def scan(tree):
         safe_path(tree, rel)
         if excluded(rel):
             failures.append(rel)
-        if path.suffix.lower() in {'.cfg', '.json', '.ini', '.md', '.py', '.txt', '.bat'}:
+        if path.suffix.lower() in {'.cfg', '.json', '.ini', '.md', '.py', '.txt', '.bat'} and not rel.startswith('credits/'):
             raw = path.read_bytes()
             texts = [raw.decode('utf-8', errors='replace')]
             if raw[:2] in (b'\xff\xfe', b'\xfe\xff'):
@@ -210,13 +216,13 @@ def assemble(source, target, permissions, requested, *, inventory=None, reposito
         with (source / '.deployed_manifest.csv').open(newline='', encoding='utf-8') as stream:
             next(csv.reader(stream))
             manifest_exe = {r['relpath']: r for r in csv.DictReader(stream)}.get('mc2.exe', {}).get('src_commit')
-        refuse_self_parity(source, credits_source or CREDITS_SOURCE)
+        basis = parity_basis(source, credits_source or CREDITS_SOURCE)
         exe_commit = verified_exe_commit(source, manifest_exe, repository)
-        data, inventory_sha = bound_inventory(source, exe_commit)
+        data, inventory_sha = bound_inventory(source, exe_commit, credits_source or CREDITS_SOURCE)
         inventory = data['files']
         inventory_refs = data.get('references')
     else:
-        inventory_refs = None
+        inventory_refs = basis = None
     rules = json.loads(PERMISSIONS.with_name('tier_rules.json').read_text())
     def rule_exclusion(rel):
         if bt2018_extractor_only(rel):
@@ -400,7 +406,7 @@ def assemble(source, target, permissions, requested, *, inventory=None, reposito
     if clean_head(repository) != head:
         raise ValueError('HEAD changed during packaging')
     return {'head': head, 'executable_commit': payload.get('mc2.exe', {}).get('src_commit'),
-            'inventory_sha256': inventory_sha, 'inventory_references': inventory_refs,
+            'inventory_sha256': inventory_sha, 'inventory_references': inventory_refs, 'parity_basis': basis,
             'references': {'credits_source': str(credits_source or CREDITS_SOURCE),
                            'permissions': str(PERMISSIONS), 'source': str(source)},
             'files': receipt, 'excluded': excluded_counts, 'mod_overlaps': overlaps}

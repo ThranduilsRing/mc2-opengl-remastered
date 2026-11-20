@@ -325,11 +325,18 @@ def test_cont6_synthetic_inventory(tmp_path, repository, monkeypatch):
     shutil.copytree(source, canonical)  # a distinct parity reference; the same tree is refused
     monkeypatch.setattr(package, 'PERMISSIONS', config / 'bundle_permissions.json')
     monkeypatch.setattr(package, 'CREDITS_SOURCE', canonical)
-    monkeypatch.setattr(package, 'verified_exe_commit', lambda s, commit, *a, **k: commit)
+    exe_calls = []
+    monkeypatch.setattr(package, 'verified_exe_commit', lambda s, commit, *a, **k: exe_calls.append(commit) or commit)
     monkeypatch.setattr(package, 'GENERATED', config)
     monkeypatch.setattr(package, 'INVENTORY', config / 'inventory.json')
     monkeypatch.setattr(gen, 'verify_tgl', lambda *a: baseline['tgl'])
+    (canonical / '.deployed_manifest.csv').write_text('manifest_version,v1\nrelpath,sha256,src_commit\n')
+    with pytest.raises(ValueError, match='live v0.4 manifest'):
+        gen.generate_inventory(source, golden, source)
+    shutil.copyfile(source / '.deployed_manifest.csv', canonical / '.deployed_manifest.csv')
     result = gen.generate_inventory(source, golden, source)
+    assert exe_calls == [baseline['executable_commit']] and result['parity_basis']['manifest_sha256']
+    assert package.INVENTORY.is_file() and json.loads(package.INVENTORY.read_text())['status'] == 'PASS'
     assert result['unmatched'] == 0
     assert result['parity_counts'] == {'D5': 1, 'D6': 1, 'D7': 1}
     for rel, tier in admitted.items():
@@ -340,3 +347,7 @@ def test_cont6_synthetic_inventory(tmp_path, repository, monkeypatch):
         assert row['tier'] == 'D' and row['parity_class'] == cls and row['evidence']
         assert classes[cls]['count'] == 1 and classes[cls]['action'] == 'ship'
     assert 'mc2-batch-cook' in classes['D6']['evidence']
+    (source / 'data/zz').mkdir()
+    (source / 'data/zz/unknown.bin').write_bytes(b'unmatched')
+    stop = gen.generate_inventory(source, golden, source)
+    assert stop['status'] == 'STOP' and not package.INVENTORY.exists()  # no inventory survives a STOP
