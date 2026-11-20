@@ -745,6 +745,50 @@ TEST_CASE("vfs index: size-stripped alias keeps its ladder position and the chai
 	_putenv_s(mc2::gate::name<"MC2_REBUILD_MOD_CACHE">(),"");
 }
 
+TEST_CASE("vfs index: a larger-size loose file backs a missing size dir; present files never shadowed; FST-only is a ghost")
+{
+	const std::string fstPath = scratchPath("vfs_512.fst");
+	const char* fstNames[] = { "data/tgl/512/mvh512_fst.tga" };
+	const std::string fstPayloads[] = { fitPayload(3) };
+	vfsAuthorFst(fstPath, fstNames, fstPayloads, 1);
+	_mkdir("data"); _mkdir("data/tgl"); _mkdir("data/tgl/128"); _mkdir("data/tgl/256"); _mkdir("data/tgl/512"); _mkdir("data/tgl/1024");
+	writeRaw("data/tgl/512/mvh512_only.tga", fitPayload(2));
+	writeRaw("data/tgl/512/mvh512_both.tga", fitPayload(2));
+	writeRaw("data/tgl/128/mvh512_both.tga", fitPayload(1));
+	writeRaw("data/tgl/1024/mvh512_near.tga", fitPayload(4));
+	writeRaw("data/tgl/512/mvh512_near.tga", fitPayload(2));
+	writeRaw("data/tgl/128/mvh512_small.tga", fitPayload(5));
+	{
+		FstRegistry reg(fstPath.c_str());
+		REQUIRE(reg.ok);
+		mc2::vfs::rebuild();
+		// (a) 512-only loose resolves for the 128 key and serves the 512 file.
+		auto a = mc2::vfs::candidates("data/tgl/128/mvh512_only.tga");
+		REQUIRE(a.size() == 1);
+		CHECK(a[0].provider == mc2::vfs::Provider::Loose);
+		CHECK(a[0].physicalPath.find("512") != std::string::npos);
+		CHECK(vfsBytesOf(a[0]) == fitPayload(2));
+		// (b) a present 128 file is never shadowed by the 512 sibling.
+		auto b = mc2::vfs::candidates("data/tgl/128/mvh512_both.tga");
+		REQUIRE(b.size() == 1);
+		CHECK(b[0].physicalPath.find("128") != std::string::npos);
+		CHECK(vfsBytesOf(b[0]) == fitPayload(1));
+		// (c) FST-only 512: openRead would use the 128 path and miss, so no candidate.
+		CHECK(mc2::vfs::candidates("data/tgl/128/mvh512_fst.tga").empty());
+		// (d) a requested 256 falls back too, to the nearest larger dir (512 before 1024).
+		auto d = mc2::vfs::candidates("data/tgl/256/mvh512_near.tga");
+		REQUIRE(d.size() == 1);
+		CHECK(vfsBytesOf(d[0]) == fitPayload(2));
+		// A larger request never falls back to a smaller dir.
+		CHECK(mc2::vfs::candidates("data/tgl/512/mvh512_small.tga").empty());
+	}
+	remove(fstPath.c_str());
+	for (const char* f : { "data/tgl/512/mvh512_only.tga", "data/tgl/512/mvh512_both.tga", "data/tgl/128/mvh512_both.tga",
+		"data/tgl/1024/mvh512_near.tga", "data/tgl/512/mvh512_near.tga", "data/tgl/128/mvh512_small.tga" }) remove(f);
+	_rmdir("data/tgl/1024"); _rmdir("data/tgl/512"); _rmdir("data/tgl/256"); _rmdir("data/tgl/128"); _rmdir("data/tgl"); _rmdir("data");
+	mc2::vfs::rebuild();
+}
+
 namespace
 {
 bool vfsLooksLikeFit (const mc2::vfs::Entry& e)
