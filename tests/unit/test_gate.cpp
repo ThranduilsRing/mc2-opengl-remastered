@@ -1,4 +1,6 @@
 #include <array>
+#include <bit>
+#include <cstdint>
 #include <atomic>
 #include <chrono>
 #include <filesystem>
@@ -36,15 +38,20 @@
 #include "../../code/called_shot_floor.h"
 enum MechBodyLocationType : int { MECH_BODY_LOCATION_ANY = -1, MECH_BODY_LOCATION_HEAD, MECH_BODY_LOCATION_CTORSO, MECH_BODY_LOCATION_LTORSO,
     MECH_BODY_LOCATION_RTORSO, MECH_BODY_LOCATION_LARM, MECH_BODY_LOCATION_RARM, MECH_BODY_LOCATION_LLEG, MECH_BODY_LOCATION_RLEG };
-// The slice runs from the gate read through the aimed-chance floor block (up to the Sharpshooter bonus): modifiers and final chance.
-template<int Mode> auto calledShotFloors(long aimLocation = MECH_BODY_LOCATION_HEAD, float unaimed = 60.0f) {
+// The slice runs from the modifier floor block through the aimed-chance floor block (up to the Sharpshooter bonus): modifiers and final chance.
+// ruleMode is GameRules::calledShots; fixGate is MC2_CALLED_SHOT_FIX. calledMode / aimLocation are derived exactly as the three consumers do.
+inline auto calledShotFloors(long ruleMode, long aimLocation = MECH_BODY_LOCATION_HEAD, float unaimed = 60.0f, bool fixGate = true) {
+    const long calledMode = called_shot::mode(fixGate, ruleMode);
+    aimLocation = called_shot::aim(aimLocation, calledMode);
     const float HeadShotModifier = .08f, ArmShotModifier = .15f, LegShotModifier = .20f;
     float attackChance = unaimed;
     const float unaimedChance = attackChance;
 #include "called_floors.inc"
     return std::array{headMod, armMod, legMod, attackChance};
 }
-template<int Mode> bool calledShotHit(bool vehicle, long aimLocation = 0) {
+inline bool calledShotHit(bool vehicle, long ruleMode, long aimLocation = 0, bool fixGate = true) {
+    const long calledMode = called_shot::mode(fixGate, ruleMode);
+    aimLocation = called_shot::aim(aimLocation, calledMode);
     struct Target { int getWatchID() { return 7; } } victim;
     struct Bolt { int aimed = 0; void setAimedTarget(int wid) { aimed = wid; } } bolt;
     auto* target = &victim; auto* weaponFX = &bolt;
@@ -63,10 +70,16 @@ TEST_CASE("called shot/absolute aimed-chance floors") {
     CHECK(applyFloor(5.0f, 20.0f, kLegFloorPct) == 20.0f);    // never above the unaimed chance
     CHECK(applyFloor(5.0f, 5.0f, kArmFloorPct) == 5.0f);
 }
-TEST_CASE("called shot/default floors and both aimed-hit paths; kill-switch restores stock") {
+TEST_CASE("called shot/mode: the rule decides, MC2_CALLED_SHOT_FIX=0 forces Classic") {
+    using namespace called_shot;
+    CHECK(mode(true, 0) == 0); CHECK(mode(true, 1) == 1); CHECK(mode(true, 2) == 2);
+    CHECK(mode(false, 0) == 2); CHECK(mode(false, 1) == 2); CHECK(mode(false, 2) == 2);
+    CHECK(aim(3, 0) == -1); CHECK(aim(3, 1) == 3); CHECK(aim(3, 2) == 3); CHECK(aim(-1, 1) == -1);
+}
+TEST_CASE("called shot/Floors (default): floors and both aimed-hit paths") {
     mc2::gate::ScopedOverride<"MC2_CALLED_SHOT_FIX"> defaults(nullptr);
     CHECK(mc2::gate::get<"MC2_CALLED_SHOT_FIX">());
-    const auto on = [](long loc, float unaimed) { return calledShotFloors<0>(loc, unaimed); };
+    const auto on = [](long loc, float unaimed) { return calledShotFloors(1, loc, unaimed); };
     CHECK(on(MECH_BODY_LOCATION_HEAD, 60.0f)[0] == .30f); CHECK(on(MECH_BODY_LOCATION_HEAD, 60.0f)[1] == .45f); CHECK(on(MECH_BODY_LOCATION_HEAD, 60.0f)[2] == .50f);
     // Final aimed chance at unaimed 60: modifier product lifted to the floor; torso is the plain chance; a low unaimed chance caps the lift.
     CHECK(on(MECH_BODY_LOCATION_HEAD, 60.0f)[3] == 30.0f);
@@ -74,16 +87,34 @@ TEST_CASE("called shot/default floors and both aimed-hit paths; kill-switch rest
     CHECK(on(MECH_BODY_LOCATION_RLEG, 60.0f)[3] == 50.0f);
     CHECK(on(MECH_BODY_LOCATION_CTORSO, 60.0f)[3] == 60.0f);
     CHECK(on(MECH_BODY_LOCATION_HEAD, 20.0f)[3] == 20.0f);
-    for (bool vehicle : {false, true}) { CHECK(calledShotHit<0>(vehicle)); CHECK_FALSE(calledShotHit<0>(vehicle, -1)); }
-    mc2::gate::ScopedOverride<"MC2_CALLED_SHOT_FIX"> stock("0");
-    CHECK_FALSE(mc2::gate::get<"MC2_CALLED_SHOT_FIX">());
-    const auto stockChance = [](long loc) { return calledShotFloors<1>(loc, 60.0f); };
+    for (bool vehicle : {false, true}) { CHECK(calledShotHit(vehicle, 1)); CHECK_FALSE(calledShotHit(vehicle, 1, -1)); }
+}
+TEST_CASE("called shot/Classic and the kill-switch: stock modifiers, no aimed missile bolt") {
+    const auto stockChance = [](long loc) { return calledShotFloors(2, loc, 60.0f); };
     CHECK(stockChance(MECH_BODY_LOCATION_HEAD)[0] == .08f); CHECK(stockChance(MECH_BODY_LOCATION_HEAD)[1] == .15f); CHECK(stockChance(MECH_BODY_LOCATION_HEAD)[2] == .20f);
     CHECK(stockChance(MECH_BODY_LOCATION_HEAD)[3] == doctest::Approx(60.0f * .08f));
     CHECK(stockChance(MECH_BODY_LOCATION_LARM)[3] == doctest::Approx(60.0f * .15f));
     CHECK(stockChance(MECH_BODY_LOCATION_LLEG)[3] == doctest::Approx(60.0f * .20f));
     CHECK(stockChance(MECH_BODY_LOCATION_LTORSO)[3] == 60.0f);
-    for (bool vehicle : {false, true}) CHECK_FALSE(calledShotHit<1>(vehicle));
+    for (bool vehicle : {false, true}) CHECK_FALSE(calledShotHit(vehicle, 2));
+    // MC2_CALLED_SHOT_FIX=0 overrides even a Floors rule.
+    CHECK(calledShotFloors(1, MECH_BODY_LOCATION_HEAD, 60.0f, false)[3] == doctest::Approx(60.0f * .08f));
+    for (bool vehicle : {false, true}) CHECK_FALSE(calledShotHit(vehicle, 1, 0, false));
+}
+TEST_CASE("called shot/Off: no called shot for either side, aimed hit chance is the plain chance") {
+    for (long loc : {long(MECH_BODY_LOCATION_HEAD), long(MECH_BODY_LOCATION_LARM), long(MECH_BODY_LOCATION_RLEG)})
+        CHECK(calledShotFloors(0, loc, 60.0f)[3] == 60.0f);
+    for (bool vehicle : {false, true}) CHECK_FALSE(calledShotHit(vehicle, 0, 0));
+}
+TEST_CASE("called shot/PilotSkillWeight: 100 is bit-identical, 50 and 150 scale") {
+    using called_shot::weightSkill;
+    for (float s : {0.0f, 1.0f, 7.3f, 60.0f, 83.7f})
+        CHECK(std::bit_cast<std::uint32_t>(weightSkill(s, 100)) == std::bit_cast<std::uint32_t>(s));
+    CHECK(weightSkill(80.0f, 50) == 40.0f);
+    CHECK(weightSkill(60.0f, 150) == 90.0f);
+    CHECK(weightSkill(40.0f, 200) == 80.0f);
+    CHECK(weightSkill(80.0f, 0) == 0.0f);
+    CHECK(weightSkill(70.0f, 50) < 70.0f); CHECK(weightSkill(70.0f, 150) > 70.0f);
 }
 
 #include <cstdio>

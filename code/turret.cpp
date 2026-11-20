@@ -76,6 +76,8 @@
 #include "../resource.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
+#include "called_shot_floor.h"
+#include "game_rules.h"
 //***************************************************************************
 
 //extern float worldUnitsPerMeter;
@@ -968,7 +970,8 @@ float Turret::calcAttackChance (GameObjectPtr target, long* range, long weaponId
 		targetPosition = target->getPosition();
 	}
 	
-	float attackChance = (static_cast<TurretTypePtr>(getObjectType()))->pilotSkill;
+	// GameRules PilotSkillWeight: turrets have their own skill term (100 = unchanged).
+	float attackChance = called_shot::weightSkill((static_cast<TurretTypePtr>(getObjectType()))->pilotSkill, mc2::rules::current().pilotSkillWeight);
 	//----------------------
 	// General fire range...
 	float distanceToTarget = distanceFrom(targetPosition);

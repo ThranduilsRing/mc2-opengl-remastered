@@ -4,6 +4,8 @@
 
 #include "gvehicl_internal.h"
 #include "Gates/gate.h"
+#include "called_shot_floor.h"
+#include "game_rules.h"
 #include "mc2fmt.h"
 #include "net/runtime.h"
 
@@ -419,6 +421,9 @@ long GroundVehicle::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 
 
 long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long weaponIndex, long attackType, long aimLocation, glm::vec3* targetPoint, float &dmgDone) {
+	// GameRules CalledShots (read per call, never cached): Off drops the aim for both sides.
+	const long calledMode = called_shot::mode(mc2::gate::get<"MC2_CALLED_SHOT_FIX">(), mc2::rules::current().calledShots);
+	aimLocation = called_shot::aim(aimLocation, calledMode);
 
 	if (status != OBJECT_STATUS_NORMAL)
 		return(1);
@@ -662,9 +667,7 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 					// missile shot — flag the bolt so an area-effect (LRM) arrival
 					// honors the called location instead of a randomly-located
 					// explosion. Mirrors BattleMech::fireWeapon.
-					static const bool s_calledShotFix =
-						mc2::gate::get<"MC2_CALLED_SHOT_FIX">();
-					if (s_calledShotFix && (aimLocation != -1))
+					if (calledMode == called_shot::kFloors && (aimLocation != -1))
 						weaponFX->setAimedTarget(target->getWatchID());
 				}
 				else {
