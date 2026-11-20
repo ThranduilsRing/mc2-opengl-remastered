@@ -49,6 +49,15 @@ template<int Mode> bool calledShotHit(bool vehicle, long aimLocation = 0) {
     }
     return bolt.aimed == 7;
 }
+#include "../../code/called_shot_floor.h"
+TEST_CASE("called shot/absolute aimed-chance floors") {
+    using namespace called_shot;
+    CHECK(kHeadFloorPct == 30.0f); CHECK(kArmFloorPct == 45.0f); CHECK(kLegFloorPct == 50.0f);
+    CHECK(applyFloor(8.0f, 60.0f, kHeadFloorPct) == 30.0f);   // lifted to the floor
+    CHECK(applyFloor(40.0f, 60.0f, kHeadFloorPct) == 40.0f);  // already above: unchanged
+    CHECK(applyFloor(5.0f, 20.0f, kLegFloorPct) == 20.0f);    // never above the unaimed chance
+    CHECK(applyFloor(5.0f, 5.0f, kArmFloorPct) == 5.0f);
+}
 TEST_CASE("called shot/default floors and both aimed-hit paths; kill-switch restores stock") {
     mc2::gate::ScopedOverride<"MC2_CALLED_SHOT_FIX"> defaults(nullptr);
     CHECK(mc2::gate::get<"MC2_CALLED_SHOT_FIX">());

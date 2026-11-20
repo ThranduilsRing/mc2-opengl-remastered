@@ -21,7 +21,6 @@ NAME = re.compile(r"MC2_[A-Z0-9_]{4,}")
 KNOWN_OFFENDERS = {
     # known dead gates (documented env var, no read)
     ("code/mech_update.cpp", "s_linkupTrace", 0): "MC2_LINKUP_TRACE",
-    ("code/warrior_combat.cpp", "s_aimedFireFixture", 0): "MC2_AIMED_FIRE_FIXTURE",
     # heuristic hits (a gate name is only nearby); review each, delete the line once it is a gate read or judged intentional
     ("code/controlgui_objectives.cpp", "s_on", 0): "MC2_IMGUI",
     ("code/controlgui_objectives.cpp", "s_on", 1): "MC2_IMGUI",

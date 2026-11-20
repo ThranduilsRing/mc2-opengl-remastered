@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 430
+gate_count: 431
 registry_entry_count: 124
-verified_count: 401
+verified_count: 402
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -76,6 +76,14 @@ flags:
     owner: code
     doc: ""
     reread: true
+    smoke_passthrough: true
+    verified: true
+  - name: MC2_AIMED_FIRE_FIXTURE
+    kind: Bool
+    default: false
+    rule: Std
+    owner: code
+    doc: "ISSUE-9 probe: home mechs without orders get an aimed-HEAD attack at the nearest enemy; pair with MC2_DIAG_TAGS=COMBAT."
     smoke_passthrough: true
     verified: true
   - name: MC2_APPEAR_AUDIT
