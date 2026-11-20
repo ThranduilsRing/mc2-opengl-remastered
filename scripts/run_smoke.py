@@ -1424,6 +1424,14 @@ def main():
         summary = _via.run_via_menu(Path(args.exe), artifact_dir, timeout_s=float(args.duration), skip_intro=args.skip_intro, bay_mission=args.via_bay)
         if cold_result is not None:
             summary["cold_cache"] = cold_result
+        # The menu path starts a campaign under the options.cfg rules (the direct --mission path always runs the defaults).
+        if not (args.allow_nondefault_rules or os.environ.get("MC2_SMOKE_ALLOW_NONDEFAULT_RULES") == "1"):
+            _vm_log = artifact_dir / "via_menu.log"
+            _vm_bad = _nondefault_rules(_vm_log.read_text(encoding="utf-8", errors="replace") if _vm_log.exists() else "")
+            if _vm_bad:
+                print(f"[runner] [RULES] HARD FAIL: via-menu: [GAME_RULES] snapshot shows non-default rules: {'; '.join(_vm_bad)}; "
+                      f"pass --allow-nondefault-rules to run on purpose", file=sys.stderr)
+                summary["result"], summary["reason"] = "fail", "nondefault_rules"
         (artifact_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
         _f = summary["first60"]
         print(f"[via-menu] {summary['result'].upper()} {summary['reason']} time_to_menu_s={summary['time_to_menu_s']} "
