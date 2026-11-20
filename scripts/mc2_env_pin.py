@@ -158,6 +158,7 @@ def ambient_mc2(environ: Mapping[str, str] | None = None) -> dict[str, str]:
 HARNESS_ONLY_NAMES = frozenset({
     "MC2_IN_GATE", "MC2_LANE_SCRATCH", "MC2_LANE_UUID", "MC2_SLOT", "MC2_SMOKE_ARTIFACT_ROOT",
     "MC2_HARNESS_GPU", "MC2_DEPLOY_LEASE_PATH", "MC2_CHILD_REGISTRY_DIR", "MC2_OWNER_NO_LEASE", "MC2_NO_CPU_PIN",
+    "MC2_SMOKE_ALLOW_NONDEFAULT_RULES",
     # Exact names (gate/host-lease plumbing); a prefix would exempt typos like MC2_GATE_FOO.
     "MC2_GATE_BASE",
     "MC2_GATE_CAPTURE_REFERENCE",

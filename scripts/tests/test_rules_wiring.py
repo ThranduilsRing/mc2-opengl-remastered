@@ -16,10 +16,10 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 # (file, pattern that must match, the part of the match that is the rules read and is removed by the mutation)
 SITES = [
-    ("code/mover_attack.cpp", r"called_shot::mode\([^;]*mc2::rules::current\(\)\.calledShots\)", "mc2::rules::current().calledShots"),
+    ("code/mover_attack.cpp", r"called_shot::mode\([^;]*mc2::rules::current\(\)\.calledShots\);\s*aimLocation = called_shot::aim\(aimLocation, calledMode\)","mc2::rules::current().calledShots"),
     ("code/mover_attack.cpp", r"weightSkill\([^;]*mc2::rules::current\(\)\.pilotSkillWeight\)", "mc2::rules::current().pilotSkillWeight"),
-    ("code/mech_weapons.cpp", r"called_shot::mode\([^;]*mc2::rules::current\(\)\.calledShots\)", "mc2::rules::current().calledShots"),
-    ("code/gvehicl_weapons.cpp", r"called_shot::mode\([^;]*mc2::rules::current\(\)\.calledShots\)", "mc2::rules::current().calledShots"),
+    ("code/mech_weapons.cpp", r"called_shot::mode\([^;]*mc2::rules::current\(\)\.calledShots\);\s*aimLocation = called_shot::aim\(aimLocation, calledMode\)","mc2::rules::current().calledShots"),
+    ("code/gvehicl_weapons.cpp", r"called_shot::mode\([^;]*mc2::rules::current\(\)\.calledShots\);\s*aimLocation = called_shot::aim\(aimLocation, calledMode\)","mc2::rules::current().calledShots"),
     ("code/turret.cpp", r"weightSkill\([^;]*mc2::rules::current\(\)\.pilotSkillWeight\)", "mc2::rules::current().pilotSkillWeight"),
     ("code/logisticsdata_save.cpp", r"payoutPct\s*=\s*mc2::rules::current\(\)\.cbillMultiplier;", "mc2::rules::current().cbillMultiplier"),
     ("code/logisticsdata_save.cpp", r"payoutCredited\s*=\s*mc2::rules::payoutScaled\(payoutBase,\s*payoutPct\);\s*[^\n]*\s*addCBills\(\s*payoutCredited\s*\)",
@@ -95,4 +95,4 @@ def test_sim_determinism_opt_in_sets_the_runner_env(monkeypatch):
     assert "MC2_SMOKE_ALLOW_NONDEFAULT_RULES" not in __import__("os").environ
     assert sim.main(["check", "mc2_03", "--install", owner, "--allow-nondefault-rules"]) == sim.RC_OWNER_INSTALL
     assert __import__("os").environ["MC2_SMOKE_ALLOW_NONDEFAULT_RULES"] == "1"
-    monkeypatch.delenv("MC2_SMOKE_ALLOW_NONDEFAULT_RULES")
+    __import__("os").environ.pop("MC2_SMOKE_ALLOW_NONDEFAULT_RULES", None)  # sim.main set it directly; monkeypatch would restore "1"
