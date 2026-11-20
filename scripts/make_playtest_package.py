@@ -45,12 +45,6 @@ SKIP_DIRS = {'cache', 'cook-cache', '_aoktxtmp', 'terrain_gen_out', 'dev_shell_o
              'debug_state', 'crashes', 'savegame', '_txm_cache_bak', 'txm_backup'}
 MACHINE = re.compile(r'(?<![A-Za-z])[A-Z]:[/\\]', re.I)  # any drive letter (covers C:\Users); not URL schemes
 PLAY_REF = 'claude/play-1113'
-# Player-facing files whose live v0.4 copy predates the path-free fix: taken from this checkout until the next v0.4 deploy carries them.
-REPO_OVERRIDES = {'docs/modding/IMPORT-CAMPAIGNS.md', 'scripts/smoke_lib/child_registry.py'}
-
-
-def payload_source(source, rel):
-    return REPOSITORY / rel if rel in REPO_OVERRIDES else safe_path(source, rel)
 
 
 def machine_path(rel, text):
@@ -305,8 +299,8 @@ def assemble(source, target, permissions, requested, *, inventory=None, reposito
         return digest
     verified = {}
     for rel, row in sorted(rows.items()):
-        digest = sha256(payload_source(source, rel))
-        if row and rel not in REPO_OVERRIDES and digest != row['sha256']:
+        digest = sha256(safe_path(source, rel))
+        if row and digest != row['sha256']:
             raise ValueError(f'deploy hash mismatch: {rel}')
         if (rel.lower().startswith(('data/', 'assets/')) or rel.lower() in {p.lower() for p in STOCK_ROOT}
                 or ('/' not in rel and rel.lower().endswith('.fst'))):
@@ -332,7 +326,7 @@ def assemble(source, target, permissions, requested, *, inventory=None, reposito
     target.mkdir(parents=True)
     receipt = []
     for rel, row in sorted(rows.items()):
-        src = payload_source(source, rel)
+        src = safe_path(source, rel)
         dst = safe_path(target, rel)
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(src, dst)

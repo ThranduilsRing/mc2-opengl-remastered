@@ -207,9 +207,3 @@ def test_bt2018_extractor_only_files_are_never_packaged(tmp_path, monkeypatch):
     result = package.assemble(source, tmp_path / 'out', record, ['mod-a'], inventory=inventory)
     assert not (tmp_path / 'out/data/tgl/Zeus.glb').exists()
     assert result['excluded'][package.BT2018_REASON] == 1
-
-
-def test_repo_overrides_come_from_the_checkout_not_the_source(tmp_path):
-    rel = 'docs/modding/IMPORT-CAMPAIGNS.md'
-    assert package.payload_source(tmp_path, rel) == package.REPOSITORY / rel
-    assert package.payload_source(tmp_path, 'docs/other.md') == (tmp_path / 'docs/other.md').resolve()
