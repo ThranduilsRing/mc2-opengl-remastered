@@ -919,6 +919,8 @@ def main() -> int:
                          "NOT declared are scrubbed so the capture runs the "
                          "shipped configuration; the full effective set is "
                          "recorded in the sidecar.")
+    ap.add_argument("--strict-env", action="store_true",
+                    help="exit 2 instead of warning when an ambient MC2_* name would be scrubbed (not forwarded to the engine)")
     ap.add_argument("--no-kill", action="store_true",
                     help="WATER-VISUAL-GATE-1: do NOT taskkill foreign mc2.exe "
                          "(concurrent-safe). The capture still launches its own "
@@ -927,6 +929,12 @@ def main() -> int:
                     help="SCREEN-SETTLE-SHOT-1: screenshot a front-end screen (logistics, campaign_missions, mechbay, ...) after N settled "
                          "frames instead of a mission bookmark sweep; delegates to scripts/screen_shot.py")
     args = ap.parse_args()
+    if args.strict_env:
+        _dirty = env_pin.scrubbable_ambient()
+        if _dirty:
+            print("[viscap] ENV-DROPPED FATAL (--strict-env): ambient MC2_* name(s) would be scrubbed, not forwarded: "
+                  + ", ".join(sorted(_dirty)), file=sys.stderr)
+            return 2
     if args.tracy_output:
         return capture_path_timing(args)
     if args.screen:
