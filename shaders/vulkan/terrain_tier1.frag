@@ -171,8 +171,7 @@ float cliffReferenceLuma(vec2 worldXY) {
 // Lamp-only detail uses an isotropic footprint computed in uniform main flow.
 // The normal is sampled once at the first unoccluded, nonzero lamp.
 vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod) {
-    float footprint = exp2(lod) / float(textureSize(u_matNormalArray, 0).x);
-    if (footprint >= 0.707107) return macroN;
+    // No hard footprint cut: mv_detailFade below reaches 0 (amount <= 0 -> macroN) well before the sampled mip goes whole-texture.
     vec2 uv = vec2((wp.x - uT.atlasTopLeftX) * uT.atlasOneOverWorldUnits,
                    (uT.atlasTopLeftY - wp.y) * uT.atlasOneOverWorldUnits);
     vec4 m = TS_colormapReady != 0 ? textureLod(u_materialWeights, uv, 0.0) : vec4(0);

@@ -13,8 +13,9 @@ fixes what the 2026-11-19 Fable review found (A:/Games/mc2-ops/studies/fable-rgp
      holds its first launch, and an unanchored run that launches in a gap between markers gets an explicit "(unlabelled: A..B)" row
      instead of a lump spanning several passes (the "9.4 ms water lump" and "LightLists lump" were that).
 
-usage (extract/decode stay v2's: `rgp_report_v2.py extract <capture.rgp> <workdir>` then `decode <workdir>`, research toolchain under
-RGP_RESEARCH_ROOT; pass paths as arguments, run with -I):
+usage (extract/decode are NOT in this repo: they come from the external v2 research toolchain under RGP_RESEARCH_ROOT on the maintainer
+machine, `rgp_report_v2.py extract <capture.rgp> <workdir>` then `decode <workdir>`; this script only reports a decoded workdir, and its
+golden test skips unless MC2_RGP_V3_WORKDIRS is set; pass paths as arguments, run with -I):
   py -3 -I rgp_report_v3.py report <workdir> [--csv out.csv] report a decoded workdir
   py -3 -I rgp_report_v3.py summary <workdir>...             one CSV row per capture
 """

@@ -36,3 +36,27 @@ def test_visual_capture_strict_env_ignores_harness_and_fails_on_stray_name(monke
     err = capsys.readouterr().err
     assert "MC2_NOT_A_REAL_GATE_ZZ" in err and "--strict-env" in err
     assert "MC2_LANE_SCRATCH" not in err and "MC2_IN_GATE" not in err
+
+
+def test_run_smoke_strict_env_exits_2_on_stray_name(monkeypatch, capsys, tmp_path):
+    import run_smoke
+    exe = tmp_path / "mc2.exe"
+    exe.write_bytes(b"x")
+    monkeypatch.setattr(run_smoke._exe_guard, "check_exe", lambda *a, **k: type("V", (), {"ok": True, "banner": lambda s: ""})())
+    import pytest
+    monkeypatch.setenv("MC2_OWNER_NO_LEASE", "1")
+    monkeypatch.delenv("MC2_PLAY_MISSION", raising=False)
+    monkeypatch.setenv("MC2_NOT_A_REAL_GATE_ZZ", "1")
+    monkeypatch.setenv("MC2_GATE_FOO_ZZ", "1")  # a prefix-lookalike is NOT harness plumbing
+    monkeypatch.setattr(sys, "argv", ["run_smoke", "--no-lease", "--lite", "--strict-env", "--exe", str(exe)])
+    with pytest.raises(SystemExit) as exc:
+        run_smoke.main()
+    assert exc.value.code == 2
+    err = capsys.readouterr().err
+    assert "MC2_NOT_A_REAL_GATE_ZZ" in err and "MC2_GATE_FOO_ZZ" in err and "--strict-env" in err
+
+
+def test_harness_exemption_is_exact_names_not_prefixes():
+    import mc2_env_pin as pin
+    assert pin.is_harness_only("MC2_GATE_BASE") and pin.is_harness_only("MC2_HOST_GAME_SLOTS")
+    assert not pin.is_harness_only("MC2_GATE_TYPO_ZZ") and not pin.is_harness_only("MC2_HOST_TYPO_ZZ")

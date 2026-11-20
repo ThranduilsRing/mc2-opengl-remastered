@@ -933,7 +933,8 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
     }
     gpuCull.end();
     // RGP/VK_GPU_PASSES: the hand-off barriers up to the end of this cmdbuf were unlabelled; a 3.4 ms mech-colour stall (mc2_10 4K, 11-19) sat between
-    // Post.HzbCull and Props.Cull with no marker open.
+    // Post.HzbCull and Props.Cull with no marker open. HYPOTHESIS, unproven: this scope closes before the burst, so it may label only the wait for
+    // the hand-off, not the stall's cause; re-check with a capture before attributing the stall to these barriers.
     MC2_VK_GPU_SCOPE(gpuHandoff, cb, "VKIsl.Post.HzbHandoff");
     memoryBarrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_HOST_BIT,
                   VK_ACCESS_SHADER_WRITE_BIT,VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_HOST_READ_BIT);

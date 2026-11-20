@@ -3,12 +3,8 @@
 // tiling 1, set in main() from the continuous detail-UV derivatives. weight = 1 - smoothstep(L0, L1, log2(texels/pixel));
 // at 0 the tap is skipped. The anti-tile taps are NOT thinned with distance: they follow the unchanged fw rules.
 // POM is gone: its offset was already clamped to 1/4 pixel, so it moved nothing visible for 8-16 marched layers.
-#ifndef DF_L0
 #define DF_L0 2.0
-#endif
-#ifndef DF_L1
 #define DF_L1 4.0
-#endif
 float mv_detailTexelGM = 0.0;
 float mv_detailFade(float texelsPerPixel) {
     return 1.0 - smoothstep(DF_L0, DF_L1, log2(max(texelsPerPixel, 1e-6)));
