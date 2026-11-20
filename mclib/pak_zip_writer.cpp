@@ -263,7 +263,7 @@ bool packDirectory(std::string_view dirView, std::string_view outView, const Pak
     PakWriter w(outPath, {src}, options);
     std::vector<uint8_t> bytes;
     for (const auto& item : items) {
-        std::ifstream f(item.path, std::ios::binary);
+        std::ifstream f(item.path, std::ios::binary); // path-audit: loose-only (pak builder reads the loose source tree it packs)
         bytes.assign(static_cast<size_t>(item.size), 0);
         if (!f.read(reinterpret_cast<char*>(bytes.data()), std::streamsize(bytes.size()))) return fail("read failed: " + item.key);
         if (!w.add(item.key, "loose", bytes, error)) return false;

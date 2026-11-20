@@ -1,6 +1,7 @@
 # new_campaign: what a player does. Intro movie -> main menu -> New Campaign -> Carver V Campaign -> LOAD -> campaign cinema (skipped)
 # -> mission 1 loads -> intro camera pan -> first comm video (V1A) -> run well past it with real video decode. No SmokeMode, no MC2_BOOT_TO_*.
 # The owner's 2026-11-03 CTD (ABL playVideo on the sim-overlap worker, about engine frame 1600) is exactly this path.
+# After LOAD the Game Rules dialog opens (rules-screen-1); ACCEPT (192,508) keeps the defaults.
 # Coordinates are 800x600 canvas pixels; screen layout was read off captures (docs/tier1_env_vars.md PLAYER-PATH-1).
 #! timeout 420
 #! expect (?i)\[VIDEO\] init: opened \S*v1a
@@ -18,6 +19,8 @@ wait 150
 click 229 248
 wait 30
 click 554 435
+wait 150
+click 192 508
 await (?i)\[VIDEO\] init: opened \S*cinema1 120
 wait 300
 key SPACE
