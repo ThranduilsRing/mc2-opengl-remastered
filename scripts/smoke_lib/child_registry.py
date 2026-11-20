@@ -30,7 +30,7 @@ def default_registry_dir(root: Path, platform: str = sys.platform) -> Path:
     if platform == "linux":
         return Path.home() / ".cache/mc2/smoke_children"
     if (root / ".git").exists():
-        return Path("A:/Games/mc2-opengl/.smoke_children")  # drive-path: ok machine-wide dev registry, unchanged from before
+        return Path(root.anchor) / "Games/mc2-opengl/.smoke_children"  # machine-wide dev registry on the checkout's own drive
     return root / ".smoke_children"
 
 

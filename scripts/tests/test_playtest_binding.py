@@ -169,7 +169,7 @@ def test_child_registry_default_dir(tmp_path):
     (tmp_path / 'shipped').mkdir()
     (tmp_path / 'checkout/.git').mkdir(parents=True)
     assert child_registry.default_registry_dir(tmp_path / 'checkout', 'win32') == Path(
-        'A:/Games/mc2-opengl/.smoke_children')
+        (tmp_path / 'checkout').anchor) / 'Games/mc2-opengl/.smoke_children'
     assert child_registry.default_registry_dir(tmp_path / 'shipped', 'win32') == tmp_path / 'shipped/.smoke_children'
 
 
