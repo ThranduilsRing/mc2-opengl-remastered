@@ -147,6 +147,9 @@ set(ASSET_VIEWER_SOURCES
     MeshPreview3D.cpp
     # Task 3: model browser (Static Props panel)
     ModelBrowser.cpp
+    # Mechs / Vehicles / Trees panels
+    ShapeCatalog.cpp
+    ShapePanel.cpp
     # remaining sources added in later tasks
     TextureExtensions.cpp
     TextureMetadata.cpp

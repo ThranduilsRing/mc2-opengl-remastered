@@ -8,10 +8,11 @@ void AssetTypeSidebar::draw()
     if (ImGui::Selectable("Static Props", active_ == AssetType::StaticProps))  active_ = AssetType::StaticProps;
     if (ImGui::Selectable("Mod Workbench",active_ == AssetType::ModWorkbench)) active_ = AssetType::ModWorkbench;
     if (ImGui::Selectable("Archives",     active_ == AssetType::Archives))     active_ = AssetType::Archives;
+    if (ImGui::Selectable("Mechs",        active_ == AssetType::Mechs))        active_ = AssetType::Mechs;
     ImGui::Spacing();
     ImGui::TextDisabled("Deferred");
     static const char* kDeferred[] = {
-        "Trees", "Mechs", "Vehicles", "VFX", "Terrain Materials", "Mod Package"
+        "Trees", "Vehicles", "VFX", "Terrain Materials", "Mod Package"
     };
     ImGui::BeginDisabled(true);
     for (const char* name : kDeferred)

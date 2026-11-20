@@ -1,7 +1,7 @@
 #pragma once
 // Left sidebar: the modder-facing asset-type vocabulary.
-// Textures and Materials are live in stage 2; the remaining 7 are deferred.
-enum class AssetType { Textures, Materials, StaticProps, ModWorkbench, Archives };
+// Entries not yet implemented are listed greyed out under "Deferred".
+enum class AssetType { Textures, Materials, StaticProps, ModWorkbench, Archives, Mechs };
 class AssetTypeSidebar {
 public:
     void draw();

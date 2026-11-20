@@ -53,9 +53,14 @@ void AssetViewerApp::drawUi()
     ImGui::EndChild();
     ImGui::SameLine();
 
+    // The shape panels share meshSurface_ with Static Props: reload their selection on entry.
+    if (sidebar_.active() != prevActive_) { prevActive_ = sidebar_.active(); shapePanel_.markStale(); }
+
     // browser child: dispatch on the active asset type.
     ImGui::BeginChild("browser", ImVec2(browserW, 0), true);
-    if (sidebar_.active() == AssetType::StaticProps) {
+    if (sidebar_.active() == AssetType::Mechs) {
+        shapePanel_.drawBrowser(ShapeCategory::Mechs);
+    } else if (sidebar_.active() == AssetType::StaticProps) {
         modelBrowser_.draw();
         if (modelBrowser_.hasSelection()) {
             std::string sel = modelBrowser_.takeSelection();
@@ -99,6 +104,9 @@ void AssetViewerApp::drawUi()
         break;
       case AssetType::Archives:
         archivePanel_.draw();
+        break;
+      case AssetType::Mechs:
+        shapePanel_.drawDetails(ShapeCategory::Mechs, meshSurface_);
         break;
     }
     ImGui::EndChild();
@@ -988,6 +996,9 @@ void AssetViewerApp::scriptedView(const char* kind, const char* arg) {
     } else if (k == "workbench") {
         sidebar_.setActive(AssetType::ModWorkbench);
         if (arg) onFileDropped(arg);
+    } else if (k == "mechs") {
+        sidebar_.setActive(AssetType::Mechs);
+        if (arg) shapePanel_.select(ShapeCategory::Mechs, arg);
     } else if (k == "archives") {
         sidebar_.setActive(AssetType::Archives);
         if (arg) onFileDropped(arg);

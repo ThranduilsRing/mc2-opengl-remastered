@@ -14,6 +14,7 @@
 #include "ModWorkbench.h"
 #include "ModWorkbenchPanel.h"
 #include "ArchivePanel.h"
+#include "ShapePanel.h"
 
 class AssetViewerApp {
 public:
@@ -54,5 +55,7 @@ private:
     ModWorkbench       workbench_;
     ModWorkbenchPanel  workbenchPanel_;
     ArchivePanel       archivePanel_;
+    ShapePanel         shapePanel_;
+    AssetType          prevActive_ = AssetType::Textures;
     bool materialsAutoLoaded_ = false;
 };

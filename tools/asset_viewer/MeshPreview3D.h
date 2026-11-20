@@ -36,6 +36,8 @@ public:
     float& orbitPitch() { return pitch_; }
     float& zoom()       { return dist_; }
     float* lightDir()   { return lightDir_; }
+    float* modelRotDeg() { return modelRotDeg_; }
+    void setCompactControls(bool c) { compact_ = c; }   // collapse the slider block (shape panels keep the viewport tall)
 
 private:
     void ensureGL(int w, int h);
@@ -69,6 +71,7 @@ private:
 
     // Texture resolution tier and spotlight-beam toggle.
     int  tier_       = 512;    // active albedo resolution: 128 / 256 / 512 / 1024
+    bool compact_    = false;
     bool showLights_ = false;  // when false, SpotLight_* beam submeshes are hidden
 
     std::string deployDir_ = ".";
