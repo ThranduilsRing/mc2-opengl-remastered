@@ -13,6 +13,7 @@
 #include "ModelBrowser.h"
 #include "ModWorkbench.h"
 #include "ModWorkbenchPanel.h"
+#include "ArchivePanel.h"
 
 class AssetViewerApp {
 public:
@@ -52,5 +53,6 @@ private:
     ModelBrowser       modelBrowser_;
     ModWorkbench       workbench_;
     ModWorkbenchPanel  workbenchPanel_;
+    ArchivePanel       archivePanel_;
     bool materialsAutoLoaded_ = false;
 };

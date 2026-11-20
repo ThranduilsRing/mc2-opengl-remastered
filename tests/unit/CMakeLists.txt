@@ -254,6 +254,8 @@ add_executable(mc2_tests
     test_fst_roundtrip.cpp  # MINIMAL-VIABLE-HARNESS-2: FST create/writeFast -> loose-vs-FST ladder
     test_pak_provider.cpp
     ${MC2_WORKTREE_ROOT}/mclib/pak_zip.cpp
+    ${MC2_WORKTREE_ROOT}/mclib/pak_zip_writer.cpp  # pak writer under test; compressor = mc2_zstd_compress (renamed 1.5.7 symbols)
+    ${MC2_WORKTREE_ROOT}/tools/asset_viewer/ArchiveIo.cpp  # the viewer's extract/zip-slip logic
     test_fst_backslash.cpp  # retail backslash/mixed-case FST members canonicalized in memory at open; stock parity
     test_paths_mod.cpp      # MINIMAL-VIABLE-HARNESS-2: paths.cpp globals + mod-index (mc2::vfs::openRead) resolution
     test_mod_regressions.cpp # quick synthetic regressions; no installed mods or game required
@@ -589,10 +591,14 @@ if(NOT TARGET basisu_transcoder)
     enable_language(C)   # zstddeclib.c
     add_subdirectory("${MC2_WORKTREE_ROOT}/3rdparty/basisu" "${CMAKE_BINARY_DIR}/basisu")
 endif()
+if(NOT TARGET mc2_zstd_compress)
+    add_subdirectory("${MC2_WORKTREE_ROOT}/3rdparty/zstd" "${CMAKE_BINARY_DIR}/zstd")
+endif()
 target_link_libraries(mc2_tests PRIVATE
     Threads::Threads
     SDL2::SDL2
     basisu_transcoder
+    mc2_zstd_compress
 )
 if(WIN32)
     # The CPU surface tests use SDL2; no graphics context is created.

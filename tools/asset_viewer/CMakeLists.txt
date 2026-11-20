@@ -54,6 +54,8 @@ add_library(mc2_tglloader STATIC
     "${CMAKE_SOURCE_DIR}/mclib/vfs.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/vfs_index.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/pak_zip.cpp"
+    "${CMAKE_SOURCE_DIR}/mclib/pak_zip_writer.cpp"   # compressor: 3rdparty/zstd (renamed symbols), linked below
+    ArchiveIo.cpp                                    # --pak verbs + Archives panel I/O; needs FastFile, so it lives in this isolated lib
     "${CMAKE_SOURCE_DIR}/mclib/fastfile.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/ffile.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/packet.cpp"
@@ -125,7 +127,7 @@ target_include_directories(mc2_tglloader PUBLIC
 )
 
 # mc2_gate: the mclib TUs compiled here read their gates through the typed registry.
-target_link_libraries(mc2_tglloader PRIVATE ${MC2_ZLIB} mc2_gate basisu_transcoder)
+target_link_libraries(mc2_tglloader PRIVATE ${MC2_ZLIB} mc2_gate basisu_transcoder mc2_zstd_compress)
 
 # ---------------------------------------------------------------------------
 # End mc2_tglloader
@@ -150,6 +152,7 @@ set(ASSET_VIEWER_SOURCES
     TextureMetadata.cpp
     TexturePreview2D.cpp
     FileBrowser.cpp
+    ArchivePanel.cpp
     AssetTypeSidebar.cpp
     TextureInspectorPanel.cpp
     TextureDecoderRegistry.cpp

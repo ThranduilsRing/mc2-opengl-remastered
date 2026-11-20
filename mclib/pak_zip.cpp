@@ -196,7 +196,30 @@ void PakZip::parse() {
         sourceNames.insert(src.name);
         sources_.push_back(std::move(src));
     }
-    for (const auto& [k, e] : entries_) require(k == "mc2pak.json" || sourceNames.count(e.source) == 1);
+    for (const auto& [k, e] : entries_)
+        require(k == "mc2pak.json" || k == "mc2pak.aliases" || sourceNames.count(e.source) == 1);
+    // Optional alias table: one "alias<TAB>target<TAB>source" line per duplicate-content name. Each alias becomes its own
+    // in-memory row over the target's stored bytes, so read/find/failed state are per name.
+    if (const auto* table = find("mc2pak.aliases")) {
+        require(table->method == 0);
+        auto text = read(*table); require(text.has_value());
+        for (size_t at = 0; at < text->size();) {
+            auto end = std::find(text->begin() + at, text->end(), uint8_t{'\n'}) - text->begin();
+            std::string line(text->begin() + at, text->begin() + end); at = end + 1;
+            auto t1 = line.find('\t'), t2 = line.find('\t', t1 + 1);
+            require(t1 != std::string::npos && t2 != std::string::npos && line.find('\t', t2 + 1) == std::string::npos);
+            auto name = line.substr(0, t1), target = line.substr(t1 + 1, t2 - t1 - 1), src = line.substr(t2 + 1);
+            auto it = entries_.find(target);
+            require(!name.empty() && name == key(name) && name != "mc2pak.json" && name != "mc2pak.aliases" &&
+                    it != entries_.end() && it->second.aliasOf.empty() && target != "mc2pak.json" &&
+                    target != "mc2pak.aliases" && sourceNames.count(src) == 1 && !entries_.contains(name));
+            const auto t = it->second.offset; const auto tp = it->second.packed; const auto ts = it->second.size;
+            const auto tc = it->second.crc; const auto tm = it->second.method;
+            auto& a = entries_.try_emplace(name).first->second;  // after reading `it`: insertion never invalidates std::map iterators, kept explicit
+            a.key = name; a.source = src; a.aliasOf = target;
+            a.offset = t; a.packed = tp; a.size = ts; a.crc = tc; a.method = tm;
+        }
+    }
 }
 const PakZip::Entry* PakZip::find(std::string_view k) const {
     auto it = entries_.find(std::string(k));

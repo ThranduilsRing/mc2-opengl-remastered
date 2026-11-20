@@ -11,11 +11,16 @@
 #include "backends/imgui_impl_sdl2.h"
 #include "backends/imgui_impl_vulkan.h"
 #include "AssetViewerApp.h"
+#include "ArchiveIo.h"
 
 int main(int argc, char* argv[])
 {
     std::printf("%s\n", MC2_BUILD_FP_LITERAL);
     mc2PrintBuildFingerprint();
+    // --pak list|extract|pack|verify: headless archive verbs (no window), exit 0/1.
+    if (argc >= 2 && strcmp(argv[1], "--pak") == 0)
+        return runPakVerb(argc - 2, argv + 2);
+
     // --smoke <fixtureDir> dispatch (Task 8 smoke test hook)
     if (argc >= 2 && strcmp(argv[1], "--smoke-decoder") == 0)
         return AssetViewerApp::runSmokeDecoder();
