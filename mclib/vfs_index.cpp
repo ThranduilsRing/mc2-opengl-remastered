@@ -391,7 +391,8 @@ std::vector<Entry> candidates(std::string_view logicalKey)
 	if (out.empty() && k.rfind("data/tgl/128/", 0) == 0) {
 		const auto hit = g_index.entries.find("data/tgl/512/" + k.substr(13));
 		if (hit != g_index.entries.end()) {
-			for (const Entry& c : hit->second) {
+			const auto& [hitKey, hitEntries] = *hit;
+			for (const Entry& c : hitEntries) {
 				Entry a = c;
 				a.key = k;
 				out.push_back(std::move(a));
