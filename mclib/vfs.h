@@ -55,6 +55,7 @@ struct Entry {
 
 struct Stats {
 	size_t entries = 0, mounts = 0, bytes = 0;
+	size_t pakEligible = 0;    // pak entries that won a chain slot (0 = no pak mounted or none eligible)
 	double buildMs = 0;
 };
 

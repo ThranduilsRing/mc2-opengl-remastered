@@ -183,8 +183,9 @@ def private_copy_rel(rel: str) -> bool:
 
     Camera bookmarks: the game writes new ones at runtime, and a shared
     inode would let a lane's writes reach the source install (v0.4).
+    paks/: the engine maps the pak; a shared inode makes every linked install undeletable while one game runs.
     """
-    return rel.casefold().startswith('saved_bookmarks/')
+    return rel.casefold().startswith(('saved_bookmarks/', 'paks/'))
 
 
 def root_binary_rel(rel: str) -> bool:

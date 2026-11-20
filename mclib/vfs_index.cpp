@@ -152,7 +152,7 @@ void buildLocked()
 {
 	const auto t0 = std::chrono::steady_clock::now();
 	Index ix;
-	size_t mounts = 0;
+	size_t mounts = 0, pakEligible = 0;
 	{
 		std::lock_guard<std::mutex> dl(g_digestMutex);
 		g_digestMemo.clear();
@@ -301,12 +301,13 @@ void buildLocked()
 				chain[i].source.authorityRank = static_cast<unsigned>(i);
 				chain[i].shadowed = static_cast<unsigned>(chain.size() - i - 1);
 			}
-			++mounts;
+			++mounts; pakEligible += count;
 			mc2::fmt::print_out("[VFS] mount pak name=paks/stock.mc2pak files={} eligible={}\n", pak->entries().size() - 1, count);
 		}
 	}
 	ix.st.entries = ix.entries.size();
 	ix.st.mounts = mounts;
+	ix.st.pakEligible = pakEligible;
 	ix.st.bytes = estimateBytes(ix);
 	ix.st.buildMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
 	ix.built = true;

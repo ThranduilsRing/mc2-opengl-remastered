@@ -2944,8 +2944,8 @@ def stock_pak_key(src_root, target):
 
 
 def ensure_stock_pak(src_root, target, hashes):
-    """Default pak deploy: pack once per FST set into the shared cache, hardlink it to <target>/paks/stock.mc2pak
-    (replace by rename) and record it in `hashes`. Any failure is a loud log line; the FSTs still ship and rc stays 0."""
+    """Default pak deploy: pack once per FST set into the shared cache, copy it (never hardlink: the engine maps it) to
+    <target>/paks/stock.mc2pak (replace by rename) and record it in `hashes`. Any failure is a loud log line; the FSTs still ship and rc stays 0."""
     try:
         key = stock_pak_key(src_root, target)
         if key is None:
@@ -2982,18 +2982,26 @@ def ensure_stock_pak(src_root, target, hashes):
             log(f"[PAK_DEPLOY] cache hit key={key}")
         dst = Path(target) / PAK_REL
         dst.parent.mkdir(parents=True, exist_ok=True)
-        if not (dst.is_file() and os.path.samefile(dst, pak)):
+        if not pak_copy_current(dst, pak, digest_file.read_text().strip()):
+            # Always a private copy: the engine maps the pak, and a hardlinked mapped pak makes every install sharing it
+            # undeletable (WinError 5) while any one game runs.
             tmp = dst.with_name(f".stock.mc2pak.new-{os.getpid()}")
             tmp.unlink(missing_ok=True)
-            try:
-                os.link(pak, tmp)
-            except OSError:
-                shutil.copy2(pak, tmp)
+            shutil.copy2(pak, tmp)
             replace_file(str(tmp), str(dst))
         hashes[PAK_REL] = (digest_file.read_text().strip(), dst.stat().st_size, dst.stat().st_mtime_ns)
         log(f"[PAK_DEPLOY] OK {PAK_REL} key={key} sha256={hashes[PAK_REL][0][:16]}")
     except Exception as exc:  # noqa: BLE001 -- the FSTs still ship; a pak failure never fails the deploy
         log(f"WARN [PAK_DEPLOY] pak step failed ({type(exc).__name__}: {exc}); deploy is FST only")
+
+
+def pak_copy_current(dst, pak, digest):
+    """True when dst is already a private (st_nlink == 1) copy of the cached pak: same size and recorded digest."""
+    try:
+        st = dst.stat()
+        return st.st_nlink == 1 and st.st_size == pak.stat().st_size and sha256_file(dst) == digest
+    except OSError:
+        return False
 
 
 def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):

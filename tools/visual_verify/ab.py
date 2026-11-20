@@ -742,7 +742,7 @@ GAME_WRITTEN_SUFFIXES = {".cfg", ".ini", ".txt", ".log", ".csv", ".json", ".json
 # (WinError 5), so a hardlinked stage could not be removed while another lane's game ran (11-10: avcodec-61.dll, textures.fst).
 # Copied instead (~400 MB per side).
 MAPPED_SUFFIXES = {".dll", ".exe", ".fst"}
-GAME_WRITTEN_COPY_PREFIXES = ("saved_bookmarks/", "cache/vulkan/")
+GAME_WRITTEN_COPY_PREFIXES = ("saved_bookmarks/", "cache/vulkan/", "paks/")  # paks/: a mapped pak blocks rmtree while a game runs on any hardlink
 GAME_WRITTEN_EMPTY_DIRS = ("debug_state", "crashes")
 # Data caches the game truncates in place via File::create (a hardlink writes through into the source install):
 #   data/textures/*.lst, *.txm   mclib/terrtxm.cpp:1496 (.lst) and :1673 (.txm) when quickLoad is false (empty .lst / missing .txm, :133-155)
