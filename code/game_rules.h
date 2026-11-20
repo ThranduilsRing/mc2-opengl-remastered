@@ -186,14 +186,13 @@ inline void loadCfgText(GameRules& g, std::string_view text) {
     constexpr std::string_view prefix = "GameRules";
     bool seen[kRuleCount] = {};
     while (!text.empty()) {
-        const std::size_t nl = text.find('
-');
+        const std::size_t nl = text.find('\n');
         std::string_view line = detail::trim(text.substr(0, nl));
         text = nl == std::string_view::npos ? std::string_view{} : text.substr(nl + 1);
         const std::size_t eq = line.find('=');
         if (eq == std::string_view::npos) continue;
         std::string_view name = detail::trim(line.substr(0, eq));
-        const std::size_t sp = name.find_last_of(" 	");   // drop the type letter ("l ", "b ")
+        const std::size_t sp = name.find_last_of(" \t");   // drop the type letter ("l ", "b ")
         if (sp != std::string_view::npos) name = name.substr(sp + 1);
         if (name.size() <= prefix.size() || !detail::equalsNoCase(name.substr(0, prefix.size()), prefix)) continue;
         const auto idx = find(name.substr(prefix.size()));

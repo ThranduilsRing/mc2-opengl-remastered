@@ -187,30 +187,15 @@ TEST_CASE("game rules: options.cfg keys round trip, garbage and out-of-range val
 
     // No keys at all (an old options.cfg) leaves today's defaults.
     GameRules fresh;
-    loadCfgText(fresh, "FITini
-[MechCommander2]
-l MusicVolume = 10
-FITend
-");
+    loadCfgText(fresh, "FITini\n[MechCommander2]\nl MusicVolume = 10\nFITend\n");
     CHECK(fresh == GameRules{});
 
     // Out of range, garbage (FitIniFile's atol would make these 0 = a valid non-default Heat Off / Called Off / Weight 0) and a bad bool: default stays.
     GameRules edited;
     loadCfgText(edited,
-        "FITini
-[MechCommander2]
-l GameRulesHeat = 77
-l GameRulesCBillMultiplier = 120
-"
-        "l GameRulesAmmoExplosions = abc
-l GameRulesCalledShots = 1x
-l GameRulesPilotSkillWeight = 
-"
-        "b GameRulesDropWeightPurchase = banana
-l gamerulessalvage = 0
-l GameRulesSalvage = 2
-FITend
-");
+        "FITini\r\n[MechCommander2]\r\nl GameRulesHeat = 77\r\nl GameRulesCBillMultiplier = 120\r\n"
+        "l GameRulesAmmoExplosions = abc\r\nl GameRulesCalledShots = 1x\r\nl GameRulesPilotSkillWeight = \r\n"
+        "b GameRulesDropWeightPurchase = banana\r\nl gamerulessalvage = 0\r\nl GameRulesSalvage = 2\r\nFITend\r\n");
     CHECK(edited.heat == kHeatMC2);
     CHECK(edited.cbillMultiplier == 120);
     CHECK(edited.ammoExplosions == kAmmoExplMC2);
