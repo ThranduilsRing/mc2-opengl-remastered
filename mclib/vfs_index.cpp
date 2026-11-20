@@ -387,6 +387,18 @@ std::vector<Entry> candidates(std::string_view logicalKey)
 				}
 		}
 	}
+	// Last rung: weapon/FX art that a campaign mod (MCO) ships only as data/tgl/512/<name>.tga, never under 128.
+	if (out.empty() && k.rfind("data/tgl/128/", 0) == 0) {
+		const auto hit = g_index.entries.find("data/tgl/512/" + k.substr(13));
+		if (hit != g_index.entries.end()) {
+			const auto& [hitKey, hitEntries] = *hit;
+			for (const Entry& c : hitEntries) {
+				Entry a = c;
+				a.key = k;
+				out.push_back(std::move(a));
+			}
+		}
+	}
 	out.erase(std::remove_if(out.begin(), out.end(), [](const Entry& e) {
 		return e.provider == Provider::Pak && !e.pak->find(e.key);
 	}), out.end());
