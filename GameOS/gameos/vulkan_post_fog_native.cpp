@@ -64,6 +64,7 @@
 #include "gos_smoke.h"
 #include <SDL2/SDL.h>
 
+#include <algorithm>
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
@@ -127,8 +128,12 @@ struct EdgeFogParams {
     int   u_horizonClampEnabled;   // off 100 (VK-PARITY-F3: FOG-HORIZON-CLAMP-1)
     float u_horizonFadeStartSin;   // off 104
     float u_horizonFadeEndSin;     // off 108
+    float u_hazeStart;             // off 112 (source wu; shader applies x1.5)
+    float u_hazeFull;              // off 116
+    int   u_fogProfile;            // off 120 (DrawDistance 0 = Stock)
+    float _pad1;                   // off 124
 };
-static_assert(sizeof(EdgeFogParams) == 112, "EdgeFogParams std140 offsets drifted");
+static_assert(sizeof(EdgeFogParams) == 128, "EdgeFogParams std140 offsets drifted");
 
 struct FogOobParams {
     float invViewProj[16];     // off 0
@@ -578,7 +583,14 @@ bool gosPostProcess::runVkPostFogNative()
         p.u_halfExtent = mapHalfExtent_;
         p.u_fogStart = edgeFogStart_;
         p.u_fogHeight = edgeFogHeight_;
-        p.u_fogMax = edgeFogMax_;
+        // Fog profile (DrawDistance): source wu = effective / 1.5. Stock (0) keeps edgeFogMax_ and the shader's own haze range.
+        static constexpr float kHaze[4][2] = {{6000.0f, 12000.0f}, {4667.0f, 9333.0f}, {3333.0f, 6667.0f}, {2333.0f, 4667.0f}};
+        const int profile = std::clamp(mc2::options::current().drawDistance, 0, 3);
+        p.u_fogMax = profile ? 1.0f : edgeFogMax_;
+        p.u_hazeStart = kHaze[profile][0];
+        p.u_hazeFull = kHaze[profile][1];
+        p.u_fogProfile = profile;
+        p._pad1 = 0.0f;
         p.u_waterElevation = waterElevation_;
         p.u_horizonClampEnabled = fogHorizonClampEnabled_ ? 1 : 0;
         p.u_horizonFadeStartSin = fogHorizonFadeStartSin_;
