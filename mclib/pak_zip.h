@@ -77,6 +77,6 @@ private:
     std::unique_ptr<Impl> impl_;
 };
 // Packs every file under dir (logical key = lowercase relative path with '/'), one source named "loose".
-bool packDirectory(const std::string& dir, const std::string& outPath, const PakWriteOptions& options,
+bool packDirectory(std::string_view dir, std::string_view outPath, const PakWriteOptions& options,
                    PakWriteStats* stats, std::string* error);
 } // namespace mc2::vfs
