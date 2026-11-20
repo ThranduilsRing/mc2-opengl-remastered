@@ -102,7 +102,8 @@ bool archiveEntrySafe(const std::string& name) {
 bool archiveOutputAllowed(const std::string& path) {
     std::error_code ec;
     auto p = lower(fs::weakly_canonical(path, ec).generic_string());
-    return !(p == "a:/games/mc2-opengl" || p.rfind("a:/games/mc2-opengl/", 0) == 0);  // drive-path: ok owner-protected install, never an output
+    const auto rel = fs::path(p).relative_path().generic_string();  // owner-protected install on any drive, never an output
+    return !(rel == "games/mc2-opengl" || rel.rfind("games/mc2-opengl/", 0) == 0);
 }
 
 bool archiveExtract(const ArchiveSource& src, const std::vector<size_t>& rows, const std::string& outDir,
@@ -146,7 +147,11 @@ int runPakVerb(int argc, char** argv) {
         mc2::vfs::PakWriteOptions opt;
         for (int i = 3; i < argc; ++i) {
             if (!std::strcmp(argv[i], "--dry-run")) opt.dryRun = true;
-            else if (!std::strcmp(argv[i], "--level") && i + 1 < argc) opt.level = std::atoi(argv[++i]);
+            else if (!std::strcmp(argv[i], "--level") && i + 1 < argc) {
+                char* e = nullptr; const long v = std::strtol(argv[++i], &e, 10);
+                if (!e || *e || v < 1 || v > 22) return die(std::string("bad --level (1-22): ") + argv[i]);
+                opt.level = static_cast<int>(v);
+            }
             else return die(std::string("unknown option: ") + argv[i]);
         }
         if (!archiveOutputAllowed(argv[2])) return die("writes inside the protected install are forbidden");

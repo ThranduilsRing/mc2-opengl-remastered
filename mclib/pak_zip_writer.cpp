@@ -163,8 +163,9 @@ bool PakWriter::add(std::string_view name, std::string_view source, const std::v
         const bool ktx2 = k.size() >= 5 && k.compare(k.size() - 5, 5, ".ktx2") == 0;
         if (!ktx2 && !bytes.empty()) {
             packed.resize(ZSTD_compressBound(bytes.size()));
-            ZSTD_CCtx_setParameter(i.cctx, ZSTD_c_compressionLevel, i.opt.level);
-            ZSTD_CCtx_setParameter(i.cctx, ZSTD_c_windowLog, 27);
+            if (!i.cctx || ZSTD_isError(ZSTD_CCtx_setParameter(i.cctx, ZSTD_c_compressionLevel, i.opt.level)) ||
+                ZSTD_isError(ZSTD_CCtx_setParameter(i.cctx, ZSTD_c_windowLog, 27)))
+                return fail("zstd context or parameter rejected: " + k);
             const auto n = ZSTD_compress2(i.cctx, packed.data(), packed.size(), bytes.data(), bytes.size());
             if (ZSTD_isError(n)) return fail("zstd compress failed: " + k);
             if (static_cast<double>(n) <= static_cast<double>(bytes.size()) * .95) { method = 93; packedSize = n; }
@@ -244,8 +245,11 @@ bool packDirectory(std::string_view dirView, std::string_view outView, const Pak
     std::vector<Item> items;
     std::set<std::string> seen;
     const auto root = fs::absolute(dir);
+    const auto outAbs = fs::weakly_canonical(fs::absolute(outPath), ec).generic_string();
     for (fs::recursive_directory_iterator it(root, ec), end; !ec && it != end; it.increment(ec)) {
         if (!it->is_regular_file(ec)) continue;
+        std::error_code pe;
+        if (const auto p = fs::weakly_canonical(it->path(), pe).generic_string(); p == outAbs || p == outAbs + ".tmp") continue;  // never pack our own output
         const auto rel = fs::relative(it->path(), root).generic_u8string();
         auto k = key(std::string(reinterpret_cast<const char*>(rel.data()), rel.size()));
         if (const auto [pos, fresh] = seen.insert(k); !fresh) return fail("names collide after lowercasing: " + k);
