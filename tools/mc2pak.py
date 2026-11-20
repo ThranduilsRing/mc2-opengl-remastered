@@ -31,6 +31,9 @@ fst_entries, decompress_entry = _fst.fst_entries, _fst.decompress_entry
 
 COMMENT = b'MechCommander 2 asset pack (ZIP container, Zstandard entries). List/extract/pack with tools/mc2pak.py or the asset viewer.'
 
+ALIASES = 'mc2pak.aliases'  # Store entry, "alias<TAB>target<TAB>source" lines: names whose payload equals another entry's
+RESERVED = ('mc2pak.json', ALIASES)
+
 def key(name):
     return name.lower().replace('\\', '/')
 
@@ -113,6 +116,7 @@ def pack(install, out):
     out.parent.mkdir(parents=True, exist_ok=True)
     temp = out.with_name(out.name + '.tmp')
     seen = {'mc2pak.json'}
+    by_hash, aliases = {}, []
     try:
         with zipfile.ZipFile(temp, 'w', allowZip64=True) as z:
             z.comment = COMMENT
@@ -125,13 +129,34 @@ def pack(install, out):
                         continue
                     seen.add(name)
                     raw = decode(entry)
+                    digest = hashlib.sha256(raw).digest()
+                    if digest in by_hash:  # identical payload: stored once, this name goes in the alias table
+                        aliases.append(f'{name}\t{by_hash[digest]}\t{key(path.name)}\n')
+                        continue
+                    by_hash[digest] = name
                     compressed = zstd.compress(raw, level=19)
                     method = 0 if name.endswith('.ktx2') or len(compressed) > len(raw) * .95 else 93
                     z.writestr(info(name, method, key(path.name)), raw)
+            if aliases:
+                z.writestr(info(ALIASES, 0), ''.join(aliases).encode())
         os.replace(temp, out)
     finally:
         temp.unlink(missing_ok=True)
-    return f'pack entries={len(seen)-1} bytes={out.stat().st_size} sha256={hashlib.sha256(out.read_bytes()).hexdigest()}'
+    return f'pack entries={len(seen)-1} aliases={len(aliases)} bytes={out.stat().st_size} sha256={hashlib.sha256(out.read_bytes()).hexdigest()}'
+
+def read_aliases(z):
+    """alias name -> (target name, source); empty when the pak has no alias table."""
+    try:
+        text = z.read(ALIASES).decode('utf-8')
+    except KeyError:
+        return {}
+    table = {}
+    for line in text.splitlines():
+        name, target, src = line.split('\t')
+        if name in table or name in RESERVED:
+            raise ValueError(f'invalid alias: {name}')
+        table[name] = (target, src)
+    return table
 
 def verify(path, install=None):
     with zipfile.ZipFile(path) as z:
@@ -160,8 +185,17 @@ def verify(path, install=None):
             if name != key(name) or name in names or item.flag_bits & 9:
                 raise ValueError(f'invalid entry: {name}')
             names.add(name)
-            if name != 'mc2pak.json' and item.comment.decode('utf-8') not in sources:
+            if name not in RESERVED and item.comment.decode('utf-8') not in sources:
                 raise ValueError(f'unknown source: {name}')
+        aliases = read_aliases(z)
+        for name, (target, src) in aliases.items():
+            safe_path(Path('.'), name)
+            if name != key(name) or name in names or target not in names or target in RESERVED or src not in sources:
+                raise ValueError(f'invalid alias: {name}')
+        names.discard(ALIASES)
+        names.update(aliases)
+        def read_name(name):
+            return z.read(aliases[name][0] if name in aliases else name)
         if install:
             seen = {'mc2pak.json'}
             for p in archive_paths(install):
@@ -173,7 +207,7 @@ def verify(path, install=None):
                     if name in seen:
                         continue
                     seen.add(name)
-                    if hashlib.sha256(z.read(name)).digest() != hashlib.sha256(decode(e)).digest():
+                    if hashlib.sha256(read_name(name)).digest() != hashlib.sha256(decode(e)).digest():
                         raise ValueError(f'identity mismatch: {name}')
             if seen != names:
                 raise ValueError('entry set differs from source winners')
@@ -198,16 +232,21 @@ def main(argv=None):
             result = verify(args.pak, args.against_install)
         else:
             with zipfile.ZipFile(args.pak) as z:
+                aliases = read_aliases(z)
+                items = [i for i in z.infolist() if i.filename not in RESERVED]
                 if args.command == 'list':
-                    for i in z.infolist():
+                    for i in items:
                         print(f'{i.filename}\t{i.file_size}\tmethod={i.compress_type}\t{i.comment.decode("utf-8")}')
-                    result = f'list entries={len(z.infolist())}'
+                    for name, (target, src) in aliases.items():
+                        print(f'{name}\t{z.getinfo(target).file_size}\tmethod=alias\t{src}\t-> {target}')
+                    result = f'list entries={len(items) + len(aliases)} aliases={len(aliases)}'
                 else:
                     writable(args.outdir)
                     count = 0
-                    for i in z.infolist():
-                        if fnmatch.fnmatchcase(i.filename, args.match):
-                            target = safe_path(args.outdir, i.filename)
+                    jobs = [(i.filename, i) for i in items] + [(n, z.getinfo(t)) for n, (t, _) in aliases.items()]
+                    for name, i in jobs:
+                        if fnmatch.fnmatchcase(name, args.match):
+                            target = safe_path(args.outdir, name)
                             target.parent.mkdir(parents=True, exist_ok=True)
                             target.write_bytes(z.read(i)); count += 1
                     result = f'extract entries={count}'
