@@ -9,7 +9,7 @@
 #endif
 layout(constant_id = 10) const int kPlanarReflection = 0;
 // Prototype cuts: set a feature to 0 to restore it in the reflected pass.
-layout(constant_id = 11) const int kReflectCutPom = 1;
+layout(constant_id = 11) const int kReflectCutPom = 1;   // used by the cliff parallax (terrain_cliff_material.glsl)
 layout(constant_id = 12) const int kReflectCutDetail = 1;
 layout(constant_id = 13) const int kReflectCutPools = 1;
 layout(constant_id = 14) const int kReflectCutMovers = 1;
@@ -143,63 +143,6 @@ vec4 mv_sampleAntiTileArr(int layer, vec2 uv, float scale, vec2 dx, vec2 dy, flo
     return mix(s0, antiTile, smoothstep(0.4, 0.6, fw));
 }
 
-// Terrain parallax-occlusion march with the REAL per-fragment tangent-space view vector (GL terrain_lod_chunk.frag
-// chunkParallaxView): more layers at grazing view, an epsilon guard on the denominator of the final blend (AMD yields inf/nan
-// silently), a hard 16-step cap. Displacement = matNormalArray alpha channel (VK's copy-once RGBA8 import), read with
-// textureLod at the height UV footprint so it is valid in any control flow. No self-shadow term.
-const float MATV_POM_SCALE      = 0.002;    // subtle terrain relief; 1/10 of the old scale
-const float MATV_POM_MIN_LAYERS = 8.0;
-const float MATV_POM_MAX_LAYERS = 16.0;
-float mv_pomDisplacement(vec2 uv, vec4 w, float lod) {
-    float d = 0.0;
-    if (w.x > 0.01) d += w.x * textureLod(u_matNormalArray, vec3(uv, float(MAT_LAYER_ROCK)),     lod).a;
-    if (w.y > 0.01) d += w.y * textureLod(u_matNormalArray, vec3(uv, float(MAT_LAYER_GRASS)),    lod).a;
-    if (w.w > 0.01) d += w.w * textureLod(u_matNormalArray, vec3(uv, float(MAT_LAYER_CONCRETE)), lod).a;
-    return 1.0 - d;
-}
-// Returns an OFFSET, avoiding cancellation when subtracting large world UVs.
-vec2 mv_parallax(vec2 uv, float scale, vec4 w, vec3 viewDirTS, vec2 dx, vec2 dy) {
-    if (kPlanarReflection != 0 && kReflectCutPom != 0) return vec2(0.0);
-    float numLayers = ceil(mix(MATV_POM_MAX_LAYERS, MATV_POM_MIN_LAYERS, clamp(viewDirTS.y, 0.0, 1.0)));
-    float layerDepth = 1.0 / numLayers;
-    float curLayer = 0.0;
-    // The caller supplies east,UP,north. Bound the complete ray before
-    // sampling heights, so a grazing camera cannot march over distant features.
-    vec2 P = viewDirTS.xz / max(viewDirTS.y, 0.35) * scale;
-    float texel = 1.0 / float(textureSize(u_matNormalArray, 0).x);
-    // Height UVs use the weighted tiling, whereas dx/dy describe the rock
-    // receiver UVs. Filter subpixel heights instead of marching mip zero.
-    float heightFootprint = max(length(dx), length(dy)) * dot(MATV_TILING, w) / (MATV_TILING.x / 3.0);
-    float heightLod = log2(max(heightFootprint / texel, 1.0));
-    float footprint = max(texel, min(length(dx), length(dy)));
-    P *= min(1.0, 0.25 * footprint / max(length(P), 1e-12));
-    // Anisotropic footprints: also cap the projected offset at 1/4 pixel.
-    float det = dx.x * dy.y - dx.y * dy.x;
-    if (abs(det) > 1e-12) {
-        vec2 pixels = vec2(dy.y * P.x - dy.x * P.y, dx.x * P.y - dx.y * P.x) / det;
-        P *= min(1.0, 0.25 / max(length(pixels), 1e-12));
-    } else {
-        P = vec2(0.0);
-    }
-    vec2 dUV = P / numLayers;
-    vec2 curOffset = vec2(0.0);
-    float curD = mv_pomDisplacement(uv, w, heightLod);
-    float prevD = curD;
-    for (int i = 0; i < 16; ++i) {
-        if (curLayer >= curD) break;
-        prevD = curD;
-        curOffset -= dUV;
-        curD = mv_pomDisplacement(uv + curOffset, w, heightLod);
-        curLayer += layerDepth;
-    }
-    vec2 prevOffset = curOffset + dUV;
-    float after  = curD - curLayer;
-    float before = prevD - curLayer + layerDepth;
-    float denominator = after - before;
-    float blend = abs(denominator) > 1.0e-6 ? clamp(after / denominator, 0.0, 1.0) : 0.0;
-    return mix(curOffset, prevOffset, blend);
-}
-
 // The stock burnin includes directional shade and cast shadows. Estimate its
 // low-frequency attenuation from a spatial neighbourhood, preserving hue.
 // Only steep natural terrain calls this; cement and flat ground stay exact.
@@ -221,8 +164,7 @@ float cliffReferenceLuma(vec2 worldXY) {
 // (rock /3 boost, grass, dirt, ★concrete, snow) + ★per-layer fwidth sub-pixel fades
 // (fwRock..fwSnow, GL :353-357) + anti-tile resampling blended over fw 0.4..0.6.
 // Concrete layer (MAT_LAYER_CONCRETE, matTiling.w) was
-// previously omitted — now included to match GL. POM is the real-view march
-// (see mv_parallax below). DEFERRED vs GL: LOD-tier fade, painted-concrete normal, cliff
+// previously omitted — now included to match GL. POM was removed (1/4 px offset). DEFERRED vs GL: LOD-tier fade, painted-concrete normal, cliff
 // albedo re-projection (VK-PARITY-GAPS row 14).
 #include "include/terrain_detail_normal.glsl"
 
@@ -238,7 +180,8 @@ vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod) {
     // Keep the lamp consumer small: one XY-only tap with explicit isotropic
     // LOD, no sun/POM/anti-tile call graph inside the light loop.
     const vec4 tiling = vec4(MATV_TILING.x / 3.0, MATV_TILING.yzw);
-    vec4 fade = clamp(vec4(2.0) - 2.828427 * footprint * tiling, 0.0, 1.0);
+    vec4 fade = vec4(mv_detailFade(mv_detailTexelGM * tiling.x), mv_detailFade(mv_detailTexelGM * tiling.y),
+                     mv_detailFade(mv_detailTexelGM * tiling.z), mv_detailFade(mv_detailTexelGM * tiling.w));
     vec4 strength = w * MATV_NORMAL_BOOST * vec4(1.0 / 3.0, 1, 1, 1) * fade;
     // A lamp needs micro-relief, not a second full material evaluation. Use
     // the strongest visible layer; sun/shore/debug retain the weighted blend.
@@ -247,7 +190,7 @@ vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod) {
     if (strength.w > strength[layer]) layer = 3;
     float scale = tiling[layer];
     float amount = strength[layer];
-    float snow = m.z * 0.9 * clamp(2.0 - 2.828427 * footprint * MATV_TILING_SNOW, 0.0, 1.0);
+    float snow = m.z * 0.9 * mv_detailFade(mv_detailTexelGM * MATV_TILING_SNOW);
     if (snow > amount) { layer = MAT_LAYER_SNOW; scale = MATV_TILING_SNOW; amount = snow; }
     if (amount <= 0.0) return macroN;
     vec2 detailUV = wp.xy * (uT.detailTiling / MATV_WU_PER_TILE) * scale;
@@ -483,6 +426,7 @@ void main() {
     // Uniform flow, close to use: avoid keeping the footprint live through cement/tint work.
     vec2 detailUv = v_worldPos.xy * (uT.detailTiling / MATV_WU_PER_TILE);
     vec2 detailUvDx = dFdx(detailUv), detailUvDy = dFdy(detailUv);
+    mv_detailTexelGM = sqrt(abs(detailUvDx.x * detailUvDy.y - detailUvDx.y * detailUvDy.x)) * float(textureSize(u_matNormalArray, 0).x);
     // Continuous world derivatives, before any divergent material branch or POM.
     vec3 cliffDx = dFdx(v_worldPos) / MATV_CLIFF_TS;
     vec3 cliffDy = dFdy(v_worldPos) / MATV_CLIFF_TS;
@@ -566,13 +510,6 @@ void main() {
         // Material weights false colour: rock grey, grass green, dirt red, concrete blue, snow white.
         else if (kCsmDebugMode == 11) { fragColor = vec4(materialW.x * vec3(0.35) + materialW.y * vec3(0.1, 0.9, 0.1) + materialW.z * vec3(0.9, 0.2, 0.1) +
                                                          materialW.w * vec3(0.1, 0.3, 1.0) + vec3(materialSnow), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
-        else if (kCsmDebugMode >= 30 && kCsmDebugMode <= 39) {
-            float threshold = exp2(2.0 * float(kCsmDebugMode - 30));
-            fragColor = vec4(step(threshold, mv_pomOffsetMeasure.x),
-                             step(0.25 * threshold, mv_pomOffsetMeasure.y),
-                             float(mv_pomOffsetMeasure.x > 0.0), 1.0);
-            GBuffer1 = vec4(0.5,0.5,1.0,1.0); return;
-        }
 
         float normalSize = float(textureSize(u_matNormalArray, 0).x);
         float lampLod = resolveLampNormal ? 0.5 * log2(max(max(dot(detailUvDx, detailUvDx), dot(detailUvDy, detailUvDy))
