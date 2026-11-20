@@ -8,7 +8,7 @@ campaigns play are not acceptance evidence for the current Vulkan build.
 The lane imported all 23 locally supplied source packages and repeated each import
 unchanged. Import validation does not certify gameplay. Mission observations below
 use engine commit `3eb71ee7f09759e6bb028b8b4ed76e211df9c7a8`; the external proof is
-`E:/mc2-archive-2026-10/proofs/mod-campaign-import-1/RESULT.html`.
+`<archive>/proofs/mod-campaign-import-1/RESULT.html` (maintainer archive).
 
 | Campaign / edition | Download name or archive | Required download before importing | Current lane status |
 |---|---|---|---|

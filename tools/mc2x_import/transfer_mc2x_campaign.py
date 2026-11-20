@@ -3,7 +3,7 @@
 transfer_mc2x_campaign.py -- turn a full MC2X campaign install into a drop-in
 campaign mod that runs on top of the mc2x-compat compatibility layer.
 
-An MC2X install (e.g. A:/MC2X-DEE) keeps its actual missions inside FST archives
+An MC2X install (e.g. <mc2x-source>) keeps its actual missions inside FST archives
 at the install root (mission.fst, art.fst, tgl.fst, ...) plus a small loose data/
 tree of campaign-specific overrides (warrior brains, purchase files, the ops/
 campaign script, pilots, campaign music). Stock + MC2X shared content already
@@ -23,7 +23,7 @@ selects this campaign + the mc2x-compat layer at launch (MC2_ACTIVE_MOD +
 MC2_MOD_DEPS) — no mod.json needed.
 
 Usage:
-  py -3 transfer_mc2x_campaign.py --source A:/MC2X-DEE \
+  py -3 transfer_mc2x_campaign.py --source <mc2x-source> \
       --refs <deploy>/mods/mc2x-compat/data <deploy>/data \
       --out  <deploy>/mods/MC2X-DEE
 """

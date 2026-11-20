@@ -1,7 +1,7 @@
 """
 tools/mc2x_import/fst.py -- FST/pak read helpers, ported verbatim from the proven
-legacy scripts A:/tmp/cveg_min_files.py (FST/pak helpers, appearance parsing) and
-A:/tmp/fst_extract.py (lzw_decomp). Two edits only vs the originals:
+legacy scripts <scratch>/cveg_min_files.py (FST/pak helpers, appearance parsing) and
+<scratch>/fst_extract.py (lzw_decomp). Two edits only vs the originals:
   (a) lzw_decomp is inlined here (legacy imported it from fst_extract via sys.path);
   (b) module-level hardcoded install-path constants are dropped (paths now passed in).
 Everything else is byte-identical proven code.
@@ -141,7 +141,7 @@ def lzw_decomp(src: bytes, dest_max: int) -> bytes:
     return bytes(dest)
 
 
-# -- helpers (from A:/tmp/cveg_min_files.py) ----------------------------------
+# -- helpers (from <scratch>/cveg_min_files.py) ----------------------------------
 
 def read_pak_packet(pak_data, idx):
     magic, count = struct.unpack_from('<II', pak_data, 0)
