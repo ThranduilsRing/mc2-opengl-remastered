@@ -1121,7 +1121,10 @@ void MainMenu::render()
 	if ( (!bSave && !bLoad && !bLoadSingle && !bLoadCampaign) || (!endAnim.isDone() && endResult != RESTART ) )	
 		LogisticsScreen::render( xDelta, yDelta );
 	else if ( bLoadSingle )
-		singleLoadDlg.render();
+	{
+		if ( !bRulesDlg )	// the rules dialog replaces the map list while it is up (the defs pages would draw over it)
+			singleLoadDlg.render();
+	}
 	else
 		LogisticsSaveDialog::instance()->render();
 	if ( !xDelta && !yDelta && !bSave && !bLoad && !bLoadSingle && !bLoadCampaign && !bLegal )
