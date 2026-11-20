@@ -4094,7 +4094,9 @@
    "keys": [
     "networked",
     "calledShots",
-    "pilotSkillWeight"
+    "pilotSkillWeight",
+    "salvage",
+    "cbillMultiplier"
    ],
    "count": 1
   },
@@ -13861,6 +13863,7 @@
   "ESMOKE",
   "EXIT",
   "FIRST60",
+  "GAME_RULES",
   "GLP",
   "GPUPROPS",
   "GRAVEYARD",
