@@ -151,6 +151,7 @@ class LogisticsScreen : public aObject
 	// Used to switch Save/Load dialog title and button label dynamically.
 	bool setDefsElementText(const std::string& key, const std::string& text);
 	bool setDefsElementTextColor(const std::string& key, unsigned int argb);
+	bool setDefsElementDisabled(const std::string& key, bool disabled);
 
 	// Runtime show/hide of a defs element by key (mirrors legacy statics[].
 	// showGUIWindow onto the equivalent defs element).

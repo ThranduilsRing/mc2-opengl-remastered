@@ -129,6 +129,17 @@ void MechBayScreen::update()
 		}
 	}
 
+	// TEST-ONLY proof hook (lance-weight-warn-2): MC2_PROOF_DW="poor" zeroes C-Bills, "buy" clicks BUY +5 T once.
+	if ( const char* proof = std::getenv( "MC2_PROOF_DW" ); proof && *proof && status == RUNNING )
+	{
+		static int s_proofFrame = 0;
+		++s_proofFrame;
+		if ( s_proofFrame == 40 && std::strstr( proof, "poor" ) )
+			LogisticsData::instance->addCBills( -LogisticsData::instance->getCBills() );
+		if ( s_proofFrame == 45 && std::strstr( proof, "buy" ) )
+			handleMessage( aMSG_LEFTMOUSEDOWN, MB_MSG_BUY_WEIGHT );
+	}
+
 	mechListBox.disableItemsThatCanNotGoInFG();
 
 	if ( !pIcons[0].getMech() )
@@ -166,9 +177,18 @@ void MechBayScreen::update()
 		overLimit ? "OVER DROP LIMIT: REMOVE 'MECHS TO CONTINUE" : "" );
 	getButton( MB_MSG_NEXT )->disable( overLimit );
 
-	// Buy +5 t drop weight (price grows per purchase; label carries it).
-	mc2::fmt::to_buf( str, "BUY +5 T DROP WEIGHT  {:d}", mc2::fmt::as_i32( LogisticsData::instance->getDropWeightPrice() ) );
-	setDefsElementText( "game.mcl_mb_layout.button.buy_drop_weight_button", str );
+	// Buy +5 t drop weight: boxes either side of the gauge (left BUY, right price + bought tons). Greyed when
+	// unaffordable, hidden in multiplayer.
+	const long price = LogisticsData::instance->getDropWeightPrice();
+	const int bought = LogisticsData::instance->getDropWeightPurchases() * 5;
+	if ( bought > 0 )
+		mc2::fmt::to_buf( str, "{:d}\nC-BILLS\n+{:d} T", mc2::fmt::as_i32( price ), mc2::fmt::as_i32( bought ) );
+	else
+		mc2::fmt::to_buf( str, "{:d}\nC-BILLS", mc2::fmt::as_i32( price ) );
+	setDefsElementText( "game.mcl_mb_layout.button.drop_weight_price_box", str );
+	setDefsElementDisabled( "game.mcl_mb_layout.button.buy_drop_weight_button", LogisticsData::instance->getCBills() < price );
+	setDefsElementVisible( "game.mcl_mb_layout.button.buy_drop_weight_button", !MPlayer );
+	setDefsElementVisible( "game.mcl_mb_layout.button.drop_weight_price_box", !MPlayer );
 
 
 	// update drag and drop

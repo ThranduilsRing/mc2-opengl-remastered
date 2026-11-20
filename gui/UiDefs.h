@@ -61,6 +61,9 @@ public:
     // Runtime text colour override (ARGB) of a GuiText/GuiButton element.
     bool setElementTextColor(const std::string& key, unsigned int argb);
 
+    // Runtime grey-out of a defs-only button (one with no legacy aButton to disable).
+    bool setElementDisabled(const std::string& key, bool disabled);
+
     // Runtime show/hide of any element by key (e.g. the Mech Lab weapon-info
     // icons that swap with the selected component type). Returns false if the
     // key is not found.
