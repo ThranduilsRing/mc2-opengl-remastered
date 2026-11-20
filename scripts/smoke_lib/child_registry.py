@@ -24,7 +24,7 @@ import time
 from pathlib import Path
 from typing import Callable, List, Optional
 
-_DEFAULT_DIR = Path("A:/Games/mc2-opengl/.smoke_children")
+_DEFAULT_DIR = Path(__file__).resolve().parents[2] / ".smoke_children"  # install/repo root; MC2_CHILD_REGISTRY_DIR overrides
 if sys.platform == "linux":
     _DEFAULT_DIR = Path.home() / ".cache/mc2/smoke_children"
 REGISTRY_DIR = Path(os.environ.get("MC2_CHILD_REGISTRY_DIR") or _DEFAULT_DIR)
