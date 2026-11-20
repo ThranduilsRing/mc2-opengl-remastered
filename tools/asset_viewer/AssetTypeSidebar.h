@@ -1,7 +1,7 @@
 #pragma once
 // Left sidebar: the modder-facing asset-type vocabulary.
 // Entries not yet implemented are listed greyed out under "Deferred".
-enum class AssetType { Textures, Materials, StaticProps, ModWorkbench, Archives, Mechs, Vehicles, Trees };
+enum class AssetType { Textures, Materials, StaticProps, ModWorkbench, Archives, Mechs, Vehicles, Trees, TerrainMaterials };
 class AssetTypeSidebar {
 public:
     void draw();

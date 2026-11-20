@@ -150,6 +150,7 @@ set(ASSET_VIEWER_SOURCES
     # Mechs / Vehicles / Trees panels
     ShapeCatalog.cpp
     ShapePanel.cpp
+    TerrainMaterialPanel.cpp
     # remaining sources added in later tasks
     TextureExtensions.cpp
     TextureMetadata.cpp

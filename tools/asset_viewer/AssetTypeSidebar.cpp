@@ -11,10 +11,11 @@ void AssetTypeSidebar::draw()
     if (ImGui::Selectable("Mechs",        active_ == AssetType::Mechs))        active_ = AssetType::Mechs;
     if (ImGui::Selectable("Vehicles",     active_ == AssetType::Vehicles))     active_ = AssetType::Vehicles;
     if (ImGui::Selectable("Trees",        active_ == AssetType::Trees))        active_ = AssetType::Trees;
+    if (ImGui::Selectable("Terrain Materials", active_ == AssetType::TerrainMaterials)) active_ = AssetType::TerrainMaterials;
     ImGui::Spacing();
     ImGui::TextDisabled("Deferred");
     static const char* kDeferred[] = {
-        "VFX", "Terrain Materials", "Mod Package"
+        "VFX", "Mod Package"
     };
     ImGui::BeginDisabled(true);
     for (const char* name : kDeferred)

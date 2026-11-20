@@ -64,6 +64,8 @@ void AssetViewerApp::drawUi()
         shapePanel_.drawBrowser(ShapeCategory::Vehicles);
     } else if (sidebar_.active() == AssetType::Trees) {
         shapePanel_.drawBrowser(ShapeCategory::Trees);
+    } else if (sidebar_.active() == AssetType::TerrainMaterials) {
+        terrainPanel_.drawBrowser();
     } else if (sidebar_.active() == AssetType::StaticProps) {
         modelBrowser_.draw();
         if (modelBrowser_.hasSelection()) {
@@ -117,6 +119,9 @@ void AssetViewerApp::drawUi()
         break;
       case AssetType::Trees:
         shapePanel_.drawDetails(ShapeCategory::Trees, meshSurface_);
+        break;
+      case AssetType::TerrainMaterials:
+        terrainPanel_.drawDetails();
         break;
     }
     ImGui::EndChild();
@@ -1015,6 +1020,9 @@ void AssetViewerApp::scriptedView(const char* kind, const char* arg) {
     } else if (k == "trees") {
         sidebar_.setActive(AssetType::Trees);
         if (arg) shapePanel_.select(ShapeCategory::Trees, arg);
+    } else if (k == "terrain") {
+        sidebar_.setActive(AssetType::TerrainMaterials);
+        if (arg) terrainPanel_.select(arg);
     } else if (k == "archives") {
         sidebar_.setActive(AssetType::Archives);
         if (arg) onFileDropped(arg);
