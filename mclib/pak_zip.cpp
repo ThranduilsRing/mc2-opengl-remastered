@@ -212,7 +212,8 @@ void PakZip::parse() {
             auto it = entries_.find(target);
             require(!name.empty() && name == key(name) && name != "mc2pak.json" && name != "mc2pak.aliases" &&
                     it != entries_.end() && target != "mc2pak.json" &&
-                    target != "mc2pak.aliases" && sourceNames.count(src) == 1 && !entries_.contains(name));
+                    target != "mc2pak.aliases" && sourceNames.count(src) == 1 && !names.contains(name) &&
+                    name.find('\0') == std::string::npos && !entries_.contains(name));  // names: every central name, incl. unsupported methods
             const auto& [targetKey, t] = *it;  // std::map insertion keeps this reference valid
             require(t.aliasOf.empty());
             const auto [row, added] = entries_.try_emplace(name);

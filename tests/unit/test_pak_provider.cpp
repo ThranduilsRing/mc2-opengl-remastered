@@ -301,3 +301,40 @@ TEST_CASE("pak/pack directory dedupes by content; extract refuses names that esc
     for (const char* bad : {"../x", "a/../../x", "/abs", "c:/x", "a\\b", "","./x"}) CHECK_FALSE(archiveEntrySafe(bad));
     CHECK(archiveEntrySafe("data/tgl/x.fit"));
 }
+
+// ---- crafted alias tables: every malformed table makes the whole pak invalid (reject), a good one loads ----
+namespace {
+Bytes storeZip(const std::vector<std::pair<std::string, std::string>>& files) {
+    Bytes out, cd;
+    for (const auto& [name, data] : files) {
+        const auto crc = crc32(0, reinterpret_cast<const Bytef*>(data.data()), static_cast<uInt>(data.size())); const auto at = out.size();
+        le(out, 0x04034b50, 4); le(out, 20, 2); le(out, 0, 2); le(out, 0, 2); le(out, 0, 2); le(out, 0x21, 2); le(out, crc, 4);
+        le(out, data.size(), 4); le(out, data.size(), 4); le(out, name.size(), 2); le(out, 0, 2);
+        out.insert(out.end(), name.begin(), name.end()); out.insert(out.end(), data.begin(), data.end());
+        le(cd, 0x02014b50, 4); le(cd, 20, 2); le(cd, 20, 2); le(cd, 0, 2); le(cd, 0, 2); le(cd, 0, 2); le(cd, 0x21, 2); le(cd, crc, 4);
+        le(cd, data.size(), 4); le(cd, data.size(), 4); le(cd, name.size(), 2); le(cd, 0, 2); le(cd, name == "mc2pak.json" || name == "mc2pak.aliases" ? 0 : 5, 2);
+        le(cd, 0, 2); le(cd, 0, 2); le(cd, 0, 4); le(cd, at, 4); cd.insert(cd.end(), name.begin(), name.end());
+        if (name != "mc2pak.json" && name != "mc2pak.aliases") cd.insert(cd.end(), {'l', 'o', 'o', 's', 'e'});
+    }
+    const auto start = out.size(); out.insert(out.end(), cd.begin(), cd.end());
+    le(out, 0x06054b50, 4); le(out, 0, 4); le(out, files.size(), 2); le(out, files.size(), 2); le(out, cd.size(), 4); le(out, start, 4); le(out, 0, 2);
+    return out;
+}
+bool aliasPakValid(const fs::path& p, const std::string& table) {
+    save(p, storeZip({{"mc2pak.json", R"({"format":1,"sources":[{"name":"loose","size":0,"toc_hash":"0123456789abcdef","entries":2}]})"},
+                      {"a.txt", "aaa"}, {"b.txt", "bbb"}, {"mc2pak.aliases", table}}));
+    mc2::vfs::PakZip pak(p.string()); return pak.valid();
+}
+}
+TEST_CASE("pak/alias table rejects malformed tables") {
+    PakScratch s; const auto p = s.root / "alias.mc2pak";
+    CHECK(aliasPakValid(p, "c.txt\ta.txt\tloose\n"));                      // control: a good table loads
+    CHECK_FALSE(aliasPakValid(p, "c.txt\tmissing.txt\tloose\n"));           // missing target
+    CHECK_FALSE(aliasPakValid(p, "c.txt\ta.txt\tloose\nd.txt\tc.txt\tloose\n"));  // alias of an alias
+    CHECK_FALSE(aliasPakValid(p, "a.txt\ta.txt\tloose\n"));                 // self / collides with a real entry
+    CHECK_FALSE(aliasPakValid(p, "b.txt\ta.txt\tloose\n"));                 // shadows an existing name
+    CHECK_FALSE(aliasPakValid(p, "c.txt\ta.txt\tloose\r\n"));               // CRLF: source "loose\r" is unknown
+    CHECK_FALSE(aliasPakValid(p, std::string("c\0x.txt\ta.txt\tloose\n", 20))); // NUL in the alias name
+    CHECK_FALSE(aliasPakValid(p, "c.txt\ta.txt\tloose\nc.txt\ta.txt\tloose\n")); // duplicate alias
+    CHECK_FALSE(aliasPakValid(p, "c.txt\ta.txt\n"));                        // missing field
+}

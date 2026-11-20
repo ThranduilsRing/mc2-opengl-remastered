@@ -151,9 +151,16 @@ def read_aliases(z):
     except KeyError:
         return {}
     table = {}
-    for line in text.splitlines():
-        name, target, src = line.split('\t')
-        if name in table or name in RESERVED:
+    for line in text.split('\n')[:-1] if text.endswith('\n') else text.split('\n'):  # the engine splits on \n only: CRLF, empty lines and NUL are rejected here too
+        parts = line.split('\t')
+        if len(parts) != 3 or not all(parts) or '\r' in line or '\0' in line:
+            raise ValueError(f'invalid alias line: {line!r}')
+        name, target, src = parts
+        try:
+            safe_path(Path('.'), name)
+        except ValueError:
+            raise ValueError(f'invalid alias: {name}') from None
+        if name in table or name in RESERVED or name != key(name) or name.startswith('/') or '..' in name.split('/'):
             raise ValueError(f'invalid alias: {name}')
         table[name] = (target, src)
     return table
