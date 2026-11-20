@@ -126,7 +126,8 @@ def payload_identity(install):
     for rel, sha in declared.items():
         if asset_parity._sha(install / rel) != sha:
             raise ValueError(f"{install}: intentional asset hash mismatch: {rel}")
-        print(f"[ab] INTENTIONAL ASSET ACCEPTED {rel} sha256={sha}", flush=True)
+    if declared:
+        print(f"[ab] INTENTIONAL ASSET ACCEPTED {len(declared)} files (hash-verified)", flush=True)
     files.update(declared)
     return dict(commit=commit, asset_commit=asset_commit, payload=payload, manifest=files, intentional_asset_changes=declared)
 
@@ -524,12 +525,19 @@ def run_capture(install, bookmarks, out, env_extra, hud=False, allow_asset_drift
         sys.exit(f"[ab] capture failed rc={rc}: {out}")
 
 
-def find_png(d: Path, bm: str):
-    p = d / bm / f"{bm}.png"
-    if p.exists():
-        return p
-    c = [x for x in sorted((d / bm).glob("*.png")) if not x.stem.endswith("_dup")]
-    return c[0] if c else None
+def find_pngs(d: Path, bm: str) -> dict:
+    """{pose stem: png} for every non-_dup png of a bookmark folder (a single-pose capture is <bm>/<bm>.png)."""
+    return {x.stem: x for x in sorted((d / bm).glob("*.png")) if not x.stem.endswith("_dup")}
+
+
+def pose_label(bm: str, pose: str) -> str:
+    return bm if pose == bm else f"{bm}/{pose}"
+
+
+def pose_pairs(a_dir: Path, b_dir: Path, bm: str) -> list:
+    """[(pose, png_a or None, png_b or None)] over the union of poses on either side, sorted by pose."""
+    pa, pb = find_pngs(a_dir, bm), find_pngs(b_dir, bm)
+    return [(p, pa.get(p), pb.get(p)) for p in sorted(set(pa) | set(pb))]
 
 
 def load(p):
@@ -612,8 +620,15 @@ def evidence_problems(a_dir: Path, b_dir: Path, bookmarks) -> list:
     problem: a comparison of nothing must never exit 0."""
     if not bookmarks:
         return ["no bookmarks were compared"]
-    return [f"{bm}: side {name} has no usable png" for bm in bookmarks
-            for name, d in (("A", a_dir), ("B", b_dir)) if not usable_png(find_png(d, bm))]
+    out = []
+    for bm in bookmarks:
+        pairs = pose_pairs(a_dir, b_dir, bm)
+        if not pairs:
+            out += [f"{bm}: side {name} has no usable png" for name in ("A", "B")]
+        for pose, pa, pb in pairs:
+            out += [f"{pose_label(bm, pose)}: side {name} has no usable png"
+                    for name, p in (("A", pa), ("B", pb)) if not usable_png(p)]
+    return out
 
 
 def discover_bookmarks(a_dir: Path, b_dir: Path) -> list:
@@ -648,10 +663,11 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None, cross_
     rows = []
     gpu_a, gpu_b = capture_gpus(gl_dir), capture_gpus(vk_dir)
     ph_cfg = pixel_hist.load_thresholds()
-    for bm in bookmarks:
-        pg, pv = find_png(gl_dir, bm), find_png(vk_dir, bm)
+    jobs = [(bm, pose, pg, pv) for bm in bookmarks for pose, pg, pv in pose_pairs(gl_dir, vk_dir, bm)]
+    for bm, pose, pg, pv in jobs:
+        label = pose_label(bm, pose)
         if not usable_png(pg) or not usable_png(pv):
-            print(f"[ab] {bm}: missing or empty png (a={pg} b={pv})")
+            print(f"[ab] {label}: missing or empty png (a={pg} b={pv})")
             continue
         a, b = load(pg), load(pv)
         size_mismatch = None
@@ -664,15 +680,15 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None, cross_
         fm = flip_map(a, b)
         # pixel-count verdict next to MAD (reported only, never a gate input yet)
         ph_res = pixel_hist.evaluate(np.asarray(a), np.asarray(b), pixel_hist.resolve_thresholds(ph_cfg, bm, gpu_b))
-        row = {"bookmark": bm, "size": list(a.size), "pixel_hist": ph_res,
+        row = {"bookmark": bm, "pose": pose, "size": list(a.size), "pixel_hist": ph_res,
                "flip_mean": float(fm.mean()) if fm is not None else None,
                "flip_p99": float(np.percentile(fm, 99)) if fm is not None else None,
                "mad": float(D.mean()),
                "pct_diff_gt24": float((D.max(axis=2) > THRESH).mean() * 100),
                "size_mismatch": size_mismatch,
                "crops": []}
-        bd = out / bm
-        bd.mkdir(exist_ok=True)
+        bd = out / bm if pose == bm else out / bm / pose
+        bd.mkdir(parents=True, exist_ok=True)
         m = side(a, b, 1800)
         if fm is not None:  # FLIP error map under the A|B pair, scaled to the montage width
             fi = flip_image(fm)
@@ -704,13 +720,14 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None, cross_
     for r in rows:
         fmean = "n/a" if r["flip_mean"] is None else f"{r['flip_mean']:.4f}"
         fp99 = "n/a" if r["flip_p99"] is None else f"{r['flip_p99']:.4f}"
-        print(f"{r['bookmark']} | {fmean} | {fp99} | {r['mad']:.4f} | {r['pct_diff_gt24']:.2f}"
+        print(f"{pose_label(r['bookmark'], r['pose'])} | {fmean} | {fp99} | {r['mad']:.4f} | {r['pct_diff_gt24']:.2f}"
               + "".join(f" | {c['mad']:.2f}/" + ("n/a" if c["flip_mean"] is None else f"{c['flip_mean']:.4f}") for c in r["crops"]))
     for r in rows:  # separate lines (no '|'): the gate parses the table above by columns
-        print(f"[pixel_hist] {r['bookmark']}: {pixel_hist.summary_line(r['pixel_hist'])}")
+        print(f"[pixel_hist] {pose_label(r['bookmark'], r['pose'])}: {pixel_hist.summary_line(r['pixel_hist'])}")
     if gpu_a and gpu_b and gpu_a != gpu_b:
         print(f"[ab] WARNING: the two sides ran on different GPUs ({gpu_a} vs {gpu_b}); the diff is not a clean A/B")
     problems = evidence_problems(gl_dir, vk_dir, bookmarks)
+    print(f"[ab] compared {len(rows)} poses", flush=True)
     if problems:
         print("[ab] FAIL: " + "; ".join(problems))
     (out / "summary.json").write_text(json.dumps(
@@ -718,7 +735,7 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None, cross_
          "data_delta_accepted": list(data_delta_accepted or []), "exe_a_base_mismatch": exe_a_base_mismatch,
          "exe_a_swap": exe_a_swap, "data_parity": data_parity, "eol_equivalences": list(identity_receipt or []),
          "cross_data": bool(data_parity and data_parity.get("cross_data")),
-         "rows": rows, "problems": problems,
+         "rows": rows, "poses_compared": len(rows), "problems": problems,
          "gpu": {"a": gpu_a, "b": gpu_b, "same": gpu_a == gpu_b}}, indent=2))
     print(f"[ab] wrote {out}")
     compare.problems = problems
