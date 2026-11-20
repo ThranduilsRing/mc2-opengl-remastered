@@ -274,16 +274,22 @@ void buildLocked()
 				}
 			}
 			size_t count = 0;
+			// Per-entry path normalization over every FST was ~65k filesystem::path + key() calls at mount.
+			std::set<std::string> registeredNames;
+			for (long a = 0; fastFiles && a < numFastFiles; ++a)
+				if (fastFiles[a]) registeredNames.insert(key(std::filesystem::path(fastFiles[a]->getFileName()).filename().string()));
+			std::map<std::string, std::string> mountSource; // FST mount name -> normalized file name
 			for (const auto& [k, pe] : pak->entries()) {
 				if (k == "mc2pak.json" || !eligible[pe.source]) continue;
 				auto& chain = ix.entries[k];
 				auto pos = chain.end();
-				bool registered = false;
-				for (long a = 0; fastFiles && a < numFastFiles; ++a)
-					if (fastFiles[a] && key(std::filesystem::path(fastFiles[a]->getFileName()).filename().string()) == pe.source) registered = true;
+				const bool registered = registeredNames.contains(pe.source);
 				for (auto it = chain.begin(); it != chain.end(); ++it) {
 					if (it->provider != Provider::Fst) continue;
-					if (!registered || key(std::filesystem::path(it->mountName.substr(4)).filename().string()) == pe.source) { pos = it; break; }
+					if (!registered) { pos = it; break; }
+					auto& srcName = mountSource[it->mountName];
+					if (srcName.empty()) srcName = key(std::filesystem::path(it->mountName.substr(4)).filename().string());
+					if (srcName == pe.source) { pos = it; break; }
 				}
 				// Absent sources are below every currently registered FST: absence cannot promote a representation.
 				if (!registered) pos = chain.end();
