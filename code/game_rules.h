@@ -37,7 +37,7 @@ struct GameRules {
     long calledShots          = kCalledFloors;  // Floors = the shipped behaviour (MC2_CALLED_SHOT_FIX default ON since 1120b); Classic = stock
     long pilotSkillWeight     = 100;            // percent of today's skill influence on to-hit
     long salvage              = kSalvageMC2;
-    long cbillMultiplier      = 100;            // percent of mission and salvage C-Bill income, 50..200
+    long cbillMultiplier      = 100;            // percent of the mission-objective C-Bill payout, 50..200 (salvage is a cost, not income; the additionalCBills stipend is unscaled)
     // Unlimited ammo is NOT a rule: it stays the player preference UnlimitedAmmo (Gates/preferences_values.h); the dialog shows that one.
     bool operator==(const GameRules&) const = default;
 };
