@@ -13,8 +13,6 @@ void ArchivePanel::open(const std::string& path) {
     status_ = src_ ? "opened " + std::to_string(src_->rows().size()) + " entries" : err;
     selected_.assign(src_ ? src_->rows().size() : 0, 0);
     current_ = previewRow_ = -1;
-    if (const char* s = std::getenv("MC2_TOOL_ARCHIVE_SELECT"); s && src_ && std::getenv("MC2_TOOL_CAPTURE"))   // screenshot runs only
-        current_ = std::min(std::atoi(s), static_cast<int>(src_->rows().size()) - 1);
     refilter();
 }
 
