@@ -43,7 +43,48 @@ DEV_ROOT = {'Mission Editor.exe', 'mc2_asset_viewer.exe', 'run-editor.bat',
             'run-mc2.bat', 'run-with-log.bat'}
 SKIP_DIRS = {'cache', 'cook-cache', '_aoktxtmp', 'terrain_gen_out', 'dev_shell_out',
              'debug_state', 'crashes', 'savegame', '_txm_cache_bak', 'txm_backup'}
-MACHINE = re.compile(r'(?:[AEG]:[/\\]|C:[/\\]Users[/\\])', re.I)
+MACHINE = re.compile(r'(?<![A-Za-z])[A-Z]:[/\\]', re.I)  # any drive letter (covers C:\Users); not URL schemes
+PLAY_REF = 'claude/play-1113'
+
+
+def verified_exe_commit(source, manifest_commit, repository=None, ref=None):
+    """The commit the source mc2.exe was really built at: the embedded fingerprint must be present,
+    clean, equal to the manifest src_commit, and an ancestor of the play branch. Returns the full commit."""
+    import exe_fingerprint
+    repository = repository or REPOSITORY
+    ref = ref or PLAY_REF
+    fp = exe_fingerprint.extract(Path(source) / 'mc2.exe')
+    if not fp.get('present'):
+        raise ValueError('exe fingerprint unreadable: ' + str(fp.get('reason')))
+    if fp.get('dirty'):
+        raise ValueError('exe was built from a dirty tree')
+    if not manifest_commit or exe_fingerprint.sha_agrees(fp['sha'], manifest_commit) is not True:
+        raise ValueError(f"exe fingerprint {fp['sha']} != manifest src_commit {manifest_commit}")
+    ancestor = subprocess.run(['git', '-C', str(repository), 'merge-base', '--is-ancestor', manifest_commit, ref],
+                              **console_child.child_kwargs(redirected=True)).returncode
+    if ancestor:
+        raise ValueError(f'exe commit {manifest_commit} is not an ancestor of {ref}')
+    return manifest_commit
+
+
+def refuse_self_parity(source, credits_source):
+    """Tier C/D parity compares the source with the canonical v0.4 tree; the same tree proves nothing."""
+    if Path(source).resolve() == Path(credits_source).resolve():
+        raise ValueError('source and parity reference (credits source) are the same tree; '
+                         'supply a distinct byte copy of the canonical install as the source')
+
+
+def bound_inventory(source, exe_commit, path=None):
+    """Load the generated inventory only if it is a PASS for exactly this source manifest and exe commit."""
+    path = Path(path or INVENTORY)
+    data = json.loads(path.read_text())
+    if data.get('status') != 'PASS':
+        raise ValueError('inventory status is not PASS')
+    if data.get('source_manifest_sha256') != sha256(Path(source) / '.deployed_manifest.csv'):
+        raise ValueError('inventory was generated for a different source manifest')
+    if data.get('executable_commit') != exe_commit:
+        raise ValueError('inventory executable_commit differs from the source exe commit')
+    return data, sha256(path)
 EXTERNAL = json.loads((PERMISSIONS.parents[2] / 'docs/testing/mech_glb_external_pack.json').read_text())
 PERSONAL_NAMES = {Path(r['glb']).stem.lower() + suffix for r in EXTERNAL['entries']
                   if r.get('source_type') == 'external'
@@ -150,8 +191,13 @@ def scan(tree):
         safe_path(tree, rel)
         if excluded(rel):
             failures.append(rel)
-        if path.suffix.lower() in {'.cfg', '.json', '.ini', '.md', '.py', '.txt', '.bat'} and MACHINE.search(path.read_text(errors='replace')):
-            failures.append('machine path: ' + rel)
+        if path.suffix.lower() in {'.cfg', '.json', '.ini', '.md', '.py', '.txt', '.bat'}:
+            raw = path.read_bytes()
+            texts = [raw.decode('utf-8', errors='replace')]
+            if raw[:2] in (b'\xff\xfe', b'\xfe\xff'):
+                texts.append(raw.decode('utf-16', errors='replace'))
+            if any(MACHINE.search(t) for t in texts):
+                failures.append('machine path: ' + rel)
     if failures:
         raise ValueError('\n'.join(failures))
 
@@ -159,7 +205,18 @@ def scan(tree):
 def assemble(source, target, permissions, requested, *, inventory=None, repository=REPOSITORY,
              credits_source=None):
     head = clean_head(repository)
-    inventory = inventory if inventory is not None else json.loads(INVENTORY.read_text())['files']
+    inventory_sha = None
+    if inventory is None:
+        with (source / '.deployed_manifest.csv').open(newline='', encoding='utf-8') as stream:
+            next(csv.reader(stream))
+            manifest_exe = {r['relpath']: r for r in csv.DictReader(stream)}.get('mc2.exe', {}).get('src_commit')
+        refuse_self_parity(source, credits_source or CREDITS_SOURCE)
+        exe_commit = verified_exe_commit(source, manifest_exe, repository)
+        data, inventory_sha = bound_inventory(source, exe_commit)
+        inventory = data['files']
+        inventory_refs = data.get('references')
+    else:
+        inventory_refs = None
     rules = json.loads(PERMISSIONS.with_name('tier_rules.json').read_text())
     def rule_exclusion(rel):
         if bt2018_extractor_only(rel):
@@ -213,8 +270,9 @@ def assemble(source, target, permissions, requested, *, inventory=None, reposito
         reason = ('hard-denied' if hard_denied(rel) else 'development/cache/personal' if excluded(rel)
                   else rule_exclusion(rel) or ('unbundled-mod' if rel.startswith('mods/') else 'outside-payload'))
         excluded_counts[reason] = excluded_counts.get(reason, 0) + 1
-    # Approvals are keyed by physical path (mods/<id>/<rel>). Sources: the record's own
-    # 'files' map (physical keys) and the generator-written inventory rows; never current bytes.
+    # Approvals are keyed by physical path (mods/<id>/<rel>). Sources: the record's own 'files' map
+    # (physical keys) and the inventory rows. The inventory is bound above (PASS, source manifest
+    # sha, verified exe commit); every approved digest is then compared with the bytes about to be copied.
     approvals = {}
     for mod, record in mods.items():
         for rel, digest in record.get('files', {}).items():
@@ -274,6 +332,7 @@ def assemble(source, target, permissions, requested, *, inventory=None, reposito
                 with dst.open('rb') as stream:
                     digest = hashlib.file_digest(stream, 'sha256').hexdigest()
         receipt.append({'relpath': rel, 'sha256': digest, 'bytes': dst.stat().st_size,
+                        'src_commit': (row or {}).get('src_commit', ''),
                         'source': 'stock-inventory' if inventory.get(rel, {}).get('sha256') == verified[rel]
                         else 'permitted-mod' if rel.startswith('mods/') or rel in approvals else 'deploy-manifest'})
     for mod, record in mods.items():
@@ -336,11 +395,14 @@ def assemble(source, target, permissions, requested, *, inventory=None, reposito
                     row['sha256'] = hashlib.file_digest(data, 'sha256').hexdigest()
                 row['bytes'] = path.stat().st_size
             writer.writerow({k: row[k] for k in ('relpath', 'sha256', 'bytes')} |
-                {'src_commit': head,
+                {'src_commit': row.get('src_commit', ''),
                  'timestamp': '', 'mtime_ns': path.stat().st_mtime_ns})
     if clean_head(repository) != head:
         raise ValueError('HEAD changed during packaging')
     return {'head': head, 'executable_commit': payload.get('mc2.exe', {}).get('src_commit'),
+            'inventory_sha256': inventory_sha, 'inventory_references': inventory_refs,
+            'references': {'credits_source': str(credits_source or CREDITS_SOURCE),
+                           'permissions': str(PERMISSIONS), 'source': str(source)},
             'files': receipt, 'excluded': excluded_counts, 'mod_overlaps': overlaps}
 
 

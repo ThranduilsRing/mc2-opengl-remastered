@@ -4,6 +4,7 @@ from pathlib import Path
 import subprocess
 import sys
 import hashlib
+import shutil
 import struct
 import zlib
 
@@ -11,6 +12,13 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import make_playtest_package as package
+
+
+@pytest.fixture(autouse=True)
+def _isolated_generated(tmp_path, monkeypatch):
+    # Tests never read a shared generated inventory (env or TEMP fallback).
+    monkeypatch.setattr(package, 'GENERATED', tmp_path / 'generated')
+    monkeypatch.setattr(package, 'INVENTORY', tmp_path / 'generated/inventory.json')
 
 
 @pytest.fixture
@@ -134,7 +142,7 @@ def test_receipt_requires_clean_head(tmp_path, repository, dirty):
     result = package.assemble(source, tmp_path / 'clean', {}, [], inventory=inventory, repository=root)
     assert result['head'] == git('rev-parse', 'HEAD')
     with (tmp_path / 'clean/.deployed_manifest.csv').open() as stream:
-        assert result['head'] in stream.read()
+        assert result['head'] not in stream.read()  # rows keep the source's own src_commit
     (root / ('new' if dirty == 'untracked' else 'anchor')).write_text('dirty')
     if dirty == 'staged':
         git('add', 'anchor')
@@ -279,9 +287,13 @@ def test_cont6_synthetic_inventory(tmp_path, repository, monkeypatch):
     for folder in (source, golden, config):
         folder.mkdir()
     rules = gen.tier_rules()
-    if not package.INVENTORY.is_file():
-        pytest.skip('needs a generated inventory (generate_inventory.py --inventory)')
-    baseline = json.loads(package.INVENTORY.read_text())
+    # Synthetic stand-ins for what a real run reads from the install: a real play commit (the generator
+    # reads intentional-asset-changes.json at it) and the stop-check tuple for tgl.fst.
+    baseline = dict(executable_commit=subprocess.check_output(
+        ['git', '-C', str(package.REPOSITORY), 'rev-parse', 'HEAD'], text=True,
+        **package.console_child.child_kwargs(redirected=True)).strip(),
+        tgl=dict(tier='B', members=4667, digest_matched=4212, extract_matched=455, bytes=34295854,
+                 crc32='0xaef6a9dd', sha256='18e0f57996b212aac3fa8ddd36c5d73aa7e6fd14099e04934ae704bd6f0b9d14'))
     (config / 'tier_rules.json').write_text(json.dumps(rules))
     (config / 'kit_cc0_sources.json').write_text(json.dumps(
         json.loads((package.PERMISSIONS.parent / 'kit_cc0_sources.json').read_text())[:23]))
@@ -309,8 +321,11 @@ def test_cont6_synthetic_inventory(tmp_path, repository, monkeypatch):
     (source / '.deployed_manifest.csv').write_text(
         'manifest_version,v1\nrelpath,sha256,src_commit\nmc2.exe,unused,' + baseline['executable_commit'] + '\n'
         + 'data/tgl/32/a_cp_island_tree_01_1.tga,' + pins['data/tgl/32/a_cp_island_tree_01_1.tga'] + ',\n')
+    canonical = tmp_path / 'canonical'
+    shutil.copytree(source, canonical)  # a distinct parity reference; the same tree is refused
     monkeypatch.setattr(package, 'PERMISSIONS', config / 'bundle_permissions.json')
-    monkeypatch.setattr(package, 'CREDITS_SOURCE', source)
+    monkeypatch.setattr(package, 'CREDITS_SOURCE', canonical)
+    monkeypatch.setattr(package, 'verified_exe_commit', lambda s, commit, *a, **k: commit)
     monkeypatch.setattr(package, 'GENERATED', config)
     monkeypatch.setattr(package, 'INVENTORY', config / 'inventory.json')
     monkeypatch.setattr(gen, 'verify_tgl', lambda *a: baseline['tgl'])
