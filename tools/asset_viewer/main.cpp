@@ -4,6 +4,7 @@
  ***************************************************************/
 #include "build_identity.h"
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <SDL.h>
 #include "tool_vk_gpu.h"

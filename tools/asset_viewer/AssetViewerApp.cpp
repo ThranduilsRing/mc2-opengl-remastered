@@ -64,7 +64,7 @@ void AssetViewerApp::drawUi()
     } else if (sidebar_.active() == AssetType::ModWorkbench) {
         ImGui::TextDisabled("Drop a GLB on the window.");
     } else if (sidebar_.active() == AssetType::Archives) {
-        ImGui::TextDisabled("Drop a .mc2pak, .zip or .fst on the window.");
+        archivePanel_.drawDetails();
     } else {
         browser_.draw();
         if (browser_.hasSelection()) {
