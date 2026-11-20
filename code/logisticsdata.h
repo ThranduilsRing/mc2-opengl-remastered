@@ -19,7 +19,7 @@ LogisticsData.h			: Interface for the LogisticsData component.  This thing holds
 #include <deque>
 #include <memory>
 #include "prewarm.h"
-#include "game_rules.h"
+namespace mc2::rules { struct GameRules; }
 
 #include"logisticsmech.h"
 #include"logisticscomponent.h"

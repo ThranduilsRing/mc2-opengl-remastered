@@ -7,6 +7,8 @@
 #include "logisticsmissioninfo.h"
 #undef private
 #include "game_rules.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"
 #include "inifile.h"
 #include "Gates/preferences_cfg.h"
 #include "Gates/preferences_values.h"
@@ -42,7 +44,12 @@ TEST_CASE("game rules: defaults equal today's behaviour") {
     CHECK_FALSE(g.dropWeightPurchase);
     CHECK(g.heat == kHeatMC2);
     CHECK(g.ammoExplosions == kAmmoExplMC2);
-    CHECK(g.calledShots == kCalledClassic);
+    // Shipped called-shot behaviour is floors ON: the rule default follows the MC2_CALLED_SHOT_FIX gate default (Gates/gate_rows_0.inc).
+    {
+        mc2::gate::ScopedOverride<"MC2_CALLED_SHOT_FIX"> defaults(nullptr);
+        CHECK(g.calledShots == (mc2::gate::get<"MC2_CALLED_SHOT_FIX">() ? kCalledFloors : kCalledClassic));
+    }
+    CHECK(g.calledShots == kCalledFloors);
     CHECK(g.pilotSkillWeight == 100);
     CHECK(g.salvage == kSalvageMC2);
     CHECK(g.cbillMultiplier == 100);
@@ -199,10 +206,17 @@ TEST_CASE("game rules: options.cfg keys round trip, garbage and out-of-range val
     CHECK(edited.heat == kHeatMC2);
     CHECK(edited.cbillMultiplier == 120);
     CHECK(edited.ammoExplosions == kAmmoExplMC2);
-    CHECK(edited.calledShots == kCalledClassic);
+    CHECK(edited.calledShots == kCalledFloors);
     CHECK(edited.pilotSkillWeight == 100);
     CHECK_FALSE(edited.dropWeightPurchase);
     CHECK(edited.salvage == kSalvageGenerous);   // keys are case-insensitive and the first occurrence wins
+
+    // A commented-out key is ignored and does not shadow the real one after it.
+    GameRules commented;
+    loadCfgText(commented, "// l GameRulesHeat = 2\r\n; l GameRulesCBillMultiplier = 60\r\n  # l GameRulesSalvage = 2\r\nl GameRulesHeat = 0\r\n");
+    CHECK(commented.heat == kHeatOff);
+    CHECK(commented.cbillMultiplier == 100);
+    CHECK(commented.salvage == kSalvageMC2);
 }
 
 TEST_CASE("game rules: static layout, labels and the publish decision") {
