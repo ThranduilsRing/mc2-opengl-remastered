@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 429
+gate_count: 430
 registry_entry_count: 124
-verified_count: 400
+verified_count: 401
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -212,6 +212,13 @@ flags:
     owner: harness
     doc: "Harness-owned box wrapper metadata; ignored by the engine."
     smoke_passthrough: true
+  - name: MC2_BRAIN_FREEZE_TRACE
+    kind: Bool
+    default: false
+    rule: Std
+    owner: code
+    doc: "Per-tick [BRAIN_FREEZE_TRACE] stderr line per warrior at the end of runBrain (stall classification, ISSUE-10); default off, high volume."
+    verified: true
   - name: MC2_BRAIN_MISSION_SEED
     kind: String
     default: ""

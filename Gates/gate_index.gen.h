@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 429;
+inline constexpr std::size_t kGateCount = 430;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -39,6 +39,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_BOOT_TO_SCREEN", Kind::String, Rule::Std, {}},
     {"MC2_BOOT_VIDEO", Kind::Bool, Rule::Lead0, {}},
     {"MC2_BOX_QUOTA_CPUS", Kind::String, Rule::Std, {}},
+    {"MC2_BRAIN_FREEZE_TRACE", Kind::Bool, Rule::Std, {}},
     {"MC2_BRAIN_MISSION_SEED", Kind::String, Rule::Std, {}},
     {"MC2_BRAIN_POLICY", Kind::Enum, Rule::Std, "|auto|legacy|techbrain"},
     {"MC2_BRAIN_RUNTIME_FORCE_MODE", Kind::Enum, Rule::Std, "|legacy|enhanced|hybrid"},
