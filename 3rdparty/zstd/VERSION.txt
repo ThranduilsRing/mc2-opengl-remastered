@@ -1,0 +1,6 @@
+Zstandard (facebook/zstd) tag v1.5.7 (tag object ac66b19e6bd6b83238bf008eecc1298105298532), commit f8745da6ff1ad1e7bab384bd1f9d742439278e99. BSD licence (LICENSE; zstd is dual BSD/GPLv2, we use BSD).
+Source: https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz sha256 eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3.
+zstd.c = upstream build/single_file_libs/combine.py -r lib -x legacy/zstd_legacy.h on zstd-in.c with ONLY the decompress/, dictBuilder/, zstdmt_compress, threading and pool includes removed and ZSTD_MULTITHREAD off (compressor only), then block/line comments and blank lines stripped (first licence comment kept) to stay about 1 MB. zstd.h = upstream lib/zstd.h unchanged.
+zstd_prefix.h = generated: llvm-nm -g --defined-only on zstd.c, every external symbol renamed mc2z_<name>; zstd_mc2.c includes it before zstd.c. Compressor only: never decode with this copy (the engine decodes with basisu/zstd 1.4.9).
+zstd_errors.h = upstream lib/zstd_errors.h unchanged.
+One edit to zstd.c: after the upstream "#undef ZSTD_isError" the line "#define ZSTD_isError mc2z_ZSTD_isError" keeps that function renamed too.
