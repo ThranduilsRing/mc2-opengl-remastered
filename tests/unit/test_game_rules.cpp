@@ -219,8 +219,6 @@ TEST_CASE("game rules: static layout, labels and the publish decision") {
 TEST_CASE("game rules: clear() resets and a campaign save names its campaign file, the rules read on that path") {
     LogisticsMissionInfo info;
     info.setRules(battleTechPreset());
-    info.clear();
-    CHECK(info.getRules() == GameRules{});
 
     const std::string campaign = "game_rules_campaign.fit";
     {
@@ -232,6 +230,14 @@ TEST_CASE("game rules: clear() resets and a campaign save names its campaign fil
         out.writeBlock("Group0");
         out.writeIdLong("MissionCount", 0);
         out.close();
+    }
+    {   // init() starts with clear(), which must put the rules back to the defaults (clear() itself is not linkable through the private-public hack)
+        FitIniFile campaignFile;
+        REQUIRE(campaignFile.open(campaign.c_str()) == NO_ERR);
+        info.setRules(battleTechPreset());
+        REQUIRE(info.init(campaignFile).has_value());
+        campaignFile.close();
+        CHECK(info.getRules() == GameRules{});
     }
     const std::string save = "game_rules_campaign_save.fit";
     {
