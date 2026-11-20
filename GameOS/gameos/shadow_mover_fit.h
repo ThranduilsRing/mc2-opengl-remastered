@@ -17,9 +17,9 @@ struct alignas(16) MoverShadowFrame {
     float mask[4]{};   // west, north, reciprocal world span, ready
     int32_t flags[4]{}; // active, coverage enabled, quality, union path
     float light[4]{};   // x: night fade (static); y: spatial filter sample count; z: mover night fade; w reserved
-    std::array<uint32_t, 2048> coverage{}; // two (min,max) UNORM8 intervals per word
+    std::array<uint32_t, 3600> coverage{}; // 120x120 cells, one UNORM8 nearest-caster depth per byte; 255 = empty
 };
-static_assert(sizeof(MoverShadowFrame) == 8336);
+static_assert(sizeof(MoverShadowFrame) == 14544);
 static_assert(offsetof(MoverShadowFrame, coverage) == 144);
 
 inline Vec3 shadowEnd(MoverSphere s, Vec3 sun, float ground) {
@@ -102,22 +102,30 @@ inline Window fitMoverWindow(std::span<const MoverSphere> spheres, const LightBa
     return w;
 }
 
+inline constexpr int kMoverCoverageSide = 120;
+// A cell holds the nearest caster depth (UNORM8, 254 max) of every sphere whose light-space footprint,
+// grown by the receiver's blocker-search reach, touches it; 255 = no caster. mover_shadow.glsl skips the
+// blocker search where nothing can sit in front of the receiver.
 inline void buildMoverCoverage(MoverShadowFrame& frame, std::span<const MoverSphere> spheres,
                                 const LightBasis& basis, const Window& w) {
-    frame.coverage.fill(0x00ff00ffu); // inverted interval = empty
+    frame.coverage.fill(0xffffffffu);
+    const float reach = 128.0f * std::tan(kMoverSunAngularRadiusDeg * 0.01745329252f) + 4.0f * w.texelWorld
+                        + 1.5f * w.texelWorld;
+    const int n = kMoverCoverageSide;
+    const float invX = static_cast<float>(n) / (w.lx1 - w.lx0), invY = static_cast<float>(n) / (w.ly1 - w.ly0);
     for (const auto& s : spheres) {
         const Vec3 q = toLight(basis, s.center);
-        const float inv = 64.0f / (w.lx1 - w.lx0);
-        const int x0 = (std::clamp)(static_cast<int>(std::floor((q.x - s.radius - w.lx0) * inv)) - 1, 0, 63);
-        const int y0 = (std::clamp)(static_cast<int>(std::floor((q.y - s.radius - w.ly0) * inv)) - 1, 0, 63);
-        const int x1 = (std::clamp)(static_cast<int>(std::floor((q.x + s.radius - w.lx0) * inv)) + 1, 0, 63);
-        const int y1 = (std::clamp)(static_cast<int>(std::floor((q.y + s.radius - w.ly0) * inv)) + 1, 0, 63);
-        const uint32_t nearZ = static_cast<uint32_t>((std::clamp)(std::floor((w.dMax - q.z - s.radius) / (w.dMax - w.dMin) * 255.0f) - 1.0f, 0.0f, 255.0f));
+        const float r = s.radius + reach;
+        const int x0 = (std::clamp)(static_cast<int>(std::floor((q.x - r - w.lx0) * invX)), 0, n - 1);
+        const int y0 = (std::clamp)(static_cast<int>(std::floor((q.y - r - w.ly0) * invY)), 0, n - 1);
+        const int x1 = (std::clamp)(static_cast<int>(std::floor((q.x + r - w.lx0) * invX)), 0, n - 1);
+        const int y1 = (std::clamp)(static_cast<int>(std::floor((q.y + r - w.ly0) * invY)), 0, n - 1);
+        const uint32_t nearZ = static_cast<uint32_t>((std::clamp)(std::floor((w.dMax - q.z - s.radius) / (w.dMax - w.dMin) * 255.0f) - 1.0f, 0.0f, 254.0f));
         for (int y = y0; y <= y1; ++y) for (int x = x0; x <= x1; ++x) {
-            const unsigned cell = static_cast<unsigned>(y * 64 + x), shift = (cell & 1u) * 16u;
-            auto& word = frame.coverage[cell / 2];
+            const unsigned cell = static_cast<unsigned>(y * n + x), shift = (cell & 3u) * 8u;
+            auto& word = frame.coverage[cell / 4];
             const uint32_t lo = (std::min)((word >> shift) & 255u, nearZ);
-            word = (word & ~(65535u << shift)) | ((lo | 0xff00u) << shift);
+            word = (word & ~(255u << shift)) | (lo << shift);
         }
     }
 }

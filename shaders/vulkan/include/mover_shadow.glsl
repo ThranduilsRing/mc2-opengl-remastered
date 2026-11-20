@@ -10,7 +10,7 @@ layout(std140, set = 0, binding = 25) uniform MoverShadowFrame {
     vec4 mask; // west, north, reciprocal world span, ready
     ivec4 flags; // active, coverage enabled, quality, reserved
     vec4 light; // x: night fade; y: spatial filter sample count; z: mover night fade
-    uvec4 coverage[512]; // packed min/max UNORM8, two cells per word
+    uvec4 coverage[900]; // 120x120 cells, nearest caster depth UNORM8 per byte, 255 = empty
 } moverFrame;
 
 // Floor of a directional sun shadow for this mission's light: the day floor by day, rising toward 1
@@ -33,12 +33,10 @@ float moverVisibility(vec3 worldPos, vec3 N) {
     pc.xy = pc.xy * 0.5 + 0.5;
     if (pc != clamp(pc, 0.0, 1.0)) return 1.0;
     if (moverFrame.flags.y != 0) {
-        uvec2 tile = min(uvec2(pc.xy * 64.0), uvec2(63));
-        uint cell = tile.y * 64u + tile.x;
-        uint packed = moverFrame.coverage[cell >> 3u][(cell >> 1u) & 3u];
-        uint interval = (packed >> ((cell & 1u) * 16u)) & 65535u;
-        float lo = float(interval & 255u), hi = float(interval >> 8u);
-        if (lo > hi || pc.z * 255.0 < lo || pc.z * 255.0 > hi) return 1.0;
+        uvec2 tile = min(uvec2(pc.xy * 120.0), uvec2(119));
+        uint cell = tile.y * 120u + tile.x;
+        uint lo = (moverFrame.coverage[cell >> 4u][(cell >> 2u) & 3u] >> ((cell & 3u) * 8u)) & 255u;
+        if (lo == 255u || pc.z * 255.0 < float(lo)) return 1.0;
     }
     float bias = 2.0 / 65535.0 + 0.25 * moverFrame.params.x * moverFrame.params.y;
     // Contact hardening without the bake's short-blocker lift: the penumbra is
