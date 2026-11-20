@@ -63,6 +63,8 @@ void AssetViewerApp::drawUi()
         }
     } else if (sidebar_.active() == AssetType::ModWorkbench) {
         ImGui::TextDisabled("Drop a GLB on the window.");
+    } else if (sidebar_.active() == AssetType::Archives) {
+        ImGui::TextDisabled("Drop a .mc2pak, .zip or .fst on the window.");
     } else {
         browser_.draw();
         if (browser_.hasSelection()) {
@@ -94,6 +96,9 @@ void AssetViewerApp::drawUi()
       }
       case AssetType::ModWorkbench:
         workbenchPanel_.draw(workbench_, ImGui::GetContentRegionAvail());
+        break;
+      case AssetType::Archives:
+        archivePanel_.draw();
         break;
     }
     ImGui::EndChild();
@@ -983,6 +988,9 @@ void AssetViewerApp::scriptedView(const char* kind, const char* arg) {
     } else if (k == "workbench") {
         sidebar_.setActive(AssetType::ModWorkbench);
         if (arg) onFileDropped(arg);
+    } else if (k == "archives") {
+        sidebar_.setActive(AssetType::Archives);
+        if (arg) onFileDropped(arg);
     }
 }
 
@@ -993,5 +1001,8 @@ void AssetViewerApp::onFileDropped(const char* path){
     if (ends(".glb") || ends(".gltf")){
         workbench_.loadOverride(p);
         sidebar_.setActive(AssetType::ModWorkbench);
+    } else if (ends(".mc2pak") || ends(".zip") || ends(".fst")) {
+        archivePanel_.open(p);
+        sidebar_.setActive(AssetType::Archives);
     }
 }

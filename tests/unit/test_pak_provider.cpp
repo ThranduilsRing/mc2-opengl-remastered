@@ -1,5 +1,6 @@
 #include "doctest.h"
 #include "pak_zip.h"
+#include "../../tools/asset_viewer/ArchiveIo.h"
 #include "vfs.h"
 #include "file.h"
 #include "ffile.h"
@@ -229,4 +230,111 @@ TEST_CASE("pak/stock_identity") {
         static_cast<unsigned long long>(mismatches),static_cast<unsigned long long>(fstBytes),
         static_cast<unsigned long long>(pakBytes),static_cast<unsigned long long>(duplicates));
     CHECK(mismatches==0);
+}
+
+// ---- pak writer + alias table + archive extract (container plan: dedupe) ----
+extern "C" unsigned ZSTD_versionNumber(void);        // the engine's decoder (basisu/zstd, 1.4.9)
+extern "C" unsigned mc2z_ZSTD_versionNumber(void);   // the writer's compressor (3rdparty/zstd, 1.5.7, renamed symbols)
+namespace {
+Bytes patterned(size_t n, unsigned seed) { Bytes b(n); uint32_t s = seed * 2654435761u + 1; for (auto& c : b) { s = s * 1664525u + 1013904223u; c = static_cast<uint8_t>(s >> 24); } return b; }
+Bytes text(size_t reps) { std::string s; for (size_t i = 0; i < reps; ++i) s += "hello Zstandard alias table\n"; return Bytes(s.begin(), s.end()); }
+struct PakScratch {
+    fs::path root = fs::temp_directory_path() / ("mc2pak-writer-" + std::to_string(PAK_TEST_PID) + "-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+    PakScratch() { std::error_code ec; fs::remove_all(root, ec); fs::create_directories(root); }
+    ~PakScratch() { std::error_code ec; fs::remove_all(root, ec); }
+};
+Bytes writePak(const fs::path& out, bool zip64) {
+    mc2::vfs::PakWriteOptions opt; opt.forceZip64 = zip64; opt.level = 3;
+    mc2::vfs::PakWriter w(out.string(), {{"loose", "0123456789abcdef", 0, 0}}, opt); std::string err;
+    CHECK(w.add("a/text.txt", "loose", text(100), &err)); CHECK(w.add("a/noise.bin", "loose", patterned(4096, 1), &err));
+    CHECK(w.add("a/empty.bin", "loose", {}, &err)); CHECK(w.add("a/tex.ktx2", "loose", text(99), &err));
+    CHECK(w.add("b/copy-of-text.txt", "loose", text(100), &err)); CHECK(w.add("b/copy-of-empty.bin", "loose", {}, &err));
+    CHECK(w.finish(&err)); return load(out);
+}
+}
+TEST_CASE("pak/writer round trip, method choice, ZIP64, 1.5.7 frames decode with the 1.4.9 engine decoder") {
+    CHECK(ZSTD_versionNumber() == 10409); CHECK(mc2z_ZSTD_versionNumber() == 10507);  // two different zstds, both linked
+    PakScratch s;
+    for (bool zip64 : {false, true}) {
+        const auto path = s.root / (zip64 ? "z64.mc2pak" : "plain.mc2pak"); const auto bytes = writePak(path, zip64);
+        bool sawLocator = false; for (size_t p = 0; p + 4 <= bytes.size(); ++p) if (get(bytes, p, 4) == 0x07064b50) sawLocator = true;
+        CHECK(sawLocator == zip64);
+        mc2::vfs::PakZip pak(path.string()); REQUIRE(pak.valid());
+        auto read = [&](const char* k) { auto* e = pak.find(k); REQUIRE(e); auto r = pak.read(*e); REQUIRE(r.has_value()); return *r; };
+        CHECK(read("a/text.txt") == text(100)); CHECK(read("a/noise.bin") == patterned(4096, 1));
+        CHECK(read("a/empty.bin").empty()); CHECK(read("a/tex.ktx2") == text(99));
+        CHECK(pak.find("a/text.txt")->method == 93);      // compressed by 1.5.7, decoded here by the engine's 1.4.9 reader path
+        CHECK(pak.find("a/noise.bin")->method == 0);      // incompressible: Store
+        CHECK(pak.find("a/tex.ktx2")->method == 0);       // .ktx2 is always Store
+        CHECK(pak.find("a/empty.bin")->method == 0);
+        // Aliases are in-memory rows over the target's bytes: one local header per payload, every name readable.
+        CHECK(pak.find("b/copy-of-text.txt")->aliasOf == "a/text.txt"); CHECK(read("b/copy-of-text.txt") == text(100));
+        CHECK(pak.find("b/copy-of-empty.bin")->aliasOf == "a/empty.bin"); CHECK(read("b/copy-of-empty.bin").empty());
+        size_t locals = 0, centrals = 0;
+        for (size_t p = 0; p + 4 <= bytes.size(); ++p) { locals += get(bytes, p, 4) == 0x04034b50; centrals += get(bytes, p, 4) == 0x02014b50; }
+        CHECK(centrals == 6);  // mc2pak.json, text, noise, empty, ktx2(tex), mc2pak.aliases: aliases add no central record
+        CHECK(locals >= centrals);
+    }
+    CHECK(writePak(s.root / "again.mc2pak", false) == writePak(s.root / "again2.mc2pak", false));  // deterministic
+}
+TEST_CASE("pak/pack directory dedupes by content; extract refuses names that escape the output folder") {
+    PakScratch s; const auto tree = s.root / "tree";
+    for (auto [name, b] : std::vector<std::pair<const char*, Bytes>>{{"Data/TGL/one.tga", text(50)}, {"data/tgl/two.tga", text(50)}, {"data/tgl/three.tga", text(50)}, {"mods/x.txt", text(7)}}) save(tree / name, b);
+    mc2::vfs::PakWriteOptions opt; opt.level = 3; mc2::vfs::PakWriteStats st; std::string err;
+    REQUIRE(mc2::vfs::packDirectory((tree).string(), (s.root / "a.mc2pak").string(), opt, &st, &err));
+    REQUIRE(mc2::vfs::packDirectory(tree.string(), (s.root / "b.mc2pak").string(), opt, nullptr, &err));
+    CHECK(load(s.root / "a.mc2pak") == load(s.root / "b.mc2pak"));
+    CHECK(st.total.files == 4); CHECK(st.total.aliases == 2); CHECK(st.folders.at("data/tgl").aliases == 2); CHECK(st.folders.at("mods").aliases == 0);
+    CHECK(st.total.uniqueBytes == text(50).size() + text(7).size());
+    auto src = ArchiveSource::open((s.root / "a.mc2pak").string(), &err); REQUIRE(src);
+    std::vector<size_t> all; for (size_t i = 0; i < src->rows().size(); ++i) all.push_back(i);
+    size_t written = 0, refused = 0; REQUIRE(archiveExtract(*src, all, (s.root / "out").string(), &written, &refused, &err));
+    CHECK(written == 4); CHECK(load(s.root / "out/data/tgl/three.tga") == text(50)); CHECK(load(s.root / "out/mods/x.txt") == text(7));
+    // zip-slip: a name with .. must be named and refused, never written outside <outdir>.
+    { mc2::vfs::PakWriter w((s.root / "slip.mc2pak").string(), {{"loose", "0123456789abcdef", 0, 0}}, opt);
+      REQUIRE(w.add("../evil.txt", "loose", text(3), &err)); REQUIRE(w.add("ok.txt", "loose", text(4), &err)); REQUIRE(w.finish(&err)); }
+    auto slip = ArchiveSource::open((s.root / "slip.mc2pak").string(), &err); REQUIRE(slip);
+    all.assign({0, 1}); REQUIRE(slip->rows().size() == 2);
+    CHECK_FALSE(archiveExtract(*slip, all, (s.root / "slipout").string(), &written, &refused, &err));
+    CHECK(refused == 1); CHECK(err.find("refused") != std::string::npos);
+    CHECK_FALSE(fs::exists(s.root / "evil.txt")); CHECK(fs::exists(s.root / "slipout/ok.txt"));
+    for (const char* bad : {"../x", "a/../../x", "/abs", "c:/x", "a\\b", "","./x"}) CHECK_FALSE(archiveEntrySafe(bad));
+    CHECK(archiveEntrySafe("data/tgl/x.fit"));
+}
+
+// ---- crafted alias tables: every malformed table makes the whole pak invalid (reject), a good one loads ----
+namespace {
+Bytes storeZip(const std::vector<std::pair<std::string, std::string>>& files) {
+    Bytes out, cd;
+    for (const auto& [name, data] : files) {
+        const auto crc = crc32(0, reinterpret_cast<const Bytef*>(data.data()), static_cast<uInt>(data.size())); const auto at = out.size();
+        le(out, 0x04034b50, 4); le(out, 20, 2); le(out, 0, 2); le(out, 0, 2); le(out, 0, 2); le(out, 0x21, 2); le(out, crc, 4);
+        le(out, data.size(), 4); le(out, data.size(), 4); le(out, name.size(), 2); le(out, 0, 2);
+        out.insert(out.end(), name.begin(), name.end()); out.insert(out.end(), data.begin(), data.end());
+        le(cd, 0x02014b50, 4); le(cd, 20, 2); le(cd, 20, 2); le(cd, 0, 2); le(cd, 0, 2); le(cd, 0, 2); le(cd, 0x21, 2); le(cd, crc, 4);
+        le(cd, data.size(), 4); le(cd, data.size(), 4); le(cd, name.size(), 2); le(cd, 0, 2); le(cd, name == "mc2pak.json" || name == "mc2pak.aliases" ? 0 : 5, 2);
+        le(cd, 0, 2); le(cd, 0, 2); le(cd, 0, 4); le(cd, at, 4); cd.insert(cd.end(), name.begin(), name.end());
+        if (name != "mc2pak.json" && name != "mc2pak.aliases") cd.insert(cd.end(), {'l', 'o', 'o', 's', 'e'});
+    }
+    const auto start = out.size(); out.insert(out.end(), cd.begin(), cd.end());
+    le(out, 0x06054b50, 4); le(out, 0, 4); le(out, files.size(), 2); le(out, files.size(), 2); le(out, cd.size(), 4); le(out, start, 4); le(out, 0, 2);
+    return out;
+}
+bool aliasPakValid(const fs::path& p, const std::string& table) {
+    save(p, storeZip({{"mc2pak.json", R"({"format":1,"sources":[{"name":"loose","size":0,"toc_hash":"0123456789abcdef","entries":2}]})"},
+                      {"a.txt", "aaa"}, {"b.txt", "bbb"}, {"mc2pak.aliases", table}}));
+    mc2::vfs::PakZip pak(p.string()); return pak.valid();
+}
+}
+TEST_CASE("pak/alias table rejects malformed tables") {
+    PakScratch s; const auto p = s.root / "alias.mc2pak";
+    CHECK(aliasPakValid(p, "c.txt\ta.txt\tloose\n"));                      // control: a good table loads
+    CHECK_FALSE(aliasPakValid(p, "c.txt\tmissing.txt\tloose\n"));           // missing target
+    CHECK_FALSE(aliasPakValid(p, "c.txt\ta.txt\tloose\nd.txt\tc.txt\tloose\n"));  // alias of an alias
+    CHECK_FALSE(aliasPakValid(p, "a.txt\ta.txt\tloose\n"));                 // self / collides with a real entry
+    CHECK_FALSE(aliasPakValid(p, "b.txt\ta.txt\tloose\n"));                 // shadows an existing name
+    CHECK_FALSE(aliasPakValid(p, "c.txt\ta.txt\tloose\r\n"));               // CRLF: source "loose\r" is unknown
+    CHECK_FALSE(aliasPakValid(p, std::string("c\0x.txt\ta.txt\tloose\n", 20))); // NUL in the alias name
+    CHECK_FALSE(aliasPakValid(p, "c.txt\ta.txt\tloose\nc.txt\ta.txt\tloose\n")); // duplicate alias
+    CHECK_FALSE(aliasPakValid(p, "c.txt\ta.txt\n"));                        // missing field
 }
