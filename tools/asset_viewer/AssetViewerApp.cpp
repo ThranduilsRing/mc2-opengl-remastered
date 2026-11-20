@@ -68,6 +68,8 @@ void AssetViewerApp::drawUi()
         terrainPanel_.drawBrowser();
     } else if (sidebar_.active() == AssetType::Vfx) {
         vfxPanel_.drawBrowser();
+    } else if (sidebar_.active() == AssetType::ModPackage) {
+        modPackagePanel_.drawBrowser();
     } else if (sidebar_.active() == AssetType::StaticProps) {
         modelBrowser_.draw();
         if (modelBrowser_.hasSelection()) {
@@ -127,6 +129,9 @@ void AssetViewerApp::drawUi()
         break;
       case AssetType::Vfx:
         vfxPanel_.drawDetails();
+        break;
+      case AssetType::ModPackage:
+        modPackagePanel_.drawDetails();
         break;
     }
     ImGui::EndChild();
@@ -1001,6 +1006,48 @@ int AssetViewerApp::runSmokeCentralMergePreserve(const char* fixtureDir, const c
     return ok ? 0 : 1;
 }
 
+// Offline proof for the six asset panels' data builders against an install (no window, no GPU).
+int AssetViewerApp::runSmokeAssetPanels(const char* deployDir)
+{
+    const std::string dir = deployDir ? deployDir : ".";
+    if (!TglMeshLoader::ensureFastFile(dir.c_str())) return smokeFail("tgl.fst not found in deploy dir");
+    const std::vector<std::string> tgl = TglMeshLoader::listTgl();
+    auto find = [](const std::vector<ShapeEntry>& v, const char* name, const char* originPrefix) -> const ShapeEntry* {
+        for (const auto& e : v) if (e.name == name && e.origin.rfind(originPrefix, 0) == 0) return &e;
+        return nullptr;
+    };
+    const auto mechs = BuildShapeCatalog(ShapeCategory::Mechs, dir, tgl);
+    const ShapeEntry* atlas = find(mechs, "atlas", "stock");
+    if (!atlas || atlas->variants.size() != 5) return smokeFail("mechs: stock atlas with 5 variants (base, LOD1, shadow, 2 arms)");
+    ShapeStats as = MeasureMesh(LoadShapeVariant(atlas->variants[0]));
+    if (!as.ok || as.tris <= 0 || as.parts <= 0 || as.textures.empty()) return smokeFail("mechs: atlas base mesh stats");
+    const auto vehicles = BuildShapeCatalog(ShapeCategory::Vehicles, dir, tgl);
+    if (!find(vehicles, "apc", "stock")) return smokeFail("vehicles: stock apc");
+    if (find(vehicles, "atlas", "stock")) return smokeFail("vehicles: a mech leaked into the vehicle list");
+    const auto trees = BuildShapeCatalog(ShapeCategory::Trees, dir, tgl);
+    const ShapeEntry* pine = find(trees, "pine1", "stock");
+    if (!pine || pine->variants.size() != 3) return smokeFail("trees: stock pine1 with LOD0/LOD1/shadow");
+    if (find(trees, "pine1l1", "stock")) return smokeFail("trees: pine1l1 must be folded into pine1's chain");
+    const auto terrain = TerrainMaterialPanel::Build(dir);
+    bool grass = false;
+    for (const auto& s : terrain) if (s.name == "grass" && s.hasTint && !s.params.empty() && !s.files.empty()) grass = true;
+    if (!grass) return smokeFail("terrain materials: grass layer with files, tint and parameters");
+    VfxPanel vfx;
+    std::vector<std::string> errs;
+    if (vfx.Load(dir, errs) < 100 || !errs.empty()) return smokeFail("vfx: expected the stock catalog (>=100 effects, no decode errors)");
+    if (std::string(VfxPanel::ClassName(mc2::fx::first_effect_class + 1)) != "ParticleCloud") return smokeFail("vfx: class name table");
+    const auto mods = ModPackagePanel::ListMods(dir);
+    if (mods.empty()) return smokeFail("mod package: no mods listed");
+    for (const auto& id : mods) {
+        ModPackageInfo mi = ModPackagePanel::Read(dir, id);
+        if (mi.manifest.empty() || mi.files.empty()) return smokeFail("mod package: manifest/files empty");
+        if (mi.blocks() != 0) return smokeFail("mod package: shipped mod has blocking validation problems");
+    }
+    std::printf("[smoke] asset-panels PASS (mechs=%zu vehicles=%zu trees=%zu terrain=%zu effects=%zu mods=%zu)\n",
+                mechs.size(), vehicles.size(), trees.size(), terrain.size(), vfx.entries().size(), mods.size());
+    return 0;
+}
+
 // Launch-and-capture support: open a view without a click (the --view command line option; see main.cpp).
 //   textures <file> | materials | props <name.tgl> | workbench
 void AssetViewerApp::scriptedView(const char* kind, const char* arg) {
@@ -1031,6 +1078,9 @@ void AssetViewerApp::scriptedView(const char* kind, const char* arg) {
     } else if (k == "vfx") {
         sidebar_.setActive(AssetType::Vfx);
         if (arg) vfxPanel_.select(arg);
+    } else if (k == "modpackage") {
+        sidebar_.setActive(AssetType::ModPackage);
+        if (arg) modPackagePanel_.select(arg);
     } else if (k == "archives") {
         sidebar_.setActive(AssetType::Archives);
         if (arg) onFileDropped(arg);
