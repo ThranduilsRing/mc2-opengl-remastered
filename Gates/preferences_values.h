@@ -1,6 +1,5 @@
 // Player settings shared by the game, library readers and tools.
 #pragma once
-#include "../code/game_rules.h"
 namespace mc2::options {
 struct Preferences {
     long DigitalMasterVolume = 255;
@@ -37,8 +36,6 @@ struct Preferences {
     char unitName[10][256]{};
     char playerName[10][256]{};
     char ipAddresses[10][24]{};
-    // Rules for solo skirmishes and new campaigns: the last ones the player used (options.cfg "GameRules<Key>", code/game_rules.h).
-    mc2::rules::GameRules gameRules;
 };
 // The applied settings. CPrefs also owns a draft for the options screen's Apply/Cancel behavior.
 inline Preferences& runtimePreferences() {

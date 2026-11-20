@@ -8,6 +8,9 @@ LogisticsData.cpp			: Implementation of the LogisticsData component.
 
 #include "logisticsdata_internal.h"
 #include "mc2fmt.h"
+#ifndef VIEWER
+#include "net/runtime.h"
+#endif
 #include "vfs.h"
 #include "utils/mc2log.h"
 
@@ -70,14 +73,11 @@ void LogisticsData::setRules( const mc2::rules::GameRules& r )
 void LogisticsData::publishRules() const
 {
 #ifndef VIEWER
-	// Multiplayer plays under the defaults (the MissionSettings wire struct carries no rules).
-	if ( MPlayer )
-	{
-		mc2::rules::publish( mc2::rules::GameRules{} );
-		return;
-	}
-#endif
+	// Multiplayer (the legacy MPlayer or the lockstep mc2::net session) plays under the defaults: the wire carries no rules.
+	mc2::rules::publish( mc2::rules::rulesToPublish( MPlayer || mc2::net::active(), rules() ) );
+#else
 	mc2::rules::publish( rules() );
+#endif
 }
 
 /*long				LogisticsData::getMaxTeams() const

@@ -14,6 +14,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace mc2::rules {
 
@@ -37,7 +38,7 @@ struct GameRules {
     long pilotSkillWeight     = 100;            // percent of today's skill influence on to-hit
     long salvage              = kSalvageMC2;
     long cbillMultiplier      = 100;            // percent of mission and salvage C-Bill income, 50..200
-    bool unlimitedAmmo        = true;           // mirror of the player preference UnlimitedAmmo (options.cfg), shown in the rules dialog
+    // Unlimited ammo is NOT a rule: it stays the player preference UnlimitedAmmo (Gates/preferences_values.h); the dialog shows that one.
     bool operator==(const GameRules&) const = default;
 };
 
@@ -65,13 +66,15 @@ struct Rule {
     bool GameRules::*  b;
     long GameRules::*  l;
     const std::string_view* labels; // Enum: one display label per value, lo..hi; null otherwise
+    std::size_t        nLabels;     // Enum: how many labels (checked against hi below)
 };
 
 namespace detail {
-constexpr Rule boolRule(std::string_view k, bool GameRules::*m) { return {k, Kind::Bool, 0, 1, m, nullptr, nullptr}; }
-constexpr Rule enumRule(std::string_view k, long GameRules::*m, long hi, const std::string_view* labels) { return {k, Kind::Enum, 0, hi, nullptr, m, labels}; }
-constexpr Rule intRule(std::string_view k, long GameRules::*m, long lo, long hi) { return {k, Kind::Int, lo, hi, nullptr, m, nullptr}; }
-constexpr Rule pctRule(std::string_view k, long GameRules::*m, long lo, long hi) { return {k, Kind::Percent, lo, hi, nullptr, m, nullptr}; }
+constexpr Rule boolRule(std::string_view k, bool GameRules::*m) { return {k, Kind::Bool, 0, 1, m, nullptr, nullptr, 0}; }
+template <std::size_t N>
+constexpr Rule enumRule(std::string_view k, long GameRules::*m, long hi, const std::string_view (&labels)[N]) { return {k, Kind::Enum, 0, hi, nullptr, m, labels, N}; }
+constexpr Rule intRule(std::string_view k, long GameRules::*m, long lo, long hi) { return {k, Kind::Int, lo, hi, nullptr, m, nullptr, 0}; }
+constexpr Rule pctRule(std::string_view k, long GameRules::*m, long lo, long hi) { return {k, Kind::Percent, lo, hi, nullptr, m, nullptr, 0}; }
 inline constexpr std::string_view kDropLabels[]    = {"Tonnage", "Battle Value", "None"};
 inline constexpr std::string_view kHeatLabels[]    = {"Off", "MC2", "Harsh"};
 inline constexpr std::string_view kAmmoLabels[]    = {"Off", "MC2", "Lethal"};
@@ -89,12 +92,20 @@ inline constexpr Rule kRules[] = {
     detail::pctRule ("PilotSkillWeight",   &GameRules::pilotSkillWeight, 0, 200),
     detail::enumRule("Salvage",            &GameRules::salvage,          kSalvageScarce, detail::kSalvageLabels),
     detail::pctRule ("CBillMultiplier",    &GameRules::cbillMultiplier,  50, 200),
-    detail::boolRule("UnlimitedAmmo",      &GameRules::unlimitedAmmo),
 };
 
 inline constexpr std::size_t kRuleCount = sizeof(kRules) / sizeof(kRules[0]);
 
-enum class Verdict { Ok, Garbage, OutOfRange, UnknownKey };
+namespace detail {
+constexpr bool labelsMatchRanges() {
+    for (const Rule& r : kRules)
+        if (r.kind == Kind::Enum && (r.lo != 0 || r.nLabels != static_cast<std::size_t>(r.hi - r.lo + 1))) return false;
+    return true;
+}
+}  // namespace detail
+static_assert(detail::labelsMatchRanges(), "every Enum rule needs exactly one label per value lo..hi");
+
+enum class Verdict { Ok, Garbage, OutOfRange };
 
 namespace detail {
 constexpr char lower(char c) { return (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c; }
@@ -155,20 +166,47 @@ inline int sanitize(GameRules& g) {
     return reset;
 }
 
-// Visits every field as (std::string key, field reference, type letter 'b' or 'l') with the options.cfg key ("GameRules" + Key). Shared by the
-// options.cfg schema (Gates/preferences_cfg.h); const-correct for both reading and writing.
-template <class R, class F>
-void forEachField(R& g, F&& f) {
+// options.cfg: the keys are "GameRules" + Key, typed lines like every other preference ("l GameRulesHeat = 2", "b GameRulesDropWeightPurchase = TRUE").
+// cfgEntries lists them for the lossless options.cfg writer (key, text, type letter 'b' or 'l'); loadCfgText reads them back from the raw file text
+// with setFromText, so garbage ("l GameRulesHeat = abc") or an out-of-range value keeps the default instead of becoming 0. First occurrence wins.
+struct CfgEntry { std::string key, text; char type; };
+
+inline std::vector<CfgEntry> cfgEntries(const GameRules& g) {
+    std::vector<CfgEntry> out;
     for (const Rule& r : kRules) {
         std::string key = "GameRules";
         key += r.key;
-        if (r.kind == Kind::Bool) f(key, g.*(r.b), 'b');
-        else f(key, g.*(r.l), 'l');
+        if (r.kind == Kind::Bool) out.push_back({key, g.*(r.b) ? "TRUE" : "FALSE", 'b'});
+        else out.push_back({key, std::to_string(g.*(r.l)), 'l'});
+    }
+    return out;
+}
+
+inline void loadCfgText(GameRules& g, std::string_view text) {
+    constexpr std::string_view prefix = "GameRules";
+    bool seen[kRuleCount] = {};
+    while (!text.empty()) {
+        const std::size_t nl = text.find('
+');
+        std::string_view line = detail::trim(text.substr(0, nl));
+        text = nl == std::string_view::npos ? std::string_view{} : text.substr(nl + 1);
+        const std::size_t eq = line.find('=');
+        if (eq == std::string_view::npos) continue;
+        std::string_view name = detail::trim(line.substr(0, eq));
+        const std::size_t sp = name.find_last_of(" 	");   // drop the type letter ("l ", "b ")
+        if (sp != std::string_view::npos) name = name.substr(sp + 1);
+        if (name.size() <= prefix.size() || !detail::equalsNoCase(name.substr(0, prefix.size()), prefix)) continue;
+        const auto idx = find(name.substr(prefix.size()));
+        if (!idx || seen[*idx]) continue;
+        seen[*idx] = true;
+        setFromText(g, kRules[*idx], line.substr(eq + 1));
     }
 }
 
 // The campaign save block. Written only when a rule differs from today's behaviour, so a default campaign saves byte-identically to older builds,
-// and read key by key: an absent key (an old save), garbage or an out-of-range value keeps the default. Old builds ignore the unknown block.
+// and read key by key: an absent key (an old save) or an out-of-range value keeps the default. Old builds ignore the unknown block. A typed line
+// whose value is not a number reads as 0 through FitIniFile (atol): only the program writes this block, and the hand-edited file is options.cfg
+// (loadCfgText above, which does reject garbage).
 inline constexpr const char* kFitBlock = "GameRules";
 
 template <class File>
@@ -198,10 +236,15 @@ GameRules readFit(File& file) {
     return g;
 }
 
-// The immutable snapshot the simulation reads, published at mission start (and again after an in-mission save is restored), mirroring
-// mc2::options::current(). Multiplayer publishes defaults. A tool that never publishes sees the defaults.
+// The immutable snapshot the simulation reads, published at mission start (Mission::init) and again by loadLogistics after an in-mission save is
+// restored (the first point the saved rules are read; the old mission's snapshot stays current until then, so nothing may read current() while a
+// load is running), mirroring mc2::options::current(). Publish only while no sim tick runs. A tool that never publishes sees the defaults.
 inline GameRules g_current{};
 inline const GameRules& current() { return g_current; }
 inline void publish(const GameRules& g) { g_current = g; }
+
+// What a mission start publishes: the campaign / skirmish rules for a solo game, the defaults for any networked one (legacy MPlayer or the
+// lockstep mc2::net session): the wire carries no rules, so every peer must simulate the same ones.
+inline GameRules rulesToPublish(bool networked, const GameRules& g) { return networked ? GameRules{} : g; }
 
 }  // namespace mc2::rules

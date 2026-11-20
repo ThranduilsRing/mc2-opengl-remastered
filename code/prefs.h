@@ -11,6 +11,7 @@
 
 #include "mc2_czstring.h"
 #include "Gates/preferences_types.h"
+#include "game_rules.h"
 #include <expected>
 
 
@@ -28,7 +29,12 @@ public:
 	// Player render options (the options.cfg keys listed in Gates/render_options.h). load() validates them, applyPrefs() publishes them.
 	mc2::options::RenderOptions render;
 
+	// Rules for solo skirmishes and new campaigns: the last ones the player used (options.cfg "GameRules<Key>", code/game_rules.h).
+	// Kept here, not in Preferences, so Gates/ and mclib never see game_rules.h.
+	mc2::rules::GameRules gameRules;
+
 private:
+    std::vector<mc2::options::PreferenceValue> snapshotValues() const;
     bool loadedDefault_ = false;
     std::string sourceText_;
     std::vector<mc2::options::PreferenceValue> loadedValues_;

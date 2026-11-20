@@ -9,6 +9,12 @@
 extern int loadPreferenceHotKeys(FitIniFile&);
 extern int savePreferenceHotKeys(std::string&);
 extern unsigned long long preferenceHotKeysFingerprint();
+// The Gates snapshot plus the game-rules keys (owned here, see prefs.h).
+std::vector<mc2::options::PreferenceValue> CPrefs::snapshotValues() const {
+    auto out = mc2::options::preferenceSnapshot(*this, render);
+    for (const auto& e : mc2::rules::cfgEntries(gameRules)) out.push_back({e.key, e.text, e.type});
+    return out;
+}
 int CPrefs::load(mc2::czstring name) {
     FullPathFileName path;
     path.init("./", name, ".cfg");
@@ -16,9 +22,11 @@ int CPrefs::load(mc2::czstring name) {
     const char* namePath = path;
     sourceText_ = mc2::options::cfg::readTextFile(mc2::net::userFile(namePath).c_str());
     static_cast<mc2::options::Preferences&>(*this) = mc2::options::Preferences{};
+    gameRules = mc2::rules::GameRules{};
     FitIniFile file;
     if (!sourceText_.empty() && file.open(sourceText_.data(), static_cast<int>(sourceText_.size())) == NO_ERR) {
         mc2::options::loadPreferences(file, *this);
+        mc2::rules::loadCfgText(gameRules, sourceText_);
 #ifndef VIEWER
         loadPreferenceHotKeys(file);
 #endif
@@ -31,7 +39,7 @@ int CPrefs::load(mc2::czstring name) {
     mc2::options::cfg::loadFromText(render, sourceText_, &rejects);
     for (const auto& reject : rejects)
         mc2::options::logRejectedOption(reject.key, reject.text, reject.why, mc2::options::find(reject.key));
-    loadedValues_ = mc2::options::preferenceSnapshot(*this, render);
+    loadedValues_ = snapshotValues();
     // Startup reads these before SoundSystem exists; loading the defaults-screen draft must not publish it.
     if (this == &prefs) mc2::options::runtimePreferences() = static_cast<const mc2::options::Preferences&>(*this);
 #ifndef VIEWER
@@ -41,7 +49,7 @@ int CPrefs::load(mc2::czstring name) {
 }
 
 std::expected<void, int> CPrefs::save() {
-    const auto values = mc2::options::preferenceSnapshot(*this, render);
+    const auto values = snapshotValues();
     std::string text = mc2::options::rewritePreferences(sourceText_, loadedValues_, values);
 #ifndef VIEWER
     if (sourceText_.empty() || loadedKeyboard_ != preferenceHotKeysFingerprint())

@@ -9,6 +9,7 @@
 #include "game_rules.h"
 #include "inifile.h"
 #include "Gates/preferences_cfg.h"
+#include "Gates/preferences_values.h"
 
 #include <cstdio>
 #include <string>
@@ -45,7 +46,10 @@ TEST_CASE("game rules: defaults equal today's behaviour") {
     CHECK(g.pilotSkillWeight == 100);
     CHECK(g.salvage == kSalvageMC2);
     CHECK(g.cbillMultiplier == 100);
-    CHECK(g.unlimitedAmmo);   // the Preferences default
+    // Unlimited ammo is a player preference, not a rule: the struct must not shadow it (the dialog shows the Preferences value).
+    CHECK(find("UnlimitedAmmo") == std::nullopt);
+    // Every default that has a real source today (the table rows below have none yet: the consumer lanes add theirs) matches it.
+    // The defaults a later lane makes live (heat, ammo, called shots, salvage, C-Bills) are pinned by that lane's own source.
     // Every table row's default sits inside its own range, keys are unique and findable in any case.
     for (std::size_t i = 0; i < kRuleCount; ++i) {
         const long v = getLong(g, kRules[i]);
@@ -72,11 +76,13 @@ TEST_CASE("game rules: range rejection leaves the field untouched") {
     CHECK(setLong(g, *heat, 3) == Verdict::OutOfRange);
     CHECK(setLong(g, *heat, -1) == Verdict::OutOfRange);
     CHECK(g.heat == kHeatMC2);
-    const Rule* ammo = &kRules[find("UnlimitedAmmo").value()];
-    CHECK(setFromText(g, *ammo, "FALSE") == Verdict::Ok);
-    CHECK_FALSE(g.unlimitedAmmo);
-    CHECK(setFromText(g, *ammo, "2") == Verdict::OutOfRange);
-    CHECK_FALSE(g.unlimitedAmmo);
+    const Rule* purchase = &kRules[find("DropWeightPurchase").value()];
+    CHECK(setFromText(g, *purchase, "TRUE") == Verdict::Ok);
+    CHECK(g.dropWeightPurchase);
+    CHECK(setFromText(g, *purchase, "2") == Verdict::OutOfRange);
+    CHECK(g.dropWeightPurchase);
+    CHECK(setFromText(g, *purchase, "maybe") == Verdict::Garbage);
+    CHECK(g.dropWeightPurchase);
 
     GameRules bad;
     bad.heat = 9;
@@ -158,40 +164,112 @@ TEST_CASE("game rules: a partly damaged [GameRules] block keeps the good keys an
     CHECK(g.dropLimitMode == kDropTonnage);
 }
 
-TEST_CASE("game rules: options.cfg keys round trip and a hand-edited bad value falls back") {
+TEST_CASE("game rules: options.cfg keys round trip, garbage and out-of-range values keep the default") {
     using namespace mc2::options;
-    Preferences p;
-    p.gameRules = battleTechPreset();
-    const auto snapshot = preferenceSnapshot(p, RenderOptions{});
+    auto snapshot = preferenceSnapshot(Preferences{}, RenderOptions{});
+    const auto base = snapshot.size();
+    for (const auto& e : cfgEntries(battleTechPreset())) snapshot.push_back({e.key, e.text, e.type});
     bool sawKey = false;
     for (const auto& v : snapshot) sawKey |= v.key == "GameRulesHeat" && v.text == "2" && v.type == 'l';
     CHECK(sawKey);
+    CHECK(snapshot.size() == base + kRuleCount);
     const std::string text = rewritePreferences("", {}, snapshot);
-
-    Preferences reloaded;
+    GameRules reloaded;
+    loadCfgText(reloaded, text);
+    CHECK(reloaded == battleTechPreset());
+    // The Preferences loader still reads its own keys from the same text and ignores the rule keys.
+    Preferences p;
     FitIniFile file;
     REQUIRE(file.open(text.data(), static_cast<int>(text.size())) == NO_ERR);
-    loadPreferences(file, reloaded);
+    loadPreferences(file, p);
     file.close();
-    CHECK(reloaded.gameRules == battleTechPreset());
+    CHECK(p.useUnlimitedAmmo == Preferences{}.useUnlimitedAmmo);
 
     // No keys at all (an old options.cfg) leaves today's defaults.
-    const std::string old = "FITini\n[MechCommander2]\nl MusicVolume = 10\nFITend\n";
-    Preferences fresh;
-    FitIniFile oldFile;
-    REQUIRE(oldFile.open(old.data(), static_cast<int>(old.size())) == NO_ERR);
-    loadPreferences(oldFile, fresh);
-    oldFile.close();
-    CHECK(fresh.gameRules == GameRules{});
+    GameRules fresh;
+    loadCfgText(fresh, "FITini
+[MechCommander2]
+l MusicVolume = 10
+FITend
+");
+    CHECK(fresh == GameRules{});
 
-    const std::string bad = "FITini\n[MechCommander2]\nl GameRulesHeat = 77\nl GameRulesCBillMultiplier = 120\nFITend\n";
-    Preferences edited;
-    FitIniFile badFile;
-    REQUIRE(badFile.open(bad.data(), static_cast<int>(bad.size())) == NO_ERR);
-    loadPreferences(badFile, edited);
-    badFile.close();
-    CHECK(edited.gameRules.heat == kHeatMC2);
-    CHECK(edited.gameRules.cbillMultiplier == 120);
+    // Out of range, garbage (FitIniFile's atol would make these 0 = a valid non-default Heat Off / Called Off / Weight 0) and a bad bool: default stays.
+    GameRules edited;
+    loadCfgText(edited,
+        "FITini
+[MechCommander2]
+l GameRulesHeat = 77
+l GameRulesCBillMultiplier = 120
+"
+        "l GameRulesAmmoExplosions = abc
+l GameRulesCalledShots = 1x
+l GameRulesPilotSkillWeight = 
+"
+        "b GameRulesDropWeightPurchase = banana
+l gamerulessalvage = 0
+l GameRulesSalvage = 2
+FITend
+");
+    CHECK(edited.heat == kHeatMC2);
+    CHECK(edited.cbillMultiplier == 120);
+    CHECK(edited.ammoExplosions == kAmmoExplMC2);
+    CHECK(edited.calledShots == kCalledClassic);
+    CHECK(edited.pilotSkillWeight == 100);
+    CHECK_FALSE(edited.dropWeightPurchase);
+    CHECK(edited.salvage == kSalvageGenerous);   // keys are case-insensitive and the first occurrence wins
+}
+
+TEST_CASE("game rules: static layout, labels and the publish decision") {
+    for (const Rule& r : kRules)
+        if (r.kind == Kind::Enum) {
+            REQUIRE(r.labels != nullptr);
+            CHECK(r.nLabels == static_cast<std::size_t>(r.hi + 1));
+        }
+    // A networked game (legacy MPlayer or the mc2::net lockstep session) publishes the defaults whatever the local rules say.
+    CHECK(rulesToPublish(true, battleTechPreset()) == GameRules{});
+    CHECK(rulesToPublish(false, battleTechPreset()) == battleTechPreset());
+}
+
+TEST_CASE("game rules: clear() resets and a campaign save names its campaign file, the rules read on that path") {
+    LogisticsMissionInfo info;
+    info.setRules(battleTechPreset());
+    info.clear();
+    CHECK(info.getRules() == GameRules{});
+
+    const std::string campaign = "game_rules_campaign.fit";
+    {
+        FitIniFile out;
+        REQUIRE(out.create(campaign.c_str()) == NO_ERR);
+        out.writeBlock("Campaign");
+        out.writeIdString("CampaignName", "rules test");
+        out.writeIdLong("GroupCount", 1);
+        out.writeBlock("Group0");
+        out.writeIdLong("MissionCount", 0);
+        out.close();
+    }
+    const std::string save = "game_rules_campaign_save.fit";
+    {
+        FitIniFile out;
+        REQUIRE(out.create(save.c_str()) == NO_ERR);
+        out.writeBlock("General");
+        out.writeIdString("CampaignFile", campaign.c_str());
+        out.writeIdLong("CBills", 0);
+        out.writeIdLong("Group", 0);
+        out.writeIdLong("CompletedMissions", 0);
+        out.writeBlock("AdditionalPurchaseFiles");
+        writeFit(out, battleTechPreset());
+        out.close();
+    }
+    LogisticsMissionInfo loaded;
+    FitIniFile in;
+    REQUIRE(in.open(save.c_str()) == NO_ERR);
+    const auto r = loaded.load(in);
+    in.close();
+    std::remove(save.c_str());
+    std::remove(campaign.c_str());
+    REQUIRE(r.has_value());
+    CHECK(loaded.getRules() == battleTechPreset());   // the campaign-file path (logisticsmissioninfo.cpp, end of load), not the skirmish early return
 }
 
 TEST_CASE("game rules: the published snapshot defaults and republishes") {
