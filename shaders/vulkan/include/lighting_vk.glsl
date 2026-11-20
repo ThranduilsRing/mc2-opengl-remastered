@@ -60,7 +60,7 @@ LsvkPbrOut computePBR(vec3 N, vec3 V, vec3 L, vec3 albedo,
     return o;
 }
 
-// --- Baked static sun shadow (shadow.hglsl:33-78, calcShadow, 16-tap). -------
+// --- Baked static sun shadow (shadow.hglsl:33-78, calcShadow; receivers use one 4-tap textureGather + bilinear mix, not 16 taps). -------
 // Native receiver filter; projection/bias retain the reference convention. `shadowMap` is a sampler2DShadow bound to a depth-compare image
 // (HW LINEAR PCF, compareOp=LESS_OR_EQUAL, CLAMP_TO_BORDER white=1.0). `lightSpaceMatrix`
 // is the STATIC light-space matrix (row-major GL_FALSE upload; z already [0,1]
