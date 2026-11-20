@@ -77,7 +77,7 @@ void LogisticsData::publishRules() const
 	const bool networked = MPlayer || mc2::net::active();
 	const mc2::rules::GameRules published = mc2::rules::rulesToPublish( networked, rules() );
 	mc2::rules::publish( published );
-	MC2_LOG(Io, Info, "[GAME_RULES] snapshot networked={} calledShots={} pilotSkillWeight={}", networked, published.calledShots, published.pilotSkillWeight);
+	MC2_LOG(Io, Info, "[GAME_RULES] snapshot networked={} calledShots={} pilotSkillWeight={} salvage={} cbillMultiplier={}", networked, published.calledShots, published.pilotSkillWeight, published.salvage, published.cbillMultiplier);
 #else
 	mc2::rules::publish( rules() );
 #endif

@@ -496,7 +496,7 @@ void MechWarrior::updateActions (void) {
 	// field) to A/B MC2_CALLED_SHOT_FIX. Global 2 s throttle bounds order spam.
 	static const bool s_aimedFireFixture =
 		mc2::gate::get<"MC2_AIMED_FIRE_FIXTURE">();
-	if (s_aimedFireFixture && !mc2::net::active() && myVehicle && myVehicle->isMech() &&
+	if (s_aimedFireFixture && !MPlayer && !mc2::net::active() && myVehicle && myVehicle->isMech() &&
 		Team::home && (myVehicle->getTeam() == Team::home) &&
 		(scenarioTime > 5.0f) && !curTacOrder.isCombatOrder() &&
 		myVehicle->canFireWeapons()) {
