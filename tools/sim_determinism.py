@@ -435,6 +435,19 @@ def _git_sha() -> str:
     return r.stdout.strip()
 
 
+#: Installs under this root belong to the owner (play install, golden, mods); only the merge gate may point a run at them.
+OWNER_INSTALL_ROOT = "A:/Games/mc2-opengl/"
+
+
+def owner_install_refusal(install: str, allowed: bool) -> str:
+    """-> a refusal message when `install` is under the owner's install root and the merge-gate flag is absent, else ''."""
+    norm = os.path.abspath(install).replace("\\", "/").lower().rstrip("/") + "/"
+    if allowed or not norm.startswith(OWNER_INSTALL_ROOT.lower()):
+        return ""
+    return (f"refusing install {install}: it is under the owner's {OWNER_INSTALL_ROOT}. Pass --install <your lane install> "
+            "(only the merge gate passes --allow-owner-install)")
+
+
 def resolve_install(name_or_path: str) -> str:
     """Registered install path, or an absolute caller-supplied install path."""
     hit = lane_model.lane_for(name_or_path)
@@ -868,7 +881,9 @@ def main(argv=None) -> int:
 
     def install_arg(p):
         p.add_argument("--install", type=resolve_install, default=INSTALL_DIR, metavar="NAME_OR_PATH",
-                       help="install for runs and data fingerprint (default: 0.4)")
+                       help="install for runs and data fingerprint (default: the owner's v0.4, REFUSED unless --allow-owner-install)")
+        p.add_argument("--allow-owner-install", action="store_true",
+                       help="merge gate only: permit an install under " + OWNER_INSTALL_ROOT)
 
     r = sub.add_parser("run")
     r.add_argument("mission")
@@ -915,6 +930,11 @@ def main(argv=None) -> int:
     install_arg(o)
     sub.add_parser("selftest")
     args = ap.parse_args(argv)
+    if hasattr(args, "install"):
+        why = owner_install_refusal(args.install, getattr(args, "allow_owner_install", False))
+        if why:
+            print("sim_determinism: " + why, file=sys.stderr)
+            return 2
     if getattr(args, "headless_both", False):
         args.headless = "both"
         if getattr(args, "cmd", "") == "check":

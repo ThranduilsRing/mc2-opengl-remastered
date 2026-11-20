@@ -10,6 +10,12 @@ sys.path.insert(0, str(ROOT / "tools"))
 import sim_determinism as sim
 
 
+@pytest.fixture(autouse=True)
+def _no_owner_root(monkeypatch):
+    """These CLI tests stub the runner and default to the v0.4 path; the owner-install refusal has its own tests."""
+    monkeypatch.setattr(sim, "OWNER_INSTALL_ROOT", "Z:/no-owner-root/")
+
+
 def observations():
     return [f"{sim.PREFIX}{i} t=0.000 n=2 graded=aa visual=bb strict=cc "
             "nobj=3 objects=dd nabl=1 abl=ee rng=1/2/3 animrng=4" for i in range(5)]

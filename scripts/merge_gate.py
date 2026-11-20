@@ -721,7 +721,7 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
     # mc2_01 (day) runs headless like 03/16, a proper row since the laptop --sim step needed it (W132 ran it by hand)
     for mission in ("mc2_01", "mc2_03", "mc2_10", "mc2_16", "mc2_24"):
         steps.append(("determinism-" + mission,
-                      [py, "tools/sim_determinism.py", "check", mission, "--install", install, "--out", str(proof / ("determinism-" + mission)),
+                      [py, "tools/sim_determinism.py", "check", mission, "--install", install, "--allow-owner-install", "--out", str(proof / ("determinism-" + mission)),
                        # mc2_10 reaches only ~650 of the 800 sim frames in 20 s under load; 2x gets there in half the host time (both runs of a pair share the speed)
                        *(["--sim-speed", "2"] if mission == WINDOWED_DETERMINISM else
                          (["--headless-both", "--ticks", "2600"] if mission == "mc2_24" else ["--headless-both"])),
@@ -1067,6 +1067,7 @@ def farm_stage(command, overrides, runner=None, local_env=None):
     remote[0] = "python"
     remote[1] = "C:/mc2farm/harness/tools/sim_determinism.py"
     remote[remote.index("--install") + 1] = "{ROOT}"
+    remote = [a for a in remote if a != "--allow-owner-install"]  # the farm install is not the owner's; its harness copy may predate the flag
     remote[remote.index("--out") + 1] = "{RESULT}/determinism"
     remote += ["--ref-exe", "{EXE}"]
     env = {k: v for k, v in overrides.items() if not k.startswith("MC2_GATE_")}
