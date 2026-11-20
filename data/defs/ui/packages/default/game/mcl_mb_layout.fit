@@ -2951,10 +2951,10 @@ GuiButton {
     hitRect = "355,196,32,44"
     textRect = "355,196,32,44"
     textRectMode = "explicit_legacy"
-    visibleText = "BUY +5 T"
+    visibleText = "BUY\n+5 T"
     font = "Agency Regular"
     fontStyle = "Regular"
-    fontSize = 13
+    fontSize = 10
     bold = false
     italic = false
     textAlign = "center"
@@ -2962,6 +2962,8 @@ GuiButton {
     wrapText = true
     normalTextColorArgb = "0xffc8e100"
     colorArgb = "0xffc8e100"
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
     pressedTextColorArgb = "0xffffffff"
     highlightTextColorArgb = "0xffffffff"
     disabledTextColorArgb = "0xff5a6400"
@@ -2989,7 +2991,7 @@ GuiButton {
     visibleText = "0"
     font = "Agency Regular"
     fontStyle = "Regular"
-    fontSize = 13
+    fontSize = 10
     bold = false
     italic = false
     textAlign = "center"
@@ -2997,6 +2999,8 @@ GuiButton {
     wrapText = true
     normalTextColorArgb = "0xffc8e100"
     colorArgb = "0xffc8e100"
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
     pressedTextColorArgb = "0xffffffff"
     highlightTextColorArgb = "0xffffffff"
     disabledTextColorArgb = "0xff5a6400"
