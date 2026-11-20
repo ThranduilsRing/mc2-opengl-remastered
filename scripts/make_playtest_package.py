@@ -45,19 +45,11 @@ SKIP_DIRS = {'cache', 'cook-cache', '_aoktxtmp', 'terrain_gen_out', 'dev_shell_o
              'debug_state', 'crashes', 'savegame', '_txm_cache_bak', 'txm_backup'}
 MACHINE = re.compile(r'(?<![A-Za-z])[A-Z]:[/\\]', re.I)  # any drive letter (covers C:\Users); not URL schemes
 PLAY_REF = 'claude/play-1113'
-GUIDE = 'docs/modding/IMPORT-CAMPAIGNS.md'  # user-side D:\Downloads / D:\Campaigns placeholders only
-GUIDE_OK = re.compile(r'D:\\(?:Downloads|Campaigns)(?![A-Za-z0-9_])')
 
 
 def machine_path(rel, text):
-    """True if any line has a drive path, except lines marked 'drive-path: ok' and guide placeholders."""
-    for line in text.splitlines():
-        if not MACHINE.search(line) or 'drive-path: ok' in line:
-            continue
-        if rel == GUIDE and all(GUIDE_OK.match(line, m.start()) for m in MACHINE.finditer(line)):
-            continue
-        return True
-    return False
+    """True if the text has a drive path. Strict: no per-line marker, no per-file exemption."""
+    return bool(MACHINE.search(text))
 
 
 def verified_exe_commit(source, manifest_commit, repository=None, ref=None):

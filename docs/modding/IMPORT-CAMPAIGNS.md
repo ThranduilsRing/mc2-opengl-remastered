@@ -25,14 +25,14 @@ drag that folder onto the BAT. Extract 7z/RAR downloads first. Never install an 
 campaign over this game's folder or over another campaign.
 
 Open Command Prompt in the folder containing `mc2.exe`. In these examples,
-`D:\Downloads` means **your** download folder; replace that part of each path.
+`<your Downloads folder>` and `<your Campaigns folder>` mean the folders where you saved the downloads; replace that part of each path.
 Every command can also take a separate installed folder instead of the EXE.
 
 Import the compatibility bases first:
 
 ```bat
-py -3 tools\import_campaign.py "D:\Downloads\MCOsetup628.exe"
-py -3 tools\import_campaign.py "D:\Campaigns\MC2X-CVE-G"
+py -3 tools\import_campaign.py "<your Downloads folder>\MCOsetup628.exe"
+py -3 tools\import_campaign.py "<your Campaigns folder>\MC2X-CVE-G"
 ```
 
 The first also imports Omnitech's Exodus and MechWarrior 2 Mercenaries; select
@@ -40,32 +40,32 @@ The first also imports Omnitech's Exodus and MechWarrior 2 Mercenaries; select
 
 | Campaign download / folder | One command from the game folder |
 |---|---|
-| Omnitech Carver V original | `py -3 tools\import_campaign.py "D:\Downloads\Carver5OForMCOsetup.exe"` |
-| Omnitech Modified Carver V | `py -3 tools\import_campaign.py "D:\Downloads\CarverVRedux.2.exe"` |
-| Wolf Dragoons | `py -3 tools\import_campaign.py "D:\Downloads\WolfDragoonsForMCOsetup.exe"` |
-| Liberation of Volstand | `py -3 tools\import_campaign.py "D:\Downloads\VolstandForMCOsetup.exe"` |
-| Mercenaries Star | `py -3 tools\import_campaign.py "D:\Downloads\MercStarForMCOsetup.exe"` |
-| Desert Fox | `py -3 tools\import_campaign.py "D:\Downloads\DesertFoxForMCOsetup.exe"` |
-| Day of Heroes | `py -3 tools\import_campaign.py "D:\Downloads\DayOfHeroesForMCOsetup.1.exe"` |
-| Clan Eagle | `py -3 tools\import_campaign.py "D:\Downloads\ClanEagleForMCOsetup.exe"` |
-| Laskos Legion | `py -3 tools\import_campaign.py "D:\Campaigns\Laskos Legion"` |
-| Clan Wars | `py -3 tools\import_campaign.py "D:\Campaigns\Clan Wars"` |
-| Dead End | `py -3 tools\import_campaign.py "D:\Downloads\wolfman-MC2X-DEE.exe"` |
-| Driftwood | `py -3 tools\import_campaign.py "D:\Downloads\wolfman-MC2X-DWE.exe"` |
-| Houdini Project | `py -3 tools\import_campaign.py "D:\Downloads\wolfman-MC2X-HPE.exe"` |
-| Mother's Clan | `py -3 tools\import_campaign.py "D:\Downloads\wolfman-MC2X-MCE.exe"` |
-| Rebirth of the White Company | `py -3 tools\import_campaign.py "D:\Downloads\wolfman-MC2X-RWC.exe"` |
-| TCE: Dark Rain, Pictures of a Rebellion, TangoMaster | `py -3 tools\import_campaign.py "D:\Downloads\wolfman-MC2X-TCE.exe"` |
-| UpRise | `py -3 tools\import_campaign.py "D:\Campaigns\MC2X-URE-G"` |
-| TangoMaster standalone edition | `py -3 tools\import_campaign.py "D:\Campaigns\MC2X-TME-G"` |
-| REAP | `py -3 tools\import_campaign.py "D:\Campaigns\MC2X-REAP"` |
-| REAP3 | `py -3 tools\import_campaign.py "D:\Campaigns\MC2X-REAP3"` |
-| Corona Crisis / design test missions | `py -3 tools\import_campaign.py "D:\Campaigns\MC2X"` |
-| Original Magic Exodus (campaign + mc2_patch.exe in one separate install) | `py -3 tools\import_campaign.py "D:\Campaigns\Magic-Exodus"` |
-| Magic unofficial expansion (full separate install) | `py -3 tools\import_campaign.py "D:\Campaigns\Magic-Expansion"` |
-| Legacy Dark Rain | `py -3 tools\import_campaign.py "D:\Downloads\Magic_MC2_archive\DarkRain"` |
-| Legacy Pictures of a Rebellion | `py -3 tools\import_campaign.py "D:\Downloads\Magic_MC2_archive\PicturesOfARebeliion"` |
-| Legacy TangoMaster | `py -3 tools\import_campaign.py "D:\Downloads\Magic_MC2_archive\TangoMaster"` |
+| Omnitech Carver V original | `py -3 tools\import_campaign.py "<your Downloads folder>\Carver5OForMCOsetup.exe"` |
+| Omnitech Modified Carver V | `py -3 tools\import_campaign.py "<your Downloads folder>\CarverVRedux.2.exe"` |
+| Wolf Dragoons | `py -3 tools\import_campaign.py "<your Downloads folder>\WolfDragoonsForMCOsetup.exe"` |
+| Liberation of Volstand | `py -3 tools\import_campaign.py "<your Downloads folder>\VolstandForMCOsetup.exe"` |
+| Mercenaries Star | `py -3 tools\import_campaign.py "<your Downloads folder>\MercStarForMCOsetup.exe"` |
+| Desert Fox | `py -3 tools\import_campaign.py "<your Downloads folder>\DesertFoxForMCOsetup.exe"` |
+| Day of Heroes | `py -3 tools\import_campaign.py "<your Downloads folder>\DayOfHeroesForMCOsetup.1.exe"` |
+| Clan Eagle | `py -3 tools\import_campaign.py "<your Downloads folder>\ClanEagleForMCOsetup.exe"` |
+| Laskos Legion | `py -3 tools\import_campaign.py "<your Campaigns folder>\Laskos Legion"` |
+| Clan Wars | `py -3 tools\import_campaign.py "<your Campaigns folder>\Clan Wars"` |
+| Dead End | `py -3 tools\import_campaign.py "<your Downloads folder>\wolfman-MC2X-DEE.exe"` |
+| Driftwood | `py -3 tools\import_campaign.py "<your Downloads folder>\wolfman-MC2X-DWE.exe"` |
+| Houdini Project | `py -3 tools\import_campaign.py "<your Downloads folder>\wolfman-MC2X-HPE.exe"` |
+| Mother's Clan | `py -3 tools\import_campaign.py "<your Downloads folder>\wolfman-MC2X-MCE.exe"` |
+| Rebirth of the White Company | `py -3 tools\import_campaign.py "<your Downloads folder>\wolfman-MC2X-RWC.exe"` |
+| TCE: Dark Rain, Pictures of a Rebellion, TangoMaster | `py -3 tools\import_campaign.py "<your Downloads folder>\wolfman-MC2X-TCE.exe"` |
+| UpRise | `py -3 tools\import_campaign.py "<your Campaigns folder>\MC2X-URE-G"` |
+| TangoMaster standalone edition | `py -3 tools\import_campaign.py "<your Campaigns folder>\MC2X-TME-G"` |
+| REAP | `py -3 tools\import_campaign.py "<your Campaigns folder>\MC2X-REAP"` |
+| REAP3 | `py -3 tools\import_campaign.py "<your Campaigns folder>\MC2X-REAP3"` |
+| Corona Crisis / design test missions | `py -3 tools\import_campaign.py "<your Campaigns folder>\MC2X"` |
+| Original Magic Exodus (campaign + mc2_patch.exe in one separate install) | `py -3 tools\import_campaign.py "<your Campaigns folder>\Magic-Exodus"` |
+| Magic unofficial expansion (full separate install) | `py -3 tools\import_campaign.py "<your Campaigns folder>\Magic-Expansion"` |
+| Legacy Dark Rain | `py -3 tools\import_campaign.py "<your Downloads folder>\Magic_MC2_archive\DarkRain"` |
+| Legacy Pictures of a Rebellion | `py -3 tools\import_campaign.py "<your Downloads folder>\Magic_MC2_archive\PicturesOfARebeliion"` |
+| Legacy TangoMaster | `py -3 tools\import_campaign.py "<your Downloads folder>\Magic_MC2_archive\TangoMaster"` |
 
 Start the game, open **Campaigns & mods**, press **Refresh**, choose the imported
 pack, choose the campaign in its dropdown, choose `mco-compat` for Omnitech or
