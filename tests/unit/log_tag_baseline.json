@@ -4080,6 +4080,13 @@
    "tag": "GAME_RULES",
    "ver": -1,
    "stream": "log",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "GAME_RULES",
+   "ver": -1,
+   "stream": "log",
    "keys": [
     "base",
     "pct",
