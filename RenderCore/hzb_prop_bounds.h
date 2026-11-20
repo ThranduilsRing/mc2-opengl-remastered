@@ -15,7 +15,12 @@ constexpr float kSnapGrid = 256.0f;
 inline bool covers_pixel_centre(float lo, float hi) {
     return std::ceil(lo - 0.5f) + 0.5f < hi;
 }
-inline bool tiny_box(float x0, float y0, float x1, float y1) {
+// The tiny test is evaluated on a fixed 1080p reference grid (hzb_cull.comp kRefHeight twin): boxes are scaled by refScale
+// (1080/render height, capped at 1) so a 4K render culls the same sub-reference-pixel props as 1080. At <=1080 the scale is 1.
+constexpr float kRefHeight = 1080.0f;
+inline float ref_scale(int renderHeight) { return renderHeight > 1080 ? kRefHeight / static_cast<float>(renderHeight) : 1.0f; }
+inline bool tiny_box(float x0, float y0, float x1, float y1, float refScale = 1.0f) {
+    x0 *= refScale; x1 *= refScale; y0 *= refScale; y1 *= refScale;
     const float sx0 = std::floor(x0 * kSnapGrid) / kSnapGrid, sx1 = std::ceil(x1 * kSnapGrid) / kSnapGrid;
     const float sy0 = std::floor(y0 * kSnapGrid) / kSnapGrid, sy1 = std::ceil(y1 * kSnapGrid) / kSnapGrid;
     return sx1 - sx0 <= 0.0f || sy1 - sy0 <= 0.0f || !covers_pixel_centre(sx0, sx1) || !covers_pixel_centre(sy0, sy1);
@@ -81,7 +86,7 @@ inline ProjectedProp project_prop(const GpuStaticPropInstance& inst, const float
     if (!projectable) return out;
     if (viewHi[0] < -1 || viewHi[1] < -1 || viewLo[0] > 1 || viewLo[1] > 1) { out.keep = 0; out.tiny = 1; return out; }
     if (!occlusionSafe) return out;
-    out.tiny = tiny_box(x0, y0, x1, y1) ? 1u : 0u;
+    out.tiny = tiny_box(x0, y0, x1, y1, ref_scale(h)) ? 1u : 0u;
     // +-0.5 px: the pyramid depth was drawn with sub-pixel TAA jitter (mirrors hzb_cull.comp).
     out.pixels[0] = (std::max)(0.0f, std::floor(x0-0.5f)-1); out.pixels[1] = (std::max)(0.0f, std::floor(y0-0.5f)-1);
     out.pixels[2] = (std::min)(static_cast<float>(w-1), std::ceil(x1+0.5f)+1); out.pixels[3] = (std::min)(static_cast<float>(h-1), std::ceil(y1+0.5f)+1);

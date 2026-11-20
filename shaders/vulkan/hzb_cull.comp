@@ -56,7 +56,12 @@ float farthestAtLod(vec4 pixels, uint lod) {
 
 // Small-instance rejection (mirrors RenderCore/hzb_prop_bounds.h tiny_box): snap the box outward to a 1/256 px grid; a box covering no
 // pixel centre (k+0.5, half-open [lo,hi)) in either axis cannot rasterize a fragment. Sub-pixel boxes that straddle a centre are kept.
+// Evaluated on a fixed 1080p reference grid: lo/hi are scaled by 1080/render height (capped at 1, same both axes) so 4K culls the same
+// props as 1080 (twin: mc2hzb::ref_scale). Colour/depth static-prop path only; this shader is not used for shadow casters.
+const float kRefHeight = 1080.0;
 bool tinyBox(vec2 lo, vec2 hi) {
+    float refScale = params.viewportDepth.y > kRefHeight ? kRefHeight / params.viewportDepth.y : 1.0;
+    lo *= refScale; hi *= refScale;
     vec2 slo = floor(lo * 256.0) / 256.0;
     vec2 shi = ceil(hi * 256.0) / 256.0;
     vec2 ext = shi - slo;
