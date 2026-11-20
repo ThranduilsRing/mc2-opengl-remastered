@@ -4077,6 +4077,28 @@
    "count": 8
   },
   {
+   "tag": "GAME_RULES",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "base",
+    "pct",
+    "credited"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GAME_RULES",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "networked",
+    "calledShots",
+    "pilotSkillWeight"
+   ],
+   "count": 1
+  },
+  {
    "tag": "GEOM_PHASE_SPIKE",
    "ver": 1,
    "stream": "stdout",

@@ -1527,6 +1527,7 @@
   "code/dw.cpp": {},
   "code/dwarrior.h": {},
   "code/dweaponbolt.h": {},
+  "code/economy_rules.h": {},
   "code/environment_archive.h": {},
   "code/equipment_definition.h": {},
   "code/equipment_findings_text.h": {},
@@ -3465,7 +3466,7 @@
    "LG20": 1
   }
  },
- "head": "57ad93042",
+ "head": "fd66ea47b",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
