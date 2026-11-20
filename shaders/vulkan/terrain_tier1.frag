@@ -352,7 +352,7 @@ void main() {
     vec4 materialW = vec4(max(1.0 - materials.x - materials.y - materials.w, 0.0), materials.x, materials.y, materials.w);
     vec3 baseNormal = mv_smoothTerrainNormal(v_worldPos.xy);
     vec3 prelitBase = base;
-    float delitShare = pureConcrete || cementHit ? 0.0 : smoothstep(0.85, 0.55, abs(baseNormal.z));
+    float delitShare = pureConcrete || cementHit ? 0.0 : 1.0 - smoothstep(0.55, 0.85, abs(baseNormal.z));
     if (delitShare > 0.0 && TS_colormapReady != 0) {
         float gain = cliffDelightGain(dot(base, vec3(0.299, 0.587, 0.114)), cliffReferenceLuma(v_worldPos.xy));
         base *= mix(1.0, gain, delitShare);
@@ -376,7 +376,7 @@ void main() {
         baseColor = mix(baseColor, base, sqrt(clamp(F3pc, 0.0, 1.0)));
         // Cliff: desaturate + darken toward rock on steep MACRO slope (un-perturbed).
         float macroNzF3 = baseNormal.z;
-        float cliffBlend = smoothstep(0.85, 0.55, abs(macroNzF3));
+        float cliffBlend = 1.0 - smoothstep(0.55, 0.85, abs(macroNzF3));
         if (cliffBlend > 0.01) {
             float luma = dot(baseColor, vec3(0.299, 0.587, 0.114));
             vec3  cliffColor = mix(vec3(luma), vec3(uT.tintRockR, uT.tintRockG, uT.tintRockB), 0.6) * 0.8;
@@ -475,7 +475,7 @@ void main() {
         float normalLight = clamp(max(dot(N, lightDir), normalLightFloor) / macroNdotL, 0.5, 1.5);
         // The cliff burnin already carries ambient. Only its sun share receives
         // another directional modulation; a back-facing face has no sun to occlude.
-        float cliffShare = pureConcrete ? 0.0 : smoothstep(0.85, 0.55, abs(baseNormal.z));
+        float cliffShare = pureConcrete ? 0.0 : 1.0 - smoothstep(0.55, 0.85, abs(baseNormal.z));
         float cliffSun = cliffDirectShare(dot(macroN, lightDir), normalLightFloor);
         normalLight = mix(normalLight, mix(1.0, normalLight, cliffSun), cliffShare);
 

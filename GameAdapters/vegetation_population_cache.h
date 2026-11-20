@@ -43,6 +43,8 @@ struct Population {
 inline auto cell(const GosVegetation::Instance& i) {
     return std::pair{static_cast<int>(std::floor(i.x/128.0f)),static_cast<int>(std::floor(i.y/128.0f))};
 }
+// Region sphere pad in instance scales (blade widening, vfx_vegetation.vert); equals VEG_CULL_BOUND_SCALE in include/vegetation_cull_common.glsl.
+inline constexpr float kCullBoundScale = 3.0f;
 template<class ChooseStride>
 inline Population buildPopulationWith(std::span<const GosVegetation::Instance> data, ChooseStride chooseStride) {
     Population result;
@@ -76,7 +78,7 @@ inline Population buildPopulationWith(std::span<const GosVegetation::Instance> d
         float lo = sorted[begin].z, hi = lo, pad = 0.0f;
         for (size_t j = begin; j < end; ++j) {
             lo = std::min(lo, sorted[j].z); hi = std::max(hi, sorted[j].z);
-            pad = std::max(pad, 1.5f * sorted[j].scale);
+            pad = std::max(pad, kCullBoundScale * sorted[j].scale);
         }
         const auto [cellX, cellY] = key;
         gpuRegions.push_back({(cellX + 0.5f) * 128.0f, (cellY + 0.5f) * 128.0f, (lo + hi) * 0.5f,
@@ -128,7 +130,7 @@ inline SourceBytes serializeSource(const SourceInput& in, Group group = {}) {
 inline constexpr uint32_t kFormat = 1;
 // Placement/classification/grid/beach; clumps/noise/hardsurface; packInstance;
 // sort key, 128-WU cells and region maths. Compiled build identity also guards code/toolchain changes.
-inline constexpr uint32_t kProducer = 1;
+inline constexpr uint32_t kProducer = 2;
 using Digest = mc2::save::Digest;
 struct CapacityInterval { uint64_t lo = 0, hi = 0; bool contains(uint64_t n) const { return n >= lo && n < hi; } };
 inline std::optional<CapacityInterval> capacityInterval(uint64_t c, uint64_t f, uint32_t k, uint32_t k0, uint64_t cap) {

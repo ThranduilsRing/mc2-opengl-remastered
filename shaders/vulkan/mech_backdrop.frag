@@ -12,7 +12,7 @@ float band(float x, float w) { return 1.0 - smoothstep(0.0, w, abs(x)); }
 void main() {
     vec2 p = vec2(vUv.x, 1.0 - vUv.y);                       // panel space, y down
     vec2 c = p - vec2(0.5, 0.58);
-    float vig = smoothstep(0.95, 0.15, length(c * vec2(1.0, 1.15)));
+    float vig = 1.0 - smoothstep(0.15, 0.95, length(c * vec2(1.0, 1.15)));
     float hy = uFrame.shadeC.z > 0.0 ? uFrame.shadeC.z : 0.86;   // wall/floor line: predicted during the fit, latched at the reveal (cpu side)
     vec3 col;
     if (p.y < hy) {
@@ -23,7 +23,7 @@ void main() {
         col *= 1.0 - 0.60 * band(pan, 0.010);                                         // tall panel seams
         col += vec3(0.10, 0.11, 0.13) * (band(t - 0.34, 0.012) + band(t - 0.68, 0.012));   // horizontal seam bands
         col += vec3(1.0, 0.97, 0.88) * band(p.y - 0.045, 0.030) * smoothstep(0.0, 0.35, 0.7 - abs(p.x - 0.5));   // light strip
-        col += vec3(0.16, 0.17, 0.19) * smoothstep(0.35, 0.0, p.y);                  // light spill down the wall
+        col += vec3(0.16, 0.17, 0.19) * (1.0 - smoothstep(0.0, 0.35, p.y));                  // light spill down the wall
     } else {
         float d = (p.y - hy) / max(1.0 - hy, 0.001);         // 0 at the wall, 1 at the panel bottom
         float depth = 1.0 / (0.12 + d);                      // large far away

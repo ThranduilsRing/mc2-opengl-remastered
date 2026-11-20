@@ -81,7 +81,7 @@ void main() {
 
         vec2 vdir = TexCoord - vec2(0.5);
         float vdist = length(vdir * vec2(1.0, 0.6));
-        float vignette = smoothstep(0.85, 0.25, vdist);
+        float vignette = 1.0 - smoothstep(0.25, 0.85, vdist);
         color *= mix(0.82, 1.0, vignette);
 
         float sunBias = pow(smoothstep(0.0, 1.0, 1.0 - TexCoord.y), 1.5);
@@ -127,7 +127,7 @@ void main() {
         vec3 nv = boosted * lowLightTint;
         vec2 vd = TexCoord - vec2(0.5);
         float vdist = length(vd * vec2(1.0, 0.75));
-        float nvVignette = smoothstep(0.70, 0.20, vdist);
+        float nvVignette = 1.0 - smoothstep(0.20, 0.70, vdist);
         nv *= mix(0.65, 1.0, nvVignette);
         FragColor = vec4(nv, 1.0);
     }
