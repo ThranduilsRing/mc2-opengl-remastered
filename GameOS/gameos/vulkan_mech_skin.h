@@ -19,6 +19,7 @@
 #include "vk_compute_pipeline.h"
 #include "vk_desc_write_cache.h"
 #include "vk_frame_ring.h"
+#include "vk_mech_skin_chunks.h"
 #include "vk_owned.h"
 #include "vulkan_mech_island.h"   // Mc2MechDrawRun
 
@@ -117,7 +118,7 @@ public:
     uint32_t slot() const noexcept { return slot_; }
 
 private:
-    struct Job { uint32_t srcFirst, count, dstFirst, boneBase; };
+    using Job = MechSkinJob;   // vk_mech_skin_chunks.h
 
     bool ensure(uint32_t slot, uint64_t vertices, uint64_t jobs);
 

@@ -12,6 +12,7 @@
 #include "gos_mech_batcher.h"   // kMechRenderFlagPreskinned, mc2_mech_vertex_stride
 #include "mc2fmt.h"
 #include "vk_island_util.h"
+#include "vk_mech_skin_chunks.h"
 #include "vulkan_context.h"
 
 #include <algorithm>
@@ -129,6 +130,19 @@ void MechSkinPass::plan(uint32_t slot, std::span<const Mc2MechDrawRun> runSpan, 
             jobs_.push_back({static_cast<uint32_t>(run.baseVertex), run.vertexCount, static_cast<uint32_t>(vertices), boneBase});
             vertices += run.vertexCount;
             maxCount = (std::max)(maxCount, run.vertexCount);
+        }
+    }
+    // The dispatch is (maxCount / 64) x jobs: a frame's largest node must not size every job, so nodes become jobs of at most kSkinChunk vertices.
+    const uint32_t nodeJobs = static_cast<uint32_t>(jobs_.size());
+    const uint32_t nodeMax = maxCount;
+    if (!jobs_.empty()) {
+        jobs_ = chunkSkinJobs(jobs_);
+        maxCount = maxSkinJobCount(jobs_);
+        if (mc2_diag::tagRequested("VK_MECH_SKIN")) {
+            static uint32_t logged = 0;
+            if (logged++ % 300 == 0)
+                mc2::fmt::print_err("[VK_MECH_SKIN] workgroups launched {} -> {} (nodes {} -> jobs {}, max node {} -> max job {}).\n", mc2::fmt::as_u64(static_cast<uint64_t>((nodeMax + 63u) / 64u) * nodeJobs),
+                                    mc2::fmt::as_u64(static_cast<uint64_t>((maxCount + 63u) / 64u) * jobs_.size()), mc2::fmt::as_u64(nodeJobs), mc2::fmt::as_u64(jobs_.size()), mc2::fmt::as_u64(nodeMax), mc2::fmt::as_u64(maxCount));
         }
     }
     if (jobs_.empty() || !ensure(slot, vertices, jobs_.size())) { jobs_.clear(); return; }
