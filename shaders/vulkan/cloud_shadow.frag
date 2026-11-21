@@ -39,6 +39,7 @@ layout(set = 0, binding = 0) uniform sampler2D sceneDepthTex;
 //   cloudStrength  @ 88
 //   cloudOctaves   @ 92  (int -- AMD uniform-uint crash trap, keep int)
 //   cloudEnable    @ 96  (int)
+//   cloudWaterElev @100  cloudWaterScale @104 (floats)
 //   sunDirCloudH   @112  (vec4: xyz unit vector toward sun, Z-up; w cloud-base height wu)
 layout(set = 0, binding = 1, std140) uniform CloudFxParams {
     mat4  invViewProj;
@@ -49,6 +50,8 @@ layout(set = 0, binding = 1, std140) uniform CloudFxParams {
     float cloudStrength;
     int   cloudOctaves;
     int   cloudEnable;
+    float cloudWaterElev;
+    float cloudWaterScale;
     vec4  sunDirCloudH;
 } u;
 
@@ -144,7 +147,9 @@ void main()
 
     vec3 worldPos = reconstructWorldPos(TexCoord, depth);
 
-    float factor = 1.0 - u_cloudStrength * cloudCover(sunProject(worldPos));
+    // Water pixels (depth-reconstructed z at the water plane) get the darkening scaled by cloudWaterScale.
+    float k = worldPos.z < u.cloudWaterElev + 0.5 ? u.cloudWaterScale : 1.0;
+    float factor = 1.0 - k * u_cloudStrength * cloudCover(sunProject(worldPos));
 
     FragColor = vec4(vec3(factor), 1.0);
 }
