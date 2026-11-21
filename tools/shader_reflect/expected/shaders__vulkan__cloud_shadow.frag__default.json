@@ -69,6 +69,13 @@
           "name": "cloudEnable",
           "offset": 96,
           "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "sunDirCloudH",
+          "offset": 112,
+          "type": "vec4"
         }
       ],
       "name": "CloudFxParams"
