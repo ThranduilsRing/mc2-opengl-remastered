@@ -91,12 +91,32 @@ struct RtCaps {
     uint32_t shaderGroupHandleAlignment = 0;
 };
 
+// Optional extension tier (mesh shaders, fragment shading rate, quad control, host image copy, pipeline binaries, graphics pipeline library, device generated
+// commands, descriptor heap, compute shader derivatives). Feature bits and limits as the device reports them; a bit is read only when its extension is listed,
+// zero otherwise. Selection is `selectExt()` below. No consumer exists yet: the tier only enables, logs and self-tests.
+struct ExtCaps {
+    bool taskShader = false, meshShader = false;                    // VkPhysicalDeviceMeshShaderFeaturesEXT
+    uint32_t maxMeshOutputVertices = 0, maxMeshOutputPrimitives = 0, maxPreferredMeshWorkGroupInvocations = 0, maxTaskWorkGroupTotalCount = 0;
+    bool fsrPipeline = false, fsrPrimitive = false, fsrAttachment = false;   // VkPhysicalDeviceFragmentShadingRateFeaturesKHR
+    uint32_t fsrMinTexelW = 0, fsrMinTexelH = 0, fsrMaxTexelW = 0, fsrMaxTexelH = 0;
+    bool shaderQuadControl = false, shaderMaximalReconvergence = false;
+    bool hostImageCopy = false, identicalMemoryTypeRequirements = false;
+    bool pipelineBinaries = false, graphicsPipelineLibrary = false, graphicsPipelineLibraryFastLinking = false;
+    bool deviceGeneratedCommands = false;
+    uint32_t maxIndirectSequenceCount = 0;
+    bool descriptorHeap = false;
+    uint64_t maxSamplerHeapSize = 0, maxResourceHeapSize = 0, samplerDescriptorSize = 0, imageDescriptorSize = 0, bufferDescriptorSize = 0;
+    bool computeDerivativeGroupQuads = false, computeDerivativeGroupLinear = false;
+    bool maintenance5 = false;                                      // VkPhysicalDeviceMaintenance5Features (extension route; not the 1.4 core struct)
+};
+
 // What a physical device offers. `gather()` fills it from the driver; the tests fill it by hand.
 struct DeviceCaps {
     uint32_t deviceApi = 0;                          // VkPhysicalDeviceProperties::apiVersion
     uint32_t instanceApi = 0;                        // the apiVersion the instance was created with (caps what the application may use)
     std::vector<std::string> extensions;             // device extension names
     RtCaps rt;                                       // ray-tracing features and limits (optional tier, see selectRt)
+    ExtCaps ext;                                     // optional extension tier features and limits (see selectExt)
     // Feature bits. dynamicRendering / synchronization2 hold the bit of whichever struct applies (core 1.3 when both versions allow it, else the
     // KHR extension struct); every other bit comes from VkPhysicalDeviceVulkan12Features.
     bool timelineSemaphore = false;
@@ -407,6 +427,125 @@ inline std::string formatRtLine(const DeviceCaps& c, const RtSelection& r) {
                              static_cast<unsigned long long>(c.rt.maxGeometryCount), c.rt.minAccelerationStructureScratchOffsetAlignment,
                              c.rt.maxPerStageDescriptorAccelerationStructures, c.rt.shaderGroupHandleSize, c.rt.shaderGroupBaseAlignment,
                              c.rt.shaderGroupHandleAlignment, c.rt.maxShaderGroupStride, c.rt.maxRayRecursionDepth);
+    };
+    std::string line(static_cast<size_t>(print(nullptr, 0)), ' ');
+    print(line.data(), line.size() + 1);
+    return line;
+}
+
+// ---- Optional extension tier (enable, log and self-test only; no consumer) ----
+
+inline constexpr std::string_view kExtMeshShader = "VK_EXT_mesh_shader";
+inline constexpr std::string_view kExtFragmentShadingRate = "VK_KHR_fragment_shading_rate";
+inline constexpr std::string_view kExtShaderQuadControl = "VK_KHR_shader_quad_control";
+inline constexpr std::string_view kExtShaderMaximalReconvergence = "VK_KHR_shader_maximal_reconvergence";
+inline constexpr std::string_view kExtHostImageCopy = "VK_EXT_host_image_copy";
+inline constexpr std::string_view kExtPipelineBinary = "VK_KHR_pipeline_binary";
+inline constexpr std::string_view kExtGraphicsPipelineLibrary = "VK_EXT_graphics_pipeline_library";
+inline constexpr std::string_view kExtPipelineLibrary = "VK_KHR_pipeline_library";
+inline constexpr std::string_view kExtDeviceGeneratedCommands = "VK_EXT_device_generated_commands";
+inline constexpr std::string_view kExtDescriptorHeap = "VK_EXT_descriptor_heap";
+inline constexpr std::string_view kExtComputeShaderDerivatives = "VK_KHR_compute_shader_derivatives";
+inline constexpr std::string_view kExtMaintenance5 = "VK_KHR_maintenance5";
+
+// The part names MC2_VK_EXT_DENY accepts, in ExtSelection order.
+inline constexpr std::string_view kExtPartNames[] = {"mesh", "fsr", "quad", "host_copy", "pipeline_binary", "gpl", "dgc", "heap", "csd"};
+
+struct ExtSelection {
+    bool mesh = false, fsr = false, quad = false, hostCopy = false, pipelineBinary = false, gpl = false, dgc = false, heap = false, csd = false;
+    std::vector<std::string> extensions;             // device extensions to enable, dependencies included, no duplicates
+    std::string reason;                              // "<part>:<why>" per part that is 0; "-" when every part the device lists is selected
+    bool any() const { return mesh || fsr || quad || hostCopy || pipelineBinary || gpl || dgc || heap || csd; }
+    bool part(size_t i) const {
+        const bool v[] = {mesh, fsr, quad, hostCopy, pipelineBinary, gpl, dgc, heap, csd};
+        return i < 9 && v[i];
+    }
+};
+
+// Picks the extension parts from the device caps. Each part needs its extension, its feature bit and its registry dependencies and is judged independently, as
+// selectRt does. `deny` is a comma list of part names or "all" (MC2_VK_EXT_DENY); an unknown token adds "deny_unknown_<tok>" to the reason. Pure: no I/O.
+inline ExtSelection selectExt(const DeviceCaps& c, std::string_view deny) {
+    ExtSelection r;
+    std::vector<std::string> why;
+    bool denied[9] = {};
+    for (size_t pos = 0; pos <= deny.size();) {
+        size_t end = deny.find(',', pos);
+        if (end == std::string_view::npos) end = deny.size();
+        std::string_view tok = deny.substr(pos, end - pos);
+        pos = end + 1;
+        while (!tok.empty() && tok.front() == ' ') tok.remove_prefix(1);
+        while (!tok.empty() && tok.back() == ' ') tok.remove_suffix(1);
+        if (tok.empty()) continue;
+        if (tok == "all") {
+            for (bool& d : denied) d = true;
+            continue;
+        }
+        bool known = false;
+        for (size_t i = 0; i < 9; ++i)
+            if (tok == kExtPartNames[i]) { denied[i] = true; known = true; }
+        if (!known) why.push_back("deny_unknown_" + std::string(tok));
+    }
+    const bool api12 = c.usableApi() >= kFloorApi, api13 = c.usableApi() >= kUseApi13;
+    const bool m5 = c.hasExtension(kExtMaintenance5) && c.ext.maintenance5;
+    const ExtCaps& x = c.ext;
+    // Each part: the first missing requirement, or nullptr when it is usable.
+    const char* no[9] = {};
+    no[0] = !api12 ? "api_below_1_2" : !c.hasExtension(kExtMeshShader) ? "no_ext" : !(x.meshShader && x.taskShader) ? "no_feature" : nullptr;
+    no[1] = !api12 ? "api_below_1_2" : !c.hasExtension(kExtFragmentShadingRate) ? "no_ext"
+            : !(x.fsrPipeline || x.fsrPrimitive || x.fsrAttachment) ? "no_feature" : nullptr;
+    no[2] = !api12 ? "api_below_1_2" : !c.hasExtension(kExtShaderQuadControl) ? "no_ext" : !c.hasExtension(kExtShaderMaximalReconvergence) ? "no_ext_maximal_reconvergence"
+            : !x.shaderQuadControl ? "no_feature" : !x.shaderMaximalReconvergence ? "no_feature_maximal_reconvergence" : nullptr;
+    no[3] = !api13 ? "api_below_1_3" : !c.hasExtension(kExtHostImageCopy) ? "no_ext" : !x.hostImageCopy ? "no_feature" : nullptr;
+    no[4] = !c.hasExtension(kExtPipelineBinary) ? "no_ext" : !m5 ? "no_maintenance5" : !x.pipelineBinaries ? "no_feature" : nullptr;
+    no[5] = !c.hasExtension(kExtGraphicsPipelineLibrary) ? "no_ext" : !c.hasExtension(kExtPipelineLibrary) ? "no_ext_pipeline_library"
+            : !x.graphicsPipelineLibrary ? "no_feature" : nullptr;
+    no[6] = !c.hasExtension(kExtDeviceGeneratedCommands) ? "no_ext" : !m5 ? "no_maintenance5" : !c.bufferDeviceAddress ? "no_buffer_device_address"
+            : !x.deviceGeneratedCommands ? "no_feature" : nullptr;
+    no[7] = !c.hasExtension(kExtDescriptorHeap) ? "no_ext" : !m5 ? "no_maintenance5" : !c.bufferDeviceAddress ? "no_buffer_device_address"
+            : !x.descriptorHeap ? "no_feature" : nullptr;
+    no[8] = !api12 ? "api_below_1_2" : !c.hasExtension(kExtComputeShaderDerivatives) ? "no_ext"
+            : !(x.computeDerivativeGroupQuads || x.computeDerivativeGroupLinear) ? "no_feature" : nullptr;
+    bool* flag[9] = {&r.mesh, &r.fsr, &r.quad, &r.hostCopy, &r.pipelineBinary, &r.gpl, &r.dgc, &r.heap, &r.csd};
+    for (size_t i = 0; i < 9; ++i) {
+        if (denied[i]) why.push_back(std::string(kExtPartNames[i]) + ":denied");
+        else if (no[i]) why.push_back(std::string(kExtPartNames[i]) + ":" + no[i]);
+        else *flag[i] = true;
+    }
+    auto add = [&r](std::string_view e) {
+        for (const std::string& have : r.extensions)
+            if (have == e) return;
+        r.extensions.emplace_back(e);
+    };
+    if (r.mesh) add(kExtMeshShader);
+    if (r.fsr) add(kExtFragmentShadingRate);
+    if (r.quad) { add(kExtShaderMaximalReconvergence); add(kExtShaderQuadControl); }
+    if (r.hostCopy) add(kExtHostImageCopy);
+    if (r.pipelineBinary) { add(kExtMaintenance5); add(kExtPipelineBinary); }
+    if (r.gpl) { add(kExtPipelineLibrary); add(kExtGraphicsPipelineLibrary); }
+    if (r.dgc) { add(kExtMaintenance5); add(kExtDeviceGeneratedCommands); }
+    if (r.heap) { add(kExtMaintenance5); add(kExtDescriptorHeap); }
+    if (r.csd) add(kExtComputeShaderDerivatives);
+    r.reason = joinOr(why);
+    return r;
+}
+
+// `[VK_EXT v1] mesh=0|1 fsr=0|1 fsr_kinds=pipe+prim+att quad=0|1 host_copy=0|1 pipeline_binary=0|1 gpl=0|1 dgc=0|1 heap=0|1 csd=0|1 deny=<list|-> reason=<..|->
+//  mesh_max_verts=N mesh_max_prims=N fsr_texel=WxH`. fsr_kinds are the shading-rate kinds the device reports ("-" for none); fsr_texel is the minimum attachment
+// texel size. One snprintf so the log-tag census sees the key order.
+inline std::string formatExtLine(const DeviceCaps& c, const ExtSelection& r, std::string_view deny) {
+    std::string kinds;
+    if (c.ext.fsrPipeline) kinds += "pipe";
+    if (c.ext.fsrPrimitive) kinds += std::string(kinds.empty() ? "" : "+") + "prim";
+    if (c.ext.fsrAttachment) kinds += std::string(kinds.empty() ? "" : "+") + "att";
+    if (kinds.empty()) kinds = "-";
+    const std::string denyText = deny.empty() ? std::string("-") : std::string(deny), reason = r.reason.empty() ? std::string("-") : r.reason;
+    auto print = [&](char* out, size_t capacity) {
+        return std::snprintf(out, capacity,
+                             "[VK_EXT v1] mesh=%d fsr=%d fsr_kinds=%s quad=%d host_copy=%d pipeline_binary=%d gpl=%d dgc=%d heap=%d csd=%d deny=%s reason=%s "
+                             "mesh_max_verts=%u mesh_max_prims=%u fsr_texel=%ux%u",
+                             r.mesh ? 1 : 0, r.fsr ? 1 : 0, kinds.c_str(), r.quad ? 1 : 0, r.hostCopy ? 1 : 0, r.pipelineBinary ? 1 : 0, r.gpl ? 1 : 0, r.dgc ? 1 : 0,
+                             r.heap ? 1 : 0, r.csd ? 1 : 0, denyText.c_str(), reason.c_str(), c.ext.maxMeshOutputVertices, c.ext.maxMeshOutputPrimitives,
+                             c.ext.fsrMinTexelW, c.ext.fsrMinTexelH);
     };
     std::string line(static_cast<size_t>(print(nullptr, 0)), ' ');
     print(line.data(), line.size() + 1);

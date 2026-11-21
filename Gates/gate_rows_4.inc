@@ -90,6 +90,7 @@ P("MC2_VISUAL_LIVE_SETTLE_SEC", Float, 0.0, "gameos", "", "CAPTURE-LIVE-CLOCK ha
 P("MC2_VISUAL_SETTLE", Int, 0, "gameos", "", "", passthrough | verified),  // default not derivable from the tree
 G("MC2_VISUAL_TUNING_FILE", String, "", "gameos", "", "", passthrough | verified),  // default not derivable from the tree
 G("MC2_VK_DEVICE", String, "", "vk", "", "Harness GPU routing: Vulkan device whose name contains this text; empty = first discrete.", passthrough | verified),
+G("MC2_VK_EXT_DENY", String, "", "vk", "", "Test knob: comma list of optional Vulkan extension parts to leave unselected (mesh,fsr,quad,host_copy,pipeline_binary,gpl,dgc,heap,csd) or all.", passthrough | registry(Trace, "MC2_VK_EXT_DENY", -1, false) | verified),
 G("MC2_VK_FEED_DUMP", String, "", "vk", "", "", verified),
 // VK-P13-SELECTOR-1 / T4: fail-soft proof knob for the engine VK context.
 // history: docs/gate-history.md#MC2_VK_FORCE_FAIL

@@ -399,6 +399,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VISUAL_SETTLE", Kind::Int, Rule::Prefix, {}},
     {"MC2_VISUAL_TUNING_FILE", Kind::String, Rule::Std, {}},
     {"MC2_VK_DEVICE", Kind::String, Rule::Std, {}},
+    {"MC2_VK_EXT_DENY", Kind::String, Rule::Std, {}},
     {"MC2_VK_FEED_DUMP", Kind::String, Rule::Std, {}},
     {"MC2_VK_FORCE_FAIL", Kind::Bool, Rule::Lead0, {}},
     {"MC2_VK_FRAMES_IN_FLIGHT", Kind::Int, Rule::Prefix, {}},

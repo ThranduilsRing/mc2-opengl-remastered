@@ -630,6 +630,10 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "VK-FIELD-VFX-8: GL twin of MC2_VK_PRESENT_DUMP_ON_FIRE.",
     },
     {
+        "MC2_VK_EXT_DENY", "MC2_VK_EXT_DENY", EnvVarKind::Trace, false,
+        "Test knob: comma list of optional Vulkan extension parts to leave unselected (mesh,fsr,quad,host_copy,pipeline_binary,gpl,dgc,heap,csd) or all.",
+    },
+    {
         "MC2_FEATURE_VK_FORCE_FAIL", "MC2_VK_FORCE_FAIL", EnvVarKind::Trace, false,
         "VK-P13-SELECTOR-1: presence-gated =1, default OFF.",
     },
