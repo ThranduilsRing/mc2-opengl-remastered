@@ -25,8 +25,8 @@ SCENARIO = ROOT / "tests/visual/bookmarks/battle_bench_v1.json"
 DEFAULT_EXE = Path("G:/mc2-installs/mc2-win64-mapgen/mc2.exe")
 PASSES = {
     "terrain": ("VKIsl.Terrain",),
-    "shadows": ("VKIsl.Shadow.",), "vegetation": ("VKIsl.Vfx.Vegetation",),
-    "props": ("VKIsl.Props", "VKIsl.Props.LateFringe"), "mechs": ("VKIsl.Mech",), "water": ("VKIsl.Water",),
+    "shadows": ("VKIsl.Shadow.",), "vegetation": ("VKIsl.Vegetation",),
+    "props": ("VKIsl.Props", "VKIsl.Props.Late"), "mechs": ("VKIsl.Mech", "VKIsl.Mech.Skin"), "water": ("VKIsl.Water",),
     "post": ("VKIsl.Post.", "VKIsl.Present.Composite"), "vfx": ("VKIsl.Vfx",),
 }
 STOCK_MISSIONS = ("mc2_01", "mc2_10", "mc2_15", "mc2_19")
@@ -276,7 +276,16 @@ def read_frames(directory):
 # These scopes are timed inside an already measured inclusive scope. Other
 # dotted names (e.g. Terrain.CullCompute) are separate passes, not children.
 GPU_INCOMPLETE_MAX_FRACTION = 0.01
-NESTED_GPU_SCOPES = {"VKIsl.Vfx.Vegetation", "VKIsl.Props.Trees"}
+# Children opened inside an enclosing scope on the same command buffer (read from GameOS/gameos MC2_VK_GPU_SCOPE sites):
+# Props = Opaque/Core(+Depth, Q0-3)/Fringe; Props.Refl = Refl.Core; Terrain(.Refl) = Patches/Skirts; Vegetation = Depth/Shade;
+# Water.Reflection = Coverage/Mask/DepthCopy. Props.Cull, Props.Late, Mech.Skin and Shadow.Skin are separate scopes.
+NESTED_GPU_SCOPES = {
+    "VKIsl.Props.Opaque", "VKIsl.Props.Core", "VKIsl.Props.Core.Depth", "VKIsl.Props.Fringe", "VKIsl.Props.Refl.Core",
+    "VKIsl.Props.Core.Q0", "VKIsl.Props.Core.Q1", "VKIsl.Props.Core.Q2", "VKIsl.Props.Core.Q3",
+    "VKIsl.Terrain.Patches", "VKIsl.Terrain.Refl.Patches", "VKIsl.Terrain.Skirts",
+    "VKIsl.Vegetation.Depth", "VKIsl.Vegetation.Shade",
+    "VKIsl.Water.Reflection.Coverage", "VKIsl.Water.Reflection.Mask", "VKIsl.Water.Reflection.DepthCopy",
+}
 
 
 def gpu_pass_sum(passes):
