@@ -90,6 +90,34 @@
           "name": "u_horizonFadeEndSin",
           "offset": 108,
           "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "u_hazeStart",
+          "offset": 112,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "u_hazeFull",
+          "offset": 116,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "u_fogProfile",
+          "offset": 120,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "_pad1",
+          "offset": 124,
+          "type": "float"
         }
       ],
       "name": "EdgeFogParams"

@@ -715,8 +715,8 @@ void drawOptions() {
                 continue; // Legacy material/profile switch; player budget controls follow.
             } else if (std::string_view(option.key) == "ReflectionQuality") {
                 continue; // The live Water quality section owns these controls.
-            } else if (std::string_view(option.key) == "WaterDetail") {
-                continue;
+            } else if (std::string_view(option.key) == "WaterDetail" || std::string_view(option.key) == "DrawDistance") {
+                continue; // DrawDistance GUI row is a later lane
             } else if (std::string_view(option.key) == "TextureQuality") {
                 const char* labels[] = {"Auto (by VRAM)", "Low", "Medium", "High", "Ultra"};
                 int idx = std::clamp(static_cast<int>(draft.*option.l) + 1, 0, 4);

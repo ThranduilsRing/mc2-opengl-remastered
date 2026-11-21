@@ -55,6 +55,10 @@ layout(set = 0, binding = 1, std140) uniform EdgeFogParams {
     int   u_horizonClampEnabled;
     float u_horizonFadeStartSin;
     float u_horizonFadeEndSin;
+    float u_hazeStart;   // @112 source wu (x1.5 via mc2FogDistance)
+    float u_hazeFull;    // @116
+    int   u_fogProfile;  // @120 0 = Stock
+    float _pad1;         // @124
 };
 
 void main()
@@ -89,10 +93,14 @@ void main()
         horizonFactor = 1.0 - smoothstep(u_horizonFadeStartSin, u_horizonFadeEndSin, elevSin);
     }
 
-    float rangeHaze = mc2FogSmooth(mc2FogRamp(length(worldPos - wNear),
-        mc2FogDistance(6000.0), mc2FogDistance(12000.0)));
+    float d = length(worldPos - wNear);
+    float rangeHaze = (u_fogProfile == 0)
+        ? mc2FogSmooth(mc2FogRamp(d, mc2FogDistance(6000.0), mc2FogDistance(12000.0)))
+        : mc2FogSmooth(mc2FogRamp(d, mc2FogDistance(u_hazeStart), mc2FogDistance(u_hazeFull)));
     rangeHaze *= mc2FogRangeViewFactor(-normalize(wFar - wNear).z);
-    float fogFactor = clamp(max(max(innerRamp, rangeHaze) * u_fogMax, outsideFill), 0.0, 1.0)
-                      * horizonFactor;
+    float stock = clamp(max(max(innerRamp, rangeHaze) * u_fogMax, outsideFill), 0.0, 1.0)
+                  * horizonFactor;
+    // Profiles 1-3 also fog past haze start above the horizon (horizonFactor not applied to the range term).
+    float fogFactor = (u_fogProfile == 0) ? stock : max(stock, rangeHaze * u_fogMax);
     outFog = vec4(u_fogColor, fogFactor);
 }
