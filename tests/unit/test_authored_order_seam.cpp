@@ -257,8 +257,8 @@ TEST_CASE("ABLExec/stack overflow stops every push with both softfail flags enab
 
 TEST_CASE("CarbonABL/binary array assignment uses declared byte extents") {
     CompileFixture fixture;
-    fixture.sources["arrays.abl"] = "module arrays;\nvar\nstatic integer[3] source;\n"
-        "static integer[3] destination;\ncode\ndestination = source;\nendmodule.\n";
+    fixture.sources["arrays.abl"] = "module arrays;\ntype\nints = integer[3];\nvar\nstatic ints source;\n"
+        "static ints destination;\ncode\ndestination = source;\nendmodule.\n";
     const int handle = ABLi_preProcess("arrays.abl");
     REQUIRE(handle >= 0);
     ABLModule module;

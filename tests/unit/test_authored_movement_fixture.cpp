@@ -22,7 +22,8 @@
 #include "paths.h"
 #include "mc2video.h"
 #include "mech3d.h"
-#include "gosfxheaders.hpp"
+#include "gosfx/gosfxheaders.hpp"
+#include "Gates/preferences_legacy.h"
 #include "multplyr.h"
 #include "save_fix_section.h"
 #include <chrono>
@@ -54,9 +55,10 @@ TEST_CASE("CarbonSmoke/negative levels retain the normal effect start") {
         ~ProbeMech() { (void)smokeEffect.release(); }
         glm::vec3 getNodePosition(long) override { return {}; }
     };
-    extern bool useNonWeaponEffects;
     const bool previous = useNonWeaponEffects;
+    const bool previousPresentation = simPresentationPass;
     useNonWeaponEffects = true;
+    simPresentationPass = true; // startSmoking only starts effects in the presentation pass (10c86136e)
     {
         ProbeEffect effect;
         ProbeMech mech;
@@ -67,6 +69,7 @@ TEST_CASE("CarbonSmoke/negative levels retain the normal effect start") {
         CHECK_NOTHROW(mech.startSmoking(-2));
     }
     useNonWeaponEffects = previous;
+    simPresentationPass = previousPresentation;
 }
 
 struct ObjectiveObservationFixture {
@@ -1352,7 +1355,9 @@ TEST_CASE("PathWorkProduction/empty and zero expansion requests reset each updat
     std::array<MovingPilot, 9> pilots;
     for (auto& pilot : pilots) queue.request(&pilot, 0, MOVEPARAM_INIT, 16);
     CHECK(MovePathManager::numPaths == 9);
-    queue.update(); // null vehicles cost zero expansions; all nine can drain
+    queue.update(); // null vehicles cost zero expansions, but one tick solves at most kMaxSolvesPerTick (c08b3456d)
+    CHECK(MovePathManager::numPaths == 9 - mc2::path_work::kMaxSolvesPerTick);
+    queue.update(); // the remainder drains on the next tick
     CHECK(MovePathManager::numPaths == 0);
     CHECK(queue.queueFront == nullptr);
     CHECK(queue.queueEnd == nullptr);
@@ -1360,5 +1365,5 @@ TEST_CASE("PathWorkProduction/empty and zero expansion requests reset each updat
     queue.request(&pilots[0], 0, MOVEPARAM_INIT, 16);
     queue.update();
     CHECK(MovePathManager::numPaths == 0);
-    CHECK(MovePathManager_getFrameCounter() == frame + 3);
+    CHECK(MovePathManager_getFrameCounter() == frame + 4);
 }

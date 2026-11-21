@@ -65,6 +65,15 @@ template<class T> void pattern(T& v, unsigned& seed) {
     else if constexpr (std::is_same_v<T, glm::vec3>) {
         pattern(v.x, seed); pattern(v.y, seed); pattern(v.z, seed);
     } else if constexpr (std::is_pointer_v<T>) v = reinterpret_cast<T>(uintptr_t(1));
+    else if constexpr (std::is_enum_v<T> && requires { enum_in_domain(T{}, int32_t{}); }) {
+        // Order enums are range-checked on decode (LG14 0fae150de): an out-of-domain pattern value drops the whole order.
+        int32_t bits = 1;
+        for (int tries = 0; tries < 31; ++tries) {
+            bits = static_cast<int32_t>(1 + seed++ % 31);
+            if (enum_in_domain(T{}, bits)) break;
+        }
+        v = static_cast<T>(bits);
+    }
     else v = static_cast<T>(1 + seed++ % 31);
 }
 template<class T> void clear(T& v) {
