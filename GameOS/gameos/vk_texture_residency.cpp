@@ -266,6 +266,12 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
 }
 
 ResidentTextureRef TextureResidency::acquire(const RenderCore::TextureKey& key, const RenderCore::KtxImage& image, RenderCore::TextureDimensions dimensions, uint32_t layers, bool arrayView) {
+    return acquireLazy(key,[&image] { return std::make_shared<RenderCore::KtxImage>(image); },dimensions,layers,arrayView);
+}
+ResidentTextureRef TextureResidency::acquire(const RenderCore::TextureKey& key, std::shared_ptr<const RenderCore::KtxImage> image, RenderCore::TextureDimensions dimensions, uint32_t layers, bool arrayView) {
+    return acquireLazy(key,[&image] { return std::move(image); },dimensions,layers,arrayView);
+}
+ResidentTextureRef TextureResidency::acquireLazy(const RenderCore::TextureKey& key, const std::function<std::shared_ptr<const RenderCore::KtxImage>()>& makeImage, RenderCore::TextureDimensions dimensions, uint32_t layers, bool arrayView) {
     auto handle=service_.acquire(key,RenderCore::kNoTextureNode,dimensions);
     if (!handle.isValid()) return {};
     if (residents_.contains(handle.raw())) return ResidentTextureRef(*this,handle,arrayView);
@@ -273,7 +279,7 @@ ResidentTextureRef TextureResidency::acquire(const RenderCore::TextureKey& key, 
     residents_.emplace(handle.raw(),Resident{{},slot,mc2tex::wantsMipmaps(key.hints),layers,arrayView});
     residents_.at(handle.raw()).contentVersion=service_.contentVersion(handle);
     residents_.at(handle.raw()).vegetation=key.source.starts_with("vegetation:P2|");
-    pending_.push_back({handle,std::make_shared<RenderCore::KtxImage>(image),service_.contentVersion(handle)});
+    pending_.push_back({handle,makeImage(),service_.contentVersion(handle)});
     return ResidentTextureRef(*this,handle,arrayView);
 }
 ResidentTextureRef TextureResidency::requestKtx(const RenderCore::TextureKey& key, std::vector<uint8_t> bytes,
@@ -402,20 +408,23 @@ ResidentTextureRef TextureResidency::acquirePixels(uint32_t width,uint32_t heigh
         (compressed ? static_cast<size_t>((width+3)/4)*((height+3)/4)*(format<=134?8u:16u) : static_cast<size_t>(width)*height*((format==VK_FORMAT_R16G16B16A16_SFLOAT || format==VK_FORMAT_R32G32_SFLOAT) ? 8u : 4u))*layers;
     if (count!=expected) return {};
     RenderCore::TextureKey key;
-    key.source=RenderCore::makeTextureSourceId("legacy-cpu:P9",std::to_string(width)+"x"+std::to_string(height)+
-        ":"+std::to_string(layers)+(arrayView ? ":array" : ":2d"),RenderCore::textureContentHash(static_cast<const uint8_t*>(bytes),count));
+    key.source=RenderCore::legacyCpuTextureSource(width,height,layers,arrayView,RenderCore::textureContentHash(static_cast<const uint8_t*>(bytes),count));
     key.format=static_cast<uint32_t>(format); key.hints=mipmaps ? gosHint_MipmapFilter0 : 0;
-    RenderCore::KtxImage image; image.width=static_cast<int>(width); image.height=static_cast<int>(height); image.vkFormat=format; image.mipCount=1; image.mipByteOffsets={0};
-    if (bc7Chain) {
-        image.mipCount=mipCount; image.mipByteOffsets.clear();
-        size_t offset=0;
-        for (uint32_t level=0;level<mipCount;++level) {
-            image.mipByteOffsets.push_back(offset);
-            offset+=mc2tex::bc7LevelBytes(mc2tex::mipExtent(width,level),mc2tex::mipExtent(height,level));
+    // The caller's bytes are copied only on a residency miss.
+    auto buildImage=[&]() {
+        RenderCore::KtxImage image; image.width=static_cast<int>(width); image.height=static_cast<int>(height); image.vkFormat=format; image.mipCount=1; image.mipByteOffsets={0};
+        if (bc7Chain) {
+            image.mipCount=mipCount; image.mipByteOffsets.clear();
+            size_t offset=0;
+            for (uint32_t level=0;level<mipCount;++level) {
+                image.mipByteOffsets.push_back(offset);
+                offset+=mc2tex::bc7LevelBytes(mc2tex::mipExtent(width,level),mc2tex::mipExtent(height,level));
+            }
         }
-    }
-    image.isCompressed=compressed; image.blockSizeBytes=(format>=131 && format<=134)?8:compressed?16:0;
-    image.pixels.assign(static_cast<const uint8_t*>(bytes),static_cast<const uint8_t*>(bytes)+count);
+        image.isCompressed=compressed; image.blockSizeBytes=(format>=131 && format<=134)?8:compressed?16:0;
+        image.pixels.assign(static_cast<const uint8_t*>(bytes),static_cast<const uint8_t*>(bytes)+count);
+        return image;
+    };
     if (mipmaps && !compressed && (format==VK_FORMAT_R8G8B8A8_UNORM || format==VK_FORMAT_R8G8B8A8_SRGB)) {
         // First-use mech materials enter here during shadow packing. Keep their
         // spatial mip work on the existing decode worker, like cooked textures.
@@ -427,7 +436,7 @@ ResidentTextureRef TextureResidency::acquirePixels(uint32_t width,uint32_t heigh
         residents_.emplace(handle.raw(),Resident{{},slot,true,layers,arrayView});
         const auto version=service_.contentVersion(handle);
         residents_.at(handle.raw()).contentVersion=version;
-        worker_.request(handle,[image=std::move(image),width,height,layers]() mutable -> std::shared_ptr<const RenderCore::KtxImage> {
+        worker_.request(handle,[image=buildImage(),width,height,layers]() mutable -> std::shared_ptr<const RenderCore::KtxImage> {
         std::vector<uint8_t> current=image.pixels;
         uint32_t w=width,h=height;
         while (w>1 || h>1) {
@@ -446,7 +455,7 @@ ResidentTextureRef TextureResidency::acquirePixels(uint32_t width,uint32_t heigh
         },version);
         return ResidentTextureRef(*this,handle,arrayView);
     }
-    auto ref=acquire(key,image,{width,height,width,height},layers,arrayView);
+    auto ref=acquireLazy(key,[&buildImage] { return std::make_shared<RenderCore::KtxImage>(buildImage()); },{width,height,width,height},layers,arrayView);
     if (ref) { auto& r=residents_.at(ref.get().raw()); r.layers=layers; r.arrayView=arrayView; }
     return ref;
 }

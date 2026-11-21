@@ -534,7 +534,7 @@ void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
         key.format = cooked.image->vkFormat; key.hints = gosHint_MipmapFilter0;
         if (cookedTried) {
             // already refused at this version: straight to the slot-texture import below
-        } else if (auto tex = mc2vk::getOrCreateEngineVulkanContext().textures().acquire(key, *cooked.image, {side, side, side, side}, cooked.layers, true)) {
+        } else if (auto tex = mc2vk::getOrCreateEngineVulkanContext().textures().acquire(key, cooked.image, {side, side, side, side}, cooked.layers, true)) {
             s->matNormalTexture = std::move(tex);
             s->matNormalLayers = cooked.layers;
             s->matNormalReady = true;
