@@ -169,6 +169,9 @@ def _tree(tmp_path, stems=("a_oak", "b_pine"), grass=True):
     pin = tmp_path / m["pinned"][0]["pin_file"]
     pin.parent.mkdir(parents=True, exist_ok=True)
     pin.write_text(json.dumps(pins))
+    for e in m["pinned"][1:]:   # further pinned groups (actor_pbr_mips) carry no outputs in this fixture
+        (tmp_path / e["pin_file"]).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / e["pin_file"]).write_text("{}")
     if grass:
         for r in m["unpinned"]:
             if r["required"]:
