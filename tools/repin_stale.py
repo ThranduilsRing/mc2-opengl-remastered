@@ -106,14 +106,19 @@ def fresh_out_dir(path: str) -> str:
     return path
 
 
+def run_dir(tmp: str, row: dict) -> str:
+    """One run dir per (kind, mission): a mission re-pinned for both kinds must not share one."""
+    return os.path.join(tmp, f"repin_{row['kind']}_{row['mission']}")
+
+
 def repin_command(row: dict, install: str, det_duration: int, tmp: str) -> list[list[str]]:
     py = [sys.executable, "-B"]
     m = row["mission"]
     if row["kind"] == "saveload":
-        out = os.path.join(tmp, "repin_save_" + m)
+        out = run_dir(tmp, row)
         return [py + [os.path.join(ROOT, "tools", "saveload_roundtrip.py"), "baseline", "--mission", m, "--install", install,
                       "--out", out, "--save-dir", os.path.join(out, "savegame")] + gate_form("saveload", m)]
-    out = os.path.join(tmp, "repin_" + m)
+    out = run_dir(tmp, row)
     sd = os.path.join(ROOT, "tools", "sim_determinism.py")
     env = [x for k, v in (row["data"].get("env") or {}).items() for x in ("--env", f"{k}={v}")]
     form = [f for f in gate_form("determinism", m) if f != "--single"]  # --single is check-only: a re-pin records from a pair
@@ -127,11 +132,10 @@ def repin_command(row: dict, install: str, det_duration: int, tmp: str) -> list[
 
 
 def repin(row: dict, install: str, det_duration: int, tmp: str) -> bool:
-    fresh_out_dir(os.path.join(tmp, "repin_" + row["mission"]))
-    fresh_out_dir(os.path.join(tmp, "repin_save_" + row["mission"]))
+    fresh_out_dir(run_dir(tmp, row))
     for cmd in repin_command(row, install, det_duration, tmp):
         if "@LOG@" in cmd:
-            logs = glob.glob(os.path.join(tmp, "repin_" + row["mission"], "**", row["mission"] + ".log"), recursive=True)
+            logs = glob.glob(os.path.join(run_dir(tmp, row), "**", row["mission"] + ".log"), recursive=True)
             if not logs:
                 print(f"  no run log for {row['mission']}; not re-pinned")
                 return False
