@@ -466,6 +466,7 @@ bool visualTuning_saveCurrentToMission() {
     if (!entry.is_null() && !entry.is_object()) return false;
     if (entry.is_null()) entry = Json::object();
     for (const auto& [key,value] : current) {
+        if (key.starts_with("sun") && value == kSunAbsent) continue; // absent sun keys keep whatever the profile holds
         if (!validValue(key,value)) return false;
         entry[key] = value;
     }

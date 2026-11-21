@@ -403,7 +403,7 @@ long Camera::init (FitIniFilePtr cameraFile )
 			cameraFile->readIdUChar("AmbientBlue", ambientBlue);
 		}
 		// Per-mission sun (visual_tuning.json sunPitch/sunYaw/sunColor*): day suns only, absolute values so a save re-applies the same.
-		if (mc2_mission_light::nightFromSun(dayLightPitch) == 0.0f)
+		if (!missionLightName.empty() && mc2_mission_light::nightFromSun(dayLightPitch) == 0.0f)
 		{
 			if (const auto v = visualTuning_sunValue("sunPitch")) lightPitch = dayLightPitch = std::max(*v, 26.0f);
 			if (const auto v = visualTuning_sunValue("sunYaw")) lightYaw = *v;
@@ -418,8 +418,15 @@ long Camera::init (FitIniFilePtr cameraFile )
 				lightBlue = dayLightBlue = static_cast<unsigned char>(*b + 0.5f);
 			}
 			// sunAmbientScale: ambient* is what every shadowed surface (terrain, props, mechs, grass) is lit with.
-			if (const auto k = visualTuning_sunValue("sunAmbientScale"))
+			// A save's ambient bytes are already scaled (Camera::save marks it): scaling again would compound on every load.
+			bool scaledInSave = false;
+			if (!fromSave || cameraFile->readIdBoolean("SunAmbientScaled", scaledInSave) != NO_ERR)
+				scaledInSave = false;
+			if (scaledInSave)
+				sunAmbientScaled = true;
+			if (const auto k = (scaledInSave ? std::optional<float>() : visualTuning_sunValue("sunAmbientScale")))
 			{
+				sunAmbientScaled = true;
 				const auto sc = [k](unsigned char& v) { v = static_cast<unsigned char>(std::min(255.0f, v * *k + 0.5f)); };
 				sc(ambientRed); sc(ambientGreen); sc(ambientBlue); sc(dayAmbientRed); sc(dayAmbientGreen); sc(dayAmbientBlue);
 			}
@@ -817,6 +824,7 @@ bool Camera::save( FitIniFile* file )
 	file->writeIdBoolean( "Ready", true );
 	// LOCAL-LIGHTS-4: the colours below already carry the mission night profile; a load must not scale them twice.
 	file->writeIdBoolean( "NightProfileApplied", missionLightApplied );
+	file->writeIdBoolean( "SunAmbientScaled", sunAmbientScaled );
 
 	file->writeIdUChar( "LightRed", lightRed );
 	file->writeIdUChar( "LightGreen", lightGreen );
