@@ -5,6 +5,7 @@
 
 #include "KtxLoader.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
@@ -303,4 +304,47 @@ TEST_CASE("static-prop BC7: a valid 2-layer 128px set satisfies the group-build 
     CHECK_FALSE(RenderCore::ktxLoadRgba8((dir / "absent.ktx2").string().c_str(), badImg));
     std::error_code ec;
     std::filesystem::remove_all(dir, ec);
+}
+
+namespace {
+// A square single-layer BC7 UNORM image with a full chain whose every byte is `fill`.
+RenderCore::KtxImage bc7Layer(int side, uint8_t fill) {
+    RenderCore::KtxImage img;
+    img.width = img.height = side; img.vkFormat = 145; img.isCompressed = true; img.blockSizeBytes = 16;
+    for (int e = side; e >= 1; e >>= 1) {
+        img.mipByteOffsets.push_back(img.pixels.size());
+        const size_t blocks = (size_t(e) + 3) / 4;
+        img.pixels.insert(img.pixels.end(), blocks * blocks * 16, uint8_t(fill + img.mipCount));
+        ++img.mipCount;
+    }
+    return img;
+}
+}  // namespace
+
+// The terrain concrete/rock detail array (vulkan_terrain_island_images.cpp import_concrete_detail): every level holds all layers
+// in layer order, which is the layout vkCmdCopyBufferToImage reads for one copy region per level over all array layers.
+TEST_CASE("ktxStackBc7Layers: level-major layout, authored chain kept, mismatches refused") {
+    const RenderCore::KtxImage layers[3] = {bc7Layer(16, 0x10), bc7Layer(16, 0x20), bc7Layer(16, 0x30)};
+    const auto array = RenderCore::ktxStackBc7Layers(layers);
+    REQUIRE(array);
+    CHECK(array->mipCount == 5);
+    CHECK(array->vkFormat == 145);
+    size_t offset = 0;
+    for (int level = 0; level < 5; ++level) {
+        const size_t blocks = (size_t(std::max(1, 16 >> level)) + 3) / 4, bytes = blocks * blocks * 16;
+        CHECK(array->mipByteOffsets[size_t(level)] == offset);
+        for (size_t layer = 0; layer < 3; ++layer) CHECK(array->pixels[offset + layer * bytes] == uint8_t(0x10 * (layer + 1) + level));
+        offset += bytes * 3;
+    }
+    CHECK(offset == array->pixels.size());
+
+    RenderCore::KtxImage otherSize[2] = {bc7Layer(16, 1), bc7Layer(8, 1)};
+    CHECK_FALSE(RenderCore::ktxStackBc7Layers(otherSize));
+    RenderCore::KtxImage truncated[1] = {bc7Layer(16, 1)};
+    truncated[0].mipCount = 3; truncated[0].mipByteOffsets.resize(3);
+    CHECK_FALSE(RenderCore::ktxStackBc7Layers(truncated));
+    RenderCore::KtxImage srgb[1] = {bc7Layer(16, 1)};
+    srgb[0].vkFormat = 146;
+    CHECK_FALSE(RenderCore::ktxStackBc7Layers(srgb));
+    CHECK_FALSE(RenderCore::ktxStackBc7Layers({}));
 }

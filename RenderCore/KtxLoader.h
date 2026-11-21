@@ -27,7 +27,9 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <optional>
+#include <span>
 #include <span>
 #include <vector>
 
@@ -99,5 +101,9 @@ bool ktxDecodeBlocksToRgba8(const KtxImage& img, int level, std::vector<uint8_t>
 bool ktxDecodeBc7ToRgba8(const KtxImage& img, int level,
                          std::vector<uint8_t>& outRgba,
                          int* outW = nullptr, int* outH = nullptr);
+
+// One level-major BC7 UNORM array image (each level holds every layer, the layout a 2D-array upload copies) from single-layer BC7
+// images that are square, carry a full chain and share one size. Null when any layer does not fit: the caller falls back.
+std::shared_ptr<const KtxImage> ktxStackBc7Layers(std::span<const KtxImage> layers);
 
 } // namespace RenderCore
