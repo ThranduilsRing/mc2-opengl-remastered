@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -90,7 +91,7 @@ def test_default_out_root_is_the_lane_scratch(tmp_path, monkeypatch):
 
 
 def test_existing_out_dir_fails_loudly(tmp_path):
-    d = tmp_path / "repin_mc2_03"
+    d = tmp_path / "repin_determinism_mc2_03"
     d.mkdir()
     (d / "old.log").write_text("x")
     with pytest.raises(SystemExit) as e:
@@ -100,6 +101,26 @@ def test_existing_out_dir_fails_loudly(tmp_path):
     with pytest.raises(SystemExit):
         rs.repin(row, "inst", 30, str(tmp_path))  # refused before any command runs
     assert rs.fresh_out_dir(str(tmp_path / "fresh")) == str(tmp_path / "fresh")
+
+
+def test_two_kinds_for_one_mission_get_distinct_run_dirs(tmp_path, monkeypatch):
+    seen = []
+
+    def fake_call(cmd, cwd=None):
+        out = cmd[cmd.index("--out") + 1] if "--out" in cmd else None
+        if out:
+            os.makedirs(out, exist_ok=True)
+            Path(out, "mc2_03.log").write_text("x")
+            seen.append(out)
+        return 0
+
+    monkeypatch.setattr(rs.subprocess, "call", fake_call)
+    monkeypatch.setattr(rs, "keep_unknown_keys", lambda row: None)
+    for kind in ("determinism", "saveload"):
+        row = {"kind": kind, "mission": "mc2_03", "data": {"frames": 5}}
+        rs.repin(row, "inst", 30, str(tmp_path))  # second kind must not abort on the first's dir
+    assert len(seen) == 2 and seen[0] != seen[1]
+    assert rs.run_dir("t", {"kind": "determinism", "mission": "m"}) != rs.run_dir("t", {"kind": "saveload", "mission": "m"})
 
 
 def test_real_repo_scans():
