@@ -33,6 +33,22 @@ inline BakePlan bakePlan(int level) {
 // The value the water UBO carries in WaterFsParams::debug[2] (shader F.debug.z) for a plan.
 inline float uploadedDebugZ(const BakePlan& plan) { return static_cast<float>(plan.marchSteps); }
 inline int bakeSize(int fullSize, const BakePlan& plan) { return (std::max)(1, fullSize / plan.sizeDivisor); }
+// Float count of the reflection mask's horizontal scratch: two 8x8 block-flag grids (water_reflection_mask.comp indexes [0, 2 x blocks)).
+constexpr unsigned long long maskScratchFloats(int w, int h) {
+    return 2ull * static_cast<unsigned long long>((w + 7) / 8) * static_cast<unsigned long long>((h + 7) / 8);
+}
+
+enum class RebakeReason { None, Content, Drift, Reveal };
+// Why a ready bake rebuilds. A plan without props draws no props, so a prop content revision or a registry generation
+// change (tint, light and extent writes) cannot change it. `otherSource` = any non-prop key changed (terrain keys,
+// water level, half map, lighting taps); flat-pad light changes are bounded refreshes like a reveal.
+inline RebakeReason rebakeReason(const BakePlan& plan, bool propContentChanged, bool otherSource, bool drift,
+                                 bool generationChanged, bool flatLightChanged, bool secondElapsed) {
+    if ((propContentChanged && plan.props) || otherSource) return RebakeReason::Content;
+    if (drift) return RebakeReason::Drift;
+    if (((generationChanged && plan.props) || flatLightChanged) && secondElapsed) return RebakeReason::Reveal;
+    return RebakeReason::None;
+}
 
 // Pixel bounds include every possible ripple lookup and bilinear neighbour.
 inline std::array<int,4> paddedPixels(const float* ndc, int w, int h) {

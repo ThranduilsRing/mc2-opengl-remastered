@@ -2,7 +2,7 @@
 //
 // One invocation per world-indexed water recipe. Applies the water-eligibility predicate (terrain.cpp narrow-walk
 // mirror), projects the four corners through the GL clip matrix, runs the per-triangle depth-admission gate and
-// packs a WaterThinRecord (lightRGB / fogRGB from the terrain-lighting buffer, material in the fog low byte).
+// packs a WaterThinRecord (lightRGB / fogRGB straight from the terrain-lighting buffer; the water pass reads only the fog byte).
 // The visible count lands in header[0] (atomic); water_draw_args.comp.slang turns it into the indirect draw.
 //
 // Set 0:
@@ -60,16 +60,6 @@ struct WaterCullParams {
 static const uint  kFlagBitUvModeBottomLeft   = 0x1u;
 static const uint  kWaterThinFlagPzTri1Valid  = 0x1u;
 static const uint  kWaterThinFlagPzTri2Valid  = 0x2u;
-
-// terrainTypeToMaterialLocal() in gos_terrain_water_stream.cpp.
-uint terrainTypeToMaterial(uint tt)
-{
-    if (tt == 3u || tt == 8u || tt == 9u || tt == 12u) return 1u;
-    if (tt == 2u || tt == 4u) return 2u;
-    if (tt == 10u || tt == 13u || tt == 14u || tt == 15u ||
-        tt == 16u || tt == 17u || tt == 18u || tt == 19u) return 3u;
-    return 0u;
-}
 
 float waveOurCos(uint vWaterBits)
 {
@@ -150,11 +140,6 @@ void main(uint3 tid : SV_DispatchThreadID)
     uint outSlot = WaveReadLaneFirst(waveBase) + waveRank;
     if (outSlot >= uint(P.misc1.y)) return;
 
-    uint mtl0 = terrainTypeToMaterial((r.terrainTypes      ) & 0xFFu);
-    uint mtl1 = terrainTypeToMaterial((r.terrainTypes >>  8) & 0xFFu);
-    uint mtl2 = terrainTypeToMaterial((r.terrainTypes >> 16) & 0xFFu);
-    uint mtl3 = terrainTypeToMaterial((r.terrainTypes >> 24) & 0xFFu);
-
     WaterThinRecord tr;
     tr.recipeIdx = id;
     uint pzFlags = 0u;
@@ -167,9 +152,9 @@ void main(uint3 tid : SV_DispatchThreadID)
     tr.lightRGB1 = lighting[vn1].lightRGB;
     tr.lightRGB2 = lighting[vn2].lightRGB;
     tr.lightRGB3 = lighting[vn3].lightRGB;
-    tr.fogRGB0 = (lighting[vn0].fogRGB & 0xFFFFFF00u) | mtl0;
-    tr.fogRGB1 = (lighting[vn1].fogRGB & 0xFFFFFF00u) | mtl1;
-    tr.fogRGB2 = (lighting[vn2].fogRGB & 0xFFFFFF00u) | mtl2;
-    tr.fogRGB3 = (lighting[vn3].fogRGB & 0xFFFFFF00u) | mtl3;
+    tr.fogRGB0 = lighting[vn0].fogRGB;
+    tr.fogRGB1 = lighting[vn1].fogRGB;
+    tr.fogRGB2 = lighting[vn2].fogRGB;
+    tr.fogRGB3 = lighting[vn3].fogRGB;
     thin[outSlot] = tr;
 }

@@ -368,6 +368,7 @@ extern "C" int mc2_vk_water_island_run(
     const clk::time_point tStage0 = clk::now();
     const WaterStream::VkNativeInputs* nat = nullptr;   // STEP 3.4P: set in the feed block when the native producers run this frame
     bool reflectThisFrame=false;
+    bool waterInView=true;
     {
     ZoneScopedN("VKIsl.Water.Feed");   // VK-ISLAND-TRACY-1: recipe/thin/UBO staging (steps 1-3)
     // ---- 1) Upload recipe SSBO once (mission-static), into device-local memory (the cull compute reads it every frame). ----
@@ -428,8 +429,10 @@ extern "C" int mc2_vk_water_island_run(
         const bool shoreSdf = static_cast<int>(fsLocal.f4[0] + 0.5f) == 3 &&
                               s->shHReal && s->shHSdf;
         float bounds[4]{};
-        reflectThisFrame=s->mapHasWater && gos_GetWaterReflectionQuality()==2 && mc2::options::current().reflectionQuality>0
-            && WaterStream::NativeWaterInFrustum(*nat,shoreSdf,bounds);
+        // Conservative superset of the GPU cull: false means it admits no water triangle. Also bounds the live reflection walk.
+        waterInView = s->mapHasWater && WaterStream::AnyWaterChunkInFrustum(*nat);
+        reflectThisFrame=waterInView && gos_GetWaterReflectionQuality()==2 && mc2::options::current().reflectionQuality>0
+            && !reflect_bake_active() && WaterStream::NativeWaterInFrustum(*nat,shoreSdf,bounds);
         const auto pixels=mc2::waterplanar::paddedPixels(bounds,w,h);
         s->reflectionScissor={{pixels[0],pixels[1]},{static_cast<uint32_t>(pixels[2]-pixels[0]),static_cast<uint32_t>(pixels[3]-pixels[1])}};
         const auto* fields = gos_TerrainFieldStore();
@@ -524,6 +527,8 @@ extern "C" int mc2_vk_water_island_run(
     if (!bakeOk) setFallback("reflection_bake_failed");
     if (reflect_bake_active()) reflectThisFrame = false;   // the bake replaces the live pass below High
     bind_reflect_bake(s, par, reinterpret_cast<WaterFsParams*>(static_cast<uint8_t*>(uboSpan.ptr) + fsUboOff));
+    // Nothing the cull could admit is in view: skip the producers, the scene pass and the submit. The one-time bakes above still ran.
+    if (!waterInView && gos_GetWaterFsDebugMode() == 0 && profileMode < 0) { s->reflectionValid = false; return 0; }
     s->planarTerrainRecord = {}; s->planarPropsRecord = {};
     if (reflectThisFrame) {
         mc2::waterplanar::Target target;

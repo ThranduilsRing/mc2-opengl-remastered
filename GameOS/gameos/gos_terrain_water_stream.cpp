@@ -13,6 +13,7 @@
 // Spec: docs/superpowers/specs/2026-04-29-renderwater-fastpath-design.md.
 
 #include "gos_terrain_water_stream.h"
+#include "water_chunk_frustum.h"
 #include "../../RenderCore/water_reactive.h"
 #include "../../mclib/terrain_material.h"  // single-sourced terrain type -> material
 extern int gos_WaterShoreMode();
@@ -474,6 +475,15 @@ void PrewarmShoreFieldCoverage() {
     UpdateFieldWaterCoverage(Terrain::waterElevation);
 }
 
+bool AnyWaterChunkInFrustum(const VkNativeInputs& f) {
+    if (!f.mapSide) return false;
+    const float threshold=f.waterElevation+f.shoreExt;
+    if (g_waterChunkMapSide!=f.mapSide || threshold>g_waterChunkThreshold)
+        BuildWaterChunks(f.mapSide,threshold+64.0f);
+    // A superset of the GPU cull (water_cull_pack.comp.slang triangleVisible): no field, shore-mode or per-recipe refinement.
+    return mc2::waterfrustum::anyChunkInView(f.mvp,g_waterChunks,f.waterElevation,std::abs(f.frameCos));
+}
+
 bool NativeWaterInFrustum(const VkNativeInputs& f, bool shoreFieldActive, float* ndcBounds) {
     bool found=false;
     if (ndcBounds) { ndcBounds[0]=ndcBounds[1]=1; ndcBounds[2]=ndcBounds[3]=-1; }
@@ -497,24 +507,12 @@ bool NativeWaterInFrustum(const VkNativeInputs& f, bool shoreFieldActive, float*
     const float visibleThreshold=threshold-(!shoreFieldActive && gos_WaterShoreMode()==3 ? 60.0f : 0.0f)+std::abs(f.frameCos);
     // Common outside planes, never "any corner inside": large triangles can
     // cross the viewport even when all their vertices lie outside it.
-    const auto mask=[&](float x,float y,float z) {
-        const float* m=f.mvp;
-        const float cx=m[0]*x+m[4]*y+m[8]*z+m[12];
-        const float cy=m[1]*x+m[5]*y+m[9]*z+m[13];
-        const float cw=m[3]*x+m[7]*y+m[11]*z+m[15];
-        const float e=std::abs(cw)*0.0001f+0.001f; // conservative at screen edges
-        return static_cast<uint32_t>(cw < -e) | (static_cast<uint32_t>(cx < -cw-e)<<1) | (static_cast<uint32_t>(cx > cw+e)<<2)
-            | (static_cast<uint32_t>(cy < -cw-e)<<3) | (static_cast<uint32_t>(cy > cw+e)<<4);
-    };
+    const auto mask=[&](float x,float y,float z) { return mc2::waterfrustum::outsideMask(f.mvp,x,y,z); };
     const float amplitude=std::abs(f.frameCos);
     for (size_t c=0;c<g_waterChunks.size();++c) {
         const auto& chunk=g_waterChunks[c];
         if (chunk.recipes.empty() || (field && !g_fieldWetChunks[c])) continue;
-        uint32_t outside=31;
-        for (uint32_t i=0;i<8;++i)
-            outside &= mask((i&1)?chunk.maxX:chunk.minX,(i&2)?chunk.maxY:chunk.minY,
-                f.waterElevation+((i&4)?amplitude:-amplitude));
-        if (outside) continue;
+        if (mc2::waterfrustum::boxOutside(f.mvp,chunk.minX,chunk.minY,chunk.maxX,chunk.maxY,f.waterElevation,amplitude)) continue;
         if (ndcBounds) for (uint32_t i=0;i<8;++i) {
             const float x=(i&1)?chunk.maxX:chunk.minX, y=(i&2)?chunk.maxY:chunk.minY;
             const float z=f.waterElevation+((i&4)?1:-1)*(amplitude+std::abs(f.shoreExt)+1.0f);

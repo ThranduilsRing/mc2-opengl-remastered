@@ -109,6 +109,7 @@ add_executable(mc2_tests
     test_hzb_cull_reference.cpp  # CPU reference of hzb_cull.comp (RenderCore/hzb_prop_bounds.h): keep-bit cases
     test_prop_light_contract.cpp
     test_water_planar.cpp
+    test_water_chunk_frustum.cpp
     test_clip_sample.cpp  # glTF clip sampling: STEP / LINEAR / CUBICSPLINE (header-only, no Assimp)
     test_torso_twist.cpp
     ${MC2_WORKTREE_ROOT}/mclib/mech_skel_import.cpp

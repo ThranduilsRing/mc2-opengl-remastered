@@ -138,9 +138,9 @@ uint32_t refChannel(float intensity, uint32_t lightChan, uint32_t amb) {
     return amb;
 }
 
-void refLight(const gos_terrain_lighting::GpuTerrainVertexInput& v, const gos_terrain_lighting::GpuTerrainLight* lights, const VkTerrainLightingParams& P,
+void refLight(const gos_terrain_lighting::GpuTerrainVertexInput& v, const VkTerrainLightingParams& P,
               uint32_t& outLight, uint32_t& outFog) {
-    uint32_t lr = 255, lg = 255, lb = 255, sr = 0, sg = 0, sb = 0;
+    uint32_t lr = 255, lg = 255, lb = 255;
     if (P.sunRgb[3] == 0) {
         float li = v.normal[0] * P.sunDirRain[0] + v.normal[1] * P.sunDirRain[1] + v.normal[2] * P.sunDirRain[2];
         if ((v.flags & 1u) && li > 0.2f) li = 0.2f;
@@ -158,29 +158,11 @@ void refLight(const gos_terrain_lighting::GpuTerrainVertexInput& v, const gos_te
             lb = static_cast<uint32_t>(static_cast<float>(lb) * rain);
             lg = static_cast<uint32_t>(static_cast<float>(lg) * rain);
         }
-        if (P.ambRgb[3] > 0) sr = sg = sb = static_cast<uint32_t>(P.ambRgb[3]);
-        for (int i = 0; i < P.counts[1]; ++i) {
-            const auto& L = lights[i];
-            if (L.lightType != 1u && L.lightType != 2u && L.lightType != 3u) continue;
-            const float dx = v.xy[0] - L.position[0], dy = v.xy[1] - L.position[1], dz = v.elevation - L.position[2];
-            const float len = std::sqrt(dx * dx + dy * dy + dz * dz);
-            float fo = 1.0f;
-            if (len <= L.closeDistance) fo = 1.0f;
-            else if (len >= L.farDistance) continue;
-            else fo = (L.farDistance - len) * L.oneOverDistance;
-            sr = std::min(sr + static_cast<uint32_t>(L.color[0] * L.intensity * 255.0f * fo), 255u);
-            sg = std::min(sg + static_cast<uint32_t>(L.color[1] * L.intensity * 255.0f * fo), 255u);
-            sb = std::min(sb + static_cast<uint32_t>(L.color[2] * L.intensity * 255.0f * fo), 255u);
-        }
     }
     outLight = (0xFFu << 24) | (lr << 16) | (lg << 8) | lb;
-    outFog = (0xFFu << 24) | (sr << 16) | (sg << 8) | sb;
     uint32_t fogResult = 0xFFu;
     const float fs = P.fogHaze[0], ff = P.fogHaze[1];
-    if (P.sunRgb[3] == 0 && P.baseRgb[3] != 0) {
-        fogResult = static_cast<uint32_t>(mc2FogHeightAlpha(v.elevation, fs, ff));
-        outFog = (fogResult << 24) | (sr << 16) | (sg << 8) | sb;
-    }
+    if (P.sunRgb[3] == 0 && P.baseRgb[3] != 0) fogResult = static_cast<uint32_t>(mc2FogHeightAlpha(v.elevation, fs, ff));
     float haze;
     const bool outside = v.xy[0] <= P.playArea[0] || v.xy[0] >= P.playArea[2] || v.xy[1] <= P.playArea[1] || v.xy[1] >= P.playArea[3];
     if (outside) haze = 1.0f;
@@ -193,8 +175,8 @@ void refLight(const gos_terrain_lighting::GpuTerrainVertexInput& v, const gos_te
         const float fogFactor = 1.0f - haze;
         const uint32_t distFog = static_cast<uint32_t>(static_cast<int>(fogFactor * 255.0f));
         fogResult = std::min(fogResult, distFog);
-        outFog = (fogResult << 24) | (sr << 16) | (sg << 8) | sb;
     }
+    outFog = fogResult << 24;   // the water pass reads only the fog byte
 }
 }  // namespace
 
@@ -266,7 +248,7 @@ uint32_t NativeProducers::selfTestLighting() {
     uint32_t bad = 0, maxDelta = 0;
     for (uint32_t i = 0; i < N; ++i) {
         uint32_t el, ef;
-        refLight(vin[i], lights.data(), P, el, ef);
+        refLight(vin[i], P, el, ef);
         if (el != got[i].lightRGB || ef != got[i].fogRGB) ++bad;
         for (int sh = 0; sh < 32; sh += 8) {
             maxDelta = std::max<uint32_t>(maxDelta, static_cast<uint32_t>(std::abs(static_cast<int>((el >> sh) & 255u) - static_cast<int>((got[i].lightRGB >> sh) & 255u))));
