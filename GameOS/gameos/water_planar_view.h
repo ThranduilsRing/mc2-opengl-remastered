@@ -33,6 +33,10 @@ inline BakePlan bakePlan(int level) {
 // The value the water UBO carries in WaterFsParams::debug[2] (shader F.debug.z) for a plan.
 inline float uploadedDebugZ(const BakePlan& plan) { return static_cast<float>(plan.marchSteps); }
 inline int bakeSize(int fullSize, const BakePlan& plan) { return (std::max)(1, fullSize / plan.sizeDivisor); }
+// Float count of the reflection mask's horizontal scratch: two 8x8 block-flag grids (water_reflection_mask.comp indexes [0, 2 x blocks)).
+constexpr unsigned long long maskScratchFloats(int w, int h) {
+    return 2ull * static_cast<unsigned long long>((w + 7) / 8) * static_cast<unsigned long long>((h + 7) / 8);
+}
 
 // Pixel bounds include every possible ripple lookup and bilinear neighbour.
 inline std::array<int,4> paddedPixels(const float* ndc, int w, int h) {

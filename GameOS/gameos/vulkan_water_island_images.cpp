@@ -7,6 +7,7 @@
 #include <filesystem>
 #include "vulkan_terrain_island.h"
 #include "vk_barrier_batch_vk.h"
+#include "water_planar_view.h"
 
 
 
@@ -215,9 +216,8 @@ bool init_reflection(WaterIsland* s) {
         return false;
     }
     const VkDeviceSize bytes = static_cast<VkDeviceSize>(s->w) * s->h * sizeof(float);
-    // The block mask keeps two 8x8 block-flag grids in this buffer; tiny extents need more than w*h floats.
-    const VkDeviceSize blocks = static_cast<VkDeviceSize>((s->w + 7) / 8) * ((s->h + 7) / 8);
-    const VkDeviceSize horizontalBytes = std::max(bytes, 2 * blocks * sizeof(float));
+    // The block mask keeps two 8x8 block-flag grids in this buffer and indexes nothing else.
+    const VkDeviceSize horizontalBytes = mc2::waterplanar::maskScratchFloats(s->w, s->h) * sizeof(float);
     if (!make_buffer(s, s->maskHorizontal, horizontalBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "water.mask.horizontal") ||
         !make_buffer(s, s->maskDepth, bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "water.mask.depth")) return false;
     VkDescriptorSetLayoutBinding bindings[3]{};

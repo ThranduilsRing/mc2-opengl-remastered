@@ -491,6 +491,12 @@ TEST_CASE("water planar: the uploaded debug.z carries each level's march steps a
     CHECK(std::atoi(src.c_str() + at + std::strlen("int steps = F.debug.z > 0.5 ? int(F.debug.z) : ")) == wp::kHighSteps);
 }
 
+TEST_CASE("water planar: mask scratch holds exactly two block grids") {
+    CHECK(wp::maskScratchFloats(3840, 2160) == 259200);
+    CHECK(wp::maskScratchFloats(1, 1) == 2);
+    CHECK(wp::maskScratchFloats(9, 9) == 8);
+}
+
 // Trigger paths: water_planar_props.h and gos_static_prop_registry.cpp.
 // Reference = the pre-grid collect: stable type order, per-entry multi() and view test.
 TEST_CASE("water planar: grid collect matches the linear reference bit for bit") {
