@@ -609,6 +609,54 @@ bool VulkanContext::init(bool wantPresent) {
 
     // ---- device profile: the first discrete device that meets every REQUIRED item, else the first device that does; if none does, the engine
     // refuses Vulkan (fatal, no GL fallback) and the refused device's line says which items it lacks ----
+    const auto uuidOf = [](const profile::DeviceCaps& cp) {
+        char b[40]; const uint8_t* u = cp.deviceUuid;
+        std::snprintf(b, sizeof(b), "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+            u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], u[8], u[9], u[10], u[11], u[12], u[13], u[14], u[15]);
+        return std::string(b);
+    };
+    // Makes the instance again with `key` as the application / engine version (0 = none) and picks the device `want` again: same UUID and same driver
+    // (one GPU can be exposed by two drivers). Returns false when the instance or the device could not be made; the caller then falls back to key 0.
+    uint32_t cacheKeyInEffect = 0;   // the key VkApplicationInfo carries now
+    const auto remakeInstance = [&](uint32_t key, const profile::DeviceCaps& want) -> bool {
+        if (instance_ != VK_NULL_HANDLE) {
+            if (messenger_ != VK_NULL_HANDLE) {
+                auto pfnDestroy = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance_, "vkDestroyDebugUtilsMessengerEXT"));
+                if (pfnDestroy) pfnDestroy(instance_, messenger_, nullptr);
+                messenger_ = VK_NULL_HANDLE;
+            }
+            vkDestroyInstance(instance_, nullptr);
+            instance_ = VK_NULL_HANDLE;
+        }
+        app.applicationVersion = key;
+        app.engineVersion = key;
+        if (vkCreateInstance(&ici, nullptr, &instance_) != VK_SUCCESS) { instance_ = VK_NULL_HANDLE; return false; }
+        volkLoadInstance(instance_);
+        if (wantValidation) {
+            auto pfnCreate = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance_, "vkCreateDebugUtilsMessengerEXT"));
+            if (pfnCreate && pfnCreate(instance_, &mci, nullptr, &messenger_) != VK_SUCCESS) {
+                messenger_ = VK_NULL_HANDLE;
+                ctxlog("validation messenger could not be made again after the instance was re-created (cache key %08x); this run is not validated", key);
+            }
+        }
+        uint32_t n2 = 0;
+        vkEnumeratePhysicalDevices(instance_, &n2, nullptr);
+        std::vector<VkPhysicalDevice> devs2(n2);
+        vkEnumeratePhysicalDevices(instance_, &n2, devs2.data());
+        const std::string wantUuid = uuidOf(want);
+        VkPhysicalDevice again = VK_NULL_HANDLE, sameUuid = VK_NULL_HANDLE;
+        for (auto pd2 : devs2) {
+            const profile::DeviceCaps c2 = profile::gather(pd2, instanceApi);
+            if (uuidOf(c2) != wantUuid) continue;
+            if (!sameUuid) sameUuid = pd2;
+            if (c2.driverId == want.driverId) { again = pd2; break; }
+        }
+        if (!again && key == 0) again = sameUuid;   // the plain config must always find its device; a driver-id mismatch is tolerated only here
+        if (!again) return false;
+        phys_ = again;
+        cacheKeyInEffect = key;
+        return true;
+    };
     profile::DeviceCaps caps;
     std::string extDeny;   // MC2_VK_EXT_DENY, kept for the second `[VK_EXT v1]` line when device creation has to retry without the tier
     {
@@ -628,12 +676,6 @@ bool VulkanContext::init(bool wantPresent) {
         }
         const Candidate* pick = nullptr;
         const auto lower = [](std::string v) { for (char& ch : v) ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch))); return v; };
-        const auto uuidOf = [](const profile::DeviceCaps& cp) {
-            char b[40]; const uint8_t* u = cp.deviceUuid;
-            std::snprintf(b, sizeof(b), "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
-                u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], u[8], u[9], u[10], u[11], u[12], u[13], u[14], u[15]);
-            return std::string(b);
-        };
         // MC2_VK_DEVICE: the harness routes pass/fail runs to a named device (the loader ignores VK_LOADER_DRIVERS_SELECT here).
         // "name@uuid" additionally pins the device UUID (two identical cards share a name); no hint = the default pick (owner-started runs).
         std::string hint = mc2::gate::str<"MC2_VK_DEVICE">();
@@ -683,33 +725,17 @@ bool VulkanContext::init(bool wantPresent) {
         // is made again with the part-set fingerprint as the application / engine version (0 = no part, the first instance stands) and the same device is
         // picked again by UUID.
         if (const uint32_t cacheKey = profile::extCacheKey(extSel_); cacheKey != 0) {
-            const std::string pickedUuid = uuidOf(caps);
-            if (messenger_ != VK_NULL_HANDLE) {
-                auto pfnDestroy = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance_, "vkDestroyDebugUtilsMessengerEXT"));
-                if (pfnDestroy) pfnDestroy(instance_, messenger_, nullptr);
-                messenger_ = VK_NULL_HANDLE;
+            if (remakeInstance(cacheKey, caps)) {
+                ctxlog("[VK_EXT_KEY v1] cache_key=%08x applied to VkApplicationInfo (instance made again, device %s)", cacheKey, uuidOf(caps).c_str());
+            } else {
+                // The key could not be applied. Never fail Vulkan over the optional tier, and never run the tier under key 0 (that would write tier
+                // binaries under the plain key): drop the tier and make the plain instance.
+                if (!remakeInstance(0, caps)) return fail("vkCreateInstance / device pick failed after the cache key could not be applied");
+                extSel_ = profile::ExtSelection{};
+                extSel_.reason = "cache_key_failed";
+                profileLog(profile::formatExtLine(caps, extSel_, extDeny));
+                ctxlog("[VK_EXT_KEY v1] cache_key=%08x could not be applied; tier dropped, cache_key=00000000 in effect", cacheKey);
             }
-            vkDestroyInstance(instance_, nullptr);
-            instance_ = VK_NULL_HANDLE;
-            app.applicationVersion = cacheKey;
-            app.engineVersion = cacheKey;
-            r = vkCreateInstance(&ici, nullptr, &instance_);
-            if (r != VK_SUCCESS) return fail("vkCreateInstance (cache key) failed");
-            volkLoadInstance(instance_);
-            if (wantValidation) {
-                auto pfnCreate = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance_, "vkCreateDebugUtilsMessengerEXT"));
-                if (pfnCreate &&pfnCreate(instance_, &mci, nullptr, &messenger_) != VK_SUCCESS) messenger_ = VK_NULL_HANDLE;
-            }
-            uint32_t n2 = 0;
-            vkEnumeratePhysicalDevices(instance_, &n2, nullptr);
-            std::vector<VkPhysicalDevice> devs2(n2);
-            vkEnumeratePhysicalDevices(instance_, &n2, devs2.data());
-            VkPhysicalDevice again = VK_NULL_HANDLE;
-            for (auto pd2 : devs2)
-                if (uuidOf(profile::gather(pd2, instanceApi)) == pickedUuid) { again = pd2; break; }
-            if (!again) return fail("cache key: the picked device is gone after the instance was made again");
-            phys_ = again;
-            ctxlog("[VK_EXT v1] cache_key=%08x applied to VkApplicationInfo (instance made again, device %s)", cacheKey, pickedUuid.c_str());
         }
         ctxlog("subgroup size=%u stages=0x%x ops=0x%x", caps.subgroupSize, caps.subgroupStages, caps.subgroupOps);
         VkPhysicalDeviceDriverProperties driver{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES};
@@ -913,6 +939,11 @@ bool VulkanContext::init(bool wantPresent) {
         devExts.resize(devExtsBeforeExt);
         extSel_ = profile::ExtSelection{};
         extSel_.reason = "device_create_failed";
+        // The instance still carries the tier's cache key: make it again with key 0 so the plain device never writes binaries under the tier's key.
+        if (cacheKeyInEffect != 0) {
+            if (!remakeInstance(0, caps)) return fail("vkCreateInstance / device pick failed on the retry without the tier");
+            ctxlog("[VK_EXT_KEY v1] retry without the tier: instance made again, cache_key=%08x in effect", cacheKeyInEffect);
+        }
         profileLog(profile::formatExtLine(caps, extSel_, extDeny));
         dci.enabledExtensionCount = static_cast<uint32_t>(devExts.size());
         dci.ppEnabledExtensionNames = devExts.empty() ? nullptr : devExts.data();

@@ -109,6 +109,21 @@ TEST_CASE("ext tier: cache_key is 0 for no part, stable, and differs per part se
     CHECK(vkp::formatExtLine(c, vkp::selectExt(c, "all"), "all").find("cache_key=00000000") != std::string::npos);
 }
 
+TEST_CASE("ext tier: cache_key is unique over all 512 part sets and pins a golden value") {
+    std::vector<uint32_t> keys;
+    for (uint32_t mask = 0; mask < 512; ++mask) {
+        vkp::ExtSelection s;
+        s.mesh = mask & 1; s.fsr = mask & 2; s.quad = mask & 4; s.hostCopy = mask & 8; s.pipelineBinary = mask & 16;
+        s.gpl = mask & 32; s.dgc = mask & 64; s.heap = mask & 128; s.csd = mask & 256;
+        const uint32_t k = vkp::extCacheKey(s);
+        CHECK((k == 0) == (mask == 0));
+        keys.push_back(k);
+        if (mask == 0x1DF) CHECK(k == 0xaeced53du);   // every part but gpl: the AMD proprietary set
+    }
+    std::ranges::sort(keys);
+    CHECK(std::ranges::adjacent_find(keys) == keys.end());
+}
+
 TEST_CASE("ext tier: 1050 Ti caps select host_copy, pipeline_binary and gpl only") {
     CHECK(parts(vkp::selectExt(gtx1050ti(), "")) == "host_copy,pipeline_binary,gpl");
 }
