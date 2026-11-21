@@ -65,7 +65,7 @@ std::map<std::string, float> engineDefaults() {
         {"waterSkyTintStrength",0}, {"waterReflections",static_cast<float>(mc2::options::current().waterReflections)},
         {"vfxBrightness",1}, {"vfxAdditiveBrightness",1},
         {"vfxLitStrength",0.7f}, {"mechSpecularStrength",0.05f},
-        {"cloudStrength",0.15f}, {"cloudCoverage",0}, {"cloudSoftness",0.04f}, {"cloudWaterScale",1},
+        {"cloudStrength",0.30f}, {"cloudCoverage",0.20f}, {"cloudSoftness",0.12f}, {"cloudWaterScale",0.5f},
         {"terrainClassGrassGmRLo",-0.02f}, {"terrainClassGrassGmRHi",0.06f},
         {"terrainClassGrassBrLo",0.22f}, {"terrainClassGrassBrHi",0.40f},
         {"terrainClassDirtRmGLo",-0.02f}, {"terrainClassDirtRmGHi",0.06f},
@@ -303,7 +303,7 @@ static void applyKey(mc2::czstring key, float val, int& count) {
     } else if (strcmp(key, "cloudCoverage") == 0 || strcmp(key, "cloudSoftness") == 0) {
         // coverage 0 keeps the legacy 0.3/0.7 band; >0 = band of half-width softness centred on the fbm noise quantile
         // that covers that ground fraction (measured: 0.1 -> 0.32, 0.2 -> 0.376, 0.3 -> 0.42, 0.5 -> 0.50).
-        static float s_cov = 0.f, s_soft = 0.04f;
+        static float s_cov = 0.20f, s_soft = 0.12f;
         (key[5] == 'C' ? s_cov : s_soft) = val;
         if (gosPostProcess* pp = getGosPostProcess()) {
             const float c = 0.27f + 0.5f * s_cov;

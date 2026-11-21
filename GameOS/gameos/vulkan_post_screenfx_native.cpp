@@ -94,7 +94,7 @@ static bool s_screenFxReachedBuild = false;
 extern void gos_GetTerrainLightDir(float* x, float* y, float* z);
 float mc2ShadowMinSunAltDeg();
 float mc2NightLightFactor();   // mclib/camera.cpp: 0 day/evening .. 1 full night
-static float s_cloudWaterScale = 1.0f;
+static float s_cloudWaterScale = 0.5f;
 void mc2SetCloudWaterScale(float v) { s_cloudWaterScale = v; }   // visual_tuning_profile cloudWaterScale
 
 namespace {

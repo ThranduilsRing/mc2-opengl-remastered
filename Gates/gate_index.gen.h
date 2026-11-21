@@ -61,7 +61,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_CEMENT_ATLAS_DUMP", Kind::String, Rule::Std, {}},
     {"MC2_CHEAT_INFINITE_MONEY", Kind::Bool, Rule::Presence, {}},
     {"MC2_CHEAT_SALVAGE_ALL", Kind::Bool, Rule::Presence, {}},
-    {"MC2_CLOUD_SHADOW", Kind::Bool, Rule::Lead0, {}},
+    {"MC2_CLOUD_SHADOW", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_COALESCE_FORCE_DISARM", Kind::Enum, Rule::Std, "|alloc_failed|mixed_alpha|no_extension|size_mismatch"},
     {"MC2_COLORMAP_CPU_RETIRE", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_COLORMAP_KTX2", Kind::Bool, Rule::Lead0Kill, {}},
