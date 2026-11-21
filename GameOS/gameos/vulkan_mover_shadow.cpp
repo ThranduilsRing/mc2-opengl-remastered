@@ -121,12 +121,12 @@ void MoverShadowState::updateGround() {
 
 void MoverShadowState::appendMechs(const float cameraRows[16], Vec3 sun, float ground) {
     (void)cameraRows; (void)sun; (void)ground;
-    for (const MechActor& a : actors_) if (a.inView) spheres_.push_back(a.sphere);
+    for (const auto& a : mech_.actors) if (a.inView) spheres_.push_back(a.sphere);
 }
 
-void MoverShadowState::refreshMechActors(const float cameraRows[16], Vec3 sun) {
+void MoverShadowState::refreshMechActors(uint64_t epoch, const float cameraRows[16], Vec3 sun) {
     updateGround();
-    actors_.clear(); instActor_.clear(); actorsFresh_ = true; actorCount_ = 0;
+    mech_.begin(epoch); actorCount_ = 0;
     const float ground = ground_;
     const ViewPlanes view=makeViewPlanes(cameraRows);
     Mc2MechShadowFeed feed{};
@@ -164,8 +164,9 @@ void MoverShadowState::refreshMechActors(const float cameraRows[16], Vec3 sun) {
         }
         const Vec3 extent{(hi.x-lo.x)*0.5f,(hi.y-lo.y)*0.5f,(hi.z-lo.z)*0.5f};
         const MoverSphere sphere{{(lo.x+hi.x)*0.5f,(lo.y+hi.y)*0.5f,(lo.z+hi.z)*0.5f},std::sqrt(dot(extent,extent))+mechRadius_*scale};
-        actors_.push_back({sphere, sweptShadowInView(sphere,sun,ground,view)});
+        mech_.actors.push_back({sphere, sweptShadowInView(sphere,sun,ground,view)});
     }
+    auto& instActor_ = mech_.instActor;
     instActor_.resize(feed.instanceCount, -1);
     for (uint32_t i=0;i<feed.instanceCount;++i) {
         const uint32_t off=instances[i].baseBoneOffset;
@@ -175,43 +176,10 @@ void MoverShadowState::refreshMechActors(const float cameraRows[16], Vec3 sun) {
     }
 }
 
-template <class Pred>
-static bool maskMechRuns(const std::vector<Mc2MechDrawRun>& runs, const std::vector<int32_t>& instActor, Pred keep, std::vector<uint8_t>& mask) {
-    mask.assign(runs.size(), 1);
-    if (instActor.empty()) return false;   // unknown: draw everything
-    for (size_t k=0;k<runs.size();++k) {
-        const auto& r=runs[k];
-        if (static_cast<uint64_t>(r.instanceBase)+r.instanceCount > instActor.size()) { mask[k]=1; continue; }   // cannot map: keep
-        bool any=false;
-        for (uint32_t i=0;i<r.instanceCount && !any;++i) {
-            const int32_t a=instActor[r.instanceBase+i];
-            any = a < 0 || keep(a);   // an unmapped instance is kept
-        }
-        mask[k]=any?1:0;
-    }
-    return true;
-}
-
-bool MoverShadowState::runMaskView(const std::vector<Mc2MechDrawRun>& runs, std::vector<uint8_t>& mask) const {
-    if (!actorsFresh_) { mask.assign(runs.size(), 1); return false; }
-    return maskMechRuns(runs, instActor_, [&](int32_t a){ return actors_[a].inView; }, mask);
-}
-
-bool MoverShadowState::runMaskLight(const std::vector<Mc2MechDrawRun>& runs, const float pos[3], float farDistance, std::vector<uint8_t>& mask) const {
-    if (!actorsFresh_) { mask.assign(runs.size(), 1); return false; }
-    return maskMechRuns(runs, instActor_, [&](int32_t a){
-        const auto& sp=actors_[a].sphere;
-        const float dx=sp.center.x-pos[0], dy=sp.center.y-pos[1], dz=sp.center.z-pos[2];
-        const float reach=farDistance+sp.radius+2.0f;
-        return dx*dx+dy*dy+dz*dz <= reach*reach;
-    }, mask);
-}
-
-bool MoverShadowState::prepare(int mapSide, const float cameraRows[16], Vec3 sun,
+bool MoverShadowState::prepare(uint64_t epoch, int mapSide, const float cameraRows[16], Vec3 sun,
                                std::span<const GpuStaticPropInstance> props, bool maskReady) {
     updateGround();
-    if (!actorsFresh_) refreshMechActors(cameraRows, sun);
-    actorsFresh_ = false;   // the next frame refreshes again
+    if (mech_.epoch != epoch) refreshMechActors(epoch, cameraRows, sun);   // the table stays valid for the whole epoch (the sun pass reads it after this)
     props_.clear(); spheres_.clear();
     const ViewPlanes view=makeViewPlanes(cameraRows);
     // These are live rigid casters, including turrets and demoted static owners
@@ -251,7 +219,7 @@ bool MoverShadowState::prepare(int mapSide, const float cameraRows[16], Vec3 sun
     if (activeFrame_%120==0 && mc2_diag::tagRequested("MOVER_SHADOW"))   // MC2_DIAG_TAGS=MOVER_SHADOW
         mc2::fmt::print_err("[MOVER_SHADOW] frame={} mask_ready={} props_total={} casters_total={} movers_in_view={}\n",
             activeFrame_,maskReady?1:0,props.size(),casters,
-            std::count_if(actors_.begin(),actors_.end(),[](const MechActor& a){ return a.inView; }));
+            std::count_if(mech_.actors.begin(),mech_.actors.end(),[](const mc2shadow::MechActorTable::Actor& a){ return a.inView; }));
     return true;
 }
 

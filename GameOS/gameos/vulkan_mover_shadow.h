@@ -19,7 +19,7 @@ public:
     bool init(VulkanContext& ctx, bool unionPath);
     void clearGeometry();
     bool cacheGeometry(const Mc2ShadowGeomFeed& feed, const void* vertices, const void* indices);
-    bool prepare(int mapSide, const float cameraRows[16], mc2shadow::Vec3 sun,
+    bool prepare(uint64_t epoch, int mapSide, const float cameraRows[16], mc2shadow::Vec3 sun,
                  std::span<const GpuStaticPropInstance> props, bool maskReady);
     const std::vector<GpuStaticPropInstance>& props() const { return props_; }
     const mc2shadow::MoverShadowFrame& frame() const { return frame_; }
@@ -29,18 +29,15 @@ public:
     uint32_t actorCount() const { return actorCount_; }
     uint32_t visibleActorCount() const { return static_cast<uint32_t>(spheres_.size()-props_.size()); }
 
-    // Per-frame mech actor spheres (MC2 frame) and the instance -> actor map. Called once per frame before the local-light passes; prepare() reuses it.
-    void refreshMechActors(const float cameraRows[16], mc2shadow::Vec3 sun);
-    // Per-run draw masks for ShadowMechCasters::record: 1 = some mech of the run can matter to that map. False (mask all ones) when the map is unknown.
-    bool runMaskView(const std::vector<Mc2MechDrawRun>& runs, std::vector<uint8_t>& mask) const;
-    bool runMaskLight(const std::vector<Mc2MechDrawRun>& runs, const float pos[3], float farDistance, std::vector<uint8_t>& mask) const;
+    // Per-frame mech actor spheres (MC2 frame) and the instance -> actor map, stamped with the frame epoch. Called once per frame before the local-light passes; prepare() reuses it.
+    void refreshMechActors(uint64_t epoch, const float cameraRows[16], mc2shadow::Vec3 sun);
+    // Per-run draw masks for ShadowMechCasters::record: 1 = some mech of the run can matter to that map. False (mask all ones) when the map is unknown or the epoch is not the refreshed one.
+    bool runMaskView(uint64_t epoch, const std::vector<Mc2MechDrawRun>& runs, std::vector<uint8_t>& mask) const { return mech_.viewMask(epoch, runs, mask); }
+    bool runMaskLight(uint64_t epoch, const std::vector<Mc2MechDrawRun>& runs, const float pos[3], float farDistance, std::vector<uint8_t>& mask) const { return mech_.lightMask(epoch, runs, pos, farDistance, mask); }
 
 private:
-    struct MechActor { mc2shadow::MoverSphere sphere; bool inView; };
     void updateGround();
-    std::vector<MechActor> actors_;
-    std::vector<int32_t> instActor_;
-    bool actorsFresh_ = false;
+    mc2shadow::MechActorTable mech_;
     struct Bounds { mc2shadow::Vec3 lo, hi; bool valid = false; };
     mc2shadow::MoverSphere propSphere(const GpuStaticPropInstance& instance, const Bounds& bounds) const;
     void appendMechs(const float cameraRows[16], mc2shadow::Vec3 sun, float ground);

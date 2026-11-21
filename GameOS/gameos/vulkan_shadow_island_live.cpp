@@ -850,7 +850,7 @@ static bool record_pass(ShadowIsland* s, int size, const float* lightSpace16, fl
     draw_static_runs(s, cb, s->instRuns);
     // Only the mechs inside the view-swept set can land in the fitted map.
     static std::vector<uint8_t> viewMask;
-    s->mover.runMaskView(s->mech.runs(), viewMask);
+    s->mover.runMaskView(g_shadowFrameEpoch,s->mech.runs(), viewMask);
     s->mech.record(cb, s->parity, dynamicOffset, viewMask.data());
     }
     dr::end(dctx, cb);
@@ -1098,7 +1098,7 @@ static void record_local_shadows(ShadowIsland* s) {
             if (!local_ubo_slice(s, m, dyn)) break;
             // Only the mechs inside this light's reach can cast into its tile.
             static std::vector<uint8_t> tileMask;
-            s->mover.runMaskLight(s->mech.runs(), tiles[t].pos, tiles[t].farDistance, tileMask);
+            s->mover.runMaskLight(g_shadowFrameEpoch,s->mech.runs(), tiles[t].pos, tiles[t].farDistance, tileMask);
             local_tile_viewport(cb, t);
             s->mech.record(cb, s->parity, dyn, tileMask.data(), true, &mechPipeBound);
         }
@@ -1187,13 +1187,13 @@ extern "C" void mc2_vk_shadow_island_run_movers(const float cameraRows[16], cons
     { ZoneScopedN("DSP.AlphaCasters"); refresh_alpha_casters(s); }
     { ZoneScopedN("DSP.MechStage"); s->mech.stage(g_shadowFrameEpoch); s->mech.recordSkin(s->cbuf[s->parity]); }   // compute pre-skin ahead of every caster pass (no render pass open)
     const auto light=mc2shadow::clampSunAltitude({sun[0],sun[1],sun[2]},mc2ShadowMinSunAltDeg());
-    { ZoneScopedN("DSP.MechActors"); s->mover.refreshMechActors(cameraRows,light); }   // mech spheres for the per-map run masks below and for prepare()
+    { ZoneScopedN("DSP.MechActors"); s->mover.refreshMechActors(g_shadowFrameEpoch,cameraRows,light); }   // mech spheres for the per-map run masks below and for prepare()
     { ZoneScopedN("DSP.RecordBake"); record_bake(s); }
     { ZoneScopedN("DSP.LocalShadows"); record_local_shadows(s); }   // LOCAL-LIGHTS-2
     const auto start=std::chrono::steady_clock::now();
     const auto props=std::span(static_cast<const GpuStaticPropInstance*>(instances),instanceCount);
     { ZoneScopedN("DSP.MoverPrepare");
-    if (!s->mover.prepare(s->size,cameraRows,light,props,s->bake.ready())) return;
+    if (!s->mover.prepare(g_shadowFrameEpoch,s->size,cameraRows,light,props,s->bake.ready())) return;
     }
     const auto& selected=s->mover.props();
     { ZoneScopedN("DSP.StageInstances"); if (!stage_instances(s,selected.data(),static_cast<uint32_t>(selected.size()))) return; }

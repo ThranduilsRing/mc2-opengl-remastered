@@ -3,6 +3,8 @@
 #include "shadow_bake_math.h"
 #include <array>
 #include <cstddef>
+#include <cstdint>
+#include <vector>
 #include <span>
 
 namespace mc2shadow {
@@ -132,4 +134,44 @@ inline void buildMoverCoverage(MoverShadowFrame& frame, std::span<const MoverSph
         }
     }
 }
+
+// Per-frame mech actor table and its draw-run masks, stamped with the shadow frame epoch. A mask requested for another epoch is all-ones (never culls on stale data).
+struct MechActorTable {
+    struct Actor { MoverSphere sphere; bool inView; };
+    std::vector<Actor> actors;
+    std::vector<int32_t> instActor;
+    uint64_t epoch = ~0ull;
+    void begin(uint64_t e) { actors.clear(); instActor.clear(); epoch = e; }
+    template <class Run, class Pred>
+    static bool maskRuns(const std::vector<Run>& runs, const std::vector<int32_t>& instActor, Pred keep, std::vector<uint8_t>& mask) {
+        mask.assign(runs.size(), 1);
+        if (instActor.empty()) return false;   // unknown: draw everything
+        for (size_t k = 0; k < runs.size(); ++k) {
+            const auto& r = runs[k];
+            if (static_cast<uint64_t>(r.instanceBase) + r.instanceCount > instActor.size()) continue;   // cannot map: keep
+            bool any = false;
+            for (uint32_t i = 0; i < r.instanceCount && !any; ++i) {
+                const int32_t a = instActor[r.instanceBase + i];
+                any = a < 0 || keep(a);   // an unmapped instance is kept
+            }
+            mask[k] = any ? 1 : 0;
+        }
+        return true;
+    }
+    template <class Run>
+    bool viewMask(uint64_t e, const std::vector<Run>& runs, std::vector<uint8_t>& mask) const {
+        if (e != epoch) { mask.assign(runs.size(), 1); return false; }
+        return maskRuns(runs, instActor, [&](int32_t a) { return actors[a].inView; }, mask);
+    }
+    template <class Run>
+    bool lightMask(uint64_t e, const std::vector<Run>& runs, const float pos[3], float farDistance, std::vector<uint8_t>& mask) const {
+        if (e != epoch) { mask.assign(runs.size(), 1); return false; }
+        return maskRuns(runs, instActor, [&](int32_t a) {
+            const auto& sp = actors[a].sphere;
+            const float dx = sp.center.x - pos[0], dy = sp.center.y - pos[1], dz = sp.center.z - pos[2];
+            const float reach = farDistance + sp.radius + 2.0f;
+            return dx * dx + dy * dy + dz * dz <= reach * reach;
+        }, mask);
+    }
+};
 } // namespace mc2shadow

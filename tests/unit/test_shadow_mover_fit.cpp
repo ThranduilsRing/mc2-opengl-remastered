@@ -172,3 +172,23 @@ TEST_CASE("mover fit: a caster reaches a mover only when its swept shadow passes
     CHECK_FALSE(propShadowReachesMover(prop, {{10, 30, 0}, 1.0f}, sun, 0));                               // off to the side
     CHECK_FALSE(propShadowReachesMover(prop, {{20, 0, 4}, 1.0f}, sun, 0));                                // sun side of the caster
 }
+
+TEST_CASE("mech actor table: masks follow the refreshed epoch, never the cleared one") {
+    struct Run { uint32_t instanceBase, instanceCount; };
+    MechActorTable t; t.begin(7);
+    t.actors = {{{{0, 0, 0}, 1.0f}, false}, {{{0, 0, 0}, 1.0f}, true}, {{{500, 0, 0}, 1.0f}, false}};   // off-view, in-view, off-view far
+    t.instActor = {0, 1, 0, 1, -1, 2};
+    const std::vector<Run> runs{{0, 1}, {1, 1}, {2, 2}, {4, 1}, {5, 1}, {9, 1}};
+    const float pos[3] = {0, 0, 0};
+    std::vector<uint8_t> light, view;
+    CHECK(t.lightMask(7, runs, pos, 10.0f, light));   // refresh, then light, then view (production order)
+    CHECK(t.viewMask(7, runs, view));
+    CHECK(view == std::vector<uint8_t>{0, 1, 1, 1, 0, 1});    // off-view 0, in-view 1, shared run kept, unmapped kept, run past the map kept
+    CHECK(light == std::vector<uint8_t>{1, 1, 1, 1, 0, 1});   // far actor outside the light reach
+    CHECK(t.actors.size() == 3);                              // the sun pass reads the same table (prepare no longer clears it)
+    constexpr float camera[16]{1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};   // sphere outside the frustum, swept shadow inside: inView true, run kept
+    t.actors[0] = {{{2, 0, 1}, 0.05f}, sweptShadowInView({{2, 0, 1}, 0.05f}, normalized({1, 0, 1}), 0, camera)};
+    CHECK(t.viewMask(7, runs, view)); CHECK(view[0] == 1);
+    CHECK_FALSE(t.viewMask(8, runs, view));
+    CHECK(view == std::vector<uint8_t>(runs.size(), 1));   // another epoch: all ones
+}
