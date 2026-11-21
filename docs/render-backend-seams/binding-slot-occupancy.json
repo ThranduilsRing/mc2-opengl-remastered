@@ -430,8 +430,8 @@
         "type": "uniform",
         "source": "shaders/vulkan/include/terrain_frame_ubo_vk.glsl",
         "branch": {
-          "4": 0,
-          "6": 0
+          "5": 0,
+          "7": 0
         }
       },
       {
@@ -1017,7 +1017,7 @@
         "type": "buffer",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "4": 0
+          "5": 0
         }
       },
       {
@@ -1065,7 +1065,7 @@
         "type": "buffer",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "4": 0
+          "5": 0
         }
       },
       {
@@ -1113,7 +1113,7 @@
         "type": "buffer",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "4": 0
+          "5": 0
         }
       },
       {
@@ -1249,9 +1249,9 @@
         "type": "sampler2D",
         "source": "shaders/vulkan/include/ground_shadow.glsl",
         "branch": {
-          "4": 0,
-          "16": 0,
-          "17": 0
+          "5": 0,
+          "17": 0,
+          "18": 0
         }
       },
       {
@@ -1313,7 +1313,7 @@
         "type": "sampler2DArray",
         "source": "shaders/vulkan/include/concrete_detail_vk.glsl",
         "branch": {
-          "18": 0
+          "19": 0
         }
       },
       {
@@ -1351,7 +1351,7 @@
         "type": "sampler2D",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "4": 0
+          "5": 0
         }
       },
       {
@@ -1568,7 +1568,7 @@
         "type": "sampler2D",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "4": 0
+          "5": 0
         }
       },
       {
@@ -1696,8 +1696,8 @@
         "type": "sampler2D",
         "source": "shaders/vulkan/include/mover_shadow.glsl",
         "branch": {
-          "4": 0,
-          "10": 0
+          "5": 0,
+          "11": 0
         }
       },
       {
@@ -1802,8 +1802,8 @@
         "type": "uniform",
         "source": "shaders/vulkan/include/mover_shadow.glsl",
         "branch": {
-          "4": 0,
-          "10": 0
+          "5": 0,
+          "11": 0
         }
       },
       {
@@ -1869,8 +1869,8 @@
         "type": "uniform",
         "source": "shaders/vulkan/include/environment_ubo_vk.glsl",
         "branch": {
-          "4": 0,
-          "8": 0
+          "5": 0,
+          "9": 0
         }
       },
       {
@@ -1998,7 +1998,7 @@
         "type": "sampler2DArray",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "4": 0
+          "5": 0
         }
       },
       {
@@ -2145,7 +2145,7 @@
         "type": "buffer",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "4": 0
+          "5": 0
         }
       },
       {
@@ -2697,7 +2697,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_overlay_tier1.frag",
-        "line": 30,
+        "line": 31,
         "role": "tex1",
         "std": null,
         "type": "sampler2D",

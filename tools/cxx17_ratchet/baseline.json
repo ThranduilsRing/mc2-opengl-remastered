@@ -317,6 +317,7 @@
   "GameOS/gameos/battle_bench.h": {},
   "GameOS/gameos/beam_lights.h": {},
   "GameOS/gameos/cement_layers.h": {},
+  "GameOS/gameos/cloud_threshold_band.h": {},
   "GameOS/gameos/cook_cache.cpp": {
    "LG11": 1
   },
@@ -680,6 +681,7 @@
   },
   "GameOS/gameos/mdi_submit.h": {},
   "GameOS/gameos/mech_feed_ready.h": {},
+  "GameOS/gameos/mech_motion_history.h": {},
   "GameOS/gameos/mech_run_cache.h": {},
   "GameOS/gameos/mech_tangent_sign.h": {},
   "GameOS/gameos/mission_environment_gpu.cpp": {},
@@ -3471,7 +3473,7 @@
    "LG20": 1
   }
  },
- "head": "7ba3361f9",
+ "head": "ca344ad30",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
