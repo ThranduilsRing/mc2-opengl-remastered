@@ -26,7 +26,7 @@ void mc2PrewarmMissionPipelines();
 #include <span>
 
 namespace mc2vk::infra {
-void init(VkDevice device, VkPhysicalDevice physical);
+void init(VkDevice device, VkPhysicalDevice physical, uint32_t extCacheKey);   // extCacheKey: the tier key in effect (0 = none), part of the pipeline cache file name
 void materialSampler(VkSamplerCreateInfo& info);
 bool materialBiasStale(float usedBias);   // the sampler was built at usedBias; the effective resolve state has since changed
 void materialBiasTick();                  // once per present frame: logs [VK_PRESENT] material_mip_bias on every change

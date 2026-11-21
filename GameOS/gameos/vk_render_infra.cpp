@@ -178,7 +178,7 @@ void saveLocked(State& s) {
 }
 }
 
-void init(VkDevice device, VkPhysicalDevice physical) {
+void init(VkDevice device, VkPhysicalDevice physical, uint32_t extKey) {
     auto& s=state(); s.dev=device; s.phys=physical;
     VkPhysicalDeviceProperties p{}; vkGetPhysicalDeviceProperties(physical,&p);
     s.identity.vendor=p.vendorID; s.identity.device=p.deviceID; s.identity.driver=p.driverVersion; std::memcpy(s.identity.uuid,p.pipelineCacheUUID,VK_UUID_SIZE);
@@ -212,9 +212,8 @@ void init(VkDevice device, VkPhysicalDevice physical) {
     if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) mc2::fmt::print_err("[VK_RESIDENCY v1] budget_bytes={:d} physical_bytes={:d} source={} safety_bytes={:d} quality={:d} maxImageDimension2D={:d}\n",
         mc2::fmt::as_u64(s.budget),mc2::fmt::as_u64(s.physicalBudget),mc2::fmt::safe(memoryBudget?(uma?"VK_EXT_memory_budget+uma":"VK_EXT_memory_budget"):(uma?"heap_half+uma":"heap_half")),mc2::fmt::as_u64(available-s.physicalBudget),mc2::fmt::as_i32(mc2::options::current().shadowQuality),mc2::fmt::as_u32(s.imageEdge));
     std::error_code ec; std::filesystem::create_directories("cache/vulkan",ec);
-    char key[160]{}; size_t at=std::snprintf(key,sizeof(key),"%08x-%08x-%08x-",p.vendorID,p.deviceID,p.driverVersion);
-    for(auto b:p.pipelineCacheUUID) at+=std::snprintf(key+at,sizeof(key)-at,"%02x",b);
-    s.cachePath=std::filesystem::path("cache/vulkan")/(std::string(key)+".bin");
+    s.cachePath=std::filesystem::path("cache/vulkan")/(mc2vk::profile::pipelineCacheStem(p.vendorID,p.deviceID,p.driverVersion,std::span<const uint8_t>(p.pipelineCacheUUID,VK_UUID_SIZE),extKey)+".bin");
+    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) mc2::fmt::print_err("[VK_PIPELINE_CACHE v1] file={} ext_key={:08x}\n",mc2::fmt::safe(s.cachePath.filename().string().c_str()),mc2::fmt::as_u32(extKey));
     std::vector<unsigned char> data; const char* status="cold";
     { std::ifstream in(s.cachePath,std::ios::binary|std::ios::ate); if(in) {
         const auto total=in.tellg(); in.seekg(0); CacheHeader h{}; in.read(reinterpret_cast<char*>(&h),sizeof(h));
