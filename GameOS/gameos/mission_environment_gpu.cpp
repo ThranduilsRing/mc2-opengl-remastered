@@ -1,6 +1,7 @@
 #include "mission_environment_gpu.h"
 #include "../../RenderCore/IblShCoeffs.h"
 #include <algorithm>
+#include <cmath>
 
 namespace mc2::environment {
 namespace {
@@ -22,14 +23,17 @@ void fillGpu(const RenderCore::MissionEnvironment& env, float sceneLightScale, E
     const float night = env.lighting.night ? 1.0f : std::clamp(env.lighting.nightFactor, 0.0f, 1.0f);
     float chroma[3];
     missionL0Chroma(env.lighting.ambientColor, chroma);
+    // The ambient key moves the legacy bytes (encoded space); the prop SH and its light floors are linear light, so the same move is ratio^2.2.
+    const float ambientLin = env.lighting.ambientRatio == 1.0f ? 1.0f : std::pow(env.lighting.ambientRatio, 2.2f);
     for (int i = 0; i < 9; ++i)
         for (int c = 0; c < 3; ++c) {
             float v = env.sky.diffuseSh[i][c];
             if (i == 0) v *= 1.0f + (chroma[c] - 1.0f) * (1.0f - night);
-            v *= env.lighting.ambientRatio;   // sun keys' ambient scale reaches the sky fill (1 without keys)
+            v *= ambientLin;   // the sun keys' ambient scale reaches the sky fill (1 without keys)
             out.shDiffuse[i][c] = v;
         }
     for (int c = 0; c < 3; ++c) out.hemiSky[c] = env.sky.hemisphereSky[c] * env.unitAmbientScale;
+    out.hemiSky[3] = ambientLin;
     out.sceneLight[0] = sceneLightScale;
     for (int c = 0; c < 3; ++c) out.sceneLight[1 + c] = env.lighting.flatRatio[c];   // the sun keys' move of the flat light, applied to prelit art
 }

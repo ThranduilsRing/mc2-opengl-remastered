@@ -23,7 +23,7 @@ struct EnvironmentUBO {
     // evaluate with the evalShL2 constants, which fold in the diffuse cosine kernel). Night blend and the
     // per-mission L0 chroma are already applied. Strength options stay with the class that owns them.
     float   shDiffuse[9][4];  // @vec4xN .w pad each
-    float   hemiSky[4];       // @vec4 mission ambient hemisphere (rgb x unitAmbientScale), the fallback without SH; .w pad
+    float   hemiSky[4];       // @vec4 mission ambient hemisphere (rgb x unitAmbientScale), the fallback without SH; .w = linear ambient-key ratio for prop SH light floors (1 = no keys)
     float   sceneLight[4];    // @vec4 x = prelit ground scale (mission night scale, 1 = day); yzw = live/authored flat-light ratio applied to prelit art (1 = no sun keys)
 };
 

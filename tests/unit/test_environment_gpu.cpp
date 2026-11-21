@@ -132,5 +132,7 @@ TEST_CASE("EnvironmentGpu/prop SH follows the ambient key and is untouched witho
     mc2::environment::fillGpu(env, 1.0f, base);
     env.lighting.ambientRatio = r;
     mc2::environment::fillGpu(env, 1.0f, keyed);
-    for (int c = 0; c < 3; ++c) CHECK(keyed.shDiffuse[0][c] == doctest::Approx(base.shDiffuse[0][c] * r));
+    for (int c = 0; c < 3; ++c) CHECK(keyed.shDiffuse[0][c] == doctest::Approx(base.shDiffuse[0][c] * std::pow(r, 2.2f)));
+    CHECK(base.hemiSky[3] == 1.0f);
+    CHECK(keyed.hemiSky[3] == doctest::Approx(std::pow(r, 2.2f)));
 }
