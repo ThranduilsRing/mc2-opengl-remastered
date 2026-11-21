@@ -576,7 +576,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/cloud_shadow.frag",
-        "line": 42,
+        "line": 44,
         "role": "CloudFxParams",
         "std": "std140",
         "type": "uniform",
