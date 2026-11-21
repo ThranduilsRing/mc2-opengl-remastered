@@ -1942,7 +1942,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
                 bool counted = false;
                 // Opaque core list: the type's packets before its first alpha-testable one. The rest of the type stays in the
                 // alpha core list in packet order, so a coplanar later packet still wins the GEQUAL tie against an earlier one.
-                bool opaquePrefix = true;
+                bool opaquePrefix = true, doubleSidedSeen = false;
                 // OBJECT-ID-1: the RenderWorld handle for this type (recipe index, generation 1); 0 when the type has no recipe.
                 const int32_t typeObjectId = static_cast<int32_t>(RenderWorld::objectIdRawForStaticPropRecipe(
                     GpuStaticPropRegistry::getRecipeIndexForType(tr.typeID)));
@@ -1966,11 +1966,13 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
                     if (mc2_diag::tagRequested("SUPPORT_CRAFT") && mc2SupportCraftTraceType(tid))
                         mc2::fmt::print_err("[SUPPORT_CRAFT] event=packet frame={} type={} pipeline=prop indices={} instances={} hzb={} albedo={} firstIndex={} baseVertex={}\n",
                             g_mc2RenderFrame, tid, pkt.indexCount, instCount, hzbCulled, row.layerOff, pkt.firstIndex, pkt.baseVertex);
-                    // The core pass draws every packet (alpha-tested ones cut at the coverage threshold).
-                    const bool alphaTestable = row.layerOn >= 0 || row.alphaTest != 0;
-                    opaquePrefix = opaquePrefix && !alphaTestable;
-                    const uint32_t dbl = (s->authoredReady && pk < s->packetDoubleSided.size() && s->packetDoubleSided[pk]) ? kListDouble : 0u;
-                    const uint32_t coreList = (opaquePrefix ? kListOpaque : kListCore) + dbl;
+                    // The core pass draws every packet (alpha-tested ones cut at the coverage threshold). Routed per packet by its
+                    // alpha-test bit (PropList::routeCore), so a trunk of an alpha-ON type takes the opaque no-discard list.
+                    const bool packetDouble = s->authoredReady && pk < s->packetDoubleSided.size() && s->packetDoubleSided[pk];
+                    const uint32_t dbl = packetDouble ? kListDouble : 0u;
+                    const PropList::CoreRoute route = PropList::routeCore(opaquePrefix, row.alphaTest, packetDouble, doubleSidedSeen);
+                    opaquePrefix = route.opaquePrefix; doubleSidedSeen = route.doubleSidedSeen;
+                    const uint32_t coreList = route.list;
                     s->cmdScratch[coreList].push_back(cmd); s->pktScratch[coreList].push_back(row); ++rr.range[coreList][1];
                     if (s_pktDump)
                         mc2::fmt::print(s_pktDump, "{:d},{:d},{:d},{:d},{:.4f},{:.4f},{:d},{:d},{:d},{:d},{:d}\n",
