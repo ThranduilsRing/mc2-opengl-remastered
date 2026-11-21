@@ -23,6 +23,7 @@
 #include "mc2video.h"
 #include "mech3d.h"
 #include "gosfx/gosfxheaders.hpp"
+#include "Gates/preferences_legacy.h"
 #include "multplyr.h"
 #include "save_fix_section.h"
 #include <chrono>
@@ -54,7 +55,6 @@ TEST_CASE("CarbonSmoke/negative levels retain the normal effect start") {
         ~ProbeMech() { (void)smokeEffect.release(); }
         glm::vec3 getNodePosition(long) override { return {}; }
     };
-    extern bool useNonWeaponEffects;
     const bool previous = useNonWeaponEffects;
     useNonWeaponEffects = true;
     {
