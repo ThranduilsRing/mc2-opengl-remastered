@@ -403,19 +403,19 @@ long Camera::init (FitIniFilePtr cameraFile )
 			cameraFile->readIdUChar("AmbientBlue", ambientBlue);
 		}
 		// Per-mission sun (visual_tuning.json sunPitch/sunYaw/sunColor*): day suns only, absolute values so a save re-applies the same.
-		float sun[5] = {};
 		if (mc2_mission_light::nightFromSun(dayLightPitch) == 0.0f)
 		{
-			if (visualTuning_sunValue("sunPitch", sun[0])) lightPitch = dayLightPitch = std::max(sun[0], 26.0f);
-			if (visualTuning_sunValue("sunYaw", sun[1])) lightYaw = sun[1];
+			if (const auto v = visualTuning_sunValue("sunPitch")) lightPitch = dayLightPitch = std::max(*v, 26.0f);
+			if (const auto v = visualTuning_sunValue("sunYaw")) lightYaw = *v;
 			lightDirection.x = cos((lightYaw + 45.0f) * DEGREES_TO_RADS);
 			lightDirection.y = sin((lightYaw + 45.0f) * DEGREES_TO_RADS);
 			lightDirection.z = sin(lightPitch * DEGREES_TO_RADS);
-			if (visualTuning_sunValue("sunColorR", sun[2]) && visualTuning_sunValue("sunColorG", sun[3]) && visualTuning_sunValue("sunColorB", sun[4]))
+			const auto r = visualTuning_sunValue("sunColorR"), g = visualTuning_sunValue("sunColorG"), b = visualTuning_sunValue("sunColorB");
+			if (r && g && b)
 			{
-				lightRed = dayLightRed = static_cast<unsigned char>(sun[2] + 0.5f);
-				lightGreen = dayLightGreen = static_cast<unsigned char>(sun[3] + 0.5f);
-				lightBlue = dayLightBlue = static_cast<unsigned char>(sun[4] + 0.5f);
+				lightRed = dayLightRed = static_cast<unsigned char>(*r + 0.5f);
+				lightGreen = dayLightGreen = static_cast<unsigned char>(*g + 0.5f);
+				lightBlue = dayLightBlue = static_cast<unsigned char>(*b + 0.5f);
 			}
 		}
 	}

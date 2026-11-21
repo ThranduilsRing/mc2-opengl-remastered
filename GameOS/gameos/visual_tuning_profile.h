@@ -1,6 +1,7 @@
 #pragma once
 #include "mc2_czstring.h"
 #include "../../RenderCore/MissionEnvironment.h"
+#include <optional>
 #include <string_view>
 
 // MISSION-VISUAL-TUNING-1: optional per-mission renderer tuning profiles.
@@ -17,8 +18,8 @@
 void visualTuning_applyProfile(mc2::czstring missionName);
 bool visualTuning_saveCurrentToMission();  // write current slider state to JSON for active mission
 
-// Per-mission sun override (sunPitch/sunYaw/sunColorR/G/B): false = key absent, keep the mission's sun.
-bool visualTuning_sunValue(const char* key, float& out);
+// Per-mission sun override (sunPitch/sunYaw/sunColorR/G/B): nullopt = key absent, keep the mission's sun.
+std::optional<float> visualTuning_sunValue(std::string_view key);
 const char* visualTuning_getProfilePath();
 const char* visualTuning_getActiveMission();
 bool        visualTuning_hasProfileFile();

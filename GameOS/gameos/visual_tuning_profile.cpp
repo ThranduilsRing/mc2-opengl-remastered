@@ -397,11 +397,11 @@ void visualTuning_applyProfile(mc2::czstring missionName) {
         s_environment.colorContract,Json(s_environment.providers).dump(),count);
 }
 
-bool visualTuning_sunValue(const char* key, float& out) {
-    const auto it = s_environment.legacyTuning.find(key);
-    if (it == s_environment.legacyTuning.end() || it->second <= kSunAbsent) return false;
-    out = it->second;
-    return true;
+std::optional<float> visualTuning_sunValue(std::string_view key) {
+    const auto& tuning = s_environment.legacyTuning;
+    const std::string k(key);
+    const float v = tuning.contains(k) ? tuning.at(k) : kSunAbsent;
+    return v > kSunAbsent ? std::optional<float>(v) : std::nullopt;
 }
 
 const char* visualTuning_getProfilePath() { return s_profilePath.c_str(); }
