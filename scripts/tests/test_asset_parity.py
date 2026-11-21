@@ -495,3 +495,10 @@ def test_declared_sha_matches_tracked_blob():
         if hashlib.sha256(blob).hexdigest() != sha:
             bad.append(rel)
     assert not bad, f"{ap.INTENTIONAL} sha differs from the tracked blob: {bad}"
+
+
+def test_game_written_texture_lists_are_not_parity_files():
+    # mclib/terrtxm.cpp rewrites data/textures/<mission>.lst at mission load (merge-1121d detsave drift)
+    assert ap.is_excluded("data/textures/mc2_01.lst") and ap.is_excluded(r"Data\Textures\MC2_24.LST")
+    assert not ap.is_excluded("data/textures/mc2_01.txm")
+    assert not ap.is_excluded("data/textures/sub/other.lst")

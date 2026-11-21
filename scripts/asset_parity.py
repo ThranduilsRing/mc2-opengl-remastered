@@ -190,9 +190,15 @@ def is_deploy_artifact(rel: str) -> bool:
                 and name.endswith(".mc2ir.json")))
 
 
+# mclib/terrtxm.cpp rewrites data/textures/<mission>.lst (the transition-texture name list, derived from the
+# mission's terrain) on every transition-cache rebuild, so a lane install that ran a mission drifts from v0.4.
+GAME_WRITTEN_LST = re.compile(r"data/textures/[^/]+\.lst")
+
+
 def is_excluded(rel: str) -> bool:
     low = _norm(rel)
-    return is_deploy_artifact(rel) or any(low.startswith(prefix) for prefix in EXCLUDED)
+    return (is_deploy_artifact(rel) or any(low.startswith(prefix) for prefix in EXCLUDED)
+            or GAME_WRITTEN_LST.fullmatch(low) is not None)
 
 
 def is_exempt(install: Path | str, ref: Path | str | None = None) -> bool:
