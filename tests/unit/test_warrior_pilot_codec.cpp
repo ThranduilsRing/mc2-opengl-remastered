@@ -161,3 +161,38 @@ TEST_CASE("save fields: warrior derived tails are deterministic and active pause
     sample.curTacOrder.moveParams.wayPath.numPoints = std::numeric_limits<long>::max();
     CHECK_FALSE(mc2::save::canonicalizeWarrior(sample));
 }
+
+TEST_CASE("save fields: an out-of-domain order enum drops only that order (LG14)") {
+    MechWarriorData sample{}, decoded{};
+    fillAll(sample);
+    REQUIRE(mc2::save::canonicalizeWarrior(sample));
+    SavedQueueTargets targets, restored;
+    targets.targets.assign(MAX_QUEUED_TACORDERS_PER_WARRIOR, 19);
+    sample.tacOrder[1].code = static_cast<TacticalOrderCode>(9999);
+    const auto bytes = mc2::save::encodeTaggedRecord(mc2::save::WarriorRecord{sample, targets}, mc2::save::warriorDataTag);
+    REQUIRE_FALSE(bytes.empty());
+    clear(decoded);
+    int dropped = -1;
+    REQUIRE(mc2::save::decodeWarriorRecord(bytes, decoded, restored, &dropped));
+    CHECK(dropped == 1);
+    CHECK(decoded.tacOrder[1].code == TACTICAL_ORDER_NONE);   // the bad order was reset by TacticalOrder::init()
+    CHECK(decoded.tacOrder[1].id == 0);
+    CHECK(decoded.tacOrder[1].time == -1.0);
+    CHECK(same(decoded.tacOrder[0], sample.tacOrder[0]));      // its neighbours survive
+    CHECK(same(decoded.tacOrder[2], sample.tacOrder[2]));
+}
+
+TEST_CASE("save fields: an order enum outside a TacticalOrder rejects the record (warrior_enum_domain)") {
+    // No MechWarriorData field outside the orders is a domain enum today, so the guard is driven through the codec directly.
+    mc2::save::Archive writer;
+    std::int32_t outOfDomain = 99;
+    writer(outOfDomain);
+    const auto bytes = writer.bytes();
+    mc2::save::Archive reader(bytes);
+    mc2::save::WarriorCodec codec(reader);
+    AttackType type = ATTACK_TO_DESTROY;
+    codec.field(type);
+    CHECK_FALSE(reader.good());
+    CHECK(type == ATTACK_TO_DESTROY);   // an unnamed enumerator is never produced
+    CHECK(codec.droppedOrders == 0);
+}
