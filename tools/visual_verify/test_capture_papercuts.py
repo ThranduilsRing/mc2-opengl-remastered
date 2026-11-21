@@ -149,3 +149,48 @@ def test_commits_differ_in_shaders_reads_the_diff(monkeypatch):
     assert ab.commits_differ_in_shaders("a", "b") is False
     monkeypatch.setattr(ab, "git_diff_files", lambda a, b: None)
     assert ab.commits_differ_in_shaders("a", "b") is None and ab.commits_differ_in_shaders(None, "b") is None
+
+
+# ---- 1b. ops-dir bookmark sets (MC2_OPS_BOOKMARKS) -----------------------------------------------------------------------
+def test_ops_set_resolves_by_name_and_path_with_collision_order(tmp_path, monkeypatch):
+    install, repo, ops, out = tmp_path / "inst", tmp_path / "repo", tmp_path / "ops", tmp_path / "out"
+    _bm(install / "saved_bookmarks", "dup", "install")
+    _bm(repo, "dup", "repo")
+    _bm(repo, "dup2", "repo")
+    _bm(ops, "dup", "ops")
+    _bm(ops, "dup2", "ops")
+    _bm(ops, "only_ops", "{\"o\": 1}")
+    monkeypatch.setenv("MC2_OPS_BOOKMARKS", str(ops))
+    files, notes, missing = capture.resolve_bookmarks(install, {"dup", "dup2", "only_ops", str(ops / "dup2.json")}, out, repo_dir=repo)
+    assert missing == []
+    texts = {p.stem: p.read_text(encoding="utf-8") for p in files}
+    assert texts["dup"] == "install" and texts["only_ops"] == "{\"o\": 1}"
+    assert sorted(p.stem for p in files) == ["dup", "dup2", "dup2", "only_ops"]   # name and explicit path to dup2
+    assert any(str(ops / "only_ops.json") in n for n in notes) and any(str(repo / "dup2.json") in n for n in notes)
+    assert not (install / "saved_bookmarks" / "only_ops.json").exists()          # install never written
+
+
+def test_ops_dir_missing_is_skipped_and_not_found_lists_dirs(tmp_path, monkeypatch):
+    sys.path.insert(0, str(capture.ROOT / "scripts"))
+    import bookmark_sets
+    monkeypatch.setenv("MC2_OPS_BOOKMARKS", str(tmp_path / "no_such_dir"))
+    install, repo = tmp_path / "inst", tmp_path / "repo"
+    _bm(repo, "r")
+    assert bookmark_sets.resolve_set("r", install, repo)[0] == repo / "r.json"
+    path, dirs = bookmark_sets.resolve_set("zzz", install, repo)
+    assert path is None
+    msg = bookmark_sets.not_found_message("zzz", dirs)
+    assert all(str(d) in msg for d in (install / "saved_bookmarks", repo, tmp_path / "no_such_dir"))
+
+
+def test_ab_helpers_accept_an_ops_set_without_writing_the_install(tmp_path, monkeypatch):
+    ops, install, ref = tmp_path / "ops", tmp_path / "inst", tmp_path / "ref"
+    _bm(ops, "ops_only_set")
+    monkeypatch.setenv("MC2_OPS_BOOKMARKS", str(ops))
+    (install / "data" / "textures").mkdir(parents=True)
+    (install / "data" / "textures" / "x.burnin.tga").write_bytes(b"x")
+    ab.seed_install(install, str(ops / "ops_only_set.json"), ref)       # path spec, no SystemExit
+    ab.seed_install(install, "ops_only_set", ref)                       # bare name
+    ab.ensure_saved_bookmarks(install, ref, [], bookmarks="ops_only_set")
+    assert not (install / "saved_bookmarks").exists()
+    assert ab.bookmark_parity_problems(install, install, str(ops / "ops_only_set.json")) == []
