@@ -72,21 +72,47 @@ def box_mips(texels):
     return levels
 
 
-BC7_STRIPS = 4   # texconv encodes on one thread (a 2048 level is ~80 s quick); BC7 blocks are independent, so row strips encode in parallel
+BC7_STRIPS = 4   # texconv encodes on one thread; BC7 blocks are independent, so row strips encode in parallel
+
+
+def bc7_blocks(rgba, texcook, workdir):
+    """BC7 UNORM blocks of an RGBA8 image, row-major. Uniform channel weights (-bc u): the default perceptual weights treat
+    the normal's x/y/z as colour and cost 1.5-2x the angular error on the noisy layers."""
+    import subprocess
+    from PIL import Image
+    h, w = rgba.shape[:2]
+    pw, ph = max(4, w), max(4, h)
+    if (pw, ph) != (w, h):   # a 1x1 / 2x2 level is one block: pad by edge replication
+        import numpy as np
+        rgba = np.pad(rgba, ((0, ph - h), (0, pw - w), (0, 0)), mode='edge')
+    src, out = workdir / 'level.png', workdir / 'level.dds'
+    Image.fromarray(rgba, 'RGBA').save(src)
+    r = subprocess.run([str(texcook.TEXCONV), '-nologo', '-nogpu', '-y', '-dx10', '--ignore-srgb', '-m', '1', '-bc', 'u', '-f', 'BC7_UNORM',
+                        '-ft', 'dds', '-o', str(workdir), str(src)], capture_output=True, text=True, env=dict(os.environ, OMP_NUM_THREADS='1'))
+    if r.returncode or not out.is_file():
+        raise RuntimeError(f'texconv BC7 failed: {r.stdout[-300:]} {r.stderr[-300:]}')
+    data = out.read_bytes()
+    blocks = data[148:]
+    row = (pw // 4) * 16
+    bw, bh = (w + 3) // 4, (h + 3) // 4
+    if (pw, ph) != (w, h):
+        blocks = b''.join(blocks[i * row:i * row + bw * 16] for i in range(bh))
+    if len(blocks) != bw * bh * 16:
+        raise RuntimeError(f'unexpected BC7 payload {len(blocks)} for {w}x{h}')
+    return blocks
 
 
 def encode_bc7_level(level, texcook, workers):
-    """One RGBA8 level -> its BC7 block stream (quick quality). Big levels are cut into BC7_STRIPS row strips of whole block rows,
-    encoded on separate threads; the strips' block rows concatenate into the level's stream."""
+    """One RGBA8 level -> its BC7 block stream. Big levels are cut into BC7_STRIPS row strips of whole block rows, encoded on
+    separate threads; the strips' block rows concatenate into the level's stream."""
     import tempfile
-    from concurrent.futures import ThreadPoolExecutor
     h = level.shape[0]
     strips = BC7_STRIPS if h >= 512 and h % (4 * BC7_STRIPS) == 0 else 1
     rows = h // strips
 
     def one(i):
         with tempfile.TemporaryDirectory(prefix='mc2tex-') as d:
-            return texcook._texconv_level(level[i * rows:(i + 1) * rows], 'BC7_UNORM', Path(d), quick=True)
+            return bc7_blocks(level[i * rows:(i + 1) * rows], texcook, Path(d))
     if strips == 1:
         return one(0)
     return b''.join(workers.map(one, range(strips)))
