@@ -2873,10 +2873,10 @@ DWORD __stdcall gos_NewTextureFromMemory( gos_TextureFormat Format, mc2::czstrin
 // texture from a pre-loaded compressed block stream and return a texture handle.
 // glInternalFormat is a GL compressed internal format (e.g.
 // GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM). Uploaded via glCompressedTexImage2D,
-// single level, GL_LINEAR filtering (no mips). Returns INVALID_TEXTURE_ID on
+// MipCount levels: BlockData holds the whole chain, level 0 first, tightly packed. Returns INVALID_TEXTURE_ID on
 // failure so callers can fall back to the uncompressed path.
 //
-DWORD __stdcall gos_NewCompressedTexture2D( uint32_t vkFormat, int Width, int Height, std::span<const uint8_t> BlockData, mc2::czstring Name, gos_TextureFormat Format = gos_Texture_Solid );
+DWORD __stdcall gos_NewCompressedTexture2D( uint32_t vkFormat, int Width, int Height, std::span<const uint8_t> BlockData, mc2::czstring Name, gos_TextureFormat Format = gos_Texture_Solid, uint32_t MipCount = 1 );
 
 #define RECT_TEX(width,height) (((height)<<16)|(width))
 

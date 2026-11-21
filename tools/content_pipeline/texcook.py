@@ -43,7 +43,7 @@ from . import cache, provenance
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 import console_child  # noqa: E402  (windowless console children; scripts/console_child.py)
 
-CONTRACT_VERSION = "mc2-texcook/2"   # /2: base_color tagged UNORM (145/37), not sRGB
+CONTRACT_VERSION = "mc2-texcook/3"   # /2: base_color tagged UNORM (145/37), not sRGB; /3: cook_ktx2_levels (every level in the key)
 TEXCONV = Path(os.environ.get("MC2_TEXCONV", "A:/Games/mc2-tools/texconv/texconv.exe"))
 TIERS = (32, 64, 128, 256, 512, 1024)
 
@@ -165,7 +165,7 @@ def resize_pow2(rgba: np.ndarray, edge: int) -> np.ndarray:
 
 # --------------------------------------------------------------------------- encode
 
-def _texconv_level(level: np.ndarray, fmt: str, workdir: Path) -> bytes:
+def _texconv_level(level: np.ndarray, fmt: str, workdir: Path, quick: bool = False) -> bytes:
     h, w = level.shape[:2]
     pw, ph = max(4, w), max(4, h)
     if (pw, ph) != (w, h):     # a 1x1 / 2x2 level is one block: pad by edge replication
@@ -175,7 +175,7 @@ def _texconv_level(level: np.ndarray, fmt: str, workdir: Path) -> bytes:
     out = workdir / "level.dds"
     out.unlink(missing_ok=True)
     r = subprocess.run([str(TEXCONV), "-nologo", "-nogpu", "-y", "-dx10", "--ignore-srgb", "-m", "1",
-                        "-f", fmt, "-ft", "dds", "-o", str(workdir), str(src)],
+                        *(["-bc", "q"] if quick else []), "-f", fmt, "-ft", "dds", "-o", str(workdir), str(src)],
                        capture_output=True, text=True, env=dict(os.environ, OMP_NUM_THREADS="1"),
                        **console_child.child_kwargs(redirected=True))
     if r.returncode or not out.is_file():
@@ -290,6 +290,32 @@ def cook_ktx2(rgba: np.ndarray, role: str, *, alpha_cutoff=None, compress=True,
     def produce():
         vk, blocks = encode_levels(mip_chain(rgba, role, alpha_cutoff), role, compress)
         return write_ktx2(vk, w, h, blocks)
+    if cache_dir is None:
+        return produce()
+    if cache_dir == "default":
+        cache_dir = cache.DEFAULT_DIR
+    return cache.cached(cache_dir, KTX_KIND, key, produce)
+
+
+def cook_ktx2_levels(levels: list[np.ndarray], vk_format: int, texconv_format: str, *,
+                     cache_dir="default", quick=False) -> bytes:
+    """A KTX2 from caller-built RGBA8 levels (level 0 first, down to 1x1), every level block-encoded.
+
+    The cache key covers every level's bytes plus the format, so a change to any one level re-cooks."""
+    if not levels or levels[-1].shape[:2] != (1, 1):
+        raise ValueError("levels must run down to 1x1")
+    h, w = levels[0].shape[:2]
+    params = {"w": w, "h": h, "levels": len(levels), "vk": vk_format, "texconv": texconv_format,
+              "encoder": "texconv-cpu", "quick": quick, "toolVersion": texture_tool_version(True),
+              "pillow": PILLOW_VERSION, "numpy": np.__version__}
+    key = cache.cache_key(CONTRACT_VERSION, params, [lv.tobytes() for lv in levels])
+
+    def produce():
+        if not TEXCONV.is_file():
+            raise RuntimeError(f"texconv not found at {TEXCONV} (set MC2_TEXCONV); refusing to download one")
+        with tempfile.TemporaryDirectory(prefix="mc2tex-") as d:
+            blocks = [_texconv_level(lv, texconv_format, Path(d), quick) for lv in levels]
+        return write_ktx2(vk_format, w, h, blocks)
     if cache_dir is None:
         return produce()
     if cache_dir == "default":

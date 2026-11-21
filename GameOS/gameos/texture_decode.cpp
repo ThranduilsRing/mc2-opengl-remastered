@@ -234,12 +234,19 @@ size_t bc7LevelBytes(uint32_t width, uint32_t height) {
     return (static_cast<size_t>((width + 3u)) / 4u) * (static_cast<size_t>((height + 3u)) / 4u) * 16u;
 }
 
+size_t bc7ChainBytes(uint32_t width, uint32_t height, uint32_t mipCount) {
+    if (!width || !height || !mipCount) return 0;
+    size_t total = 0;
+    for (uint32_t level = 0; level < mipCount; ++level) total += bc7LevelBytes(mipExtent(width, level), mipExtent(height, level));
+    return total;
+}
+
 std::vector<uint8_t> decodeBc7(const std::vector<uint8_t>& blocks, uint32_t width, uint32_t height) {
     if (width == 0 || height == 0 || width > RenderCore::kKtxMaxEdge || height > RenderCore::kKtxMaxEdge ||
-        blocks.size() != bc7LevelBytes(width, height))
+        blocks.size() < bc7LevelBytes(width, height))
         return {};
     RenderCore::KtxImage img;
-    img.pixels = blocks;
+    img.pixels.assign(blocks.begin(), blocks.begin() + static_cast<std::ptrdiff_t>(bc7LevelBytes(width, height)));
     img.width = static_cast<int>(width);
     img.height = static_cast<int>(height);
     img.mipCount = 1;

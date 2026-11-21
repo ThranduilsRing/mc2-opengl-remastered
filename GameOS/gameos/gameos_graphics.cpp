@@ -398,6 +398,7 @@ GosTexels gos_GetTextureTexels(uint32_t gosHandle) {
     out.height = static_cast<uint32_t>(info.height_);
     if (auto blocks = tex->getBlocks()) {
         out.vkFormat = tex->getBlockVkFormat();
+        out.mipCount = tex->getMipCount();
         out.bytes = std::move(blocks);
     } else if (tex->hasRgbaMirror()) {
         out.vkFormat = mc2tex::kVkFormatRgba8Unorm;
@@ -430,7 +431,7 @@ uint64_t gos_GetMaterialTextureId(DWORD handle) {
     const auto texels=gos_GetTextureTexels(handle);
     if (texels.status!=GosTexels::Status::Ready || !texels.bytes) return 0;
     return mc2vk::getOrCreateEngineVulkanContext().textures().legacyUiId(handle,texels.width,texels.height,
-        mc2vk::texelFormat(texels.vkFormat),texels.bytes,false,g_gos_renderer->getTexture(handle)->wantsMipmaps());
+        mc2vk::texelFormat(texels.vkFormat),texels.bytes,false,g_gos_renderer->getTexture(handle)->wantsMipmaps(),texels.mipCount);
 }
 
 

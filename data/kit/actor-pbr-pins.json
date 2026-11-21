@@ -1,0 +1,278 @@
+{
+ "data/textures/mech_pbr/anubis_normal.ktx2": {
+  "ktx2_sha256": "acd48b29a4e09ac1d2159d868635a9632925a64697a3637450f5e6fc8b4590a8"
+ },
+ "data/textures/mech_pbr/anubis_orm.ktx2": {
+  "ktx2_sha256": "7334bfcd89cca0510195c480ef7390cabbdd9ff90fa2f7b3991ab22f09ef69d1"
+ },
+ "data/textures/mech_pbr/atlas_normal.ktx2": {
+  "ktx2_sha256": "c89373af0b1d1a1ca98ed7ab3e371613217a7e2561668eab8b5af8ab007e26a5"
+ },
+ "data/textures/mech_pbr/atlas_orm.ktx2": {
+  "ktx2_sha256": "94074ccd9116914c1669efb099abfa60c96c15a8b4d055749daaf849943b4d12"
+ },
+ "data/textures/mech_pbr/bloodasp_normal.ktx2": {
+  "ktx2_sha256": "175edbaa5b11900b02f57caa50e062a622a64e59353fa88ac0aa1ea2187349f3"
+ },
+ "data/textures/mech_pbr/bloodasp_orm.ktx2": {
+  "ktx2_sha256": "b6627080044ae67e73fbbd954ce9869f7a0915215828362be3831f91b6b3bbcc"
+ },
+ "data/textures/mech_pbr/bushwacker_normal.ktx2": {
+  "ktx2_sha256": "86043d93f804491bff2194195594e11757476620f3cfdeb69071b916a3b4243b"
+ },
+ "data/textures/mech_pbr/bushwacker_orm.ktx2": {
+  "ktx2_sha256": "af536de4cd25badc5be21fb642f2180d38f9095009a1fbda4b475bb311038d46"
+ },
+ "data/textures/mech_pbr/catapult_normal.ktx2": {
+  "ktx2_sha256": "085a3e5e8aaa2ee6f9bd9bac1c75677d99dd37d64b2fa2b425afc8843e04a56a"
+ },
+ "data/textures/mech_pbr/catapult_orm.ktx2": {
+  "ktx2_sha256": "908ec9045c9cb3df1efbd341c265114d9ec390eb9df59c213bb7f13c3eb04075"
+ },
+ "data/textures/mech_pbr/couger_normal.ktx2": {
+  "ktx2_sha256": "f9800186ab16dba5e5404122ba91a550ea03fc0714a80017319f3f00688d5251"
+ },
+ "data/textures/mech_pbr/couger_orm.ktx2": {
+  "ktx2_sha256": "b9485c614464a1a57fb9d52e61b7cef023646da5e519865ca73e7f9806aac641"
+ },
+ "data/textures/mech_pbr/cyclops_normal.ktx2": {
+  "ktx2_sha256": "e7741845640af8b15a00e73dc7fa7a46ac41e9dd1c86fcf9feec0a350f8dfcb2"
+ },
+ "data/textures/mech_pbr/cyclops_orm.ktx2": {
+  "ktx2_sha256": "389f1ab8c2bf9159359cc100f49ba51f34b1bf5dc3530757cf450756f45e28ea"
+ },
+ "data/textures/mech_pbr/enfield_normal.ktx2": {
+  "ktx2_sha256": "2f1fff4c42ef8ac662b5f039e24ea8b90d5e7510b67920c0ccf7d15c9c31ea7f"
+ },
+ "data/textures/mech_pbr/enfield_orm.ktx2": {
+  "ktx2_sha256": "a90d2d1b31d288a6fd253d531c5cc291acd09a70a544390ce94e05d0016ef887"
+ },
+ "data/textures/mech_pbr/fireant_normal.ktx2": {
+  "ktx2_sha256": "69a400aad215fa08a02fdb0ddb1fe29c9ab25079178ebfce69769e8597f4be54"
+ },
+ "data/textures/mech_pbr/fireant_orm.ktx2": {
+  "ktx2_sha256": "b110ba1331034c60189a11d79a3e2c17399de89773467861feb67c2d2979f432"
+ },
+ "data/textures/mech_pbr/ghoul_normal.ktx2": {
+  "ktx2_sha256": "daaca47c990347241de84ff4922cc8655b13fd00cf4a23f6bae30484cfa1d385"
+ },
+ "data/textures/mech_pbr/ghoul_orm.ktx2": {
+  "ktx2_sha256": "3ef138374da77d4f297a3ae543963f597372875833f34aaaf31153c88e6a0eb0"
+ },
+ "data/textures/mech_pbr/highlander_normal.ktx2": {
+  "ktx2_sha256": "e066ae9e425da81e5766dceda2702da300e5c7f85fd06f2749d1a6630d7214c6"
+ },
+ "data/textures/mech_pbr/highlander_orm.ktx2": {
+  "ktx2_sha256": "bde6c673619dcf0b3425dd4fbd4ff557bcc8204e0e6318241803fa51046391ee"
+ },
+ "data/textures/mech_pbr/hollander_normal.ktx2": {
+  "ktx2_sha256": "22b845792503979264a7a63b65687948f5e01b02c0c510d9da706a0d107813f5"
+ },
+ "data/textures/mech_pbr/hollander_orm.ktx2": {
+  "ktx2_sha256": "5c94bd092aa03516ef965bdc7710abe6ce86ce8e993a82efe2f8e1368fe9eb2b"
+ },
+ "data/textures/mech_pbr/hunchback_normal.ktx2": {
+  "ktx2_sha256": "906ee13c97b7cc1532f620f359d4bc1c19e6ba8d3cd4adf468a591c10f429faf"
+ },
+ "data/textures/mech_pbr/hunchback_orm.ktx2": {
+  "ktx2_sha256": "0e98c94d764a081d74d97c7254e44b86322b54fa9b8b0a53bde35d91c29769d3"
+ },
+ "data/textures/mech_pbr/jagermech_normal.ktx2": {
+  "ktx2_sha256": "71b999a454f6245c4499b91ac2f526b0fe87f83c530453ec3f61e27061509b2f"
+ },
+ "data/textures/mech_pbr/jagermech_orm.ktx2": {
+  "ktx2_sha256": "a2d69db12d407edeea9f206d86f4eee0ddf7131caa4b8c7813f2ee7448be29c9"
+ },
+ "data/textures/mech_pbr/lauhu_normal.ktx2": {
+  "ktx2_sha256": "bd5a3601fce5ef68f71af2a31fb35ae08f75608666c302516571218c1aee630f"
+ },
+ "data/textures/mech_pbr/lauhu_orm.ktx2": {
+  "ktx2_sha256": "8fbc6e8afcae36886b7d605b525f650e6e2016d5a94477cef4d5e245e49b5546"
+ },
+ "data/textures/mech_pbr/madcat_normal.ktx2": {
+  "ktx2_sha256": "979f0ad25a714bf824c6a1dfa263fec3846d4d5c2506a031087eac1050b45761"
+ },
+ "data/textures/mech_pbr/madcat_orm.ktx2": {
+  "ktx2_sha256": "1ae70184dd5f9c954010ca08049ee3b077cc4c486fb944f0eb38897126444d4a"
+ },
+ "data/textures/mech_pbr/menshen_normal.ktx2": {
+  "ktx2_sha256": "186f7b6b860a4b21f1eaa5fa8df1d77c50ea968939cb01ecc05f77ecccbd764d"
+ },
+ "data/textures/mech_pbr/menshen_orm.ktx2": {
+  "ktx2_sha256": "d655d9d29baf570d36e33aa6b0c91371c7ecf7572bee1965771b08c738d36204"
+ },
+ "data/textures/mech_pbr/raven_normal.ktx2": {
+  "ktx2_sha256": "99b49418426599961e2e1f12e1f104d8cd3b5cec35269e19c563cd406bf08e24"
+ },
+ "data/textures/mech_pbr/raven_orm.ktx2": {
+  "ktx2_sha256": "f597d10a3fe642be7ad5db5e812f8d0cb33564b82ff678865501998edf63344b"
+ },
+ "data/textures/mech_pbr/ryoken_normal.ktx2": {
+  "ktx2_sha256": "571d7c6ba4b05ce28771c910be8e600689807824edb5dbc7d9307436eb94b0fd"
+ },
+ "data/textures/mech_pbr/ryoken_orm.ktx2": {
+  "ktx2_sha256": "aa0e624bc1f27101299d680cd274c01183d62dcaaeceb63c6bb73294321d7160"
+ },
+ "data/textures/mech_pbr/shadowcat_normal.ktx2": {
+  "ktx2_sha256": "37ea309db4e1252e1c2aab85266b39c866c813577658c35a603dee179ae58221"
+ },
+ "data/textures/mech_pbr/shadowcat_orm.ktx2": {
+  "ktx2_sha256": "167a433c2cbc6f1f911fbcf41730fead9a64371d275955c4ee4692b3c1403137"
+ },
+ "data/textures/mech_pbr/shayu_normal.ktx2": {
+  "ktx2_sha256": "ec25827a4d0fdcd529c7c535ae41539e00203659329e606a83abc04bb665835e"
+ },
+ "data/textures/mech_pbr/shayu_orm.ktx2": {
+  "ktx2_sha256": "f424daa727ed0c1371a8c33b1d7bf48f050d730f6f3860001a381be985caa9d1"
+ },
+ "data/textures/mech_pbr/shootist_normal.ktx2": {
+  "ktx2_sha256": "1395e7dfa3f7dde8522312056ec1ab0e7d5315426a0f2cf58b210a0eec945922"
+ },
+ "data/textures/mech_pbr/shootist_orm.ktx2": {
+  "ktx2_sha256": "4771e0a295a2e5de546f54646f7fd447f0834821da36a1c01ed2f9a34f0bbdf5"
+ },
+ "data/textures/mech_pbr/starslayer_normal.ktx2": {
+  "ktx2_sha256": "38e60e3fb7467723bb3091c6d8b2e99279234cbb9a1d2217b4518c2543ccec3b"
+ },
+ "data/textures/mech_pbr/starslayer_orm.ktx2": {
+  "ktx2_sha256": "9aa62b51ce59e65a1a1ade48c33f2447891c7cfc368dfd724c1e9e7d9556e77c"
+ },
+ "data/textures/mech_pbr/thor_normal.ktx2": {
+  "ktx2_sha256": "10f65df71dcc78835bdcb7aedd90a05aa56bd94f17145ad7f12bc8b4156b06c8"
+ },
+ "data/textures/mech_pbr/thor_orm.ktx2": {
+  "ktx2_sha256": "9658a90f1575f8cd8272e8579cb2cbac72c51354a7abacce4acc11f4e9d2f4fd"
+ },
+ "data/textures/mech_pbr/uller_normal.ktx2": {
+  "ktx2_sha256": "24a059cbf7de6e78538f7f918b00bcbce8eb5b29b38b8bd258f484cc0953b64b"
+ },
+ "data/textures/mech_pbr/uller_orm.ktx2": {
+  "ktx2_sha256": "ba71c78684f5df808624204fd10aa6627f5d795a15f2926b4b85dcea8ddc1136"
+ },
+ "data/textures/mech_pbr/urbanmech_normal.ktx2": {
+  "ktx2_sha256": "7d033d5a8bfedd4e735414ac8ea53e5daf3e9d86a0aa7bb6dd1c0d93bf30f65f"
+ },
+ "data/textures/mech_pbr/urbanmech_orm.ktx2": {
+  "ktx2_sha256": "375680af76445d0b1c74c62b86a3b76339cae0bb8ae85b7c87aacffae31e573b"
+ },
+ "data/textures/mech_pbr/vutlure_normal.ktx2": {
+  "ktx2_sha256": "cc8ae2e9de55ed106d36b4bd4d41941bf2e24f95a816c09bdb908a66267f5e14"
+ },
+ "data/textures/mech_pbr/vutlure_orm.ktx2": {
+  "ktx2_sha256": "b3e204f38f308b986a3576e6fc26d1ce811206d2c2f6bf98fdc73ca22e150376"
+ },
+ "data/textures/mech_pbr/werewolf_normal.ktx2": {
+  "ktx2_sha256": "a20989558e9027959f0a3828fe554804f25b3d55dc677e7fb443fe58b8dcb5ba"
+ },
+ "data/textures/mech_pbr/werewolf_orm.ktx2": {
+  "ktx2_sha256": "1f9cb48eb1783789456bef8aca96672a9a8d24fe2f557a249c94dadbc05f4f49"
+ },
+ "data/textures/mech_pbr/wolfhound_normal.ktx2": {
+  "ktx2_sha256": "9e3aa422742dd94497ebfd29a81e69629537b50effa60a440527326eb589a561"
+ },
+ "data/textures/mech_pbr/wolfhound_orm.ktx2": {
+  "ktx2_sha256": "fc4876d6e3a0dc223da156b78a1914e786d24a8fb0dd684b99742e1727c26f8f"
+ },
+ "data/textures/mech_pbr/zeus_normal.ktx2": {
+  "ktx2_sha256": "b673ecc4d0d914e37a60d39221933dca51cf063d305d22083f3adc3a5f135f28"
+ },
+ "data/textures/mech_pbr/zeus_orm.ktx2": {
+  "ktx2_sha256": "cdafc756e309f0f06031f4a16c8f91df7cd684aa8a47584336f3d06c4d8a6576"
+ },
+ "data/textures/vehicle_pbr/aerospotter_normal.ktx2": {
+  "ktx2_sha256": "e7559d036bdaefc9ef77b8c4e4d80558fbc02b73a0a3ba51a3aad869c050d106"
+ },
+ "data/textures/vehicle_pbr/aerospotter_orm.ktx2": {
+  "ktx2_sha256": "a22abd2a2e155f792571f5402ec17c8df3eb9abcd3f22a4c734d7e4b1c49457c"
+ },
+ "data/textures/vehicle_pbr/ambulance_normal.ktx2": {
+  "ktx2_sha256": "0ee79e27bbf24ef00ae009cbaacb38a14e85cce303dfeb60feba4b07489fd9a7"
+ },
+ "data/textures/vehicle_pbr/ambulance_orm.ktx2": {
+  "ktx2_sha256": "ee059d934da31e4e6a00ff2830b0e32d27a979038c26db23acd54e8c14c01cda"
+ },
+ "data/textures/vehicle_pbr/armoredcar_normal.ktx2": {
+  "ktx2_sha256": "a8c50e6b4de149a3704f7d1548fab639709144c8e9bdb845e8374203a982b949"
+ },
+ "data/textures/vehicle_pbr/armoredcar_orm.ktx2": {
+  "ktx2_sha256": "790476b734c901182d0c4e68c82343addd77d1fce8b973d822e92e83601ed66d"
+ },
+ "data/textures/vehicle_pbr/drillson_normal.ktx2": {
+  "ktx2_sha256": "2be686cc8355ce5d96b7491aed910b8d88f0fcf1469259d39696ca93f51a3d87"
+ },
+ "data/textures/vehicle_pbr/drillson_orm.ktx2": {
+  "ktx2_sha256": "509ceba3de5640da9a47cd795454908fac37b67bd72fb3d7c26314771383ee32"
+ },
+ "data/textures/vehicle_pbr/hetzer_normal.ktx2": {
+  "ktx2_sha256": "7d3870e3c3b1d671bfaea552bbc838a4691e2ca38b9b84a59525e0c2dfb93302"
+ },
+ "data/textures/vehicle_pbr/hetzer_orm.ktx2": {
+  "ktx2_sha256": "7b75382503632b9f927c7b5af92d73741322bb41bf58b34d6c8a24558f40560b"
+ },
+ "data/textures/vehicle_pbr/hunter_normal.ktx2": {
+  "ktx2_sha256": "9ddffefd9249f84a76d69136f9158bccb3dcbe2b276d850a10eba8b19dec4f18"
+ },
+ "data/textures/vehicle_pbr/hunter_orm.ktx2": {
+  "ktx2_sha256": "5dc341b26b2ac00c8d2cd4555802abca54c0749207d6bde8a09bb71a6e2d614f"
+ },
+ "data/textures/vehicle_pbr/jeep_normal.ktx2": {
+  "ktx2_sha256": "0877cb792012f0c01b623fe6c0e6bda2550bcb58da9cec1125fdad70a7c729b3"
+ },
+ "data/textures/vehicle_pbr/jeep_orm.ktx2": {
+  "ktx2_sha256": "7a18e4bab372275397e38520bef5835f5afe45facb6e41e6d334f5b7aef946d1"
+ },
+ "data/textures/vehicle_pbr/mobilehq_normal.ktx2": {
+  "ktx2_sha256": "8be229fb06fbb8a17761f93acdc2bb335cf04276de212fc385a2dc614773e942"
+ },
+ "data/textures/vehicle_pbr/mobilehq_orm.ktx2": {
+  "ktx2_sha256": "8c237b0c6e2a82da96ce481304ac995760b5b671017585d0d5724b74429a2d70"
+ },
+ "data/textures/vehicle_pbr/monsoon_normal.ktx2": {
+  "ktx2_sha256": "ad464a8137aa9fde356d8ebf5dd3229398650938324b67d71fd5e23597283812"
+ },
+ "data/textures/vehicle_pbr/monsoon_orm.ktx2": {
+  "ktx2_sha256": "e27d7cf20b4c18d5725ad6ea95f255d8ae7bdb435411055ea4f49e57a1735249"
+ },
+ "data/textures/vehicle_pbr/partisan_normal.ktx2": {
+  "ktx2_sha256": "eb43c2e78bd03ea17829a0301dea6e66312f0ca2950a2aa51c4afee4bd1c8e6d"
+ },
+ "data/textures/vehicle_pbr/partisan_orm.ktx2": {
+  "ktx2_sha256": "37c3e4b236a0b62fd19e3856d1e818655396a60d0272ae1ef7a6d02d7d1b5649"
+ },
+ "data/textures/vehicle_pbr/smalltruckmap_normal.ktx2": {
+  "ktx2_sha256": "b097a31584a4e138089bbeec262662f1d3ee5b6b74548bc5d3bc5e62b551437b"
+ },
+ "data/textures/vehicle_pbr/smalltruckmap_orm.ktx2": {
+  "ktx2_sha256": "0b654643f6e4cadc7b92050f8f3dd0ef6f9287c137b8e713b46f4a214ba5ea98"
+ },
+ "data/textures/vehicle_pbr/srmc_normal.ktx2": {
+  "ktx2_sha256": "d6e182e088459a7b74774e9c086601a0e2a58cc3cb3794bfa7a04f09fbfdd1d4"
+ },
+ "data/textures/vehicle_pbr/srmc_orm.ktx2": {
+  "ktx2_sha256": "fbc3eae4701293d32a59e357ded32fab2ba44c25c40ad19ad424b8e2517eac2b"
+ },
+ "data/textures/vehicle_pbr/storm_normal.ktx2": {
+  "ktx2_sha256": "6e3ce415f4d971ac22c80ce80da0f420b380536fb86c746a1485654dc944c116"
+ },
+ "data/textures/vehicle_pbr/storm_orm.ktx2": {
+  "ktx2_sha256": "1a6b88194d279f69ad3ddc159eab2ede08468aa4722091c63d7e729f937f54a8"
+ },
+ "data/textures/vehicle_pbr/trooptransport_normal.ktx2": {
+  "ktx2_sha256": "af8107b898baf1e9fb3f3510fb39811eed1b53e2a4b2712bba080db0472e4fe7"
+ },
+ "data/textures/vehicle_pbr/trooptransport_orm.ktx2": {
+  "ktx2_sha256": "0557c531d24b3ccf5987a6d2efc87389177ded0106145c0c20989cefc391cb35"
+ },
+ "data/textures/vehicle_pbr/vedette_normal.ktx2": {
+  "ktx2_sha256": "7235470f2624060a069dce72cc31dab08068fd3ab04a88a615017f0a8e5b81d7"
+ },
+ "data/textures/vehicle_pbr/vedette_orm.ktx2": {
+  "ktx2_sha256": "0cfd4e472717e28a4c2773768efffd22b92736f351498760cd11f8313f991596"
+ },
+ "data/textures/vehicle_pbr/vtolrgb_normal.ktx2": {
+  "ktx2_sha256": "ddd06371c16e0f319a761c83d727c0436c44747b696fe99d51b32228e642604d"
+ },
+ "data/textures/vehicle_pbr/vtolrgb_orm.ktx2": {
+  "ktx2_sha256": "c921d4e6340e59cfeb34c5dd3b1aedec57b270153a0b879a80350fb3dc604047"
+ }
+}

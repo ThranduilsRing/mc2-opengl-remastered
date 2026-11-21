@@ -450,6 +450,60 @@ def ensure_tree_upscale(src_root, cooker=subprocess.run):
                 os.remove(p)
 
 
+# ACTOR-PBR-MIPS: stock mech/vehicle normal + ORM PNGs get same-stem BC7 KTX2 sidecars with a full mip chain, cooked at deploy
+# (tools/content_pipeline/cook_actor_pbr.py, pins in data/kit/actor-pbr-pins.json; generated, not tracked). The loader prefers the
+# sidecar over the PNG; a missing or stale one is removed and the PNG renders as before.
+ACTOR_PBR_COOK = "tools/content_pipeline/cook_actor_pbr.py"
+ACTOR_PBR_PINS = "data/kit/actor-pbr-pins.json"
+
+
+def actor_pbr_payload(src_root):
+    path = os.path.join(src_root, ACTOR_PBR_PINS)
+    if not os.path.isfile(path):
+        return {}
+    with open(path, encoding="utf-8") as f:
+        return {rel: row["ktx2_sha256"] for rel, row in sorted(json.load(f).items())}
+
+
+def ensure_actor_pbr(src_root, cooker=subprocess.run):
+    """Generate the actor PBR sidecars when absent or not the pinned bytes (soft: PNGs render without them)."""
+    rows = actor_pbr_payload(src_root)
+    if not rows:
+        return
+
+    def current():
+        return all(os.path.isfile(os.path.join(src_root, r)) and sha256_file(os.path.join(src_root, r)) == want
+                   for r, want in rows.items())
+    if current():
+        return
+    import asset_parity
+    references = (Path(os.environ.get('MC2_LEAN_SEED', 'E:/mc2-installs/_lean-seed')), asset_parity.default_ref())
+    for rel, want in rows.items():
+        dst = Path(src_root) / rel
+        if dst.is_file() and sha256_file(dst) == want:
+            continue
+        for reference in references:
+            source = reference / rel
+            if source.is_file() and sha256_file(source) == want:
+                asset_parity._copy(source, dst)
+                break
+    if current():
+        return
+    log("actor PBR KTX2s absent or stale: generating them (tens of minutes cold)")
+    try:
+        r = cooker([sys.executable, os.path.join(src_root, ACTOR_PBR_COOK), "--root", src_root, "--jobs", "4"],
+                   capture_output=True, text=True, timeout=5400, env=dict(os.environ, OMP_NUM_THREADS="1"), **console_child.child_kwargs(redirected=True))
+    except subprocess.TimeoutExpired:
+        log("[DEPLOY] WARN: actor PBR cook timed out after 5400 s (PNG maps ship)")
+        return
+    if r.returncode or not current():
+        log("[DEPLOY] WARN: actor PBR cook failed or does not match the pins (PNG maps ship): " + (r.stdout + r.stderr).strip()[-300:])
+        for rel in rows:
+            p = os.path.join(src_root, rel)
+            if os.path.isfile(p):
+                os.remove(p)
+
+
 # GRASS-GROUND-NORMAL: the top-down turf normal that replaces detail-normal layer 1 (grass), generated from CC0 Poly Haven
 # sparse_grass + dry_ground_01 (owner download 2026-10-23). Recooked when absent or older than its cooker.
 GRASS_TURF_COOK = "tools/mc2texcook/cook_grass_turf.py"
@@ -1590,6 +1644,7 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
         ensure_concrete_detail(src_root)
         ensure_cliff_rock(src_root)
         ensure_tree_upscale(src_root)
+        ensure_actor_pbr(src_root)
     for rel in tree_upscale_payload(src_root):
         p = os.path.join(src_root, rel)
         if os.path.isfile(p):

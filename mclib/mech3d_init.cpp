@@ -946,7 +946,7 @@ void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 			aoFull.init(aoPath, const_cast<char*>(aoName), "");
 			if (textureOrKtxSidecarExists(aoFull)) {
 				aoTextureHandle = mc2::textures::load(aoFull, gos_Texture_Solid,
-					gosHint_DontShrink);
+					gosHint_DontShrink | gosHint_MipmapFilter0);
 				aoValid = (aoTextureHandle != 0 && aoTextureHandle != 0xFFFFFFFFu);
 			}
 			if (!aoValid)
@@ -968,7 +968,7 @@ void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 			nrmFull.init(nrmPath, const_cast<char*>(nrmName), "");
 			if (textureOrKtxSidecarExists(nrmFull)) {
 				normalTextureHandle = mc2::textures::load(nrmFull, gos_Texture_Solid,
-					gosHint_DontShrink);
+					gosHint_DontShrink | gosHint_MipmapFilter0);
 				normalValid = (normalTextureHandle != 0 && normalTextureHandle != 0xFFFFFFFFu);
 			}
 			if (!normalValid)

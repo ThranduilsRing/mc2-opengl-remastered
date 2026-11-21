@@ -221,17 +221,18 @@ DWORD __stdcall gos_NewTextureFromMemory( gos_TextureFormat Format, const char* 
 // gosHint_DisableMipmap), so GL_TEXTURE_MAX_LEVEL=0 and GL_LINEAR filtering.
 // Returns INVALID_TEXTURE_ID on GL failure (caller falls through to the RGBA8
 // path). The internal format is passed in by the caller (sRGB BPTC for albedo).
-// Only BC7 is accepted, with exactly one level's worth of blocks; the blocks stay with the handle as its CPU texels, so other
+// Only BC7 is accepted, with exactly mipCount levels' worth of blocks (the whole chain, level 0 first); the blocks stay with the handle as its CPU texels, so other
 // backends import them as they are (gos_GetTextureTexels).
 DWORD __stdcall gos_NewCompressedTexture2D( uint32_t vkFormat, int w, int h,
                                             std::span<const uint8_t> blockData,
-                                            mc2::czstring name, gos_TextureFormat format )
+                                            mc2::czstring name, gos_TextureFormat format, uint32_t mipCount )
 {
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_NewCompressedTexture2D");
+    if(mipCount == 0) mipCount = 1;
     const bool bc7 = vkFormat == mc2tex::kVkFormatBc7Unorm || vkFormat == mc2tex::kVkFormatBc7Srgb;
     const size_t byteLen = blockData.size();
     if(blockData.empty() || !bc7 || w <= 0 || h <= 0 || w > static_cast<int>(RenderCore::kKtxMaxEdge) || h > static_cast<int>(RenderCore::kKtxMaxEdge) ||
-       byteLen != mc2tex::bc7LevelBytes(static_cast<uint32_t>(w), static_cast<uint32_t>(h))) {
+       byteLen != mc2tex::bc7ChainBytes(static_cast<uint32_t>(w), static_cast<uint32_t>(h), mipCount)) {
         MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] rejected compressed texture {}: format 0x{:x}, {:d}x{:d}, {:d} bytes",
                 mc2::fmt::safe(name ? name : "<null>"), mc2::fmt::as_u32(vkFormat), mc2::fmt::as_i32(w),
                 mc2::fmt::as_i32(h), mc2::fmt::as_size(byteLen));
@@ -245,10 +246,10 @@ DWORD __stdcall gos_NewCompressedTexture2D( uint32_t vkFormat, int w, int h,
     tex.w = w;
     tex.h = h;
     tex.fmt_ = TF_NONE;          // block-compressed; not one of the RGBA8 TexFormats
-    tex.has_mipmaps = false;
+    tex.has_mipmaps = mipCount > 1;
 
     auto blocks = std::make_shared<const std::vector<uint8_t>>(blockData.begin(), blockData.end());
-    gosTexture* ptex = new gosTexture(tex, format, name, blockVkFormat, std::move(blocks));
+    gosTexture* ptex = new gosTexture(tex, format, name, blockVkFormat, std::move(blocks), mipCount);
     return g_gos_renderer->addTexture(ptex);
 }
 

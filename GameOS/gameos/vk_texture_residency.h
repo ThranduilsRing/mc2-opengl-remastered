@@ -49,7 +49,8 @@ public:
     }
     ResidentTextureRef createRenderTarget(uint32_t width, uint32_t height);
     uint64_t legacyUiId(uint32_t gosHandle, uint32_t width, uint32_t height, VkFormat format,
-                        std::shared_ptr<const std::vector<uint8_t>> bytes, bool displaySpace = true, bool mipmaps = false);
+                        std::shared_ptr<const std::vector<uint8_t>> bytes, bool displaySpace = true, bool mipmaps = false,
+                        uint32_t mipCount = 1);   // mipCount: levels `bytes` holds (BC7 chain); only used when mipmaps
     void forgetLegacyUi(uint32_t gosHandle) { for (uint64_t policy=0;policy<4;++policy) legacyUi_.erase(gosHandle | (policy<<32)); }
     // Remove CPU identity now; release these exact generations on the present owner.
     std::vector<ResidentTextureRef> detachLegacyUi(uint32_t gosHandle) {
@@ -82,7 +83,7 @@ public:
     void requestDecoded(RenderCore::TextureHandle handle, std::function<std::shared_ptr<const RenderCore::KtxImage>()> decode);
     bool ready(RenderCore::TextureHandle handle) const;
     ResidentTextureRef acquirePixels(uint32_t width, uint32_t height, VkFormat format, const void* bytes, size_t count,
-                                     bool mipmaps, uint32_t layers = 1, bool arrayView = false);
+                                     bool mipmaps, uint32_t layers = 1, bool arrayView = false, uint32_t mipCount = 1);
     ResidentTextureRef acquireLegacy(uint32_t width, uint32_t height, VkFormat format, const void* bytes, size_t count);
     ResidentTextureRef retain(RenderCore::TextureHandle handle);
     void release(RenderCore::TextureHandle handle);
