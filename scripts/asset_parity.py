@@ -195,10 +195,16 @@ def is_deploy_artifact(rel: str) -> bool:
 GAME_WRITTEN_LST = re.compile(r"data/textures/[^/]+\.lst")
 
 
+# scripts/deploy_payload.py ensure_engine_normal_cooks cooks these into the install (in neither the manifest nor
+# the declarations); parity must not replace the fresh cook with the reference bytes and desync the cookver stamp.
+ENGINE_NORMAL_COOK_OUTPUTS = re.compile(r"data/textures/(?:mat[0-9]+_normal\.ktx2|engine_normals\.cookver)")
+
+
 def is_excluded(rel: str) -> bool:
     low = _norm(rel)
     return (is_deploy_artifact(rel) or any(low.startswith(prefix) for prefix in EXCLUDED)
-            or GAME_WRITTEN_LST.fullmatch(low) is not None)
+            or GAME_WRITTEN_LST.fullmatch(low) is not None
+            or ENGINE_NORMAL_COOK_OUTPUTS.fullmatch(low) is not None)
 
 
 def is_exempt(install: Path | str, ref: Path | str | None = None) -> bool:
