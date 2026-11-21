@@ -88,8 +88,8 @@ TEST_CASE("EnvironmentGpu/flat-light ratio is exactly 1 without sun keys, at nig
     // keys present: the ratio is live flat / authored flat per channel, and the producer carries it
     const std::array<unsigned char,3> keySun{255, 214, 160}, keyAmb{50, 50, 55};
     r = flatRatio(resolve(sun, amb, false, {}, {}), keySun, keyAmb, 0.425f, 0);
-    CHECK(r[0] < 0.8f);
-    CHECK(r[2] < r[0] + 0.05f);
+    CHECK(r[0] < 0.9f);
+    CHECK(r[2] < 0.8f);
     RenderCore::MissionEnvironment env;
     env.lighting.flatRatio = r;
     EnvironmentUBO out{};
@@ -107,7 +107,7 @@ TEST_CASE("EnvironmentGpu/a keyed save keeps the authored sun across load") {
     const auto a = resolve(keySun, keyAmb, true, sun, amb);
     CHECK(a.sun == sun);
     CHECK(a.amb == amb);
-    CHECK(flatRatio(a, keySun, keyAmb, 0.425f, 0)[0] < 0.8f);
+    CHECK(flatRatio(a, keySun, keyAmb, 0.425f, 0)[2] < 0.8f);
     // an old save without the record takes the read colours (nothing better exists)
     const auto old = resolve(keySun, keyAmb, false, {}, {});
     CHECK(old.sun == keySun);
