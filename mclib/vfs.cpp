@@ -10,6 +10,7 @@
 // Diagnostics: MC2_LOG_FILE_RESOLVE=1 (level-1 tags) or =2 (level-1 + JSONL trace)
 
 #include "vfs.h"
+#include "pak_zip.h"
 #include "file.h"
 #include "ffile.h"
 #include "fastfile.h"
@@ -607,6 +608,15 @@ std::string ModDisplayName(std::string_view modId) {
 // Used for diagnostic logging only — O(1) lookup.
 std::vector<unsigned char> ReadArchiveBytes(mc2::czstring dataPath, size_t maxBytes) {
     if (!dataPath) return {};
+    // A pak winner serves its bytes (counted in [PAK_IO v1]); this probe ignores mods and loose files like the FST probe it replaces.
+    for (const auto& candidate : mc2::vfs::candidates(mc2::vfs::key(dataPath))) {
+        if (candidate.provider == mc2::vfs::Provider::Fst) break;  // an FST outranking the pak answers via FastFileFind
+        if (candidate.provider != mc2::vfs::Provider::Pak || !candidate.pak) continue;
+        const auto* pakEntry = candidate.pak->find(candidate.key);
+        if (!pakEntry || pakEntry->size >= maxBytes) break;
+        if (auto bytes = candidate.pak->read(*pakEntry)) return std::move(*bytes);
+        break;
+    }
     long handle = -1;
     auto* archive = FastFileFind(dataPath, handle);
     if (!archive) return {};

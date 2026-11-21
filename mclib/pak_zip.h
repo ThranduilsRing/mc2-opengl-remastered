@@ -28,7 +28,10 @@ public:
     struct Entry {
         std::string key, source;
         std::string aliasOf;  // non-empty: a mc2pak.aliases name sharing that entry's stored bytes (no second local header)
-        uint64_t offset = 0, packed = 0, size = 0;
+        uint64_t offset = 0, packed = 0, size = 0; // offset = local header; validated lazily on first read
+        uint64_t limit = 0; // start of the next local header (or central directory): data must end before it
+        uint16_t flags = 0, nameLen = 0;
+        mutable std::atomic<uint64_t> dataOff{0}; // validated data offset cache (0 = not yet validated)
         uint32_t crc = 0;
         uint16_t method = 0;
         mutable std::atomic<bool> failed{false};
@@ -51,6 +54,7 @@ private:
     std::string path_;
     bool valid_ = false;
     void parse();
+    uint64_t dataOffset(const Entry& e) const; // throws on a bad local header
 };
 
 // Writer (mclib/pak_zip_writer.cpp, compiled only into targets that link mc2_zstd_compress: asset viewer, unit tests).

@@ -79,17 +79,43 @@ def editor_only_payload(rel):
     return rel in {"mission editor.exe", "mission editor.pdb", "run-editor.bat"} or rel.startswith("tools/terrain_gen/")
 
 
+_PAUSE = {"depth": 0, "since": 0.0, "total": 0.0}
+_PAUSE_LOCK = threading.Lock()
+
+
+@contextmanager
+def phase_paused():
+    """Stop every active deploy_phase clock (a cache-miss stock pak pack takes minutes and has its own subprocess timeout)."""
+    with _PAUSE_LOCK:
+        if _PAUSE["depth"] == 0:
+            _PAUSE["since"] = time.monotonic()
+        _PAUSE["depth"] += 1
+    try:
+        yield
+    finally:
+        with _PAUSE_LOCK:
+            _PAUSE["depth"] -= 1
+            if _PAUSE["depth"] == 0:
+                _PAUSE["total"] += time.monotonic() - _PAUSE["since"]
+
+
+def _paused_seconds():
+    with _PAUSE_LOCK:
+        return _PAUSE["total"] + (time.monotonic() - _PAUSE["since"] if _PAUSE["depth"] else 0.0)
+
+
 @contextmanager
 def deploy_phase(name, timeout=600):
     """Report progress and terminate this deploy's children if a phase stalls."""
     if not _PSUTIL_OK:
         fail("bounded deploy phases require psutil (child cleanup on timeout)")
     started = time.monotonic()
+    paused_at_start = _paused_seconds()
     done = threading.Event()
 
     def watch():
         while not done.wait(min(15, timeout)):
-            elapsed = time.monotonic() - started
+            elapsed = time.monotonic() - started - (_paused_seconds() - paused_at_start)
             log(f"phase {name}: running {elapsed:.1f}s / {timeout}s")
             if elapsed >= timeout:
                 log(f"ERROR: phase {name} timed out after {elapsed:.1f}s")
@@ -2907,6 +2933,125 @@ def prepare_seed_delta(items, target, full_verify=False, allow_legacy=False):
     return verified
 
 
+PAK_CACHE_ROOT = Path(os.environ.get("MC2_PAK_CACHE", "E:/mc2-installs/_pak-cache"))
+PAK_REL = "paks/stock.mc2pak"
+
+
+def _mc2pak_python():
+    """The interpreter that can run tools/mc2pak.py (ZIP Zstandard needs Python 3.14), or None."""
+    if sys.version_info >= (3, 14):
+        return [sys.executable]
+    try:
+        r = subprocess.run(["py", "-3.14", "-c", "import sys"], capture_output=True, timeout=30,
+                           **console_child.child_kwargs(redirected=True))
+        return ["py", "-3.14"] if r.returncode == 0 else None
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def stock_pak_key(src_root, target):
+    """Cache key: every registered FST's name+size+sha256 plus the packer's own sha256; None without a system.cfg."""
+    cfg = Path(target) / "system.cfg"
+    if not cfg.is_file():
+        return None
+    section = re.search(r"(?ims)^\[FastFiles\](.*?)(?=^\[|\Z)", cfg.read_text(encoding="latin-1"))
+    names = re.findall(r'(?im)^\s*st\s+File(\d+)\s*=\s*"([^"]+)"', section[1]) if section else []
+    if not names:
+        return None
+    h = hashlib.sha256()
+    for _, name in sorted(names, key=lambda item: int(item[0])):
+        path = next((p for p in (Path(target) / name, Path(target) / "data/assets" / name) if p.is_file()), None)
+        if path is None:
+            return None
+        h.update(f"{name.lower()}\0{path.stat().st_size}\0{sha256_file(path)}\n".encode())
+    for tool in ("tools/mc2pak.py", "tools/mc2x_import/fst.py"):
+        h.update(f"{tool}\0{sha256_file(Path(src_root) / tool)}\n".encode())
+    return h.hexdigest()[:32]
+
+
+PAK_PACK_TIMEOUT_S = 1500
+PAK_STATUS_NAME = ".pak_deploy_status"  # read by scripts/smoke_lib/pak_gate.py; not in the manifest, never retired
+
+
+def ensure_stock_pak(src_root, target, hashes):
+    """Default pak deploy: pack once per FST set into the shared cache, copy it (never hardlink: the engine maps it) to
+    <target>/paks/stock.mc2pak (replace by rename) and record it in `hashes`. Any failure is a loud log line; the FSTs still ship and rc stays 0.
+    The outcome (OK / FALLBACK / SKIP) is recorded in <target>/.pak_deploy_status so run_smoke can refuse a silent FST fallback."""
+    status = _ensure_stock_pak(src_root, target, hashes)
+    try:
+        (Path(target) / PAK_STATUS_NAME).write_text(status + "\n", encoding="utf-8")
+    except OSError as exc:
+        log(f"WARN [PAK_DEPLOY] could not write {PAK_STATUS_NAME}: {exc}")
+
+
+def fail_status(reason):
+    log(f"WARN [PAK_DEPLOY] {reason}; deploy is FST only")
+    return f"FALLBACK {reason}"
+
+
+def _ensure_stock_pak(src_root, target, hashes):
+    try:
+        key = stock_pak_key(src_root, target)
+        if key is None:
+            log("WARN [PAK_DEPLOY] no system.cfg [FastFiles] / FST set to pack; FST only")
+            return "SKIP no FST set"
+        py = _mc2pak_python()
+        if py is None:
+            return fail_status("Python 3.14 is not available (tools/mc2pak.py needs ZIP Zstandard)")
+        cache = PAK_CACHE_ROOT / key
+        pak = cache / "stock.mc2pak"
+        digest_file = cache / "stock.mc2pak.sha256"
+        hit = pak.is_file() and digest_file.is_file()
+        if hit and sha256_file(pak) != digest_file.read_text().strip():
+            log(f"WARN [PAK_DEPLOY] cached pak digest mismatch key={key}; repacking")
+            hit = False
+        if not hit:
+            cache.mkdir(parents=True, exist_ok=True)
+            partial = cache / f"stock.{os.getpid()}.partial"
+            started = time.perf_counter()
+            log(f"[PAK_DEPLOY] cache miss key={key}: packing (about 9 minutes)")
+            # Outside the bounded deploy clock: a timeout here must fall back to FST (rc 0, manifest written), never os._exit(8).
+            try:
+                with phase_paused():
+                    r = subprocess.run([*py, str(Path(src_root) / "tools/mc2pak.py"), "pack", "--install", str(target),
+                                        "--out", str(partial)], capture_output=True, text=True, timeout=PAK_PACK_TIMEOUT_S,
+                                       **console_child.child_kwargs(redirected=True))
+            except subprocess.TimeoutExpired:
+                partial.unlink(missing_ok=True)
+                return fail_status(f"mc2pak pack timed out after {PAK_PACK_TIMEOUT_S}s")
+            if r.returncode != 0 or not partial.is_file():
+                partial.unlink(missing_ok=True)
+                return fail_status(f"mc2pak pack failed rc={r.returncode}: {(r.stderr or r.stdout).strip()[-300:]}")
+            digest_file.write_text(sha256_file(partial))
+            os.replace(partial, pak)
+            log(f"[PAK_DEPLOY] packed {pak.stat().st_size} bytes in {time.perf_counter() - started:.1f}s")
+        else:
+            log(f"[PAK_DEPLOY] cache hit key={key}")
+        dst = Path(target) / PAK_REL
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        if not pak_copy_current(dst, pak, digest_file.read_text().strip()):
+            # Always a private copy: the engine maps the pak, and a hardlinked mapped pak makes every install sharing it
+            # undeletable (WinError 5) while any one game runs.
+            tmp = dst.with_name(f".stock.mc2pak.new-{os.getpid()}")
+            tmp.unlink(missing_ok=True)
+            shutil.copy2(pak, tmp)
+            replace_file(str(tmp), str(dst))
+        hashes[PAK_REL] = (digest_file.read_text().strip(), dst.stat().st_size, dst.stat().st_mtime_ns)
+        log(f"[PAK_DEPLOY] OK {PAK_REL} key={key} sha256={hashes[PAK_REL][0][:16]}")
+        return f"OK key={key}"
+    except Exception as exc:  # noqa: BLE001 -- the FSTs still ship; a pak failure never fails the deploy
+        return fail_status(f"pak step failed ({type(exc).__name__}: {exc})")
+
+
+def pak_copy_current(dst, pak, digest):
+    """True when dst is already a private (st_nlink == 1) copy of the cached pak: same size and recorded digest."""
+    try:
+        st = dst.stat()
+        return st.st_nlink == 1 and st.st_size == pak.stat().st_size and sha256_file(dst) == digest
+    except OSError:
+        return False
+
+
 def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     with deploy_phase("deploy", 1800):
         return _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name)
@@ -3108,6 +3253,7 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
             fail("deployed SPIR-V is not the build's SPIR-V:\n  " + "\n  ".join(spv_fails), 4)
         log(f"deployed SPIR-V audit OK: {spv_n} .spv identical to the build, descriptor/push ABI matches")
     hashes = {rel: row for rel, row in hashes.items() if not asset_parity.is_deploy_artifact(rel)}
+    ensure_stock_pak(src_root, target, hashes)  # editor deploys too: retire_unowned would prune the pak otherwise
     write_manifest(target, hashes, src_commit)
     if reuse:
         # Preserve the verified external source inventory across code-only deploys.

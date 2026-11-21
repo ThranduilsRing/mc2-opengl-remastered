@@ -4,14 +4,17 @@
 #include "startup_preload.h"
 
 #include "diagnostic_trace.h"
+#include "Gates/gate.h"
 
 #include "../mclib/fastfile.h"
 #include "../mclib/ffile.h"
 #include "../mclib/file.h"
+#include "../mclib/vfs.h"
 #include <atomic>
 #include <chrono>
 #include <cstdio>
 #include <cstring>
+#include <filesystem>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -105,14 +108,21 @@ void startStartupPreload()
 		return;
 	std::vector<Entry> plan;
 	// Base archives first: they back every mission.
-	for (long i = 0; i < numFastFiles; ++i)
-		if (fastFiles && fastFiles[i] && fastFiles[i]->getFileName())
-			plan.push_back({fastFiles[i]->getFileName(), false});
+	// Warm only the active source: the pak when it serves (MC2_PAK on and present), else the FSTs.
+	std::error_code pakEc;
+	const bool pakServes = mc2::gate::get<"MC2_PAK">() && std::filesystem::is_regular_file("paks/stock.mc2pak", pakEc) &&
+		mc2::vfs::stats().pakEligible > 0; // mounted and serving, not merely present
+	if (pakServes)
+		plan.push_back({"paks/stock.mc2pak", false});
+	else
+		for (long i = 0; i < numFastFiles; ++i)
+			if (fastFiles && fastFiles[i] && fastFiles[i]->getFileName())
+				plan.push_back({fastFiles[i]->getFileName(), false});
 	const size_t archives = plan.size();
 	// Then every mod-winning data file (the worker applies the mod size budget).
 	EnumerateModFiles("data/", &collectModFile<const char*>, &plan);
 	if (mc2_diag::tagRequested("STARTUP_PRELOAD"))
-	std::printf("[STARTUP_PRELOAD] start archives=%zu mod_files=%zu\n", archives, plan.size() - archives);
+	std::printf("[STARTUP_PRELOAD] start source=%s archives=%zu mod_files=%zu\n", pakServes ? "pak" : "fst", archives, plan.size() - archives);
 	std::fflush(stdout);
 	g_worker = std::thread(runPlan, std::move(plan));
 }
