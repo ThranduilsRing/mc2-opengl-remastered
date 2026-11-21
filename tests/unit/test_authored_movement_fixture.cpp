@@ -22,7 +22,7 @@
 #include "paths.h"
 #include "mc2video.h"
 #include "mech3d.h"
-#include "gosfxheaders.hpp"
+#include "gosfx/gosfxheaders.hpp"
 #include "multplyr.h"
 #include "save_fix_section.h"
 #include <chrono>
