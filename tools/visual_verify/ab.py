@@ -615,6 +615,38 @@ def usable_png(p) -> bool:
         return False
 
 
+def requested_size(env) -> tuple:
+    """(W, H) the capture env asks for: its MC2_WIDTH/MC2_HEIGHT pair, else the harness pin (run_visual_capture pins one)."""
+    from smoke_lib import render_resolution as rr
+    got = {k: v for k, _, v in (e.partition("=") for e in env) if k in rr.SIZE_KEYS}
+    try:
+        return int(got["MC2_WIDTH"]), int(got["MC2_HEIGHT"])
+    except (KeyError, ValueError):
+        return rr.PINNED_WIDTH, rr.PINNED_HEIGHT
+
+
+def resolution_lines(env, dirs, bookmarks) -> list:
+    """One line per arm: the PNG size the capture actually ran at beside the requested one; WARNING when they differ
+    (a 4K request that silently captured 1080p cost runs before)."""
+    want = requested_size(env)
+    out = []
+    for name, d in dirs:
+        sizes = set()
+        for bm in bookmarks:
+            for png in find_pngs(Path(d), bm).values():
+                try:
+                    with Image.open(png) as im:
+                        sizes.add(im.size)
+                except (OSError, ValueError):
+                    pass
+        got = ", ".join(f"{w}x{h}" for w, h in sorted(sizes)) or "no usable png"
+        line = f"[ab] resolution {name}: requested {want[0]}x{want[1]}, captured {got}"
+        if sizes != {want}:
+            line = line.replace("[ab] ", "[ab] WARNING: ", 1) + " (DIFFERS)"
+        out.append(line)
+    return out
+
+
 def evidence_problems(a_dir: Path, b_dir: Path, bookmarks) -> list:
     """One line per bookmark whose A or B image is missing, empty or undecodable. An empty bookmark list is itself a
     problem: a comparison of nothing must never exit 0."""
@@ -1456,6 +1488,8 @@ def main(argv=None):
         run_capture(ib, a.bookmarks, out / "b", env, hud=a.hud, allow_asset_drift=a.allow_asset_drift)
         stamp_identity(out / "b", identities[1])
         for line in capture_commit_report(identities[0]["commit"], identities[1]["commit"], worktree_head()):
+            print(line, flush=True)
+        for line in resolution_lines(env, (("A", out / "a"), ("B", out / "b")), [s.strip() for s in a.bookmarks.split(",") if s.strip()]):
             print(line, flush=True)
         compare(out / "a", out / "b", out / "cmp", crops, [s.strip() for s in a.bookmarks.split(",") if s.strip()],
                 cross_base=bool(bad), exe_a_base_mismatch=exe_a_base_mismatch, exe_a_swap=exe_a_swap, hud=a.hud,
