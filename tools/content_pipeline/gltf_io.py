@@ -214,6 +214,31 @@ def read_materials(doc, buffers, base_dir, extract_dir=None, class_of=None, text
             packed.parent.mkdir(parents=True, exist_ok=True)
             Image.fromarray(mr_pixels, "RGBA").save(packed)
             orm = TextureRef.of(packed, "orm")
+        elif occ and not mr:
+            # AO-only: the shader reads G = roughness, B = metallic, so an AO image used
+            # as the whole ORM would drive them. Keep R = AO, neutral G/B/A.
+            from PIL import Image
+            if extract_dir is None:
+                raise ValueError("AO-only map needs an extract directory")
+            px = np.array(Image.open(occ.path).convert("RGBA"))
+            px[..., 1:] = 255
+            packed = Path(extract_dir) / f"orm-ao-{occ.sha256[:16]}.png"
+            packed.parent.mkdir(parents=True, exist_ok=True)
+            Image.fromarray(px, "RGBA").save(packed)
+            orm = TextureRef.of(packed, "orm")
+        elif mr and not occ:
+            # MR-only: R would become AO at strength 1. A greyscale image (R==G==B) is a
+            # single-channel map, so give it neutral AO; distinct channels (_arm) keep R.
+            from PIL import Image
+            px = np.array(Image.open(mr.path).convert("RGBA"))
+            if (px[..., 0] != 255).any() and (px[..., 0] == px[..., 1]).all() and (px[..., 0] == px[..., 2]).all():
+                if extract_dir is None:
+                    raise ValueError("greyscale MR map needs an extract directory")
+                px[..., 0] = 255
+                packed = Path(extract_dir) / f"orm-mr-{mr.sha256[:16]}.png"
+                packed.parent.mkdir(parents=True, exist_ok=True)
+                Image.fromarray(px, "RGBA").save(packed)
+                orm = TextureRef.of(packed, "orm")
         if cls is None:
             if (normal or orm) and unclassified == "error":
                 raise ValueError(f"{name}: authored maps need an explicit material class (extras.mc2_material_class)")
