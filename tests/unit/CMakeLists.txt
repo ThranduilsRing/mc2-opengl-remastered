@@ -39,6 +39,7 @@ get_filename_component(MC2_WORKTREE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABS
 set_source_files_properties(${MC2_WORKTREE_ROOT}/RenderCore/KtxBasis.cpp PROPERTIES COMPILE_DEFINITIONS NDEBUG)  # vendored basisu asserts do not compile under clang
 add_executable(mc2_tests
     test_battle_value.cpp
+    test_mech_feed_ready.cpp
     ../../code/battle_value.cpp
     test_chassis_layout.cpp
     ${MC2_WORKTREE_ROOT}/code/chassis_layout.cpp

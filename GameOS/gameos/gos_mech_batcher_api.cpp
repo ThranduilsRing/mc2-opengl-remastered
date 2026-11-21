@@ -34,7 +34,7 @@ extern "C" int mc2_mech_island_get_geometry_feed(Mc2MechGeomFeed* out) {
 }
 
 extern "C" int mc2_mech_island_get_shadow_feed(Mc2MechShadowFeed* out) {
-    if (!s_vkMechShadowReady) return 0;
+    if (!s_vkMechReady.shadow) return 0;
     if (!out) return 0;
     if (!mc2::gate::get<"MC2_SHADOW_ENABLE">()) return 0;
     if (!s_geometryFinalized) return 0;
@@ -54,7 +54,7 @@ extern "C" int mc2_mech_island_get_shadow_feed(Mc2MechShadowFeed* out) {
 
 extern "C" int mc2_mech_island_get_frame_feed(Mc2MechFrameFeed* out) {
     if (!out) return 0;
-    if (!s_vkMechFrameReady) return 0;
+    if (!s_vkMechReady.frame) return 0;
     if (s_vkMechInstSnapshot.empty() || s_vkMechRunSnapshot.empty()) return 0;
     // Stale snapshot from before a geometry rebuild (new map, late types): its firstIndex values index the OLD index set (the draw would
     // read past the new buffer). The next flush() rebuilds it against the new set.

@@ -76,8 +76,7 @@ std::vector<Mc2MechDrawRun>  s_vkMechRunSnapshot;
 uint32_t                     s_vkMechLeafCount = 0;
 float                        s_vkMechWorldToClipGL[16] = {0};
 float                        s_vkMechObjectDepthBias   = 0.0f;
-bool                         s_vkMechFrameReady        = false;
-bool                         s_vkMechShadowReady       = false;
+MechFeedReady                s_vkMechReady;
 namespace {
 void resetFrameSnapshots() {
     s_vkMechInstSnapshot.clear();
@@ -85,8 +84,7 @@ void resetFrameSnapshots() {
     s_vkMechMotionKeys.clear();
     s_vkMechRunSnapshot.clear();
     s_vkMechLeafCount = 0;
-    s_vkMechFrameReady = false;
-    s_vkMechShadowReady = false;
+    s_vkMechReady.reset();
 }
 }
 

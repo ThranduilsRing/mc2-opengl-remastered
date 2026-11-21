@@ -6,6 +6,7 @@
 #define GOS_MECH_BATCHER_INTERNAL_H
 
 #include "gos_mech_batcher.h"
+#include "mech_feed_ready.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "gos_materials.h"       // gos_materials::init / shutdown / getProfileIndex (CPU profile table)
 #include "vk_feed_dump.h"        // VK-OFFLINE-PROOFS-1: MC2_VK_FEED_DUMP golden dump
@@ -140,8 +141,7 @@ extern std::vector<Mc2MechDrawRun>  s_vkMechRunSnapshot;
 extern uint32_t                     s_vkMechLeafCount;
 extern float                        s_vkMechWorldToClipGL[16];
 extern float                        s_vkMechObjectDepthBias;
-extern bool                         s_vkMechFrameReady;
-extern bool                         s_vkMechShadowReady;
+extern MechFeedReady                s_vkMechReady;
 extern std::vector<uint8_t>         s_vkVboNativeCopy;
 // Deduped, meshopt-ordered geometry the Vulkan islands upload (indices local to the packet's node base). Derived from the
 // staging soup by uploadMechGeometryVbo(); s_vkPacketBaseVertex[i] is s_packets[i]'s base vertex in s_vkVboNativeCopy.
