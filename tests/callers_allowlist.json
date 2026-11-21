@@ -1,4 +1,5 @@
 {
+  "tools/content_pipeline/cook_actor_pbr.py": "Run by deploy_payload.ensure_actor_pbr through the ACTOR_PBR_COOK path constant (subprocess, like the tree upscale cook).",
   "tools/bt2018_extract/recon.py": "Operator-run read-only BT2018 extractor recon helper (extractor kit phase 0); no repo caller by design.",
   "tools/mw5_mechs/__init__.py": "Operator-run MW5 mech pack tool (owner-run extractor kit, M-series lanes); no repo caller by design.",
   "tools/mw5_mechs/bake_albedo.py": "Operator-run MW5 mech pack tool (owner-run extractor kit, M-series lanes); no repo caller by design.",
