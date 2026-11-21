@@ -574,8 +574,11 @@ bool VulkanContext::init(bool wantPresent) {
     vkGetPhysicalDeviceQueueFamilyProperties(phys_, &qfCount, nullptr);
     std::vector<VkQueueFamilyProperties> qfs(qfCount);
     if (qfCount) vkGetPhysicalDeviceQueueFamilyProperties(phys_, &qfCount, qfs.data());
-    for (uint32_t q = 0; q < qfCount; ++q) {
-        if (qfs[q].queueFlags & VK_QUEUE_GRAPHICS_BIT) { gfxFamily_ = q; break; }
+    {
+        std::vector<uint32_t> flags(qfCount);
+        for (uint32_t q = 0; q < qfCount; ++q) flags[q] = qfs[q].queueFlags;
+        static_assert(VK_QUEUE_GRAPHICS_BIT == 1 && VK_QUEUE_COMPUTE_BIT == 2);   // the bits pickGraphicsFamily tests
+        gfxFamily_ = mc2vk::profile::pickGraphicsFamily(flags);   // GRAPHICS and COMPUTE preferred: every compute dispatch uses this family
     }
     if (gfxFamily_ == UINT32_MAX) {
         std::string families;

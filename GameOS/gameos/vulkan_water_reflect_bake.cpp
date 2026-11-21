@@ -38,6 +38,8 @@ struct ReflectBake : mc2vk::IslandState {
     mc2vk::OwnedPipelineLayout layout;
     mc2vk::OwnedPipeline pipe;
     mc2vk::OwnedQueryPool queries;
+    bool timed = false;   // the graphics queue family supports timestamps
+    uint64_t timeMask = 0;
     std::vector<VkDescriptorSet> sets;
     std::unique_ptr<mc2vk::IslandState> terrain, props;
 };
@@ -120,6 +122,15 @@ bool initBake(WaterIsland* s, ReflectBake& b) {
             if (j == 2) writes[j].pBufferInfo = &buffer; else writes[j].pImageInfo = &images[j];
         }
         vkUpdateDescriptorSets(s->device, 3, writes, 0, nullptr);
+    }
+    {
+        uint32_t families = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(s->phys, &families, nullptr);
+        std::vector<VkQueueFamilyProperties> fam(families);
+        vkGetPhysicalDeviceQueueFamilyProperties(s->phys, &families, fam.data());
+        const uint32_t gfx = mc2vk::getOrCreateEngineVulkanContext().graphicsFamily();
+        b.timed = gfx < families && fam[gfx].timestampValidBits != 0;
+        if (b.timed) b.timeMask = fam[gfx].timestampValidBits >= 64 ? ~0ull : ((1ull << fam[gfx].timestampValidBits) - 1ull);
     }
     VkQueryPoolCreateInfo qi{VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO};
     qi.queryType = VK_QUERY_TYPE_TIMESTAMP; qi.queryCount = 2;
@@ -245,8 +256,10 @@ bool prepare_reflect_bake(WaterIsland* s, float water) {
     bool recorded = true;
     if (!mc2vk::submitOneShot(ctx, [&](VkCommandBuffer cb) {
         MC2_VK_GPU_SCOPE(scope, cb, "VKIsl.Water.Bake");
-        vkCmdResetQueryPool(cb, b.queries.get(), 0, 2);
-        vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, b.queries.get(), 0);
+        if (b.timed) {
+            vkCmdResetQueryPool(cb, b.queries.get(), 0, 2);
+            vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, b.queries.get(), 0);
+        }
         auto transition = [&](VkImage image, VkImageAspectFlags aspect, int mip, int levels, VkImageLayout from, VkImageLayout to) {
             mc2vk::sync::cmdImageBarrier(ctx, cb, image, {aspect, static_cast<uint32_t>(mip), static_cast<uint32_t>(levels), 0, 1},
                 from, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
@@ -269,7 +282,7 @@ bool prepare_reflect_bake(WaterIsland* s, float water) {
             transition(b.height.get(), VK_IMAGE_ASPECT_COLOR_BIT, i, 1, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL);
         }
         transition(b.color.get(), VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, dump ? VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL);
-        vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, b.queries.get(), 1);
+        if (b.timed) vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, b.queries.get(), 1);
         if (dump) {
             VkBufferImageCopy copy{}; copy.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
             copy.imageExtent = {static_cast<uint32_t>(b.size), static_cast<uint32_t>(b.size), 1};
@@ -277,10 +290,12 @@ bool prepare_reflect_bake(WaterIsland* s, float water) {
             transition(b.color.get(), VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
         }
     }, "water reflection bake") || !recorded) return false;
+    double ms = -1.0;   // untimed: the log line only; the bake never fails over timing
     uint64_t timestamps[2]{};
-    if (vkGetQueryPoolResults(s->device, b.queries.get(), 0, 2, sizeof(timestamps), timestamps, sizeof(uint64_t), VK_QUERY_RESULT_64_BIT) != VK_SUCCESS) return false;
-    VkPhysicalDeviceProperties properties{}; vkGetPhysicalDeviceProperties(s->phys, &properties);
-    const double ms = (timestamps[1] - timestamps[0]) * properties.limits.timestampPeriod / 1.0e6;
+    if (b.timed && vkGetQueryPoolResults(s->device, b.queries.get(), 0, 2, sizeof(timestamps), timestamps, sizeof(uint64_t), VK_QUERY_RESULT_64_BIT) == VK_SUCCESS) {
+        VkPhysicalDeviceProperties properties{}; vkGetPhysicalDeviceProperties(s->phys, &properties);
+        ms = static_cast<double>((timestamps[1] - timestamps[0]) & b.timeMask) * properties.limits.timestampPeriod / 1.0e6;
+    }
     const double mb = static_cast<double>(b.size) * b.size * (12 + 8.0/3) / (1024*1024);
     if (mc2_diag::tagRequested("WATER_BAKE")) mc2::fmt::print_err("[WATER_BAKE] size={}x{} ms={:.3f} MB={:.3f} registry={} why={} source={} level={}\n", b.size, b.size, ms, mb, key[0], why, source, level);
     if (dump) {

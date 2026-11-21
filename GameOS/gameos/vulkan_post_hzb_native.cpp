@@ -220,8 +220,8 @@ void parity_check(gosPostProcess::VkPostHzbNative* s) {
     pc.valid = false;
     if (pc.generation != s->visibilityGeneration || pc.w != s->width || pc.h != s->height || pc.mips != s->mipCount || !s->parityMips) return;
     ZoneScopedN("HZB.ParityCheck");
-    vmaInvalidateAllocation(s->allocator, s->parityMips.allocation(), 0, VK_WHOLE_SIZE);
     void* const mapped = s->parityMips.map();
+    if (mapped) vmaInvalidateAllocation(s->allocator, s->parityMips.allocation(), 0, VK_WHOLE_SIZE);
     const float* mips = static_cast<const float*>(mapped);
     const uint32_t* vis = mapped ? static_cast<const uint32_t*>(static_cast<const void*>(static_cast<const uint8_t*>(mapped) + pc.visOffset)) : nullptr;
     if (vis && mips) {
@@ -797,10 +797,8 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
     }
     // The [CULL] counter is the newest run's: read it only once that submit has completed (polled), else skip this sample.
     if (s->previousCount && mc2vk::getOrCreateEngineVulkanContext().isComplete(mc2vk::GpuTicket{s->lastTicket, 0})) {
-        vmaInvalidateAllocation(s->allocator, s->visibility.allocation(), 0, sizeof(uint32_t));
-        if (const void* p = s->visibility.map()) {
-            const uint32_t culled = *static_cast<const uint32_t*>(p);
-            s->visibility.unmap();
+        uint32_t culled = 0;
+        if (s->visibility.read(&culled, sizeof(culled))) {
             ++s->measuredFrames; s->totalCulled += culled; s->totalTested += s->previousCount;
             if (s->measuredFrames <= 3 || s->measuredFrames % 120 == 0)
                 vlog("[CULL] tested=%u culled=%u kept=%u total_tested=%llu total_culled=%llu frames=%llu same_frame=1 render_only=1",

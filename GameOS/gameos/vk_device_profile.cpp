@@ -26,6 +26,7 @@ DeviceCaps gather(VkPhysicalDevice pd, uint32_t instanceApi) {
     c.maxBoundDescriptorSets = props.limits.maxBoundDescriptorSets;
     c.maxPushConstantsSize = props.limits.maxPushConstantsSize;
     c.maxStorageBufferRange = props.limits.maxStorageBufferRange;
+    c.maxComputeWorkGroupInvocations = props.limits.maxComputeWorkGroupInvocations;
 
     // A core 1.0 feature: read before the version early-out below so a pre-1.2 device is reported with the bit it really has.
     VkPhysicalDeviceFeatures core10{};

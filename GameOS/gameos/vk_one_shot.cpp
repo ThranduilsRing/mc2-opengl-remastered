@@ -49,10 +49,12 @@ namespace {
 // One transient pool shared by every one-shot (they are setup work, serialized by this mutex): reset between uses instead of created and destroyed per call.
 std::mutex g_oneShotMutex;
 OwnedCommandPool g_oneShotPool;
+VkCommandBuffer g_oneShotCb = VK_NULL_HANDLE;   // allocated once from the pool; owned by it
 }  // namespace
 
 void releaseOneShotPool() {
     const std::lock_guard<std::mutex> lock(g_oneShotMutex);
+    g_oneShotCb = VK_NULL_HANDLE;
     g_oneShotPool.reset();
 }
 
@@ -65,19 +67,24 @@ bool submitOneShot(const VulkanContext& ctx, const std::function<void(VkCommandB
         pci.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
         pci.queueFamilyIndex = ctx.graphicsFamily();
         if (!create(g_oneShotPool, device, [&](VkCommandPool* h) { return vkCreateCommandPool(device, &pci, nullptr, h); })) return false;
-    }
-    bool ok = false;
-    bool submitted = false;   // the GPU owns the pool's command buffer from the submit until the ticket completes
-    uint64_t value = 0;
-    do {
-        // The previous one-shot completed before it returned (or the device idled), so the pool resets safely and frees its command buffer.
-        if (vkResetCommandPool(device, g_oneShotPool.get(), 0) != VK_SUCCESS) break;
         VkCommandBufferAllocateInfo ai{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
         ai.commandPool = g_oneShotPool.get();
         ai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         ai.commandBufferCount = 1;
-        VkCommandBuffer cb = VK_NULL_HANDLE;
-        if (vkAllocateCommandBuffers(device, &ai, &cb) != VK_SUCCESS) break;
+        if (vkAllocateCommandBuffers(device, &ai, &g_oneShotCb) != VK_SUCCESS) {
+            g_oneShotCb = VK_NULL_HANDLE;
+            g_oneShotPool.reset();
+            return false;
+        }
+    }
+    const VkCommandBuffer cb = g_oneShotCb;
+    bool ok = false;
+    bool submitted = false;   // the GPU owns the pool's command buffer from the submit until the ticket completes
+    uint64_t value = 0;
+    do {
+        // The previous one-shot completed before it returned (or the device idled), so the pool resets safely; the reset returns the kept
+        // command buffer to the initial state (it does not free it), so it is recorded again.
+        if (vkResetCommandPool(device, g_oneShotPool.get(), 0) != VK_SUCCESS) break;
         VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
         bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) break;
