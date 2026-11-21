@@ -424,6 +424,7 @@ extern "C" int mc2_vk_water_island_run(
         WaterFsParams fsLocal;
         std::memcpy(&fsLocal, fsParams, sizeof(WaterFsParams));
         fsLocal.debug[0] = static_cast<float>(gos_GetWaterFsDebugMode());
+        { extern float g_waterGlintWarm; fsLocal.debug[3] = g_waterGlintWarm; }   // F.debug.w: waterGlintWarm key (slot unused elsewhere)
         // Shore mode 3: flat water plane in the VS only when the hi-res height sidecar
         // is really imported (mirrors GL u_shoreFlat = mode==3 && shTex != 0).
         const bool shoreSdf = static_cast<int>(fsLocal.f4[0] + 0.5f) == 3 &&

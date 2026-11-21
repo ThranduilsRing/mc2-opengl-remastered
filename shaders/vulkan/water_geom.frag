@@ -727,6 +727,12 @@ void main(void)
         vec3  Ls = uT.terrainLightDir.xyz;
         Ls = normalize(vec3(Ls.xy, max(Ls.z, max(uT.shadowMinSunSin, 0.05))));
         vec3  sunRad = Color.bgra.rgb * (1.0 - 0.5 * clamp(F.f3.z / 0.6, 0.0, 1.0));
+        if (F.debug.w > 0.0) {
+            // waterGlintWarm: blend toward the flat-light chroma instead of adding white onto a blue body (additive glint clips all channels).
+            float sg = SUN_SPEC_GAIN * glintScale * sunVis * waterGgxSpec(waveN, vdir, Ls, specAlpha2);
+            vec3 f3 = vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);
+            col = mix(col, f3 / max(max(f3.r, max(f3.g, f3.b)), 1e-3) * 0.95, 1.0 - exp(-F.debug.w * sg));
+        } else
         col += min(sunRad * (SUN_SPEC_GAIN * glintScale * sunVis * waterGgxSpec(waveN, vdir, Ls, specAlpha2)), vec3(4.0));
         // The lamp specular and the flat pool term come from one light walk (waterPoolLights), added right after the sun glint.
         if (F.debug.y < 0.5 && uT.numPoolLights > 0 && nightSky < 1.0) {

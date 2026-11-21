@@ -20,6 +20,8 @@ void mc2SetCloudWaterScale(float v);   // vulkan_post_screenfx_native.cpp
 #include <nlohmann/json.hpp>
 #include "mc2fmt.h"
 
+float g_waterGlintWarm = 0.0f;  // waterGlintWarm key: 0 = legacy additive sun glint (read by vulkan_water_island_run.cpp)
+
 // Renderer function forward declarations.
 // Definitions in gameos_graphics.cpp / gos_postprocess.cpp / gos_particle_bridge.cpp.
 extern float gos_GetWaterSkyTintStrength();
@@ -66,7 +68,7 @@ std::map<std::string, float> engineDefaults() {
         {"sunPitch",kSunAbsent}, {"sunYaw",kSunAbsent}, {"sunColorR",kSunAbsent}, {"sunColorG",kSunAbsent}, {"sunColorB",kSunAbsent}, {"sunAmbientScale",kSunAbsent},
         {"unitAmbientScale",1.2f}, {"buildingSpillIntensityScale",1.0f},
         {"exposure",1}, {"shadowSoftness",2.5f}, {"staticPropIblStrength",0.5f},
-        {"waterSkyTintStrength",0}, {"waterReflections",static_cast<float>(mc2::options::current().waterReflections)},
+        {"waterSkyTintStrength",0}, {"waterGlintWarm",0}, {"waterReflections",static_cast<float>(mc2::options::current().waterReflections)},
         {"vfxBrightness",1}, {"vfxAdditiveBrightness",1},
         {"vfxLitStrength",0.7f}, {"mechSpecularStrength",0.05f},
         {"cloudStrength",0.30f}, {"cloudCoverage",0.20f}, {"cloudSoftness",0.12f}, {"cloudWaterScale",0.5f},
@@ -286,6 +288,9 @@ static void applyKey(mc2::czstring key, float val, int& count) {
             gos_SetWaterReflectionQuality(static_cast<int>(val));
             count++;
         }
+    } else if (strcmp(key, "waterGlintWarm") == 0) {
+        g_waterGlintWarm = val;
+        count++;
     } else if (strcmp(key, "waterSkyTintStrength") == 0) {
         {
             gos_SetWaterSkyTintStrength(val);
