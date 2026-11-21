@@ -40,6 +40,7 @@ set_source_files_properties(${MC2_WORKTREE_ROOT}/RenderCore/KtxBasis.cpp PROPERT
 add_executable(mc2_tests
     test_battle_value.cpp
     test_mech_feed_ready.cpp
+    test_cloud_threshold_band.cpp
     ../../code/battle_value.cpp
     test_chassis_layout.cpp
     ${MC2_WORKTREE_ROOT}/code/chassis_layout.cpp
