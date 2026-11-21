@@ -517,8 +517,10 @@ def ensure_actor_pbr(src_root, cooker=subprocess.run):
         return
     log("actor PBR KTX2s absent or stale: generating them (tens of minutes cold)")
     try:
-        r = cooker([sys.executable, os.path.join(src_root, ACTOR_PBR_COOK), "--root", src_root, "--jobs", "4"],
-                   capture_output=True, text=True, timeout=5400, env=dict(os.environ, OMP_NUM_THREADS="1"), **console_child.child_kwargs(redirected=True))
+        # Outside the bounded deploy clock: a cold cook takes tens of minutes and has its own 5400 s timeout.
+        with phase_paused():
+            r = cooker([sys.executable, os.path.join(src_root, ACTOR_PBR_COOK), "--root", src_root, "--jobs", "4"],
+                       capture_output=True, text=True, timeout=5400, env=dict(os.environ, OMP_NUM_THREADS="1"), **console_child.child_kwargs(redirected=True))
     except subprocess.TimeoutExpired:
         log("[DEPLOY] WARN: actor PBR cook timed out after 5400 s (PNG maps ship)")
         return

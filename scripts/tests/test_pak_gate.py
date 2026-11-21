@@ -41,3 +41,8 @@ def test_fail_no_mount_or_zero_eligible(tmp_path):
 def test_fail_fst_opens(tmp_path):
     out = pak_gate.pak_failures(_install(tmp_path, "OK key=k"), GOOD.replace("fst_opens=0", "fst_opens=3"))
     assert len(out) == 1 and "fst_opens=3" in out[0]
+
+
+def test_fail_no_pak_io_line(tmp_path):
+    out = pak_gate.pak_failures(_install(tmp_path, "OK key=k"), GOOD.split("\n")[0] + "\n")
+    assert len(out) == 1 and "[PAK_IO v1]" in out[0]

@@ -28,6 +28,8 @@ def pak_failures(install_dir, log_text: str) -> list[str]:
     if not mounts or max(mounts) <= 0:
         out.append("smoke log has no '[VFS] mount pak ... eligible>0'")
     opens = [int(m) for m in _FST_OPENS.findall(log_text or "")]
-    if opens and opens[-1] > 0:
+    if not opens:
+        out.append("smoke log has no '[PAK_IO v1]' line (pak status OK but fst_opens was never reported)")
+    elif opens[-1] > 0:
         out.append(f"[PAK_IO v1] fst_opens={opens[-1]} (stock assets were read from FSTs, not the pak)")
     return out
