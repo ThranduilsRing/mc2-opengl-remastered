@@ -116,7 +116,7 @@ struct WaterFsParams {
     float f7[4];             // off 160 waterElevation, mask span (wu), mask bound (0/1), terrain grid halfMap
     // VK-PARITY-F3: LOCKSTEP with water_geom.frag f8/f9.
     float f8[4];             // off 176 edgeFeather, edgeFeatherStrength, halfMap, skyTintStrength
-    float f9[4];             // off 192 skyTintColor.xyz, projAspect
+    float f9[4];             // off 192 skyTintColor.xyz, w waterWaveBreakup (island run overwrites projAspect; shader does not read it)
     float bake[4];           // off 208 world span, halfMap, baked reflection weather scale RG
     float debug[4];          // off 224 x attribution mode (0 = original shader), y waterDetail off, z baked-reflection march steps (0 = 8), w waterGlintWarm strength (0 = legacy additive glint)
 };

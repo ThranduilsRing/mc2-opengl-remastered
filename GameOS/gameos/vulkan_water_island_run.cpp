@@ -122,6 +122,7 @@ bool vk_water_detail::record_reflection(WaterIsland* s, VkCommandBuffer cb, bool
 }
 
 extern float g_waterGlintWarm;   // visual_tuning_profile.cpp
+extern float g_waterWaveBreakup; // visual_tuning_profile.cpp
 
 namespace {
 bool prepareNative(WaterIsland* s, mc2vk::VulkanContext& ctx) {
@@ -426,7 +427,8 @@ extern "C" int mc2_vk_water_island_run(
         WaterFsParams fsLocal;
         std::memcpy(&fsLocal, fsParams, sizeof(WaterFsParams));
         fsLocal.debug[0] = static_cast<float>(gos_GetWaterFsDebugMode());
-        fsLocal.debug[3] = ::g_waterGlintWarm;   // F.debug.w: waterGlintWarm key (slot unused elsewhere)
+        fsLocal.f9[3] = ::g_waterWaveBreakup;    // F.f9.w: waterWaveBreakup key (projAspect slot, unread by water_geom.frag)
+        fsLocal.debug[3] = ::g_waterGlintWarm;  // F.debug.w: waterGlintWarm key (slot unused elsewhere)
         // Shore mode 3: flat water plane in the VS only when the hi-res height sidecar
         // is really imported (mirrors GL u_shoreFlat = mode==3 && shTex != 0).
         const bool shoreSdf = static_cast<int>(fsLocal.f4[0] + 0.5f) == 3 &&

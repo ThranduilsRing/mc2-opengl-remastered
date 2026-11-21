@@ -20,6 +20,7 @@ void mc2SetCloudWaterScale(float v);   // vulkan_post_screenfx_native.cpp
 #include <nlohmann/json.hpp>
 #include "mc2fmt.h"
 
+float g_waterWaveBreakup = 0.0f;  // waterWaveBreakup key: 0 = legacy uniform wave field (read by vulkan_water_island_run.cpp)
 float g_waterGlintWarm = 0.0f;  // waterGlintWarm key: 0 = legacy additive sun glint (read by vulkan_water_island_run.cpp)
 
 // Renderer function forward declarations.
@@ -68,7 +69,7 @@ std::map<std::string, float> engineDefaults() {
         {"sunPitch",kSunAbsent}, {"sunYaw",kSunAbsent}, {"sunColorR",kSunAbsent}, {"sunColorG",kSunAbsent}, {"sunColorB",kSunAbsent}, {"sunAmbientScale",kSunAbsent},
         {"unitAmbientScale",1.2f}, {"buildingSpillIntensityScale",1.0f},
         {"exposure",1}, {"shadowSoftness",2.5f}, {"staticPropIblStrength",0.5f},
-        {"waterSkyTintStrength",0}, {"waterGlintWarm",0}, {"waterReflections",static_cast<float>(mc2::options::current().waterReflections)},
+        {"waterSkyTintStrength",0}, {"waterGlintWarm",0}, {"waterWaveBreakup",0}, {"waterReflections",static_cast<float>(mc2::options::current().waterReflections)},
         {"vfxBrightness",1}, {"vfxAdditiveBrightness",1},
         {"vfxLitStrength",0.7f}, {"mechSpecularStrength",0.05f},
         {"cloudStrength",0.30f}, {"cloudCoverage",0.20f}, {"cloudSoftness",0.12f}, {"cloudWaterScale",0.5f},
@@ -86,6 +87,7 @@ bool validValue(std::string_view key, double value) {
     else if (key == "sunYaw") { lo = -360; hi = 360; }
     else if (key.starts_with("sunColor")) hi = 255;
     else if (key == "sunAmbientScale") hi = 2;
+    else if (key == "waterWaveBreakup") hi = 1;
     else if (key == "vignette" || key == "topWarmthStrength") hi = 1;
     else if (key.starts_with("grade") || key.starts_with("topWarmth")) hi = 2;
     else if (key == "unitAmbientScale" || key == "buildingSpillIntensityScale") hi = 2;
@@ -289,7 +291,11 @@ static void applyKey(mc2::czstring key, float val, int& count) {
             count++;
         }
     } else if (strcmp(key, "waterGlintWarm") == 0) {
-        g_waterGlintWarm = val;
+        // W3 default (owner 11-20): 0.8 wherever the afternoon sun (sunPitch key) applies and the key is unset (0); no sun key = legacy 0.
+        g_waterGlintWarm = (val == 0.0f && visualTuning_sunValue("sunPitch")) ? 0.8f : val;
+        count++;
+    } else if (strcmp(key, "waterWaveBreakup") == 0) {
+        g_waterWaveBreakup = val;
         count++;
     } else if (strcmp(key, "waterSkyTintStrength") == 0) {
         {
