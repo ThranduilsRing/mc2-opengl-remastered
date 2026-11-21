@@ -961,6 +961,23 @@ void getDynamicPropShadowInstancesExcluding(std::vector<GpuStaticPropInstance>& 
     }
 }
 
+// RT-TLAS-MULTINODE-1: the RT scene's prop set (every building, then every castable non-building recipe, the same membership as the two shadow getters above)
+// with the owning recipe of EACH leaf. A multi-node prop (kit tree, building) has one typeID per node, but the typeID->recipe side-map only knows node 0,
+// so the RT scene reads the recipe from the range the leaf came from.
+void getRtPropInstances(std::vector<GpuStaticPropInstance>& out, std::vector<int32_t>& recipeOfLeaf) {
+    out.clear();
+    recipeOfLeaf.clear();
+    const uint8_t bldg = static_cast<uint8_t>(GpuStaticPropPopulation::Building);
+    for (int pass = 0; pass < 2; ++pass) {
+        for (size_t r = 0; r < s_recipeRanges.size(); ++r) {
+            const RecipeRange& rng = s_recipeRanges[r];
+            if (pass == 0 ? rng.population != bldg : (rng.noShadow || rng.population == bldg)) continue;
+            const size_t n = appendRecipeLeaves(rng, out);
+            recipeOfLeaf.insert(recipeOfLeaf.end(), n, static_cast<int32_t>(r));
+        }
+    }
+}
+
 size_t getRecipeShadowLeaves(int32_t recipeIndex, std::vector<GpuStaticPropInstance>& out) {
     if (!recipeValid(recipeIndex)) return 0;
     const RecipeRange& rng = s_recipeRanges[static_cast<size_t>(recipeIndex)];

@@ -105,6 +105,9 @@ bool isReady(int32_t regIdx);
 // for unknown typeID (or after invalidate()).
 int32_t getRecipeIndexForType(uint32_t typeID);
 
+// RT scene prop set (buildings, then castable non-buildings) with each leaf's owning recipe index (multi-node props: every node maps, not only node 0).
+void getRtPropInstances(std::vector<GpuStaticPropInstance>& out, std::vector<int32_t>& recipeOfLeaf);
+
 // Inspector accessor: shape filename for a registered recipe.
 // Returns nullptr for out-of-range, tombstoned, or null-shapeName entries.
 // Pointer is valid until the recipe is invalidated or destroy() is called.

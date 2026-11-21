@@ -443,3 +443,14 @@ TEST_CASE("rt scene movers: leave rules") {
     CHECK_FALSE(moverLeaves(false, false, kMoverUnseenFrames - 1));
     CHECK(moverLeaves(false, false, kMoverUnseenFrames));             // vehicles leave by timeout
 }
+
+TEST_CASE("rt scene: a 3-node prop yields 3 instances under one recipe, an unknown type still drops with a count") {
+    float m[16];
+    model(0, 0, 0, m);
+    const PropPlacement props[] = {{10, 0x100007, m}, {11, 0x100007, m}, {12, 0x100007, m}, {99, 0, m}};   // nodes 10..12 of one recipe, one unmapped
+    uint32_t dropped = 0;
+    const std::vector<Record> r = buildRecords(props, 0, &dropped);
+    CHECK(dropped == 1);
+    REQUIRE(r.size() == 3);
+    for (uint32_t i = 0; i < 3; ++i) CHECK(r[i].key.ordinal == i);
+}
