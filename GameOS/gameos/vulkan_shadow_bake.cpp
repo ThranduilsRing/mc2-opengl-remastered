@@ -1165,7 +1165,7 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     if (!ensureTransients() || !ensureIncremental()) return false;
     const uint32_t par = static_cast<uint32_t>(epoch % kMaxFramesInFlight);
     // This parity's last batch retired when the island waited its fence: its timestamps are final and its buffers and sets free to rewrite.
-    if (incQueryUsed_[par]) {
+    if (timed_ && incQueryUsed_[par]) {
         uint64_t ts[2] = {0, 0};
         if (vkGetQueryPoolResults(device_, incQueries_.get(), par * 2, 2, sizeof(ts), ts, sizeof(uint64_t), VK_QUERY_RESULT_64_BIT) == VK_SUCCESS)
         {
@@ -1215,7 +1215,7 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     pendingBatch.commit();
 
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Shadow.BakeDirty");
-    vkCmdResetQueryPool(cb, incQueries_.get(), par * 2, 2);
+    if (timed_) vkCmdResetQueryPool(cb, incQueries_.get(), par * 2, 2);
     // The mask and the top image are rewritten in place: their earlier readers (the terrain, water and overlay passes) finish first.
     VkImageMemoryBarrier pre[6];
     pre[0] = imageBarrier(maskImage_.get(), VK_IMAGE_ASPECT_COLOR_BIT, 0, maskMips_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -1228,7 +1228,7 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                          VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 6, pre);
     // Stamped once everything before the batch has finished, so the span is the batch's own GPU time.
-    vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, incQueries_.get(), par * 2);
+    if (timed_) vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, incQueries_.get(), par * 2);
     ZoneNamedN(zDirtyRec, "ShadowBake.Dirty.Record", true);
     for (size_t i = 0; i < batch.size(); ++i) {
         RegionJob job{mc2shadow::kSubTileTexels, mc2shadow::kSubTileTexels + 2 * mc2shadow::kTileApron, batch[i].x * mc2shadow::kSubTileTexels,
@@ -1239,7 +1239,7 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     }
     recordTopLevels(cb);
     recordMaskToRead(cb, false);
-    vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, incQueries_.get(), par * 2 + 1);
+    if (timed_) vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, incQueries_.get(), par * 2 + 1);
     gpuScope.end();
     incQueryUsed_[par] = true;
     incActive_ = true;
