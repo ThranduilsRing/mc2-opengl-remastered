@@ -56,8 +56,8 @@ void main() {
     uDst.w[d + 3u] = (nl > 1e-6) ? packSnorm2x16(octEncode(nr / nl)) : uSrc.w[s + 3u];
     uDst.w[d + 4u] = uSrc.w[s + 4u];
     uDst.w[d + 5u] = uSrc.w[s + 5u];
-    uDst.w[d + 6u] = uSrc.w[s + 6u] & 0xFF000000u;   // bone 0 (byte 3 = tangent handedness, passed through) ...
-    uDst.w[d + 7u] = 0xFFu;         // ... weight 1: a consumer that ignored the flag would blend bone 0, so the flag is load-bearing
+    uDst.w[d + 6u] = uSrc.w[s + 6u];   // bone indices (byte 3 = tangent handedness) and weights pass through unchanged: the flagged consumers
+    uDst.w[d + 7u] = uSrc.w[s + 7u];   // (mech_tier1/depth/shadow VS, RT mover) skip the blend; mech_tier1.vert re-blends them for the object motion vector
     // Tangent: the same octahedral decode the colour VS did, rotated by the blended bone, re-encoded.
     uint tw = uSrc.w[s + 8u];
     vec2 te = unpackSnorm2x16(tw);

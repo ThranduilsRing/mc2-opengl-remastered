@@ -1858,6 +1858,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     // Camera motion vectors (temporal track, docs/plans/2026-11-06-temporal-aa.md), before the
     // composite. Demand-driven: the only consumer so far is the debug inset in the present tail,
     // so the pass (and its image) cost nothing until that inset or a resolve asks for it.
+    RenderCore::temporal::objectMotionWanted().store(s.showMotionVectorsDebug || up, std::memory_order_relaxed);   // mech island reads it next run
     const bool mvOk = (s.showMotionVectorsDebug || up) && upDepth && upDepth->image && upDepth->w && upDepth->h &&
                       s.motionVectors.prepare(*s.ctx, *upDepth);
     if (mvOk) s.motionVectors.record(cc, *upDepth, s.captureFrame, mc2_vk_mech_island_object_motion_written() != 0);   // present-side copy of the scene's g_mc2RenderFrame
