@@ -117,3 +117,20 @@ TEST_CASE("EnvironmentGpu/a keyed save keeps the authored sun across load") {
         CHECK((r[0] == 1.0f && r[1] == 1.0f && r[2] == 1.0f));
     }
 }
+
+TEST_CASE("EnvironmentGpu/prop SH follows the ambient key and is untouched without keys") {
+    using namespace mc2::authored_sun;
+    const std::array<unsigned char,3> sun{255, 255, 225}, amb{71, 71, 78}, keyAmb{50, 50, 55};
+    const auto a = resolve(sun, amb, false, {}, {});
+    CHECK(ambientRatio(a, amb) == 1.0f);          // no keys: exactly 1
+    CHECK(ambientRatio(AuthoredSun{}, keyAmb) == 1.0f);   // night / no mission
+    const float r = ambientRatio(a, keyAmb);
+    CHECK(r < 0.8f);
+    RenderCore::MissionEnvironment env;
+    env.sky.diffuseSh[0] = {1.0f, 1.0f, 1.0f};
+    EnvironmentUBO base{}, keyed{};
+    mc2::environment::fillGpu(env, 1.0f, base);
+    env.lighting.ambientRatio = r;
+    mc2::environment::fillGpu(env, 1.0f, keyed);
+    for (int c = 0; c < 3; ++c) CHECK(keyed.shDiffuse[0][c] == doctest::Approx(base.shDiffuse[0][c] * r));
+}

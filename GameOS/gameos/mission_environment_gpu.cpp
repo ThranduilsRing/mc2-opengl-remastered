@@ -26,6 +26,7 @@ void fillGpu(const RenderCore::MissionEnvironment& env, float sceneLightScale, E
         for (int c = 0; c < 3; ++c) {
             float v = env.sky.diffuseSh[i][c];
             if (i == 0) v *= 1.0f + (chroma[c] - 1.0f) * (1.0f - night);
+            v *= env.lighting.ambientRatio;   // sun keys' ambient scale reaches the sky fill (1 without keys)
             out.shDiffuse[i][c] = v;
         }
     for (int c = 0; c < 3; ++c) out.hemiSky[c] = env.sky.hemisphereSky[c] * env.unitAmbientScale;

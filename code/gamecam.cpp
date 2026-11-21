@@ -441,6 +441,8 @@ void GameCamera::renderTerrainSceneState() {
 		float r[3];
 		mc2_FlatLightRatio(flatIntensity, liveSun, liveAmb, r);
 		inputs.flatRatio = {r[0], r[1], r[2]};
+		extern float mc2_AmbientRatio(const unsigned char liveAmb[3]);
+		inputs.ambientRatio = mc2_AmbientRatio(liveAmb);
 	}
 	inputs.authoredPitch = eye->getDayLightPitch();
 	inputs.night = eye->getIsNight();

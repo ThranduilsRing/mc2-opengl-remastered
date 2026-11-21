@@ -133,11 +133,11 @@ vec3 hotColorBaseLight(uint startV, vec3 colouredSeed, bool lightsOut, vec3 pink
     } else if (startV == 0xfeffffffu) {
         // Synthetic imported building body fill: preserve day brightness, but
         // match the former black seed exactly at full night (not the 20% bake).
-        if (!lightsOut) outLight = colouredSeed * (1.0 - uFrame.nightDarkness);
+        if (!lightsOut) outLight = colouredSeed * (1.0 - uFrame.nightDarkness) * uEnv.sceneLight.yzw;   // prelit art: relit by the sun keys' flat-light ratio (1 without keys)
     } else if ((startV & 0x00ffffffu) != 0u) {
         // Any other light colour is authored vertex light (hangars, terminals carry a near-white bake): it is environment
         // light, not a lamp, so the night dims it like the sun and ambient -- by day it is added as authored.
-        if (!lightsOut) outLight = colouredSeed * mix(1.0, kNightAuthoredLight, uFrame.nightDarkness);
+        if (!lightsOut) outLight = colouredSeed * mix(1.0, kNightAuthoredLight, uFrame.nightDarkness) * uEnv.sceneLight.yzw;
     }
     return clamp(outLight, vec3(0.0), vec3(1.0));
 }

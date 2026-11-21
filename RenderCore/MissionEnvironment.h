@@ -18,6 +18,7 @@ struct LegacyMissionLighting {
     std::array<float, 3> ambientColor{0, 0, 0};
     std::array<float, 3> flatLight{1, 1, 1};
     std::array<float, 3> flatRatio{1, 1, 1};   // live flat light / authored flat light; exactly 1 with no sun keys, at night, with no mission
+    float ambientRatio = 1;                    // live ambient luma / authored ambient luma (scales the prop SH sky fill); exactly 1 with no keys
     float authoredPitch = 45;
     float nightFactor = 0;
     float daylightLevel = 1;

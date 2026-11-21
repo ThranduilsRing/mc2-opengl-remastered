@@ -844,6 +844,12 @@ void mc2_FlatLightRatio(float z, const unsigned char liveSun[3], const unsigned 
 	const auto r = mc2::authored_sun::flatRatio(s_authoredSun, {liveSun[0], liveSun[1], liveSun[2]}, {liveAmb[0], liveAmb[1], liveAmb[2]}, z, mc2NightAmbientFloor());
 	out[0] = r[0]; out[1] = r[1]; out[2] = r[2];}
 
+// Live/authored ambient luma: the sun keys' move of the sky fill (scales the prop SH).
+float mc2_AmbientRatio(const unsigned char liveAmb[3])
+{
+	return mc2::authored_sun::ambientRatio(s_authoredSun, {liveAmb[0], liveAmb[1], liveAmb[2]});
+}
+
 bool Camera::save( FitIniFile* file )
 {
 	file->writeBlock("Cameras");

@@ -33,6 +33,13 @@ inline std::array<float, 3> flatRatio(const AuthoredSun& a, const std::array<uns
     return r;
 }
 
+// Luma of the live ambient over the authored ambient: how far the sun keys moved the sky fill. Exactly 1 with no keys.
+inline float ambientRatio(const AuthoredSun& a, const std::array<unsigned char, 3>& liveAmb) {
+    if (!a.valid || a.amb == liveAmb) return 1.0f;
+    auto l = [](const std::array<unsigned char, 3>& c) { return 0.2126f * c[0] + 0.7152f * c[1] + 0.0722f * c[2]; };
+    return l(a.amb) > 0.0f ? l(liveAmb) / l(a.amb) : 1.0f;
+}
+
 // Camera::init, after a save's block has been read: the authored sun a keyed save carries wins over the (already keyed)
 // colours the save holds; a save without one (older, or written without keys) takes the colours as read.
 inline AuthoredSun resolve(const std::array<unsigned char, 3>& readSun, const std::array<unsigned char, 3>& readAmb,
