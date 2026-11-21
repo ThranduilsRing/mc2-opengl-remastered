@@ -131,6 +131,7 @@ add_executable(mc2_tests
     test_texture_probe_memo.cpp  # HITCH-ATTRIB-2: destroy-time probe memo primed at load
     test_prop_record_cache.cpp  # prop scene generations and per-frame-slot cache keys
     test_prop_list_route.cpp  # colour-prop draw-list routing per packet, tier fringe skip
+    test_prop_cull_plan.cpp  # colour-prop compaction skip: dispatch / re-upload / direct per parity slot
     test_prop_lod_state.cpp  # flat per-instance LOD hysteresis table equals the unordered_map it replaced
     test_prop_lod_evaluation.cpp
     test_searchlight_aim.cpp

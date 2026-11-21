@@ -150,7 +150,7 @@ layout(set = 0, binding = 17, std430) readonly buffer Compact {
 
 void main() {
     vPacketIdx = uPacketBase.packetBase + uint(gl_DrawIDARB);
-    GpuStaticPropInstance inst = uInstances.i[uFrame.instBase + uCompact.c[gl_InstanceIndex]];
+    GpuStaticPropInstance inst = uInstances.i[uFrame.instBase + (uPacketBase.directIndex != 0u ? uint(gl_InstanceIndex) : uCompact.c[gl_InstanceIndex])];
     // Importer reserves alpha 0x7d/0x7e for UV1 glass IDs with white/black seeds.
     uint lightTag = a_aRGBLight >> 24;
     bool windowCell = (inst.flags & 64u) != 0u && (lightTag == 0x7du || lightTag == 0x7eu);

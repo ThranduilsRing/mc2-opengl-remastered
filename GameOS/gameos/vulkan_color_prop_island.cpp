@@ -21,6 +21,7 @@
 #include "../../mclib/battle_bench_wait.h"
 #include "../../RenderCore/TemporalInputs.h"
 #include "../../RenderCore/PropListRoute.h"
+#include "../../RenderCore/PropCullPlan.h"
 extern uint32_t g_mc2RenderFrame;   // mclib/tgl.cpp
 #include <optional>
 #include <volk.h>
@@ -178,7 +179,7 @@ struct PropPacketRow {
 };
 static_assert(sizeof(PropPacketRow) == 32);
 // The vertex+fragment push block (prop_packet_vk.glsl): the packet-row buffer's device address and the first row of the list one indirect call draws.
-struct PropPacketPush { uint64_t rows; uint32_t base; uint32_t pad; };
+struct PropPacketPush { uint64_t rows; uint32_t base; uint32_t directIndex; };   // directIndex != 0: compaction skipped, slot = gl_InstanceIndex
 static_assert(sizeof(PropPacketPush) == 16);
 // Draw lists, in command-buffer order: opaque core (no-discard pipeline, early Z), alpha core, fringe, late fringe; each stage has a single-sided
 // list (CULL_BACK, front-face lighting only) followed by a double-sided one (cull none, back-face lighting; the packet's material has kDoubleSided).
@@ -297,6 +298,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     // draw lists with their counts (18). A slot's buffers are rewritten only after its submit and late-fringe fences were waited.
     struct PropGpu {
         mc2vk::OwnedBuffer pkt, run, compact, cmd;
+        bool cmdsDispatched = false;   // the slot's commands were last overwritten by a compaction dispatch (PropList::decideCull)
         VkDeviceSize pktCap = 0, runCap = 0, compactCap = 0, cmdCap = 0;
         mc2vk::OwnedBuffer instances;
         VkDeviceSize instanceCap = 0;
@@ -318,6 +320,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     uint32_t drawIndirectLimit = 0xFFFFFFFFu; // device maxDrawIndirectCount; maxDrawCount is clamped to it
     // The late (alphaTest == 2) fringe draws, issued by the late pass after the main submit: the list's first row/command and its size.
     uint32_t lateStart[2] = {0, 0}, lateCount[2] = {0, 0};   // [0] single-sided, [1] double-sided
+    bool lateDirect = false;   // the main pass of lateParity skipped compaction (its late draws read gl_InstanceIndex)
     uint32_t lateParity = 0, lateDynCount = 0, lateOffsets[4]{}, lateGroundOffsets[4]{};
     mc2vk::OwnedShaderModule cullShader;
     mc2vk::OwnedPipelineLayout cullLayout;
@@ -1770,6 +1773,7 @@ struct PropRecPlan {
     VkPipelineLayout cullLayout, playout; VkDescriptorSet set, groundSet; VkBuffer vbo, ibo, cmdBuf;
     VkDeviceAddress pktAddr; uint32_t nDyn, dynOffsets[3], groundOffsets[4], runCount, drawLimit, listStart[kListCount + 1], counts[kListCount];
     float jx, jy; int w, h; bool hzbCulled;
+    bool direct = false;   // HZB off: no compaction dispatch, the vertex shader reads gl_InstanceIndex (PropList::decideCull)
 };
 // Pure vkCmd half, matching record_terrain_cmds: no island or camera-global reads.
 static bool record_props_cmds(const PropRecPlan& plan, VkCommandBuffer cb) {
@@ -1783,7 +1787,7 @@ static bool record_props_cmds(const PropRecPlan& plan, VkCommandBuffer cb) {
 
     // Compaction: the HZB pass's last barrier targets VERTEX|HOST, so this pass first orders itself after the HZB compute writes, and the draw
     // stages (vertex shader reads the compacted slots, the indirect read takes the counts and instanceCounts) after its own writes.
-    if (plan.runCount != 0) {
+    if (plan.runCount != 0 && !plan.direct) {
         MC2_VK_GPU_SCOPE(cullScope, cb, plan.embedded ? "VKIsl.Props.Refl.Cull" : "VKIsl.Props.Cull");
         VkMemoryBarrier pre{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
         pre.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT; pre.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
@@ -1823,7 +1827,7 @@ static bool record_props_cmds(const PropRecPlan& plan, VkCommandBuffer cb) {
         if (n == 0) return;
         ++drawCalls;
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
-        const PropPacketPush push{plan.pktAddr, first, 0};
+        const PropPacketPush push{plan.pktAddr, first, plan.direct ? 1u : 0u};
         vkCmdPushConstants(cb, plan.playout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), &push);
         mc2::battlebench::add(mc2::battlebench::DrawProps);
         vkCmdDrawIndexedIndirectCount(cb, plan.cmdBuf, kPropCmdHeader + static_cast<VkDeviceSize>(first) * sizeof(PropDrawCmd), plan.cmdBuf,
@@ -2025,7 +2029,11 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
     if (mc2::battlebench::output) mc2::battlebench::nativePropLeaves += s->cachedLeaves;
 
     // The per-parity buffers grow with headroom; a slot's previous submit and late fringe were waited before staging, so recreating is safe.
-    if (s->gpu[par].uploaded != s->recordKey) {
+    // HZB off: skip the identity compaction. A slot whose commands an HZB dispatch overwrote re-uploads the originals first.
+    const PropList::CullDecision cull = PropList::decideCull(hzbCulled, s->gpu[par].cmdsDispatched);
+    s->gpu[par].cmdsDispatched = cull.slotDirty;
+    s->lateDirect = !cull.dispatch;
+    if (s->gpu[par].uploaded != s->recordKey || cull.reupload) {
         ZoneScopedN("VKIsl.Props.UploadMetadata");
         auto& g = s->gpu[par];
         bool rebound = false;
@@ -2104,7 +2112,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
     plan.runCount = static_cast<uint32_t>(s->runScratch.size()); plan.drawLimit = s->drawIndirectLimit;
     std::copy_n(listStart, kListCount + 1, plan.listStart); std::copy_n(counts, kListCount, plan.counts);
     { float jpx[2]; RenderCore::temporal::sceneJitterPixels(g_mc2RenderFrame, jpx); plan.jx = jpx[0]; plan.jy = jpx[1]; }
-    plan.w = w; plan.h = h; plan.hzbCulled = hzbCulled;
+    plan.w = w; plan.h = h; plan.hzbCulled = hzbCulled; plan.direct = !cull.dispatch;
     plan.scissor={{0,0},{static_cast<uint32_t>(w),static_cast<uint32_t>(h)}};
     if (target) {
         plan.embedded = true;
@@ -2651,6 +2659,7 @@ extern "C" void mc2_vk_color_prop_island_late_fringe() {
     const uint32_t lateStart[2] = {s->lateStart[0], s->lateStart[1]}, lateCount[2] = {s->lateCount[0], s->lateCount[1]};
     s->lateCount[0] = s->lateCount[1] = 0;
     const uint32_t par = s->lateParity;
+    const bool lateDirect = s->lateDirect;
     VkCommandBuffer cb = s->lateCbuf[par];
     vkResetCommandPool(s->device, s->latePool[par].get(), 0);
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
@@ -2676,7 +2685,7 @@ extern "C" void mc2_vk_color_prop_island_late_fringe() {
     for (uint32_t d = 0; d < 2; ++d) {   // single-sided (CULL_BACK) then double-sided (cull none) late leaves
         if (lateCount[d] == 0) continue;
         mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,d ? s->t1_fringeDblPipe.get() : s->t1_fringePipe.get());
-        const PropPacketPush latePush{s->gpu[par].pkt.deviceAddress(), lateStart[d], 0};
+        const PropPacketPush latePush{s->gpu[par].pkt.deviceAddress(), lateStart[d], lateDirect ? 1u : 0u};
         vkCmdPushConstants(cb,s->playout.get(),VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,0,sizeof(latePush),&latePush);
         mc2::battlebench::add(mc2::battlebench::DrawProps);
         vkCmdDrawIndexedIndirectCount(cb,cmdBuf,kPropCmdHeader + static_cast<VkDeviceSize>(lateStart[d]) * sizeof(PropDrawCmd),cmdBuf,(kListLate + d) * sizeof(uint32_t),

@@ -22,5 +22,6 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Pr
 layout(push_constant) uniform PacketBasePC {   // vertex and fragment stages (16 B)
     PropPackets rows;   // device address of row 0 of the packet-row buffer
     uint packetBase;    // first row of the list this vkCmdDrawIndexedIndirectCount call draws
+    uint directIndex;   // nonzero: the compaction pass was skipped (HZB off), the instance slot is gl_InstanceIndex itself
 } uPacketBase;
 #define uPacket (uPacketBase.rows.p[vPacketIdx])
