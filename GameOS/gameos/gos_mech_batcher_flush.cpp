@@ -623,11 +623,11 @@ void GpuMechBatcher::flush() {
     finalizePending();
     traceLatch();
 
-    if (!s_geometryFinalized || s_pendingSubmits.empty()) {
+    // an empty flush clears the retained feed (endEmpty): the snapshot must not be served or redrawn
+    if (s_vkMechReady.endIfEmpty(s_geometryFinalized, !s_pendingSubmits.empty())) {
         s_pendingSubmits.clear();
         s_eligibleActorsThisFrame = 0;
         std::memset(s_fallbacksThisFrame, 0, sizeof(s_fallbacksThisFrame));
-        s_vkMechReady.endEmpty();   // the retained snapshot must not be served or redrawn
         // MECH-EXTRACTION-0: persist buffer is retained for frames with no pending submits;
         // it will be cleared in onMapUnload() or repopulated in the normal flush() path.
         return;

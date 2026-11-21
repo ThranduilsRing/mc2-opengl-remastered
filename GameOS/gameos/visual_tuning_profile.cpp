@@ -1,6 +1,7 @@
 // L1 compatibility environment: preserve legacy renderer values and color interpretation.
 #include "mc2_czstring.h"
 #include "visual_tuning_profile.h"
+#include "cloud_threshold_band.h"
 #include "../../GameAdapters/MissionEnvironmentAdapter.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
@@ -301,14 +302,13 @@ static void applyKey(mc2::czstring key, float val, int& count) {
         if (gosPostProcess* pp = getGosPostProcess()) pp->setCloudStrength(val);
         count++;
     } else if (strcmp(key, "cloudCoverage") == 0 || strcmp(key, "cloudSoftness") == 0) {
-        // coverage 0 keeps the legacy 0.3/0.7 band; >0 = band of half-width softness centred on the fbm noise quantile
-        // that covers that ground fraction (measured: 0.1 -> 0.32, 0.2 -> 0.376, 0.3 -> 0.42, 0.5 -> 0.50).
+        // band math: cloud_threshold_band.h (pure, unit-tested)
         static float s_cov = 0.20f, s_soft = 0.12f;
-        (key[5] == 'C' ? s_cov : s_soft) = val;
+        (strcmp(key, "cloudCoverage") == 0 ? s_cov : s_soft) = val;
         if (gosPostProcess* pp = getGosPostProcess()) {
-            const float c = 0.27f + 0.5f * s_cov;
-            pp->setCloudThreshLo(s_cov > 0.0f ? c - s_soft : 0.3f);
-            pp->setCloudThreshHi(s_cov > 0.0f ? c + s_soft : 0.7f);
+            const CloudThreshBand band = cloudThreshBand(s_cov, s_soft);
+            pp->setCloudThreshLo(band.lo);
+            pp->setCloudThreshHi(band.hi);
         }
         count++;
     } else if (strcmp(key, "cloudWaterScale") == 0) {
