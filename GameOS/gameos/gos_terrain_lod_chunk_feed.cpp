@@ -6,11 +6,11 @@
 
 #include "water_planar_terrain.h"
 
-bool mc2::waterplanar::prepareTerrainView(TerrainView& view, const float* mainWorldToClip, float waterElevation)
+bool mc2::waterplanar::prepareTerrainView(TerrainView& view, const float* mainWorldToClip, float waterElevation, const NdcRect* rect)
 {
     Mc2TerrainTier1Feed source{};
     if (!mc2_terrain_tier1_get_load_feed(&source)) source = {};
-    return view.prepare(source, mainWorldToClip, waterElevation);
+    return view.prepare(source, mainWorldToClip, waterElevation, rect);
 }
 
 // ---------------------------------------------------------------------------

@@ -2630,7 +2630,8 @@ bool prepareProps(std::unique_ptr<mc2vk::IslandState>& state, const Target& targ
     // Match the object projection; only the view-dependent instance list remains per frame.
     const float* objectMatrix = target.useTargetView ? target.mainWorldToClip : gos_GetObjectFixBMVPMat4();
     if (!objectMatrix) return false;
-    const View view(objectMatrix, target.water);
+    const auto rect = target.scissorNdc();
+    const View view(objectMatrix, target.water, rect ? &*rect : nullptr);
     preparePropInstances(view, s->bounds, s->reflectedInstances);
     { ZoneScopedN("Water.PlanarProps.Retype"); mc2_static_prop_retype_far_tier(std::span<GpuStaticPropInstance>(s->reflectedInstances)); }
     if (s->reflectedInstances.empty()) return true;
