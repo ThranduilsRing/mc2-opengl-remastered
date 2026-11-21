@@ -431,7 +431,7 @@ mc2vk::OwnedPipeline build_terrain_pipeline(const TerrainPipelineRecipe& recipe,
     const mc2::terrain::TerrainSpecKey* key = nullptr);
 
 bool create_colormap_sampler(TerrainIsland* s);
-bool upload_sampled_image(TerrainIsland* s, mc2vk::ResidentTextureRef& outTexture, VkFormat fmt, uint32_t width, uint32_t height, const void* bytes, VkDeviceSize byteCount);
+bool upload_sampled_image(TerrainIsland* s, mc2vk::ResidentTextureRef& outTexture, VkFormat fmt, uint32_t width, uint32_t height, const void* bytes, VkDeviceSize byteCount, bool mips = false);
 bool upload_colormap_image(TerrainIsland* s, VkFormat fmt, uint32_t width, uint32_t height, const void* bytes, VkDeviceSize byteCount);
 bool create_cement_sampler(TerrainIsland* s);
 bool upload_sampled_image_array(TerrainIsland* s, mc2vk::ResidentTextureRef& outTexture, VkFormat fmt, uint32_t width, uint32_t height, uint32_t layers, const void* bytes, VkDeviceSize byteCount);

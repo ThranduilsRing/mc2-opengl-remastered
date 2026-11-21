@@ -227,7 +227,7 @@ void main() {
         // The shared cook already applied the original nine-tap blur and coast-color repair.
         vec2 uv = vec2((v_worldPos.x - uT.atlasTopLeftX) * uT.atlasOneOverWorldUnits,
                        (uT.atlasTopLeftY - v_worldPos.y) * uT.atlasOneOverWorldUnits);
-        vec4 macro = textureLod(u_colormap, uv, 0.0);
+        vec4 macro = textureGrad(u_colormap, uv, dFdx(uv), dFdy(uv));   // mip chain; the weights below stay LOD 0
         base = macro.rgb;
         cookedBreakup = macro.a;
         materials = textureLod(u_materialWeights, uv, 0.0);

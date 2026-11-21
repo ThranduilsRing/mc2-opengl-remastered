@@ -96,9 +96,9 @@ bool create_colormap_sampler(TerrainIsland* s) {
     VkSamplerCreateInfo sci{};
     sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;   // GL_LINEAR
-    sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;   // the macro colour has a chain; weights/others are single-level and read LOD 0
     sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE; // GL_CLAMP_TO_EDGE
-    sci.maxLod = 0.25f;
+    sci.maxLod = VK_LOD_CLAMP_NONE;
     mc2vk::infra::materialSampler(sci);
     s->sampBias = sci.mipLodBias;
     return mc2vk::create(s->colormapSamp, s->device, [&](auto* h) { return vkCreateSampler(s->device, &sci, nullptr, h); });
@@ -109,8 +109,8 @@ bool create_colormap_sampler(TerrainIsland* s) {
 // copy-once imports. Match `fmt` to the GL upload's channel order (RGBA8 storage read
 // back as GL_RGBA -> R8G8B8A8_UNORM; do NOT double-encode sRGB).
 bool upload_sampled_image(TerrainIsland* s, mc2vk::ResidentTextureRef& outTexture,
-                          VkFormat fmt, uint32_t width, uint32_t height, const void* bytes, VkDeviceSize byteCount) {
-    auto texture=mc2vk::getOrCreateEngineVulkanContext().textures().acquirePixels(width,height,fmt,bytes,static_cast<size_t>(byteCount),false);
+                          VkFormat fmt, uint32_t width, uint32_t height, const void* bytes, VkDeviceSize byteCount, bool mips) {
+    auto texture=mc2vk::getOrCreateEngineVulkanContext().textures().acquirePixels(width,height,fmt,bytes,static_cast<size_t>(byteCount),mips);
     if (!texture) return false;
     outTexture=std::move(texture); return true;
 }
@@ -119,7 +119,7 @@ bool upload_sampled_image(TerrainIsland* s, mc2vk::ResidentTextureRef& outTextur
 bool upload_colormap_image(TerrainIsland* s, VkFormat fmt, uint32_t width, uint32_t height,
                            const void* bytes, VkDeviceSize byteCount) {
     return upload_sampled_image(s, s->colormapTexture,
-                                fmt, width, height, bytes, byteCount);
+                                fmt, width, height, bytes, byteCount, true);   // macro colour: full chain (sRGB built in linear light)
 }
 
 // Create a 1x1 opaque placeholder so binding 2 is ALWAYS a valid descriptor even
