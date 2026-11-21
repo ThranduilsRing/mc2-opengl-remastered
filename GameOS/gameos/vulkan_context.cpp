@@ -678,6 +678,39 @@ bool VulkanContext::init(bool wantPresent) {
         extDeny = mc2::gate::str<"MC2_VK_EXT_DENY">();
         extSel_ = profile::selectExt(caps, extDeny);
         profileLog(profile::formatExtLine(caps, extSel_, extDeny));
+        // Cache key: some drivers key their on-disk shader cache on the application and ignore the device config, so a run whose tier parts differ from
+        // another run of the same exe reuses binaries built for the other config. The tier is known only after the device is picked, so the instance
+        // is made again with the part-set fingerprint as the application / engine version (0 = no part, the first instance stands) and the same device is
+        // picked again by UUID.
+        if (const uint32_t cacheKey = profile::extCacheKey(extSel_); cacheKey != 0) {
+            const std::string pickedUuid = uuidOf(caps);
+            if (messenger_ != VK_NULL_HANDLE) {
+                auto pfnDestroy = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance_, "vkDestroyDebugUtilsMessengerEXT"));
+                if (pfnDestroy) pfnDestroy(instance_, messenger_, nullptr);
+                messenger_ = VK_NULL_HANDLE;
+            }
+            vkDestroyInstance(instance_, nullptr);
+            instance_ = VK_NULL_HANDLE;
+            app.applicationVersion = cacheKey;
+            app.engineVersion = cacheKey;
+            r = vkCreateInstance(&ici, nullptr, &instance_);
+            if (r != VK_SUCCESS) return fail("vkCreateInstance (cache key) failed");
+            volkLoadInstance(instance_);
+            if (wantValidation) {
+                auto pfnCreate = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance_, "vkCreateDebugUtilsMessengerEXT"));
+                if (pfnCreate &&pfnCreate(instance_, &mci, nullptr, &messenger_) != VK_SUCCESS) messenger_ = VK_NULL_HANDLE;
+            }
+            uint32_t n2 = 0;
+            vkEnumeratePhysicalDevices(instance_, &n2, nullptr);
+            std::vector<VkPhysicalDevice> devs2(n2);
+            vkEnumeratePhysicalDevices(instance_, &n2, devs2.data());
+            VkPhysicalDevice again = VK_NULL_HANDLE;
+            for (auto pd2 : devs2)
+                if (uuidOf(profile::gather(pd2, instanceApi)) == pickedUuid) { again = pd2; break; }
+            if (!again) return fail("cache key: the picked device is gone after the instance was made again");
+            phys_ = again;
+            ctxlog("[VK_EXT v1] cache_key=%08x applied to VkApplicationInfo (instance made again, device %s)", cacheKey, pickedUuid.c_str());
+        }
         ctxlog("subgroup size=%u stages=0x%x ops=0x%x", caps.subgroupSize, caps.subgroupStages, caps.subgroupOps);
         VkPhysicalDeviceDriverProperties driver{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES};
         VkPhysicalDeviceProperties2 props{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};

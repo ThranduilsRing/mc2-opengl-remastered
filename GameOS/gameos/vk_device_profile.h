@@ -465,6 +465,18 @@ struct ExtSelection {
     }
 };
 
+// A stable 32-bit fingerprint of the selected parts (0 when none): the bit set hashed with FNV-1a, so a part set maps to one value across runs and builds.
+// VkApplicationInfo carries it so a driver that keys its on-disk shader cache on the application sees each device config as a different app.
+inline uint32_t extCacheKey(const ExtSelection& s) {
+    uint32_t mask = 0;
+    for (size_t i = 0; i < 9; ++i)
+        if (s.part(i)) mask |= 1u << i;
+    if (!mask) return 0;
+    uint32_t h = 2166136261u;
+    for (int b = 0; b < 2; ++b) { h ^= (mask >> (8 * b)) & 0xFFu; h *= 16777619u; }
+    return h ? h : 1u;
+}
+
 // Picks the extension parts from the device caps. Each part needs its extension, its feature bit and its registry dependencies and is judged independently, as
 // selectRt does. `deny` is a comma list of part names or "all" (MC2_VK_EXT_DENY); an unknown token adds "deny_unknown_<tok>" to the reason. Pure: no I/O.
 inline ExtSelection selectExt(const DeviceCaps& c, std::string_view deny) {
@@ -500,12 +512,10 @@ inline ExtSelection selectExt(const DeviceCaps& c, std::string_view deny) {
             : !x.shaderQuadControl ? "no_feature" : !x.shaderMaximalReconvergence ? "no_feature_maximal_reconvergence" : nullptr;
     no[3] = !api13 ? "api_below_1_3" : !c.hasExtension(kExtHostImageCopy) ? "no_ext" : !x.hostImageCopy ? "no_feature" : nullptr;
     no[4] = !c.hasExtension(kExtPipelineBinary) ? "no_ext" : !m5 ? "no_maintenance5" : !x.pipelineBinaries ? "no_feature" : nullptr;
-    // AMD's proprietary driver (seen on 26.9.2 and 26.11.2, RX 7900 XTX) keeps a per-executable on-disk shader cache whose key ignores whether
-    // VK_EXT_graphics_pipeline_library is enabled: a compute binary cached by a device with the extension hangs the GPU on a device of the same exe without
-    // it, and the other way round (vk_actor_cull self-test, then VK_ERROR_DEVICE_LOST). Older builds and MC2_VK_EXT_DENY runs share that cache, so the
-    // tier leaves the extension off there. With only that one off, the other eight parts still dropped the terrain and mech draws from a 3840x2160
-    // frame on 26.11.2 (grass on the clear colour, no error or device loss), while the same exe with the whole tier denied matched the base build
-    // pixel for pixel. Which of the eight does it is not known, so on this driver every part stays off until one is proven on its own.
+    // AMD's proprietary driver (seen on 26.9.2 and 26.11.2, RX 7900 XTX) keeps a per-executable on-disk shader cache whose key ignores the device config
+    // (enabled extensions and features): a binary cached by a differently configured run of the same exe hangs the GPU (gpl) or silently drops terrain and
+    // mech draws (the other eight parts). extCacheKey() keeps the part sets apart: the context puts it in VkApplicationInfo so the driver sees each set as
+    // its own app. gpl stays off here (its hang was proven only with the shared key, not with the fingerprint).
     no[5] = !c.hasExtension(kExtGraphicsPipelineLibrary) ? "no_ext" : !c.hasExtension(kExtPipelineLibrary) ? "no_ext_pipeline_library"
             : !x.graphicsPipelineLibrary ? "no_feature" : nullptr;
     no[6] = !c.hasExtension(kExtDeviceGeneratedCommands) ? "no_ext" : !m5 ? "no_maintenance5" : !c.bufferDeviceAddress ? "no_buffer_device_address"
@@ -514,9 +524,7 @@ inline ExtSelection selectExt(const DeviceCaps& c, std::string_view deny) {
             : !x.descriptorHeap ? "no_feature" : nullptr;
     no[8] = !api12 ? "api_below_1_2" : !c.hasExtension(kExtComputeShaderDerivatives) ? "no_ext"
             : !(x.computeDerivativeGroupQuads || x.computeDerivativeGroupLinear) ? "no_feature" : nullptr;
-    if (c.driverId == kDriverIdAmdProprietary)
-        for (size_t i = 0; i < 9; ++i)
-            if (!no[i]) no[i] = i == 5 ? "amd_proprietary_shader_cache" : "amd_proprietary_missing_draws";
+    if (c.driverId == kDriverIdAmdProprietary && !no[5]) no[5] = "amd_proprietary_shader_cache";
     bool* flag[9] = {&r.mesh, &r.fsr, &r.quad, &r.hostCopy, &r.pipelineBinary, &r.gpl, &r.dgc, &r.heap, &r.csd};
     for (size_t i = 0; i < 9; ++i) {
         if (denied[i]) why.push_back(std::string(kExtPartNames[i]) + ":denied");
@@ -554,10 +562,10 @@ inline std::string formatExtLine(const DeviceCaps& c, const ExtSelection& r, std
     auto print = [&](char* out, size_t capacity) {
         return std::snprintf(out, capacity,
                              "[VK_EXT v1] mesh=%d fsr=%d fsr_kinds=%s quad=%d host_copy=%d pipeline_binary=%d gpl=%d dgc=%d heap=%d csd=%d deny=%s reason=%s "
-                             "mesh_max_verts=%u mesh_max_prims=%u fsr_texel=%ux%u",
+                             "mesh_max_verts=%u mesh_max_prims=%u fsr_texel=%ux%u cache_key=%08x",
                              r.mesh ? 1 : 0, r.fsr ? 1 : 0, kinds.c_str(), r.quad ? 1 : 0, r.hostCopy ? 1 : 0, r.pipelineBinary ? 1 : 0, r.gpl ? 1 : 0, r.dgc ? 1 : 0,
                              r.heap ? 1 : 0, r.csd ? 1 : 0, denyText.c_str(), reason.c_str(), c.ext.maxMeshOutputVertices, c.ext.maxMeshOutputPrimitives,
-                             c.ext.fsrMinTexelW, c.ext.fsrMinTexelH);
+                             c.ext.fsrMinTexelW, c.ext.fsrMinTexelH, extCacheKey(r));
     };
     std::string line(static_cast<size_t>(print(nullptr, 0)), ' ');
     print(line.data(), line.size() + 1);

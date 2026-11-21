@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <string>
+#include <vector>
 
 #include "vk_device_profile.h"
 
@@ -79,19 +80,33 @@ TEST_CASE("ext tier: XTX caps select every part and enable the dependency extens
     CHECK(line.find("mesh_max_verts=256 mesh_max_prims=256 fsr_texel=8x8") != std::string::npos);
 }
 
-TEST_CASE("ext tier: the AMD proprietary driver gets no part (gpl poisons its shader cache, the rest dropped draws)") {
+TEST_CASE("ext tier: the AMD proprietary driver gets the eight parts but not gpl (its shader cache hangs on gpl)") {
     vkp::DeviceCaps c = xtx();
     c.driverId = vkp::kDriverIdAmdProprietary;
     const vkp::ExtSelection s = vkp::selectExt(c, "");
-    CHECK(parts(s) == "");
-    CHECK_FALSE(s.any());
-    CHECK(s.extensions.empty());
-    CHECK(s.reason.find("gpl:amd_proprietary_shader_cache") != std::string::npos);
-    CHECK(s.reason.find("mesh:amd_proprietary_missing_draws") != std::string::npos);
-    CHECK(s.reason.find("csd:amd_proprietary_missing_draws") != std::string::npos);
+    CHECK(parts(s) == "mesh,fsr,quad,host_copy,pipeline_binary,dgc,heap,csd");
+    CHECK(s.reason == "gpl:amd_proprietary_shader_cache");
     // A part the device lacks keeps its own reason.
     c.ext.meshShader = false;
     CHECK(vkp::selectExt(c, "").reason.find("mesh:no_feature") != std::string::npos);
+}
+
+TEST_CASE("ext tier: cache_key is 0 for no part, stable, and differs per part set") {
+    const vkp::DeviceCaps c = xtx();
+    CHECK(vkp::extCacheKey(vkp::ExtSelection{}) == 0);
+    CHECK(vkp::extCacheKey(vkp::selectExt(c, "all")) == 0);
+    const uint32_t all = vkp::extCacheKey(vkp::selectExt(c, ""));
+    CHECK(all != 0);
+    CHECK(all == vkp::extCacheKey(vkp::selectExt(c, "")));
+    std::vector<uint32_t> keys{all};
+    for (const std::string_view part : vkp::kExtPartNames) {
+        const uint32_t k = vkp::extCacheKey(vkp::selectExt(c, part));   // every part but one
+        CHECK(k != 0);
+        keys.push_back(k);
+    }
+    std::ranges::sort(keys);
+    CHECK(std::ranges::adjacent_find(keys) == keys.end());
+    CHECK(vkp::formatExtLine(c, vkp::selectExt(c, "all"), "all").find("cache_key=00000000") != std::string::npos);
 }
 
 TEST_CASE("ext tier: 1050 Ti caps select host_copy, pipeline_binary and gpl only") {
