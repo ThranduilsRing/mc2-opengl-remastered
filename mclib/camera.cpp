@@ -25,7 +25,7 @@ inline float agsqrt( float _a, float _b )
 // Static Globals
 
 // Sun-light inputs as authored, captured before the per-mission sun keys replace them (Camera::init).
-static struct { bool valid = false; float pitch = 0, yaw = 0; unsigned char sun[3] = {}, amb[3] = {}; } s_authoredSun;
+static struct { bool valid = false; unsigned char sun[3] = {}, amb[3] = {}; } s_authoredSun;
 
 char WindowTitle[1024];		// Global window title (GetWindowText is VERY slow)
 
@@ -410,7 +410,7 @@ long Camera::init (FitIniFilePtr cameraFile )
 		s_authoredSun.valid = false;
 		if (!missionLightName.empty() && mc2_mission_light::nightFromSun(dayLightPitch) == 0.0f)
 		{
-			s_authoredSun = {true, lightPitch, lightYaw, {lightRed, lightGreen, lightBlue}, {ambientRed, ambientGreen, ambientBlue}};
+			s_authoredSun = {true, {lightRed, lightGreen, lightBlue}, {ambientRed, ambientGreen, ambientBlue}};
 			if (const auto v = visualTuning_sunValue("sunPitch")) lightPitch = dayLightPitch = std::max(*v, 26.0f);
 			if (const auto v = visualTuning_sunValue("sunYaw")) lightYaw = *v;
 			lightDirection.x = cos((lightYaw + 45.0f) * DEGREES_TO_RADS);
@@ -825,17 +825,14 @@ unsigned char Camera::getLightBlue (float intensity)
 	return (ambientBlue < floorV) ? static_cast<unsigned char>(floorV) : ambientBlue;
 }
 
-// Flat light of cement/roads from the AUTHORED sun (pitch, colour, ambient), ignoring the per-mission sun keys.
-// The terrain colormap is prelit and ignores those keys, so cement (an unlit atlas texel * this) must too: it then
-// keeps the same tone relative to the ground beside it and both respond to the keys only through the shared shadow.
-// False when no per-mission sun block ran (night, or no mission): the caller keeps the live flat light.
-bool mc2_AuthoredFlatLight(unsigned char rgb[3])
+// Flat light of cement/roads = what the colormap burn-in gives flat ground: AUTHORED sun colour and ambient (the burn
+// runs before the sun colour/ambient keys apply) times the LIVE light z (the burn follows the sun pitch key). Measured
+// at 101247: sunPitch alone darkens the ground x0.80 = (amb+sun*z28)/(amb+sun*z50); colour/ambient keys do not move it.
+// Cement (an unlit atlas texel * this) then tracks the ground beside it exactly. False when no per-mission sun block
+// ran (night, or no mission): the caller keeps the live flat light.
+bool mc2_AuthoredFlatLight(float z, unsigned char rgb[3])
 {
 	if (!s_authoredSun.valid) return false;
-	const float sp = std::sin(s_authoredSun.pitch * DEGREES_TO_RADS);
-	const float cx = std::cos((s_authoredSun.yaw + 45.0f) * DEGREES_TO_RADS), cy = std::sin((s_authoredSun.yaw + 45.0f) * DEGREES_TO_RADS);
-	// lightDirection is normalised after these three components (camera_update.cpp); flat intensity is its z.
-	const float z = std::clamp(sp / std::sqrt(cx * cx + cy * cy + sp * sp), 0.0f, 1.0f);
 	const long floorV = mc2NightAmbientFloor();
 	for (int i = 0; i < 3; ++i) {
 		const long v = z > 0.0f ? float2long(s_authoredSun.sun[i] * z + s_authoredSun.amb[i]) : s_authoredSun.amb[i];
