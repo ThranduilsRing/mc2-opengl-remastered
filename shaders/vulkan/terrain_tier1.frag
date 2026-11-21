@@ -97,7 +97,12 @@ layout(set = 0, binding = 10, std430) readonly buffer TerrainVisualHeightBuf {
     float heightsFine[];
 };
 #include "include/terrain_cliff_surface.glsl"
+// The filtered height is baked per bake version (terrain_fine_height_bake.h): plane 3 of heightsFine, (V+2)^2 cells, p = -1..V.
+// Outside the apron (only a zero-weight tap at the map edge) the per-tap path gives the exact old value.
 float mv_fineH(ivec2 p) {
+    const int V = int(uT.visualSide);
+    if (all(greaterThanEqual(p, ivec2(-1))) && all(lessThanEqual(p, ivec2(V))))
+        return heightsFine[3 * V * V + (p.y + 1) * (V + 2) + (p.x + 1)];
     return cliffVisualHeight(p);
 }
 vec2 mv_fineGrad(ivec2 p) {
