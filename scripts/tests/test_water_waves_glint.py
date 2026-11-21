@@ -133,7 +133,7 @@ def _packet_noise(x, y):
 def test_stochastic_packets_are_bounded_continuous_and_conserve_local_variance():
     low, high, span = map(_const, ("WAVE_PACKET_MIN", "WAVE_PACKET_MAX", "WAVE_PACKET_SPAN"))
     assert 0.5 <= low < 1 < high <= 1.5 and span >= 6
-    assert "float a = w.w * gain * packet;" in SRC and "float packet = 1.0;" in SRC
+    assert "float a = w.w * gain * packet * brkA;" in SRC and "float brkA = 1.0;" in SRC and "float packet = 1.0;" in SRC
     samples = []
     for x, y in ((0, 0), (128, 256), (-1234.7, 1904.4), (4401, -8123)):
         packets = [1.0 if i < 2 else low + (high - low) * _packet_noise(

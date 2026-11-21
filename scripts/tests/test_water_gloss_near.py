@@ -116,7 +116,8 @@ def _near(dist, night_dim):
 
 def test_near_gloss_keeps_sky_lift_without_duplicating_the_sun():
     assert "NEAR_SHEEN" not in SRC
-    assert SRC.count("waterGgxSpec(waveN, vdir, Ls,") == 1
+    # Two call sites since afternoon-sun-look-4: the waterGlintWarm branch and the legacy additive one are an if/else pair.
+    assert SRC.count("waterGgxSpec(waveN, vdir, Ls,") == 2 and "} else\n        col += min(sunRad" in SRC
     assert _const("SUN_SPEC_GAIN") == 1.0
     assert "skyReflCol *= 1.0 + NEAR_SKY_LIFT * nearGloss;" in SRC
     assert 0.0 < _const("NEAR_SKY_LIFT") <= 0.6
