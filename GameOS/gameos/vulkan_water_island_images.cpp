@@ -198,6 +198,17 @@ bool init_reflection(WaterIsland* s) {
         view.image=s->reflectionImage.get(); view.format=image.format;
         if (!mc2vk::create(s->reflectionView,s->device,[&](VkImageView* out){return vkCreateImageView(s->device,&view,nullptr,out);})) return false;
     }
+    // Below High nothing reads the coverage image, planar depth or mask scratch: free them (deferred retire); the next High rebuilds them.
+    if (!live && (s->planarDepthImage || s->coverageImage || s->maskHorizontal || s->maskDepth)) {
+        auto& ctx = mc2vk::getOrCreateEngineVulkanContext();
+        ctx.retire(std::move(s->planarDepthView)); ctx.retire(std::move(s->planarDepthImage));
+        ctx.retire(std::move(s->coverageView)); ctx.retire(std::move(s->coverageImage));
+        ctx.retire(std::move(s->maskHorizontal)); ctx.retire(std::move(s->maskDepth));
+        ctx.retire(std::move(s->maskCompute)); ctx.retire(std::move(s->maskLayout));
+        ctx.retire(std::move(s->maskPool)); ctx.retire(std::move(s->maskDsl));   // frees maskSet with its pool
+        s->maskSet = VK_NULL_HANDLE; s->planarDepthInitialized = false;
+        vlog("WATER_REFLECT high-only resources retired (below High): live=0");
+    }
     // Prewarm can run before water presence is known; dry maps need no depth.
     if (!s->mapHasWater || !live || s->planarDepthImage) return true;
     image.extent = full;
@@ -252,6 +263,7 @@ bool init_reflection(WaterIsland* s) {
     compute.stage={VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,nullptr,0,VK_SHADER_STAGE_COMPUTE_BIT,shader.get(),"main",nullptr};
     compute.layout=s->maskLayout.get();
     if (!mc2vk::create(s->maskCompute,s->device,[&](auto* h){return mc2vk::infra::compute(s->device,VK_NULL_HANDLE,1,&compute,nullptr,h);})) return false;
+    vlog("WATER_REFLECT high-only resources created (High): live=1");
     return true;
 }
 
