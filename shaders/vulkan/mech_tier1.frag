@@ -84,8 +84,36 @@ layout(location = 13) in vec4 vPrevClip;
 layout(location = 2) out vec2 oMotion;    // per-object motion vector (previousUV - currentUV, unjittered)
 #endif
 
+#ifndef MECH_PREVIEW
+// Authored-ORM GGX (same lobe as prop_lighting_compat_vk.glsl propAuthoredColor). Added to display-space rgb like
+// msh_blinnSpecular (no sRGB decode). kernelVar is the Kaplanyan-Hoffman normal variance (water_geom.frag:585-587).
+vec3 mechGgxSpecular(vec3 N, vec3 V, vec3 negSunDir, vec3 albedo, float metallic, float roughness, float kernelVar, float strength)
+{
+    vec3 L = normalize(-negSunDir);
+    float ndl = dot(N, L);
+    vec3 H = L + V;
+    if (ndl <= 0.0 || dot(H, H) < 1e-8) return vec3(0.0);
+    H = normalize(H);
+    float nh = max(dot(N, H), 0.0), nv = max(dot(N, V), 1e-3);
+    float r = max(roughness, 0.15);
+    float a2 = clamp(r * r * r * r + min(2.0 * kernelVar, 0.18), 0.0, 0.36);
+    float d = nh * nh * (a2 - 1.0) + 1.0;
+    float D = a2 / max(3.14159265 * d * d, 1e-5);
+    float k = (r + 1.0) * (r + 1.0) / 8.0;
+    float G = nv / (nv * (1.0 - k) + k) * ndl / (ndl * (1.0 - k) + k);
+    vec3 F0 = mix(vec3(0.04), albedo, metallic);
+    vec3 F = F0 + (1.0 - F0) * pow(1.0 - clamp(dot(V, H), 0.0, 1.0), 5.0);
+    return F * (D * G * ndl / max(4.0 * nv * ndl, 1e-4)) * strength;
+}
+#endif
+
 void main() {
     vec3 Nshade = normalize(vNormalGL);
+#ifndef MECH_PREVIEW
+    // Before the discard below so the derivatives stay in uniform control flow.
+    vec3 dNx = dFdx(Nshade), dNy = dFdy(Nshade);
+    float kernelVar = 0.25 * (dot(dNx, dNx) + dot(dNy, dNy));
+#endif
     vec3 rgb;
     if (uFrame.materialReady != 0) {
         // Service images expose a complete mip chain for regenerated paint.
@@ -162,6 +190,9 @@ void main() {
                 vec3 V = normalize(uFrame.cameraWorldPos.xyz - vWorldPos);
                 bool authored = (vImportedMech & 8u) != 0u;
                 vec3 f0 = authored ? mix(vec3(0.04), tex_color.rgb, surface.metallic) : vec3(1.0);
+                if (authored)
+                    rgb += mechGgxSpecular(Nshade, V, vMechSunDirGL, tex_color.rgb, surface.metallic, surface.roughness, kernelVar, uFrame.shadeA.y);
+                else
                 rgb += f0 * msh_blinnSpecular(Nshade, V, vMechSunDirGL, !authored && isGlass,
                                          authored ? surface.roughness : uFrame.shadeA.z, uFrame.shadeA.w, uFrame.shadeA.y);
             }
