@@ -321,7 +321,7 @@ void main() {
     // SH evaluates irradiance, not reflected radiance. Apply the Lambert BRDF
     // once, and decode authored light bytes before summing with linear SH.
     vec3 linearLight = surfaceDecodeSrgb(seed) * propDirFactor
-        + (max(iblTerm, vec3(0.0)) * forestSky + surfaceDecodeSrgb(sunTerm) * vTree.w * propNightSunWeight(ndl, nMC2) * (((lightWord & 0x40000u) != 0u && uEnv.shDiffuse[0].w > 0.0) ? uEnv.shDiffuse[0].w : 1.0)) / 3.14159265
+        + (max(iblTerm, vec3(0.0)) * forestSky + surfaceDecodeSrgb(sunTerm) * vTree.w * propNightSunWeight(ndl, nMC2)) / 3.14159265
         + surfaceDecodeSrgb(inst.aRGBHighlight.rgb);
     if (side == 0) vArgb = surfaceEncodeSrgb(linearLight);
     else vBackArgb = surfaceEncodeSrgb(linearLight);

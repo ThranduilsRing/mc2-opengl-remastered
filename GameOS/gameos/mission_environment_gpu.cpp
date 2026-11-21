@@ -34,7 +34,6 @@ void fillGpu(const RenderCore::MissionEnvironment& env, float sceneLightScale, E
         }
     for (int c = 0; c < 3; ++c) out.hemiSky[c] = env.sky.hemisphereSky[c] * env.unitAmbientScale;
     out.hemiSky[3] = ambientLin;
-    out.shDiffuse[0][3] = env.lighting.sunGain;   // pad lane: the movers' sun-key elevation gain (1 without keys)
     out.sceneLight[0] = sceneLightScale;
     for (int c = 0; c < 3; ++c) out.sceneLight[1 + c] = env.lighting.flatRatio[c];   // the sun keys' move of the flat light, applied to prelit art
 }
