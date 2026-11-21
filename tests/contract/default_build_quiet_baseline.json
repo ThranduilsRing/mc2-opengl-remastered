@@ -82,6 +82,14 @@
       "status": "keep",
       "reason": "scripts/smoke_lib/vk_profile.py and logparse.py (MarkerBucket verdict=refused) parse the Vulkan device-profile verdict; printed once per start. The default backend became Vulkan on 2026-10-17."
     },
+    "VK_EXT v1": {
+      "status": "keep",
+      "reason": "GameOS/gameos/vulkan_context.cpp prints the optional extension-tier selection and its cache key once per start (twice when device creation retries without the tier); it is the receipt of which device config the on-disk shader cache is keyed on, next to [VK_PROFILE v1] and [VK_RT v1]."
+    },
+    "VK_EXT_KEY v1": {
+      "status": "keep",
+      "reason": "GameOS/gameos/vulkan_context.cpp prints once per start that the extension tier cache key was put in VkApplicationInfo (or could not be, or the retry without the tier made the instance again with key 0); the receipt that tier and plain configs never share a driver shader-cache key."
+    },
     "VRAM v1": {
       "status": "keep",
       "reason": "scripts/smoke_lib/vram.py parses the load_end / run_end GPU-memory lines into the smoke report and the perf baseline. GameOS/gameos/gpu_memory_report.cpp prints them only when the smoke harness or MC2_DIAG_VERBOSE asked for diagnostics (log() returns early otherwise), so a player's console stays quiet; this check grades a smoke log, which is why it sees the tag."
