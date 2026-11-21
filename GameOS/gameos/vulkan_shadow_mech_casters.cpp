@@ -11,6 +11,7 @@
 #include "diagnostic_trace.h"
 #include "mc2fmt.h"
 #include "vk_depth_caster_pipeline.h"
+#include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "vk_island_util.h"
 #include "vulkan_context.h"
 
@@ -235,6 +236,7 @@ void ShadowMechCasters::stage(uint64_t epoch) {
 
 void ShadowMechCasters::recordSkin(VkCommandBuffer cb) {
     if (!skin_.active() || !hasCasters() || !geomUploaded_) return;
+    MC2_VK_GPU_SCOPE(skinScope, cb, "VKIsl.Shadow.Skin");
     skin_.record(cb, vertexBuf_, skinVboBytes_, boneBuf_[skinParity_].get(), VK_WHOLE_SIZE, 0);
 }
 

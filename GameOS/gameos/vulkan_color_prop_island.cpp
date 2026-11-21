@@ -1801,7 +1801,8 @@ static bool record_props_cmds(const PropRecPlan& plan, VkCommandBuffer cb) {
 
     // Begin the LOAD pass: all attachments LOAD, no clear values.
     // The main view and the embedded reflection run are separate scopes (and separate triangle rows).
-    MC2_VK_GPU_SCOPE_TRIS(gpuScope, cb, plan.embedded ? "VKIsl.Props.Refl" : "VKIsl.Props");
+    // plan.coreStats (diagnostic) opens its own statistics query around the core colour draws below; Vulkan forbids nesting two, so drop the tris flag then.
+    ::mc2vk::gpuprof::Scope gpuScope(cb, plan.embedded ? "VKIsl.Props.Refl" : "VKIsl.Props", __FILE__, static_cast<uint32_t>(__LINE__), plan.coreStats == VK_NULL_HANDLE);
     t1_begin_pass(plan.views, plan.depthView, plan.depthFmt, cb, static_cast<uint32_t>(plan.w), static_cast<uint32_t>(plan.h));
 
     VkViewport vp{plan.jx, plan.jy, static_cast<float>(plan.w), static_cast<float>(plan.h), 0.0f, 1.0f};
@@ -2228,6 +2229,7 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
     if (!target && propPerfGateRequested()) {
         if (s->coreStats[par]) {
             uint64_t values[3]{}; // result order follows the statistic bit order: IA primitives, clipping primitives, FS invocations (colour pass only: fragment_invocations excludes the depth pre-pass)
+            // invocations_per_pixel divides by the whole framebuffer (w*h), not the covered/visible pixels; field name is pinned by the log tag baseline.
             if (s->coreStatsRecorded[par] && vkGetQueryPoolResults(s->device, s->coreStats[par].get(), 0, 1, sizeof(values), values, sizeof(values), VK_QUERY_RESULT_64_BIT) == VK_SUCCESS &&
                 g_mc2RenderFrame % 120 == 0 && mc2_diag::tagRequested("PROP_CORE_STATS"))
                 mc2::fmt::print_err("[PROP_CORE_STATS] frame={} slot={} ia_primitives={} raster_triangles={} fragment_invocations={} invocations_per_pixel={:.3f}\n",

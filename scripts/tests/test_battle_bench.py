@@ -55,9 +55,9 @@ def test_props_bucket_includes_separate_late_fringe_pass(evidence):
     # Trigger: scripts/run_battle_bench.py PASSES / summarize.
     for row in evidence[1]:
         if row["type"] == "gpu":
-            row["passes"] = {"VKIsl.Props": 2, "VKIsl.Props.LateFringe": 48}
+            row["passes"] = {"VKIsl.Props": 2, "VKIsl.Props.Late": 48}
     props = summarize(evidence)["gpu_passes"]["props"]
-    assert set(props["scopes"]) == {"VKIsl.Props", "VKIsl.Props.LateFringe"}
+    assert set(props["scopes"]) == {"VKIsl.Props", "VKIsl.Props.Late"}
     assert props["timing"]["max_ms"] == 50
 
 
@@ -198,10 +198,10 @@ def test_pass_sum_excludes_nested_scopes_but_keeps_separate_compute(evidence):
     for row in evidence[1]:
         if row["type"] == "gpu":
             row["passes"] = {"VKIsl.Terrain": 2, "VKIsl.Terrain.CullCompute": 1,
-                             "VKIsl.Props": 3, "VKIsl.Props.Trees": 1,
-                             "VKIsl.Vfx": 4, "VKIsl.Vfx.Vegetation": 2}
+                             "VKIsl.Props": 3, "VKIsl.Props.Core": 1,
+                             "VKIsl.Vfx": 4, "VKIsl.Vegetation": 2, "VKIsl.Vegetation.Shade": 1}
     report = summarize(evidence)
-    assert report["gpu_pass_sum"]["p50_ms"] == 10
+    assert report["gpu_pass_sum"]["p50_ms"] == 12
     assert report["gpu_frame"]["p50_ms"] == 1
     report["machine_load"] = {phase: {"cpu_percent": 42, "other_mc2_processes": [{"pid": 123}]}
                               for phase in ("before", "after")}
@@ -219,3 +219,10 @@ def test_machine_load_records_other_engine_pids(monkeypatch):
     load = bench.machine_load()
     assert load["cpu_percent"] == 37.5
     assert [p["pid"] for p in load["other_mc2_processes"]] == [9]
+
+
+def test_every_bench_scope_name_exists_in_gameos_source():
+    # Trigger: scripts/run_battle_bench.py PASSES / NESTED_GPU_SCOPES and GameOS/gameos/*.cpp scope literals.
+    text = "".join(p.read_text(encoding="utf-8", errors="replace") for p in (Path(__file__).resolve().parents[2] / "GameOS/gameos").glob("*.cpp"))
+    names = {n for prefixes in bench.PASSES.values() for n in prefixes if not n.endswith(".")} | set(bench.NESTED_GPU_SCOPES)
+    assert [n for n in sorted(names) if f'"{n}"' not in text] == []
