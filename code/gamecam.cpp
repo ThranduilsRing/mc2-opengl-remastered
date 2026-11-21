@@ -432,10 +432,13 @@ void GameCamera::renderTerrainSceneState() {
 	inputs.flatLight = {getLightRed(flatIntensity)/255.0f,
 		getLightGreen(flatIntensity)/255.0f, getLightBlue(flatIntensity)/255.0f};
 	{
-		// Cement/roads share the terrain's lighting model: the colormap burn-in tone (authored colours, live pitch).
-		extern bool mc2_AuthoredFlatLight(float z, unsigned char rgb[3]);
-		unsigned char fl[3];
-		if (mc2_AuthoredFlatLight(flatIntensity, fl)) inputs.flatLight = {fl[0]/255.0f, fl[1]/255.0f, fl[2]/255.0f};
+		// Prelit art (ground, decals, grass) is scaled by live/authored flat light; cement stays on the live flat light.
+		extern void mc2_FlatLightRatio(float z, const unsigned char liveSun[3], const unsigned char liveAmb[3], float out[3]);
+		const unsigned char liveSun[3] = {static_cast<unsigned char>((directional >> 16) & 255u), static_cast<unsigned char>((directional >> 8) & 255u), static_cast<unsigned char>(directional & 255u)};
+		const unsigned char liveAmb[3] = {static_cast<unsigned char>((ambient >> 16) & 255u), static_cast<unsigned char>((ambient >> 8) & 255u), static_cast<unsigned char>(ambient & 255u)};
+		float r[3];
+		mc2_FlatLightRatio(flatIntensity, liveSun, liveAmb, r);
+		inputs.flatRatio = {r[0], r[1], r[2]};
 	}
 	inputs.authoredPitch = eye->getDayLightPitch();
 	inputs.night = eye->getIsNight();
