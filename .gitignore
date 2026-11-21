@@ -99,6 +99,9 @@ cov-int/
 # Mod distribution packages
 mods/dist/
 
+# Generated mod index cache (mclib/vfs.cpp writes it next to each mod)
+mods/*/.modindex-cache
+
 # CMake Tools VS Code extension
 CMakeToolsMeta.in.txt
 CMakeToolsMeta.txt
