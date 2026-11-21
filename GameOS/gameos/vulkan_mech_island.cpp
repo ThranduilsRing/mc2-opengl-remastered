@@ -1044,6 +1044,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
       // The environment producer's hemisphere. The mech lab preview pass has no terrain set 1, so the mech keeps this UBO copy of it.
       EnvironmentUBO environment; mc2::environment::fillGpu(visualTuning_environment(), 1.0f, environment);
       for (size_t c=0; c<3; ++c) u.environmentAmbient[c] = environment.hemiSky[c];
+      u.environmentAmbient[3] = visualTuning_environment().lighting.sunGain;
       std::memcpy(mainPtr, &u, sizeof(u)); }
     // This flight's set follows the buffers; each pass supplies its dynamic offsets.
     sync_ring_bindings(s, par, mainSpan, lightSpan);
@@ -1362,6 +1363,7 @@ static int mech_preview_flush_impl(void* colorView, void* normalView, void* dept
       u.miscI[1] = mechFill;
       EnvironmentUBO environment; mc2::environment::fillGpu(visualTuning_environment(), 1.0f, environment);
       for (size_t c = 0; c < 3; ++c) u.environmentAmbient[c] = environment.hemiSky[c];
+      u.environmentAmbient[3] = visualTuning_environment().lighting.sunGain;
       std::memcpy(mainPtr, &u, sizeof(u)); }
     sync_ring_bindings(s, par, mainSpan, lightSpan);
     const uint32_t dynOffsets[5] = {

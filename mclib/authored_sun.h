@@ -3,12 +3,14 @@
 // derived from them. Pure and header-only so a unit test pins it. Flat light = getLight(z) = sun*z + ambient (bytes).
 #include <algorithm>
 #include <array>
+#include <cmath>
 
 namespace mc2::authored_sun {
 
 struct AuthoredSun {
     bool valid = false;                         // false: night, no mission or no per-mission sun block -> ratio is exactly 1
     std::array<unsigned char, 3> sun{}, amb{};
+    float pitch = 0;                            // authored sun pitch (degrees); 0 = unknown
 };
 
 // Camera::getLightRed/Green/Blue(z) for one channel set (z is the unit light z, clamped 0..1 by the caller).
@@ -38,6 +40,14 @@ inline float ambientRatio(const AuthoredSun& a, const std::array<unsigned char, 
     if (!a.valid || a.amb == liveAmb) return 1.0f;
     auto l = [](const std::array<unsigned char, 3>& c) { return 0.2126f * c[0] + 0.7152f * c[1] + 0.0722f * c[2]; };
     return l(a.amb) > 0.0f ? l(liveAmb) / l(a.amb) : 1.0f;
+}
+
+// Live/authored sun elevation: mech and vehicle light rows follow the live pitch, the ground's flat-light ratio does not.
+// This gain on their directional term puts a flat surface where the ground is. Exactly 1 with no keys.
+inline float pitchGain(const AuthoredSun& a, float livePitchDeg) {
+    if (!a.valid || a.pitch <= 0.0f || a.pitch == livePitchDeg || livePitchDeg <= 0.0f) return 1.0f;
+    const float k = 0.01745329252f;
+    return std::sqrt(std::sin(a.pitch * k) / std::sin(livePitchDeg * k));   // sqrt: movers keep an ambient share the pitch does not touch
 }
 
 // Camera::init, after a save's block has been read: the authored sun a keyed save carries wins over the (already keyed)

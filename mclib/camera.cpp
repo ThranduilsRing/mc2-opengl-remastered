@@ -421,6 +421,8 @@ long Camera::init (FitIniFilePtr cameraFile )
 				cameraFile->readIdUChar("AuthoredAmbientGreen", savedAmb[1]); cameraFile->readIdUChar("AuthoredAmbientBlue", savedAmb[2]);
 			}
 			s_authoredSun = mc2::authored_sun::resolve({lightRed, lightGreen, lightBlue}, {ambientRed, ambientGreen, ambientBlue}, savedHas, savedSun, savedAmb);
+				s_authoredSun.pitch = lightPitch;   // the pitch before the keys; a keyed save carries it (a save without it: no pitch gain)
+				if (savedHas) cameraFile->readIdFloat("AuthoredLightPitch", s_authoredSun.pitch);
 			if (const auto v = visualTuning_sunValue("sunPitch")) lightPitch = dayLightPitch = std::max(*v, 26.0f);
 			if (const auto v = visualTuning_sunValue("sunYaw")) lightYaw = *v;
 			lightDirection.x = cos((lightYaw + 45.0f) * DEGREES_TO_RADS);
@@ -844,6 +846,12 @@ void mc2_FlatLightRatio(float z, const unsigned char liveSun[3], const unsigned 
 	const auto r = mc2::authored_sun::flatRatio(s_authoredSun, {liveSun[0], liveSun[1], liveSun[2]}, {liveAmb[0], liveAmb[1], liveAmb[2]}, z, mc2NightAmbientFloor());
 	out[0] = r[0]; out[1] = r[1]; out[2] = r[2];}
 
+// Authored/live sun elevation gain for the mech and vehicle directional term (1 with no keys).
+float mc2_SunPitchGain(float livePitchDeg)
+{
+	return mc2::authored_sun::pitchGain(s_authoredSun, livePitchDeg);
+}
+
 // Live/authored ambient luma: the sun keys' move of the sky fill (scales the prop SH).
 float mc2_AmbientRatio(const unsigned char liveAmb[3])
 {
@@ -864,6 +872,7 @@ bool Camera::save( FitIniFile* file )
 	if (s_authoredSun.valid)   // the colours before the sun keys, so a load of a keyed save keeps the flat-light ratio
 	{
 		file->writeIdBoolean( "AuthoredSunValid", true );
+		file->writeIdFloat( "AuthoredLightPitch", s_authoredSun.pitch );
 		file->writeIdUChar( "AuthoredLightRed", s_authoredSun.sun[0] ); file->writeIdUChar( "AuthoredLightGreen", s_authoredSun.sun[1] );
 		file->writeIdUChar( "AuthoredLightBlue", s_authoredSun.sun[2] ); file->writeIdUChar( "AuthoredAmbientRed", s_authoredSun.amb[0] );
 		file->writeIdUChar( "AuthoredAmbientGreen", s_authoredSun.amb[1] ); file->writeIdUChar( "AuthoredAmbientBlue", s_authoredSun.amb[2] );

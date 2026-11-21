@@ -136,3 +136,14 @@ TEST_CASE("EnvironmentGpu/prop SH follows the ambient key and is untouched witho
     CHECK(base.hemiSky[3] == 1.0f);
     CHECK(keyed.hemiSky[3] == doctest::Approx(std::pow(r, 2.2f)));
 }
+
+TEST_CASE("EnvironmentGpu/mech sun gain is 1 without keys and sin(authored)/sin(live) with a lower keyed sun") {
+    using namespace mc2::authored_sun;
+    AuthoredSun a = resolve({255, 255, 225}, {71, 71, 78}, false, {}, {});
+    a.pitch = 45.0f;
+    CHECK(pitchGain(a, 45.0f) == 1.0f);                 // no keys
+    CHECK(pitchGain(AuthoredSun{}, 28.0f) == 1.0f);     // night / no mission
+    CHECK(pitchGain(a, 28.0f) == doctest::Approx(std::sqrt(std::sin(45.0f * 0.0174533f) / std::sin(28.0f * 0.0174533f))));
+    a.pitch = 0.0f;
+    CHECK(pitchGain(a, 28.0f) == 1.0f);                 // keyed save without the authored pitch
+}

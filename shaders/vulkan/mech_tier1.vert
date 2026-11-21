@@ -94,6 +94,7 @@ vec3 calc_light(int idx, vec3 normal, vec3 wpos, vec3 base_light, int sunAxisMc2
             vec3 sd = (sunAxisMc2Fix != 0) ? mc2ToRender(uLights.light[idx].light_dir[i].xyz) : uLights.light[idx].light_dir[i].xyz;
             float ndlRaw = dot(normal, -sd);
             float ndl = (fillMode >= 2) ? clamp((ndlRaw + 0.25) / 1.25, 0.0, 1.0) : clamp(ndlRaw, 0.0, 1.0);
+            lc *= (uFrame.environmentAmbient.w > 0.0 ? uFrame.environmentAmbient.w : 1.0);   // sun keys: authored/live elevation gain (1 without keys)
             final += ndl * lc;
             sunLc = max(sunLc, lc);
         } else if (lt == TG_LIGHT_INFINITEWITHFALLOFF) {
