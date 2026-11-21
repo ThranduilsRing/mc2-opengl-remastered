@@ -342,16 +342,16 @@ class TestEngineNormalCook(unittest.TestCase):
             open(os.path.join(self.tmpdir, f'mat{slot}_normal.ktx2'), 'wb').close()
         os.remove(os.path.join(self.tmpdir, 'mat5_normal.tga'))
         calls = []
-        original = ctl.write_bc7_ktx2
-        ctl.write_bc7_ktx2 = lambda *a, **k: calls.append(a)
+        original = ctl.write_rgba8_ktx2
+        ctl.write_rgba8_ktx2 = lambda *a, **k: calls.append(a)
         try:
             results = ctl.cook_engine_normals(self.tmpdir)
         finally:
-            ctl.write_bc7_ktx2 = original
+            ctl.write_rgba8_ktx2 = original
         self.assertEqual(calls, [])          # every existing sidecar is newer than its source
         self.assertEqual([ok for _, ok in results], [True] * 5 + [False])
 
-    def test_cook_is_bc7_with_one_block_stream_per_engine_box_level(self):
+    def test_cook_is_lossless_rgba8_with_the_engine_box_mips(self):
         import struct
         import numpy as np
         from PIL import Image
@@ -359,25 +359,19 @@ class TestEngineNormalCook(unittest.TestCase):
         texels = rng.integers(0, 256, (8, 8, 4), dtype=np.uint8)
         for slot in range(6):
             Image.fromarray(texels, 'RGBA').save(os.path.join(self.tmpdir, f'mat{slot}_normal.tga'))
-        calls = []
-        real = ctl.write_bc7_ktx2
-        ctl.write_bc7_ktx2 = lambda path, levels: (calls.append([lv.copy() for lv in levels]), real(path, levels))
-        try:
-            results = ctl.cook_engine_normals(self.tmpdir)
-        finally:
-            ctl.write_bc7_ktx2 = real
+        results = ctl.cook_engine_normals(self.tmpdir)
         self.assertTrue(all(ok for _, ok in results))
         with open(results[0][0], 'rb') as f:
             data = f.read()
         vk_format, type_size, width, height, _, layers, faces, levels, supercompression = struct.unpack_from('<9I', data, 12)
-        self.assertEqual((vk_format, type_size, width, height, faces, levels, supercompression), (145, 1, 8, 8, 1, 4, 0))
-        # The encoder is fed the engine's own box chain (level 0 = the TGA texel for texel); each level is one 16-byte block per 4x4.
+        self.assertEqual((vk_format, type_size, width, height, faces, levels, supercompression), (37, 1, 8, 8, 1, 4, 0))
+        # Level 0 is the TGA texel for texel; each next level is the (a+b+c+d+2)/4 box of the one above (no renormalisation).
         expect = ctl.box_mips(texels)
         for lvl in range(levels):
-            self.assertEqual(calls[0][lvl].tobytes(), expect[lvl].tobytes())
-            _offset, length, _ = struct.unpack_from('<3Q', data, 80 + 24 * lvl)
-            side = max(1, 8 >> lvl)
-            self.assertEqual(length, ((side + 3) // 4) ** 2 * 16)
+            offset, length, _ = struct.unpack_from('<3Q', data, 80 + 24 * lvl)
+            self.assertEqual(data[offset:offset + length], expect[lvl].tobytes())
+        t = texels.astype(np.uint32)
+        self.assertEqual(expect[1][0, 0].tolist(), [(int(t[0, 0, c]) + int(t[0, 1, c]) + int(t[1, 0, c]) + int(t[1, 1, c]) + 2) // 4 for c in range(4)])
 
 
 if __name__ == '__main__':

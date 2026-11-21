@@ -15,7 +15,7 @@ to a flat normal. The turf keeps a real blade normal for close views and adds th
   swards   tileable band noise of 40..100 world units, gentle undulation that still reads at far mips
 
 Output: data/terrain_layers/grass_turf_normal.ktx2, the same layout as the engine's matN_normal.ktx2 sidecars so it can
-replace detail-normal array layer 1 (MAT_LAYER_GRASS): 2048x2048 BC7 UNORM, full box mip chain,
+replace detail-normal array layer 1 (MAT_LAYER_GRASS): 2048x2048 R8G8B8A8_UNORM, full box mip chain,
 RGB = GL tangent normal, A = height (POM). Deterministic (fixed seed).
 
 Usage: py -3 tools/mc2texcook/cook_grass_turf.py --src G:/mc2-assets/pbr/dl-2026-10-23/ground --out data/terrain_layers
@@ -134,7 +134,7 @@ def cook(src_dir, out_dir, preview=None):
     os.makedirs(out_dir, exist_ok=True)
     dst = os.path.join(out_dir, OUT_NAME)
     staged = dst + ".tmp"
-    ctl.write_bc7_ktx2(staged, ctl.box_mips(texels))
+    ctl.write_rgba8_ktx2(staged, ctl.box_mips(texels))
     os.replace(staged, dst)
     if preview:
         Image.fromarray(texels[..., :3]).save(preview)

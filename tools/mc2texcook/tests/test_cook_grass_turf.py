@@ -69,11 +69,11 @@ class TestGrassTurf(unittest.TestCase):
         t = turf.turf_texels(self.blade, self.dirt, size=self.SIZE)
         with tempfile.TemporaryDirectory() as d:
             p = os.path.join(d, turf.OUT_NAME)
-            ctl.write_bc7_ktx2(p, ctl.box_mips(t))
+            ctl.write_rgba8_ktx2(p, ctl.box_mips(t))
             vk_format, w, h, layers, faces, levels = _ktx2_header(p)
-        # BC7_UNORM (145), square, single image, full mip chain: TerrainFieldStore::setMaterialNormals accepts it next to
+        # R8G8B8A8_UNORM, square, single image, full mip chain: TerrainFieldStore::setMaterialNormals accepts it next to
         # the matN_normal.ktx2 sidecars only with the same format, size and chain.
-        self.assertEqual((vk_format, w, h, layers, faces), (145, self.SIZE, self.SIZE, 0, 1))
+        self.assertEqual((vk_format, w, h, layers, faces), (37, self.SIZE, self.SIZE, 0, 1))
         self.assertEqual(levels, int(np.log2(self.SIZE)) + 1)
         self.assertEqual(turf.SIZE, 2048)   # the engine normal layers are 2048
 
@@ -91,7 +91,7 @@ class TestGrassTurf(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             p = turf.cook(_SRC, d)
             vk_format, w, h, _l, _f, levels = _ktx2_header(p)
-        self.assertEqual((vk_format, w, h, levels), (145, 2048, 2048, 12))
+        self.assertEqual((vk_format, w, h, levels), (37, 2048, 2048, 12))
 
 
 if __name__ == "__main__":

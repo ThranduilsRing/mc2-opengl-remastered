@@ -48,7 +48,7 @@ if str(_HERE) not in sys.path:
 import cook_pbr_maps as pbr  # noqa: E402
 
 # The engine detail-normal layers terrain_tier1.frag samples (MAT_LAYER_ROCK .. MAT_LAYER_MARBLE_CLIFF). Each
-# data/textures/matN_normal.tga gets a matN_normal.ktx2 sidecar next to it (BC7 UNORM, box mip chain), which the
+# data/textures/matN_normal.tga gets a matN_normal.ktx2 sidecar next to it (lossless RGBA8 UNORM, box mip chain), which the
 # terrain loader prefers under the usual sidecar precedence (a mod TGA beats a base KTX).
 ENGINE_NORMAL_SLOTS = range(6)
 
@@ -72,67 +72,34 @@ def box_mips(texels):
     return levels
 
 
-BC7_STRIPS = 4   # texconv encodes on one thread; BC7 blocks are independent, so row strips encode in parallel
-
-
-def bc7_blocks(rgba, texcook, workdir):
-    """BC7 UNORM blocks of an RGBA8 image, row-major. Uniform channel weights (-bc u): the default perceptual weights treat
-    the normal's x/y/z as colour and cost 1.5-2x the angular error on the noisy layers."""
-    import subprocess
-    from PIL import Image
-    h, w = rgba.shape[:2]
-    pw, ph = max(4, w), max(4, h)
-    if (pw, ph) != (w, h):   # a 1x1 / 2x2 level is one block: pad by edge replication
-        import numpy as np
-        rgba = np.pad(rgba, ((0, ph - h), (0, pw - w), (0, 0)), mode='edge')
-    src, out = workdir / 'level.png', workdir / 'level.dds'
-    Image.fromarray(rgba, 'RGBA').save(src)
-    r = subprocess.run([str(texcook.TEXCONV), '-nologo', '-nogpu', '-y', '-dx10', '--ignore-srgb', '-m', '1', '-bc', 'u', '-f', 'BC7_UNORM',
-                        '-ft', 'dds', '-o', str(workdir), str(src)], capture_output=True, text=True, env=dict(os.environ, OMP_NUM_THREADS='1'))
-    if r.returncode or not out.is_file():
-        raise RuntimeError(f'texconv BC7 failed: {r.stdout[-300:]} {r.stderr[-300:]}')
-    data = out.read_bytes()
-    blocks = data[148:]
-    row = (pw // 4) * 16
-    bw, bh = (w + 3) // 4, (h + 3) // 4
-    if (pw, ph) != (w, h):
-        blocks = b''.join(blocks[i * row:i * row + bw * 16] for i in range(bh))
-    if len(blocks) != bw * bh * 16:
-        raise RuntimeError(f'unexpected BC7 payload {len(blocks)} for {w}x{h}')
-    return blocks
-
-
-def encode_bc7_level(level, texcook, workers):
-    """One RGBA8 level -> its BC7 block stream. Big levels are cut into BC7_STRIPS row strips of whole block rows, encoded on
-    separate threads; the strips' block rows concatenate into the level's stream."""
-    import tempfile
-    h = level.shape[0]
-    strips = BC7_STRIPS if h >= 512 and h % (4 * BC7_STRIPS) == 0 else 1
-    rows = h // strips
-
-    def one(i):
-        with tempfile.TemporaryDirectory(prefix='mc2tex-') as d:
-            return bc7_blocks(level[i * rows:(i + 1) * rows], texcook, Path(d))
-    if strips == 1:
-        return one(0)
-    return b''.join(workers.map(one, range(strips)))
-
-
-def write_bc7_ktx2(path, levels):
-    """BC7 UNORM (linear) KTX2 holding the given RGBA8 mip levels (largest first), encoded per level by texcook (alpha kept)."""
-    sys.path.insert(0, str(_HERE.parents[1]))
-    from concurrent.futures import ThreadPoolExecutor
-    from tools.content_pipeline import texcook
+def write_rgba8_ktx2(path, levels):
+    """Stored (no supercompression) R8G8B8A8_UNORM, linear transfer KTX2 holding the given mip levels (largest first)."""
+    import struct
+    n = len(levels)
     h, w = levels[0].shape[:2]
-    with ThreadPoolExecutor(BC7_STRIPS) as workers:
-        blocks = [encode_bc7_level(lv, texcook, workers) for lv in levels]
+    dfd = struct.pack('<7I', 92, 0, 2 | (88 << 16), 1 | (1 << 8) | (1 << 16), 0, 4, 0)
+    for chan, ctype in enumerate((0, 1, 2, 15)):   # R, G, B, A; 8 bits each, unsigned normalised 0..255
+        dfd += struct.pack('<4I', (chan * 8) | (7 << 16) | (ctype << 24), 0, 0, 255)
+    assert len(dfd) == 92
+    dfd_off = 80 + 24 * n
+    # Level data is stored smallest first, the index lists the largest first.
+    offsets = [0] * n
+    cursor = dfd_off + len(dfd)
+    for i in range(n - 1, -1, -1):
+        offsets[i] = cursor
+        cursor += levels[i].nbytes
+    head = b'\xabKTX 20\xbb\r\n\x1a\n' + struct.pack('<9I', 37, 1, w, h, 0, 0, 1, n, 0)
+    head += struct.pack('<4I2Q', dfd_off, len(dfd), 0, 0, 0, 0)
+    index = b''.join(struct.pack('<3Q', offsets[i], levels[i].nbytes, levels[i].nbytes) for i in range(n))
     with open(path, 'wb') as f:
-        f.write(texcook.write_ktx2(texcook.VK_BC7_UNORM, w, h, blocks))
+        f.write(head + index + dfd)
+        for i in range(n - 1, -1, -1):
+            f.write(levels[i].tobytes())
 
 
 def cook_engine_normals(src_dir, out_dir=None, ktx_exe=None, force=False):
-    """matN_normal.tga -> matN_normal.ktx2 for the sampled slots: BC7 UNORM, every level encoded from the mip chain the TGA
-    import builds (alpha = height kept). An output newer than its source is kept.
+    """matN_normal.tga -> matN_normal.ktx2 for the sampled slots, lossless: RGBA8 UNORM with the mip chain the TGA import
+    builds, so the sidecar is texel-identical to importing the TGA. An output newer than its source is kept.
     Returns [(ktx2 path, ok)] per slot."""
     out_dir = out_dir or src_dir
     os.makedirs(out_dir, exist_ok=True)
@@ -147,7 +114,7 @@ def cook_engine_normals(src_dir, out_dir=None, ktx_exe=None, force=False):
             results.append((dst, True))
             continue
         staged = dst + '.tmp'
-        write_bc7_ktx2(staged, box_mips(engine_normal_texels(src)))
+        write_rgba8_ktx2(staged, box_mips(engine_normal_texels(src)))
         os.replace(staged, dst)
         results.append((dst, True))
     return results
