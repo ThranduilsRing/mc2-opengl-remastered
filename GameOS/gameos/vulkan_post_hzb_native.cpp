@@ -227,7 +227,7 @@ void parity_check(gosPostProcess::VkPostHzbNative* s) {
     if (vis && mips) {
         std::vector<size_t> offset(static_cast<size_t>(s->mipCount));
         size_t at = 0;
-        for (int l = 0; l < s->mipCount; ++l) { offset[static_cast<size_t>(l)] = at; at += static_cast<size_t>(s->levels[static_cast<size_t>(l)].w) * static_cast<size_t>(s->levels[static_cast<size_t>(l)].h); }
+        for (int l = 1; l < s->mipCount; ++l) { offset[static_cast<size_t>(l)] = at; at += static_cast<size_t>(s->levels[static_cast<size_t>(l)].w) * static_cast<size_t>(s->levels[static_cast<size_t>(l)].h); }
         const auto fetch = [&](int l, int x, int y) { return mips[offset[static_cast<size_t>(l)] + static_cast<size_t>(y) * static_cast<size_t>(s->levels[static_cast<size_t>(l)].w) + static_cast<size_t>(x)]; };
         ++g_parity.checks;
         for (size_t i = 0; i < pc.ids.size(); ++i) {
@@ -313,7 +313,8 @@ bool build_prop_cull(gosPostProcess::VkPostHzbNative& state, uint32_t count) {
     if (s->visibility) ectx.retire(std::move(s->visibility), s->visibilityBytes);
     for (auto& set : s->cullSet) set = VK_NULL_HANDLE;
     // The shader samples a fixed 16-slot level array; a deeper pyramid cannot be addressed.
-    if (s->mipCount < 1 || s->mipCount > static_cast<int>(kCullMaxLevels)) return false;
+    // Level 0 has no image (the cull floors its lod at 1), so a one-level pyramid has nothing to sample: decline HZB.
+    if (s->mipCount < 2 || s->mipCount > static_cast<int>(kCullMaxLevels)) return false;
     if (!make_buffer(s, static_cast<uint64_t>(s->cullCapacity+1)*sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, s->visibility, "hzb.visibility")) return false;
     s->visibilityBytes = static_cast<uint64_t>(s->cullCapacity+1)*sizeof(uint32_t);
     // A recycled Vulkan handle must not leave consumers bound to the old mask.
@@ -349,10 +350,10 @@ bool build_prop_cull(gosPostProcess::VkPostHzbNative& state, uint32_t count) {
     VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
     ai.descriptorPool = s->cullPool.get(); ai.descriptorSetCount = mc2vk::kMaxFramesInFlight; ai.pSetLayouts = layouts;
     if (MC2_VK_ALLOC_SETS(s->device,&ai,s->cullSet) != VK_SUCCESS) return false;
-    // Slots past the real mip count repeat the last level (the shader never selects them).
+    // Slot 0 repeats level 1 (level 0 is never built; lod >= 1); slots past the real mip count repeat the last level.
     VkDescriptorImageInfo images[kCullMaxLevels];
     for (uint32_t i = 0; i < kCullMaxLevels; ++i)
-        images[i] = {s->depthSampler.get(), s->levels[(std::min)(i, static_cast<uint32_t>(s->mipCount) - 1)].view.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+        images[i] = {s->depthSampler.get(), s->levels[(std::max)(1u, (std::min)(i, static_cast<uint32_t>(s->mipCount) - 1))].view.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
     for (uint32_t slot = 0; slot < mc2vk::kMaxFramesInFlight; ++slot) {
         VkDescriptorBufferInfo buffers[] = {{s->visibility.get(),0,VK_WHOLE_SIZE},{},{s->localBounds.get(),0,VK_WHOLE_SIZE}};
         VkWriteDescriptorSet writes[4] = {};
@@ -502,6 +503,10 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
             auto& lv = s->levels[static_cast<size_t>(level)];
             lv.w = lw;
             lv.h = lh;
+            if (level == 0) {   // size ladder only: the lod floor of 1 means nothing reads a level-0 copy of scene depth
+                lw = (std::max)((lw + 1) / 2, 1); lh = (std::max)((lh + 1) / 2, 1);
+                continue;
+            }
 
             VkImageCreateInfo ici{};
             ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -552,11 +557,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
             }
 
             HzbLevelParams params{};
-            if (level == 0) {
-                params.srcTexel[0] = 1.0f / static_cast<float>(w);
-                params.srcTexel[1] = 1.0f / static_cast<float>(h);
-                params.reduce = 0;
-            } else {
+            {   // level 1 reduces scene depth (its source is depthSampleView, sized w x h = levels[0])
                 const auto& prev = s->levels[static_cast<size_t>(level) - 1];
                 params.srcTexel[0] = 1.0f / static_cast<float>(prev.w);
                 params.srcTexel[1] = 1.0f / static_cast<float>(prev.h);
@@ -608,7 +609,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
         }
 
         const VkDescriptorSetLayout dslHandle = s->dsl.get();
-        for (int level = 0; level < mipCount; ++level) {
+        for (int level = 1; level < mipCount; ++level) {
             auto& lv = s->levels[static_cast<size_t>(level)];
             VkDescriptorSetAllocateInfo dsai{};
             dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -623,7 +624,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
 
             VkDescriptorImageInfo srcInfo{};
             srcInfo.sampler = s->depthSampler.get();
-            srcInfo.imageView = (level == 0) ? s->depthSampleView.get()
+            srcInfo.imageView = (level == 1) ? s->depthSampleView.get()
                                              : s->levels[static_cast<size_t>(level) - 1].view.get();
             srcInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
             VkDescriptorBufferInfo uboInfo{lv.ubo.get(), 0, VK_WHOLE_SIZE};
@@ -825,7 +826,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
     VkDeviceSize visOffset = 0;
     if (parityFrame && s->mipCount <= 64) {
         VkDeviceSize bytes = 0;
-        for (int l = 0; l < s->mipCount; ++l) {
+        for (int l = 1; l < s->mipCount; ++l) {   // level 0 has no image
             parityOffset[l] = bytes;
             bytes += static_cast<VkDeviceSize>(s->levels[static_cast<size_t>(l)].w) * static_cast<VkDeviceSize>(s->levels[static_cast<size_t>(l)].h) * sizeof(float);
         }
@@ -880,7 +881,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
 
     // One pipeline for every level (the same render pass): bound once, it persists across the per-level render passes of this command buffer.
     mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
-    for (int level = 0; level < s->mipCount; ++level) {
+    for (int level = 1; level < s->mipCount; ++level) {   // level 0 is not built: level 1 reduces scene depth directly
         auto& lv = s->levels[static_cast<size_t>(level)];
         VkRenderPassBeginInfo rbi{};
         rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -939,11 +940,11 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
 
     if (parityRecord) {
         // Pyramid levels to a host-readable buffer (check frames only), then back to the sampled layout.
-        for (int l = 0; l < s->mipCount; ++l)
+        for (int l = 1; l < s->mipCount; ++l)
             barrier(s->levels[static_cast<size_t>(l)].image.get(), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_TRANSFER_READ_BIT,
                     VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
-        for (int l = 0; l < s->mipCount; ++l) {
+        for (int l = 1; l < s->mipCount; ++l) {
             const auto& lv = s->levels[static_cast<size_t>(l)];
             VkBufferImageCopy region{};
             region.bufferOffset = parityOffset[l];
@@ -951,7 +952,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
             region.imageExtent = {static_cast<uint32_t>(lv.w), static_cast<uint32_t>(lv.h), 1};
             vkCmdCopyImageToBuffer(cb, lv.image.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, s->parityMips.get(), 1, &region);
         }
-        for (int l = 0; l < s->mipCount; ++l)
+        for (int l = 1; l < s->mipCount; ++l)
             barrier(s->levels[static_cast<size_t>(l)].image.get(), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_SHADER_READ_BIT,
                     VK_PIPELINE_STAGE_TRANSFER_BIT,

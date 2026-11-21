@@ -331,3 +331,31 @@ TEST_CASE("hzb ref: side planes reject near-straddling boxes (props-cull-sidepla
     // Just outside the plane by less than the 4 px pad stays kept; leaf sway widens the pad.
     CHECK(project(boxNdc(0, .1f, -1.05f, -1.01f, -1, 1), m).keep == 1);
 }
+
+TEST_CASE("hzb ref: lod floor of 1 (level 0 is not built) and it only keeps more") {
+    // Boxes clamped at each screen edge (extent <= 1 would have picked lod 0), and tiny boxes inside.
+    for (const auto& b : {boxNdc(0.99f, 1.0f, 0.0f, 0.01f), boxNdc(-1.0f, -0.99f, 0.0f, 0.01f),
+                          boxNdc(0.0f, 0.01f, 0.99f, 1.0f), boxNdc(0.0f, 0.01f, -1.0f, -0.99f), boxPixels(1.0f)}) {
+        const auto p = project(b);
+        if (p.keep == 0 && p.tiny == 0) CHECK(p.lod >= 1);
+    }
+    // Random pyramid and boxes: whatever the new rule hides, the old rule (lod from 0) also hides.
+    uint32_t seed = 12345u;
+    const auto rnd = [&]() { seed = seed * 1664525u + 1013904223u; return float(seed >> 8) / float(1u << 24); };
+    Pyramid py(0.0f);
+    for (int y = 0; y < H; ++y) for (int x = 0; x < W; ++x) py.set(x, y, rnd() < 0.3f ? 0.0f : 0.9f);
+    py.reduceFrom();
+    int hiddenNew = 0;
+    for (int i = 0; i < 2000; ++i) {
+        const float x0 = rnd() * 2 - 1, y0 = rnd() * 2 - 1;
+        auto p = project(boxNdc(x0, (std::min)(1.0f, x0 + rnd() * 0.2f), y0, (std::min)(1.0f, y0 + rnd() * 0.2f)));
+        if (p.keep != 0) continue;
+        CHECK(p.lod >= 1);
+        auto old = p;
+        old.lod = 0;
+        const float extent = (std::max)(p.pixels[2] - p.pixels[0], p.pixels[3] - p.pixels[1]);
+        while (old.lod + 1 < uint32_t(LEVELS) && float(1u << old.lod) < extent) ++old.lod;
+        if (hidden(p, py)) { ++hiddenNew; CHECK(hidden(old, py)); }
+    }
+    CHECK(hiddenNew > 0);
+}
