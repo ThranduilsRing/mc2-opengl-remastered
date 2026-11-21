@@ -10424,6 +10424,20 @@
    "count": 1
   },
   {
+   "tag": "SUN_LIGHT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "mission",
+    "from_save",
+    "dir",
+    "sun",
+    "ambient",
+    "ambient_scaled"
+   ],
+   "count": 1
+  },
+  {
    "tag": "SUPPORT_CRAFT",
    "ver": -1,
    "stream": "stderr",

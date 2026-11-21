@@ -2483,6 +2483,7 @@
    "LG12a": 2
   },
   "mclib/assimp_importer.h": {},
+  "mclib/authored_sun.h": {},
   "mclib/battle_bench_sink.h": {},
   "mclib/battle_bench_wait.h": {},
   "mclib/bdactor.cpp": {
@@ -3476,7 +3477,7 @@
    "LG20": 1
   }
  },
- "head": "0ba013ec0",
+ "head": "0eebcda86",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
