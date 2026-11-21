@@ -436,7 +436,8 @@ ResidentTextureRef TextureResidency::acquirePixels(uint32_t width,uint32_t heigh
         residents_.emplace(handle.raw(),Resident{{},slot,true,layers,arrayView});
         const auto version=service_.contentVersion(handle);
         residents_.at(handle.raw()).contentVersion=version;
-        worker_.request(handle,[image=buildImage(),width,height,layers]() mutable -> std::shared_ptr<const RenderCore::KtxImage> {
+        const bool srgbChain=format==VK_FORMAT_R8G8B8A8_SRGB;
+        worker_.request(handle,[image=buildImage(),width,height,layers,srgbChain]() mutable -> std::shared_ptr<const RenderCore::KtxImage> {
         std::vector<uint8_t> current=image.pixels;
         uint32_t w=width,h=height;
         while (w>1 || h>1) {
@@ -444,7 +445,7 @@ ResidentTextureRef TextureResidency::acquirePixels(uint32_t width,uint32_t heigh
             const size_t layerBytes=static_cast<size_t>(w)*h*4;
             for (uint32_t layer=0;layer<layers;++layer) {
                 std::vector<uint8_t> level(current.begin()+layer*layerBytes,current.begin()+(layer+1)*layerBytes);
-                auto down=mc2tex::boxDownsampleRgba8(level,w,h);
+                auto down=srgbChain ? mc2tex::boxDownsampleRgba8Srgb(level,w,h) : mc2tex::boxDownsampleRgba8(level,w,h);
                 if (down.empty()) return {};
                 next.insert(next.end(),down.begin(),down.end());
             }

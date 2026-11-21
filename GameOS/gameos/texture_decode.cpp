@@ -5,6 +5,8 @@
 #include "../../RenderCore/CursorImage.h"
 
 #include <algorithm>
+#include <array>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <span>
@@ -257,6 +259,42 @@ std::vector<uint8_t> decodeBc7(const std::vector<uint8_t>& blocks, uint32_t widt
     std::vector<uint8_t> rgba;
     if (!RenderCore::ktxDecodeBc7ToRgba8(img, 0, rgba)) return {};
     return rgba;
+}
+
+std::vector<uint8_t> boxDownsampleRgba8Srgb(const std::vector<uint8_t>& src, uint32_t width, uint32_t height) {
+    if (width == 0 || height == 0 || width > RenderCore::kKtxMaxEdge || height > RenderCore::kKtxMaxEdge ||
+        src.size() != size_t{width} * height * 4u)
+        return {};
+    static const std::array<float, 256> toLinear = [] {
+        std::array<float, 256> t{};
+        for (int i = 0; i < 256; ++i) {
+            const float c = static_cast<float>(i) / 255.0f;
+            t[i] = c <= 0.04045f ? c / 12.92f : std::pow((c + 0.055f) / 1.055f, 2.4f);
+        }
+        return t;
+    }();
+    const auto encode = [](float v) {
+        v = std::clamp(v, 0.0f, 1.0f);
+        const float c = v <= 0.0031308f ? v * 12.92f : 1.055f * std::pow(v, 1.0f / 2.4f) - 0.055f;
+        return static_cast<uint8_t>(std::lround(c * 255.0f));
+    };
+    const uint32_t dw = mipExtent(width, 1), dh = mipExtent(height, 1);
+    std::vector<uint8_t> dst(size_t{dw} * dh * 4u);
+    for (uint32_t y = 0; y < dh; ++y) {
+        const uint32_t y0 = 2u * y < height ? 2u * y : height - 1u;
+        const uint32_t y1 = y0 + 1u < height ? y0 + 1u : y0;
+        for (uint32_t x = 0; x < dw; ++x) {
+            const uint32_t x0 = 2u * x < width ? 2u * x : width - 1u;
+            const uint32_t x1 = x0 + 1u < width ? x0 + 1u : x0;
+            const uint8_t* p[4] = {&src[(size_t{y0} * width + x0) * 4u], &src[(size_t{y0} * width + x1) * 4u],
+                                   &src[(size_t{y1} * width + x0) * 4u], &src[(size_t{y1} * width + x1) * 4u]};
+            uint8_t* o = &dst[(size_t{y} * dw + x) * 4u];
+            for (int ch = 0; ch < 3; ++ch)
+                o[ch] = encode(0.25f * (toLinear[p[0][ch]] + toLinear[p[1][ch]] + toLinear[p[2][ch]] + toLinear[p[3][ch]]));
+            o[3] = static_cast<uint8_t>((p[0][3] + p[1][3] + p[2][3] + p[3][3] + 2u) / 4u);
+        }
+    }
+    return dst;
 }
 
 std::vector<uint8_t> boxDownsampleRgba8(const std::vector<uint8_t>& src, uint32_t width, uint32_t height) {
