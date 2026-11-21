@@ -1735,6 +1735,7 @@ flags:
     default: true
     rule: Lead0Kill
     owner: code
+    retire_by: 2026-12-31
     doc: "Temporary kill-switch: MC2_PAK=0 forces the FST archives (no pak mount). Default ON. Remove at M5."
     smoke_passthrough: true
     verified: true
