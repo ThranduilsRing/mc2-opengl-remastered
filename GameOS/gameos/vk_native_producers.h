@@ -108,7 +108,7 @@ private:
     uint32_t selfTestLighting();
     bool makeDevice(OwnedBuffer& buf, VkDeviceSize size, VkBufferUsageFlags usage, const char* name, int i0 = -1);
     void writeAll();
-    // Points slot `par`'s frame-ring bindings (lights and params) at `buffer`.
+    // Points slot `par`'s frame-ring bindings (params) at `buffer`.
     void syncInputs(uint32_t par, VkBuffer buffer, VkDeviceSize range);
 
     bool ready_ = false;
