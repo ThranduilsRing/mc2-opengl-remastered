@@ -136,6 +136,9 @@ public:
     // the extensions and feature bits are enabled only for the parts the device lists; see profile::selectRt and the `[VK_RT v1]` line.
     const profile::RtSelection& rt() const { return rtSel_; }
     const profile::RtCaps& rtCaps() const { return rtCaps_; }
+    // The optional extension tier actually enabled on this device (all parts 0 after an empty selection or a failed first device creation); no consumer yet.
+    // See profile::selectExt and the `[VK_EXT v1]` line.
+    const profile::ExtSelection& ext() const { return extSel_; }
     VkDriverId driverId() const { return driverId_; }   // VK_DRIVER_ID_MAX_ENUM when the 1.2 driver query was unavailable
     // True when the optional features FidelityFX FSR needs were enabled (shaderInt16, shaderFloat16, 16-bit storage, separateDepthStencilLayouts).
     bool temporalFeaturesEnabled() const { return temporalFeatures_; }
@@ -304,6 +307,7 @@ private:
     profile::Evaluation profile_ = [] { profile::Evaluation e; e.accepted = false; return e; }();   // the chosen device's verdict (see profile())
     profile::RtSelection rtSel_;   // the ray-tracing tier (see rt()); owns the extension name strings devExts points at
     profile::RtCaps rtCaps_;
+    profile::ExtSelection extSel_;   // the optional extension tier (see ext()); owns the extension name strings devExts points at
     VkDriverId driverId_ = VK_DRIVER_ID_MAX_ENUM;
     VkSemaphore      gfxTimeline_       = VK_NULL_HANDLE;   // the graphics queue's timeline: signalled with CompletionTracker::noteSubmit values
     mutable CompletionTracker tracker_;

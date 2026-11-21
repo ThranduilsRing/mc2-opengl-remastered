@@ -105,6 +105,133 @@ void profileLog(std::string_view line) {
     std::fflush(stderr);
 }
 
+// VK_EXT_host_image_copy round trip on a 4x4 RGBA8 image: layout transition, memory to image, image to memory, byte compare. Everything is destroyed again.
+bool hostImageCopyRoundTrip(VkDevice dev, VkPhysicalDevice pd, std::string& detail) {
+    VkImageCreateInfo ici{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
+    ici.imageType = VK_IMAGE_TYPE_2D;
+    ici.format = VK_FORMAT_R8G8B8A8_UNORM;
+    ici.extent = {4, 4, 1};
+    ici.mipLevels = 1;
+    ici.arrayLayers = 1;
+    ici.samples = VK_SAMPLE_COUNT_1_BIT;
+    ici.tiling = VK_IMAGE_TILING_OPTIMAL;
+    ici.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_HOST_TRANSFER_BIT;
+    ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    VkImage img = VK_NULL_HANDLE;
+    VkDeviceMemory mem = VK_NULL_HANDLE;
+    bool ok = false;
+    if (vkCreateImage(dev, &ici, nullptr, &img) != VK_SUCCESS) {
+        detail = "vkCreateImage failed";
+    } else {
+        VkMemoryRequirements req{};
+        vkGetImageMemoryRequirements(dev, img, &req);
+        VkPhysicalDeviceMemoryProperties mp{};
+        vkGetPhysicalDeviceMemoryProperties(pd, &mp);
+        uint32_t type = UINT32_MAX;
+        for (uint32_t i = 0; i < mp.memoryTypeCount && type == UINT32_MAX; ++i)
+            if ((req.memoryTypeBits & (1u << i)) && (mp.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) type = i;
+        for (uint32_t i = 0; i < mp.memoryTypeCount && type == UINT32_MAX; ++i)
+            if (req.memoryTypeBits & (1u << i)) type = i;
+        VkMemoryAllocateInfo mai{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
+        mai.allocationSize = req.size;
+        mai.memoryTypeIndex = type;
+        if (type == UINT32_MAX || vkAllocateMemory(dev, &mai, nullptr, &mem) != VK_SUCCESS || vkBindImageMemory(dev, img, mem, 0) != VK_SUCCESS) {
+            detail = "memory allocate/bind failed";
+        } else {
+            const VkImageSubresourceRange range{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+            VkHostImageLayoutTransitionInfo ti{VK_STRUCTURE_TYPE_HOST_IMAGE_LAYOUT_TRANSITION_INFO, nullptr, img, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, range};
+            uint8_t src[64], dst[64];
+            for (uint32_t i = 0; i < 64; ++i) { src[i] = static_cast<uint8_t>(i * 7 + 3); dst[i] = 0xEE; }
+            const VkImageSubresourceLayers layers{VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+            VkMemoryToImageCopy up{VK_STRUCTURE_TYPE_MEMORY_TO_IMAGE_COPY, nullptr, src, 0, 0, layers, {0, 0, 0}, {4, 4, 1}};
+            VkCopyMemoryToImageInfo upInfo{VK_STRUCTURE_TYPE_COPY_MEMORY_TO_IMAGE_INFO, nullptr, 0, img, VK_IMAGE_LAYOUT_GENERAL, 1, &up};
+            VkImageToMemoryCopy down{VK_STRUCTURE_TYPE_IMAGE_TO_MEMORY_COPY, nullptr, dst, 0, 0, layers, {0, 0, 0}, {4, 4, 1}};
+            VkCopyImageToMemoryInfo downInfo{VK_STRUCTURE_TYPE_COPY_IMAGE_TO_MEMORY_INFO, nullptr, 0, img, VK_IMAGE_LAYOUT_GENERAL, 1, &down};
+            if (vkTransitionImageLayoutEXT(dev, 1, &ti) != VK_SUCCESS) detail = "vkTransitionImageLayoutEXT failed";
+            else if (vkCopyMemoryToImageEXT(dev, &upInfo) != VK_SUCCESS) detail = "vkCopyMemoryToImageEXT failed";
+            else if (vkCopyImageToMemoryEXT(dev, &downInfo) != VK_SUCCESS) detail = "vkCopyImageToMemoryEXT failed";
+            else if (std::memcmp(src, dst, sizeof(src)) != 0) detail = "byte compare mismatch";
+            else { detail = "4x4 rgba8 round trip 64 bytes equal"; ok = true; }
+        }
+    }
+    if (img) vkDestroyImage(dev, img, nullptr);
+    if (mem) vkFreeMemory(dev, mem, nullptr);
+    return ok;
+}
+
+// `[VK_EXT_SELFTEST v1] part=<p> result=PASS|FAIL|SKIP detail=...` per part, once after device creation when MC2_DIAG_TAGS has VK_EXT: the entry points of every
+// selected part resolve, FSR reports at least 1x1 and 2x2, and host image copy works. A part that is not selected is SKIP with its reason. No pipelines, no shaders.
+void extSelfTest(VkDevice dev, VkPhysicalDevice pd, const profile::ExtSelection& sel) {
+    struct Entry { const char* name; const void* fn; };
+    auto entries = [](std::initializer_list<Entry> list, std::string& detail) {
+        bool all = true;
+        for (const Entry& e : list) {
+            detail += std::string(detail.empty() ? "" : ",") + e.name + (e.fn ? "=ok" : "=null");
+            all = all && e.fn != nullptr;
+        }
+        return all;
+    };
+    for (size_t i = 0; i < 9; ++i) {
+        const std::string part(profile::kExtPartNames[i]);
+        std::string detail;
+        bool ok = true;
+        const char* result = "PASS";
+        if (!sel.part(i)) {
+            result = "SKIP";
+            std::string why;
+            for (size_t pos = 0; pos < sel.reason.size();) {
+                size_t end = sel.reason.find(',', pos);
+                if (end == std::string::npos) end = sel.reason.size();
+                const std::string tok = sel.reason.substr(pos, end - pos);
+                pos = end + 1;
+                if (tok.rfind(part + ":", 0) == 0 || tok == "device_create_failed") why += std::string(why.empty() ? "" : ",") + tok;
+            }
+            detail = why.empty() ? "not selected" : why;
+        } else if (part == "mesh") {
+            ok = entries({{"vkCmdDrawMeshTasksEXT", reinterpret_cast<const void*>(vkCmdDrawMeshTasksEXT)}}, detail);
+        } else if (part == "fsr") {
+            ok = entries({{"vkCmdSetFragmentShadingRateKHR", reinterpret_cast<const void*>(vkCmdSetFragmentShadingRateKHR)},
+                          {"vkGetPhysicalDeviceFragmentShadingRatesKHR", reinterpret_cast<const void*>(vkGetPhysicalDeviceFragmentShadingRatesKHR)}}, detail);
+            if (ok) {
+                uint32_t n = 0;
+                vkGetPhysicalDeviceFragmentShadingRatesKHR(pd, &n, nullptr);
+                std::vector<VkPhysicalDeviceFragmentShadingRateKHR> rates(n, VkPhysicalDeviceFragmentShadingRateKHR{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_KHR});
+                if (n) vkGetPhysicalDeviceFragmentShadingRatesKHR(pd, &n, rates.data());
+                bool has11 = false, has22 = false;
+                for (uint32_t k = 0; k < n && k < rates.size(); ++k) {
+                    has11 = has11 || (rates[k].fragmentSize.width == 1 && rates[k].fragmentSize.height == 1);
+                    has22 = has22 || (rates[k].fragmentSize.width == 2 && rates[k].fragmentSize.height == 2);
+                }
+                detail += ",rates=" + std::to_string(n) + (has11 ? ",1x1=ok" : ",1x1=missing") + (has22 ? ",2x2=ok" : ",2x2=missing");
+                ok = has11 && has22;
+            }
+        } else if (part == "host_copy") {
+            ok = entries({{"vkCopyMemoryToImageEXT", reinterpret_cast<const void*>(vkCopyMemoryToImageEXT)},
+                          {"vkCopyImageToMemoryEXT", reinterpret_cast<const void*>(vkCopyImageToMemoryEXT)},
+                          {"vkTransitionImageLayoutEXT", reinterpret_cast<const void*>(vkTransitionImageLayoutEXT)}}, detail);
+            if (ok) {
+                std::string rt;
+                ok = hostImageCopyRoundTrip(dev, pd, rt);
+                detail += "," + rt;
+            }
+        } else if (part == "pipeline_binary") {
+            ok = entries({{"vkCreatePipelineBinariesKHR", reinterpret_cast<const void*>(vkCreatePipelineBinariesKHR)},
+                          {"vkDestroyPipelineBinaryKHR", reinterpret_cast<const void*>(vkDestroyPipelineBinaryKHR)},
+                          {"vkGetPipelineKeyKHR", reinterpret_cast<const void*>(vkGetPipelineKeyKHR)}}, detail);
+        } else if (part == "dgc") {
+            ok = entries({{"vkCmdExecuteGeneratedCommandsEXT", reinterpret_cast<const void*>(vkCmdExecuteGeneratedCommandsEXT)},
+                          {"vkCreateIndirectCommandsLayoutEXT", reinterpret_cast<const void*>(vkCreateIndirectCommandsLayoutEXT)}}, detail);
+        } else if (part == "heap") {
+            ok = entries({{"vkWriteResourceDescriptorsEXT", reinterpret_cast<const void*>(vkWriteResourceDescriptorsEXT)},
+                          {"vkCmdBindResourceHeapEXT", reinterpret_cast<const void*>(vkCmdBindResourceHeapEXT)}}, detail);
+        } else {
+            detail = "feature bit enabled, no device entry points";   // quad, gpl, csd
+        }
+        if (!ok) result = "FAIL";
+        profileLog("[VK_EXT_SELFTEST v1] part=" + part + " result=" + result + " detail=" + detail);
+    }
+}
+
 // The single process-wide shared context. It is heap-allocated and deliberately released from its unique_ptr at birth, so no destructor of any duration
 // ever runs: a static-duration object would run destroy() (island teardown, light feed) during static destruction, when the other process-wide owners it
 // depends on may already be gone. The explicit destroy() at engine shutdown is the only teardown; a process that exits any other way leaves the device
@@ -482,7 +609,56 @@ bool VulkanContext::init(bool wantPresent) {
 
     // ---- device profile: the first discrete device that meets every REQUIRED item, else the first device that does; if none does, the engine
     // refuses Vulkan (fatal, no GL fallback) and the refused device's line says which items it lacks ----
+    const auto uuidOf = [](const profile::DeviceCaps& cp) {
+        char b[40]; const uint8_t* u = cp.deviceUuid;
+        std::snprintf(b, sizeof(b), "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+            u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], u[8], u[9], u[10], u[11], u[12], u[13], u[14], u[15]);
+        return std::string(b);
+    };
+    // Makes the instance again with `key` as the application / engine version (0 = none) and picks the device `want` again: same UUID and same driver
+    // (one GPU can be exposed by two drivers). Returns false when the instance or the device could not be made; the caller then falls back to key 0.
+    uint32_t cacheKeyInEffect = 0;   // the key VkApplicationInfo carries now
+    const auto remakeInstance = [&](uint32_t key, const profile::DeviceCaps& want) -> bool {
+        if (instance_ != VK_NULL_HANDLE) {
+            if (messenger_ != VK_NULL_HANDLE) {
+                auto pfnDestroy = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance_, "vkDestroyDebugUtilsMessengerEXT"));
+                if (pfnDestroy) pfnDestroy(instance_, messenger_, nullptr);
+                messenger_ = VK_NULL_HANDLE;
+            }
+            vkDestroyInstance(instance_, nullptr);
+            instance_ = VK_NULL_HANDLE;
+        }
+        app.applicationVersion = key;
+        app.engineVersion = key;
+        if (vkCreateInstance(&ici, nullptr, &instance_) != VK_SUCCESS) { instance_ = VK_NULL_HANDLE; return false; }
+        volkLoadInstance(instance_);
+        if (wantValidation) {
+            auto pfnCreate = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance_, "vkCreateDebugUtilsMessengerEXT"));
+            if (pfnCreate && pfnCreate(instance_, &mci, nullptr, &messenger_) != VK_SUCCESS) {
+                messenger_ = VK_NULL_HANDLE;
+                ctxlog("validation messenger could not be made again after the instance was re-created (cache key %08x); this run is not validated", key);
+            }
+        }
+        uint32_t n2 = 0;
+        vkEnumeratePhysicalDevices(instance_, &n2, nullptr);
+        std::vector<VkPhysicalDevice> devs2(n2);
+        vkEnumeratePhysicalDevices(instance_, &n2, devs2.data());
+        const std::string wantUuid = uuidOf(want);
+        VkPhysicalDevice again = VK_NULL_HANDLE, sameUuid = VK_NULL_HANDLE;
+        for (auto pd2 : devs2) {
+            const profile::DeviceCaps c2 = profile::gather(pd2, instanceApi);
+            if (uuidOf(c2) != wantUuid) continue;
+            if (!sameUuid) sameUuid = pd2;
+            if (c2.driverId == want.driverId) { again = pd2; break; }
+        }
+        if (!again && key == 0) again = sameUuid;   // the plain config must always find its device; a driver-id mismatch is tolerated only here
+        if (!again) return false;
+        phys_ = again;
+        cacheKeyInEffect = key;
+        return true;
+    };
     profile::DeviceCaps caps;
+    std::string extDeny;   // MC2_VK_EXT_DENY, kept for the second `[VK_EXT v1]` line when device creation has to retry without the tier
     {
         struct Candidate { VkPhysicalDevice pd; profile::DeviceCaps caps; profile::Evaluation ev; std::string name; bool discrete; uint64_t vram; };
         std::vector<Candidate> cands;
@@ -500,12 +676,6 @@ bool VulkanContext::init(bool wantPresent) {
         }
         const Candidate* pick = nullptr;
         const auto lower = [](std::string v) { for (char& ch : v) ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch))); return v; };
-        const auto uuidOf = [](const profile::DeviceCaps& cp) {
-            char b[40]; const uint8_t* u = cp.deviceUuid;
-            std::snprintf(b, sizeof(b), "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
-                u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], u[8], u[9], u[10], u[11], u[12], u[13], u[14], u[15]);
-            return std::string(b);
-        };
         // MC2_VK_DEVICE: the harness routes pass/fail runs to a named device (the loader ignores VK_LOADER_DRIVERS_SELECT here).
         // "name@uuid" additionally pins the device UUID (two identical cards share a name); no hint = the default pick (owner-started runs).
         std::string hint = mc2::gate::str<"MC2_VK_DEVICE">();
@@ -547,6 +717,26 @@ bool VulkanContext::init(bool wantPresent) {
         rtSel_ = profile::selectRt(caps);
         rtCaps_ = caps.rt;
         profileLog(profile::formatRtLine(caps, rtSel_));
+        extDeny = mc2::gate::str<"MC2_VK_EXT_DENY">();
+        extSel_ = profile::selectExt(caps, extDeny);
+        profileLog(profile::formatExtLine(caps, extSel_, extDeny));
+        // Cache key: some drivers key their on-disk shader cache on the application and ignore the device config, so a run whose tier parts differ from
+        // another run of the same exe reuses binaries built for the other config. The tier is known only after the device is picked, so the instance
+        // is made again with the part-set fingerprint as the application / engine version (0 = no part, the first instance stands) and the same device is
+        // picked again by UUID.
+        if (const uint32_t cacheKey = profile::extCacheKey(extSel_); cacheKey != 0) {
+            if (remakeInstance(cacheKey, caps)) {
+                ctxlog("[VK_EXT_KEY v1] cache_key=%08x applied to VkApplicationInfo (instance made again, device %s)", cacheKey, uuidOf(caps).c_str());
+            } else {
+                // The key could not be applied. Never fail Vulkan over the optional tier, and never run the tier under key 0 (that would write tier
+                // binaries under the plain key): drop the tier and make the plain instance.
+                if (!remakeInstance(0, caps)) return fail("vkCreateInstance / device pick failed after the cache key could not be applied");
+                extSel_ = profile::ExtSelection{};
+                extSel_.reason = "cache_key_failed";
+                profileLog(profile::formatExtLine(caps, extSel_, extDeny));
+                ctxlog("[VK_EXT_KEY v1] cache_key=%08x could not be applied; tier dropped, cache_key=00000000 in effect", cacheKey);
+            }
+        }
         ctxlog("subgroup size=%u stages=0x%x ops=0x%x", caps.subgroupSize, caps.subgroupStages, caps.subgroupOps);
         VkPhysicalDeviceDriverProperties driver{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES};
         VkPhysicalDeviceProperties2 props{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
@@ -612,6 +802,10 @@ bool VulkanContext::init(bool wantPresent) {
 
     // Ray tracing is an optional tier: the base AS extensions plus ray query / RT pipeline when the device lists them (profile::selectRt).
     for (const std::string& e : rtSel_.extensions)
+        if (std::ranges::find_if(devExts, [&e](std::string_view x) { return x == e; }) == devExts.end()) devExts.push_back(e.c_str());
+    // The optional extension tier (profile::selectExt): enabled and logged only; no consumer exists yet.
+    const size_t devExtsBeforeExt = devExts.size();
+    for (const std::string& e : extSel_.extensions)
         if (std::ranges::find_if(devExts, [&e](std::string_view x) { return x == e; }) == devExts.end()) devExts.push_back(e.c_str());
 
     // The feature bits the profile selected. Eight bits are required by the owner ruling of 2026-10-13 (timeline semaphores, buffer device address, the
@@ -697,6 +891,39 @@ bool VulkanContext::init(bool wantPresent) {
         if (rtSel_.rayPipeline) { enRp.rayTracingPipeline = VK_TRUE; chainRt(enRp); }
     }
 
+    // Optional extension tier: one feature struct per selected part, chained after the RT structs with the bits the device reports for that part.
+    VkPhysicalDeviceMeshShaderFeaturesEXT enMesh{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT};
+    VkPhysicalDeviceFragmentShadingRateFeaturesKHR enFsr{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR};
+    VkPhysicalDeviceShaderQuadControlFeaturesKHR enQuad{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_QUAD_CONTROL_FEATURES_KHR};
+    VkPhysicalDeviceShaderMaximalReconvergenceFeaturesKHR enMr{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MAXIMAL_RECONVERGENCE_FEATURES_KHR};
+    VkPhysicalDeviceHostImageCopyFeatures enHic{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_FEATURES};
+    VkPhysicalDevicePipelineBinaryFeaturesKHR enPb{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_BINARY_FEATURES_KHR};
+    VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT enGpl{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT};
+    VkPhysicalDeviceDeviceGeneratedCommandsFeaturesEXT enDgc{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_FEATURES_EXT};
+    VkPhysicalDeviceDescriptorHeapFeaturesEXT enHeap{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_FEATURES_EXT};
+    VkPhysicalDeviceComputeShaderDerivativesFeaturesKHR enCsd{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMPUTE_SHADER_DERIVATIVES_FEATURES_KHR};
+    VkPhysicalDeviceMaintenance5Features enM5{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES};
+    VkBaseOutStructure* extChainBase = reinterpret_cast<VkBaseOutStructure*>(&enableFeatures);   // the last struct before the tier's
+    while (extChainBase->pNext) extChainBase = extChainBase->pNext;
+    if (extSel_.any()) {
+        VkBaseOutStructure* last = extChainBase;
+        auto chainExt = [&last](auto& s) { last->pNext = reinterpret_cast<VkBaseOutStructure*>(&s); last = reinterpret_cast<VkBaseOutStructure*>(&s); };
+        const profile::ExtCaps& xc = caps.ext;
+        if (extSel_.mesh) { enMesh.taskShader = xc.taskShader; enMesh.meshShader = xc.meshShader; chainExt(enMesh); }
+        if (extSel_.fsr) {
+            enFsr.pipelineFragmentShadingRate = xc.fsrPipeline; enFsr.primitiveFragmentShadingRate = xc.fsrPrimitive;
+            enFsr.attachmentFragmentShadingRate = xc.fsrAttachment; chainExt(enFsr);
+        }
+        if (extSel_.quad) { enQuad.shaderQuadControl = VK_TRUE; chainExt(enQuad); enMr.shaderMaximalReconvergence = VK_TRUE; chainExt(enMr); }
+        if (extSel_.hostCopy) { enHic.hostImageCopy = VK_TRUE; chainExt(enHic); }
+        if (extSel_.pipelineBinary) { enPb.pipelineBinaries = VK_TRUE; chainExt(enPb); }
+        if (extSel_.gpl) { enGpl.graphicsPipelineLibrary = VK_TRUE; chainExt(enGpl); }
+        if (extSel_.dgc) { enDgc.deviceGeneratedCommands = VK_TRUE; chainExt(enDgc); }
+        if (extSel_.heap) { enHeap.descriptorHeap = VK_TRUE; chainExt(enHeap); }
+        if (extSel_.csd) { enCsd.computeDerivativeGroupQuads = xc.computeDerivativeGroupQuads; enCsd.computeDerivativeGroupLinear = xc.computeDerivativeGroupLinear; chainExt(enCsd); }
+        if (extSel_.pipelineBinary || extSel_.dgc || extSel_.heap) { enM5.maintenance5 = VK_TRUE; chainExt(enM5); }
+    }
+
     VkDeviceCreateInfo dci{};
     dci.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     dci.pNext = &enableFeatures;
@@ -705,6 +932,24 @@ bool VulkanContext::init(bool wantPresent) {
     dci.enabledExtensionCount   = static_cast<uint32_t>(devExts.size());
     dci.ppEnabledExtensionNames = devExts.empty() ? nullptr : devExts.data();
     r = vkCreateDevice(phys_, &dci, nullptr, &device_);
+    if (r != VK_SUCCESS && extSel_.any()) {
+        // Never fail a device over the optional tier: retry once without it.
+        ctxlog("vkCreateDevice failed (%d) with the extension tier selected; retrying without it", static_cast<int>(r));
+        extChainBase->pNext = nullptr;
+        devExts.resize(devExtsBeforeExt);
+        extSel_ = profile::ExtSelection{};
+        extSel_.reason = "device_create_failed";
+        // The instance still carries the tier's cache key: make it again with key 0 so the plain device never writes binaries under the tier's key.
+        if (cacheKeyInEffect != 0) {
+            if (!remakeInstance(0, caps)) return fail("vkCreateInstance / device pick failed on the retry without the tier");
+            ctxlog("[VK_EXT_KEY v1] retry without the tier: instance made again, cache_key=%08x in effect", cacheKeyInEffect);
+        }
+        profileLog(profile::formatExtLine(caps, extSel_, extDeny));
+        dci.enabledExtensionCount = static_cast<uint32_t>(devExts.size());
+        dci.ppEnabledExtensionNames = devExts.empty() ? nullptr : devExts.data();
+        device_ = VK_NULL_HANDLE;
+        r = vkCreateDevice(phys_, &dci, nullptr, &device_);
+    }
     if (r != VK_SUCCESS) { device_ = VK_NULL_HANDLE; return fail("vkCreateDevice failed"); }
 
     // NOTE (R2): volkLoadDevice writes the PROCESS-GLOBAL volk device dispatch
@@ -712,6 +957,7 @@ bool VulkanContext::init(bool wantPresent) {
     // island is active in the same session, so this device is the sole owner of
     // the global table -- no clobber.
     volkLoadDevice(device_);
+    if (mc2_diag::tagRequested("VK_EXT")) extSelfTest(device_, phys_, extSel_);
     if (messenger_ != VK_NULL_HANDLE) runValidationCanary(device_);
     vkGetDeviceQueue(device_, gfxFamily_, 0, &gfxQueue_);
     vkGetDeviceQueue(device_, gfxFamily_, qci.queueCount - 1, &presentQueue_);

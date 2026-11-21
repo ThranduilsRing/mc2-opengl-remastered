@@ -44,10 +44,13 @@ DeviceCaps gather(VkPhysicalDevice pd, uint32_t instanceApi) {
         VkPhysicalDeviceSubgroupProperties sg{};
         sg.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES;
         id.pNext = &sg;
+        VkPhysicalDeviceDriverProperties drv{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES};   // core from 1.2
+        if (c.usableApi() >= kFloorApi) sg.pNext = &drv;
         VkPhysicalDeviceProperties2 props2{};
         props2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
         props2.pNext = &id;
         vkGetPhysicalDeviceProperties2(pd, &props2);
+        if (c.usableApi() >= kFloorApi) c.driverId = static_cast<uint32_t>(drv.driverID);
         c.subgroupSize = sg.subgroupSize;
         c.subgroupStages = sg.supportedStages;
         c.subgroupOps = sg.supportedOperations;
@@ -109,7 +112,91 @@ DeviceCaps gather(VkPhysicalDevice pd, uint32_t instanceApi) {
     if (hasAs) chain(asF);
     if (hasRq) chain(rqF);
     if (hasRp) chain(rpF);
+    // Optional extension tier (selectExt): each struct is chained only when its extension is listed.
+    VkPhysicalDeviceMeshShaderFeaturesEXT meshF{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT};
+    VkPhysicalDeviceFragmentShadingRateFeaturesKHR fsrF{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR};
+    VkPhysicalDeviceShaderQuadControlFeaturesKHR quadF{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_QUAD_CONTROL_FEATURES_KHR};
+    VkPhysicalDeviceShaderMaximalReconvergenceFeaturesKHR mrF{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MAXIMAL_RECONVERGENCE_FEATURES_KHR};
+    VkPhysicalDeviceHostImageCopyFeatures hicF{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_FEATURES};
+    VkPhysicalDevicePipelineBinaryFeaturesKHR pbF{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_BINARY_FEATURES_KHR};
+    VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT gplF{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT};
+    VkPhysicalDeviceDeviceGeneratedCommandsFeaturesEXT dgcF{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_FEATURES_EXT};
+    VkPhysicalDeviceDescriptorHeapFeaturesEXT heapF{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_FEATURES_EXT};
+    VkPhysicalDeviceComputeShaderDerivativesFeaturesKHR csdF{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMPUTE_SHADER_DERIVATIVES_FEATURES_KHR};
+    VkPhysicalDeviceMaintenance5Features m5F{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES};
+    const bool hasMesh = c.hasExtension(kExtMeshShader), hasFsr = c.hasExtension(kExtFragmentShadingRate), hasQuad = c.hasExtension(kExtShaderQuadControl),
+               hasMr = c.hasExtension(kExtShaderMaximalReconvergence), hasHic = c.hasExtension(kExtHostImageCopy), hasPb = c.hasExtension(kExtPipelineBinary),
+               hasGpl = c.hasExtension(kExtGraphicsPipelineLibrary), hasDgc = c.hasExtension(kExtDeviceGeneratedCommands),
+               hasHeap = c.hasExtension(kExtDescriptorHeap), hasCsd = c.hasExtension(kExtComputeShaderDerivatives), hasM5 = c.hasExtension(kExtMaintenance5);
+    if (hasMesh) chain(meshF);
+    if (hasFsr) chain(fsrF);
+    if (hasQuad) chain(quadF);
+    if (hasMr) chain(mrF);
+    if (hasHic) chain(hicF);
+    if (hasPb) chain(pbF);
+    if (hasGpl) chain(gplF);
+    if (hasDgc) chain(dgcF);
+    if (hasHeap) chain(heapF);
+    if (hasCsd) chain(csdF);
+    if (hasM5) chain(m5F);
     vkGetPhysicalDeviceFeatures2(pd, &f2);
+
+    {
+        ExtCaps& x = c.ext;
+        x.taskShader = hasMesh && meshF.taskShader == VK_TRUE;
+        x.meshShader = hasMesh && meshF.meshShader == VK_TRUE;
+        x.fsrPipeline = hasFsr && fsrF.pipelineFragmentShadingRate == VK_TRUE;
+        x.fsrPrimitive = hasFsr && fsrF.primitiveFragmentShadingRate == VK_TRUE;
+        x.fsrAttachment = hasFsr && fsrF.attachmentFragmentShadingRate == VK_TRUE;
+        x.shaderQuadControl = hasQuad && quadF.shaderQuadControl == VK_TRUE;
+        x.shaderMaximalReconvergence = hasMr && mrF.shaderMaximalReconvergence == VK_TRUE;
+        x.hostImageCopy = hasHic && hicF.hostImageCopy == VK_TRUE;
+        x.pipelineBinaries = hasPb && pbF.pipelineBinaries == VK_TRUE;
+        x.graphicsPipelineLibrary = hasGpl && gplF.graphicsPipelineLibrary == VK_TRUE;
+        x.deviceGeneratedCommands = hasDgc && dgcF.deviceGeneratedCommands == VK_TRUE;
+        x.descriptorHeap = hasHeap && heapF.descriptorHeap == VK_TRUE;
+        x.computeDerivativeGroupQuads = hasCsd && csdF.computeDerivativeGroupQuads == VK_TRUE;
+        x.computeDerivativeGroupLinear = hasCsd && csdF.computeDerivativeGroupLinear == VK_TRUE;
+        x.maintenance5 = hasM5 && m5F.maintenance5 == VK_TRUE;
+        VkPhysicalDeviceMeshShaderPropertiesEXT meshP{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT};
+        VkPhysicalDeviceFragmentShadingRatePropertiesKHR fsrP{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_PROPERTIES_KHR};
+        VkPhysicalDeviceHostImageCopyProperties hicP{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_PROPERTIES};
+        VkPhysicalDeviceGraphicsPipelineLibraryPropertiesEXT gplP{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_PROPERTIES_EXT};
+        VkPhysicalDeviceDeviceGeneratedCommandsPropertiesEXT dgcP{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_PROPERTIES_EXT};
+        VkPhysicalDeviceDescriptorHeapPropertiesEXT heapP{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_PROPERTIES_EXT};
+        VkPhysicalDeviceProperties2 p2{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
+        void** ptail = &p2.pNext;
+        auto pchain = [&](auto& s) { *ptail = &s; ptail = &s.pNext; };
+        if (hasMesh) pchain(meshP);
+        if (hasFsr) pchain(fsrP);
+        if (hasHic) pchain(hicP);
+        if (hasGpl) pchain(gplP);
+        if (hasDgc) pchain(dgcP);
+        if (hasHeap) pchain(heapP);
+        if (p2.pNext) vkGetPhysicalDeviceProperties2(pd, &p2);
+        if (hasMesh) {
+            x.maxMeshOutputVertices = meshP.maxMeshOutputVertices;
+            x.maxMeshOutputPrimitives = meshP.maxMeshOutputPrimitives;
+            x.maxPreferredMeshWorkGroupInvocations = meshP.maxPreferredMeshWorkGroupInvocations;
+            x.maxTaskWorkGroupTotalCount = meshP.maxTaskWorkGroupTotalCount;
+        }
+        if (hasFsr) {
+            x.fsrMinTexelW = fsrP.minFragmentShadingRateAttachmentTexelSize.width;
+            x.fsrMinTexelH = fsrP.minFragmentShadingRateAttachmentTexelSize.height;
+            x.fsrMaxTexelW = fsrP.maxFragmentShadingRateAttachmentTexelSize.width;
+            x.fsrMaxTexelH = fsrP.maxFragmentShadingRateAttachmentTexelSize.height;
+        }
+        if (hasHic) x.identicalMemoryTypeRequirements = hicP.identicalMemoryTypeRequirements == VK_TRUE;
+        if (hasGpl) x.graphicsPipelineLibraryFastLinking = gplP.graphicsPipelineLibraryFastLinking == VK_TRUE;
+        if (hasDgc) x.maxIndirectSequenceCount = dgcP.maxIndirectSequenceCount;
+        if (hasHeap) {
+            x.maxSamplerHeapSize = heapP.maxSamplerHeapSize;
+            x.maxResourceHeapSize = heapP.maxResourceHeapSize;
+            x.samplerDescriptorSize = heapP.samplerDescriptorSize;
+            x.imageDescriptorSize = heapP.imageDescriptorSize;
+            x.bufferDescriptorSize = heapP.bufferDescriptorSize;
+        }
+    }
 
     if (hasAs) {
         c.rt.accelerationStructure = asF.accelerationStructure == VK_TRUE;
@@ -225,7 +312,8 @@ bool writeCapsReport(VkPhysicalDevice pd, uint32_t instanceApi, std::string_view
         "VK_KHR_maintenance5", "VK_KHR_maintenance6", "VK_KHR_maintenance7", "VK_KHR_maintenance8", "VK_KHR_maintenance9", "VK_KHR_maintenance10",
         "VK_EXT_host_image_copy", "VK_EXT_image_tiling_control", "VK_KHR_image_tiling_control", "VK_EXT_present_timing", "VK_KHR_present_id2", "VK_KHR_present_wait2",
         "VK_EXT_device_fault", "VK_KHR_device_fault", "VK_EXT_descriptor_heap", "VK_EXT_device_generated_commands", "VK_EXT_mesh_shader",
-        "VK_KHR_compute_shader_derivatives", "VK_NV_compute_shader_derivatives"};
+        "VK_KHR_compute_shader_derivatives", "VK_NV_compute_shader_derivatives", "VK_KHR_fragment_shading_rate", "VK_KHR_shader_quad_control",
+        "VK_KHR_shader_maximal_reconvergence", "VK_KHR_pipeline_binary", "VK_EXT_graphics_pipeline_library", "VK_KHR_pipeline_library"};
     j.beginObject("tracked_extensions");
     for (const char* e : kTracked) j.boolean(e, c.hasExtension(e));
     j.endObject();
@@ -309,6 +397,21 @@ bool writeCapsReport(VkPhysicalDevice pd, uint32_t instanceApi, std::string_view
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMPUTE_SHADER_DERIVATIVES_FEATURES_KHR,
         {{"computeDerivativeGroupQuads", &VkPhysicalDeviceComputeShaderDerivativesFeaturesKHR::computeDerivativeGroupQuads},
          {"computeDerivativeGroupLinear", &VkPhysicalDeviceComputeShaderDerivativesFeaturesKHR::computeDerivativeGroupLinear}});
+    featureFamily<VkPhysicalDeviceFragmentShadingRateFeaturesKHR>(j, c, pd, "fragment_shading_rate", F{"VK_KHR_fragment_shading_rate", 0},
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR,
+        {{"pipelineFragmentShadingRate", &VkPhysicalDeviceFragmentShadingRateFeaturesKHR::pipelineFragmentShadingRate},
+         {"primitiveFragmentShadingRate", &VkPhysicalDeviceFragmentShadingRateFeaturesKHR::primitiveFragmentShadingRate},
+         {"attachmentFragmentShadingRate", &VkPhysicalDeviceFragmentShadingRateFeaturesKHR::attachmentFragmentShadingRate}});
+    featureFamily<VkPhysicalDeviceShaderQuadControlFeaturesKHR>(j, c, pd, "shader_quad_control", F{"VK_KHR_shader_quad_control", 0},
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_QUAD_CONTROL_FEATURES_KHR, {{"shaderQuadControl", &VkPhysicalDeviceShaderQuadControlFeaturesKHR::shaderQuadControl}});
+    featureFamily<VkPhysicalDeviceShaderMaximalReconvergenceFeaturesKHR>(j, c, pd, "shader_maximal_reconvergence", F{"VK_KHR_shader_maximal_reconvergence", 0},
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MAXIMAL_RECONVERGENCE_FEATURES_KHR,
+        {{"shaderMaximalReconvergence", &VkPhysicalDeviceShaderMaximalReconvergenceFeaturesKHR::shaderMaximalReconvergence}});
+    featureFamily<VkPhysicalDevicePipelineBinaryFeaturesKHR>(j, c, pd, "pipeline_binary", F{"VK_KHR_pipeline_binary", 0},
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_BINARY_FEATURES_KHR, {{"pipelineBinaries", &VkPhysicalDevicePipelineBinaryFeaturesKHR::pipelineBinaries}});
+    featureFamily<VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT>(j, c, pd, "graphics_pipeline_library", F{"VK_EXT_graphics_pipeline_library", 0},
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT,
+        {{"graphicsPipelineLibrary", &VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT::graphicsPipelineLibrary}});
     j.endObject();
 
     j.beginArray("cooperative_matrix_shapes");
@@ -334,6 +437,10 @@ bool writeCapsReport(VkPhysicalDevice pd, uint32_t instanceApi, std::string_view
         .num("maxPerStageDescriptorSampledImages", L.maxPerStageDescriptorSampledImages).num("maxPerStageResources", L.maxPerStageResources)
         .num("maxColorAttachments", L.maxColorAttachments).num("maxDrawIndirectCount", L.maxDrawIndirectCount)
         .num("subgroupSize", c.subgroupSize).num("subgroupSupportedStages", c.subgroupStages).num("subgroupSupportedOperations", c.subgroupOps)
+        .num("meshMaxOutputVertices", c.ext.maxMeshOutputVertices).num("meshMaxOutputPrimitives", c.ext.maxMeshOutputPrimitives)
+        .num("meshMaxPreferredWorkGroupInvocations", c.ext.maxPreferredMeshWorkGroupInvocations).num("taskMaxWorkGroupTotalCount", c.ext.maxTaskWorkGroupTotalCount)
+        .num("fsrMinAttachmentTexelWidth", c.ext.fsrMinTexelW).num("fsrMinAttachmentTexelHeight", c.ext.fsrMinTexelH)
+        .num("fsrMaxAttachmentTexelWidth", c.ext.fsrMaxTexelW).num("fsrMaxAttachmentTexelHeight", c.ext.fsrMaxTexelH)
         .endObject();
 
     uint32_t qn = 0;
