@@ -434,8 +434,10 @@ void GameCamera::renderTerrainSceneState() {
 	{
 		// Prelit art (ground, decals, grass) is scaled by live/authored flat light; cement stays on the live flat light.
 		extern void mc2_FlatLightRatio(float z, const unsigned char liveSun[3], const unsigned char liveAmb[3], float out[3]);
-		const unsigned char liveSun[3] = {static_cast<unsigned char>((directional >> 16) & 255u), static_cast<unsigned char>((directional >> 8) & 255u), static_cast<unsigned char>(directional & 255u)};
-		const unsigned char liveAmb[3] = {static_cast<unsigned char>((ambient >> 16) & 255u), static_cast<unsigned char>((ambient >> 8) & 255u), static_cast<unsigned char>(ambient & 255u)};
+		// The camera's own colour members (what getLightRed uses and what the authored capture saw), not the world-light
+		// rows: those are rescaled per frame (155..255 on one map) and made R != 1 with no sun keys.
+		const unsigned char liveSun[3] = {lightRed, lightGreen, lightBlue};
+		const unsigned char liveAmb[3] = {ambientRed, ambientGreen, ambientBlue};
 		float r[3];
 		mc2_FlatLightRatio(flatIntensity, liveSun, liveAmb, r);
 		inputs.flatRatio = {r[0], r[1], r[2]};

@@ -111,4 +111,9 @@ TEST_CASE("EnvironmentGpu/a keyed save keeps the authored sun across load") {
     // an old save without the record takes the read colours (nothing better exists)
     const auto old = resolve(keySun, keyAmb, false, {}, {});
     CHECK(old.sun == keySun);
+    // old save, no sun keys: live colours = read colours, so R is exactly 1 at every light z
+    for (float z : {0.0f, 0.3f, 0.608f, 1.0f}) {
+        const auto r = flatRatio(old, keySun, keyAmb, z, 0);
+        CHECK((r[0] == 1.0f && r[1] == 1.0f && r[2] == 1.0f));
+    }
 }

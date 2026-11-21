@@ -842,8 +842,7 @@ unsigned char Camera::getLightBlue (float intensity)
 void mc2_FlatLightRatio(float z, const unsigned char liveSun[3], const unsigned char liveAmb[3], float out[3])
 {
 	const auto r = mc2::authored_sun::flatRatio(s_authoredSun, {liveSun[0], liveSun[1], liveSun[2]}, {liveAmb[0], liveAmb[1], liveAmb[2]}, z, mc2NightAmbientFloor());
-	out[0] = r[0]; out[1] = r[1]; out[2] = r[2];
-}
+	out[0] = r[0]; out[1] = r[1]; out[2] = r[2];}
 
 bool Camera::save( FitIniFile* file )
 {
