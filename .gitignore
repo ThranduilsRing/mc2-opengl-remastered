@@ -235,6 +235,9 @@ tests/smoke/editor/playtest-*/
 
 # stock-tree-upscale: generated 1024 tree sidecars (tools/tree_retexture/gen_stock_trees.py, pins data/kit/tree-upscale.json)
 data/tgl/128/*.ktx2
+# actor-pbr-mips: generated mech/vehicle normal + ORM BC7 chains (tools/content_pipeline/cook_actor_pbr.py, pins data/kit/actor-pbr-pins.json)
+data/textures/mech_pbr/*.ktx2
+data/textures/vehicle_pbr/*.ktx2
 /cache/
 
 # smoke child registry of a shipped package / package-style root

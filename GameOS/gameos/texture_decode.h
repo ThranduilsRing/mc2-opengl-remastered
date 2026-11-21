@@ -65,8 +65,12 @@ inline constexpr uint32_t kVkFormatBc7Srgb = 146;
 // The byte size of one BC7 level of a w x h image (4x4 blocks of 16 bytes); 0 for an empty size.
 size_t bc7LevelBytes(uint32_t width, uint32_t height);
 
-// Decodes one BC7 level (bc7LevelBytes(width, height) bytes of blocks) to RGBA8 on the CPU, for a consumer that only takes RGBA8.
-// The bytes come out as stored: an sRGB-encoded level stays sRGB-encoded. Empty when the byte count does not match the size.
+// The byte size of a tightly packed BC7 chain of `mipCount` levels, level 0 first; 0 for an empty size or count.
+size_t bc7ChainBytes(uint32_t width, uint32_t height, uint32_t mipCount);
+
+// Decodes level 0 (bc7LevelBytes(width, height) bytes of blocks, optionally followed by the lower levels of a chain) to RGBA8 on
+// the CPU, for a consumer that only takes RGBA8.
+// The bytes come out as stored: an sRGB-encoded level stays sRGB-encoded. Empty when fewer bytes than level 0 are given.
 std::vector<uint8_t> decodeBc7(const std::vector<uint8_t>& blocks, uint32_t width, uint32_t height);
 
 // The extent of mip level `level` of a `size` edge: halved per level, never below 1.
@@ -111,6 +115,7 @@ struct GosTexels {
     uint32_t width = 0;
     uint32_t height = 0;
     uint32_t vkFormat = 0;  // mc2tex::kVkFormatRgba8Unorm, kVkFormatBc7Unorm or kVkFormatBc7Srgb
+    uint32_t mipCount = 1;  // BC7 only: `bytes` holds this many levels, level 0 first; every other flavour is one level
     // Immutable once published: a content change publishes a new vector, so pointer identity tracks the content.
     std::shared_ptr<const std::vector<uint8_t>> bytes;
 };

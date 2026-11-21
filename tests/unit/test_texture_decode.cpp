@@ -320,6 +320,18 @@ TEST_CASE("texture decode: BC7 blocks decode to RGBA8 only when the byte count m
     CHECK(mc2tex::decodeBc7(block, 0, 4).empty());
 }
 
+TEST_CASE("texture decode: a BC7 chain is the tightly packed levels, and decoding a chain reads level 0") {
+    CHECK(mc2tex::bc7ChainBytes(8, 8, 1) == mc2tex::bc7LevelBytes(8, 8));
+    CHECK(mc2tex::bc7ChainBytes(8, 8, 4) == 64 + 16 + 16 + 16);   // 8x8, 4x4, 2x2, 1x1: 4, 1, 1, 1 blocks
+    CHECK(mc2tex::bc7ChainBytes(16, 4, 3) == 64 + 32 + 16);       // 16x4, 8x2, 4x1
+    CHECK(mc2tex::bc7ChainBytes(8, 8, 0) == 0);
+    CHECK(mc2tex::bc7ChainBytes(0, 8, 2) == 0);
+    std::vector<uint8_t> chain(mc2tex::bc7ChainBytes(4, 4, 3), 0);   // 4x4, 2x2, 1x1: one block each
+    chain[0] = 0x40;
+    CHECK(mc2tex::decodeBc7(chain, 4, 4) == mc2tex::decodeBc7(std::vector<uint8_t>(chain.begin(), chain.begin() + 16), 4, 4));
+    CHECK_FALSE(mc2tex::decodeBc7(chain, 4, 4).empty());
+}
+
 TEST_CASE("mip box filter: a 4x4 RGBA8 level halves to the rounded 2x2 means, then to one texel") {
     // Each 2x2 quadrant has distinct channel values; red and alpha test round-half-up ((sum + 2) / 4).
     std::vector<uint8_t> src(4 * 4 * 4);

@@ -456,11 +456,11 @@ DWORD sourceId(DWORD asset) {
         RenderCore::KtxImage cooked;
         if (txmLoadCooked(source->name.c_str(),sidecarPath(source->name).c_str(),true,cooked) &&
             cooked.isCompressed && (cooked.vkFormat==145 || cooked.vkFormat==146)) {
-            const size_t bytes=cooked.mipCount>1 && cooked.mipByteOffsets.size()>1
-                ? cooked.mipByteOffsets[1] : cooked.pixels.size();
+            // The whole cooked chain goes through (level 0 first, tightly packed); a one-level file stays one level.
+            const uint32_t mips=cooked.mipCount>1 ? static_cast<uint32_t>(cooked.mipCount) : 1u;
             source->cpuTexture=gos_NewCompressedTexture2D(cooked.vkFormat,cooked.width,cooked.height,
-                                                          std::span<const uint8_t>(cooked.pixels.data(),bytes),source->name.c_str(),
-                                                          source->cookedBc7 ? format : gos_Texture_Solid);
+                                                          std::span<const uint8_t>(cooked.pixels.data(),cooked.pixels.size()),source->name.c_str(),
+                                                          source->cookedBc7 ? format : gos_Texture_Solid,mips);
         }
     }
     if (!source->cpuTexture) {

@@ -70,6 +70,11 @@ bool ovl_upload_tex(TerrainIsland* s, OvlTex& e, uint32_t w, uint32_t h, VkForma
     e.texture=std::move(ref); return true;
 }
 
+// The overlay samples level 0 only: a BC7 chain from the legacy sidecar path is cut to its first level.
+size_t ovl_level0_bytes(const GosTexels& texels) {
+    return texels.mipCount > 1 ? mc2tex::bc7LevelBytes(texels.width, texels.height) : texels.bytes->size();
+}
+
 // Resolve (importing copy-once on first sight) the texture for a gos handle. nullptr = texels still
 // pending or the import failed (caller skips the draw this frame). Untextured (0 / 0xffffffff, or a
 // handle the producer reports has no CPU texels) binds the dummy, as the producer contract says.
@@ -83,7 +88,7 @@ OvlTex* ovl_get_tex(TerrainIsland* s, OvlState* o, uint32_t gosHandle) {
     if (it != o->texs.end()) {
         auto& [handle, texture] = *it;
         if (texture.source == texels.bytes) return &texture;
-        if (!ovl_upload_tex(s,texture,w,h,mc2vk::texelFormat(texels.vkFormat),texels.bytes->data(),texels.bytes->size())) return nullptr;
+        if (!ovl_upload_tex(s,texture,w,h,mc2vk::texelFormat(texels.vkFormat),texels.bytes->data(),ovl_level0_bytes(texels))) return nullptr;
         texture.source=texels.bytes; return &texture;
     }
     ZoneScopedN("VKIsl.Overlay.TextureFirstUse");
@@ -92,7 +97,7 @@ OvlTex* ovl_get_tex(TerrainIsland* s, OvlState* o, uint32_t gosHandle) {
 
     OvlTex t;
     if (!ovl_upload_tex(s, t, w, h, mc2vk::texelFormat(texels.vkFormat), texels.bytes->data(),
-                        static_cast<VkDeviceSize>(texels.bytes->size())) ||
+                        static_cast<VkDeviceSize>(ovl_level0_bytes(texels))) ||
         !ovl_alloc_tex_set(s, o, t)) {
         // The upload of this texture may already be queued: the image leaves with the frame, not now.
         mc2vk::getOrCreateEngineVulkanContext().retire(std::move(t));

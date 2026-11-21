@@ -95,8 +95,8 @@ class gosTexture {
         // Pre-compressed BC7 source: retain its CPU descriptor and immutable
         // level-0 blocks for the native consumer (vkFormat 145 / 146).
         gosTexture(const CpuTextureDesc& prebuilt, gos_TextureFormat fmt, const char* name, uint32_t blockVkFormat,
-                   std::shared_ptr<const std::vector<uint8_t>> blocks)
-            : blocks_(std::move(blocks)), block_vk_format_(blockVkFormat)
+                   std::shared_ptr<const std::vector<uint8_t>> blocks, uint32_t mipCount = 1)
+            : blocks_(std::move(blocks)), block_vk_format_(blockVkFormat), mip_count_(mipCount ? mipCount : 1)
         {
             format_ = fmt;
             if(name) {
@@ -106,7 +106,8 @@ class gosTexture {
                 texname_ = nullptr;
             }
             filename_ = nullptr;
-            hints_ = 0;
+            // A cooked chain exists to be sampled: it asks for mip filtering whatever the legacy caller's hint said.
+            hints_ = mip_count_ > 1 ? gosHint_MipmapFilter0 : 0;
             plocked_area_ = nullptr;
             size_ = 0;
             pcompdata_ = nullptr;
@@ -198,6 +199,7 @@ class gosTexture {
         // The level-0 BC7 blocks of a pre-compressed texture (null for every other flavour) and their VK_FORMAT (145 / 146).
         std::shared_ptr<const std::vector<uint8_t>> getBlocks() const { return blocks_; }
         uint32_t getBlockVkFormat() const { return block_vk_format_; }
+        uint32_t getMipCount() const { return mip_count_; }
 
         // Gives a pre-compressed texture an RGBA8 mirror for the consumers that only take RGBA8 (the Vulkan HUD / VFX tail):
         // its blocks decoded on the CPU, once per content. Every other flavour sets its mirror at upload, so false means the
@@ -252,6 +254,7 @@ class gosTexture {
                 }
                 blocks_.reset();
                 block_vk_format_ = 0;
+                mip_count_ = 1;
                 setRgbaMirror(tex_.w, tex_.h, TF_RGBA8, plocked_area_);
                 markContentMutated();
             }
@@ -289,6 +292,7 @@ class gosTexture {
         int mirror_h_;
         std::shared_ptr<const std::vector<uint8_t>> blocks_;   // pre-compressed level 0, immutable
         uint32_t block_vk_format_ = 0;
+        uint32_t mip_count_ = 1;   // levels held in blocks_, level 0 first
         uint32_t mirror_decode_serial_ = 0xffffffffu;   // content serial of the last blocks -> RGBA8 decode attempt
 };
 

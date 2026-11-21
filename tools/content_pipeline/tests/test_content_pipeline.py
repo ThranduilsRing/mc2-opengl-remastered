@@ -515,6 +515,30 @@ def test_base_color_is_tagged_unorm_not_srgb():
     assert texcook._dfd(texcook.VK_BC7_UNORM) == texcook._dfd(texcook.ROLES["orm"].vk_format)   # linear transfer
 
 
+def test_cook_ktx2_levels_key_covers_every_level(tmp_path, monkeypatch):
+    # The encoder is stubbed (one block per 4x4): this pins the cache key and the container, not texconv.
+    monkeypatch.setattr(texcook, "TEXCONV", Path(__file__))
+    monkeypatch.setattr(texcook, "_texconv_level", lambda lv, fmt, wd, quick=False: bytes([lv[0, 0, 0]]) * (16 * ((lv.shape[1] + 3) // 4) * ((lv.shape[0] + 3) // 4)))
+    img = (np.arange(8 * 8 * 4) % 251).astype(np.uint8).reshape(8, 8, 4)
+    levels = texcook.mip_chain(img, "normal")
+    cache_dir = tmp_path / "cache"
+    entries = lambda: sorted(p.name for p in cache_dir.glob("tex-*.ktx2"))
+    assert entries() == []                                           # cache=miss before
+    data = texcook.cook_ktx2_levels(levels, texcook.VK_BC7_UNORM, "BC7_UNORM", cache_dir=cache_dir)
+    first = entries()
+    assert len(first) == 1                                           # entry present after
+    assert texcook.cook_ktx2_levels(levels, texcook.VK_BC7_UNORM, "BC7_UNORM", cache_dir=cache_dir) == data and entries() == first
+    vk, w, h, out = texcook.read_ktx2(data)
+    assert (vk, w, h, len(out)) == (145, 8, 8, 4) and len(out[0]) == 4 * 16 and len(out[3]) == 16
+    changed = [lv.copy() for lv in levels]
+    changed[2][0, 0, 0] ^= 0x55                                     # only level 2 differs
+    texcook.cook_ktx2_levels(changed, texcook.VK_BC7_UNORM, "BC7_UNORM", cache_dir=cache_dir)
+    assert len(entries()) == 2 and set(first) < set(entries())
+    texcook.cook_ktx2_levels(levels, texcook.VK_BC7_SRGB, "BC7_UNORM", cache_dir=cache_dir)   # format is part of the key
+    assert len(entries()) == 3
+    assert texcook.CONTRACT_VERSION == "mc2-texcook/3"
+
+
 # --------------------------------------------------------------------------- validator
 
 def test_validator_rejects_broken_gltf(tmp_path):

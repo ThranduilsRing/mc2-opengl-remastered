@@ -8,6 +8,14 @@
    "sha_field": "ktx2_sha256",
    "cook": "tools/tree_retexture/gen_stock_trees.py",
    "provision": "worktree"
+  },
+  {
+   "id": "actor_pbr_mips",
+   "pin_file": "data/kit/actor-pbr-pins.json",
+   "out_template": "{key}",
+   "sha_field": "ktx2_sha256",
+   "cook": "tools/content_pipeline/cook_actor_pbr.py",
+   "provision": "worktree"
   }
  ],
  "unpinned": [
