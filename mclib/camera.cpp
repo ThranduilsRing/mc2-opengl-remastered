@@ -431,10 +431,11 @@ long Camera::init (FitIniFilePtr cameraFile )
 				const auto sc = [k](unsigned char& v) { v = static_cast<unsigned char>(std::min(255.0f, v * *k + 0.5f)); };
 				sc(ambientRed); sc(ambientGreen); sc(ambientBlue); sc(dayAmbientRed); sc(dayAmbientGreen); sc(dayAmbientBlue);
 			}
-			mc2::fmt::print_err("[SUN_LIGHT] mission={} from_save={} dir=({:.3f},{:.3f},{:.3f}) sun=({},{},{}) ambient=({},{},{}) ambient_scaled={}\n",
-				missionLightName, fromSave ? 1 : 0, lightDirection.x, lightDirection.y, lightDirection.z,
-				static_cast<unsigned>(lightRed), static_cast<unsigned>(lightGreen), static_cast<unsigned>(lightBlue),
-				static_cast<unsigned>(ambientRed), static_cast<unsigned>(ambientGreen), static_cast<unsigned>(ambientBlue), sunAmbientScaled ? 1 : 0);
+			if (mc2::gate::get<"MC2_DIAG_VERBOSE">())
+				MC2_EVENT(Render, "SUN_LIGHT", 1, "mission={} from_save={} dir=({:.3f},{:.3f},{:.3f}) sun=({},{},{}) ambient=({},{},{}) ambient_scaled={}",
+					missionLightName.c_str(), fromSave ? 1 : 0, lightDirection.x, lightDirection.y, lightDirection.z,
+					static_cast<unsigned>(lightRed), static_cast<unsigned>(lightGreen), static_cast<unsigned>(lightBlue),
+					static_cast<unsigned>(ambientRed), static_cast<unsigned>(ambientGreen), static_cast<unsigned>(ambientBlue), sunAmbientScaled ? 1 : 0);
 		}
 	}
 
