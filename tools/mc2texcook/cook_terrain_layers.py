@@ -72,14 +72,36 @@ def box_mips(texels):
     return levels
 
 
+BC7_STRIPS = 4   # texconv encodes on one thread (a 2048 level is ~80 s quick); BC7 blocks are independent, so row strips encode in parallel
+
+
+def encode_bc7_level(level, texcook, workers):
+    """One RGBA8 level -> its BC7 block stream (quick quality). Big levels are cut into BC7_STRIPS row strips of whole block rows,
+    encoded on separate threads; the strips' block rows concatenate into the level's stream."""
+    import tempfile
+    from concurrent.futures import ThreadPoolExecutor
+    h = level.shape[0]
+    strips = BC7_STRIPS if h >= 512 and h % (4 * BC7_STRIPS) == 0 else 1
+    rows = h // strips
+
+    def one(i):
+        with tempfile.TemporaryDirectory(prefix='mc2tex-') as d:
+            return texcook._texconv_level(level[i * rows:(i + 1) * rows], 'BC7_UNORM', Path(d), quick=True)
+    if strips == 1:
+        return one(0)
+    return b''.join(workers.map(one, range(strips)))
+
+
 def write_bc7_ktx2(path, levels):
     """BC7 UNORM (linear) KTX2 holding the given RGBA8 mip levels (largest first), encoded per level by texcook (alpha kept)."""
     sys.path.insert(0, str(_HERE.parents[1]))
+    from concurrent.futures import ThreadPoolExecutor
     from tools.content_pipeline import texcook
     h, w = levels[0].shape[:2]
-    vk_format, blocks = texcook.encode_levels(levels, 'orm')
+    with ThreadPoolExecutor(BC7_STRIPS) as workers:
+        blocks = [encode_bc7_level(lv, texcook, workers) for lv in levels]
     with open(path, 'wb') as f:
-        f.write(texcook.write_ktx2(vk_format, w, h, blocks))
+        f.write(texcook.write_ktx2(texcook.VK_BC7_UNORM, w, h, blocks))
 
 
 def cook_engine_normals(src_dir, out_dir=None, ktx_exe=None, force=False):
