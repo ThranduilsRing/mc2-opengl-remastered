@@ -48,7 +48,7 @@ if str(_HERE) not in sys.path:
 import cook_pbr_maps as pbr  # noqa: E402
 
 # The engine detail-normal layers terrain_tier1.frag samples (MAT_LAYER_ROCK .. MAT_LAYER_MARBLE_CLIFF). Each
-# data/textures/matN_normal.tga gets a matN_normal.ktx2 sidecar next to it (lossless RGBA8 UNORM, box mip chain), which the
+# data/textures/matN_normal.tga gets a matN_normal.ktx2 sidecar next to it (BC7 UNORM, box mip chain), which the
 # terrain loader prefers under the usual sidecar precedence (a mod TGA beats a base KTX).
 ENGINE_NORMAL_SLOTS = range(6)
 
@@ -72,34 +72,19 @@ def box_mips(texels):
     return levels
 
 
-def write_rgba8_ktx2(path, levels):
-    """Stored (no supercompression) R8G8B8A8_UNORM, linear transfer KTX2 holding the given mip levels (largest first)."""
-    import struct
-    n = len(levels)
+def write_bc7_ktx2(path, levels):
+    """BC7 UNORM (linear) KTX2 holding the given RGBA8 mip levels (largest first), encoded per level by texcook (alpha kept)."""
+    sys.path.insert(0, str(_HERE.parents[1]))
+    from tools.content_pipeline import texcook
     h, w = levels[0].shape[:2]
-    dfd = struct.pack('<7I', 92, 0, 2 | (88 << 16), 1 | (1 << 8) | (1 << 16), 0, 4, 0)
-    for chan, ctype in enumerate((0, 1, 2, 15)):   # R, G, B, A; 8 bits each, unsigned normalised 0..255
-        dfd += struct.pack('<4I', (chan * 8) | (7 << 16) | (ctype << 24), 0, 0, 255)
-    assert len(dfd) == 92
-    dfd_off = 80 + 24 * n
-    # Level data is stored smallest first, the index lists the largest first.
-    offsets = [0] * n
-    cursor = dfd_off + len(dfd)
-    for i in range(n - 1, -1, -1):
-        offsets[i] = cursor
-        cursor += levels[i].nbytes
-    head = b'\xabKTX 20\xbb\r\n\x1a\n' + struct.pack('<9I', 37, 1, w, h, 0, 0, 1, n, 0)
-    head += struct.pack('<4I2Q', dfd_off, len(dfd), 0, 0, 0, 0)
-    index = b''.join(struct.pack('<3Q', offsets[i], levels[i].nbytes, levels[i].nbytes) for i in range(n))
+    vk_format, blocks = texcook.encode_levels(levels, 'orm')
     with open(path, 'wb') as f:
-        f.write(head + index + dfd)
-        for i in range(n - 1, -1, -1):
-            f.write(levels[i].tobytes())
+        f.write(texcook.write_ktx2(vk_format, w, h, blocks))
 
 
 def cook_engine_normals(src_dir, out_dir=None, ktx_exe=None, force=False):
-    """matN_normal.tga -> matN_normal.ktx2 for the sampled slots, lossless: RGBA8 UNORM with the mip chain the TGA import
-    builds, so the sidecar is texel-identical to importing the TGA. An output newer than its source is kept.
+    """matN_normal.tga -> matN_normal.ktx2 for the sampled slots: BC7 UNORM, every level encoded from the mip chain the TGA
+    import builds (alpha = height kept). An output newer than its source is kept.
     Returns [(ktx2 path, ok)] per slot."""
     out_dir = out_dir or src_dir
     os.makedirs(out_dir, exist_ok=True)
@@ -114,7 +99,7 @@ def cook_engine_normals(src_dir, out_dir=None, ktx_exe=None, force=False):
             results.append((dst, True))
             continue
         staged = dst + '.tmp'
-        write_rgba8_ktx2(staged, box_mips(engine_normal_texels(src)))
+        write_bc7_ktx2(staged, box_mips(engine_normal_texels(src)))
         os.replace(staged, dst)
         results.append((dst, True))
     return results

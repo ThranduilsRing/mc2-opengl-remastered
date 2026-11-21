@@ -16,6 +16,7 @@
 #include <string>
 #include <string_view>
 #include "../../RenderCore/KtxLoader.h"
+#include "../../mclib/texture_assets.h"
 #include "Gates/gate_cold.h"
 #include "terrain_surface_cook.h"
 #include "Gates/render_options.h"
@@ -739,8 +740,8 @@ bool bind_static_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
 
 // CONCRETE-ROAD-PBR-DETAIL: the concrete / road material DETAIL array (binding 18). Layer 0 = poured-concrete pad detail, layer 1 =
 // asphalt road/runway detail. Each texel is (normal.x, normal.y, roughness, AO) from CC0 PBR sets; the albedo of those sets is never
-// loaded, MC2's own colour stays the colour source. Cooked by tools/mc2texcook/cook_concrete_detail.py (BC7 KTX2), decoded to RGBA8
-// here and mip-chained by the residency service. Absent files leave the flat dummy bound and uT.concreteDetail = 0 (base game look).
+// loaded, MC2's own colour stays the colour source. Cooked by tools/mc2texcook/cook_concrete_detail.py (BC7 KTX2), uploaded as one BC7 array with its authored mips (a
+// mismatched or mod layer falls back to RGBA8 decode + runtime mips). Absent files leave the flat dummy bound and uT.concreteDetail = 0 (base game look).
 bool create_concrete_detail_sampler(TerrainIsland* s) {
     if (s->concreteDetailSamp) return true;
     VkSamplerCreateInfo sci{};
@@ -761,6 +762,20 @@ bool ensure_dummy_concrete_detail(TerrainIsland* s) {
     return upload_sampled_image_array(s, s->concreteDetailTexture, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, 2, px, sizeof(px));
 }
 
+// The detail layers' own BC7 chains as one array image, or null when any layer is missing or does not stack. Layers load through
+// the file/mod system.
+std::shared_ptr<const RenderCore::KtxImage> concrete_bc7_array(const std::vector<const char*>& files) {
+    std::vector<RenderCore::KtxImage> layers;
+    for (const char* f : files) {
+        std::string source(f);
+        source.replace(source.size() - 5, 5, ".tga");   // the sidecar loader resolves <name>.ktx2 and lets a mod TGA win
+        auto img = mc2::textures::loadCookedSidecar(source);
+        if (!img) return {};
+        layers.push_back(std::move(*img));
+    }
+    return RenderCore::ktxStackBc7Layers(layers);
+}
+
 void import_concrete_detail(TerrainIsland* s) {
     if (mc2::options::lowCost()) return; // No unused 2K detail residency on shared DDR4.
     if (s->concreteDetailPending) {                      // the upload is asynchronous: until it lands the residency service hands out a placeholder view
@@ -775,6 +790,32 @@ void import_concrete_detail(TerrainIsland* s) {
     if (s->concreteDetailTried) return;
     s->concreteDetailTried = true;                       // one attempt per run; a missing sidecar is the base game look
     static const char* const kFiles[2] = {"data/terrain_layers/concrete_detail_pad.ktx2", "data/terrain_layers/concrete_detail_road.ktx2"};
+    static const char* const kRockFiles[2] = {"data/terrain_layers/cliff_rock_ah.ktx2", "data/terrain_layers/cliff_rock_nra.ktx2"};
+    // Preferred: one BC7 array holding every layer's authored mip chain, uploaded as-is (no decode, no runtime mips).
+    // A layer that is not BC7 with a full chain at the first layer's size (a mod file) sends the whole set down the decode path below.
+    {
+        const bool wantRock = mc2::gate::get<"MC2_TERRAIN_CLIFF_ROCK">();
+        std::vector<const char*> files{kFiles[0], kFiles[1]};
+        if (wantRock) { files.push_back(kRockFiles[0]); files.push_back(kRockFiles[1]); }
+        auto array = concrete_bc7_array(files);
+        if (!array && wantRock) { files.resize(2); array = concrete_bc7_array(files); }
+        if (array) {
+            const bool rock = files.size() == 4;
+            RenderCore::TextureKey key;
+            key.source = RenderCore::makeTextureSourceId("terrain-concrete-detail", rock ? "bc7-array-rock" : "bc7-array",
+                                                         RenderCore::textureContentHash(array->pixels.data(), array->pixels.size()));
+            key.format = array->vkFormat; key.hints = gosHint_MipmapFilter0;
+            const uint32_t w = static_cast<uint32_t>(array->width), n = static_cast<uint32_t>(files.size());
+            const int mips = array->mipCount;
+            if (auto tex = mc2vk::getOrCreateEngineVulkanContext().textures().acquire(key, std::move(array), {w, w, w, w}, n, true)) {
+                s->concreteDetailPending = std::move(tex);
+                s->cliffRockPresent = rock;
+                vlog("CONCRETE-DETAIL: imported pad + road%s BC7 detail array %ux%u x%u layers, %d authored mips.", rock ? " + cliff rock" : "", w, w, n, mips);
+                if (!rock) vlog("CLIFF-ROCK: rock set absent, unusable or switched off; steep faces keep the base look.");
+                return;
+            }
+        }
+    }
     std::vector<uint8_t> px;
     int w = 0, h = 0;
     auto appendLayer = [&](std::string_view file) {
@@ -796,7 +837,7 @@ void import_concrete_detail(TerrainIsland* s) {
         }
     }
     // TERRAIN-CLIFF-ROCK: the cliff rock set (albedo ratio + height, normal + roughness + AO) rides the same array as layers 2/3.
-    static const char* const kRock[2] = {"data/terrain_layers/cliff_rock_ah.ktx2", "data/terrain_layers/cliff_rock_nra.ktx2"};
+    const auto& kRock = kRockFiles;
     const size_t concreteBytes = px.size();
     const bool rock = mc2::gate::get<"MC2_TERRAIN_CLIFF_ROCK">() && appendLayer(kRock[0]) && appendLayer(kRock[1]);
     if (!rock) {

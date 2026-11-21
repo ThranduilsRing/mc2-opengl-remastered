@@ -12,6 +12,8 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <memory>
+#include <span>
 #include <vector>
 
 // COMPRESSION-BC7-CPUDECODE-1: single-header public-domain BC1-7/BC6H decoder
@@ -259,6 +261,29 @@ bool ktxDecodeBlocksToRgba8(const KtxImage& img, int level,
 
 bool ktxDecodeBc7ToRgba8(const KtxImage& img, int level, std::vector<uint8_t>& out, int* w, int* h) {
     return (img.vkFormat == 145 || img.vkFormat == 146) && ktxDecodeBlocksToRgba8(img, level, out, w, h);
+}
+
+std::shared_ptr<const KtxImage> ktxStackBc7Layers(std::span<const KtxImage> layers) {
+    if (layers.empty()) return {};
+    const auto& first = layers[0];
+    int full = 1;
+    for (int e = first.width; e > 1; e >>= 1) ++full;
+    for (const auto& l : layers)
+        if (!l.isCompressed || l.vkFormat != 145 || l.blockSizeBytes != 16 || l.width <= 0 || l.width != l.height || l.width != first.width ||
+            l.mipCount != full || l.mipByteOffsets.size() != static_cast<size_t>(full)) return {};
+    auto array = std::make_shared<KtxImage>();
+    array->width = first.width; array->height = first.height; array->vkFormat = first.vkFormat;
+    array->isCompressed = true; array->blockSizeBytes = 16; array->mipCount = full;
+    for (int level = 0; level < full; ++level) {
+        array->mipByteOffsets.push_back(array->pixels.size());
+        const size_t blocks = (static_cast<size_t>(std::max(1, first.width >> level)) + 3) / 4, bytes = blocks * blocks * 16;
+        for (const auto& l : layers) {
+            if (l.mipByteOffsets[level] + bytes > l.pixels.size()) return {};
+            const auto begin = l.pixels.begin() + static_cast<ptrdiff_t>(l.mipByteOffsets[level]);
+            array->pixels.insert(array->pixels.end(), begin, begin + static_cast<ptrdiff_t>(bytes));
+        }
+    }
+    return array;
 }
 
 } // namespace RenderCore
