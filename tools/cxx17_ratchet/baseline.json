@@ -858,6 +858,7 @@
   },
   "GameOS/gameos/vk_light_lists.h": {},
   "GameOS/gameos/vk_material_sampler.h": {},
+  "GameOS/gameos/vk_mech_skin_chunks.h": {},
   "GameOS/gameos/vk_native_producers.cpp": {
    "LG06": 2,
    "LG08": 2
@@ -1032,6 +1033,7 @@
   },
   "GameOS/gameos/vulkan_water_island_run.cpp": {},
   "GameOS/gameos/vulkan_water_reflect_bake.cpp": {},
+  "GameOS/gameos/water_chunk_frustum.h": {},
   "GameOS/gameos/water_planar_props.h": {},
   "GameOS/gameos/water_planar_terrain.h": {},
   "GameOS/gameos/water_planar_view.h": {},
@@ -3473,7 +3475,7 @@
    "LG20": 1
   }
  },
- "head": "ca344ad30",
+ "head": "4434608c4",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
