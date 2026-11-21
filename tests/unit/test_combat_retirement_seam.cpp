@@ -246,6 +246,20 @@ TEST_CASE("save fixtures: W86 W87 commander and team production value cutover") 
         }
     } registries;
     CombatRetirementSeam::Storage storage;
+    // openSaveFile probes the saved campaign (00d11f26b) and the saved bytes name data/campaign/campaign.fit: provide a stub.
+    struct CampaignStub {
+        bool created;
+        CampaignStub() {
+            std::filesystem::create_directories("data/campaign");
+            created = !std::filesystem::exists("data/campaign/campaign.fit");
+            if (created) {
+                std::ofstream f("data/campaign/campaign.fit", std::ios::binary);
+                f << "FITini\r\n[Campaign]\r\nst CampaignName = \"fixture\"\r\nl GroupCount = 1\r\nl CBills = 100\r\n"
+                     "[Group0]\r\nl MissionCount = 0\r\nst Video = \"\"\r\nFITend\r\n";
+            }
+        }
+        ~CampaignStub() { if (created) std::filesystem::remove("data/campaign/campaign.fit"); }
+    } campaignStub;
     for (const char* fixture : {"w86-mc2_03.ims", "w87-mc2_03.ims"}) {
         const auto path = std::string("tests/fixtures/saves/") + fixture;
         REQUIRE_FALSE(CombatRetirementSeam::rejects(storage.owner, path.c_str()));
@@ -629,6 +643,7 @@ TEST_CASE("CombatRetirementProduction/native loader preserves absolute deadlines
         file.writePacket(3, reinterpret_cast<MemoryPtr>(&clock), mutation == 4 ? 8 : sizeof(clock), STORAGE_TYPE_RAW);
         ObjectManagerData header{};
         header.numWeapons = static_cast<int>(deadlines.size());
+        header.maxObjects = header.numWeapons; // checkSavedObjects requires the slot capacity (022d03da6)
         file.writePacket(4, reinterpret_cast<MemoryPtr>(&header), sizeof(header), STORAGE_TYPE_RAW);
         file.writePacket(5, nullptr, 0, STORAGE_TYPE_NUL);
         for (int i = 0; i < static_cast<int>(deadlines.size()); ++i) {
@@ -653,7 +668,9 @@ TEST_CASE("CombatRetirementProduction/native loader preserves absolute deadlines
     write({1000, 0.875}, 0);
     PacketFile file;
     REQUIRE(file.open(path.c_str()) == NO_ERR);
-    REQUIRE_FALSE(GameObjectManager::checkSavedObjects(&file));
+    const auto rejection = GameObjectManager::checkSavedObjects(&file);
+    CAPTURE(rejection.value_or("accepted"));
+    REQUIRE_FALSE(rejection);
     const auto savedClock = mc2::save::readSavedCombatClock(file, false);
     REQUIRE(savedClock);
     owner.resetCombatClock();
