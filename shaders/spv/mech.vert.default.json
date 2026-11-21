@@ -6,8 +6,8 @@
   "specializationParams": [],
   "artifact": "mech.vert.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "b82ae403565dbff1bae2d5d940b1ffe730e35868e1a3b66427d61157578763d3",
-  "spirv_sha256": "d5eba2600fab3d6206b9c32e20e397aa48bfff6a8799e5db17cd74a6183ec70d",
+  "source_sha256": "93b5b8f45326e005bef290e85c0a6fc0975253b99f249fed6d293dc0f45c37d2",
+  "spirv_sha256": "ba5081a2cbe3189f6c195e0e10c589a4bceb3376779b12495e7a11ef237f8243",
   "bindings": {
     "ubos": [
       {
@@ -28,7 +28,7 @@
         "binding": 4
       },
       {
-        "type": "_426",
+        "type": "_440",
         "name": "InstanceBuffer",
         "readonly": true,
         "block_size": 0,
@@ -36,7 +36,7 @@
         "binding": 1
       },
       {
-        "type": "_479",
+        "type": "_493",
         "name": "BoneBuffer",
         "readonly": true,
         "block_size": 0,
@@ -255,7 +255,7 @@
         }
       ]
     },
-    "_421": {
+    "_435": {
       "name": "GpuMechInstance",
       "members": [
         {
@@ -300,7 +300,7 @@
         }
       ]
     },
-    "_424": {
+    "_438": {
       "name": "GpuMechInstance",
       "members": [
         {
@@ -355,12 +355,12 @@
         }
       ]
     },
-    "_426": {
+    "_440": {
       "name": "InstanceBuffer",
       "members": [
         {
           "name": "instances",
-          "type": "_424",
+          "type": "_438",
           "array": [
             0
           ],
@@ -372,7 +372,7 @@
         }
       ]
     },
-    "_474": {
+    "_488": {
       "name": "GpuMechBone",
       "members": [
         {
@@ -393,7 +393,7 @@
         }
       ]
     },
-    "_477": {
+    "_491": {
       "name": "GpuMechBone",
       "members": [
         {
@@ -418,12 +418,12 @@
         }
       ]
     },
-    "_479": {
+    "_493": {
       "name": "BoneBuffer",
       "members": [
         {
           "name": "bones",
-          "type": "_477",
+          "type": "_491",
           "array": [
             0
           ],
@@ -435,7 +435,7 @@
         }
       ]
     },
-    "_878": {
+    "_891": {
       "name": "gl_PerVertex",
       "members": [
         {

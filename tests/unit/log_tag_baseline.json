@@ -12350,6 +12350,16 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
+    "file",
+    "ext_key"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_PIPELINE_CACHE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
     "saved_bytes",
     "pipelines",
     "creation_ms"

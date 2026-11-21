@@ -53,7 +53,7 @@
   ],
   "hashes": {
     "spirv_index_sha256": "4fa65f8b10ea66fe408a9cc16279a646d7ad04450341f94b5ca111e6dd7a1088",
-    "sidecars_sha256": "e7dade77c72c1ab5a564425c78cd2d19a046c907aba0783d044b012b95552831",
-    "source_set_sha256": "f10fb747eaa6a3dc646b92b97e3368a3686e6e45cf9a31c134126a644ef422cf"
+    "sidecars_sha256": "3c8fae9b50aaf448de2f70e26f67d5241c007cab45f0336dd1dcb0c6e6834d33",
+    "source_set_sha256": "449801c8f97209e32762c706ffcf76d4c7814e4b8e6f8dd7dfec44ca8842a02f"
   }
 }
