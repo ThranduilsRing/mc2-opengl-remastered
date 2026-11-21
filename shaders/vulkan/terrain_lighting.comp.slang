@@ -71,18 +71,6 @@ uint getLightChannel(float intensity, uint lightChan, uint ambientChan)
     return ambientChan;
 }
 
-bool getFalloff(uint lightIdx, float len, out float falloff)
-{
-    falloff = 1.0;
-    float closeDistance   = lights[lightIdx].closeDistance;
-    float farDistance     = lights[lightIdx].farDistance;
-    float oneOverDistance = lights[lightIdx].oneOverDistance;
-    if (len <= closeDistance) { falloff = 1.0; return true; }
-    if (len >= farDistance) return false;
-    falloff = (farDistance - len) * oneOverDistance;
-    return true;
-}
-
 [shader("compute")]
 [numthreads(64, 1, 1)]
 void main(uint3 tid : SV_DispatchThreadID)
@@ -95,7 +83,6 @@ void main(uint3 tid : SV_DispatchThreadID)
     GpuTerrainVertexInput v = vertices[vn];
 
     uint lightr = 255u, lightg = 255u, lightb = 255u;
-    uint specR = 0u, specG = 0u, specB = 0u;
 
     if (P.sunRgb.w == 0)
     {
@@ -121,48 +108,17 @@ void main(uint3 tid : SV_DispatchThreadID)
             lightg = uint(float(lightg) * rain);
         }
 
-        if (P.ambRgb.w > 0)
-        {
-            specR = uint(P.ambRgb.w);
-            specG = specR;
-            specB = specR;
-        }
-
-        for (uint i = 0u; i < uint(P.counts.y); i++)
-        {
-            uint lt = lights[i].lightType;
-            if (lt == TG_LIGHT_POINT_GPU || lt == TG_LIGHT_SPOT_GPU || lt == TG_LIGHT_TERRAIN_GPU)
-            {
-                float3 vertexPos = float3(v.xy.x, v.xy.y, v.elevation);
-                float3 vtl = vertexPos - lights[i].position;
-                float len = sqrt(dot(vtl, vtl));
-                float falloff = 1.0;
-                if (getFalloff(i, len, falloff))
-                {
-                    float red   = lights[i].color.r * lights[i].intensity * 255.0 * falloff;
-                    float green = lights[i].color.g * lights[i].intensity * 255.0 * falloff;
-                    float blue  = lights[i].color.b * lights[i].intensity * 255.0 * falloff;
-                    specR = min(specR + uint(red),   255u);
-                    specG = min(specG + uint(green), 255u);
-                    specB = min(specB + uint(blue),  255u);
-                }
-            }
-        }
     }
 
     uint lightRGB_out = (0xFFu << 24) | (lightr << 16) | (lightg << 8) | lightb;
     outputs[vn].lightRGB = lightRGB_out;
 
-    uint fogRGB_out = (0xFFu << 24) | (specR << 16) | (specG << 8) | specB;
-
+    // fogRGB carries the fog byte alone: the water pass reads nothing else of it (no local-light or material bytes).
     uint fogResult = 0xFFu;
     float fogStart = P.fogHaze.x;
     float fogFull  = P.fogHaze.y;
     if (P.sunRgb.w == 0 && P.baseRgb.w != 0)
-    {
         fogResult = uint(mc2FogHeightAlpha(v.elevation, fogStart, fogFull));
-        fogRGB_out = (fogResult << 24) | (specR << 16) | (specG << 8) | specB;
-    }
 
     float3 hpos = float3(v.xy.x, v.xy.y, v.elevation);
     float hazeFactor;
@@ -183,8 +139,7 @@ void main(uint3 tid : SV_DispatchThreadID)
         float fogFactor = 1.0 - hazeFactor;
         uint distFog = uint(int(fogFactor * 255.0));
         if (distFog < fogResult) fogResult = distFog;
-        fogRGB_out = (fogResult << 24) | (specR << 16) | (specG << 8) | specB;
     }
 
-    outputs[vn].fogRGB = fogRGB_out;
+    outputs[vn].fogRGB = fogResult << 24;
 }
