@@ -314,7 +314,7 @@ bool build_prop_cull(gosPostProcess::VkPostHzbNative& state, uint32_t count) {
     for (auto& set : s->cullSet) set = VK_NULL_HANDLE;
     // The shader samples a fixed 16-slot level array; a deeper pyramid cannot be addressed.
     // Level 0 has no image (the cull floors its lod at 1), so a one-level pyramid has nothing to sample: decline HZB.
-    if (s->mipCount < 2 || s->mipCount > static_cast<int>(kCullMaxLevels)) return false;
+    if (mc2hzb::pyramid_too_small(s->mipCount) || s->mipCount > static_cast<int>(kCullMaxLevels)) return false;
     if (!make_buffer(s, static_cast<uint64_t>(s->cullCapacity+1)*sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, s->visibility, "hzb.visibility")) return false;
     s->visibilityBytes = static_cast<uint64_t>(s->cullCapacity+1)*sizeof(uint32_t);
     // A recycled Vulkan handle must not leave consumers bound to the old mask.
@@ -747,6 +747,7 @@ void gosPostProcess::prewarmVkHzb(uint32_t propGeneration) {
     if(!vkPostHzbNative_) vkPostHzbNative_.reset(std::make_unique<VkPostHzbNative>().release());
     auto* s=vkPostHzbNative_.get();
     int levels=1; for(int edge=(std::max)(width_,height_);edge>1;edge=(edge+1)/2) ++levels;
+    if(mc2hzb::pyramid_too_small(levels)) return;
     if(!s->inited && !build_state(s,width_,height_,levels)) { destroy_state(s); return; }
     if (propGeneration != UINT32_MAX && !cache_prop_bounds(s, propGeneration)) { destroy_state(s); return; }
     // Non-mission callers still need a valid buffer before geometry is finalized.
@@ -770,6 +771,8 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
     int levels = 1;
     for (int size = (std::max)(width_, height_); size > 1; size = (size+1)/2) ++levels;
     hzbW_ = width_; hzbH_ = height_; hzbMipCount_ = levels;
+    // Too small a scene for a pyramid: skip this frame only (mask stays null, every prop is kept); a later bigger extent builds it.
+    if (mc2hzb::pyramid_too_small(levels)) { setFallback("pyramid_too_small"); return false; }
     if (!vkPostHzbNative_) vkPostHzbNative_.reset(new (std::nothrow) VkPostHzbNative());
     VkPostHzbNative* s = vkPostHzbNative_.get();
     if (!s) {
@@ -1012,7 +1015,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
     ++hzbBuildCount_;
     g_health.copyDepthOps = 0;
     g_health.readbackOps = 0;
-    g_health.vkDraws = static_cast<unsigned long>(s->mipCount);
+    g_health.vkDraws = static_cast<unsigned long>(mc2hzb::pyramid_pass_count(s->mipCount));
     ++g_health.usedVulkan;
     g_health.renderUs = std::chrono::duration<double, std::micro>(clk::now() - t0).count();
     setFallback("");

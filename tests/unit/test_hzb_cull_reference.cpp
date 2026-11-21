@@ -359,3 +359,15 @@ TEST_CASE("hzb ref: lod floor of 1 (level 0 is not built) and it only keeps more
     }
     CHECK(hiddenNew > 0);
 }
+
+TEST_CASE("hzb pyramid: skip decision is per extent, pass count excludes level 0") {
+    // A 1x1 target has 1 level (nothing to sample): skipped; the same state object must accept the next bigger extent.
+    CHECK(mc2hzb::pyramid_too_small(0));
+    CHECK(mc2hzb::pyramid_too_small(1));
+    CHECK_FALSE(mc2hzb::pyramid_too_small(2));   // 2x2 -> 2 levels
+    CHECK_FALSE(mc2hzb::pyramid_too_small(12));  // 3840x2160
+    // Passes recorded = levels 1..N-1 (hzb-level0-skip), never N.
+    CHECK(mc2hzb::pyramid_pass_count(1) == 0);
+    CHECK(mc2hzb::pyramid_pass_count(2) == 1);
+    CHECK(mc2hzb::pyramid_pass_count(12) == 11);
+}
