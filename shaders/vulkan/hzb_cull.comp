@@ -128,7 +128,8 @@ bool propHidden(uint id) {
     // projection is unjittered: widen the box by that jitter plus the one texel of conservatism.
     vec4 box = vec4(max(vec2(0), floor(lo - 0.5) - 1), min(params.viewportDepth.xy - 1, ceil(hi + 0.5) + 1));
     float extent = max(box.z - box.x, box.w - box.y);
-    uint lod = 0u;
+    // Level 0 (a 1:1 copy of scene depth) is not built: start at 1; a coarser level only keeps more props.
+    uint lod = min(1u, params.levels - 1);
     while (lod + 1 < params.levels && float(1u << lod) < extent) ++lod;
     return nearest < farthestAtLod(box, lod) - 0.00002;
 }
