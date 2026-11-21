@@ -295,7 +295,8 @@ static void applyKey(mc2::czstring key, float val, int& count) {
         g_waterGlintWarm = (val == 0.0f && visualTuning_sunValue("sunPitch")) ? 0.8f : val;
         count++;
     } else if (strcmp(key, "waterWaveBreakup") == 0) {
-        g_waterWaveBreakup = val;
+        // B1 default (owner 11-21): 0.2 wherever the afternoon sun (sunPitch key) applies and the key is unset (0); no sun key = legacy 0.
+        g_waterWaveBreakup = (val == 0.0f && visualTuning_sunValue("sunPitch")) ? 0.2f : val;
         count++;
     } else if (strcmp(key, "waterSkyTintStrength") == 0) {
         {

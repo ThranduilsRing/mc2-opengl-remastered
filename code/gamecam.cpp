@@ -431,6 +431,12 @@ void GameCamera::renderTerrainSceneState() {
 	flatIntensity = std::min(flatIntensity, 1.0f);
 	inputs.flatLight = {getLightRed(flatIntensity)/255.0f,
 		getLightGreen(flatIntensity)/255.0f, getLightBlue(flatIntensity)/255.0f};
+	{
+		// Cement/roads share the terrain's lighting model: the prelit-colormap tone from the authored sun, not the sun keys.
+		extern bool mc2_AuthoredFlatLight(unsigned char rgb[3]);
+		unsigned char fl[3];
+		if (mc2_AuthoredFlatLight(fl)) inputs.flatLight = {fl[0]/255.0f, fl[1]/255.0f, fl[2]/255.0f};
+	}
 	inputs.authoredPitch = eye->getDayLightPitch();
 	inputs.night = eye->getIsNight();
 	inputs.nightFactor = eye->getNightFactor();
