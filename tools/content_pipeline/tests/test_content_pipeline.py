@@ -703,3 +703,33 @@ def test_neural_latent_bc7_is_deterministic_nogpu():
     d1 = texcook.cook_ktx2(img, "neural_latent", compress=True, cache_dir=None)
     assert d1 == texcook.cook_ktx2(img, "neural_latent", compress=True, cache_dir=None)
     assert texcook.read_ktx2(d1)[0] == texcook.VK_BC7_UNORM
+
+
+def _orm_mats(tmp_path, ao=None, mr=None, strength=0.7):
+    imgs, mat = [], {"extras": {"mc2_material_class": "dielectric"}, "pbrMetallicRoughness": {"metallicFactor": 0.4, "roughnessFactor": 0.6}}
+    for key, px in (("o", ao), ("m", mr)):
+        if px is not None:
+            Image.fromarray(np.broadcast_to(np.array(px, np.uint8), (4, 4, 4)).copy(), "RGBA").save(tmp_path / f"{key}.png")
+            imgs.append({"uri": f"{key}.png"})
+            tex = {"index": len(imgs) - 1}
+            if key == "o":
+                mat["occlusionTexture"] = dict(tex, strength=strength)
+            else:
+                mat["pbrMetallicRoughness"]["metallicRoughnessTexture"] = tex
+    doc = {"images": imgs, "textures": [{"source": i} for i in range(len(imgs))], "materials": [mat]}
+    return gltf_io.read_materials(doc, [], tmp_path, tmp_path / "x", texture_roots=None, unclassified="allow")[0][0]
+
+
+def test_orm_neutral_fill_ao_mr_cases(tmp_path):
+    m = _orm_mats(tmp_path, ao=(128, 10, 20, 30))                       # AO only
+    assert (np.array(Image.open(m.orm.path)) == (128, 255, 255, 255)).all()
+    assert (m.roughness, m.metallic, m.ao_strength) == (0.6, 0.4, 0.7)
+    assert m.orm.sha256 != gltf_io.sha256_bytes((tmp_path / "o.png").read_bytes())   # cache miss
+    m = _orm_mats(tmp_path, ao=(5, 6, 7, 8), mr=(5, 6, 7, 8))           # same image
+    assert m.orm.sha256 == gltf_io.sha256_bytes((tmp_path / "o.png").read_bytes())
+    m = _orm_mats(tmp_path, ao=(90, 1, 2, 3), mr=(7, 150, 60, 200))     # separate images
+    assert (np.array(Image.open(m.orm.path)) == (90, 150, 60, 200)).all()
+    m = _orm_mats(tmp_path, mr=(77, 77, 77, 99))                        # greyscale MR
+    assert (np.array(Image.open(m.orm.path)) == (255, 77, 77, 99)).all()
+    m = _orm_mats(tmp_path, mr=(40, 150, 60, 99))                       # _arm-style MR unchanged
+    assert m.orm.sha256 == gltf_io.sha256_bytes((tmp_path / "m.png").read_bytes())
