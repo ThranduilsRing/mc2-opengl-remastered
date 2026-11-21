@@ -502,3 +502,16 @@ def test_game_written_texture_lists_are_not_parity_files():
     assert ap.is_excluded("data/textures/mc2_01.lst") and ap.is_excluded(r"Data\Textures\MC2_24.LST")
     assert not ap.is_excluded("data/textures/mc2_01.txm")
     assert not ap.is_excluded("data/textures/sub/other.lst")
+
+
+def test_engine_normal_cook_outputs_are_never_synced_over_the_deploy_cook(work):
+    names = [f"data/textures/mat{i}_normal.ktx2" for i in range(6)] + ["data/textures/engine_normals.cookver"]
+    ref = tree(work / "v04", {**{n: b"ref-old" for n in names}, "data/textures/1.2.txm": b"t"})
+    inst = tree(work / "lane", {**{n: b"fresh-cook-longer" for n in names}, "data/textures/1.2.txm": b"t"})
+    result = ap.enforce(inst, ref, sync_missing=True)
+    assert result.ok and result.synced == 0
+    assert all((inst / n).read_bytes() == b"fresh-cook-longer" for n in names)
+    # Only these exact outputs are exempt: a neighbouring texture still syncs.
+    ref2 = tree(work / "v04b", {"data/textures/mat0_normal.tga": b"ref"})
+    inst2 = tree(work / "lane2", {"data/textures/mat0_normal.tga": b"lane-longer"})
+    assert ap.enforce(inst2, ref2, sync_missing=True).synced == 1
