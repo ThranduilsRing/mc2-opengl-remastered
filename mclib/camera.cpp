@@ -12,6 +12,7 @@
 #include "Gates/gate.h"
 #include "../GameOS/gameos/utils/mc2log.h"   // LOCAL-LIGHTS-4: [MISSION_LIGHT v1]
 #include "mission_light_profile.h"
+#include "authored_sun.h"
 #include "../GameOS/gameos/visual_tuning_profile.h"
 #include "mc2fmt.h"
 
@@ -24,8 +25,8 @@ inline float agsqrt( float _a, float _b )
 //---------------------------------------------------------------------------
 // Static Globals
 
-// Sun-light inputs as authored, captured before the per-mission sun keys replace them (Camera::init).
-static struct { bool valid = false; unsigned char sun[3] = {}, amb[3] = {}; } s_authoredSun;
+// Sun colour/ambient as authored, captured before the per-mission sun keys replace them (Camera::init).
+static mc2::authored_sun::AuthoredSun s_authoredSun;
 
 char WindowTitle[1024];		// Global window title (GetWindowText is VERY slow)
 
@@ -407,10 +408,19 @@ long Camera::init (FitIniFilePtr cameraFile )
 			cameraFile->readIdUChar("AmbientBlue", ambientBlue);
 		}
 		// Per-mission sun (visual_tuning.json sunPitch/sunYaw/sunColor*): day suns only, absolute values so a save re-applies the same.
-		s_authoredSun.valid = false;
+		s_authoredSun = {};
 		if (!missionLightName.empty() && mc2_mission_light::nightFromSun(dayLightPitch) == 0.0f)
 		{
-			s_authoredSun = {true, {lightRed, lightGreen, lightBlue}, {ambientRed, ambientGreen, ambientBlue}};
+			// A keyed save already holds the keyed colours; it also carries the authored ones (Camera::save).
+			bool savedHas = false;
+			std::array<unsigned char, 3> savedSun{}, savedAmb{};
+			if (fromSave && cameraFile->readIdBoolean("AuthoredSunValid", savedHas) == NO_ERR && savedHas)
+			{
+				cameraFile->readIdUChar("AuthoredLightRed", savedSun[0]); cameraFile->readIdUChar("AuthoredLightGreen", savedSun[1]);
+				cameraFile->readIdUChar("AuthoredLightBlue", savedSun[2]); cameraFile->readIdUChar("AuthoredAmbientRed", savedAmb[0]);
+				cameraFile->readIdUChar("AuthoredAmbientGreen", savedAmb[1]); cameraFile->readIdUChar("AuthoredAmbientBlue", savedAmb[2]);
+			}
+			s_authoredSun = mc2::authored_sun::resolve({lightRed, lightGreen, lightBlue}, {ambientRed, ambientGreen, ambientBlue}, savedHas, savedSun, savedAmb);
 			if (const auto v = visualTuning_sunValue("sunPitch")) lightPitch = dayLightPitch = std::max(*v, 26.0f);
 			if (const auto v = visualTuning_sunValue("sunYaw")) lightYaw = *v;
 			lightDirection.x = cos((lightYaw + 45.0f) * DEGREES_TO_RADS);
@@ -825,20 +835,14 @@ unsigned char Camera::getLightBlue (float intensity)
 	return (ambientBlue < floorV) ? static_cast<unsigned char>(floorV) : ambientBlue;
 }
 
-// Flat light of cement/roads = what the colormap burn-in gives flat ground: AUTHORED sun colour and ambient (the burn
-// runs before the sun colour/ambient keys apply) times the LIVE light z (the burn follows the sun pitch key). Measured
-// at 101247: sunPitch alone darkens the ground x0.80 = (amb+sun*z28)/(amb+sun*z50); colour/ambient keys do not move it.
-// Cement (an unlit atlas texel * this) then tracks the ground beside it exactly. False when no per-mission sun block
-// ran (night, or no mission): the caller keeps the live flat light.
-bool mc2_AuthoredFlatLight(float z, unsigned char rgb[3])
+// R = liveFlat / authoredFlat per channel at light z: how far the per-mission sun keys moved the flat light (sun*z +
+// ambient) away from what the prelit colormap and other authored art were burned with. Exactly 1 with no keys, at night
+// and with no mission. The ground, decals and grass multiply it in (EnvironmentUBO.sceneLight.yzw); cement already
+// uses the live flat light, so ground and cement move together.
+void mc2_FlatLightRatio(float z, const unsigned char liveSun[3], const unsigned char liveAmb[3], float out[3])
 {
-	if (!s_authoredSun.valid) return false;
-	const long floorV = mc2NightAmbientFloor();
-	for (int i = 0; i < 3; ++i) {
-		const long v = z > 0.0f ? float2long(s_authoredSun.sun[i] * z + s_authoredSun.amb[i]) : s_authoredSun.amb[i];
-		rgb[i] = static_cast<unsigned char>(std::clamp(v, floorV, 255L));
-	}
-	return true;
+	const auto r = mc2::authored_sun::flatRatio(s_authoredSun, {liveSun[0], liveSun[1], liveSun[2]}, {liveAmb[0], liveAmb[1], liveAmb[2]}, z, mc2NightAmbientFloor());
+	out[0] = r[0]; out[1] = r[1]; out[2] = r[2];
 }
 
 bool Camera::save( FitIniFile* file )
@@ -852,6 +856,13 @@ bool Camera::save( FitIniFile* file )
 	// LOCAL-LIGHTS-4: the colours below already carry the mission night profile; a load must not scale them twice.
 	file->writeIdBoolean( "NightProfileApplied", missionLightApplied );
 	file->writeIdBoolean( "SunAmbientScaled", sunAmbientScaled );
+	if (s_authoredSun.valid)   // the colours before the sun keys, so a load of a keyed save keeps the flat-light ratio
+	{
+		file->writeIdBoolean( "AuthoredSunValid", true );
+		file->writeIdUChar( "AuthoredLightRed", s_authoredSun.sun[0] ); file->writeIdUChar( "AuthoredLightGreen", s_authoredSun.sun[1] );
+		file->writeIdUChar( "AuthoredLightBlue", s_authoredSun.sun[2] ); file->writeIdUChar( "AuthoredAmbientRed", s_authoredSun.amb[0] );
+		file->writeIdUChar( "AuthoredAmbientGreen", s_authoredSun.amb[1] ); file->writeIdUChar( "AuthoredAmbientBlue", s_authoredSun.amb[2] );
+	}
 
 	file->writeIdUChar( "LightRed", lightRed );
 	file->writeIdUChar( "LightGreen", lightGreen );

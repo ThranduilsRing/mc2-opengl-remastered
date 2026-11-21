@@ -24,7 +24,7 @@ struct EnvironmentUBO {
     // per-mission L0 chroma are already applied. Strength options stay with the class that owns them.
     float   shDiffuse[9][4];  // @vec4xN .w pad each
     float   hemiSky[4];       // @vec4 mission ambient hemisphere (rgb x unitAmbientScale), the fallback without SH; .w pad
-    float   sceneLight[4];    // @vec4 x = prelit ground scale (mission night scale, 1 = day); yzw reserved
+    float   sceneLight[4];    // @vec4 x = prelit ground scale (mission night scale, 1 = day); yzw = live/authored flat-light ratio applied to prelit art (1 = no sun keys)
 };
 
 #include "GpuEnvironment.layout.gen.h"

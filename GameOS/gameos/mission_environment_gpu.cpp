@@ -30,6 +30,7 @@ void fillGpu(const RenderCore::MissionEnvironment& env, float sceneLightScale, E
         }
     for (int c = 0; c < 3; ++c) out.hemiSky[c] = env.sky.hemisphereSky[c] * env.unitAmbientScale;
     out.sceneLight[0] = sceneLightScale;
+    for (int c = 0; c < 3; ++c) out.sceneLight[1 + c] = env.lighting.flatRatio[c];   // the sun keys' move of the flat light, applied to prelit art
 }
 
 }

@@ -73,3 +73,42 @@ TEST_CASE("EnvironmentGpu/per-mission L0 follows the ambient hue by day and not 
     mc2::environment::missionL0Chroma({0, 0, 0}, chroma);      // no mission colour: sky hue kept
     CHECK((chroma[0] == 1.0f && chroma[1] == 1.0f && chroma[2] == 1.0f));
 }
+
+#include "../../mclib/authored_sun.h"
+
+TEST_CASE("EnvironmentGpu/flat-light ratio is exactly 1 without sun keys, at night and with no mission") {
+    using namespace mc2::authored_sun;
+    const std::array<unsigned char,3> sun{255, 255, 225}, amb{71, 71, 78};
+    // no per-mission sun block (night / no mission): no authored record
+    auto r = flatRatio(AuthoredSun{}, sun, amb, 0.608f, 0);
+    CHECK((r[0] == 1.0f && r[1] == 1.0f && r[2] == 1.0f));
+    // keys absent: authored == live
+    r = flatRatio(resolve(sun, amb, false, {}, {}), sun, amb, 0.425f, 0);
+    CHECK((r[0] == 1.0f && r[1] == 1.0f && r[2] == 1.0f));
+    // keys present: the ratio is live flat / authored flat per channel, and the producer carries it
+    const std::array<unsigned char,3> keySun{255, 214, 160}, keyAmb{50, 50, 55};
+    r = flatRatio(resolve(sun, amb, false, {}, {}), keySun, keyAmb, 0.425f, 0);
+    CHECK(r[0] < 0.8f);
+    CHECK(r[2] < r[0] + 0.05f);
+    RenderCore::MissionEnvironment env;
+    env.lighting.flatRatio = r;
+    EnvironmentUBO out{};
+    mc2::environment::fillGpu(env, 1.0f, out);
+    for (int c = 0; c < 3; ++c) CHECK(out.sceneLight[1 + c] == r[c]);
+    EnvironmentUBO def{};
+    mc2::environment::fillGpu(RenderCore::MissionEnvironment{}, 1.0f, def);
+    CHECK((def.sceneLight[1] == 1.0f && def.sceneLight[2] == 1.0f && def.sceneLight[3] == 1.0f));
+}
+
+TEST_CASE("EnvironmentGpu/a keyed save keeps the authored sun across load") {
+    using namespace mc2::authored_sun;
+    const std::array<unsigned char,3> sun{255, 255, 225}, amb{71, 71, 78}, keySun{255, 214, 160}, keyAmb{50, 50, 55};
+    // the save holds the keyed colours AND the authored ones: load resolves to the authored, so the ratio survives
+    const auto a = resolve(keySun, keyAmb, true, sun, amb);
+    CHECK(a.sun == sun);
+    CHECK(a.amb == amb);
+    CHECK(flatRatio(a, keySun, keyAmb, 0.425f, 0)[0] < 0.8f);
+    // an old save without the record takes the read colours (nothing better exists)
+    const auto old = resolve(keySun, keyAmb, false, {}, {});
+    CHECK(old.sun == keySun);
+}
