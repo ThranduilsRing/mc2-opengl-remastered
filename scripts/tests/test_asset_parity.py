@@ -382,7 +382,7 @@ def test_tracked_grass_declarations_are_candidate_only_and_exact(work, declarati
     original = ap.intentional_changes
     monkeypatch.setattr(ap, "intentional_changes", lambda commit, _root=None: original(commit, root))
     assert ap.capture_drift(install, ref).ok
-    assert "INTENTIONAL ASSET ACCEPTED data/vegetation/cards/grass_01.png sha256=" in capsys.readouterr().out
+    assert "INTENTIONAL ASSET ACCEPTED 4 files" in capsys.readouterr().out
     payload_manifest(install, {}, baseline)
     assert not ap.capture_drift(install, ref).ok
     payload_manifest(install, {}, candidate)
