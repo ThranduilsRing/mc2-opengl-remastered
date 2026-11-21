@@ -1064,13 +1064,12 @@ static void updatePropsNow(uint64_t propVbo) {
         return;   // geometry not finalized yet: retried next frame
     const auto t0 = std::chrono::steady_clock::now();
 
-    std::vector<GpuStaticPropInstance> inst, dyn;
-    GpuStaticPropRegistry::getBuildingShadowInstances(inst);
-    GpuStaticPropRegistry::getDynamicPropShadowInstances(dyn);
-    inst.insert(inst.end(), dyn.begin(), dyn.end());
+    std::vector<GpuStaticPropInstance> inst;
+    std::vector<int32_t> leafRecipe;
+    GpuStaticPropRegistry::getRtPropInstances(inst, leafRecipe);   // per-leaf recipe: every node of a multi-node prop, not only node 0
     std::vector<uint32_t> ids(inst.size(), 0);
     for (size_t i = 0; i < inst.size(); ++i) {
-        const int32_t recipe = GpuStaticPropRegistry::getRecipeIndexForType(inst[i].typeID);
+        const int32_t recipe = leafRecipe[i];
         ids[i] = recipe >= 0 ? RenderWorld::objectIdRawForStaticPropRecipe(recipe) : kTerrainObjectId;   // 0 = no recipe: dropped by buildRecords
     }
 
