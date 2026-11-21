@@ -15,6 +15,7 @@
 #ifndef PREC
 #define PREC highp
 #endif
+#include "../include/axis.hglsl"   // mc2ToRender: cameraPosMC2 is in Stuff space
 #include "../include/edge_haze.hglsl"
 #include "include/terrain_frame_vk.glsl"
 #include "include/concrete_detail_vk.glsl"
@@ -106,7 +107,7 @@ void main() {
     c.rgb *= mix(1.0, uEnv.sceneLight.x, pc.artFlatExempt); // Live mission light already carries the night profile.
 
     // In-shader distance fog (skipped on cement tiles: the shared screen-space fog does it once).
-    float camDist2D = distance(WorldPos.xy, uT.cameraPosMC2.xy);
+    float camDist2D = distance(WorldPos.xy, mc2ToRender(uT.cameraPosMC2.xyz).xy);
     float heightScale = exp(-max(WorldPos.z, 0.0) * 0.002);
     float fogAmount = clamp(1.0 - exp(-camDist2D * MC2_FOG_EXP_COEFFICIENT * heightScale), 0.0, 0.70);
     const vec3 fogCol = vec3(0.58, 0.65, 0.75);
