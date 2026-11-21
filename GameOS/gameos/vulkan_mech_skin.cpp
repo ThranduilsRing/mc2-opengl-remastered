@@ -136,7 +136,8 @@ void MechSkinPass::plan(uint32_t slot, std::span<const Mc2MechDrawRun> runSpan, 
     const uint32_t nodeJobs = static_cast<uint32_t>(jobs_.size());
     const uint32_t nodeMax = maxCount;
     if (!jobs_.empty()) {
-        jobs_ = chunkSkinJobs(jobs_);
+        chunkSkinJobsInto(jobs_, chunkedJobs_);   // both vectors keep their capacity across frames
+        jobs_.swap(chunkedJobs_);
         maxCount = maxSkinJobCount(jobs_);
         if (mc2_diag::tagRequested("VK_MECH_SKIN")) {
             static uint32_t logged = 0;

@@ -133,6 +133,7 @@ private:
     bool usageStale_[kMaxFramesInFlight] = {};      // the slot's skinned buffer predates extraUsage_
 
     std::vector<Job> jobs_;
+    std::vector<Job> chunkedJobs_;     // scratch for the chunking pass (swapped with jobs_)
     std::vector<uint32_t> runOff_;     // per run: offset of its instances in dst_ (size runCount + 1)
     std::vector<int32_t> dst_;         // per run instance: first vertex of its skinned region, -1 = drawn from the bind-pose VBO
     std::vector<uint8_t> bad_, used_;
