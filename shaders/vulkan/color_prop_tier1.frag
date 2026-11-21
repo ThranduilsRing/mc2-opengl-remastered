@@ -59,8 +59,8 @@
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_buffer_reference : require
 layout(constant_id = 0) const int kBaseQuality = 2; // Potato / Low / Medium+High
-// 1 = the opaque core pipeline: its packets have no alpha-ON layer, no per-packet alpha-test bit and are not
-// fringe rows, so every discard below is dead for them. Compiling the discards out lets the driver run early Z.
+// 1 = the opaque core pipeline: its packets have no per-packet alpha-test bit (an alpha-ON type's trunk is one) and
+// are not fringe rows, so every discard below is dead for them. Compiling the discards out lets the driver run early Z.
 layout(constant_id = 2) const int kOpaqueOnly = 0;
 layout(constant_id = 10) const int kPlanarReflection = 0;
 // 1 = the core depth pre-pass pipeline: the same discards and coverage cut as the colour pass, then no shading (colour writes are masked).

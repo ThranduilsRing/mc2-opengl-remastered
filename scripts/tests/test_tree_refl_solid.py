@@ -58,3 +58,8 @@ def test_below_water_geometry_is_clipped_in_both_materials():
         src = (ROOT / "shaders/vulkan" / shader).read_text(encoding="utf-8")
         assert f"kPlanarReflection != 0 && {position}.z < uT.shorelineWaterElev" in src
         assert "layout(constant_id = 10)" in src
+
+
+def test_prop_fringe_rows_routed_per_packet():
+    src = (ROOT / "GameOS/gameos/vulkan_color_prop_island.cpp").read_bytes().decode("utf-8")
+    assert "PropList::routeFringe(" in src and "layerOn >= 0 ||" not in src

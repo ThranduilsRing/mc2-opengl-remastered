@@ -20,6 +20,7 @@
 #include <bit>
 #include "../../mclib/battle_bench_wait.h"
 #include "../../RenderCore/TemporalInputs.h"
+#include "../../RenderCore/PropListRoute.h"
 extern uint32_t g_mc2RenderFrame;   // mclib/tgl.cpp
 #include <optional>
 #include <volk.h>
@@ -181,7 +182,7 @@ struct PropPacketPush { uint64_t rows; uint32_t base; uint32_t pad; };
 static_assert(sizeof(PropPacketPush) == 16);
 // Draw lists, in command-buffer order: opaque core (no-discard pipeline, early Z), alpha core, fringe, late fringe; each stage has a single-sided
 // list (CULL_BACK, front-face lighting only) followed by a double-sided one (cull none, back-face lighting; the packet's material has kDoubleSided).
-constexpr uint32_t kListOpaque = 0, kListCore = 2, kListFringe = 4, kListLate = 6, kListDouble = 1, kListCount = 8;
+constexpr uint32_t kListOpaque = PropList::kOpaque, kListCore = PropList::kCore, kListFringe = PropList::kFringe, kListLate = PropList::kLate, kListDouble = PropList::kDouble, kListCount = PropList::kCount;   // layout lives in RenderCore/PropListRoute.h
 struct PropRunRow { uint32_t first, count; uint32_t range[kListCount][2]; struct { uint32_t typeId, hasLeaves; } metadata; };   // range[list] = {start, n}
 static_assert(sizeof(PropRunRow) == 80);
 struct PropDrawCmd { uint32_t indexCount, instanceCount, firstIndex; int32_t baseVertex; uint32_t firstInstance; };
@@ -1942,7 +1943,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
                 bool counted = false;
                 // Opaque core list: the type's packets before its first alpha-testable one. The rest of the type stays in the
                 // alpha core list in packet order, so a coplanar later packet still wins the GEQUAL tie against an earlier one.
-                bool opaquePrefix = true;
+                bool opaquePrefix = true, doubleSidedSeen = false;
                 // OBJECT-ID-1: the RenderWorld handle for this type (recipe index, generation 1); 0 when the type has no recipe.
                 const int32_t typeObjectId = static_cast<int32_t>(RenderWorld::objectIdRawForStaticPropRecipe(
                     GpuStaticPropRegistry::getRecipeIndexForType(tr.typeID)));
@@ -1966,22 +1967,24 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
                     if (mc2_diag::tagRequested("SUPPORT_CRAFT") && mc2SupportCraftTraceType(tid))
                         mc2::fmt::print_err("[SUPPORT_CRAFT] event=packet frame={} type={} pipeline=prop indices={} instances={} hzb={} albedo={} firstIndex={} baseVertex={}\n",
                             g_mc2RenderFrame, tid, pkt.indexCount, instCount, hzbCulled, row.layerOff, pkt.firstIndex, pkt.baseVertex);
-                    // The core pass draws every packet (alpha-tested ones cut at the coverage threshold).
-                    const bool alphaTestable = row.layerOn >= 0 || row.alphaTest != 0;
-                    opaquePrefix = opaquePrefix && !alphaTestable;
-                    const uint32_t dbl = (s->authoredReady && pk < s->packetDoubleSided.size() && s->packetDoubleSided[pk]) ? kListDouble : 0u;
-                    const uint32_t coreList = (opaquePrefix ? kListOpaque : kListCore) + dbl;
+                    // The core pass draws every packet (alpha-tested ones cut at the coverage threshold). Routed per packet by its
+                    // alpha-test bit (PropList::routeCore), so a trunk of an alpha-ON type takes the opaque no-discard list.
+                    const bool packetDouble = s->authoredReady && pk < s->packetDoubleSided.size() && s->packetDoubleSided[pk];
+                    const uint32_t dbl = packetDouble ? kListDouble : 0u;
+                    const PropList::CoreRoute route = PropList::routeCore(opaquePrefix, row.alphaTest, packetDouble, doubleSidedSeen);
+                    opaquePrefix = route.opaquePrefix; doubleSidedSeen = route.doubleSidedSeen;
+                    const uint32_t coreList = route.list;
                     s->cmdScratch[coreList].push_back(cmd); s->pktScratch[coreList].push_back(row); ++rr.range[coreList][1];
                     if (s_pktDump)
                         mc2::fmt::print(s_pktDump, "{:d},{:d},{:d},{:d},{:.4f},{:.4f},{:d},{:d},{:d},{:d},{:d}\n",
                                      mc2::fmt::as_u32(tid), mc2::fmt::as_u32(pk), mc2::fmt::as_i32(row.layerOff), mc2::fmt::as_i32(row.layerOn), row.uvScaleX, row.uvScaleY,
                                      mc2::fmt::as_u32(pkt.indexCount), mc2::fmt::as_u32(pkt.firstIndex),
                                      mc2::fmt::as_i32(static_cast<int32_t>(pkt.baseVertex)), mc2::fmt::as_u32(instCount), mc2::fmt::as_u32(i));
-                    // PROP-COVERAGE-1 pass 1 re-draws only the packets the FS can alpha-test (alpha-ON layer or the per-packet bit) with the
-                    // fringe pipeline, after every core is in the depth buffer; alphaTest == 2 packets wait for the late pass.
-                    if (alphaTestable && !mc2_static_prop_lod_skips_late(tid)) {
+                    // PROP-COVERAGE-1 pass 1 re-draws only the packets with the per-packet alpha-test bit with the fringe pipeline,
+                    // after every core is in the depth buffer; alphaTest == 2 packets wait for the late pass. Opaque packets of an
+                    // alpha-ON type (trunks) get no fringe row (PropList::routeFringe).
+                    if (const uint32_t list = PropList::routeFringe(row.alphaTest, dbl != 0, mc2_static_prop_lod_skips_late(tid) != 0); list != PropList::kNoList) {
                         row.fringe = 1;
-                        const uint32_t list = (row.alphaTest == 2 ? kListLate : kListFringe) + dbl;
                         s->cmdScratch[list].push_back(cmd); s->pktScratch[list].push_back(row);
                         ++rr.range[list][1];
                     }
