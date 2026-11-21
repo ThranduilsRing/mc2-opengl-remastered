@@ -63,7 +63,7 @@ std::map<std::string, float> engineDefaults() {
         {"gradeHighlightsR",1}, {"gradeHighlightsG",1}, {"gradeHighlightsB",1},
         {"topWarmthR",1}, {"topWarmthG",1}, {"topWarmthB",1},
         {"vignette",0}, {"topWarmthStrength",0},
-        {"sunPitch",kSunAbsent}, {"sunYaw",kSunAbsent}, {"sunColorR",kSunAbsent}, {"sunColorG",kSunAbsent}, {"sunColorB",kSunAbsent},
+        {"sunPitch",kSunAbsent}, {"sunYaw",kSunAbsent}, {"sunColorR",kSunAbsent}, {"sunColorG",kSunAbsent}, {"sunColorB",kSunAbsent}, {"sunAmbientScale",kSunAbsent},
         {"unitAmbientScale",1.2f}, {"buildingSpillIntensityScale",1.0f},
         {"exposure",1}, {"shadowSoftness",2.5f}, {"staticPropIblStrength",0.5f},
         {"waterSkyTintStrength",0}, {"waterReflections",static_cast<float>(mc2::options::current().waterReflections)},
@@ -83,6 +83,7 @@ bool validValue(std::string_view key, double value) {
     if (key == "sunPitch") { lo = 26; hi = 90; }
     else if (key == "sunYaw") { lo = -360; hi = 360; }
     else if (key.starts_with("sunColor")) hi = 255;
+    else if (key == "sunAmbientScale") hi = 2;
     else if (key == "vignette" || key == "topWarmthStrength") hi = 1;
     else if (key.starts_with("grade") || key.starts_with("topWarmth")) hi = 2;
     else if (key == "unitAmbientScale" || key == "buildingSpillIntensityScale") hi = 2;

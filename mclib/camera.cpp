@@ -417,6 +417,12 @@ long Camera::init (FitIniFilePtr cameraFile )
 				lightGreen = dayLightGreen = static_cast<unsigned char>(*g + 0.5f);
 				lightBlue = dayLightBlue = static_cast<unsigned char>(*b + 0.5f);
 			}
+			// sunAmbientScale: ambient* is what every shadowed surface (terrain, props, mechs, grass) is lit with.
+			if (const auto k = visualTuning_sunValue("sunAmbientScale"))
+			{
+				const auto sc = [k](unsigned char& v) { v = static_cast<unsigned char>(std::min(255.0f, v * *k + 0.5f)); };
+				sc(ambientRed); sc(ambientGreen); sc(ambientBlue); sc(dayAmbientRed); sc(dayAmbientGreen); sc(dayAmbientBlue);
+			}
 		}
 	}
 
