@@ -137,7 +137,7 @@ long GVAppearance::render (long depthFixup)
 				if (s_paintLogs < 6 && ++s_paintLogs) mc2::fmt::print_err("[VEHICLE_PAINT] {} lod={} team={} paint={:08x}/{:08x}/{:08x}\n", appearType->name, renderLOD, teamId, psRed, psGreen, psBlue);
 				submitted = GpuStaticPropBatcher::instance().submitMultiShape(
 					drawShape, GpuStaticPropPopulation::Generic, eye->lightContext(), appearType->name,
-					mc2::prop_light::packWord(land && eye ? land->getTerrainLight(position) : 1.0f, 0));
+					mc2::prop_light::packWord(land && eye ? land->getTerrainLight(position) : 1.0f, mc2::prop_light::kMover));
 			}
 			else if (gpuPose_) {
 				// Stock body: node matrices, the light row, paint texture and haze go to the mech batcher.

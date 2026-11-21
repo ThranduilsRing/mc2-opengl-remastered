@@ -47,7 +47,7 @@ inline float ambientRatio(const AuthoredSun& a, const std::array<unsigned char, 
 inline float pitchGain(const AuthoredSun& a, float livePitchDeg) {
     if (!a.valid || a.pitch <= 0.0f || a.pitch == livePitchDeg || livePitchDeg <= 0.0f) return 1.0f;
     const float k = 0.01745329252f;
-    return std::sin(a.pitch * k) / std::sin(livePitchDeg * k);
+    return std::sqrt(std::sin(a.pitch * k) / std::sin(livePitchDeg * k));   // sqrt: movers keep an ambient share the pitch does not touch
 }
 
 // Camera::init, after a save's block has been read: the authored sun a keyed save carries wins over the (already keyed)

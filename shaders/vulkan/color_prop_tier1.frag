@@ -222,7 +222,7 @@ void main() {
         // read pure black. VK omitted this -> alpha-test fences/cards rendered BLACK. Apply
         // the SAME floor verbatim before multiplying the albedo.
         materialAlbedo = texc.rgb; haveAlbedo = true;
-        rgb = texc.rgb * max(vArgb, vec3(0.5 * pow(envAmbientKey(), 1.0 / 2.2)));   // the encoded floor follows the ambient key like the linear one
+        rgb = texc.rgb * max(vArgb, vec3(0.5));
         rgb += vHighlight.rgb * vHighlight.a;
     } else if (uFrame.materialReady != 0 && (vLayer >= 0 || propHasObjectAlbedo(uPacket.materialId))) {
         // ALPHA-OFF group. Real albedo texture (GL_REPEAT restored via fract, then
@@ -247,7 +247,7 @@ void main() {
         // were built, e.g. the hex lattice props): GL's dither discard, its alpha-test light floor and its alpha-test shadow class.
         if (kOpaqueOnly == 0 && uPacket.packetAlphaTest != 0) {
             cover = propCoverage(texOff.a, vLayer >= 0 ? textureQueryLod(uAlbedo[nonuniformEXT(bucketOff)], uvContinuous).y : 0.0);   // PROP-COVERAGE-1
-            rgb = albedo * max(vArgb, vec3(0.5 * pow(envAmbientKey(), 1.0 / 2.2)));
+            rgb = albedo * max(vArgb, vec3(0.5));
             alphaTestClass = true;
         }
         rgb += vHighlight.rgb * vHighlight.a;
