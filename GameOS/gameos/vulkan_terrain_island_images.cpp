@@ -109,7 +109,7 @@ bool create_colormap_sampler(TerrainIsland* s) {
 // copy-once imports. Match `fmt` to the GL upload's channel order (RGBA8 storage read
 // back as GL_RGBA -> R8G8B8A8_UNORM; do NOT double-encode sRGB).
 bool upload_sampled_image(TerrainIsland* s, mc2vk::ResidentTextureRef& outTexture,
-                          VkFormat fmt, uint32_t width, uint32_t height, const void* bytes, VkDeviceSize byteCount, bool mips = false) {
+                          VkFormat fmt, uint32_t width, uint32_t height, const void* bytes, VkDeviceSize byteCount, bool mips) {
     auto texture=mc2vk::getOrCreateEngineVulkanContext().textures().acquirePixels(width,height,fmt,bytes,static_cast<size_t>(byteCount),mips);
     if (!texture) return false;
     outTexture=std::move(texture); return true;
