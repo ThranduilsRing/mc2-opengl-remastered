@@ -206,7 +206,9 @@ bool prepare_reflect_bake(WaterIsland* s, float water) {
                 drift |= b.scale[i] < 0.9f || b.scale[i] > 1.1f || (b.bakedRgb[i] == 0 && rgb[i] != 0);
             }
             source.clear();
-            if (b.content != content) source += "registry;";
+            const bool propContentChanged = b.content != content;
+            if (propContentChanged && plan.props) source += "registry;";
+            const size_t propLen = source.size();
             // Weather also quantizes the flat-pad light in gamecam.cpp. Treat
             // those steps as bounded lighting refreshes, not geometry edits.
             bool flatLightChanged = false;
@@ -218,9 +220,12 @@ bool prepare_reflect_bake(WaterIsland* s, float water) {
             if (b.halfMap != feed.halfMap) source += "halfMap;";
             for (size_t i = 1; i < key.size(); ++i)
                 if (b.key[i] != key[i]) source += "key[" + std::to_string(i) + "];";
-            if (!source.empty()) why = "content";
-            else if (drift) why = "drift";
-            else if ((b.key[0] != key[0] || flatLightChanged) && now - b.lastBake >= std::chrono::seconds(1)) {
+            using mc2::waterplanar::RebakeReason;
+            const RebakeReason reason = mc2::waterplanar::rebakeReason(plan, propContentChanged, source.size() > propLen, drift,
+                b.key[0] != key[0], flatLightChanged, now - b.lastBake >= std::chrono::seconds(1));
+            if (reason == RebakeReason::Content) why = "content";
+            else if (reason == RebakeReason::Drift) why = "drift";
+            else if (reason == RebakeReason::Reveal) {
                 why = "reveal";
                 source = flatLightChanged ? "flatLight" : "visibility";
             }

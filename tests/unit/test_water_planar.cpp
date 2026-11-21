@@ -497,6 +497,20 @@ TEST_CASE("water planar: mask scratch holds exactly two block grids") {
     CHECK(wp::maskScratchFloats(9, 9) == 8);
 }
 
+TEST_CASE("water planar: a bake without props ignores prop content and registry generation") {
+    using R = wp::RebakeReason;
+    const auto low = wp::bakePlan(1), medium = wp::bakePlan(2);
+    //                          plan  content other drift gen   flat  1s
+    CHECK(wp::rebakeReason(low,    true,  false, false, true,  false, true) == R::None);
+    CHECK(wp::rebakeReason(medium, true,  false, false, false, false, true) == R::Content);
+    CHECK(wp::rebakeReason(medium, false, false, false, true,  false, true) == R::Reveal);
+    CHECK(wp::rebakeReason(medium, false, false, false, true,  false, false) == R::None);
+    CHECK(wp::rebakeReason(low,    false, true,  false, false, false, false) == R::Content);   // water level, terrain keys
+    CHECK(wp::rebakeReason(low,    false, false, true,  false, false, false) == R::Drift);
+    CHECK(wp::rebakeReason(low,    false, false, false, false, true,  true) == R::Reveal);     // flat-pad light
+    CHECK(wp::rebakeReason(low,    false, false, false, false, true,  false) == R::None);
+}
+
 // Trigger paths: water_planar_props.h and gos_static_prop_registry.cpp.
 // Reference = the pre-grid collect: stable type order, per-entry multi() and view test.
 TEST_CASE("water planar: grid collect matches the linear reference bit for bit") {
