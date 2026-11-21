@@ -20,6 +20,9 @@ void mc2SetCloudWaterScale(float v);   // vulkan_post_screenfx_native.cpp
 #include <nlohmann/json.hpp>
 #include "mc2fmt.h"
 
+float g_waterWaveBreakup = 0.0f;  // waterWaveBreakup key: 0 = legacy uniform wave field (read by vulkan_water_island_run.cpp)
+float g_waterGlintWarm = 0.0f;  // waterGlintWarm key: 0 = legacy additive sun glint (read by vulkan_water_island_run.cpp)
+
 // Renderer function forward declarations.
 // Definitions in gameos_graphics.cpp / gos_postprocess.cpp / gos_particle_bridge.cpp.
 extern float gos_GetWaterSkyTintStrength();
@@ -55,15 +58,18 @@ std::string s_profilePath = "data/visual_tuning.json";
 bool s_hasFile = false;
 int s_appliedKeys = 0;
 
+constexpr float kSunAbsent = -1000.0f;  // sun* keys: absent = keep the mission's own sun
+
 std::map<std::string, float> engineDefaults() {
     return {{"gradeR",1}, {"gradeG",1}, {"gradeB",1},
         {"gradeShadowsR",1}, {"gradeShadowsG",1}, {"gradeShadowsB",1},
         {"gradeHighlightsR",1}, {"gradeHighlightsG",1}, {"gradeHighlightsB",1},
         {"topWarmthR",1}, {"topWarmthG",1}, {"topWarmthB",1},
         {"vignette",0}, {"topWarmthStrength",0},
+        {"sunPitch",kSunAbsent}, {"sunYaw",kSunAbsent}, {"sunColorR",kSunAbsent}, {"sunColorG",kSunAbsent}, {"sunColorB",kSunAbsent}, {"sunAmbientScale",kSunAbsent},
         {"unitAmbientScale",1.2f}, {"buildingSpillIntensityScale",1.0f},
         {"exposure",1}, {"shadowSoftness",2.5f}, {"staticPropIblStrength",0.5f},
-        {"waterSkyTintStrength",0}, {"waterReflections",static_cast<float>(mc2::options::current().waterReflections)},
+        {"waterSkyTintStrength",0}, {"waterGlintWarm",0}, {"waterWaveBreakup",0}, {"waterReflections",static_cast<float>(mc2::options::current().waterReflections)},
         {"vfxBrightness",1}, {"vfxAdditiveBrightness",1},
         {"vfxLitStrength",0.7f}, {"mechSpecularStrength",0.05f},
         {"cloudStrength",0.30f}, {"cloudCoverage",0.20f}, {"cloudSoftness",0.12f}, {"cloudWaterScale",0.5f},
@@ -77,7 +83,12 @@ bool validValue(std::string_view key, double value) {
     if (!std::isfinite(value)) return false;
     float hi = 64;
     float lo = 0;
-    if (key == "vignette" || key == "topWarmthStrength") hi = 1;
+    if (key == "sunPitch") { lo = 26; hi = 90; }
+    else if (key == "sunYaw") { lo = -360; hi = 360; }
+    else if (key.starts_with("sunColor")) hi = 255;
+    else if (key == "sunAmbientScale") hi = 2;
+    else if (key == "waterWaveBreakup") hi = 1;
+    else if (key == "vignette" || key == "topWarmthStrength") hi = 1;
     else if (key.starts_with("grade") || key.starts_with("topWarmth")) hi = 2;
     else if (key == "unitAmbientScale" || key == "buildingSpillIntensityScale") hi = 2;
     else if (key == "staticPropIblStrength") hi = 3;
@@ -267,6 +278,8 @@ static void applyKey(mc2::czstring key, float val, int& count) {
     } else if (strcmp(key, "terrainLightingV1Strength") == 0 ||
                strcmp(key, "terrainLightingV2Floor") == 0) {
         // Retired keys: shipped installs still carry them; ignored silently.
+    } else if (strncmp(key, "sun", 3) == 0) {
+        // sunPitch/sunYaw/sunColor*: read by Camera::init via visualTuning_sunValue, not applied here.
     } else if (strcmp(key, "staticPropIblStrength") == 0) {
         // This is the shipped value of the SH-IBL probe strength: it runs on
         // every mission load and replaces the batcher's pre-mission fallback.
@@ -277,6 +290,14 @@ static void applyKey(mc2::czstring key, float val, int& count) {
             gos_SetWaterReflectionQuality(static_cast<int>(val));
             count++;
         }
+    } else if (strcmp(key, "waterGlintWarm") == 0) {
+        // W3 default (owner 11-20): 0.8 wherever the afternoon sun (sunPitch key) applies and the key is unset (0); no sun key = legacy 0.
+        g_waterGlintWarm = (val == 0.0f && visualTuning_sunValue("sunPitch")) ? 0.8f : val;
+        count++;
+    } else if (strcmp(key, "waterWaveBreakup") == 0) {
+        // B1 default (owner 11-21): 0.2 wherever the afternoon sun (sunPitch key) applies and the key is unset (0); no sun key = legacy 0.
+        g_waterWaveBreakup = (val == 0.0f && visualTuning_sunValue("sunPitch")) ? 0.2f : val;
+        count++;
     } else if (strcmp(key, "waterSkyTintStrength") == 0) {
         {
             gos_SetWaterSkyTintStrength(val);
@@ -389,6 +410,13 @@ void visualTuning_applyProfile(mc2::czstring missionName) {
         s_environment.colorContract,Json(s_environment.providers).dump(),count);
 }
 
+std::optional<float> visualTuning_sunValue(std::string_view key) {
+    const auto& tuning = s_environment.legacyTuning;
+    const std::string k(key);
+    const float v = tuning.contains(k) ? tuning.at(k) : kSunAbsent;
+    return v > kSunAbsent ? std::optional<float>(v) : std::nullopt;
+}
+
 const char* visualTuning_getProfilePath() { return s_profilePath.c_str(); }
 const char* visualTuning_getActiveMission() { return s_environment.mission.c_str(); }
 bool visualTuning_hasProfileFile() { return s_hasFile; }
@@ -450,6 +478,7 @@ bool visualTuning_saveCurrentToMission() {
     if (!entry.is_null() && !entry.is_object()) return false;
     if (entry.is_null()) entry = Json::object();
     for (const auto& [key,value] : current) {
+        if (key.starts_with("sun") && value == kSunAbsent) continue; // absent sun keys keep whatever the profile holds
         if (!validValue(key,value)) return false;
         entry[key] = value;
     }

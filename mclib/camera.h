@@ -413,6 +413,7 @@ class Camera
 		mc2::tgl::ViewUniforms tglView;
 		mc2::tgl::ViewUniforms getViewUniforms();
 		bool missionLightApplied = false;
+		bool sunAmbientScaled = false;
 		float missionGroundScale = 1.0f;
 
 		virtual void init (void)
@@ -420,6 +421,7 @@ class Camera
 			missionLightName.clear();
 			tglView = {};
 			missionLightApplied = false;
+			sunAmbientScaled = false;
 			missionGroundScale = 1.0f;
 			projectionAngle = 30;
 

@@ -173,7 +173,7 @@ layout(set = 0, binding = 1, std140) uniform WaterFsParams {
     vec4 f7;              // (waterElevation, mask span (wu), mask bound (0/1), terrain grid halfMap)
     // VK-PARITY-F3 (water brightness): GL-default features missing in VK.
     vec4 f8;              // (u_waterEdgeFeather, u_waterEdgeFeatherStrength, u_halfMap, u_waterSkyTintStrength)
-    vec4 f9;              // (u_waterSkyTintColor.xyz, u_waterProjAspect)
+    vec4 f9;              // (u_waterSkyTintColor.xyz, waterWaveBreakup: the island run overwrites projAspect, unread by this shader)
     vec4 bake;            // world span, halfMap, baked reflection weather scale RG
     vec4 debug;           // x attribution (z = baked-reflection march steps, 0 = 8, from Reflection quality); x: 0 normal; 1 march; 2 HDRI; 3 waves; 4 movers; 5 shore; 6 post-discard
 } F;
@@ -374,12 +374,34 @@ const float NEAR_ALPHA0      = 0.04;    // GGX alpha of the calm surface close t
 // A second broad GGX lobe added energy across the channel even outside the primary glitter path.
 const float NEAR_SKY_LIFT     = 0.4;    // reflected-sky brightening at full near gloss
 
+// waterWaveBreakup (F.f9.w; 0 = legacy path verbatim): static world-XY value noise, smooth, no time term.
+float waveBreakNoise(vec2 q){
+    vec2 c = floor(q), f = fract(q);
+    f = f * f * (3.0 - 2.0 * f);
+    vec4 h = fract(sin(vec4(dot(c, vec2(127.1, 311.7)), dot(c + vec2(1, 0), vec2(127.1, 311.7)),
+                            dot(c + vec2(0, 1), vec2(127.1, 311.7)), dot(c + vec2(1, 1), vec2(127.1, 311.7)))) * 43758.5453);
+    return mix(mix(h.x, h.y, f.x), mix(h.z, h.w, f.x), f.y);
+}
+
 PREC vec2 waterWaveSlope(PREC vec2 p, float t, float footprint, float gain, out float unresolvedVar){
     float packetSize = float(textureSize(u_wavePackets, 0).x);
     PREC vec2 s = vec2(0.0);
     unresolvedVar = 0.0;
+    const float brk = F.f9.w;
+    float brkGain = 1.0, brkRot = 0.0;
+    if (brk > 0.0) {
+        // Calmer and choppier patches (about 1700 wu) and a few degrees of wind rotation (about 2600 wu), stationary.
+        brkGain = 1.0 + brk * (2.0 * waveBreakNoise(p / 1700.0 + vec2(3.7, 9.1)) - 1.0);
+        brkRot  = brk * 0.2 * (2.0 * waveBreakNoise(p / 2600.0 + vec2(41.3, 5.9)) - 1.0);
+    }
     for (int i = 0; i < WAVE_TRAINS; ++i) {
         vec4  w = kWaveTrain[i];
+        float brkA = 1.0;
+        if (brk > 0.0 && i >= 2) {
+            float cr = cos(brkRot), sr = sin(brkRot);
+            w.xy = vec2(w.x * cr - w.y * sr, w.x * sr + w.y * cr);
+            brkA = brkGain;
+        }
         float k = 6.2831853 / w.z;
         float r = smoothstep(WAVE_RESOLVE_LO, WAVE_RESOLVE_HI, w.z / max(footprint, 1e-3));
         // Independent packet envelopes break the global lattice without noise-gradient normals.
@@ -396,7 +418,7 @@ PREC vec2 waterWaveSlope(PREC vec2 p, float t, float footprint, float gain, out 
             float noise = textureLod(u_wavePackets, vec3(uv, (i - 2) / 4), 0)[(i - 2) % 4];
             packet = mix(WAVE_PACKET_MIN, WAVE_PACKET_MAX, noise);
         }
-        float a = w.w * gain * packet;
+        float a = w.w * gain * packet * brkA;
         unresolvedVar += 0.5 * a * a * (1.0 - r * r);
         if (r > 0.0) {
             PREC float ph = k * dot(w.xy, p) - sqrt(WAVE_G * k) * t + float(i) * 2.39996;
@@ -727,6 +749,12 @@ void main(void)
         vec3  Ls = uT.terrainLightDir.xyz;
         Ls = normalize(vec3(Ls.xy, max(Ls.z, max(uT.shadowMinSunSin, 0.05))));
         vec3  sunRad = Color.bgra.rgb * (1.0 - 0.5 * clamp(F.f3.z / 0.6, 0.0, 1.0));
+        if (F.debug.w > 0.0) {
+            // waterGlintWarm: blend toward the flat-light chroma instead of adding white onto a blue body (additive glint clips all channels).
+            float sg = SUN_SPEC_GAIN * glintScale * sunVis * waterGgxSpec(waveN, vdir, Ls, specAlpha2);
+            vec3 f3 = vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);
+            col = mix(col, f3 / max(max(f3.r, max(f3.g, f3.b)), 1e-3) * 0.95, 1.0 - exp(-F.debug.w * sg));
+        } else
         col += min(sunRad * (SUN_SPEC_GAIN * glintScale * sunVis * waterGgxSpec(waveN, vdir, Ls, specAlpha2)), vec3(4.0));
         // The lamp specular and the flat pool term come from one light walk (waterPoolLights), added right after the sun glint.
         if (F.debug.y < 0.5 && uT.numPoolLights > 0 && nightSky < 1.0) {

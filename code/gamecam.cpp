@@ -431,6 +431,19 @@ void GameCamera::renderTerrainSceneState() {
 	flatIntensity = std::min(flatIntensity, 1.0f);
 	inputs.flatLight = {getLightRed(flatIntensity)/255.0f,
 		getLightGreen(flatIntensity)/255.0f, getLightBlue(flatIntensity)/255.0f};
+	{
+		// Prelit art (ground, decals, grass) is scaled by live/authored flat light; cement stays on the live flat light.
+		extern void mc2_FlatLightRatio(float z, const unsigned char liveSun[3], const unsigned char liveAmb[3], float out[3]);
+		// The camera's own colour members (what getLightRed uses and what the authored capture saw), not the world-light
+		// rows: those are rescaled per frame (155..255 on one map) and made R != 1 with no sun keys.
+		const unsigned char liveSun[3] = {lightRed, lightGreen, lightBlue};
+		const unsigned char liveAmb[3] = {ambientRed, ambientGreen, ambientBlue};
+		float r[3];
+		mc2_FlatLightRatio(flatIntensity, liveSun, liveAmb, r);
+		inputs.flatRatio = {r[0], r[1], r[2]};
+		extern float mc2_AmbientRatio(const unsigned char liveAmb[3]);
+		inputs.ambientRatio = mc2_AmbientRatio(liveAmb);
+	}
 	inputs.authoredPitch = eye->getDayLightPitch();
 	inputs.night = eye->getIsNight();
 	inputs.nightFactor = eye->getNightFactor();

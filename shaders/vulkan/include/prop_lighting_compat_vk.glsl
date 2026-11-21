@@ -1,6 +1,8 @@
 // Static-prop compatibility lighting: one environment ambient, directional light
 // and local pools. Specular requires a valid authored ORM sidecar.
 #include "prop_night_vk.glsl"
+// Linear ambient-key ratio (sun keys); the prop light floors are ambient shares and follow it. 1 without keys, or before the block is filled.
+float envAmbientKey() { return uEnv.hemiSky.w > 0.0 ? uEnv.hemiSky.w : 1.0; }
 vec3 propAddWindowEmission(vec3 encodedColor, vec3 emission) {
     return propEncodeColor(propDecodeColor(encodedColor) + emission);
 }
@@ -30,7 +32,7 @@ vec3 propAuthoredColor(SurfaceMaterial s, bool alphaTest, bool authoredOrm, vec3
     // A solid remake may replace stock alpha cards. Preserve their light floor
     // independently of coverage, without creating a redundant fringe draw.
     bool stockAlphaLighting = uPropMaterials.materials[uPacket.materialId].metadata.w != 0u;
-    if (alphaTest || stockAlphaLighting) lit = max(lit,vec3(0.21404114)); // legacy 0.5 encoded floor
+    if (alphaTest || stockAlphaLighting) lit = max(lit,vec3(0.21404114 * envAmbientKey())); // legacy 0.5 encoded floor
     vec3 color = s.baseColor * lit * (1.0 - 0.65*s.metallic);
     vec3 V = uFrame.cameraWorldPos.xyz - vWorldPos;
     if (authoredOrm && dot(V,V) > 1e-8 && dot(vSunColor,vSunColor) > 0.0) {

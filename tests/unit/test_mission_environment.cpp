@@ -185,6 +185,17 @@ TEST_CASE("MissionEnvironment/save keeps the raw legacy water value, not the eff
     CHECK(saved["missions"]["a"]["waterReflections"].get<int>()==2);
 }
 
+TEST_CASE("MissionEnvironment/save skips absent sun keys and keeps a present one") {
+    TempProfile file(R"({"missions":{"a":{"sunPitch":30}}})");
+    mc2::gate::ScopedOverride<"MC2_VISUAL_TUNING_FILE"> path(file.path.string().c_str());
+    visualTuning_applyProfile("a");
+    REQUIRE(visualTuning_saveCurrentToMission());
+    std::ifstream input(file.path); nlohmann::json saved; input>>saved;
+    CHECK(saved["missions"]["a"]["sunPitch"].get<float>()==30.0f);
+    CHECK_FALSE(saved["missions"]["a"].contains("sunYaw"));
+    CHECK_FALSE(saved["missions"]["a"].contains("sunAmbientScale"));
+}
+
 TEST_CASE("MissionEnvironment/invalid files cannot be overwritten by save") {
     for (const auto* bad : {"{",R"({"schemaVersion":99})"}) {
         TempProfile file(bad);

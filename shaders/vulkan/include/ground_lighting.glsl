@@ -18,7 +18,7 @@ vec3 shadeGround(vec3 baseColor, vec3 N, float normalLight, float shadow,
         // the local light pools below are added at full strength.
         // Cached burnins need the mission profile; live-lit cement already
         // received it through missionFlatLight. Applying it twice blacks pads.
-        lit *= mix(uEnv.sceneLight.x, 1.0, flatLitShare);
+        lit *= mix(uEnv.sceneLight.x * uEnv.sceneLight.yzw, vec3(1.0), flatLitShare);   // .yzw: the sun keys' live/authored flat-light ratio (1 without keys)
 
         // VK-PARITY-TERRAIN-2: NIGHT-LIGHT-POOLS-1..4 / LIGHT-CLUSTER-PERF-1 /
         // MOVER-CONTACT-SHADOW-1 — the SAME shared body GL runs (terrain_lod_chunk.frag
