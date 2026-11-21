@@ -534,8 +534,7 @@ void MechFlushFrame::snapshotFrame() {
     s_vkMechObjectDepthBias = mc2depth::OBJECT_DEPTH_BIAS;   // mclib/terrain_depth_bias.h
     s_vkMechSnapshotGeomGen = s_vkMechGeomGen;
     s_vkMechLeafCount = totalLeaves;
-    s_vkMechFrameReady = (totalInstances > 0 && !s_vkMechRunSnapshot.empty());
-    s_vkMechShadowReady = s_vkMechFrameReady;
+    s_vkMechReady.publish(totalInstances > 0 && !s_vkMechRunSnapshot.empty());
     static const bool s_shadowEnabled = mc2::gate::get<"MC2_SHADOW_ENABLE">();
     if (s_shadowEnabled) {
         s_shadowTypesDrawn = static_cast<int>(drawCalls.size());
@@ -620,7 +619,7 @@ static void persistExtraction() {
 // in execution order. Nothing here touches the GPU: the island does the drawing.
 void GpuMechBatcher::flush() {
     // An empty current frame must not replay last frame's caster poses.
-    s_vkMechShadowReady = false;
+    s_vkMechReady.beginFlush();
     finalizePending();
     traceLatch();
 
@@ -628,6 +627,7 @@ void GpuMechBatcher::flush() {
         s_pendingSubmits.clear();
         s_eligibleActorsThisFrame = 0;
         std::memset(s_fallbacksThisFrame, 0, sizeof(s_fallbacksThisFrame));
+        s_vkMechReady.endEmpty();   // the retained snapshot must not be served or redrawn
         // MECH-EXTRACTION-0: persist buffer is retained for frames with no pending submits;
         // it will be cleared in onMapUnload() or repopulated in the normal flush() path.
         return;
