@@ -88,6 +88,11 @@ inline uint64_t textureContentHash(const uint8_t* bytes, size_t size) {
     return hash;
 }
 
+// The legacy-cpu residency source id for caller-owned pixels (key text is load-bearing: it is the dedupe identity).
+inline std::string legacyCpuTextureSource(uint32_t width, uint32_t height, uint32_t layers, bool arrayView, uint64_t contentHash) {
+    return makeTextureSourceId("legacy-cpu:P9", std::to_string(width) + "x" + std::to_string(height) + ":" + std::to_string(layers) + (arrayView ? ":array" : ":2d"), contentHash);
+}
+
 inline constexpr uint64_t kUiTextureTag = 0x54584d3100000000ull;
 inline uint64_t uiTextureId(TextureHandle handle) { return handle.isValid() ? kUiTextureTag | handle.raw() : 0; }
 inline bool isUiTextureId(uint64_t id) { return (id & 0xffffffff00000000ull)==kUiTextureTag; }

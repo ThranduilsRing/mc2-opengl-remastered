@@ -333,7 +333,7 @@ bool ensure_hdri(WaterIsland* s, uint64_t hdriGeneration) {
     for (auto& level : levels) { image.mipByteOffsets.push_back(image.pixels.size()); image.pixels.insert(image.pixels.end(),level.begin(),level.end()); }
     RenderCore::TextureKey key; key.source=RenderCore::makeTextureSourceId("hdri-cpu","water",RenderCore::textureContentHash(image.pixels.data(),image.pixels.size()));
     key.format=static_cast<uint32_t>(fmt); key.hints=gosHint_MipmapFilter0;
-    auto texture=mc2vk::getOrCreateEngineVulkanContext().textures().acquire(key,image,{static_cast<uint32_t>(w),static_cast<uint32_t>(h),static_cast<uint32_t>(w),static_cast<uint32_t>(h)});
+    auto texture=mc2vk::getOrCreateEngineVulkanContext().textures().acquire(key,std::make_shared<const RenderCore::KtxImage>(std::move(image)),{static_cast<uint32_t>(w),static_cast<uint32_t>(h),static_cast<uint32_t>(w),static_cast<uint32_t>(h)});
     if (!texture) return false;
     s->hdriTexture=std::move(texture); s->hdriSourceReal=haveReal;
     s->hdriRealImported=false;

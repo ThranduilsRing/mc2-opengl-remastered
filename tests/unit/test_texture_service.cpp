@@ -733,3 +733,11 @@ TEST_CASE("TextureService: dropped dynamic B preserves A and permits C to publis
     f.complete(); f.pump(); settle();
     CHECK(e.texture.get()==c); CHECK_FALSE(bool(e.pending));
 }
+
+TEST_CASE("legacy-cpu residency key text is unchanged by the copy-once refactor") {
+    const uint8_t px[8] = {1, 2, 3, 4, 250, 251, 252, 253};
+    const uint64_t hash = textureContentHash(px, sizeof(px));
+    CHECK(legacyCpuTextureSource(64, 32, 8, true, hash) == makeTextureSourceId("legacy-cpu:P9", "64x32:8:array", hash));
+    CHECK(legacyCpuTextureSource(1, 1, 1, false, hash) == makeTextureSourceId("legacy-cpu:P9", "1x1:1:2d", hash));
+    CHECK(legacyCpuTextureSource(1, 1, 1, false, 0) == "legacy-cpu:P9|1x1:1:2d|0000000000000000");
+}

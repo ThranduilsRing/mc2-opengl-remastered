@@ -662,22 +662,16 @@ void cp_refresh_samplers(ColorPropIsland* s) {
 // Build a VK sampled 2D_ARRAY image from a contiguous byte blob laid out
 // mip-major then layer-major-per-mip is NOT how GL returns it; GL returns, per mip
 // level, all layers contiguously. `regions` carries one VkBufferImageCopy per mip
-// (layerCount = layers, correct bufferOffset). Caller owns `bytes`.
+// (layerCount = layers, correct bufferOffset). The caller hands over a fully assembled image (pixels + mipByteOffsets); it is moved, not copied.
 bool cp_upload_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt,
                             VkFormat fmt, uint32_t w, uint32_t h,
-                            uint32_t layers, uint32_t mips, bool compressed,
-                            const void* bytes, VkDeviceSize byteCount,
-                            const std::vector<VkBufferImageCopy>& regions) {
-    RenderCore::KtxImage image; image.width=w; image.height=h; image.mipCount=mips;
-    image.vkFormat=static_cast<uint32_t>(fmt); image.isCompressed=compressed; image.blockSizeBytes=compressed ? 16 : 0;
-    image.pixels.assign(static_cast<const uint8_t*>(bytes),static_cast<const uint8_t*>(bytes)+byteCount);
-    for (const auto& region : regions) image.mipByteOffsets.push_back(static_cast<size_t>(region.bufferOffset));
+                            uint32_t layers, uint32_t mips, RenderCore::KtxImage&& image) {
     uint64_t hash=1469598103934665603ull;
     for (uint8_t byte : image.pixels) { hash^=byte; hash*=1099511628211ull; }
     RenderCore::TextureKey key;
     key.source="prop-array:"+std::to_string(hash)+":"+std::to_string(w)+":"+std::to_string(h)+":"+std::to_string(layers);
     key.format=static_cast<uint32_t>(fmt); key.hints=mips>1 ? gosHint_MipmapFilter0 : 0;
-    auto texture=mc2vk::getOrCreateEngineVulkanContext().textures().acquire(key,image,{w,h,w,h},layers,true);
+    auto texture=mc2vk::getOrCreateEngineVulkanContext().textures().acquire(key,std::make_shared<const RenderCore::KtxImage>(std::move(image)),{w,h,w,h},layers,true);
     if (!texture) return false;
     if (tgt.texture >= &s->albedoOnTexture.front() && tgt.texture <= &s->albedoOnTexture.back()) {
         // Bytes plus their interpretation identify the actual alpha-ON upload across installs/mods; the buckets are
@@ -688,6 +682,14 @@ bool cp_upload_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt,
     }
     *tgt.texture=std::move(texture); *tgt.layers=layers;
     return true;
+}
+
+// A 1x1 RGBA8 single-mip image for the neutral/placeholder arrays.
+RenderCore::KtxImage cp_texel_image(const uint8_t* px) {
+    RenderCore::KtxImage image; image.width=1; image.height=1; image.mipCount=1;
+    image.vkFormat=static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM); image.isCompressed=false; image.blockSizeBytes=0;
+    image.pixels.assign(px,px+4); image.mipByteOffsets={0};
+    return image;
 }
 
 // Bind a 1x1 opaque-magenta placeholder array so binding3 is a VALID descriptor even
@@ -702,12 +704,7 @@ bool cp_ensure_dummy_albedo(ColorPropIsland* s, const AlbedoTarget& tgt) {
         return static_cast<bool>(*tgt.texture);
     }
     const uint8_t px[4] = {255, 0, 255, 255};
-    std::vector<VkBufferImageCopy> rgn(1);
-    rgn[0].bufferOffset = 0;
-    rgn[0].imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-    rgn[0].imageExtent = {1, 1, 1};
-    return cp_upload_albedo_array(s, tgt, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, 1, 1, false,
-                                  px, sizeof(px), rgn);
+    return cp_upload_albedo_array(s, tgt, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, 1, 1, cp_texel_image(px));
 }
 
 // Copy-once import of one albedo group array from the batcher's CPU copy (every level, as GL uploaded it). `changeKey` is the GL
@@ -742,12 +739,13 @@ bool cp_import_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt, uint32_
     const uint32_t firstMip = mc2::options::current().baseQuality == 0 && a->levels.size() > 1 ? 1u : 0u;
     const uint32_t mips = static_cast<uint32_t>(a->levels.size()) - firstMip;
     const uint32_t width = mc2tex::mipExtent(a->width, firstMip), height = mc2tex::mipExtent(a->height, firstMip);
-    std::vector<uint8_t> blob;
+    RenderCore::KtxImage image;
+    image.width = static_cast<int>(width); image.height = static_cast<int>(height); image.mipCount = static_cast<int>(mips);
+    image.vkFormat = a->vkFormat; image.isCompressed = compressed; image.blockSizeBytes = compressed ? 16 : 0;
     size_t blobBytes = 0;
     for (uint32_t m = firstMip; m < a->levels.size(); ++m) blobBytes += a->levels[m].size();
-    blob.reserve(blobBytes);
-    std::vector<VkBufferImageCopy> regions;
-    regions.reserve(mips);
+    image.pixels.reserve(blobBytes);
+    image.mipByteOffsets.reserve(mips);
     for (uint32_t m = 0; m < mips; ++m) {
         const uint32_t sourceMip = m + firstMip;
         const size_t want = mc2tex::textureArrayLevelBytes(*a, sourceMip);
@@ -755,12 +753,8 @@ bool cp_import_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt, uint32_
             vlog("%s albedo array rejected: level %u holds %zu bytes, %zu expected.", tgt.tag, sourceMip, a->levels[sourceMip].size(), want);
             return false;
         }
-        VkBufferImageCopy r{};
-        r.bufferOffset = blob.size();
-        r.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, m, 0, a->layers};
-        r.imageExtent = {mc2tex::mipExtent(width, m), mc2tex::mipExtent(height, m), 1};
-        regions.push_back(r);
-        blob.insert(blob.end(), a->levels[sourceMip].begin(), a->levels[sourceMip].end());
+        image.mipByteOffsets.push_back(image.pixels.size());
+        image.pixels.insert(image.pixels.end(), a->levels[sourceMip].begin(), a->levels[sourceMip].end());
     }
     const VkFormat vkFmt = static_cast<VkFormat>(a->vkFormat);
 
@@ -768,14 +762,14 @@ bool cp_import_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt, uint32_
     if (!cp_make_albedo_sampler(s, tgt.samp, mips)) return false;
 
     if (!cp_upload_albedo_array(s, tgt, vkFmt, width, height, a->layers,
-                                mips, compressed, blob.data(), static_cast<VkDeviceSize>(blob.size()), regions)) {
+                                mips, std::move(image))) {
         return false;
     }
     *tgt.importedGlName = changeKey;
     *tgt.ready = true;
     ++s->materialGeneration;
     vlog("%s albedo 2D_ARRAY imported: %ux%u layers=%u mips=%u fmt=%s (%zu B).",
-         tgt.tag, width, height, a->layers, mips, a->vkFormat == 141u ? "BC5" : compressed ? "BC7" : "RGBA8", blob.size());
+         tgt.tag, width, height, a->layers, mips, a->vkFormat == 141u ? "BC5" : compressed ? "BC7" : "RGBA8", blobBytes);
     return true;
 }
 
@@ -788,10 +782,7 @@ bool cp_import_authored(ColorPropIsland* s, const Mc2ColorPropMaterialFeed* feed
         uint32_t layers = 0, key = 0; bool ready = false;
         AlbedoTarget target{&texture, &s->detailSampler, &layers, &key, &ready, "authored-detail"};
         if (!mc2::options::lowCost() && array && array->layers) return cp_import_albedo_array(s, target, s->mapGeneration + 1, array);
-        std::vector<VkBufferImageCopy> regions(1);
-        regions[0].imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-        regions[0].imageExtent = {1,1,1};
-        return cp_upload_albedo_array(s, target, VK_FORMAT_R8G8B8A8_UNORM, 1,1,1,1,false,neutral,4,regions);
+        return cp_upload_albedo_array(s, target, VK_FORMAT_R8G8B8A8_UNORM, 1,1,1,1, cp_texel_image(neutral));
     };
     if (!feed && !s->imageSource) mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_authored_materials");
     if (!s->detailSampler && !mc2vk::infra::makeMaterialSampler(s->device, s->detailSampler, VK_SAMPLER_ADDRESS_MODE_REPEAT, s->sampBias)) return false;
@@ -855,8 +846,8 @@ bool cp_import_authored(ColorPropIsland* s, const Mc2ColorPropMaterialFeed* feed
             RenderCore::TextureKey key;
             key.source = "prop-tex:" + std::to_string(hash) + ":" + std::to_string(w) + ":" + std::to_string(h) + ":" + std::to_string(image.vkFormat);
             key.format = image.vkFormat; key.hints = image.mipCount > 1 ? gosHint_MipmapFilter0 : 0;
-            auto texture = mc2vk::getOrCreateEngineVulkanContext().textures().acquire(key, image, {w, h, w, h}, 1, true);
-            if (!texture) { vlog("per-object texture upload failed (%ux%u fmt=%u).", w, h, image.vkFormat); return false; }
+            auto texture = mc2vk::getOrCreateEngineVulkanContext().textures().acquire(key, std::make_shared<const RenderCore::KtxImage>(std::move(image)), {w, h, w, h}, 1, true);
+            if (!texture) { vlog("per-object texture upload failed (%ux%u fmt=%u).", w, h, key.format); return false; }
             nextTextures.push_back(std::move(texture));
         }
         if (!nextTextures.empty()) vlog("per-object textures resident: %zu.", nextTextures.size());

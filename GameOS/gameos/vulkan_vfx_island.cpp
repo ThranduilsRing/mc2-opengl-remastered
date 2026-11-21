@@ -282,10 +282,11 @@ std::optional<VkDescriptorSet> get_page(VfxIsland* s,uint32_t handle,uint32_t pa
                 RenderCore::textureContentHash(image.pixels.data(), image.pixels.size()));
             key.format = image.vkFormat; key.hints = gosHint_MipmapFilter0;
             const uint32_t width = vegetationAtlas->width, height = vegetationAtlas->height;
-            s->vegetationTexture = ctx.textures().acquire(key, image, {width, height, width, height}, 8, true);
+            const int vegMips = image.mipCount;
+            s->vegetationTexture = ctx.textures().acquire(key, std::make_shared<const RenderCore::KtxImage>(std::move(image)), {width, height, width, height}, 8, true);
             if (!s->vegetationTexture) return std::nullopt;
             s->loadedVegetation = vegetationAtlas;
-            vlog("vegetation_cards layers=8 mips=%d depth_write=1 cutoff=0.5", image.mipCount);
+            vlog("vegetation_cards layers=8 mips=%d depth_write=1 cutoff=0.5", vegMips);
         }
         id = RenderCore::uiTextureId(s->vegetationTexture.get());
     } else if (handle==0) {
