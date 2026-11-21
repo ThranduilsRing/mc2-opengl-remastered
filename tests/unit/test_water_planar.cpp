@@ -545,3 +545,39 @@ TEST_CASE("water planar: grid collect matches the linear reference bit for bit")
     MESSAGE("grid collect: partial views=", partial, " bulk views=", bulkViews, " bulk cells=", bulkCells);
     CHECK(total > 0);
 }
+
+// Trigger paths: water_planar_view.h, vk_water_planar.h.
+TEST_CASE("water planar: scissor rectangle view culls what the scissor cannot show") {
+    CHECK(wp::scissorNdcRect(0, 0, 3840, 2160, 3840, 2160).x0 == -1.0f);
+    const auto one = wp::scissorNdcRect(100, 50, 200, 100, 1000, 500);   // widened one pixel per side
+    CHECK(one.x0 == doctest::Approx(2.0f * 99 / 1000 - 1)); CHECK(one.x1 == doctest::Approx(2.0f * 301 / 1000 - 1));
+    CHECK(one.y0 == doctest::Approx(2.0f * 49 / 500 - 1)); CHECK(one.y1 == doctest::Approx(2.0f * 151 / 500 - 1));
+    const auto full = wp::scissorNdcRect(0, 0, 1000, 500, 1000, 500);
+    CHECK((full.x0 == -1.0f && full.y0 == -1.0f && full.x1 == 1.0f && full.y1 == 1.0f));
+    glm::mat4 main{1};
+    main[0][0] = main[1][1] = 0.1f; main[2][2] = 0.1f; main[3][2] = 0.5f;   // ndc x,y = 0.1 world; reflected z_clip = 0.5 - 0.1 z, w = 1
+    const wp::NdcRect rect{-0.5f, -0.5f, 0.5f, 0.5f};
+    const wp::View fullView(glm::value_ptr(main), 0), rectView(glm::value_ptr(main), 0, &rect);
+    CHECK(fullView.intersects({-9, 0, 0}, {-8, 1, 1}));
+    CHECK_FALSE(rectView.intersects({-9, 0, 0}, {-8, 1, 1}));   // inside the frustum, outside the rectangle
+    CHECK(rectView.intersects({4, 0, 0}, {6, 1, 1}));   // straddles the rectangle edge
+    uint32_t seed = 7;
+    const auto rnd = [&] { seed = seed * 1664525u + 1013904223u; return static_cast<float>(seed >> 8) / 16777216.0f; };
+    int kept = 0;
+    for (int i = 0; i < 2000; ++i) {
+        const std::array<float, 3> lo{rnd() * 30 - 15, rnd() * 30 - 15, rnd() * 3}, hi{lo[0] + rnd() * 4, lo[1] + rnd() * 4, lo[2] + rnd()};
+        if (rectView.intersects(lo, hi)) { ++kept; CHECK(fullView.intersects(lo, hi)); }
+    }
+    CHECK(kept > 0);
+    std::array<GpuStaticPropInstance, 4> recipes{propAt(1, -8, 0, 1), propAt(0, 0, 0, 1), propAt(1, 4.5f, 0, 1), propAt(0, 8, 0, 1)};
+    const std::array<RecipeRange, 1> ranges{{{0, 4}}};
+    const std::array<mc2hzb::PropBounds, 2> bounds{{{{-.1f, -.1f, -.1f}, {.1f, .1f, .1f}, true}, {{-.1f, -.1f, -.1f}, {.1f, .1f, .1f}, true}}};
+    wp::ReflectionPropsCache a, b;
+    std::vector<GpuStaticPropInstance> all, sub;
+    a.collect(std::span<const GpuStaticPropInstance>(recipes), std::span<const RecipeRange>(ranges), 1, fullView, bounds, all);
+    b.collect(std::span<const GpuStaticPropInstance>(recipes), std::span<const RecipeRange>(ranges), 1, rectView, bounds, sub);
+    REQUIRE(all.size() == 4);
+    REQUIRE(sub.size() == 2);   // the two props whose boxes miss the rectangle are gone
+    size_t at = 0;
+    for (const auto& s : sub) { while (at < all.size() && all[at].modelMatrix[3] != s.modelMatrix[3]) ++at; CHECK(at++ < all.size()); }   // subset, same order
+}

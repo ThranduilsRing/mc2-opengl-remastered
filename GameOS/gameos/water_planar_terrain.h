@@ -12,7 +12,7 @@ namespace mc2::waterplanar {
 // the returned patch span remains valid until this object's next prepare().
 class TerrainView {
 public:
-    bool prepare(const Mc2TerrainTier1Feed& source, const float* mainWorldToClip, float water) {
+    bool prepare(const Mc2TerrainTier1Feed& source, const float* mainWorldToClip, float water, const NdcRect* rect = nullptr) {
         patches_.clear();
         feed_ = {};
         if (!mainWorldToClip || !std::isfinite(water) || !std::isfinite(source.halfMap)
@@ -27,7 +27,7 @@ public:
         if (source.visualSide > 0 && !visual) return false;
         if (!std::isfinite(source.visualDisplaceFar)) return false;
 
-        const View view(mainWorldToClip, water);
+        const View view(mainWorldToClip, water, rect);
         for (float f : view.worldToClip) if (!std::isfinite(f)) return false;
         // TerrainFieldStore versions are process-unique. A zero version is
         // unversioned input (e.g. tests): rebuild rather than trusting its cache.
@@ -109,6 +109,6 @@ private:
 
 // Uses whole-map inputs even when the main camera has no visible terrain.
 // The eventual reflected recorder supplies the current, unmirrored matrix.
-bool prepareTerrainView(TerrainView& view, const float* mainWorldToClip, float waterElevation);
+bool prepareTerrainView(TerrainView& view, const float* mainWorldToClip, float waterElevation, const NdcRect* rect = nullptr);
 
 } // namespace mc2::waterplanar

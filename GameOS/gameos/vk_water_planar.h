@@ -1,6 +1,8 @@
 #pragma once
 #include "vulkan_context.h"
 #include "vulkan_ground_lighting.h"
+#include "water_planar_view.h"
+#include <optional>
 
 namespace mc2::waterplanar {
 // Frame-local attachments and projection. Recording callbacks borrow only GPU
@@ -16,6 +18,13 @@ struct Target {
     VkImageView color = VK_NULL_HANDLE, depth = VK_NULL_HANDLE;
     VkRect2D scissor{};
     Mc2GroundLightingFrame ground{};
+    // The moving reflection's scissor as an NDC rectangle of its pass (divisor-sized), for culling against it; false when
+    // the pass is unscissored or uses the target view (the bake), which keeps the full clip volume.
+    std::optional<NdcRect> scissorNdc() const {
+        if (!scissor.extent.width || useTargetView) return std::nullopt;
+        return scissorNdcRect(scissor.offset.x, scissor.offset.y, static_cast<int>(scissor.extent.width), static_cast<int>(scissor.extent.height),
+                              (w + divisor - 1) / divisor, (h + divisor - 1) / divisor);
+    }
 };
 bool prepareTerrain(std::unique_ptr<mc2vk::IslandState>& state, Target& target, mc2vk::VulkanContext::RecordFn& record);
 bool prewarmTerrain(std::unique_ptr<mc2vk::IslandState>& state, int w, int h);

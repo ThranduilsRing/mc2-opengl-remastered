@@ -917,7 +917,8 @@ bool prewarmTerrain(std::unique_ptr<mc2vk::IslandState>& state, int w, int h) {
 bool prepareTerrain(std::unique_ptr<mc2vk::IslandState>& state, Target& target, mc2vk::VulkanContext::RecordFn& record) {
     if (!prewarmTerrain(state, target.w, target.h)) return false;
     auto* s = static_cast<PlanarTerrain*>(state.get());
-    if (!prepareTerrainView(s->view, target.mainWorldToClip, target.water)) return false;
+    const auto rect = target.scissorNdc();
+    if (!prepareTerrainView(s->view, target.mainWorldToClip, target.water, rect ? &*rect : nullptr)) return false;
     auto feed = s->view.feed();
     if (target.useTargetView) { feed.lightPoolMoverMax = 0; feed.lightPoolMoverDim = 0; }
     if (target.cameraPos) std::copy_n(target.cameraPos, 3, feed.cameraPosMC2);

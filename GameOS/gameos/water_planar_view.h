@@ -62,21 +62,39 @@ inline std::array<float, 16> reflectedWorldToClip(const float* main, float water
 // face exactly once. A double-sided terrain pipeline remains double-sided.
 inline constexpr bool reversesWinding = true;
 
+// NDC rectangle the reflection pass can touch (its pixel scissor): x0,y0 .. x1,y1.
+struct NdcRect { float x0, y0, x1, y1; };
+// Pixel scissor (x, y, w, h) in a pass of passW x passH pixels -> NDC, widened one pixel per side, clamped to [-1, 1].
+// Same X/Y mapping as paddedPixels (ndc*0.5+0.5 times size).
+inline NdcRect scissorNdcRect(int x, int y, int w, int h, int passW, int passH) {
+    const auto ndc = [](int pixel, int size) { return std::clamp(2.0f * static_cast<float>(pixel) / static_cast<float>(size) - 1.0f, -1.0f, 1.0f); };
+    return {ndc(x - 1, passW), ndc(y - 1, passH), ndc(x + w + 1, passW), ndc(y + h + 1, passH)};
+}
+
 struct View {
     std::array<float, 16> worldToClip;
     std::array<std::array<float, 4>, 6> planes{};
     float waterElevation;
 
-    View(const float* main, float water)
+    // `rect`, when given, replaces the four side planes with the rectangle's edges (a box outside it cannot touch a
+    // pixel inside the scissor); without it the full clip volume stays (the Low/Medium bake).
+    View(const float* main, float water, const NdcRect* rect = nullptr)
         : worldToClip(reflectedWorldToClip(main, water)), waterElevation(water) {
         // Native Vulkan clip volume: -w <= x,y <= w, 0 <= z <= w.
         // Reverse Z changes which depth face is near, not these half-spaces.
         for (int col = 0; col < 4; ++col) {
             const float* m = worldToClip.data() + col * 4;
-            planes[0][col] = m[3] + m[0];
-            planes[1][col] = m[3] - m[0];
-            planes[2][col] = m[3] + m[1];
-            planes[3][col] = m[3] - m[1];
+            if (rect) {
+                planes[0][col] = m[0] - rect->x0 * m[3];
+                planes[1][col] = rect->x1 * m[3] - m[0];
+                planes[2][col] = m[1] - rect->y0 * m[3];
+                planes[3][col] = rect->y1 * m[3] - m[1];
+            } else {
+                planes[0][col] = m[3] + m[0];
+                planes[1][col] = m[3] - m[0];
+                planes[2][col] = m[3] + m[1];
+                planes[3][col] = m[3] - m[1];
+            }
             planes[4][col] = m[2];
             planes[5][col] = m[3] - m[2];
         }
