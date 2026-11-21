@@ -358,6 +358,38 @@ TEST_CASE("mip box filter: a 4x4 RGBA8 level halves to the rounded 2x2 means, th
     CHECK(l2 == want2);
 }
 
+TEST_CASE("mip box filter sRGB: colour averages in linear light, alpha stays linear") {
+    // 2x2 -> 1x1: 0 and 255 average to ~188 in sRGB (linear 0.5), not 128.
+    const std::vector<uint8_t> src = {0, 0, 0, 0,   255, 255, 255, 255,   255, 255, 255, 255,   0, 0, 0, 0};
+    const auto l1 = mc2tex::boxDownsampleRgba8Srgb(src, 2, 2);
+    REQUIRE(l1.size() == 4);
+    for (int ch = 0; ch < 3; ++ch) { CHECK(l1[ch] >= 187); CHECK(l1[ch] <= 188); }
+    CHECK(l1[3] == 128);  // (0+255+255+0+2)/4, linear
+    // Equal texels are preserved exactly.
+    const std::vector<uint8_t> flat = {77, 130, 200, 9,  77, 130, 200, 9,  77, 130, 200, 9,  77, 130, 200, 9};
+    CHECK(mc2tex::boxDownsampleRgba8Srgb(flat, 2, 2) == std::vector<uint8_t>{77, 130, 200, 9});
+}
+
+TEST_CASE("mip box filter sRGB: odd sizes, 1xN chain end and bad input") {
+    // 5x1 -> 2x1 (floor halving): texel 0 = mean(p0,p1), texel 1 = mean(p2,p3); the odd last column is dropped.
+    const std::vector<uint8_t> row = {0, 0, 0, 255,  255, 255, 255, 255,  40, 40, 40, 255,  40, 40, 40, 255,  99, 99, 99, 255};
+    const auto l1 = mc2tex::boxDownsampleRgba8Srgb(row, 5, 1);
+    REQUIRE(l1.size() == 2 * 1 * 4);
+    CHECK(l1[0] >= 187); CHECK(l1[0] <= 188);
+    CHECK(l1[4] == 40); CHECK(l1[7] == 255);
+    // 1x4 -> 1x2 -> 1x1: width stays 1.
+    const std::vector<uint8_t> col = {0, 0, 0, 0,  255, 255, 255, 255,  255, 255, 255, 255,  255, 255, 255, 255};
+    const auto c1 = mc2tex::boxDownsampleRgba8Srgb(col, 1, 4);
+    REQUIRE(c1.size() == 1 * 2 * 4);
+    CHECK(c1[0] >= 187); CHECK(c1[0] <= 188);
+    CHECK(c1[4] == 255);
+    const auto c2 = mc2tex::boxDownsampleRgba8Srgb(c1, 1, 2);
+    CHECK(c2.size() == 4);
+    // 1x1 stays 1x1 and a size mismatch is rejected.
+    CHECK(mc2tex::boxDownsampleRgba8Srgb({10, 20, 30, 40}, 1, 1) == std::vector<uint8_t>{10, 20, 30, 40});
+    CHECK(mc2tex::boxDownsampleRgba8Srgb({1, 2, 3}, 1, 1).empty());
+}
+
 // Trigger paths: GameOS/gameos/{hud_texture_mips.h,engine_present_vk.cpp}.
 TEST_CASE("HUD atlas mips preserve premultiplication rounding and immutable source") {
     const std::vector<uint8_t> source = {
