@@ -8,7 +8,7 @@ TEST_CASE("prop_list_route: opaque packets split by double-sidedness, alpha pack
     CHECK(trunk.list == kOpaqueDoubleSided);
     CHECK(trunk.opaquePrefix);
     auto leaf = routeCore(trunk.opaquePrefix, 1, true);
-    CHECK(leaf.list == kCore);
+    CHECK(leaf.list == kCore + kDouble);
     CHECK(leaf.alphaTestable);
     auto after = routeCore(leaf.opaquePrefix, 0, false);   // a later coplanar packet keeps its order behind the leaf
     CHECK(after.list == kCore);
@@ -32,9 +32,14 @@ TEST_CASE("prop_list_route: a single-sided opaque packet after a double-sided on
     CHECK_FALSE(late.opaquePrefix);
 }
 
-TEST_CASE("prop_list_route: only tier 0 keeps the soft fringe") {
-    CHECK_FALSE(PropList::tierSkipsFringe(0));
-    CHECK(PropList::tierSkipsFringe(1));
-    CHECK(PropList::tierSkipsFringe(2));
-    CHECK(PropList::tierSkipsFringe(3));
+TEST_CASE("prop_list_route: only alpha-tested packets of tier 0 get a fringe or late row") {
+    using namespace PropList;
+    CHECK(routeFringe(0, true, false) == kNoList);   // opaque trunk of an alpha-ON type: no fringe, no late
+    CHECK(routeFringe(1, false, false) == kFringe);
+    CHECK(routeFringe(1, true, false) == kFringe + kDouble);
+    CHECK(routeFringe(2, false, false) == kLate);
+    CHECK(routeFringe(1, false, true) == kNoList);   // tier >= 1 takes the hard cutout only
+    CHECK(routeFringe(2, false, true) == kNoList);
+    CHECK_FALSE(tierSkipsFringe(0));
+    CHECK(tierSkipsFringe(1));
 }
