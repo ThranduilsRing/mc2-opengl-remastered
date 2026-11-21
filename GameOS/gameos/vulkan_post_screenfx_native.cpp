@@ -92,7 +92,10 @@ static uint64_t s_screenFxRetryFrame = ~0ull;
 static bool s_screenFxReachedBuild = false;
 
 extern void gos_GetTerrainLightDir(float* x, float* y, float* z);
+float mc2ShadowMinSunAltDeg();
 float mc2NightLightFactor();   // mclib/camera.cpp: 0 day/evening .. 1 full night
+static float s_cloudWaterScale = 0.5f;
+void mc2SetCloudWaterScale(float v) { s_cloudWaterScale = v; }   // visual_tuning_profile cloudWaterScale
 
 namespace {
 
@@ -161,11 +164,12 @@ struct ScreenFxCloudParams {
     float cloudStrength;     // off 88
     int   cloudOctaves;      // off 92
     int   cloudEnable;       // off 96
-    int   _pad0;             // off 100 (std140 rounds the block to 112)
-    int   _pad1;             // off 104
+    float cloudWaterElev;    // off 100 (Terrain::waterElevation via getWaterElevation)
+    float cloudWaterScale;   // off 104 (multiplier on the darkening where depth-world z is at the water plane)
     int   _pad2;             // off 108
+    float sunDirCloudH[4];   // off 112 (xyz unit toward sun Z-up, w cloud-base height wu)
 };
-static_assert(sizeof(ScreenFxCloudParams) == 112, "ScreenFxCloudParams std140 offsets drifted");
+static_assert(sizeof(ScreenFxCloudParams) == 128, "ScreenFxCloudParams std140 offsets drifted");
 
 struct ScreenFxShoreParams {
     float screenSize[2];     // off 0
@@ -874,6 +878,22 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
         p.cloudStrength = cloudStrength_ * (1.0f - 0.85f * mc2NightLightFactor());
         p.cloudOctaves  = cloudOctaves_;
         p.cloudEnable   = 1;   // gated in C++ above; 1 inside the pass (GL parity)
+        p.cloudWaterElev = getWaterElevation();
+        p.cloudWaterScale = s_cloudWaterScale;
+        {
+            float lx = 0.f, ly = 0.f, lz = 1.f;
+            gos_GetTerrainLightDir(&lx, &ly, &lz);
+            const float len = std::sqrt(lx * lx + ly * ly + lz * lz);
+            if (len > 1e-6f) { lx /= len; ly /= len; lz /= len; } else { lx = ly = 0.f; lz = 1.f; }
+            const float minSin = std::sin(mc2ShadowMinSunAltDeg() * 0.0174532925f);
+            if (lz < minSin) {  // clamp elevation to the shadow sun's floor, keep azimuth
+                const float h = std::sqrt(lx * lx + ly * ly);
+                const float k = h > 1e-6f ? std::sqrt(1.f - minSin * minSin) / h : 0.f;
+                lx *= k; ly *= k; lz = minSin;
+            }
+            p.sunDirCloudH[0] = lx; p.sunDirCloudH[1] = ly; p.sunDirCloudH[2] = lz;
+            p.sunDirCloudH[3] = 1000.0f;
+        }
         void* m = nullptr;
         if ((m = frame.cloudUbo.map()) != nullptr) {
             std::memcpy(m, &p, sizeof(p));

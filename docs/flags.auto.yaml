@@ -389,8 +389,8 @@ flags:
     verified: true
   - name: MC2_CLOUD_SHADOW
     kind: Bool
-    default: false
-    rule: Lead0
+    default: true
+    rule: Lead0Kill
     owner: post
     doc: ""
     smoke_passthrough: true
