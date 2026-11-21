@@ -117,6 +117,7 @@ struct DeviceCaps {
     std::vector<std::string> extensions;             // device extension names
     RtCaps rt;                                       // ray-tracing features and limits (optional tier, see selectRt)
     ExtCaps ext;                                     // optional extension tier features and limits (see selectExt)
+    uint32_t driverId = 0;                           // VkDriverId from VkPhysicalDeviceDriverProperties; 0 when the device is below 1.2
     // Feature bits. dynamicRendering / synchronization2 hold the bit of whichever struct applies (core 1.3 when both versions allow it, else the
     // KHR extension struct); every other bit comes from VkPhysicalDeviceVulkan12Features.
     bool timelineSemaphore = false;
@@ -448,6 +449,8 @@ inline constexpr std::string_view kExtDescriptorHeap = "VK_EXT_descriptor_heap";
 inline constexpr std::string_view kExtComputeShaderDerivatives = "VK_KHR_compute_shader_derivatives";
 inline constexpr std::string_view kExtMaintenance5 = "VK_KHR_maintenance5";
 
+inline constexpr uint32_t kDriverIdAmdProprietary = 1;   // VK_DRIVER_ID_AMD_PROPRIETARY (this header stays free of Vulkan includes)
+
 // The part names MC2_VK_EXT_DENY accepts, in ExtSelection order.
 inline constexpr std::string_view kExtPartNames[] = {"mesh", "fsr", "quad", "host_copy", "pipeline_binary", "gpl", "dgc", "heap", "csd"};
 
@@ -497,8 +500,12 @@ inline ExtSelection selectExt(const DeviceCaps& c, std::string_view deny) {
             : !x.shaderQuadControl ? "no_feature" : !x.shaderMaximalReconvergence ? "no_feature_maximal_reconvergence" : nullptr;
     no[3] = !api13 ? "api_below_1_3" : !c.hasExtension(kExtHostImageCopy) ? "no_ext" : !x.hostImageCopy ? "no_feature" : nullptr;
     no[4] = !c.hasExtension(kExtPipelineBinary) ? "no_ext" : !m5 ? "no_maintenance5" : !x.pipelineBinaries ? "no_feature" : nullptr;
+    // AMD's proprietary driver (seen on 26.9.2 and 26.11.2, RX 7900 XTX) keeps a per-executable on-disk shader cache whose key ignores whether
+    // VK_EXT_graphics_pipeline_library is enabled: a compute binary cached by a device with the extension hangs the GPU on a device of the same exe without
+    // it, and the other way round (vk_actor_cull self-test, then VK_ERROR_DEVICE_LOST). Older builds and MC2_VK_EXT_DENY runs share that cache, so the
+    // tier leaves the extension off there.
     no[5] = !c.hasExtension(kExtGraphicsPipelineLibrary) ? "no_ext" : !c.hasExtension(kExtPipelineLibrary) ? "no_ext_pipeline_library"
-            : !x.graphicsPipelineLibrary ? "no_feature" : nullptr;
+            : !x.graphicsPipelineLibrary ? "no_feature" : c.driverId == kDriverIdAmdProprietary ? "amd_proprietary_shader_cache" : nullptr;
     no[6] = !c.hasExtension(kExtDeviceGeneratedCommands) ? "no_ext" : !m5 ? "no_maintenance5" : !c.bufferDeviceAddress ? "no_buffer_device_address"
             : !x.deviceGeneratedCommands ? "no_feature" : nullptr;
     no[7] = !c.hasExtension(kExtDescriptorHeap) ? "no_ext" : !m5 ? "no_maintenance5" : !c.bufferDeviceAddress ? "no_buffer_device_address"

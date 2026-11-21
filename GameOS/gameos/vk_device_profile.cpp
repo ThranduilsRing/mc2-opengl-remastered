@@ -44,10 +44,13 @@ DeviceCaps gather(VkPhysicalDevice pd, uint32_t instanceApi) {
         VkPhysicalDeviceSubgroupProperties sg{};
         sg.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES;
         id.pNext = &sg;
+        VkPhysicalDeviceDriverProperties drv{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES};   // core from 1.2
+        if (c.usableApi() >= kFloorApi) sg.pNext = &drv;
         VkPhysicalDeviceProperties2 props2{};
         props2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
         props2.pNext = &id;
         vkGetPhysicalDeviceProperties2(pd, &props2);
+        if (c.usableApi() >= kFloorApi) c.driverId = static_cast<uint32_t>(drv.driverID);
         c.subgroupSize = sg.subgroupSize;
         c.subgroupStages = sg.supportedStages;
         c.subgroupOps = sg.supportedOperations;

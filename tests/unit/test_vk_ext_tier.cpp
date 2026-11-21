@@ -79,6 +79,16 @@ TEST_CASE("ext tier: XTX caps select every part and enable the dependency extens
     CHECK(line.find("mesh_max_verts=256 mesh_max_prims=256 fsr_texel=8x8") != std::string::npos);
 }
 
+TEST_CASE("ext tier: the AMD proprietary driver never gets gpl (its shader cache ignores the extension)") {
+    vkp::DeviceCaps c = xtx();
+    c.driverId = vkp::kDriverIdAmdProprietary;
+    const vkp::ExtSelection s = vkp::selectExt(c, "");
+    CHECK(parts(s) == "mesh,fsr,quad,host_copy,pipeline_binary,dgc,heap,csd");
+    CHECK(s.reason == "gpl:amd_proprietary_shader_cache");
+    CHECK(std::ranges::count(s.extensions, std::string(vkp::kExtGraphicsPipelineLibrary)) == 0);
+    CHECK(std::ranges::count(s.extensions, std::string(vkp::kExtPipelineLibrary)) == 0);
+}
+
 TEST_CASE("ext tier: 1050 Ti caps select host_copy, pipeline_binary and gpl only") {
     CHECK(parts(vkp::selectExt(gtx1050ti(), "")) == "host_copy,pipeline_binary,gpl");
 }
