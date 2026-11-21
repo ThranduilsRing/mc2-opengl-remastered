@@ -6,6 +6,7 @@
 #include "Gates/gate_cold.h"
 #include "Gates/render_options.h"
 #include "ibl_sh_runtime.h"
+#include "gos_postprocess.h"
 #include "../../RenderCore/IblHdriRegistry.h"
 #include "../../RenderCore/IblShRegistry.h"
 #include <algorithm>
@@ -63,6 +64,7 @@ std::map<std::string, float> engineDefaults() {
         {"waterSkyTintStrength",0}, {"waterReflections",static_cast<float>(mc2::options::current().waterReflections)},
         {"vfxBrightness",1}, {"vfxAdditiveBrightness",1},
         {"vfxLitStrength",0.7f}, {"mechSpecularStrength",0.05f},
+        {"cloudStrength",0.15f}, {"cloudCoverage",0},
         {"terrainClassGrassGmRLo",-0.02f}, {"terrainClassGrassGmRHi",0.06f},
         {"terrainClassGrassBrLo",0.22f}, {"terrainClassGrassBrHi",0.40f},
         {"terrainClassDirtRmGLo",-0.02f}, {"terrainClassDirtRmGHi",0.06f},
@@ -79,7 +81,7 @@ bool validValue(std::string_view key, double value) {
     else if (key == "staticPropIblStrength") hi = 3;
     else if (key == "mechSpecularStrength") hi = 4;
     else if (key == "vfxBrightness" || key == "vfxAdditiveBrightness") hi = 8;
-    else if (key == "vfxLitStrength") hi = 1;
+    else if (key == "vfxLitStrength" || key == "cloudStrength" || key == "cloudCoverage") hi = 1;
     else if (key.find("terrainClass") == 0) {
         hi = 1;
         if (key.find("GmR") != std::string::npos || key.find("RmG") != std::string::npos) lo = -1;
@@ -294,6 +296,17 @@ static void applyKey(mc2::czstring key, float val, int& count) {
             batcher_setMechSpecularStrength(val);
             count++;
         }
+    } else if (strcmp(key, "cloudStrength") == 0) {
+        if (gosPostProcess* pp = getGosPostProcess()) pp->setCloudStrength(val);
+        count++;
+    } else if (strcmp(key, "cloudCoverage") == 0) {
+        // 0 keeps the legacy 0.3/0.7 band; >0 = narrow band centred on that covered fraction of ground.
+        if (gosPostProcess* pp = getGosPostProcess()) {
+            const float c = val > 0.0f ? 0.5f + 0.25f * (val - 0.5f) : 0.5f;
+            pp->setCloudThreshLo(val > 0.0f ? c - 0.04f : 0.3f);
+            pp->setCloudThreshHi(val > 0.0f ? c + 0.04f : 0.7f);
+        }
+        count++;
     // TERRAIN-CLASSIFY-TUNING-1: per-mission RGB classifier thresholds.
     } else if (strcmp(key, "terrainClassGrassGmRLo") == 0) {
         float a, b, c, d;

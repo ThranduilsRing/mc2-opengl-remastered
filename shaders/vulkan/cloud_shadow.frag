@@ -39,6 +39,7 @@ layout(set = 0, binding = 0) uniform sampler2D sceneDepthTex;
 //   cloudStrength  @ 88
 //   cloudOctaves   @ 92  (int -- AMD uniform-uint crash trap, keep int)
 //   cloudEnable    @ 96  (int)
+//   sunDirCloudH   @112  (vec4: xyz unit vector toward sun, Z-up; w cloud-base height wu)
 layout(set = 0, binding = 1, std140) uniform CloudFxParams {
     mat4  invViewProj;
     vec2  cloudScroll;
@@ -48,6 +49,7 @@ layout(set = 0, binding = 1, std140) uniform CloudFxParams {
     float cloudStrength;
     int   cloudOctaves;
     int   cloudEnable;
+    vec4  sunDirCloudH;
 } u;
 
 // Aliases so the ported GL block below stays textually VERBATIM.
@@ -59,6 +61,7 @@ layout(set = 0, binding = 1, std140) uniform CloudFxParams {
 #define u_cloudThreshold u.cloudThreshold
 #define u_cloudOctaves   u.cloudOctaves
 #define u_cloudEnable    u.cloudEnable
+#define u_sunDirCloudH   u.sunDirCloudH
 
 //PORT-BEGIN:cloudShadowNoise
 PREC vec3 mod289_3(PREC vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -109,6 +112,22 @@ vec3 reconstructWorldPos(vec2 uv, float depth)
     return worldPos4.xyz / worldPos4.w;
 }
 
+// Part-d contract: shafts call cloudCover(sunProject(p)) at marched points.
+// sunProject: ground-plane position of the cloud-layer point on the ray from wp toward the sun.
+vec2 sunProject(vec3 wp)
+{
+    return wp.xy + u_sunDirCloudH.xy * ((u_sunDirCloudH.w - wp.z) / max(u_sunDirCloudH.z, 0.2588));
+}
+
+// 0 clear .. 1 covered. Reads only the UBO.
+float cloudCover(vec2 groundXY)
+{
+    int   oct = clamp(u_cloudOctaves, 1, 6);
+    vec2  uv  = groundXY * u_cloudScale + u_time * u_cloudScroll;
+    float n   = fbm(uv, oct) * 0.5 + 0.5;
+    return 1.0 - smoothstep(u_cloudThreshold.x, u_cloudThreshold.y, n);
+}
+
 void main()
 {
     if (u_cloudEnable == 0) {
@@ -125,14 +144,7 @@ void main()
 
     vec3 worldPos = reconstructWorldPos(TexCoord, depth);
 
-    int   oct      = clamp(u_cloudOctaves, 1, 6);
-    float tWrapped = mod(u_time, 1000.0);
-
-    // MC2 is Z-up: sample both ground axes so flat terrain retains 2D clouds.
-    vec2  uv    = worldPos.xy * u_cloudScale + tWrapped * u_cloudScroll;
-    float n     = fbm(uv, oct) * 0.5 + 0.5;
-    float clear = smoothstep(u_cloudThreshold.x, u_cloudThreshold.y, n);
-    float factor = mix(1.0 - u_cloudStrength, 1.0, clear);
+    float factor = 1.0 - u_cloudStrength * cloudCover(sunProject(worldPos));
 
     FragColor = vec4(vec3(factor), 1.0);
 }
