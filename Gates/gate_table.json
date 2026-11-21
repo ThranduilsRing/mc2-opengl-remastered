@@ -1,6 +1,6 @@
 {
  "version": 1,
- "count": 432,
+ "count": 433,
  "gates": [
   {"name": "MC2_ABL_ARG_GUARD", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "code", "retireBy": "", "doc": "ABL crash-safety gates (ABL-OPCODE-BOUNDS-HARDEN) MC2_ABL_ARG_GUARD=1 - enables dispatch-bounds soft path + out-ptr null guards MC2_ABL_RUNTIME_SOFTFAIL=1 -...", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_ABL_COMPILE_FATAL", "kind": "Bool", "rule": "Lead0Kill", "default": true, "owner": "code", "retireBy": "", "doc": "ASAN-3-ABL-COMPILE-FATAL-1: fail at preprocess when ABL syntax errors leave partial bytecode; set =0 only for legacy execute-anyway diagnostics.", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": false, "registry": {"featureId": "MC2_ABL_COMPILE_FATAL", "kind": "Feature", "order": -1, "defaultOn": true}, "logTopic": ""},
