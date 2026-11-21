@@ -503,15 +503,20 @@ inline ExtSelection selectExt(const DeviceCaps& c, std::string_view deny) {
     // AMD's proprietary driver (seen on 26.9.2 and 26.11.2, RX 7900 XTX) keeps a per-executable on-disk shader cache whose key ignores whether
     // VK_EXT_graphics_pipeline_library is enabled: a compute binary cached by a device with the extension hangs the GPU on a device of the same exe without
     // it, and the other way round (vk_actor_cull self-test, then VK_ERROR_DEVICE_LOST). Older builds and MC2_VK_EXT_DENY runs share that cache, so the
-    // tier leaves the extension off there.
+    // tier leaves the extension off there. With only that one off, the other eight parts still dropped the terrain and mech draws from a 3840x2160
+    // frame on 26.11.2 (grass on the clear colour, no error or device loss), while the same exe with the whole tier denied matched the base build
+    // pixel for pixel. Which of the eight does it is not known, so on this driver every part stays off until one is proven on its own.
     no[5] = !c.hasExtension(kExtGraphicsPipelineLibrary) ? "no_ext" : !c.hasExtension(kExtPipelineLibrary) ? "no_ext_pipeline_library"
-            : !x.graphicsPipelineLibrary ? "no_feature" : c.driverId == kDriverIdAmdProprietary ? "amd_proprietary_shader_cache" : nullptr;
+            : !x.graphicsPipelineLibrary ? "no_feature" : nullptr;
     no[6] = !c.hasExtension(kExtDeviceGeneratedCommands) ? "no_ext" : !m5 ? "no_maintenance5" : !c.bufferDeviceAddress ? "no_buffer_device_address"
             : !x.deviceGeneratedCommands ? "no_feature" : nullptr;
     no[7] = !c.hasExtension(kExtDescriptorHeap) ? "no_ext" : !m5 ? "no_maintenance5" : !c.bufferDeviceAddress ? "no_buffer_device_address"
             : !x.descriptorHeap ? "no_feature" : nullptr;
     no[8] = !api12 ? "api_below_1_2" : !c.hasExtension(kExtComputeShaderDerivatives) ? "no_ext"
             : !(x.computeDerivativeGroupQuads || x.computeDerivativeGroupLinear) ? "no_feature" : nullptr;
+    if (c.driverId == kDriverIdAmdProprietary)
+        for (size_t i = 0; i < 9; ++i)
+            if (!no[i]) no[i] = i == 5 ? "amd_proprietary_shader_cache" : "amd_proprietary_missing_draws";
     bool* flag[9] = {&r.mesh, &r.fsr, &r.quad, &r.hostCopy, &r.pipelineBinary, &r.gpl, &r.dgc, &r.heap, &r.csd};
     for (size_t i = 0; i < 9; ++i) {
         if (denied[i]) why.push_back(std::string(kExtPartNames[i]) + ":denied");
