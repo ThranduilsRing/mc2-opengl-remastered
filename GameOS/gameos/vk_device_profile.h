@@ -477,6 +477,15 @@ inline uint32_t extCacheKey(const ExtSelection& s) {
     return h ? h : 1u;
 }
 
+// App pipeline cache file name stem (no extension): device identity plus the tier key in effect, so a cache written under one part set is never loaded under another.
+inline std::string pipelineCacheStem(uint32_t vendor, uint32_t device, uint32_t driver, std::span<const uint8_t> uuid, uint32_t extKey) {
+    char buf[160]{};
+    size_t at = static_cast<size_t>(std::snprintf(buf, sizeof(buf), "%08x-%08x-%08x-", vendor, device, driver));
+    for (const uint8_t b : uuid) at += static_cast<size_t>(std::snprintf(buf + at, sizeof(buf) - at, "%02x", b));
+    std::snprintf(buf + at, sizeof(buf) - at, "_k%08x", extKey);
+    return buf;
+}
+
 // Picks the extension parts from the device caps. Each part needs its extension, its feature bit and its registry dependencies and is judged independently, as
 // selectRt does. `deny` is a comma list of part names or "all" (MC2_VK_EXT_DENY); an unknown token adds "deny_unknown_<tok>" to the reason. Pure: no I/O.
 inline ExtSelection selectExt(const DeviceCaps& c, std::string_view deny) {

@@ -963,7 +963,7 @@ bool VulkanContext::init(bool wantPresent) {
     vkGetDeviceQueue(device_, gfxFamily_, qci.queueCount - 1, &presentQueue_);
     ctxlog("queue family=%u graphics=0 present=%u (shared=%s)", gfxFamily_, qci.queueCount - 1,
            presentQueue_ == gfxQueue_ ? "yes" : "no");
-    infra::init(device_, phys_);
+    infra::init(device_, phys_, profile::extCacheKey(extSel_));   // the key in effect: extSel_ is cleared when the tier was dropped (cache_key_failed / device_create_failed)
 
     // ---- the graphics timeline (CompletionTracker's semaphore; the profile requires timeline semaphores) ----
     {
