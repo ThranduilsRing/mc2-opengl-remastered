@@ -31,6 +31,7 @@ from smoke_lib import nofocus  # noqa: E402
 import mc2_env_pin as env_pin  # noqa: E402
 import console_child  # noqa: E402  (windowless console children; scripts/console_child.py)
 import asset_parity  # noqa: E402
+import bookmark_sets  # noqa: E402  (scripts/bookmark_sets.py: shared bookmark-set resolver, also used by capture.py)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pixel_hist  # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -1209,23 +1210,28 @@ def stage_exe_swap(install: Path, exe: Path, dest: Path) -> Path:
     return dest
 
 
+def _resolve_set(spec, install):
+    return bookmark_sets.resolve_set(spec, install, repo_dir=ROOT / "tests" / "visual" / "bookmarks")
+
+
 def seed_install(install, bookmarks, reference=DEFAULT_INSTALL):
     """A fresh lane install lacks saved_bookmarks/<bm>.json and data/textures/*.burnin.*: copy what is missing from the reference
     install (as the gate's stage step does); exit naming what is still missing so a capture never runs on the wrong data."""
     install, reference = Path(install), Path(reference)
     missing = []
-    for bm in [b.strip() for b in bookmarks.split(",") if b.strip()]:
+    for spec in [b.strip() for b in bookmarks.split(",") if b.strip()]:
+        bm = bookmark_sets.spec_stem(spec)
         dst = install / "saved_bookmarks" / (bm + ".json")
         src = reference / "saved_bookmarks" / (bm + ".json")
         if not dst.is_file() and src.is_file():
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src, dst)
-        repo = ROOT / "tests" / "visual" / "bookmarks" / (bm + ".json")
-        if not dst.is_file() and repo.is_file():
-            # capture.py copies the repo bookmark into its own out dir; an install ab.py does not own is never written to
-            print(f"[ab] bookmark {bm}: not in {install}/saved_bookmarks or {reference}; capture.py will use the repo copy {repo}", flush=True)
+        found, dirs = _resolve_set(spec, install)
+        if not dst.is_file() and found is not None:
+            # capture.py copies the repo/ops bookmark into its own out dir; an install ab.py does not own is never written to
+            print(f"[ab] bookmark {bm}: not in {install}/saved_bookmarks or {reference}; capture.py will use {found}", flush=True)
         elif not dst.is_file():
-            missing.append(f"{dst} (not in reference {reference} or {repo.parent} either)")
+            missing.append(f"{dst} ({bookmark_sets.not_found_message(spec, dirs)}; reference {reference} lacks it too)")
     textures = install / "data" / "textures"
     for src in (reference / "data" / "textures").glob("*.burnin.*"):
         if not (textures / src.name).exists():
@@ -1245,9 +1251,8 @@ def ensure_saved_bookmarks(install, reference, staged, bookmarks=""):
     install, reference = Path(install), Path(reference)
     bookmark_dir = install / "saved_bookmarks"
     names = [name.strip() for name in bookmarks.split(",") if name.strip()]
-    if names and all((bookmark_dir / (name + ".json")).is_file()
-                     or (ROOT / "tests/visual/bookmarks" / (name + ".json")).is_file() for name in names):
-        return  # capture.py resolves named repo bookmarks into its own output directory.
+    if names and all(_resolve_set(name, install)[0] is not None for name in names):
+        return  # capture.py resolves named repo/ops bookmarks into its own output directory.
     if any(bookmark_dir.glob("*.json")):
         return
     if str(install) not in {str(d) for d in staged}:
@@ -1267,7 +1272,7 @@ def bookmark_parity_problems(ia, ib, bookmarks: str) -> list:
     """One line per requested bookmark that side A and side B do not carry byte-identically (on one side only, or different
     content): the two sides must replay the same pose files or the diff is not about the exe."""
     problems = []
-    for bm in [b.strip() for b in bookmarks.split(",") if b.strip()]:
+    for bm in [bookmark_sets.spec_stem(b) for b in bookmarks.split(",") if b.strip()]:
         shas = {}
         for side, inst in (("A", ia), ("B", ib)):
             f = Path(inst) / "saved_bookmarks" / (bm + ".json")
@@ -1489,9 +1494,9 @@ def main(argv=None):
         stamp_identity(out / "b", identities[1])
         for line in capture_commit_report(identities[0]["commit"], identities[1]["commit"], worktree_head()):
             print(line, flush=True)
-        for line in resolution_lines(env, (("A", out / "a"), ("B", out / "b")), [s.strip() for s in a.bookmarks.split(",") if s.strip()]):
+        for line in resolution_lines(env, (("A", out / "a"), ("B", out / "b")), [bookmark_sets.spec_stem(s) for s in a.bookmarks.split(",") if s.strip()]):
             print(line, flush=True)
-        compare(out / "a", out / "b", out / "cmp", crops, [s.strip() for s in a.bookmarks.split(",") if s.strip()],
+        compare(out / "a", out / "b", out / "cmp", crops, [bookmark_sets.spec_stem(s) for s in a.bookmarks.split(",") if s.strip()],
                 cross_base=bool(bad), exe_a_base_mismatch=exe_a_base_mismatch, exe_a_swap=exe_a_swap, hud=a.hud,
                 data_parity=dpar, identity_receipt=identity_receipt)
         rc = 1 if getattr(compare, "problems", None) else 0

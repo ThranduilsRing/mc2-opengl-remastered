@@ -62,6 +62,7 @@ import manifest_schema as ms  # noqa: E402  (unified identity + binary provenanc
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 # OWNER RULE: no window for any child process (hidden_kwargs: CREATE_NO_WINDOW + SW_HIDE).
 from smoke_lib import nofocus  # noqa: E402
+import bookmark_sets  # noqa: E402  (scripts/bookmark_sets.py: the shared bookmark-set resolver)
 
 
 def _now_iso() -> str:
@@ -75,33 +76,31 @@ def discover_bookmarks(install: Path) -> "list[Path]":
     return sorted(p for p in bd.glob("*.json"))
 
 
-REPO_BOOKMARKS = ROOT / "tests" / "visual" / "bookmarks"
-
-
 def resolve_bookmarks(install: Path, wanted: "set[str] | None", out_dir: Path,
-                      repo_dir: "Path | None" = None) -> "tuple[list[Path], list[str], list[str]]":
-    """The bookmark files to capture: <install>/saved_bookmarks first, then (for a named stem the install lacks) the repo's
-    tests/visual/bookmarks/<stem>.json. The harness rewrites the bookmark json, so a repo file is COPIED into
-    <out_dir>/_repo_bookmarks/ (a dir this run owns) and never used in place; nothing is written into the install.
-    Returns (files, log lines saying where each stem came from, stems found nowhere). wanted=None means 'all' (install only)."""
-    repo_dir = REPO_BOOKMARKS if repo_dir is None else Path(repo_dir)
+                      repo_dir: "Path | None" = None, ops_dir: "Path | None" = None) -> "tuple[list[Path], list[str], list[str]]":
+    """The bookmark files to capture. Each wanted entry is a stem or a .json path; scripts/bookmark_sets.py resolves it:
+    <install>/saved_bookmarks first, then tests/visual/bookmarks, then the ops dir (MC2_OPS_BOOKMARKS). The harness rewrites the
+    bookmark json, so a file from outside the install is COPIED into <out_dir>/_repo_bookmarks/ (a dir this run owns) and never
+    used in place; nothing is written into the install. Returns (files, log lines saying where each set came from, specs found
+    nowhere). wanted=None means 'all' (install only)."""
     in_install = {p.stem: p for p in discover_bookmarks(install)}
     if wanted is None:
         return sorted(in_install.values()), [], []
     files, notes, missing = [], [], []
-    for stem in sorted(wanted):
-        if stem in in_install:
-            files.append(in_install[stem])
+    for spec in sorted(wanted):
+        stem = bookmark_sets.spec_stem(spec)
+        src, _ = bookmark_sets.resolve_set(spec, install, repo_dir, ops_dir)
+        if src is None:
+            missing.append(spec)
             continue
-        src = repo_dir / (stem + ".json")
-        if not src.is_file():
-            missing.append(stem)
+        if src.parent == install / "saved_bookmarks":
+            files.append(src)
             continue
-        dst = Path(out_dir) / "_repo_bookmarks" / src.name
+        dst = Path(out_dir) / "_repo_bookmarks" / (stem + ".json")
         dst.parent.mkdir(parents=True, exist_ok=True)
         dst.write_bytes(src.read_bytes())
         files.append(dst)
-        notes.append(f"bookmark {stem}: not in {install / 'saved_bookmarks'}; using the repo copy {src} (copied to {dst})")
+        notes.append(f"bookmark {stem}: not in {install / 'saved_bookmarks'}; using {src} (copied to {dst})")
     return files, notes, missing
 
 
@@ -418,7 +417,9 @@ def main(argv=None) -> int:
         return 4
     if missing:
         print(f"[vv-capture] ERROR unknown bookmark(s): {sorted(missing)} (not in {install / 'saved_bookmarks'} "
-              f"nor {REPO_BOOKMARKS})", file=sys.stderr)
+              f"nor the repo/ops dirs)", file=sys.stderr)
+        for spec in sorted(missing):
+            print("[vv-capture] " + bookmark_sets.not_found_message(spec, bookmark_sets.search_dirs(install)), file=sys.stderr)
         print(f"[vv-capture] available: {sorted(p.stem for p in discover_bookmarks(install))}", file=sys.stderr)
         return 4
     for line in bookmark_notes:
