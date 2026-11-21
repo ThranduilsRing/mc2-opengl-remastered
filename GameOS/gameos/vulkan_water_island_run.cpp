@@ -528,7 +528,12 @@ extern "C" int mc2_vk_water_island_run(
     if (reflect_bake_active()) reflectThisFrame = false;   // the bake replaces the live pass below High
     bind_reflect_bake(s, par, reinterpret_cast<WaterFsParams*>(static_cast<uint8_t*>(uboSpan.ptr) + fsUboOff));
     // Nothing the cull could admit is in view: skip the producers, the scene pass and the submit. The one-time bakes above still ran.
-    if (!waterInView && gos_GetWaterFsDebugMode() == 0 && profileMode < 0) { s->reflectionValid = false; return 0; }
+    if (!waterInView && gos_GetWaterFsDebugMode() == 0 && profileMode < 0) {
+        s->reflectionValid = false;
+        // No water this frame: the per-frame counters must not keep the last water frame's values (usedVulkan is a cumulative frame count and stays).
+        g_health.waterVisible = 0; g_health.waterEligibleBound = 0; g_health.vkDraws = 0;
+        return 0;
+    }
     s->planarTerrainRecord = {}; s->planarPropsRecord = {};
     if (reflectThisFrame) {
         mc2::waterplanar::Target target;

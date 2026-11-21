@@ -118,4 +118,11 @@ inline bool hzb_hidden(const ProjectedProp& p, int baseW, int baseH, Fetch&& fet
     return p.nearest < farthest - 0.00002f;
 }
 
+// Level 0 has no image (the cull floors its lod at 1), so a pyramid under two levels has nothing to sample.
+// This is a per-frame skip decision: the pyramid is rebuilt once the extent grows, it never latches the pass off.
+constexpr bool pyramid_too_small(int mipCount) { return mipCount < 2; }
+
+// Passes actually recorded per frame: levels 1..mipCount-1 (level 0 is not built).
+constexpr int pyramid_pass_count(int mipCount) { return mipCount > 1 ? mipCount - 1 : 0; }
+
 } // namespace mc2hzb
