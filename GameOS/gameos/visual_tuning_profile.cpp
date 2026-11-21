@@ -55,12 +55,15 @@ std::string s_profilePath = "data/visual_tuning.json";
 bool s_hasFile = false;
 int s_appliedKeys = 0;
 
+constexpr float kSunAbsent = -1000.0f;  // sun* keys: absent = keep the mission's own sun
+
 std::map<std::string, float> engineDefaults() {
     return {{"gradeR",1}, {"gradeG",1}, {"gradeB",1},
         {"gradeShadowsR",1}, {"gradeShadowsG",1}, {"gradeShadowsB",1},
         {"gradeHighlightsR",1}, {"gradeHighlightsG",1}, {"gradeHighlightsB",1},
         {"topWarmthR",1}, {"topWarmthG",1}, {"topWarmthB",1},
         {"vignette",0}, {"topWarmthStrength",0},
+        {"sunPitch",kSunAbsent}, {"sunYaw",kSunAbsent}, {"sunColorR",kSunAbsent}, {"sunColorG",kSunAbsent}, {"sunColorB",kSunAbsent},
         {"unitAmbientScale",1.2f}, {"buildingSpillIntensityScale",1.0f},
         {"exposure",1}, {"shadowSoftness",2.5f}, {"staticPropIblStrength",0.5f},
         {"waterSkyTintStrength",0}, {"waterReflections",static_cast<float>(mc2::options::current().waterReflections)},
@@ -77,7 +80,10 @@ bool validValue(std::string_view key, double value) {
     if (!std::isfinite(value)) return false;
     float hi = 64;
     float lo = 0;
-    if (key == "vignette" || key == "topWarmthStrength") hi = 1;
+    if (key == "sunPitch") { lo = 26; hi = 90; }
+    else if (key == "sunYaw") { lo = -360; hi = 360; }
+    else if (key.starts_with("sunColor")) hi = 255;
+    else if (key == "vignette" || key == "topWarmthStrength") hi = 1;
     else if (key.starts_with("grade") || key.starts_with("topWarmth")) hi = 2;
     else if (key == "unitAmbientScale" || key == "buildingSpillIntensityScale") hi = 2;
     else if (key == "staticPropIblStrength") hi = 3;
@@ -267,6 +273,8 @@ static void applyKey(mc2::czstring key, float val, int& count) {
     } else if (strcmp(key, "terrainLightingV1Strength") == 0 ||
                strcmp(key, "terrainLightingV2Floor") == 0) {
         // Retired keys: shipped installs still carry them; ignored silently.
+    } else if (strncmp(key, "sun", 3) == 0) {
+        // sunPitch/sunYaw/sunColor*: read by Camera::init via visualTuning_sunValue, not applied here.
     } else if (strcmp(key, "staticPropIblStrength") == 0) {
         // This is the shipped value of the SH-IBL probe strength: it runs on
         // every mission load and replaces the batcher's pre-mission fallback.
@@ -387,6 +395,13 @@ void visualTuning_applyProfile(mc2::czstring missionName) {
     mc2::fmt::print_err("[MissionEnvironment] mission='{}' schema=2 sourceSchema={} hash={} color={} providers={} keys={}\n",
         s_environment.mission,s_environment.sourceSchemaVersion,s_environment.effectiveHash,
         s_environment.colorContract,Json(s_environment.providers).dump(),count);
+}
+
+bool visualTuning_sunValue(const char* key, float& out) {
+    const auto it = s_environment.legacyTuning.find(key);
+    if (it == s_environment.legacyTuning.end() || it->second <= kSunAbsent) return false;
+    out = it->second;
+    return true;
 }
 
 const char* visualTuning_getProfilePath() { return s_profilePath.c_str(); }

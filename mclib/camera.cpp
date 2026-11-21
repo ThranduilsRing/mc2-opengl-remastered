@@ -12,6 +12,7 @@
 #include "Gates/gate.h"
 #include "../GameOS/gameos/utils/mc2log.h"   // LOCAL-LIGHTS-4: [MISSION_LIGHT v1]
 #include "mission_light_profile.h"
+#include "../GameOS/gameos/visual_tuning_profile.h"
 
 
 inline float agsqrt( float _a, float _b )
@@ -400,6 +401,22 @@ long Camera::init (FitIniFilePtr cameraFile )
 			cameraFile->readIdUChar("AmbientRed", ambientRed);
 			cameraFile->readIdUChar("AmbientGreen", ambientGreen);
 			cameraFile->readIdUChar("AmbientBlue", ambientBlue);
+		}
+		// Per-mission sun (visual_tuning.json sunPitch/sunYaw/sunColor*): day suns only, absolute values so a save re-applies the same.
+		float sun[5] = {};
+		if (mc2_mission_light::nightFromSun(dayLightPitch) == 0.0f)
+		{
+			if (visualTuning_sunValue("sunPitch", sun[0])) lightPitch = dayLightPitch = std::max(sun[0], 26.0f);
+			if (visualTuning_sunValue("sunYaw", sun[1])) lightYaw = sun[1];
+			lightDirection.x = cos((lightYaw + 45.0f) * DEGREES_TO_RADS);
+			lightDirection.y = sin((lightYaw + 45.0f) * DEGREES_TO_RADS);
+			lightDirection.z = sin(lightPitch * DEGREES_TO_RADS);
+			if (visualTuning_sunValue("sunColorR", sun[2]) && visualTuning_sunValue("sunColorG", sun[3]) && visualTuning_sunValue("sunColorB", sun[4]))
+			{
+				lightRed = dayLightRed = static_cast<unsigned char>(sun[2] + 0.5f);
+				lightGreen = dayLightGreen = static_cast<unsigned char>(sun[3] + 0.5f);
+				lightBlue = dayLightBlue = static_cast<unsigned char>(sun[4] + 0.5f);
+			}
 		}
 	}
 

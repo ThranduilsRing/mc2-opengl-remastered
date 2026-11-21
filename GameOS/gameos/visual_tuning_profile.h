@@ -17,6 +17,8 @@
 void visualTuning_applyProfile(mc2::czstring missionName);
 bool visualTuning_saveCurrentToMission();  // write current slider state to JSON for active mission
 
+// Per-mission sun override (sunPitch/sunYaw/sunColorR/G/B): false = key absent, keep the mission's sun.
+bool visualTuning_sunValue(const char* key, float& out);
 const char* visualTuning_getProfilePath();
 const char* visualTuning_getActiveMission();
 bool        visualTuning_hasProfileFile();
