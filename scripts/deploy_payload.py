@@ -79,17 +79,43 @@ def editor_only_payload(rel):
     return rel in {"mission editor.exe", "mission editor.pdb", "run-editor.bat"} or rel.startswith("tools/terrain_gen/")
 
 
+_PAUSE = {"depth": 0, "since": 0.0, "total": 0.0}
+_PAUSE_LOCK = threading.Lock()
+
+
+@contextmanager
+def phase_paused():
+    """Stop every active deploy_phase clock (a cache-miss stock pak pack takes minutes and has its own subprocess timeout)."""
+    with _PAUSE_LOCK:
+        if _PAUSE["depth"] == 0:
+            _PAUSE["since"] = time.monotonic()
+        _PAUSE["depth"] += 1
+    try:
+        yield
+    finally:
+        with _PAUSE_LOCK:
+            _PAUSE["depth"] -= 1
+            if _PAUSE["depth"] == 0:
+                _PAUSE["total"] += time.monotonic() - _PAUSE["since"]
+
+
+def _paused_seconds():
+    with _PAUSE_LOCK:
+        return _PAUSE["total"] + (time.monotonic() - _PAUSE["since"] if _PAUSE["depth"] else 0.0)
+
+
 @contextmanager
 def deploy_phase(name, timeout=600):
     """Report progress and terminate this deploy's children if a phase stalls."""
     if not _PSUTIL_OK:
         fail("bounded deploy phases require psutil (child cleanup on timeout)")
     started = time.monotonic()
+    paused_at_start = _paused_seconds()
     done = threading.Event()
 
     def watch():
         while not done.wait(min(15, timeout)):
-            elapsed = time.monotonic() - started
+            elapsed = time.monotonic() - started - (_paused_seconds() - paused_at_start)
             log(f"phase {name}: running {elapsed:.1f}s / {timeout}s")
             if elapsed >= timeout:
                 log(f"ERROR: phase {name} timed out after {elapsed:.1f}s")
@@ -2943,18 +2969,35 @@ def stock_pak_key(src_root, target):
     return h.hexdigest()[:32]
 
 
+PAK_PACK_TIMEOUT_S = 1500
+PAK_STATUS_NAME = ".pak_deploy_status"  # read by scripts/smoke_lib/pak_gate.py; not in the manifest, never retired
+
+
 def ensure_stock_pak(src_root, target, hashes):
     """Default pak deploy: pack once per FST set into the shared cache, copy it (never hardlink: the engine maps it) to
-    <target>/paks/stock.mc2pak (replace by rename) and record it in `hashes`. Any failure is a loud log line; the FSTs still ship and rc stays 0."""
+    <target>/paks/stock.mc2pak (replace by rename) and record it in `hashes`. Any failure is a loud log line; the FSTs still ship and rc stays 0.
+    The outcome (OK / FALLBACK / SKIP) is recorded in <target>/.pak_deploy_status so run_smoke can refuse a silent FST fallback."""
+    status = _ensure_stock_pak(src_root, target, hashes)
+    try:
+        (Path(target) / PAK_STATUS_NAME).write_text(status + "\n", encoding="utf-8")
+    except OSError as exc:
+        log(f"WARN [PAK_DEPLOY] could not write {PAK_STATUS_NAME}: {exc}")
+
+
+def fail_status(reason):
+    log(f"WARN [PAK_DEPLOY] {reason}; deploy is FST only")
+    return f"FALLBACK {reason}"
+
+
+def _ensure_stock_pak(src_root, target, hashes):
     try:
         key = stock_pak_key(src_root, target)
         if key is None:
             log("WARN [PAK_DEPLOY] no system.cfg [FastFiles] / FST set to pack; FST only")
-            return
+            return "SKIP no FST set"
         py = _mc2pak_python()
         if py is None:
-            log("WARN [PAK_DEPLOY] Python 3.14 is not available (tools/mc2pak.py needs ZIP Zstandard); deploy is FST only")
-            return
+            return fail_status("Python 3.14 is not available (tools/mc2pak.py needs ZIP Zstandard)")
         cache = PAK_CACHE_ROOT / key
         pak = cache / "stock.mc2pak"
         digest_file = cache / "stock.mc2pak.sha256"
@@ -2967,14 +3010,18 @@ def ensure_stock_pak(src_root, target, hashes):
             partial = cache / f"stock.{os.getpid()}.partial"
             started = time.perf_counter()
             log(f"[PAK_DEPLOY] cache miss key={key}: packing (about 9 minutes)")
-            with deploy_phase("stock pak pack", 1500):
-                r = subprocess.run([*py, str(Path(src_root) / "tools/mc2pak.py"), "pack", "--install", str(target),
-                                    "--out", str(partial)], capture_output=True, text=True,
-                                   **console_child.child_kwargs(redirected=True))
+            # Outside the bounded deploy clock: a timeout here must fall back to FST (rc 0, manifest written), never os._exit(8).
+            try:
+                with phase_paused():
+                    r = subprocess.run([*py, str(Path(src_root) / "tools/mc2pak.py"), "pack", "--install", str(target),
+                                        "--out", str(partial)], capture_output=True, text=True, timeout=PAK_PACK_TIMEOUT_S,
+                                       **console_child.child_kwargs(redirected=True))
+            except subprocess.TimeoutExpired:
+                partial.unlink(missing_ok=True)
+                return fail_status(f"mc2pak pack timed out after {PAK_PACK_TIMEOUT_S}s")
             if r.returncode != 0 or not partial.is_file():
                 partial.unlink(missing_ok=True)
-                log(f"WARN [PAK_DEPLOY] mc2pak pack failed rc={r.returncode}: {(r.stderr or r.stdout).strip()[-300:]}; deploy is FST only")
-                return
+                return fail_status(f"mc2pak pack failed rc={r.returncode}: {(r.stderr or r.stdout).strip()[-300:]}")
             digest_file.write_text(sha256_file(partial))
             os.replace(partial, pak)
             log(f"[PAK_DEPLOY] packed {pak.stat().st_size} bytes in {time.perf_counter() - started:.1f}s")
@@ -2991,8 +3038,9 @@ def ensure_stock_pak(src_root, target, hashes):
             replace_file(str(tmp), str(dst))
         hashes[PAK_REL] = (digest_file.read_text().strip(), dst.stat().st_size, dst.stat().st_mtime_ns)
         log(f"[PAK_DEPLOY] OK {PAK_REL} key={key} sha256={hashes[PAK_REL][0][:16]}")
+        return f"OK key={key}"
     except Exception as exc:  # noqa: BLE001 -- the FSTs still ship; a pak failure never fails the deploy
-        log(f"WARN [PAK_DEPLOY] pak step failed ({type(exc).__name__}: {exc}); deploy is FST only")
+        return fail_status(f"pak step failed ({type(exc).__name__}: {exc})")
 
 
 def pak_copy_current(dst, pak, digest):

@@ -134,8 +134,8 @@ def pack(install, out):
                         aliases.append(f'{name}\t{by_hash[digest]}\t{key(path.name)}\n')
                         continue
                     by_hash[digest] = name
-                    compressed = zstd.compress(raw, level=19)
-                    method = 0 if name.endswith('.ktx2') or len(compressed) > len(raw) * .95 else 93
+                    # zipfile compresses at level 19 inside writestr (the one real compression); a level-1 probe only picks stored vs zstd.
+                    method = 0 if name.endswith('.ktx2') or len(zstd.compress(raw, level=1)) > len(raw) * .95 else 93
                     z.writestr(info(name, method, key(path.name)), raw)
             if aliases:
                 z.writestr(info(ALIASES, 0), ''.join(aliases).encode())

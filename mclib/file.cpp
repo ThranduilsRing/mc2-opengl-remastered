@@ -94,6 +94,7 @@ std::string LookupArchivePath(std::string_view dataPath)
 	// A pak candidate answers with its SOURCE FST (callers CRC it against the stock list): the registered FST on disk,
 	// or empty when that FST is absent. Never the pak path, which would turn stock assets into "user archives".
 	for (const auto& candidate : mc2::vfs::candidates(key)) {
+		if (candidate.provider == mc2::vfs::Provider::Fst) break;	// an FST outranking the pak (extra root FST) answers via FastFileFind
 		if (candidate.provider != mc2::vfs::Provider::Pak || !candidate.pak) continue;
 		const auto* pakEntry = candidate.pak->find(candidate.key);
 		if (!pakEntry) break;

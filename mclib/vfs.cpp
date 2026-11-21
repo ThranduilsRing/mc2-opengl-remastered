@@ -610,6 +610,7 @@ std::vector<unsigned char> ReadArchiveBytes(mc2::czstring dataPath, size_t maxBy
     if (!dataPath) return {};
     // A pak winner serves its bytes (counted in [PAK_IO v1]); this probe ignores mods and loose files like the FST probe it replaces.
     for (const auto& candidate : mc2::vfs::candidates(mc2::vfs::key(dataPath))) {
+        if (candidate.provider == mc2::vfs::Provider::Fst) break;  // an FST outranking the pak answers via FastFileFind
         if (candidate.provider != mc2::vfs::Provider::Pak || !candidate.pak) continue;
         const auto* pakEntry = candidate.pak->find(candidate.key);
         if (!pakEntry || pakEntry->size >= maxBytes) break;

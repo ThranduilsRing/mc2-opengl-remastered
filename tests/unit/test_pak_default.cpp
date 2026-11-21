@@ -67,6 +67,16 @@ TEST_CASE("pakdefault/LookupArchivePath names the source FST, never the pak") {
     { Scratch s(false);
       CHECK(LookupArchivePath(kKey).empty()); }
 }
+TEST_CASE("pakdefault/an extra root FST ranked ahead of the stock pak answers both probes") {
+    Scratch s;
+    fs::copy_file(fixtures / "source-fst.bin", "extra.fst");
+    REQUIRE(FastFileInit("extra.fst")); mc2::vfs::rebuild();
+    REQUIRE(mc2::vfs::candidates(kKey)[0].provider == mc2::vfs::Provider::Fst);
+    CHECK(fs::path(LookupArchivePath(kKey)).filename() == "extra.fst");   // before: the pak's source, first.fst
+    const auto opens = mc2::vfs::pakIo.pakOpens.load();
+    CHECK(ReadArchiveBytes(kKey, 1024).size() == 3);
+    CHECK(mc2::vfs::pakIo.pakOpens.load() == opens);                      // served by the FST, not the pak
+}
 TEST_CASE("pakdefault/ReadArchiveBytes returns the pak bytes") {
     Scratch s;
     const auto opens = mc2::vfs::pakIo.pakOpens.load();

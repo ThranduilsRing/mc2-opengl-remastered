@@ -42,6 +42,7 @@ _SMOKE_PASSTHROUGH = _smoke_passthrough_names()
 
 from scripts.smoke_lib import baselines, manifest, nofocus, render_options_pin, render_resolution, report
 from scripts.smoke_lib import exe_guard as _exe_guard
+from scripts.smoke_lib import pak_gate as _pak_gate
 from scripts.smoke_lib.gates import Verdict as _Verdict
 from scripts.smoke_lib.logparse import LogSummary as _LogSummary
 from scripts.smoke_lib.runner import RunConfig, run_one
@@ -1592,6 +1593,7 @@ def main():
     rows: list[report.Row] = []
     _resolution_failures: list[str] = []
     _gpu_failures: list[str] = []
+    _pak_failures: list[str] = []
     _rules_failures: list[str] = []
     # MC2_DIAGNOSTIC_TRACE_FILE: normalise to absolute once, outside the
     # per-mission loop.  The game launches with cwd=exe_dir (not the runner
@@ -1886,6 +1888,8 @@ def main():
             [p.device for p in result.summary.vk_profile], result.stdout_text)
         if _gpu_msg:
             _gpu_failures.append(f"{label}: {_gpu_msg}")
+        # A pak-default install must serve stock assets from the pak (deploy log OK, [VFS] mount eligible>0, fst_opens=0).
+        _pak_failures += [f"{label}: {m}" for m in _pak_gate.pak_failures(Path(args.exe).resolve().parent, result.stdout_text)]
         # Non-default game rules change the sim: refuse the run unless the caller opted in (FABLE 1120d P1-a).
         if not (args.allow_nondefault_rules or os.environ.get("MC2_SMOKE_ALLOW_NONDEFAULT_RULES") == "1"):
             for _rd in _nondefault_rules(result.stdout_text):
@@ -2020,6 +2024,8 @@ def main():
         _run_failures.append("RESOLUTION: " + "; ".join(_resolution_failures))
     if _gpu_failures:
         _run_failures.append("GPU: " + "; ".join(_gpu_failures))
+    if _pak_failures:
+        _run_failures.append("PAK: " + "; ".join(_pak_failures))
     if _rules_failures:
         _run_failures.append("RULES: " + "; ".join(_rules_failures))
     _fp_record = {"reference": _fp_reference, "description": _fp_reference_text,
@@ -2089,6 +2095,10 @@ def main():
     # (W131/W132: the laptop forced AMD on a 1050 Ti, the report said FAIL, the exit was 0 and merge_gate recorded PASS).
     if _gpu_failures:
         print(f"[runner] [GPU] HARD FAIL: {'; '.join(_gpu_failures)}", file=sys.stderr)
+        passed = False
+
+    if _pak_failures:
+        print(f"[runner] [PAK] HARD FAIL: {'; '.join(_pak_failures)}", file=sys.stderr)
         passed = False
 
     if _rules_failures:
