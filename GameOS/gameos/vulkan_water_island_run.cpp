@@ -528,7 +528,6 @@ extern "C" int mc2_vk_water_island_run(
     if (reflect_bake_active()) reflectThisFrame = false;   // the bake replaces the live pass below High
     bind_reflect_bake(s, par, reinterpret_cast<WaterFsParams*>(static_cast<uint8_t*>(uboSpan.ptr) + fsUboOff));
     // Nothing the cull could admit is in view: skip the producers, the scene pass and the submit. The one-time bakes above still ran.
-    { static int tmpPrev = -1; static unsigned tmpN = 0; if (tmpPrev != (waterInView ? 1 : 0)) { tmpPrev = waterInView ? 1 : 0; vlog("TMP_SKIPPROBE waterInView=%d skipsSoFar=%u reflectionValid=%d", tmpPrev, tmpN, static_cast<int>(s->reflectionValid)); } if (!waterInView) ++tmpN; }
     if (!waterInView && gos_GetWaterFsDebugMode() == 0 && profileMode < 0) { s->reflectionValid = false; return 0; }
     s->planarTerrainRecord = {}; s->planarPropsRecord = {};
     if (reflectThisFrame) {
