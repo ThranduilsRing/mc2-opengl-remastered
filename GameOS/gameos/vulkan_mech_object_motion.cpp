@@ -31,6 +31,9 @@ void mc2_mech_prev_from_cur_clip(float out[16]) {
 // (first-seen, frame gap, bone-count change, 64-unit teleport) live in mech_motion_history.h.
 void mc2_mech_stage_object_motion(const Mc2MechFrameFeed& feed, void* tailMem) {
     static MechMotionHistory history;
-    history.stage(feed.instances64, feed.instanceCount, static_cast<const float*>(feed.bones64), feed.boneCount, feed.motionKeys,
-                  g_mc2RenderFrame, static_cast<float*>(tailMem));
+    if (!feed.bones64 || !feed.boneCount) return;
+    const size_t floats = static_cast<size_t>(feed.boneCount) * 16u;
+    history.stage({static_cast<const uint8_t*>(feed.instances64), static_cast<size_t>(feed.instanceCount) * 64u},
+                  {static_cast<const float*>(feed.bones64), floats}, {feed.motionKeys, feed.motionKeys ? feed.instanceCount : 0u},
+                  g_mc2RenderFrame, {static_cast<float*>(tailMem), floats});
 }

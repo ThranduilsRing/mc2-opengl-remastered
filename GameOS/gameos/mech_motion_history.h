@@ -9,21 +9,25 @@
 #include <cstdint>
 #include <cstring>
 #include <iterator>
+#include <span>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
 class MechMotionHistory {
 public:
-    // instances64: 64-byte instances, baseBoneOffset at byte 4. keys may be null (everything stays current).
-    void stage(const void* instances64, uint32_t instanceCount, const float* bones, uint32_t boneCount, const uint32_t* keys,
-               uint32_t renderFrame, float* tail) {
-        if (!bones || !boneCount || !tail) return;
-        std::memcpy(tail, bones, static_cast<size_t>(boneCount) * 64u);   // default: previous pose == current pose
-        const auto* inst = static_cast<const uint8_t*>(instances64);
+    // instances64: 64-byte instances, baseBoneOffset at byte 4; bones: 16 floats per bone; keys: one per instance (empty = everything
+    // stays current); tail: room for the whole palette.
+    void stage(std::span<const uint8_t> instances64, std::span<const float> bones, std::span<const uint32_t> keys, uint32_t renderFrame,
+               std::span<float> tail) {
+        const uint32_t boneCount = static_cast<uint32_t>(bones.size() / 16u);
+        if (!boneCount || tail.size() < bones.size()) return;
+        const uint32_t instanceCount = static_cast<uint32_t>(std::min(instances64.size() / 64u, keys.size()));
+        std::memcpy(tail.data(), bones.data(), static_cast<size_t>(boneCount) * 64u);   // default: previous pose == current pose
+        const uint8_t* inst = instances64.data();
         struct ActorSpan { uint32_t base, key; auto operator<=>(const ActorSpan&) const = default; };
         std::vector<ActorSpan> actors;
-        if (keys && inst) {
+        if (!keys.empty()) {
             for (uint32_t i = 0; i < instanceCount; ++i) {
                 uint32_t baseBone = 0;
                 std::memcpy(&baseBone, inst + i * 64u + 4u, 4);
@@ -36,21 +40,21 @@ public:
         for (size_t a = 0; a < actors.size(); ++a) {
             const uint32_t base = actors[a].base;
             const uint32_t end = (a + 1 < actors.size()) ? actors[a + 1].base : boneCount;
-            const float* cur = bones + static_cast<size_t>(base) * 16u;
+            const float* cur = bones.data() + static_cast<size_t>(base) * 16u;
             const size_t floats = static_cast<size_t>(end - base) * 16u;
             if (const auto it = pal_.find(actors[a].key); it != pal_.end()) {
-                const Palette& prev = it->second;
+                const auto& [prevKey, prev] = *it;
                 if (prev.frame + 1u == renderFrame && prev.bones.size() == floats) {
                     const float* p = prev.bones.data();
                     const float dx = cur[12] - p[12], dy = cur[13] - p[13], dz = cur[14] - p[14];   // root translation (row3, Stuff space)
-                    if (dx * dx + dy * dy + dz * dz < 64.0f * 64.0f) std::memcpy(tail + static_cast<size_t>(base) * 16u, p, floats * sizeof(float));
+                    if (dx * dx + dy * dy + dz * dz < 64.0f * 64.0f) std::memcpy(tail.data() + static_cast<size_t>(base) * 16u, p, floats * sizeof(float));
                 }
             }
             updates.emplace_back(actors[a].key, Palette{std::vector<float>(cur, cur + floats), renderFrame});
         }
         for (auto& [key, p] : updates) pal_[key] = std::move(p);
         if ((renderFrame & 63u) == 0u)
-            std::erase_if(pal_, [now = renderFrame](const auto& kv) { return kv.second.frame + 4u < now; });
+            std::erase_if(pal_, [now = renderFrame](const auto& kv) { const auto& [key, pal] = kv; return pal.frame + 4u < now; });
     }
     void reset() { pal_.clear(); }
     size_t actorCount() const { return pal_.size(); }
