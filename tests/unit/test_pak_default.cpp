@@ -64,13 +64,14 @@ TEST_CASE("pakdefault/LookupArchivePath names the source FST, never the pak") {
       const auto path = LookupArchivePath(kKey);
       CHECK(fs::path(path).filename() == "first.fst");
       CHECK(path.find("mc2pak") == std::string::npos); }
-    { Scratch s(false);
-      CHECK(LookupArchivePath(kKey).empty()); }
+    { Scratch s(false);   // pak sits below every registered FST when its source is absent: second.fst is the real winner
+      CHECK(fs::path(LookupArchivePath(kKey)).filename() == "second.fst"); }
 }
 TEST_CASE("pakdefault/an extra root FST ranked ahead of the stock pak answers both probes") {
     Scratch s;
     fs::copy_file(fixtures / "source-fst.bin", "extra.fst");
-    REQUIRE(FastFileInit("extra.fst")); mc2::vfs::rebuild();
+    FastFileFini(); maxFastFiles = 16; numFastFiles = 0; fastFiles = static_cast<FastFile**>(std::calloc(16, sizeof(FastFile*)));
+    FastFileInit("extra.fst"); FastFileInit("first.fst"); FastFileInit("second.fst"); mc2::vfs::rebuild();   // extra root FST registered ahead of the stock source
     REQUIRE(mc2::vfs::candidates(kKey)[0].provider == mc2::vfs::Provider::Fst);
     CHECK(fs::path(LookupArchivePath(kKey)).filename() == "extra.fst");   // before: the pak's source, first.fst
     const auto opens = mc2::vfs::pakIo.pakOpens.load();
