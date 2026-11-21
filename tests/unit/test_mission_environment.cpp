@@ -42,6 +42,9 @@ extern "C" float gos_vfx_getLitStrength() { return lit; }
 extern "C" void gos_vfx_setLitStrength(float v) { lit=v; }
 extern "C" float batcher_getMechSpecularStrength() { return specular; }
 extern "C" void batcher_setMechSpecularStrength(float v) { specular=v; }
+class gosPostProcess;
+gosPostProcess* getGosPostProcess() { return nullptr; }  // cloud knobs: no post-process in the unit tier
+void mc2SetCloudWaterScale(float) {}
 void gos_SetTerrainClassGrass(float a,float b,float c,float d) { grass={a,b,c,d}; }
 void gos_GetTerrainClassGrass(float* a,float* b,float* c,float* d) { *a=grass[0];*b=grass[1];*c=grass[2];*d=grass[3]; }
 void gos_SetTerrainClassDirt(float a,float b,float c,float d) { dirt={a,b,c,d}; }
