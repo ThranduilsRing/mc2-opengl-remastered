@@ -11863,6 +11863,30 @@
    "count": 1
   },
   {
+   "tag": "VK_EXT",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "mesh",
+    "fsr",
+    "fsr_kinds",
+    "quad",
+    "host_copy",
+    "pipeline_binary",
+    "gpl",
+    "dgc",
+    "heap",
+    "csd",
+    "deny",
+    "reason",
+    "mesh_max_verts",
+    "mesh_max_prims",
+    "fsr_texel",
+    "cache_key"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_FEED_DUMP",
    "ver": -1,
    "stream": "stderr",

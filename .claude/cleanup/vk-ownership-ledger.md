@@ -30,11 +30,11 @@ code and the proof of a finished conversion, not a leak detector.
 | image_resource | 2 | 0 | 0 | +0 | 0 | - |
 | shared_scene | 6 | 0 | 0 | +0 | 0 | - |
 | light_feed | 2 | 0 | 0 | +0 | 0 | - |
-| context | 2 | 3 | 2 | +1 | 5 | CommandPool 1/0 |
+| context | 2 | 5 | 4 | +1 | 9 | CommandPool 1/0 |
 | textures | 2 | 0 | 0 | +0 | 0 | - |
 | render_infra | 2 | 11 | 10 | +1 | 21 | Pipeline 4/5, PipelineCache 2/1, Sampler 1/0 |
 
-Total over all islands: created 16, released 12, imbalance +4.
+Total over all islands: created 18, released 14, imbalance +4.
 
 ## Files
 
@@ -42,7 +42,7 @@ Total over all islands: created 16, released 12, imbalance +4.
 |---|---:|---:|---:|
 | `vulkan_color_prop_island.cpp` | 1 | 0 | +1 |
 | `engine_present_vk_imgui.cpp` | 1 | 0 | +1 |
-| `vulkan_context.cpp` | 3 | 2 | +1 |
+| `vulkan_context.cpp` | 5 | 4 | +1 |
 | `vk_render_infra.cpp` | 11 | 10 | +1 |
 
 ## Conversion order
@@ -97,5 +97,5 @@ Release tokens inside the destructors of the owner types: every one runs once, f
 | present | DescriptorSets | 0 | 2 |
 | context | Allocator | 1 | 1 |
 | context | CommandBuffers | 1 | 0 |
-| context | Device | 1 | 1 |
-| context | Instance | 1 | 1 |
+| context | Device | 2 | 1 |
+| context | Instance | 2 | 2 |
