@@ -10250,8 +10250,10 @@
    "ver": -1,
    "stream": "stdout",
    "keys": [
-    "archives",
-    "mod_files"
+    "files",
+    "mb",
+    "mod_mb",
+    "ms"
    ],
    "count": 1
   },
@@ -10260,10 +10262,9 @@
    "ver": -1,
    "stream": "stdout",
    "keys": [
-    "files",
-    "mb",
-    "mod_mb",
-    "ms"
+    "source",
+    "archives",
+    "mod_files"
    ],
    "count": 1
   },
@@ -13891,6 +13892,7 @@
   "MOVER_FIXTURE",
   "MP_DESYNC",
   "ORDER_LIVENESS_SUMMARY",
+  "PAK_IO",
   "PERF",
   "PERF_COUNTERS",
   "PERF_COUNTER_WARN",
@@ -13924,6 +13926,7 @@
   "VEG_GPU",
   "VEG_SUMMARY",
   "VERIFY",
+  "VFS",
   "VFX_",
   "VFX_BIRTH",
   "VIA_MENU",
