@@ -74,6 +74,7 @@
 #include <cmath>
 #include <unordered_map>
 #include "../../RenderCore/FramePackets.h"
+#include "../../RenderCore/TemporalInputs.h"
 #include "../../RenderCore/gpu_abi/GpuMechInstance.h"
 #include "../../RenderCore/axis_convert.h"
 #include <tracy/Tracy.hpp>   // VK-FLIP-FIELD-REPORT-1: coarse per-region frame zones
@@ -777,6 +778,7 @@ static void record_ray_movers(MechIsland* s, VkCommandBuffer cb, uint32_t par, c
 struct MechRecPlan {
     VkImageView colorView = VK_NULL_HANDLE, normalView = VK_NULL_HANDLE, depthView = VK_NULL_HANDLE, mvView = VK_NULL_HANDLE;   // dynamic-rendering attachments
     VkImage mvImage = VK_NULL_HANDLE; VkFormat depthFmt = VK_FORMAT_UNDEFINED;
+    bool objectMotion = true;   // false: nobody reads the object-motion image this frame (attachment 2 load/store DONT_CARE)
     VkPipeline depthPipe = VK_NULL_HANDLE, pipe = VK_NULL_HANDLE;
     VkPipelineLayout playout = VK_NULL_HANDLE; VkBuffer vbo = VK_NULL_HANDLE, ibo = VK_NULL_HANDLE;
     VkDescriptorSet groundSet = VK_NULL_HANDLE, textureSet = VK_NULL_HANDLE;
@@ -818,8 +820,9 @@ static bool record_mech_cmds(const MechRecPlan& p, VkCommandBuffer cb, MechIslan
         pass.colorCount = 3;
         pass.color[0] = dr::attachment(p.colorView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE);
         pass.color[1] = dr::attachment(p.normalView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE);
-        pass.color[2] = dr::attachment(p.mvView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_CLEAR,
-                                       VK_ATTACHMENT_STORE_OP_STORE, &mvClear);
+        pass.color[2] = p.objectMotion
+            ? dr::attachment(p.mvView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, &mvClear)
+            : dr::attachment(p.mvView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE);
         pass.setDepth(dr::attachment(p.depthView, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_LOAD,
                                      VK_ATTACHMENT_STORE_OP_STORE), p.depthFmt);
         dr::begin(dctx, cb, pass);
@@ -953,7 +956,8 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     const VkDeviceSize instOff = mc2vk::alignUp(sizeof(MechFrameUBO), ringAlign);
     const VkDeviceSize boneOff = mc2vk::alignUp(instOff + (instBytes ? instBytes : 64ull), ringAlign);
     // Object-motion tail: last frame's bone palette (same indexing), right after the current palette; the VS skins with it at boneCount + bone.
-    const VkDeviceSize deltaTailBytes = static_cast<VkDeviceSize>(feed.boneCount) * 64ull;
+    const bool objectMotion = RenderCore::temporal::objectMotionWanted().load(std::memory_order_relaxed);   // motion-vector debug view or upscaler provider
+    const VkDeviceSize deltaTailBytes = objectMotion ? static_cast<VkDeviceSize>(feed.boneCount) * 64ull : 0ull;
     const VkDeviceSize poolOff = mc2vk::alignUp(boneOff + static_cast<VkDeviceSize>(feed.boneCount) * 64ull + deltaTailBytes, ringAlign);
     const mc2vk::FrameAlloc mainSpan = rctx.frameAlloc(poolOff + poolBytes);
     if (!mainSpan) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return 0; }
@@ -978,7 +982,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     { ZoneScopedN("VK-mech-instance-bone-upload");   // VK-FLIP-FIELD-REPORT-1: per-frame skinning feed staging
       if (instBytes) std::memcpy(mainPtr + instOff, feed.instances64, static_cast<size_t>(instBytes));
       if (feed.boneCount) std::memcpy(mainPtr + boneOff, feed.bones64, static_cast<size_t>((feed.boneCount * 64ull)));
-      mc2_mech_stage_object_motion(feed, mainPtr + boneOff + static_cast<VkDeviceSize>(feed.boneCount) * 64ull); }
+      if (objectMotion) mc2_mech_stage_object_motion(feed, mainPtr + boneOff + static_cast<VkDeviceSize>(feed.boneCount) * 64ull); }
     g_health.instRecords = feed.instanceCount;
     g_health.boneRecords = feed.boneCount;
     const size_t instBytes64 = static_cast<size_t>(feed.instanceCount) * 64;   // pre-skin plan: flags skinnable instances in the ring copy only
@@ -1035,7 +1039,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
       u.poolI[2] = feed.poolMoverMax; u.poolI[3] = feed.poolCompress;
       u.miscI[0] = feed.specDebugMask;
       u.miscI[1] = mechFill;
-      u.miscI[2] = static_cast<int>(feed.boneCount);   // start of the previous-frame palette in the bone array
+      u.miscI[2] = objectMotion ? static_cast<int>(feed.boneCount) : 0;   // start of the previous-frame palette in the bone array
       mc2_mech_prev_from_cur_clip(u.prevFromCurClip);
       // The environment producer's hemisphere. The mech lab preview pass has no terrain set 1, so the mech keeps this UBO copy of it.
       EnvironmentUBO environment; mc2::environment::fillGpu(visualTuning_environment(), 1.0f, environment);
@@ -1064,6 +1068,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
         plan.normalView = reinterpret_cast<VkImageResource*>(s->normalRes)->view.get();
         plan.depthView = reinterpret_cast<VkImageResource*>(s->depthRes)->view.get();
         plan.mvView = mvRes->view.get(); plan.mvImage = mvRes->image.get(); plan.depthFmt = s->sceneDepthFmt;
+    plan.objectMotion = objectMotion;
     }
     plan.depthPipe = s->depthPipe.get(); plan.pipe = s->pipe.get();
     plan.playout = s->playout.get(); plan.vbo = s->vbo.get(); plan.ibo = s->ibo.get(); plan.groundSet = s->groundLighting.set(par);
@@ -1105,7 +1110,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
           if (slotCtx.submitRecorded(std::move(record), std::move(done), nullptr) != VK_SUCCESS) return 0; }   // done(false) already disabled the island
         s->submitted[par] = rctx.tracker().now();
     }
-    g_objectMotionWritten = true;
+    g_objectMotionWritten = objectMotion;
 
     g_health.drawUs = usSince(tRender0);
     s->gpuTimer.resolve();   // VK-DRAW-PERF-1: non-blocking, folds pools recorded >= 2 frames ago

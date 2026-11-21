@@ -16,6 +16,12 @@ inline std::atomic<int>& consumerCount() {
     return n;
 }
 inline bool consumerActive() { return consumerCount().load(std::memory_order_relaxed) > 0; }
+// True while something reads the mech object-motion vectors (motion-vector debug view or an upscaler provider).
+// Present stores it every composite; the mech island reads it once per run (a one-frame lag is fine).
+inline std::atomic<bool>& objectMotionWanted() {
+    static std::atomic<bool> w{false};
+    return w;
+}
 // Jitter phase count the active provider asked for (IUpscalerProvider::jitterPhaseCount); 0 = the default formula.
 inline std::atomic<uint32_t>& providerPhases() {
     static std::atomic<uint32_t> n{0};

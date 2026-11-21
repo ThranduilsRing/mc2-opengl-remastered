@@ -176,19 +176,37 @@ void main() {
     vec4 clip = uFrame.worldToClipGL * vec4(worldMC2, 1.0);
     vCurClip = clip;
     vPrevClip = preskinned ? uFrame.prevFromCurClip * clip : clip;
-    if (uFrame.miscI.z > 0 && !preskinned) {
+    if (uFrame.miscI.z > 0) {
         // The same vertex skinned with last frame's bone palette (stored after the current one; miscI.z = bone count): pose motion
         // (root rotation and translation, limbs) in one step. Unkeyed actors carry the current pose there, so they get the camera vector.
+        // A pre-skinned stream holds the posed position and keeps the indices and weights: undo the current blend (affine, no mat4
+        // inverse: translations reach ~12800 units), then apply the previous one.
+        mat4 curBoneT = mat4(0.0);
         mat4 prevBoneT = mat4(0.0);
         for (int bi = 0; bi < 4; ++bi) {
             float w = a_boneWeights[bi];
             if (w > 0.0) {
-                GpuMechBone bn = uBones.bones[uFrame.miscI.z + a_boneIndices[bi] + inst.baseBoneOffset];
+                const uint idx = a_boneIndices[bi] + inst.baseBoneOffset;
+                GpuMechBone bn = uBones.bones[uFrame.miscI.z + idx];
                 prevBoneT += w * mat4(bn.row0, bn.row1, bn.row2, bn.row3);
+                if (preskinned) {
+                    GpuMechBone bc = uBones.bones[idx];
+                    curBoneT += w * mat4(bc.row0, bc.row1, bc.row2, bc.row3);
+                }
             }
         }
-        const vec3 prevWorldMC2 = mc2ToRender((prevBoneT * vec4(a_position, 1.0)).xyz);
-        vPrevClip = uFrame.prevFromCurClip * (uFrame.worldToClipGL * vec4(prevWorldMC2, 1.0));
+        vec3 prevPos = a_position;
+        bool usePrev = true;
+        if (preskinned) {
+            const mat3 curRot = mat3(curBoneT);
+            // Identical matrices (idle actor) or a singular blend: keep the camera vector exactly.
+            usePrev = curBoneT != prevBoneT && abs(determinant(curRot)) >= 1e-8;
+            if (usePrev) prevPos = inverse(curRot) * (a_position - curBoneT[3].xyz);
+        }
+        if (usePrev) {
+            const vec3 prevWorldMC2 = mc2ToRender((prevBoneT * vec4(prevPos, 1.0)).xyz);
+            vPrevClip = uFrame.prevFromCurClip * (uFrame.worldToClipGL * vec4(prevWorldMC2, 1.0));
+        }
     }
     clip.z += uFrame.objectDepthBias * clip.w;   // mech.vert:187
     gl_Position = clip;
