@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 REPO_BOOKMARKS = ROOT / "tests" / "visual" / "bookmarks"
-DEFAULT_OPS_BOOKMARKS = "A:/Games/mc2-ops/bookmarks"
+DEFAULT_OPS_BOOKMARKS = "A:/Games/mc2-ops/bookmarks"  # drive-path: ok ops-only default; env MC2_OPS_BOOKMARKS overrides, a missing dir is skipped
 
 
 def ops_bookmarks_dir() -> Path:
