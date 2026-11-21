@@ -1,14 +1,13 @@
 // terrain_lighting.comp.slang -- native Vulkan port of shaders/gos_terrain_lighting.comp (step 3.4P).
 //
-// Per-vertex terrain lighting (sun + ambient + point/spot/terrain lights + fog + haze), output lightRGB / fogRGB
+// Per-vertex terrain lighting (sun + ambient + fog + haze; the light list is not read), output lightRGB / fogRGB
 // packed 0xAARRGGBB. Same math as the GL producer (quad.cpp:1266-1426 mirror). The GL producer keeps running for
 // the CPU consumers (CopyResultsToVertexPool); this one feeds the VK water cull/pack directly on the GPU.
 //
 // Set 0:
 //   b0  StructuredBuffer<GpuTerrainVertexInput>        resident input, indexed by ABSOLUTE vertex number
-//   b1  StructuredBuffer<GpuTerrainLight>              lights [2..N-1] of the terrain light list
-//   b2  RWStructuredBuffer<GpuTerrainLightingOutput>   output, indexed by ABSOLUTE vertex number
-//   b3  ConstantBuffer<LightingParams>                 per-frame scalars
+//   b1  RWStructuredBuffer<GpuTerrainLightingOutput>   output, indexed by ABSOLUTE vertex number
+//   b2  ConstantBuffer<LightingParams>                 per-frame scalars
 // Struct layouts are LOCKSTEP with GameOS/gameos/gos_terrain_lighting.h (32 B / 48 B / 8 B).
 
 #include "../include/fog_policy.hglsl"
@@ -50,9 +49,8 @@ struct LightingParams {
 };
 
 [[vk::binding(0, 0)]] StructuredBuffer<GpuTerrainVertexInput> vertices;
-[[vk::binding(1, 0)]] StructuredBuffer<GpuTerrainLight> lights;
-[[vk::binding(2, 0)]] RWStructuredBuffer<GpuTerrainLightingOutput> outputs;
-[[vk::binding(3, 0)]] ConstantBuffer<LightingParams> P;
+[[vk::binding(1, 0)]] RWStructuredBuffer<GpuTerrainLightingOutput> outputs;
+[[vk::binding(2, 0)]] ConstantBuffer<LightingParams> P;
 
 static const uint TG_LIGHT_POINT_GPU   = 1u;
 static const uint TG_LIGHT_SPOT_GPU    = 2u;

@@ -249,6 +249,8 @@ TEST_CASE("save fixtures: W86 W87 commander and team production value cutover") 
     // openSaveFile probes the saved campaign (00d11f26b) and the saved bytes name data/campaign/campaign.fit: provide a stub.
     struct CampaignStub {
         bool created;
+        bool createdData = !std::filesystem::exists("data");
+        bool createdCampaign = !std::filesystem::exists("data/campaign");
         CampaignStub() {
             std::filesystem::create_directories("data/campaign");
             created = !std::filesystem::exists("data/campaign/campaign.fit");
@@ -258,7 +260,12 @@ TEST_CASE("save fixtures: W86 W87 commander and team production value cutover") 
                      "[Group0]\r\nl MissionCount = 0\r\nst Video = \"\"\r\nFITend\r\n";
             }
         }
-        ~CampaignStub() { if (created) std::filesystem::remove("data/campaign/campaign.fit"); }
+        ~CampaignStub() {
+            std::error_code ec;   // remove() only deletes an empty directory, so a dir another run filled is left alone
+            if (created) std::filesystem::remove("data/campaign/campaign.fit", ec);
+            if (createdCampaign) std::filesystem::remove("data/campaign", ec);
+            if (createdData) std::filesystem::remove("data", ec);
+        }
     } campaignStub;
     for (const char* fixture : {"w86-mc2_03.ims", "w87-mc2_03.ims"}) {
         const auto path = std::string("tests/fixtures/saves/") + fixture;

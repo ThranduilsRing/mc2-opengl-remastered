@@ -60,3 +60,16 @@ TEST_CASE("skin chunks: over the job limit falls back to the unchunked nodes") {
     CHECK(chunkSkinJobs(nodes, 256, 6).size() == 6);
     CHECK(chunkSkinJobs({}).empty());
 }
+
+TEST_CASE("skin chunks: chunkSkinJobsInto matches chunkSkinJobs and reuses the output storage") {
+    std::vector<MechSkinJob> nodes = {{0, 1000, 0, 1}, {1000, 500, 1000, 2}};
+    std::vector<MechSkinJob> out;
+    chunkSkinJobsInto(nodes, out);
+    CHECK(out.size() == chunkSkinJobs(nodes).size());
+    const auto* storage = out.data();
+    chunkSkinJobsInto(nodes, out);   // second frame: same size, no reallocation, no stale jobs
+    CHECK(out.data() == storage);
+    CHECK(out.size() == 6);
+    chunkSkinJobsInto(nodes, out, 256, 5);   // over the limit: the unchunked nodes
+    CHECK(out.size() == 2);
+}

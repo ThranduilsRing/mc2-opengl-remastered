@@ -58,7 +58,7 @@ bool NativeProducers::prewarmPipelines(const VulkanContext& ctx) {
     const std::string dir = vk_island_util::spvDir();
     const VkDescriptorType S = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, U = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     const VkDescriptorType SD = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, UD = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;   // frame-ring bindings
-    if (!lightP_.create(device_, dir + "terrain_lighting.comp.spv", {{0, SD}, {1, SD}, {2, S}, {3, UD}}, "producers.terrainLighting")) return false;
+    if (!lightP_.create(device_, dir + "terrain_lighting.comp.spv", {{0, SD}, {1, S}, {2, UD}}, "producers.terrainLighting")) return false;
     if (!cullP_.create(device_, dir + "water_cull_pack.comp.spv", {{0, S}, {1, S}, {2, S}, {3, UD}, {4, S}}, "producers.waterCull")) return false;
     if (!argsP_.create(device_, dir + "water_draw_args.comp.spv", {{0, S}, {1, S}, {2, U}}, "producers.waterArgs")) return false;
     if (!lightSets_.create(device_, lightP_, kSlots, "producers.lightSets") || !cullSets_.create(device_, cullP_, kSlots, "producers.cullSets") ||
@@ -194,16 +194,6 @@ uint32_t NativeProducers::selfTestLighting() {
         v.normal[0] = nx * il; v.normal[1] = ny * il; v.normal[2] = nz * il;
         v.flags = rnd() < 0.3f ? 1u : 0u;
     }
-    std::vector<GpuTerrainLight> lights(NL);
-    for (uint32_t i = 0; i < NL; ++i) {
-        auto& L = lights[i];
-        L.position[0] = (rnd() - 0.5f) * 2000.0f; L.position[1] = (rnd() - 0.5f) * 2000.0f; L.position[2] = rnd() * 200.0f;
-        L.lightType = (i % 4) + 0u;   // includes type 0 (ignored)
-        L.color[0] = rnd(); L.color[1] = rnd(); L.color[2] = rnd();
-        L.closeDistance = rnd() * 30.0f; L.farDistance = L.closeDistance + 50.0f + rnd() * 500.0f; L.oneOverDistance = 1.0f / (L.farDistance - L.closeDistance);
-        L._pad1 = 0.0f;
-        L.intensity = static_cast<float>(i % 5) * 0.25f;
-    }
     VkTerrainLightingParams P{};
     P.counts[0] = static_cast<int32_t>(numVertices_); P.counts[1] = NL; P.counts[2] = kFirst; P.counts[3] = N;
     P.sunRgb[0] = 250; P.sunRgb[1] = 240; P.sunRgb[2] = 220; P.sunRgb[3] = 0;
@@ -218,8 +208,7 @@ uint32_t NativeProducers::selfTestLighting() {
     VulkanContext& rctx = getOrCreateEngineVulkanContext();
     const VkDeviceSize al = rctx.frameAlignment();
     const VkDeviceSize offIn = alignUp(sizeof(P), al);
-    const VkDeviceSize offLights = alignUp(offIn + sizeof(GpuTerrainVertexInput) * (kFirst + N), al);
-    const FrameAlloc span = rctx.frameAlloc(offLights + sizeof(GpuTerrainLight) * NL);
+    const FrameAlloc span = rctx.frameAlloc(offIn + sizeof(GpuTerrainVertexInput) * (kFirst + N));
     OwnedBuffer rb;
     if (!span || !rb.createHostWritable(allocator_, device_, static_cast<VkDeviceSize>(N) * 8u, VK_BUFFER_USAGE_TRANSFER_DST_BIT, "producers.selfTest")) {
         plog("[VK_PRODUCER_SELFTEST v1] lighting skipped (buffers).");
@@ -227,11 +216,10 @@ uint32_t NativeProducers::selfTestLighting() {
     }
     std::memcpy(span.ptr, &P, sizeof(P));
     std::memcpy(static_cast<uint8_t*>(span.ptr) + offIn + sizeof(GpuTerrainVertexInput) * kFirst, vin.data(), sizeof(GpuTerrainVertexInput) * N);
-    std::memcpy(static_cast<uint8_t*>(span.ptr) + offLights, lights.data(), sizeof(GpuTerrainLight) * NL);
     ringBound_[par] = VK_NULL_HANDLE;
     syncInputs(par, span.buffer, span.range);
     lightSets_.write(device_, par, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, span.buffer, span.range);
-    const uint32_t offsets[3] = {static_cast<uint32_t>(span.offset + offIn), static_cast<uint32_t>(span.offset + offLights), static_cast<uint32_t>(span.offset)};
+    const uint32_t offsets[2] = {static_cast<uint32_t>(span.offset + offIn), static_cast<uint32_t>(span.offset)};
     const bool ok = submitOneShot(*ctx_, [&](VkCommandBuffer cb) {
         lightP_.bind(cb, lightSets_.set(par), offsets);
         lightP_.dispatch(cb, (N + 63u) / 64u);
@@ -263,7 +251,7 @@ void NativeProducers::writeAll() {
     const VkDescriptorType S = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, U = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     for (uint32_t p = 0; p < kSlots; ++p) {
         lightSets_.write(device_, p, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, lightIn_[p].get());
-        lightSets_.write(device_, p, 2, S, lightOut_.get());
+        lightSets_.write(device_, p, 1, S, lightOut_.get());
         cullSets_.write(device_, p, 0, S, recipes_);
         cullSets_.write(device_, p, 1, S, lightOut_.get());
         cullSets_.write(device_, p, 2, S, thin_[p].get());
@@ -276,8 +264,7 @@ void NativeProducers::writeAll() {
 
 void NativeProducers::syncInputs(uint32_t p, VkBuffer buffer, VkDeviceSize range) {
     if (ringBound_[p] == buffer) return;
-    lightSets_.write(device_, p, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, buffer, range);
-    lightSets_.write(device_, p, 3, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, buffer, sizeof(VkTerrainLightingParams));
+    lightSets_.write(device_, p, 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, buffer, sizeof(VkTerrainLightingParams));
     cullSets_.write(device_, p, 3, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, buffer, sizeof(VkWaterCullParams));
     ringBound_[p] = buffer;
 }
@@ -315,10 +302,8 @@ bool NativeProducers::record(VkCommandBuffer cb, uint32_t par, const gos_terrain
     wp.misc1[2] = static_cast<int32_t>(W.mapSide); wp.misc1[3] = W.biasLegacy;
     VulkanContext& rctx = getOrCreateEngineVulkanContext();
     const VkDeviceSize al = rctx.frameAlignment();
-    const VkDeviceSize lightBytes = static_cast<VkDeviceSize>(std::max(L.numLights, 1u)) * sizeof(gos_terrain_lighting::GpuTerrainLight);
     const VkDeviceSize offCull = alignUp(sizeof(VkTerrainLightingParams), al);
-    const VkDeviceSize offLights = alignUp(offCull + sizeof(VkWaterCullParams), al);
-    const FrameAlloc span = rctx.frameAlloc(offLights + lightBytes);
+    const FrameAlloc span = rctx.frameAlloc(offCull + sizeof(VkWaterCullParams));
     if (!span) return false;
     uint8_t* const base = static_cast<uint8_t*>(span.ptr);
     std::memcpy(base, &lp, sizeof(lp));
@@ -341,9 +326,8 @@ bool NativeProducers::record(VkCommandBuffer cb, uint32_t par, const gos_terrain
         // OwnedBuffer::unmap flushes the whole allocation; keep dirty flushes bounded.
         vmaUnmapMemory(allocator_, lightIn_[par].allocation());
     }
-    if (L.numLights > 0) std::memcpy(base + offLights, L.lights, static_cast<size_t>(L.numLights) * sizeof(gos_terrain_lighting::GpuTerrainLight));
     syncInputs(par, span.buffer, span.range);   // the island's slot fence retired this slot's last use; the other slot may be in flight and is not touched
-    const uint32_t lightOffsets[3] = {0u, static_cast<uint32_t>(span.offset + offLights), static_cast<uint32_t>(span.offset)};
+    const uint32_t lightOffsets[2] = {0u, static_cast<uint32_t>(span.offset)};   // the lighting shader reads no light list: bindings are vertices, output, params
     const uint32_t cullOffset = static_cast<uint32_t>(span.offset + offCull);
 
     // ---- record ----
