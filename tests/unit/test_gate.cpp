@@ -1752,6 +1752,7 @@ vkp::DeviceCaps fullCaps() {
     c.maxBoundDescriptorSets = 32;
     c.maxPushConstantsSize = 256;
     c.maxStorageBufferRange = 0xFFFFFFFFull;
+    c.maxComputeWorkGroupInvocations = 1024;
     c.subgroupSize = 32;
     c.subgroupStages = 0x20u;
     c.subgroupOps = 1u | 2u | 4u | 8u;
@@ -1910,7 +1911,20 @@ TEST_CASE("vk profile: each limit is required") {
     c = fullCaps();
     c.maxStorageBufferRange = 1u << 20;
     CHECK(hasId(vkp::evaluate(c, true).missingRequired, "limits"));
+    c = fullCaps();
+    c.maxComputeWorkGroupInvocations = 128;   // the Vulkan minimum: the 16x16 water mask dispatch needs 256
+    CHECK(hasId(vkp::evaluate(c, true).missingRequired, "limits"));
     CHECK(vkp::evaluate(fullCaps(), true).missingRequired.empty());
+}
+
+TEST_CASE("vk profile: the queue family is the first with graphics and compute, else the first with graphics") {
+    constexpr uint32_t G = 1, C = 2;   // VK_QUEUE_GRAPHICS_BIT, VK_QUEUE_COMPUTE_BIT
+    const uint32_t onlyG[] = {G}, gThenGC[] = {G, G | C}, cThenGC[] = {C, G | C}, onlyC[] = {C};
+    CHECK(vkp::pickGraphicsFamily(onlyG) == 0);
+    CHECK(vkp::pickGraphicsFamily(gThenGC) == 1);
+    CHECK(vkp::pickGraphicsFamily(cThenGC) == 1);
+    CHECK(vkp::pickGraphicsFamily(onlyC) == UINT32_MAX);
+    CHECK(vkp::pickGraphicsFamily({}) == UINT32_MAX);
 }
 
 TEST_CASE("vk profile: descriptor indexing needs the umbrella bit and every individual bit the descriptor table uses") {

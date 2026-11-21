@@ -19,6 +19,7 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -40,6 +41,19 @@ inline constexpr uint32_t kMinImageDimension2D = 8192;
 inline constexpr uint32_t kMinBoundDescriptorSets = 4;
 inline constexpr uint32_t kMinPushConstantsSize = 128;
 inline constexpr uint64_t kMinStorageBufferRange = 128ull * 1024 * 1024;
+inline constexpr uint32_t kMinComputeWorkGroupInvocations = 256;   // water_reflection_mask.comp is 16x16; Vulkan guarantees only 128
+
+// The queue family every graphics and compute submit uses: the first with GRAPHICS and COMPUTE, else the first with GRAPHICS, else UINT32_MAX.
+// queueFlags[i] is family i's VkQueueFlags (GRAPHICS = 1, COMPUTE = 2).
+inline uint32_t pickGraphicsFamily(std::span<const uint32_t> queueFlags) {
+    uint32_t firstGraphics = UINT32_MAX;
+    for (uint32_t q = 0; q < queueFlags.size(); ++q) {
+        if (!(queueFlags[q] & 1u)) continue;
+        if (queueFlags[q] & 2u) return q;
+        if (firstGraphics == UINT32_MAX) firstGraphics = q;
+    }
+    return firstGraphics;
+}
 
 enum class Need { Required, Wanted };
 
@@ -115,6 +129,7 @@ struct DeviceCaps {
     uint32_t maxBoundDescriptorSets = 0;
     uint32_t maxPushConstantsSize = 0;
     uint64_t maxStorageBufferRange = 0;
+    uint32_t maxComputeWorkGroupInvocations = 0;
     // VkPhysicalDeviceSubgroupProperties (core 1.1): the wave width and which stages / operation classes may use subgroup ops. Bits are the Vulkan values
     // (stage COMPUTE = 0x20; BASIC = 1, VOTE = 2, ARITHMETIC = 4, BALLOT = 8).
     uint32_t subgroupSize = 0;
@@ -164,7 +179,8 @@ namespace detail {
 
 inline bool limitsOk(const DeviceCaps& c) {
     return c.maxImageDimension2D >= kMinImageDimension2D && c.maxBoundDescriptorSets >= kMinBoundDescriptorSets &&
-           c.maxPushConstantsSize >= kMinPushConstantsSize && c.maxStorageBufferRange >= kMinStorageBufferRange;
+           c.maxPushConstantsSize >= kMinPushConstantsSize && c.maxStorageBufferRange >= kMinStorageBufferRange &&
+           c.maxComputeWorkGroupInvocations >= kMinComputeWorkGroupInvocations;
 }
 
 // Route of a facility that became core in `coreSince` and has an extension for older versions: Core when the usable version has it AND the feature
