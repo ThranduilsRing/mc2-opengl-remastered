@@ -9,7 +9,7 @@ layout(set = 0, binding = 0, std140) uniform ColorFrameUBO {
     int   instBase;  // off 68
     int   materialReady;  // off 72
     int   materialReadyOn;  // off 76
-    vec4  terrainSunMC2;  // off 80
+    vec4  sway;  // off 80
     float iblShStrength;  // off 96
     int   lightingReady;  // off 100
     int   isNight;  // off 104

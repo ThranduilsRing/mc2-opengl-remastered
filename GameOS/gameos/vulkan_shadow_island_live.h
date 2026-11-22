@@ -107,7 +107,6 @@ struct Mc2ColorPropMaterialFeed {
     const int32_t*  typeAlbedoLayer; // [typeCount] group-relative layer (-1 = none)
     const int32_t*  typeAlphaClass;  // [typeCount] 0=alpha-OFF, 1=alpha-ON
     uint32_t        typeCount;
-    float           terrainSunMC2[3];// gos_GetTerrainLightDir (surface->sun, MC2 world)
     // VK-P11 STATIC-PROP MATERIAL alpha-ON: the key of the alpha-ON group array.
     // typeAlbedoLayer[t] is ALREADY group-relative for class-1 types (layer into
     // the alpha-ON array), so no second layer table is needed on the feed side. 0 = alpha-ON

@@ -27,6 +27,7 @@ layout(location = 4) in uint a_aRGBLight;
 // Mission environment block (SH ambient): the terrain set's binding 26, visible to this vertex stage.
 #define TERRAIN_RESOURCE_SET 1
 #include "include/environment_ubo_vk.glsl"
+#include "include/one_sun_vk.glsl"
 
 // Props use frame sun and SH; local lights come from the fragment pool feed.
 
@@ -207,7 +208,7 @@ void main() {
     // Single-level stock-leaf sway; trunk and baked shadows remain fixed.
     if (tree && (inst.flags & 4u) != 0u) {
         float height = clamp(0.5 + sign(canopy.z) * (a_position.y - canopy.x) / (2.0 * abs(canopy.z)), 0.0, 1.0);
-        float phase = uFrame.terrainSunMC2.w * 1.3 + dot(world_mc2.xy, vec2(0.017,0.023));
+        float phase = uFrame.sway.x * 1.3 + dot(world_mc2.xy, vec2(0.017,0.023));
         world_mc2.xy += vec2(1.0,0.6) * sin(phase) * height * height * min(canopy.y * 0.025,1.5);
         clip = uFrame.worldToClipGL * vec4(world_mc2,1.0);
         clip.z += uFrame.objectDepthBias * clip.w;
@@ -264,7 +265,7 @@ void main() {
     // NdotL vs terrain sun (both in MC2 world). static_prop.vert:363 maps the
     // Stuff-space normal to MC2 world as normalize(mc2ToRender(n)).
     vec3  nMC2   = normalize(mc2ToRender(worldNormalStuff));
-    vec3  L      = normalize(uFrame.terrainSunMC2.xyz);
+    vec3  L      = normalize(oneSunAuthFromLive() * uEnv.sunDirLive.xyz);   // authored sun direction (one-sun rule)
     // GL static_prop.vert:~730: ALPHA_TEST (tree cards/foliage) instances are two-sided,
     // so ndl uses abs(); solid props use max(.,0). The alpha-ON packet group IS the
     // ALPHA_TEST class (same test the FS uses). Without this, back-facing cards read dark.
@@ -283,7 +284,8 @@ void main() {
         ? min(max(floor(uFrame.sunColor.rgb * propI + uFrame.ambientColor.rgb), vec3(uFrame.ambientColor.w)), vec3(255.0))
         : max(uFrame.ambientColor.rgb, vec3(uFrame.ambientColor.w));
     bool sunFound = (uFrame.lightingReady != 0) && (uFrame.sunColor.w != 0.0) && !sunOff;
-    vec3 sunColorFed = sunFound ? contractC / 255.0 : vec3(0.0);
+    // The live pitch is in propI (terrain light at the live sun) and in ndl above; pitchUndo (encoded, like the seed's x R) puts it back at the authored elevation.
+    vec3 sunColorFed = sunFound ? contractC / 255.0 * uEnv.pitchUndo.rgb : vec3(0.0);
     vec3 sunDirFed   = sunFound ? uFrame.specDir.xyz : vec3(0.0);
     vec3 sunTerm = (uFrame.lightingReady != 0) ? sunColorFed : kSunColor;
     vMaterialAmbient = vec3(0.0);   // R2: ObjectLights ambient is not summed; the environment SH is the one ambient

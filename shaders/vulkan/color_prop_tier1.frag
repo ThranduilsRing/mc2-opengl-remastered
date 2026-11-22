@@ -147,6 +147,7 @@ float propCoverage(float a, float lod) {
 #define TERRAIN_RESOURCE_SET 1
 #define TERRAIN_OBJECT_RECEIVER 1
 #include "include/terrain_frame_vk.glsl"
+#include "include/one_sun_vk.glsl"
 #include "include/ground_lighting.glsl"
 layout(set = 0, binding = 14) uniform sampler2DShadow uTreeObjectMap;
 #define MC2_OBJECT_TERRAIN_GRID 1
@@ -284,7 +285,8 @@ void main() {
     }
     if (kBaseQuality == 2 && treeMaterial) {
         vec3 N = normalize(mc2ToRender(outputNormalStuff));
-        vec3 L = uT.terrainLightDir.xyz / max(length(uT.terrainLightDir.xyz),1e-6);
+        vec3 Lauth = oneSunAuthFromLive() * uT.terrainLightDir.xyz;   // authored sun direction (one-sun rule)
+        vec3 L = Lauth / max(length(Lauth),1e-6);
         vec2 uv = vec2((vWorldPos.x-uT.atlasTopLeftX)*uT.atlasOneOverWorldUnits,
                        (uT.atlasTopLeftY-vWorldPos.y)*uT.atlasOneOverWorldUnits);
         vec3 macro = textureLod(u_colormap,uv,0.0).rgb;

@@ -11,7 +11,7 @@ vec3 propAuthoredColor(SurfaceMaterial s, bool alphaTest, bool authoredOrm, vec3
     if ((vMaterialFlags & 2u) != 0u)
         return propEncodeColor(s.emission) + vHighlight.rgb * vHighlight.a;   // window emission already carries the albedo
     vec3 nStuff = renderToMc2(s.normal);
-    vec3 L = normalize(uFrame.terrainSunMC2.xyz);
+    vec3 L = normalize(oneSunAuthFromLive() * uEnv.sunDirLive.xyz);   // authored sun direction (one-sun rule)
     float raw = dot(s.normal, L);
     bool twoSided = (vMaterialFlags & 4u) != 0u;
     float ndl = twoSided ? abs(raw) : max(raw, 0.0);

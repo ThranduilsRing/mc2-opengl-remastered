@@ -28,7 +28,7 @@ struct ColorFrameUBO {
     int32_t instBase;
     int32_t materialReady;      // 1 = sample the alpha-OFF albedo array
     int32_t materialReadyOn;    // 1 = sample the alpha-ON albedo array (alpha-test discard)
-    float   terrainSunMC2[4];   // @vec4 surface->sun in MC2 world; .w pad
+    float   sway[4];            // @vec4 x = scenario time (seconds) for the tree leaf sway; yzw pad
     // Ambient: the SH-L2 coefficients are the EnvironmentUBO's (binding 26); this class owns only its strength option.
     float   iblShStrength;      // 0.0 = feature off
     int32_t lightingReady;      // 1 = LightsData SSBO copied this frame -> ambientTerm real
