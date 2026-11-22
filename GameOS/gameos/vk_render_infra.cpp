@@ -231,7 +231,8 @@ void init(VkDevice device, VkPhysicalDevice physical, uint32_t extKey) {
         status=bad?"rejected":"warm"; reason=bad?bad:"none"; dropFile=bad!=nullptr;
     }}
     // A rejected file is deleted: it can never be accepted by this exe, and the next save writes a fresh one.
-    if(dropFile) { std::error_code rc; std::filesystem::remove(s.cachePath,rc); }
+    bool removed=false;
+    if(dropFile) { std::error_code rc; removed=std::filesystem::remove(s.cachePath,rc); }
     // Stale siblings of this GPU (older driver/UUID, retired _k00000000 spelling) are removed; only <install>/cache/vulkan is touched, never the driver's own cache.
     uint32_t sweptFiles=0;
     {   const std::string current=s.cachePath.filename().string(), prefix=mc2vk::profile::pipelineCacheDevicePrefix(p.vendorID,p.deviceID);
@@ -243,7 +244,7 @@ void init(VkDevice device, VkPhysicalDevice physical, uint32_t extKey) {
         for(const auto& f:stale) { std::error_code rc; if(std::filesystem::remove(f,rc)) { ++sweptFiles; mc2::fmt::print_err("[VK_PIPECACHE] deleted_stale file={}\n",mc2::fmt::safe(f.filename().string().c_str())); } }
     }
     mc2::fmt::print_err("[VK_PIPECACHE] status={} reason={}{} file_build={:016x} exe_build={:016x} swept={:d}\n",mc2::fmt::safe(status),mc2::fmt::safe(reason),
-        mc2::fmt::safe(dropFile?" deleted=1":""),mc2::fmt::as_u64(fileBuild),mc2::fmt::as_u64(s.identity.buildId),mc2::fmt::as_u32(sweptFiles));
+        mc2::fmt::safe(dropFile?(removed?" deleted=1":" deleted=0"):""),mc2::fmt::as_u64(fileBuild),mc2::fmt::as_u64(s.identity.buildId),mc2::fmt::as_u32(sweptFiles));
     VkPipelineCacheCreateInfo ci{VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO}; ci.initialDataSize=data.size(); ci.pInitialData=data.data();
     if(vkCreatePipelineCache(device,&ci,nullptr,&s.cache)!=VK_SUCCESS) { ci.initialDataSize=0; ci.pInitialData=nullptr; status="driver_rejected"; vkCreatePipelineCache(device,&ci,nullptr,&s.cache); }
     if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) mc2::fmt::print_err("[VK_PIPELINE_CACHE v1] status={} initial_bytes={:d} {}\n",mc2::fmt::safe(status),mc2::fmt::as_size(data.size()),mc2::fmt::safe(s.driver));
