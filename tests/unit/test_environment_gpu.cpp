@@ -146,6 +146,8 @@ TEST_CASE("EnvironmentGpu/mech sun gain is 1 without keys and sqrt(sin(authored)
     CHECK(pitchGain(a, 28.0f) == doctest::Approx(std::sqrt(std::sin(45.0f * 0.0174533f) / std::sin(28.0f * 0.0174533f))));
     CHECK(pitchGain(a, 0.0f) == 1.0f);                  // live pitch <= 0
     CHECK(pitchGain(a, -5.0f) == 1.0f);
+    CHECK(pitchGain(a, 1.0f) == 2.0f);                  // clamped: raw sqrt(sin45/sin1) is ~6.4
+    CHECK(pitchGain(a, 179.99f) == 2.0f);
     CHECK(pitchGain(a, 180.0f) == 1.0f);                // sin ~ 0
     CHECK(pitchGain(a, 270.0f) == 1.0f);                // (180, 360): finite, so LegacyMissionLighting equality holds
     a.pitch = 0.0f;
