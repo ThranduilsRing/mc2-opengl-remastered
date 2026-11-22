@@ -181,3 +181,36 @@ TEST_CASE("ext tier: deny all, a list and an unknown token") {
     CHECK(bad.reason.find("deny_unknown_bogus") != std::string::npos);
     CHECK(vkp::formatExtLine(xtx(), none, "all").find("deny=all reason=") != std::string::npos);
 }
+
+TEST_CASE("pipeline cache envelope: build identity accepted, mismatch/old/truncated rejected") {
+    vkp::PipeCacheHeader want;
+    want.vendor = 0x1002; want.device = 0x744c; want.driver = 7; want.uuid[3] = 9;
+    want.buildId = vkp::buildIdFromLiteral("MC2FP1|aaaa|0|b|t|src|FP1END");
+    vkp::PipeCacheHeader got = want;
+    got.bytes = 100;
+    const uint64_t size = sizeof(got) + got.bytes, cap = 1u << 20;
+    CHECK(vkp::pipelineCacheEnvelopeReject(&got, size, want, cap) == nullptr);
+    got.buildId = vkp::buildIdFromLiteral("MC2FP1|bbbb|0|b|t|src|FP1END");
+    CHECK(std::string_view(vkp::pipelineCacheEnvelopeReject(&got, size, want, cap)) == "build_mismatch");
+    got = want; got.bytes = 100; got.magic = 0x314548434143324dull;   // previous format
+    CHECK(std::string_view(vkp::pipelineCacheEnvelopeReject(&got, size, want, cap)) == "old_format");
+    got = want; got.bytes = 100; got.driver = 8;
+    CHECK(std::string_view(vkp::pipelineCacheEnvelopeReject(&got, size, want, cap)) == "device_mismatch");
+    got = want; got.bytes = 100;
+    CHECK(std::string_view(vkp::pipelineCacheEnvelopeReject(&got, size - 1, want, cap)) == "truncated");
+    CHECK(std::string_view(vkp::pipelineCacheEnvelopeReject(&got, 10, want, cap)) == "truncated");
+    CHECK(std::string_view(vkp::pipelineCacheEnvelopeReject(nullptr, size, want, cap)) == "truncated");
+    CHECK(vkp::buildIdFromLiteral("a") != vkp::buildIdFromLiteral("b"));
+}
+
+TEST_CASE("pipeline cache sweep: stale driver files and the _k00000000 orphan go, live file and other keys stay") {
+    const uint8_t uuid[16] = {1};
+    const std::string stem = vkp::pipelineCacheStem(0x1002, 0x744c, 7, uuid, 0), pre = vkp::pipelineCacheDevicePrefix(0x1002, 0x744c);
+    const std::string cur = vkp::pipelineCacheStem(0x1002, 0x744c, 7, uuid, 0xdeadbeef) + ".bin";
+    CHECK_FALSE(vkp::pipelineCacheSiblingStale(cur, cur, pre, stem));
+    CHECK(vkp::pipelineCacheSiblingStale(stem + "_k00000000.bin", cur, pre, stem));
+    CHECK_FALSE(vkp::pipelineCacheSiblingStale(stem + "_k0000abcd.bin", cur, pre, stem));
+    CHECK(vkp::pipelineCacheSiblingStale(vkp::pipelineCacheStem(0x1002, 0x744c, 6, uuid, 0) + ".bin", cur, pre, stem));
+    CHECK_FALSE(vkp::pipelineCacheSiblingStale(vkp::pipelineCacheStem(0x10de, 0x1e84, 6, uuid, 0) + ".bin", cur, pre, stem));
+    CHECK_FALSE(vkp::pipelineCacheSiblingStale(stem + ".tmp", cur, pre, stem));
+}

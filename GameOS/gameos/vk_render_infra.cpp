@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "vk_render_infra.h"
+#include "build_identity.h"
 #include "hitch_stats.h"
 #include "gos_profiler.h"
 #include "vulkan_context.h"
@@ -110,7 +111,8 @@ uint64_t hashBytes(const void* data, size_t n) {
 }
 constexpr uint64_t MiB=1024ull*1024;
 constexpr uint64_t maxCache=64*MiB;
-struct CacheHeader { uint64_t magic=0x314548434143324dull; uint64_t bytes=0, hash=0; uint32_t vendor=0, device=0, driver=0; unsigned char uuid[VK_UUID_SIZE]{}; };
+using CacheHeader=mc2vk::profile::PipeCacheHeader;
+static_assert(VK_UUID_SIZE==16);
 struct Allocation { uint64_t bytes; size_t category; bool raw; bool deferred=false; };
 constexpr const char* categories[]={"textures","shadows","terrain","vegetation","geometry","staging","targets"};
 constexpr const char* fallbacks[]={"placeholder","off","skip_terrain","off","skip_draw","skip_upload","skip_pass"};
@@ -214,18 +216,34 @@ void init(VkDevice device, VkPhysicalDevice physical, uint32_t extKey) {
     std::error_code ec; std::filesystem::create_directories("cache/vulkan",ec);
     s.cachePath=std::filesystem::path("cache/vulkan")/(mc2vk::profile::pipelineCacheStem(p.vendorID,p.deviceID,p.driverVersion,std::span<const uint8_t>(p.pipelineCacheUUID,VK_UUID_SIZE),extKey)+".bin");
     if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) mc2::fmt::print_err("[VK_PIPELINE_CACHE v1] file={} ext_key={:08x}\n",mc2::fmt::safe(s.cachePath.filename().string().c_str()),mc2::fmt::as_u32(extKey));
-    std::vector<unsigned char> data; const char* status="cold";
+    std::vector<unsigned char> data; const char* status="cold"; const char* reason="none"; uint64_t fileBuild=0; bool dropFile=false;
+    s.identity.buildId=mc2vk::profile::buildIdFromLiteral(MC2_BUILD_FP_LITERAL);
     { std::ifstream in(s.cachePath,std::ios::binary|std::ios::ate); if(in) {
         const auto total=in.tellg(); in.seekg(0); CacheHeader h{}; in.read(reinterpret_cast<char*>(&h),sizeof(h));
-        if(in && h.magic==s.identity.magic && h.vendor==p.vendorID && h.device==p.deviceID && h.driver==p.driverVersion &&
-            !std::memcmp(h.uuid,p.pipelineCacheUUID,VK_UUID_SIZE) && h.bytes>=32 && h.bytes<=maxCache && total==std::streamoff(sizeof(h)+h.bytes)) {
+        const char* bad=mc2vk::profile::pipelineCacheEnvelopeReject(in?&h:nullptr,static_cast<uint64_t>(total),s.identity,maxCache);
+        fileBuild=in?h.buildId:0;
+        if(!bad) {
             data.resize(static_cast<size_t>(h.bytes)); in.read(reinterpret_cast<char*>(data.data()),data.size());
             // Validate the Vulkan header as well as our envelope before giving bytes to the ICD.
             uint32_t v[4]{}; std::memcpy(v,data.data(),sizeof(v));
-            if(!in || hashBytes(data.data(),data.size())!=h.hash || v[0]<32 || v[0]>data.size() || v[1]!=VK_PIPELINE_CACHE_HEADER_VERSION_ONE || v[2]!=p.vendorID || v[3]!=p.deviceID || std::memcmp(data.data()+16,p.pipelineCacheUUID,VK_UUID_SIZE)) data.clear();
+            if(!in || hashBytes(data.data(),data.size())!=h.hash || v[0]<32 || v[0]>data.size() || v[1]!=VK_PIPELINE_CACHE_HEADER_VERSION_ONE || v[2]!=p.vendorID || v[3]!=p.deviceID || std::memcmp(data.data()+16,p.pipelineCacheUUID,VK_UUID_SIZE)) { data.clear(); bad="blob_invalid"; }
         }
-        status=data.empty()?"rejected":"warm";
+        status=bad?"rejected":"warm"; reason=bad?bad:"none"; dropFile=bad!=nullptr;
     }}
+    // A rejected file is deleted: it can never be accepted by this exe, and the next save writes a fresh one.
+    if(dropFile) { std::error_code rc; std::filesystem::remove(s.cachePath,rc); }
+    // Stale siblings of this GPU (older driver/UUID, retired _k00000000 spelling) are removed; only <install>/cache/vulkan is touched, never the driver's own cache.
+    uint32_t sweptFiles=0;
+    {   const std::string current=s.cachePath.filename().string(), prefix=mc2vk::profile::pipelineCacheDevicePrefix(p.vendorID,p.deviceID);
+        const std::string driverStem=mc2vk::profile::pipelineCacheStem(p.vendorID,p.deviceID,p.driverVersion,std::span<const uint8_t>(p.pipelineCacheUUID,VK_UUID_SIZE),0);
+        std::error_code dc; std::vector<std::filesystem::path> stale;
+        for(std::filesystem::directory_iterator it("cache/vulkan",dc),end; !dc && it!=end; it.increment(dc)) {
+            if(mc2vk::profile::pipelineCacheSiblingStale(it->path().filename().string(),current,prefix,driverStem)) stale.push_back(it->path());
+        }
+        for(const auto& f:stale) { std::error_code rc; if(std::filesystem::remove(f,rc)) { ++sweptFiles; mc2::fmt::print_err("[VK_PIPECACHE] deleted_stale file={}\n",mc2::fmt::safe(f.filename().string().c_str())); } }
+    }
+    mc2::fmt::print_err("[VK_PIPECACHE] status={} reason={}{} file_build={:016x} exe_build={:016x} swept={:d}\n",mc2::fmt::safe(status),mc2::fmt::safe(reason),
+        mc2::fmt::safe(dropFile?" deleted=1":""),mc2::fmt::as_u64(fileBuild),mc2::fmt::as_u64(s.identity.buildId),mc2::fmt::as_u32(sweptFiles));
     VkPipelineCacheCreateInfo ci{VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO}; ci.initialDataSize=data.size(); ci.pInitialData=data.data();
     if(vkCreatePipelineCache(device,&ci,nullptr,&s.cache)!=VK_SUCCESS) { ci.initialDataSize=0; ci.pInitialData=nullptr; status="driver_rejected"; vkCreatePipelineCache(device,&ci,nullptr,&s.cache); }
     if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) mc2::fmt::print_err("[VK_PIPELINE_CACHE v1] status={} initial_bytes={:d} {}\n",mc2::fmt::safe(status),mc2::fmt::as_size(data.size()),mc2::fmt::safe(s.driver));
