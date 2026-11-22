@@ -76,6 +76,7 @@ def detected_pair(monkeypatch, tmp_path):
         monkeypatch.delenv(key, raising=False)
     monkeypatch.setenv("MC2_HOST_LEASE_PATH", str(tmp_path / "lease.json"))
     monkeypatch.setattr(host_lease, "GPU_SPLIT_PATH", tmp_path / "GPU_SPLIT")
+    monkeypatch.setattr(host_lease, "ONE_CARD_PATH", tmp_path / "GPU_ONE_CARD")   # the live host kill-switch must not leak in
     monkeypatch.setattr(host_lease, "runtime_lane_adapter", lambda: rows[1])
     gpu_adapters.lane_adapter.cache_clear()
     yield rows
