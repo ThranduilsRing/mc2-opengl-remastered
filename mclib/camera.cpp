@@ -421,8 +421,8 @@ long Camera::init (FitIniFilePtr cameraFile )
 				cameraFile->readIdUChar("AuthoredAmbientGreen", savedAmb[1]); cameraFile->readIdUChar("AuthoredAmbientBlue", savedAmb[2]);
 			}
 			s_authoredSun = mc2::authored_sun::resolve({lightRed, lightGreen, lightBlue}, {ambientRed, ambientGreen, ambientBlue}, savedHas, savedSun, savedAmb);
-				s_authoredSun.pitch = lightPitch;   // the pitch before the keys; a keyed save carries it (a save without it: no pitch gain)
-				if (savedHas) cameraFile->readIdFloat("AuthoredLightPitch", s_authoredSun.pitch);
+			s_authoredSun.pitch = lightPitch;   // the pitch before the keys; a keyed save carries it (a save without it: no pitch gain)
+			if (savedHas) cameraFile->readIdFloat("AuthoredLightPitch", s_authoredSun.pitch);
 			if (const auto v = visualTuning_sunValue("sunPitch")) lightPitch = dayLightPitch = std::max(*v, 26.0f);
 			if (const auto v = visualTuning_sunValue("sunYaw")) lightYaw = *v;
 			lightDirection.x = cos((lightYaw + 45.0f) * DEGREES_TO_RADS);
