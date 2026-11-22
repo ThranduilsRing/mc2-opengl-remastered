@@ -861,12 +861,6 @@ void mc2_OneSun(const float liveDir[3], float livePitchDeg, float liveYawDeg, co
 	out[18] = s.authoredValid ? 1.0f : 0.0f;
 }
 
-// Authored/live sun elevation gain for the mech and vehicle directional term (1 with no keys).
-float mc2_SunPitchGain(float livePitchDeg)
-{
-	return mc2::authored_sun::pitchGain(s_authoredSun, livePitchDeg);
-}
-
 // Live/authored ambient luma: the sun keys' move of the sky fill (scales the prop SH).
 float mc2_AmbientRatio(const unsigned char liveAmb[3])
 {

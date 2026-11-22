@@ -44,17 +44,6 @@ inline float ambientRatio(const AuthoredSun& a, const std::array<unsigned char, 
     return l(a.amb) > 0.0f ? l(liveAmb) / l(a.amb) : 1.0f;
 }
 
-// Live/authored sun elevation: mech and vehicle light rows follow the live pitch, the ground's flat-light ratio does not.
-// This gain on their directional term puts a flat surface where the ground is. Exactly 1 with no keys.
-inline float pitchGain(const AuthoredSun& a, float livePitchDeg) {
-    if (!a.valid || a.pitch <= 0.0f || a.pitch == livePitchDeg || livePitchDeg <= 0.0f) return 1.0f;
-    const float k = 0.01745329252f;
-    const float sinLive = std::sin(livePitchDeg * k);
-    if (!(sinLive > 0.0f)) return 1.0f;   // live pitch in [180, 360): sun below the horizon, no ratio (a NaN here made the mission lighting compare unequal every frame)
-    const float g = std::sqrt(std::sin(a.pitch * k) / sinLive);   // sqrt: movers keep an ambient share the pitch does not touch
-    return std::isfinite(g) ? std::clamp(g, 0.5f, 2.0f) : 1.0f;   // bounded: a near-horizon live sun must not blow the mover light rows up
-}
-
 // ---- One sun (S4): the authored sun next to the live one, for every prelit-class surface. Each value is EXACTLY identity /
 // 1.0f with no keys, at night, with no mission (no authored record) and in the mech lab, so the shaders need no branch.
 using Vec3 = std::array<float, 3>;

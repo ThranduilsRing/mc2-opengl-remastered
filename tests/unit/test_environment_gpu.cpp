@@ -137,21 +137,20 @@ TEST_CASE("EnvironmentGpu/prop SH follows the ambient key and is untouched witho
     CHECK(keyed.hemiSky[3] == doctest::Approx(std::pow(r, 2.2f)));
 }
 
-TEST_CASE("EnvironmentGpu/mech sun gain is 1 without keys and sqrt(sin(authored)/sin(live)) with a lower keyed sun") {
+TEST_CASE("EnvironmentGpu/one sun: every field is finite for any live pitch (a NaN made the lighting record compare unequal every frame)") {
     using namespace mc2::authored_sun;
     AuthoredSun a = resolve({255, 255, 225}, {71, 71, 78}, false, {}, {});
     a.pitch = 45.0f;
-    CHECK(pitchGain(a, 45.0f) == 1.0f);                 // no keys
-    CHECK(pitchGain(AuthoredSun{}, 28.0f) == 1.0f);     // night / no mission
-    CHECK(pitchGain(a, 28.0f) == doctest::Approx(std::sqrt(std::sin(45.0f * 0.0174533f) / std::sin(28.0f * 0.0174533f))));
-    CHECK(pitchGain(a, 0.0f) == 1.0f);                  // live pitch <= 0
-    CHECK(pitchGain(a, -5.0f) == 1.0f);
-    CHECK(pitchGain(a, 1.0f) == 2.0f);                  // clamped: raw sqrt(sin45/sin1) is ~6.4
-    CHECK(pitchGain(a, 179.99f) == 2.0f);
-    CHECK(pitchGain(a, 180.0f) == 1.0f);                // sin ~ 0
-    CHECK(pitchGain(a, 270.0f) == 1.0f);                // (180, 360): finite, so LegacyMissionLighting equality holds
-    a.pitch = 0.0f;
-    CHECK(pitchGain(a, 28.0f) == 1.0f);              // keyed save without the authored pitch
+    const std::array<float,3> one{1.0f, 1.0f, 1.0f};
+    for (float p : {-5.0f, 0.0f, 1.0f, 28.0f, 90.0f, 179.99f, 180.0f, 270.0f}) {
+        const float k = 0.01745329252f;
+        const Vec3 live = {std::cos(45.0f * k), std::sin(45.0f * k), std::sin(p * k)};
+        const auto s = oneSun(a, live, p, 0.0f, {255, 214, 160}, {50, 50, 55}, std::clamp(std::sin(p * k), 0.0f, 1.0f), one, 0);
+        CHECK(s == s);   // false for any NaN
+        for (int c = 0; c < 3; ++c) CHECK(std::isfinite(s.pitchUndo[c]));
+    }
+    a.pitch = 0.0f;   // a keyed save without the authored pitch: no rotation, no undo
+    CHECK(oneSun(a, {0.7f, 0.5f, 0.5f}, 28.0f, 0.0f, {255, 255, 225}, {71, 71, 78}, 0.5f, one, 0).pitchUndo == Vec3{1.0f, 1.0f, 1.0f});
 }
 
 TEST_CASE("EnvironmentGpu/one sun: layout, and every field exactly identity/1 with no keys, at night, with no mission and for an old save") {

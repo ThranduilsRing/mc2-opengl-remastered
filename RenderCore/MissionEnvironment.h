@@ -18,7 +18,6 @@ struct LegacyMissionLighting {
     std::array<float, 3> ambientColor{0, 0, 0};
     std::array<float, 3> flatLight{1, 1, 1};
     std::array<float, 3> flatRatio{1, 1, 1};   // live flat light / authored flat light; exactly 1 with no sun keys, at night, with no mission
-    float sunGain = 1;                         // authored/live sun elevation (sqrt of the sin pitch ratio), the mech and vehicle directional-term gain; exactly 1 with no keys
     // One sun (mclib/authored_sun.h OneSun): the authored sun next to the live one. Exactly identity / 1 with no keys, at night, with no mission.
     std::array<std::array<float, 3>, 3> authFromLive{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};   // columns: live sun direction -> authored direction
     std::array<float, 3> pitchUndo{1, 1, 1};
