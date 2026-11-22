@@ -287,6 +287,13 @@ def compare(install: Path | str, ref: Path | str, sample: int = SAMPLE_FILES,
     skip = owned_paths(install, payload, declared) if skip is None else {_norm(p) for p in skip}
     index = {key: value for key, value in reference_index(ref).items()
              if key not in skip and not value[0].casefold().endswith(SKIP_SUFFIXES)}
+    # Retired seed payload (deploy prunes it): v0.4 still carries these exact bytes, so they must
+    # not be synced back or reported missing.
+    from deploy_payload import RETIRED_SEED_PAYLOAD
+    for rel, digest in RETIRED_SEED_PAYLOAD.items():
+        row = index.get(_norm(rel))
+        if row is not None and _sha(ref / row[0]) == digest:
+            del index[_norm(rel)]
     result = Result(total=len(index))
     result.extra = sorted(rel for key, (rel, _size) in reference_index(install).items()
                           if key not in index and key not in skip
