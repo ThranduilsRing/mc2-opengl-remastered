@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import console_child
 import deploy_payload as dp
 
 
@@ -59,7 +60,8 @@ def test_retired_seed_hashes_match_real_blobs():
     checked = 0
     for rel, digest in dp.RETIRED_SEED_PAYLOAD.items():
         known = set()
-        r = subprocess.run(["git", "show", f"c43ed3a2b^:{rel}"], cwd=repo, capture_output=True)
+        r = subprocess.run(["git", "show", f"c43ed3a2b^:{rel}"], cwd=repo, capture_output=True,
+                           **console_child.child_kwargs(redirected=True))
         if r.returncode == 0:
             known.add(hashlib.sha256(r.stdout).hexdigest())
         if (seed / rel).is_file():
