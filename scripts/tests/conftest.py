@@ -85,6 +85,12 @@ def deploy_modules_named_by(module):
 
 
 @pytest.fixture(autouse=True)
+def _no_live_one_card_switch(monkeypatch):
+    """The owner's live A:/Games/mc2-ops/GPU_ONE_CARD must not change slot counts in tests (it reddened merge-1121n attempt 1)."""
+    monkeypatch.setenv("MC2_TEST_NO_ONE_CARD", "1")
+
+
+@pytest.fixture(autouse=True)
 def _no_inherited_gate_flag(monkeypatch):
     monkeypatch.delenv("MC2_IN_GATE", raising=False)
     monkeypatch.setenv("MC2_NO_RECEIPT_CHECK", "1")   # batch tests drive lane_merge without a precheck receipt (R2)
