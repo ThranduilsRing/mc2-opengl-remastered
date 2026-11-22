@@ -141,6 +141,57 @@ def lane_adapter():
     return None
 
 
+def luid_from_instance(name):
+    """PDH instance 'luid_0x<high>_0x<low>_phys_N' -> raw adapter LUID bytes (LowPart u32 LE, HighPart i32 LE), or None."""
+    parts = name.split("_")
+    if len(parts) < 3 or parts[0] != "luid":
+        return None
+    try:
+        high, low = int(parts[1], 16), int(parts[2], 16)
+    except ValueError:
+        return None
+    return low.to_bytes(4, "little") + high.to_bytes(4, "little")
+
+
+def dedicated_usage():
+    """{luid_bytes: used_bytes} per GPU adapter from the PDH 'GPU Adapter Memory' counter; {} on any failure."""
+    if sys.platform != "win32":
+        return {}
+    try:
+        pdh = c.WinDLL("pdh")
+        query = c.c_void_p()
+        if pdh.PdhOpenQueryW(None, c.c_void_p(0), c.byref(query)) != 0:
+            return {}
+        try:
+            counter = c.c_void_p()
+            if pdh.PdhAddEnglishCounterW(query, "\\GPU Adapter Memory(*)\\Dedicated Usage", c.c_void_p(0), c.byref(counter)) != 0:
+                return {}
+            if pdh.PdhCollectQueryData(query) != 0:
+                return {}
+
+            class Item(c.Structure):
+                _fields_ = [("name", c.c_wchar_p), ("status", c.c_uint32), ("value", c.c_int64)]
+
+            size, count = c.c_uint32(0), c.c_uint32(0)
+            pdh.PdhGetFormattedCounterArrayW(counter, 0x400, c.byref(size), c.byref(count), None)  # PDH_FMT_LARGE; sizing call
+            if size.value == 0:
+                return {}
+            buf = c.create_string_buffer(size.value)
+            if pdh.PdhGetFormattedCounterArrayW(counter, 0x400, c.byref(size), c.byref(count), buf) != 0:
+                return {}
+            items = c.cast(buf, c.POINTER(Item))
+            usage = {}
+            for i in range(count.value):
+                luid = luid_from_instance(items[i].name or "")
+                if luid is not None:
+                    usage[luid] = usage.get(luid, 0) + items[i].value
+            return usage
+        finally:
+            pdh.PdhCloseQuery(query)
+    except Exception:
+        return {}
+
+
 def selector(row):
     return f"{row['name']}@{row['uuid']}"
 
@@ -149,6 +200,10 @@ if __name__ == "__main__":
     for row in adapters():
         display = {True: "yes", False: "no", None: "unknown"}[row["display"]]
         print(f"{row['name']} LUID={row['luid'].hex() if row['luid'] else 'invalid'} UUID={row['uuid']} display: {display}")
+    usage = dedicated_usage()
+    for row in adapters():
+        used = usage.get(row["luid"]) if row["luid"] else None
+        print(f"{row['name']} dedicated usage: {'unknown' if used is None else f'{used // 1048576} MiB'}")
     chosen = lane_adapter()
     if chosen:
         print(f"MC2_VK_DEVICE={selector(chosen)}")
