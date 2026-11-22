@@ -26,6 +26,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -215,25 +216,49 @@ def is_exempt(install: Path | str, ref: Path | str | None = None) -> bool:
         return True
     return install.name.casefold() in {name.casefold() for name in GOLDEN_NAMES}
 
+def _scan(base: Path, ref: Path, out: dict[str, tuple[str, int]], clock: list) -> None:
+    """Walk `base` with scandir: on Windows each DirEntry already carries its size from the directory
+    listing, so no per-file stat (a cold-cache HDD stat is ~2 files/s over ~40k files)."""
+    stack = [base]
+    while stack:
+        directory = stack.pop()
+        if not clock[1] and time.monotonic() - clock[0] > 5.0:
+            clock[1] = True
+            print(f"[PRELAUNCH] indexing {ref} for asset parity ({len(out)} files so far; slow on a cold disk)",
+                  file=sys.stderr, flush=True)
+        try:
+            entries = sorted(os.scandir(directory), key=lambda e: e.name)
+        except OSError:
+            continue
+        subdirs = []
+        for entry in entries:
+            rel = _rel(Path(entry.path), ref)
+            try:
+                is_dir = entry.is_dir()
+            except OSError:
+                continue
+            if is_dir:
+                if not is_excluded(rel + "/") and not entry.is_symlink():
+                    subdirs.append(Path(entry.path))
+                continue
+            if is_excluded(rel):
+                continue
+            try:
+                out[_norm(rel)] = (rel, entry.stat().st_size)
+            except OSError:
+                continue
+        stack.extend(reversed(subdirs))
+
+
 def reference_index(ref: Path) -> dict[str, tuple[str, int]]:
     """{casefolded relpath: (relpath, size)} of every parity file in the reference install."""
     ref = Path(ref)
     out: dict[str, tuple[str, int]] = {}
+    clock = [time.monotonic(), False]
     for tree in TREES:
         base = ref / tree
-        if not base.is_dir():
-            continue
-        for dirpath, dirs, files in os.walk(base):
-            dirs[:] = sorted(d for d in dirs if not is_excluded(_rel(Path(dirpath) / d, ref) + "/"))
-            for name in files:
-                path = Path(dirpath) / name
-                rel = _rel(path, ref)
-                if is_excluded(rel):
-                    continue
-                try:
-                    out[_norm(rel)] = (rel, path.stat().st_size)
-                except OSError:
-                    continue
+        if base.is_dir():
+            _scan(base, ref, out, clock)
     if ref.is_dir():
         for path in sorted(ref.glob("*" + ROOT_SUFFIX)):
             if path.is_file():

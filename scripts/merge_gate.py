@@ -388,7 +388,7 @@ def preflight(head, install, window, steps, seed=Path(EROOT + "/mc2-installs/_le
             if any(n == 'deploy' and not e.get('MC2_GATE_SKIP_REASON') for n, _, e in steps):
                 # Before captures use the published build; the candidate is
                 # checked against HEAD after deployment, before runtime proofs.
-                report = staleness_report(str(target))
+                report = staleness_report(str(target), full=True)  # provenance: every byte re-hashed, no stamp trust
                 if not report['has_manifest'] or not report['version_ok'] or report['stale'] or report['missing']:
                     raise ValueError('published seed bytes differ from its manifest')
             else:
