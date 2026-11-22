@@ -27,7 +27,22 @@ def _load_fst():
     return mod
 
 _fst = _load_fst()
-fst_entries, decompress_entry = _fst.fst_entries, _fst.decompress_entry
+decompress_entry = _fst.decompress_entry
+
+def fst_entries(path):
+    """The FST's entries, or ValueError when the file is not a whole FST. A file preallocated by an unfinished copy (robocopy
+    reserves the full size before writing) reads as magic 0 / count 0; the packer used to accept that and ship a pak without
+    that archive's entries (73 MB instead of 214 MB, 2026-11-22). Every pak source must have a valid magic, entries, and every
+    entry's payload inside the file."""
+    entries = _fst.fst_entries(path)
+    with open(path, 'rb') as f:
+        magic = f.read(4)
+    size = Path(path).stat().st_size
+    if magic not in (b'\xaf\xec\xdd\xfa', b'\xaf\xec\xdd\xca') or not entries:
+        raise ValueError(f'not a valid FST (bad magic or no entries; unfinished copy?): {path}')
+    if 8 + len(entries) * 266 > size or any(e[0] < 8 + len(entries) * 266 or e[0] + e[1] > size or not e[3] for e in entries):
+        raise ValueError(f'truncated or inconsistent FST table: {path}')
+    return entries
 
 COMMENT = b'MechCommander 2 asset pack (ZIP container, Zstandard entries). List/extract/pack with tools/mc2pak.py or the asset viewer.'
 

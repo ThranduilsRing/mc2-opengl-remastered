@@ -218,7 +218,13 @@ def is_exempt(install: Path | str, ref: Path | str | None = None) -> bool:
 
 def _scan(base: Path, ref: Path, out: dict[str, tuple[str, int]], clock: list) -> None:
     """Walk `base` with scandir: on Windows each DirEntry already carries its size from the directory
-    listing, so no per-file stat (a cold-cache HDD stat is ~2 files/s over ~40k files)."""
+    listing, so no per-file stat (a cold-cache HDD stat is ~2 files/s over ~40k files).
+
+    Why the directory-entry size is safe here: NTFS refreshes a directory entry's size lazily only when a file is written
+    IN PLACE through a different hardlink. The reference install (v0.4) is changed only by deploy_payload / the merge
+    gate, which publish by temp file + rename (a new directory entry), never by in-place writes, and the parity sync
+    never writes the reference. Measured 2026-11-22 on v0.4 (34968 files, warm): the scandir sizes equal a per-file
+    os.stat on every file; the extra stat pass costs about 1 s warm and minutes cold, so it is not taken."""
     stack = [base]
     while stack:
         directory = stack.pop()

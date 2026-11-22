@@ -22,7 +22,7 @@ def pak_failures(install_dir, log_text: str) -> list[str]:
     if not status.startswith(("OK", "FALLBACK")):
         return []
     if status.startswith("FALLBACK"):
-        return [f"deploy log lacks '[PAK_DEPLOY] OK' ({status}); the install serves stock assets from FSTs"]
+        return [f"deploy log lacks '[PAK_DEPLOY] OK' ({status}); the install serves stock assets from FSTs or the pak kept from the previous deploy"]
     out = []
     mounts = [int(m) for m in _MOUNT.findall(log_text or "")]
     if not mounts or max(mounts) <= 0:

@@ -180,10 +180,20 @@ def test_write_manifest_records_dest_stamp(tmp_path):
     d = tmp_path / "t"
     d.mkdir()
     (d / "a.txt").write_text("aaa", encoding="utf-8")
-    dp.write_manifest(str(d), {"a.txt": (dp.sha256_file(str(d / "a.txt")), 3, 7)}, "deadbeef" * 5)
+    digest, size, stamp = dp.hash_with_stamp(str(d / "a.txt"), dp.sha256_file)
+    dp.write_manifest(str(d), {"a.txt": (digest, size, 7, stamp)}, "deadbeef" * 5)
     row = list(csv.reader(open(d / dp.MANIFEST_NAME)))[2]
     assert row[6] == str((d / "a.txt").stat().st_mtime_ns)
     assert dp.staleness_report(str(d))["skipped"] == 1
+
+
+def test_write_manifest_never_stamps_a_row_that_has_no_stamp(tmp_path):
+    d = tmp_path / "t"
+    d.mkdir()
+    (d / "a.txt").write_text("aaa", encoding="utf-8")
+    dp.write_manifest(str(d), {"a.txt": ("0" * 64, 3, 7), "b.txt": ("1" * 64, 3, 7, None)}, "deadbeef" * 5)
+    rows = list(csv.reader(open(d / dp.MANIFEST_NAME)))[2:]
+    assert [r[6] for r in rows] == ["", ""]  # the file exists, but no stat is taken at write time
 
 
 def test_carried_rows_keep_earlier_stamp_not_a_new_one(tmp_path):
