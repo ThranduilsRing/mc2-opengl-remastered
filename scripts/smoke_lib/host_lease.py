@@ -129,18 +129,28 @@ def lane_devices() -> tuple:
     if runtime_lane_adapter():
         _ga = _gpu_adapters(); adapters, selector = _ga.adapters, _ga.selector
         rows = [r for r in adapters() if "7900 XTX" in r["name"]]
-        # Owner kill-switch after driver crashes: the file holds "display" or "lane" and leaves one game slot on that card.
-        try:
-            mode = ONE_CARD_PATH.read_text(encoding="utf-8").strip().lower()
-        except OSError:
-            mode = ""
-        if mode in ("display", "lane"):
-            rows = [r for r in rows if r["display"] is (mode == "display")] or rows
+        mode = one_card_mode()
+        if mode:
+            rows = [r for r in rows if r["display"] is (mode == "display")] or rows[:1]
         return tuple(selector(r) for r in rows)
     try:
-        return _parse_gpu_split(GPU_SPLIT_PATH.read_text(encoding="utf-8"))
+        devices = _parse_gpu_split(GPU_SPLIT_PATH.read_text(encoding="utf-8"))
     except OSError:
-        return GPU_SPLIT_DEFAULT
+        devices = GPU_SPLIT_DEFAULT
+    # With one XTX visible runtime detection fails and GPU_SPLIT would give two slots on the one card; the switch keeps one.
+    return devices[:1] if one_card_mode() else devices
+
+
+def one_card_mode() -> str:
+    """Owner kill-switch after driver crashes: "display" or "lane" from ONE_CARD_PATH leaves one game slot (on that card when
+    both are visible); "" when absent or unknown. Tests never see the live host file (MC2_TEST_NO_ONE_CARD under pytest)."""
+    if os.environ.get("MC2_TEST_NO_ONE_CARD") and os.environ.get("PYTEST_CURRENT_TEST"):
+        return ""
+    try:
+        mode = ONE_CARD_PATH.read_text(encoding="utf-8").strip().lower()
+    except OSError:
+        return ""
+    return mode if mode in ("display", "lane") else ""
 
 
 def lane_uuid() -> Optional[str]:
@@ -726,6 +736,8 @@ def held_device() -> Optional[str]:
     """The acquired slot's GPU; a PC exclusive hold launches on the non-display XTX."""
     records = [rec for _, rec in _records() if _ours(rec)]
     if records and runtime_lane_adapter() and any(r.get("exclusive") for r in records):
+        if one_card_mode():   # the kill-switch card, not always the non-display one
+            return lane_devices()[0]
         selector = _gpu_adapters().selector
         return selector(runtime_lane_adapter())
     return records[0].get("device") if len(records) == 1 and not records[0].get("exclusive") else None

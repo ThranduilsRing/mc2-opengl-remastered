@@ -9,6 +9,7 @@ f PositionY = -5397.333984
 f PositionZ = 0.000000
 b Ready = TRUE
 b NightProfileApplied = TRUE
+b SunAmbientScaled = FALSE
 uc LightRed = 37
 uc LightGreen = 37
 uc LightBlue = 37

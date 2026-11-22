@@ -647,6 +647,8 @@ def cold_cache_extra_grace(exe, extra=COLD_CACHE_EXTRA_GRACE_S):
 
 
 def main():
+    from smoke_lib import keep_awake as _keep_awake
+    _keep_awake.keep_display_on()   # no screensaver/display sleep may arm during the run (it stalls every present)
     ap = argparse.ArgumentParser()
     ap.add_argument("--tier", choices=["tier1", "tier2", "tier3", "resolution"])
     ap.add_argument("--mission", action="append", default=[])
