@@ -54,7 +54,8 @@ def test_preflight_inputs(tmp_path, monkeypatch, capsys, broken, scheduled_deplo
         if broken == target.name + '_identity':
             raise ValueError('stale published exe/shaders')
     monkeypatch.setattr(deploy_payload, 'verify_published_identity', identity)
-    def published_bytes(target, **_kw):
+    def published_bytes(target, **kw):
+        assert kw.get('full') is True, 'provenance preflight must re-hash every byte, never trust dest stamps'
         checked.append(Path(target).name)
         return dict(has_manifest=True, version_ok=True, missing=[],
                     stale=['mc2.exe'] if broken == Path(target).name + '_identity' else [])

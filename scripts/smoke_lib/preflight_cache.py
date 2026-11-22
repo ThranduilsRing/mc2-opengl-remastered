@@ -20,7 +20,8 @@ caller re-runs the real checks. This is intentionally coarse: it trades a
 small false-negative window (e.g. a shader edited with its mtime clock
 skewed backward) for zero reimplemented hashing.
 Coherence remains advisory and the cached BOM result retains its hard fail.
-deploy_payload.staleness_report is always live, including its strict failure.
+deploy_payload.staleness_report is not cached here and always re-runs, including its strict failure; it has its own
+fast path (rows whose recorded dest_mtime_ns stamp still matches the file are not re-hashed).
 
 Cache file: <INSTALL>/.preflight_cache.json. The deploy-folder lease serializes
 writers, so separate proof directories reuse the same fingerprinted checks.

@@ -81,3 +81,16 @@ def test_extract_rejects_traversal(tmp_path):
         z.writestr('../escape', b'x')
     assert pak.main(['extract', str(archive), str(tmp_path / 'out')]) == 1
     assert not (tmp_path / 'escape').exists()
+
+@pytest.mark.parametrize('damage', ['preallocated', 'truncated'])
+def test_pack_refuses_an_incomplete_fst_and_writes_nothing(tmp_path, capsys, damage):
+    """robocopy preallocates the full size before filling the file: a zeroed FST used to pack as 0 entries (73 MB pak, not 214 MB)."""
+    install = tmp_path / 'install'
+    make_install(install)
+    fst = install / 'second.fst'
+    good = fst.read_bytes()
+    fst.write_bytes(bytes(len(good)) if damage == 'preallocated' else good[:len(good) - 20])
+    out = tmp_path / 'out.mc2pak'
+    assert pak.main(['pack', '--install', str(install), '--out', str(out)]) == 1
+    assert 'FST' in capsys.readouterr().err
+    assert not out.exists() and not out.with_name(out.name + '.tmp').exists()

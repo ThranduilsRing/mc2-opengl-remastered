@@ -1543,15 +1543,15 @@ def main():
     # run. Advisory by default (other sessions legitimately smoke partial trees);
     # MC2_SMOKE_REQUIRE_FRESH=1 gates it to a hard pre-mission abort. Reuses
     # deploy_payload.staleness_report (single-source sha256 — no reimplemented
-    # hashing).
+    # hashing). It trusts a row's recorded dest_mtime_ns stamp (size + mtime_ns the
+    # file had when the deploy hashed it) and sha256-hashes only rows whose stamp is
+    # absent or changed; merge_gate and --verify-only hash every file.
     #
     # SMOKE-LATENCY-WINS-1 win #4 scope note: this check is deliberately NOT
-    # cached (unlike coherence/BOM above). It's an in-process function call
-    # (no subprocess spawn), so it's cheaper per-run than the two subprocess
-    # checks, and it has a live hard-fail path (MC2_SMOKE_REQUIRE_FRESH=1 ->
-    # sys.exit(7)) rather than being purely advisory -- keeping it always-fresh
-    # avoids any cache-staleness risk on the one check that can actually abort
-    # the run.
+    # cached by preflight_cache (unlike coherence/BOM above): it is an in-process
+    # call with a live hard-fail path (MC2_SMOKE_REQUIRE_FRESH=1 -> sys.exit(7)),
+    # and the stamp comparison is its own cache, so it stays cheap and re-evaluates
+    # the install as it is on disk right now.
     _fresh_require = os.environ.get("MC2_SMOKE_REQUIRE_FRESH") == "1"
     try:
         from scripts import deploy_payload as _dp

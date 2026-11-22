@@ -55,11 +55,13 @@ from pathlib import Path
 import re
 import shutil
 import stat
+import struct
 import subprocess
 import sys
 import tempfile
 import time
 import threading
+import zipfile
 from contextlib import contextmanager
 import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)
 
@@ -1912,7 +1914,8 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
             # Lane seed: source hash and the verified seed file identity plus
             # NTFS ChangeTime match. No write, no second read of unchanged bytes.
             stamp = source_stamp(src)
-            src_hashes[rel] = (verified[rel], os.path.getsize(dst), stamp[1] if stamp else None)
+            dst_st = os.stat(dst)  # the seed verification confirmed this file's identity just above
+            src_hashes[rel] = (verified[rel], dst_st.st_size, stamp[1] if stamp else None, dst_st.st_mtime_ns)
             skipped += 1
             continue
         if kind == "kit":
@@ -1926,7 +1929,8 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
             # user-owned file at target (e.g. hand-edited run-with-log.bat):
             # keep the deployed copy, record its hash so the manifest matches
             # what's actually on disk.
-            src_hashes[rel] = (sha256_file(dst), os.path.getsize(dst))
+            p_hash, p_size, p_stamp = hash_with_stamp(dst, sha256_file)
+            src_hashes[rel] = (p_hash, p_size, None, p_stamp)
             log(f"preserved {rel} (existing target copy kept)")
             continue
         def source_hash(path):
@@ -1937,10 +1941,11 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
         s_hash = receipts.digest(src, force=full_verify or kind == "exe", hasher=source_hash,
                                  variant='lf' if rel.endswith('.mcasset.json') else '')
         if not full_verify and os.path.isfile(dst):
-            d_hash = receipts.digest(dst, force=kind == "exe", hasher=sha256_file)
+            d_hash, d_size, d_stamp = hash_with_stamp(
+                dst, lambda path: receipts.digest(path, force=kind == "exe", hasher=sha256_file))
             if s_hash == d_hash:
                 stamp = source_stamp(src)
-                src_hashes[rel] = (d_hash, os.path.getsize(dst), stamp[1])
+                src_hashes[rel] = (d_hash, d_size, stamp[1], d_stamp)
                 skipped += 1
                 pdb_skipped = pdb_skipped or kind == "pdb"
                 continue
@@ -1967,10 +1972,11 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
             fail(f"copy refused (file locked?): {dst} ({e})\n"
                  "  A process is holding this file. Close it and re-run; "
                  "this script never taskkills.", 2)
-        d_hash = receipts.digest(dst, force=True, hasher=sha256_file)
+        d_hash, d_size, d_stamp = hash_with_stamp(
+            dst, lambda path: receipts.digest(path, force=True, hasher=sha256_file))
         stamp = source_stamp(src)
-        src_hashes[rel] = (d_hash, os.path.getsize(dst),
-                           stamp[1] if stamp is not None else None)
+        src_hashes[rel] = (d_hash, d_size,
+                           stamp[1] if stamp is not None else None, d_stamp)
         if s_hash != d_hash:
             if kind == "exe":
                 fail(f"post-copy exe hash MISMATCH: {rel}\n"
@@ -2040,7 +2046,8 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False, deploying_t
             candidates.append(resolved.relative_to(root).as_posix())
         for candidate in candidates:
             parts = candidate.replace("\\", "/").casefold().split("/")
-            if (any(p in {"mods", "savegame", "captures", "_pngcap", "_rdoc"} for p in parts)
+            if (candidate.replace("\\", "/").casefold() == PAK_REL  # ensure_stock_pak owns the pak: a failed repack keeps the old one
+                    or any(p in {"mods", "savegame", "captures", "_pngcap", "_rdoc"} for p in parts)
                     or parts[-1].endswith(".rdc")
                     or parts[-1] in {"options.cfg", "prefs.cfg"}
                     or any("/".join(parts) == p or "/".join(parts).startswith(p + "/") for p in preserved)):
@@ -2057,7 +2064,7 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False, deploying_t
         parts = tuple(part.casefold() for part in Path(rel).parts)
         if deploying_target == "game" and editor_only_payload(rel):
             if retired.is_file():
-                keep[rel] = (digest, size, None, stamps.get(rel))  # carried claim: earlier stamp only, never one taken now
+                keep[rel] = (digest, size, None, stamps.get(rel) or verified_stamp(retired, digest))  # earlier stamp, or one taken with a matching hash now
             continue
         if parts[0] in {"mods", "savegame"} or parts[:2] == ("data", "savegame"):
             continue
@@ -2066,7 +2073,7 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False, deploying_t
         if not editor_only_payload(rel) and len(parts) == 1 and (parts[0].endswith((".exe", ".pdb")) or (parts[0].startswith("run-") and parts[0].endswith(".bat"))):
             if shared and retired.is_file():
                 # Carry the previous claim, never bless changed bytes or authorize a source-mtime skip.
-                keep[rel] = (digest, size, None, stamps.get(rel))  # carried claim: earlier stamp only, never one taken now
+                keep[rel] = (digest, size, None, stamps.get(rel) or verified_stamp(retired, digest))
             continue
         if retired.is_file():
             rparts = tuple(part.casefold() for part in resolved.relative_to(root).parts)
@@ -2079,6 +2086,57 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False, deploying_t
                 continue
             retired.unlink()
             log(f"pruned retired payload: {rel}")
+
+
+def hash_with_stamp(path, hasher):
+    """(digest, size, dest_mtime_ns) of `path`. The stamp is the mtime_ns the file had around the hash; it is None when
+    the file's size or mtime changed while it was being hashed, so a row can never carry a stamp for bytes it did not hash."""
+    before = os.stat(path)
+    digest = hasher(path)
+    after = os.stat(path)
+    stable = (before.st_mtime_ns, before.st_size) == (after.st_mtime_ns, after.st_size)
+    return digest, after.st_size, after.st_mtime_ns if stable else None
+
+
+def verified_stamp(path, digest):
+    """dest_mtime_ns for a row that carries an earlier hash: sha256 the file now and stamp it only when it still matches."""
+    try:
+        got, _size, stamp = hash_with_stamp(path, sha256_file)
+    except OSError:
+        return None
+    return stamp if got == digest else None
+
+
+def restamp_rewritten(target_dir, hashes):
+    """Run just before write_manifest, after every step that can touch the install (kit cook, asset sync, tree cook, SPIR-V,
+    DLL fixes). A stamped row whose file no longer has the stamped size+mtime was rewritten after its hash was taken:
+    re-hash it: same digest -> re-stamped at that time; different digest -> the row keeps its verified hash with no stamp and
+    no source-mtime skip (never bless changed bytes; the pre-launch check reports it). Returns the rewritten rels."""
+    rewritten = []
+    for rel in sorted(hashes):
+        row = tuple(hashes[rel])
+        stamp = row[3] if len(row) > 3 else None
+        if stamp is None:
+            continue
+        path = os.path.join(target_dir, rel)
+        try:
+            st = os.stat(path)
+            if st.st_mtime_ns == stamp and st.st_size == row[1]:
+                continue
+            digest, size, new_stamp = hash_with_stamp(path, sha256_file)
+        except OSError:
+            hashes[rel] = (*row[:3], None)
+            continue
+        if digest == row[0]:
+            hashes[rel] = (digest, size, row[2] if len(row) > 2 else None, new_stamp)  # same bytes rewritten: stamp valid now
+        else:
+            # Never bless changed bytes: keep the hash the deploy verified, drop the stamp, so the pre-launch check flags it.
+            hashes[rel] = (*row[:2], None, None)
+            log(f"WARNING: {rel} changed after its deploy hash was taken; the manifest keeps the verified hash and no stamp")
+        rewritten.append(rel)
+    if rewritten:
+        log(f"{len(rewritten)} file(s) rewritten after their deploy hash: {', '.join(rewritten[:5])}")
+    return rewritten
 
 
 def write_manifest(target_dir, hashes, src_commit):
@@ -2096,16 +2154,11 @@ def write_manifest(target_dir, hashes, src_commit):
                 entry = tuple(hashes[rel])
                 h, size = entry[0], entry[1]
                 mtime_ns = entry[2] if len(entry) > 2 else None
-                # dest_mtime_ns: the target file's own mtime when its hash was taken, so the
-                # pre-launch staleness check can skip re-hashing an untouched file. A 4th entry
-                # field overrides the stat (None = the hash was carried over, not taken now).
-                if len(entry) > 3:
-                    dest_mtime_ns = entry[3]
-                else:
-                    try:
-                        dest_mtime_ns = os.stat(os.path.join(target_dir, rel)).st_mtime_ns
-                    except OSError:
-                        dest_mtime_ns = None
+                # dest_mtime_ns: the target file's own mtime captured WHEN its hash was taken (4th entry
+                # field; hash_with_stamp / verified_stamp), so the pre-launch staleness check can skip
+                # re-hashing an untouched file. Never stat here: a row without a stamp is written
+                # without one, because a stamp taken now would bless whatever bytes are on disk now.
+                dest_mtime_ns = entry[3] if len(entry) > 3 else None
                 w.writerow([rel, h, size, src_commit, ts,
                             "" if mtime_ns is None else mtime_ns,
                             "" if dest_mtime_ns is None else dest_mtime_ns])
@@ -2135,7 +2188,8 @@ def hash_present_payload(items, target_dir):
             # No mtime_ns: this path cannot prove the deployed bytes came from
             # the current source (another deploy path copied them), so the row
             # must never authorize a future skip. A real deploy fills it in.
-            hashes[rel] = (sha256_file(dst), os.path.getsize(dst), None)
+            digest, size, stamp = hash_with_stamp(dst, sha256_file)
+            hashes[rel] = (digest, size, None, stamp)
             present += 1
         else:
             absent += 1
@@ -2177,7 +2231,7 @@ def write_manifest_only(src_root, build_dir, exe_name, pdb_name, target_dir,
                         continue  # freshly re-hashed wins
                     p = os.path.join(target_dir, rel)
                     if os.path.isfile(p):
-                        hashes[rel] = (h, size, None, None)  # carried-over hash: no dest stamp
+                        hashes[rel] = (h, size, None, verified_stamp(p, h))  # carried hash: stamped only if the file still matches it
         except Exception as e:
             log(f"WARNING: could not merge existing CSV manifest ({e}); replacing")
 
@@ -2199,6 +2253,7 @@ def write_manifest_only(src_root, build_dir, exe_name, pdb_name, target_dir,
 
 
 PRELAUNCH_NOTICE_SECONDS = 5.0
+_UNSTAMPED_NOTED = set()
 
 
 def carry_rows(rows, target_dir):
@@ -2272,9 +2327,11 @@ def staleness_report(target_dir, full=False, notice=None):
             rep["stale"].append(rel)
         else:
             rep["ok"] += 1
-    if unstamped and not full:
-        notice(f"[PRELAUNCH] {target_dir}: manifest has no dest_mtime_ns for {unstamped} files "
-               f"(deployed before the stamp existed); hashed them all this once, redeploy to record stamps")
+    if unstamped and not full and target_dir not in _UNSTAMPED_NOTED:
+        _UNSTAMPED_NOTED.add(target_dir)  # once per process per install
+        notice(f"[PRELAUNCH] {target_dir}: {unstamped} manifest rows carry no dest_mtime_ns (deployed before the stamp "
+               f"existed, or carried over unverified), so they are sha256-hashed on every check; a deploy that "
+               f"re-verifies them records their stamps")
     return rep
 
 
@@ -2595,6 +2652,7 @@ def deploy_from_payload(payload, target, src_root, head):
     if any(is_deploy_artifact(rel) for rel in rows):
         fail("payload contains diagnostic or backup artifacts; republish a clean payload")
     staged = payload / 'files'
+    stamps = {}  # rel -> dest_mtime_ns taken with the destination's own sha256, never inherited from the payload
     for rel, row in rows.items():
         src, dst = staged / rel, target / rel
         if src.is_file():
@@ -2608,28 +2666,38 @@ def deploy_from_payload(payload, target, src_root, head):
                 replace_file(tmp, dst)
             finally:
                 unlink_for_replace(tmp)
-        elif not dst.is_file() or dst.stat().st_size != int(row['bytes']) or sha256_file(str(dst)) != row['sha256']:
+            copied = True
+        elif not dst.is_file() or dst.stat().st_size != int(row['bytes']):
             fail(f'{rel}: not in the payload and the target copy does not match the manifest (size or sha256); the PC v0.4 drifted since the delta was taken')
+        else:
+            copied = False
+        digest, _size, stamps[rel] = hash_with_stamp(dst, sha256_file)  # copied or untouched: the destination's own bytes
+        if digest != row['sha256']:
+            fail(f'{rel}: ' + ('copied file does not match the manifest sha256' if copied else
+                 'not in the payload and the target copy does not match the manifest (size or sha256); the PC v0.4 drifted since the delta was taken'))
     exe = target / 'mc2.exe'
     fp = extract(exe)
-    if sha256_file(str(exe)) != rows['mc2.exe']['sha256'] or not fp.get('present') \
-            or not build_current(fp.get('sha'), head, Path(src_root), bool(fp.get('dirty'))):
+    if sha256_file(str(exe)) != rows['mc2.exe']['sha256'] or not fp.get('present')             or not build_current(fp.get('sha'), head, Path(src_root), bool(fp.get('dirty'))):
         fail(f'{exe}: fingerprint != clean HEAD {head}')
-    hashes = {rel: (row['sha256'], int(row['bytes']), None) for rel, row in rows.items()}
+    hashes = {rel: (row['sha256'], int(row['bytes']), None, stamps[rel]) for rel, row in rows.items()}
     retire_unowned(str(target), hashes, own_shaders=any(rel.startswith('shaders/vulkan/') and rel.endswith('.spv') for rel in rows))
     dst = target / '.deployed_manifest.csv'
     fd, tmp = tempfile.mkstemp(prefix=dst.name + '.payload-', dir=dst.parent)
     os.close(fd)
     tmp = Path(tmp)
     try:
-        shutil.copy2(manifest, tmp)
-        if hashes.keys() - rows.keys():
-            tmp.chmod(tmp.stat().st_mode | stat.S_IWRITE)
-            with tmp.open('a', newline='', encoding='utf-8') as stream:
-                writer = csv.writer(stream)
-                for rel in sorted(hashes.keys() - rows.keys()):
-                    digest, size = hashes[rel][:2]
-                    writer.writerow([rel, digest, size, '', '', ''])
+        with manifest.open(encoding='utf-8-sig', newline='') as stream:
+            header = next(csv.reader(stream))
+        with tmp.open('w', newline='', encoding='utf-8') as stream:
+            writer = csv.writer(stream)
+            writer.writerow(header)
+            writer.writerow(['relpath', 'sha256', 'bytes', 'src_commit', 'timestamp', 'mtime_ns', 'dest_mtime_ns'])
+            for rel, row in rows.items():
+                writer.writerow([rel, row['sha256'], row['bytes'], row.get('src_commit') or '', row.get('timestamp') or '',
+                                 row.get('mtime_ns') or '', stamps[rel] if stamps[rel] is not None else ''])
+            for rel in sorted(hashes.keys() - rows.keys()):  # carried claims (editor / shared-exe rows): their own stamp or none
+                digest, size, _src, stamp = hashes[rel]
+                writer.writerow([rel, digest, size, '', '', '', '' if stamp is None else stamp])
         replace_file(tmp, dst)
     finally:
         unlink_for_replace(tmp)
@@ -3110,8 +3178,8 @@ def _mc2pak_python():
         return None
 
 
-def stock_pak_key(src_root, target):
-    """Cache key: every registered FST's name+size+sha256 plus the packer's own sha256; None without a system.cfg."""
+def registered_fsts(target):
+    """[(name, path)] of the system.cfg [FastFiles] archives in registration order; None when there is no list or one is missing."""
     cfg = Path(target) / "system.cfg"
     if not cfg.is_file():
         return None
@@ -3119,11 +3187,54 @@ def stock_pak_key(src_root, target):
     names = re.findall(r'(?im)^\s*st\s+File(\d+)\s*=\s*"([^"]+)"', section[1]) if section else []
     if not names:
         return None
-    h = hashlib.sha256()
+    found = []
     for _, name in sorted(names, key=lambda item: int(item[0])):
         path = next((p for p in (Path(target) / name, Path(target) / "data/assets" / name) if p.is_file()), None)
         if path is None:
             return None
+        found.append((name, path))
+    return found
+
+
+def pak_defect(pak, target):
+    """Why `pak` cannot be the stock pak of `target`, or None. Cheap (central directory + 8 header bytes per FST, no decoding):
+    the pak's own source list must equal the installed FSTs (name, size, entry count), every FST must be a whole archive with
+    entries (a robocopy-preallocated textures.fst read as 0 entries and produced a 73 MB pak instead of 214 MB), and the pak
+    must hold at least as many names as its largest source."""
+    fsts = registered_fsts(target)
+    if fsts is None:
+        return "no registered FST set to compare against"
+    try:
+        with zipfile.ZipFile(pak) as z:
+            items = z.infolist()
+            if not items or items[0].filename != "mc2pak.json":
+                return "pak has no leading mc2pak.json"
+            sources = {s["name"]: s for s in json.loads(z.read(items[0]))["sources"]}
+    except (OSError, zipfile.BadZipFile, KeyError, ValueError, TypeError) as exc:
+        return f"pak unreadable ({type(exc).__name__}: {exc})"
+    largest = 0
+    for name, path in fsts:
+        with open(path, "rb") as f:
+            head = f.read(8)
+        magic, count = struct.unpack("<II", head) if len(head) == 8 else (0, 0)
+        if magic not in (0xFADDECAF, 0xCADDECAF) or count == 0 or 8 + count * 266 > path.stat().st_size:
+            return f"{name} is not a whole FST (magic {magic:#x}, {count} entries, {path.stat().st_size} bytes): unfinished copy?"
+        src = sources.get(name.lower())
+        if src is None or src.get("size") != path.stat().st_size or src.get("entries") != count:
+            return f"pak source {name} ({src and src.get('entries')} entries, {src and src.get('size')} bytes) != installed FST ({count} entries, {path.stat().st_size} bytes)"
+        largest = max(largest, count)
+    if len(items) - 1 < largest:
+        return f"pak holds {len(items) - 1} entries, fewer than its largest source ({largest})"
+    return None
+
+
+def stock_pak_key(src_root, target):
+    """Cache key: every registered FST's name+size+sha256 plus the packer's own sha256; None without a system.cfg."""
+    fsts = registered_fsts(target)
+    if fsts is None:
+        return None
+    h = hashlib.sha256()
+    for name, path in fsts:
         h.update(f"{name.lower()}\0{path.stat().st_size}\0{sha256_file(path)}\n".encode())
     for tool in ("tools/mc2pak.py", "tools/mc2x_import/fst.py"):
         h.update(f"{tool}\0{sha256_file(Path(src_root) / tool)}\n".encode())
@@ -3139,6 +3250,12 @@ def ensure_stock_pak(src_root, target, hashes):
     <target>/paks/stock.mc2pak (replace by rename) and record it in `hashes`. Any failure is a loud log line; the FSTs still ship and rc stays 0.
     The outcome (OK / FALLBACK / SKIP) is recorded in <target>/.pak_deploy_status so run_smoke can refuse a silent FST fallback."""
     status = _ensure_stock_pak(src_root, target, hashes)
+    kept = Path(target) / PAK_REL
+    if not status.startswith("OK") and PAK_REL not in hashes and kept.is_file():
+        # retire_unowned never prunes the pak, so a failed or refused repack keeps the previous one: record it as it is on disk.
+        digest, size, stamp = hash_with_stamp(kept, sha256_file)
+        hashes[PAK_REL] = (digest, size, None, stamp)
+        log(f"WARN [PAK_DEPLOY] kept the previous {PAK_REL} ({size} bytes)")
     try:
         (Path(target) / PAK_STATUS_NAME).write_text(status + "\n", encoding="utf-8")
     except OSError as exc:
@@ -3146,7 +3263,7 @@ def ensure_stock_pak(src_root, target, hashes):
 
 
 def fail_status(reason):
-    log(f"WARN [PAK_DEPLOY] {reason}; deploy is FST only")
+    log(f"WARN [PAK_DEPLOY] {reason}; the pak was not replaced (the FSTs still ship)")
     return f"FALLBACK {reason}"
 
 
@@ -3183,10 +3300,19 @@ def _ensure_stock_pak(src_root, target, hashes):
             if r.returncode != 0 or not partial.is_file():
                 partial.unlink(missing_ok=True)
                 return fail_status(f"mc2pak pack failed rc={r.returncode}: {(r.stderr or r.stdout).strip()[-300:]}")
+            defect = pak_defect(partial, target)
+            if defect:
+                partial.unlink(missing_ok=True)
+                return fail_status(f"packed pak refused, not cached ({defect})")
             digest_file.write_text(sha256_file(partial))
             os.replace(partial, pak)
             log(f"[PAK_DEPLOY] packed {pak.stat().st_size} bytes in {time.perf_counter() - started:.1f}s")
         else:
+            defect = pak_defect(pak, target)
+            if defect:  # a cache entry packed from an incomplete FST set (older tool) must not be copied or reused
+                pak.unlink(missing_ok=True)
+                digest_file.unlink(missing_ok=True)
+                return fail_status(f"cached pak refused and dropped ({defect})")
             log(f"[PAK_DEPLOY] cache hit key={key}")
         dst = Path(target) / PAK_REL
         dst.parent.mkdir(parents=True, exist_ok=True)
@@ -3196,8 +3322,16 @@ def _ensure_stock_pak(src_root, target, hashes):
             tmp = dst.with_name(f".stock.mc2pak.new-{os.getpid()}")
             tmp.unlink(missing_ok=True)
             shutil.copy2(pak, tmp)
+            if sha256_file(tmp) != digest_file.read_text().strip():  # a bad copy never replaces the pak that is there
+                tmp.unlink(missing_ok=True)
+                return fail_status("copy of the cached pak does not match its digest")
             replace_file(str(tmp), str(dst))
-        hashes[PAK_REL] = (digest_file.read_text().strip(), dst.stat().st_size, dst.stat().st_mtime_ns)
+        # Hash the destination itself (the stamp is taken with this hash), never inherit the cache's digest unverified.
+        want = digest_file.read_text().strip()
+        got, size, stamp = hash_with_stamp(dst, sha256_file)
+        if got != want:
+            return fail_status(f"installed pak sha256 {got[:16]} != cached {want[:16]}")
+        hashes[PAK_REL] = (got, size, None, stamp)
         log(f"[PAK_DEPLOY] OK {PAK_REL} key={key} sha256={hashes[PAK_REL][0][:16]}")
         return f"OK key={key}"
     except Exception as exc:  # noqa: BLE001 -- the FSTs still ship; a pak failure never fails the deploy
@@ -3414,6 +3548,7 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
             fail("deployed SPIR-V is not the build's SPIR-V:\n  " + "\n  ".join(spv_fails), 4)
         log(f"deployed SPIR-V audit OK: {spv_n} .spv identical to the build, descriptor/push ABI matches")
     hashes = {rel: row for rel, row in hashes.items() if not asset_parity.is_deploy_artifact(rel)}
+    restamp_rewritten(target, hashes)  # kit cook, asset sync, tree cook and DLL fixes ran after the hashes were taken
     ensure_stock_pak(src_root, target, hashes)  # editor deploys too: retire_unowned would prune the pak otherwise
     write_manifest(target, hashes, src_commit)
     if reuse:

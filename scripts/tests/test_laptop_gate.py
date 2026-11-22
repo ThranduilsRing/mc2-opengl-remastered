@@ -153,7 +153,10 @@ def test_readonly_hardlink_replacement_preserves_source(tmp_path, monkeypatch, r
             # peer bytes; retirement validation has its own manifest tests.
             monkeypatch.setattr(deploy_payload, "retire_unowned", lambda *a, **kw: None)
             deploy_payload.deploy_from_payload(payload, target, tmp_path, head)
-            assert (target / ".deployed_manifest.csv").read_bytes() == (payload / ".deployed_manifest.csv").read_bytes()
+            def rows(path):  # the published manifest re-records dest_mtime_ns from the destination, so compare identity columns
+                with open(path, newline="") as f:
+                    return [r[:3] for r in list(csv.reader(f))[2:]]
+            assert rows(target / ".deployed_manifest.csv") == rows(payload / ".deployed_manifest.csv")
         elif route == "seed":
             # Keep receipt writes private; this checks link isolation, not the host cook cache.
             monkeypatch.setenv("MC2_COOK_CACHE", str(tmp_path / "cook-cache"))
