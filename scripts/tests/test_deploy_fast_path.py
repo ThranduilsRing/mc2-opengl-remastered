@@ -120,6 +120,7 @@ def test_code_only_keeps_static_payload_and_does_not_cook(tmp_path, monkeypatch)
     dp.write_manifest(target, hashes, "a" * 40)
     monkeypatch.setattr(dp, "ensure_terrain_materials", lambda *a: pytest.fail("terrain recooked"))
     monkeypatch.setattr(dp, "ensure_engine_normal_cooks", lambda *a: pytest.fail("normals recooked"))
+    monkeypatch.setattr(dp, "verify_engine_normals_present", lambda *a: None)
     retained = dp.deploy([], target, False, cache=hashes, code_only=True)
     assert retained == hashes
     assert (Path(target) / rel).read_bytes() == Path(src).read_bytes()
