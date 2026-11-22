@@ -298,6 +298,10 @@ RETIRED_SEED_PAYLOAD = {
     "data/tgl/quonset.ini": "71fb4ec98d1cf2149e1ef6dfc5568de1442da54f010acac3329de9ceaa64fce2",
     "data/tgl/QuonsetGLB.glb": "f11603d9d313367db94e2334739c9c595714336ddab41f92035d7ee26a22dff1",
     "data/tgl/QuonsetGLB.mcasset.json": "bcc095d0a858de35445a35c8fc24024da1dcd050803156a028228cdc216f199f",
+    "data/tgl/hangar.ini": "91d5dee7aa635fb3dfb4d352dcbe52d663f0b0730446f5cb8d6eb11adcee6ae3",
+    "data/tgl/hangar.ini.cookstamp": "7190167cb86787999627e64504ce2196ec5e93f83e26844427db2798efea60f1",
+    "data/tgl/HangarGLB.glb": "77ec151d3e4d5977a30506db8dd22b97c1daddb3acf742356b743ab2fcba3af3",
+    "data/tgl/HangarGLB.mcasset.json": "45a8de06ad0100929615c66525d34f34ae4beecb748f1d0ecfb4c2a93a71ac02",
 }
 
 

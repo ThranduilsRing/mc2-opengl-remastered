@@ -13,7 +13,9 @@ def test_prune_retired_seed_payload_only_removes_matching_bytes(tmp_path):
     dp.prune_retired_seed_payload(str(tmp_path))
     assert (tgl / "quonset.ini").exists() and (tgl / "QuonsetGLB.glb").exists()
     assert set(dp.RETIRED_SEED_PAYLOAD) == {
-        "data/tgl/quonset.ini", "data/tgl/QuonsetGLB.glb", "data/tgl/QuonsetGLB.mcasset.json"}
+        "data/tgl/quonset.ini", "data/tgl/QuonsetGLB.glb", "data/tgl/QuonsetGLB.mcasset.json",
+        "data/tgl/hangar.ini", "data/tgl/hangar.ini.cookstamp", "data/tgl/HangarGLB.glb",
+        "data/tgl/HangarGLB.mcasset.json"}
 
 
 def test_prune_retired_seed_payload_removes_exact_retired_file(tmp_path, monkeypatch):
