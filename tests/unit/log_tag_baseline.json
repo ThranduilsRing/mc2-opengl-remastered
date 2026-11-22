@@ -12346,6 +12346,28 @@
    "count": 1
   },
   {
+   "tag": "VK_PIPECACHE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "file"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_PIPECACHE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "status",
+    "reason",
+    "file_build",
+    "exe_build",
+    "swept"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_PIPELINE_CACHE",
    "ver": 1,
    "stream": "stderr",
