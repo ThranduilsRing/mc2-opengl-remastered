@@ -108,3 +108,79 @@ def test_verify_only_still_delegates(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "1 stale" in out
     assert "STALE:   shaders/a.frag" in out
+
+
+def _stamp(d, rel_list=None):
+    """Rewrite the fixture manifest with dest_mtime_ns stamps (what write_manifest records)."""
+    path = d / dp.MANIFEST_NAME
+    with open(path, newline="") as f:
+        rows = list(csv.reader(f))
+    for row in rows[2:]:
+        row[:] = row[:5] + [""] + [str((d / row[0]).stat().st_mtime_ns)]
+    with open(path, "w", newline="") as f:
+        csv.writer(f).writerows(rows)
+
+
+def _spy_hash(monkeypatch):
+    hashed = []
+    real = dp.sha256_file
+    monkeypatch.setattr(dp, "sha256_file", lambda p: (hashed.append(Path(p).name), real(p))[1])
+    return hashed
+
+
+def test_stamp_match_skips_hash(tmp_path, monkeypatch):
+    d = _make_target(tmp_path, {"a.txt": "aaa", "b.txt": "bbb"})
+    _stamp(d)
+    hashed = _spy_hash(monkeypatch)
+    rep = dp.staleness_report(str(d))
+    assert hashed == [] and rep["ok"] == 2 and rep["skipped"] == 2 and rep["stale"] == []
+
+
+def test_size_change_is_hashed_and_stale(tmp_path, monkeypatch):
+    import os
+    d = _make_target(tmp_path, {"a.txt": "aaa", "b.txt": "bbb"})
+    _stamp(d)
+    st = (d / "a.txt").stat()
+    (d / "a.txt").write_text("aaaa-longer", encoding="utf-8")
+    os.utime(d / "a.txt", ns=(st.st_atime_ns, st.st_mtime_ns))  # same mtime, new size
+    hashed = _spy_hash(monkeypatch)
+    rep = dp.staleness_report(str(d))
+    assert hashed == ["a.txt"] and rep["stale"] == ["a.txt"] and rep["ok"] == 1
+
+
+def test_touched_same_bytes_is_fresh(tmp_path, monkeypatch):
+    import os
+    d = _make_target(tmp_path, {"a.txt": "aaa"})
+    _stamp(d)
+    st = (d / "a.txt").stat()
+    os.utime(d / "a.txt", ns=(st.st_atime_ns, st.st_mtime_ns + 5_000_000_000))
+    hashed = _spy_hash(monkeypatch)
+    rep = dp.staleness_report(str(d))
+    assert hashed == ["a.txt"] and rep["stale"] == [] and rep["ok"] == 1
+
+
+def test_old_manifest_full_hash_with_notice(tmp_path, monkeypatch):
+    d = _make_target(tmp_path, {"a.txt": "aaa", "b.txt": "bbb"})  # no dest_mtime_ns column
+    hashed = _spy_hash(monkeypatch)
+    notes = []
+    rep = dp.staleness_report(str(d), notice=notes.append)
+    assert sorted(hashed) == ["a.txt", "b.txt"] and rep["ok"] == 2
+    assert len(notes) == 1 and "dest_mtime_ns" in notes[0]
+
+
+def test_full_flag_hashes_despite_stamp(tmp_path, monkeypatch):
+    d = _make_target(tmp_path, {"a.txt": "aaa"})
+    _stamp(d)
+    hashed = _spy_hash(monkeypatch)
+    rep = dp.staleness_report(str(d), full=True)
+    assert hashed == ["a.txt"] and rep["ok"] == 1
+
+
+def test_write_manifest_records_dest_stamp(tmp_path):
+    d = tmp_path / "t"
+    d.mkdir()
+    (d / "a.txt").write_text("aaa", encoding="utf-8")
+    dp.write_manifest(str(d), {"a.txt": (dp.sha256_file(str(d / "a.txt")), 3, 7)}, "deadbeef" * 5)
+    row = list(csv.reader(open(d / dp.MANIFEST_NAME)))[2]
+    assert row[6] == str((d / "a.txt").stat().st_mtime_ns)
+    assert dp.staleness_report(str(d))["skipped"] == 1

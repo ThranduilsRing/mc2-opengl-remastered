@@ -2090,13 +2090,24 @@ def write_manifest(target_dir, hashes, src_commit):
             w = csv.writer(f)
             w.writerow(["manifest_version", MANIFEST_VERSION, "", "", "", ""])
             w.writerow(["relpath", "sha256", "bytes", "src_commit", "timestamp",
-                        "mtime_ns"])
+                        "mtime_ns", "dest_mtime_ns"])
             for rel in sorted(hashes):
                 entry = tuple(hashes[rel])
                 h, size = entry[0], entry[1]
                 mtime_ns = entry[2] if len(entry) > 2 else None
+                # dest_mtime_ns: the target file's own mtime when its hash was taken, so the
+                # pre-launch staleness check can skip re-hashing an untouched file. A 4th entry
+                # field overrides the stat (None = the hash was carried over, not taken now).
+                if len(entry) > 3:
+                    dest_mtime_ns = entry[3]
+                else:
+                    try:
+                        dest_mtime_ns = os.stat(os.path.join(target_dir, rel)).st_mtime_ns
+                    except OSError:
+                        dest_mtime_ns = None
                 w.writerow([rel, h, size, src_commit, ts,
-                            "" if mtime_ns is None else mtime_ns])
+                            "" if mtime_ns is None else mtime_ns,
+                            "" if dest_mtime_ns is None else dest_mtime_ns])
         replace_file(pending, path)
     finally:
         if pending and os.path.exists(pending):
@@ -2165,7 +2176,7 @@ def write_manifest_only(src_root, build_dir, exe_name, pdb_name, target_dir,
                         continue  # freshly re-hashed wins
                     p = os.path.join(target_dir, rel)
                     if os.path.isfile(p):
-                        hashes[rel] = (h, size, None)
+                        hashes[rel] = (h, size, None, None)  # carried-over hash: no dest stamp
         except Exception as e:
             log(f"WARNING: could not merge existing CSV manifest ({e}); replacing")
 
@@ -2186,18 +2197,26 @@ def write_manifest_only(src_root, build_dir, exe_name, pdb_name, target_dir,
     log("manifest-only COMPLETE -- .deployed_manifest.csv refreshed (no copy)")
 
 
-def staleness_report(target_dir):
-    """Pure: compare a deployed tree against its .deployed_manifest.csv by
-    re-hashing every listed file (single-source sha256_file). Returns a dict --
-    NO printing, NO sys.exit -- so callers other than the CLI (run_smoke) can
-    surface drift without reimplementing the hashing/compare:
+PRELAUNCH_NOTICE_SECONDS = 5.0
+
+
+def staleness_report(target_dir, full=False, notice=None):
+    """Pure: compare a deployed tree against its .deployed_manifest.csv. Returns a dict --
+    NO sys.exit -- so callers other than the CLI (run_smoke) can surface drift without
+    reimplementing the hashing/compare:
 
       {has_manifest, version_ok, ok (int), stale [rel...], missing [rel...],
-       src_commit, manifest_path}
-    """
+       src_commit, manifest_path, hashed (int), skipped (int)}
+
+    Fast path (default): a file whose size and mtime_ns equal the dest_mtime_ns the deploy
+    recorded next to its hash is trusted, not re-hashed; anything else (changed stamp, no
+    stamp, e.g. a manifest written before dest_mtime_ns existed) is sha256-hashed as before.
+    full=True hashes every file (provenance callers: merge_gate, --verify-only).
+    notice(msg) is called once when the hashing runs longer than PRELAUNCH_NOTICE_SECONDS
+    (default: print to stderr) so the wait is never silent."""
     path = os.path.join(target_dir, MANIFEST_NAME)
     rep = {"manifest_path": path, "has_manifest": False, "version_ok": True,
-           "ok": 0, "stale": [], "missing": [], "src_commit": None}
+           "ok": 0, "stale": [], "missing": [], "src_commit": None, "hashed": 0, "skipped": 0}
     if not os.path.isfile(path):
         return rep
     rep["has_manifest"] = True
@@ -2206,19 +2225,44 @@ def staleness_report(target_dir):
     if not rows or rows[0][:2] != ["manifest_version", MANIFEST_VERSION]:
         rep["version_ok"] = False
         return rep
-    for row in rows[2:]:
-        if len(row) < 3:
-            continue
+    if notice is None:
+        def notice(msg):
+            print(msg, file=sys.stderr, flush=True)
+    started = time.monotonic()
+    announced = False
+    unstamped = 0
+    data = [row for row in rows[2:] if len(row) >= 3]
+    for n, row in enumerate(data):
         rel, expect_hash = row[0], row[1]
         if rep["src_commit"] is None and len(row) >= 4:
             rep["src_commit"] = row[3]
         p = os.path.join(target_dir, rel)
-        if not os.path.isfile(p):
+        try:
+            st = os.stat(p)
+        except OSError:
+            st = None
+        if st is None or not stat.S_ISREG(st.st_mode):
             rep["missing"].append(rel)
-        elif sha256_file(p) != expect_hash:
+            continue
+        stamp = int(row[6]) if len(row) >= 7 and row[6].isdigit() else None
+        if stamp is None:
+            unstamped += 1
+        elif not full and stamp == st.st_mtime_ns and row[2].isdigit() and int(row[2]) == st.st_size:
+            rep["skipped"] += 1
+            rep["ok"] += 1
+            continue
+        if not announced and time.monotonic() - started > PRELAUNCH_NOTICE_SECONDS:
+            announced = True
+            notice(f"[PRELAUNCH] hashing install files against the manifest ({len(data) - n} left of {len(data)}, "
+                   f"{target_dir}); this can take minutes on a cold disk")
+        rep["hashed"] += 1
+        if sha256_file(p) != expect_hash:
             rep["stale"].append(rel)
         else:
             rep["ok"] += 1
+    if unstamped and not full:
+        notice(f"[PRELAUNCH] {target_dir}: manifest has no dest_mtime_ns for {unstamped} files "
+               f"(deployed before the stamp existed); hashed them all this once, redeploy to record stamps")
     return rep
 
 
@@ -2306,7 +2350,7 @@ def check_install_complete(target, exe_name, build_dir, fix=True):
 
 
 def verify_only(target_dir, strict):
-    rep = staleness_report(target_dir)
+    rep = staleness_report(target_dir, full=True)
     if not rep["has_manifest"]:
         msg = (f"no manifest at {rep['manifest_path']} -- target never deployed "
                "via this tool")
