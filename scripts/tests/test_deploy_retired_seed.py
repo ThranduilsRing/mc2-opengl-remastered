@@ -26,3 +26,15 @@ def test_prune_retired_seed_payload_removes_exact_retired_file(tmp_path, monkeyp
     monkeypatch.setitem(dp.RETIRED_SEED_PAYLOAD, "data/tgl/quonset.ini", dp.sha256_file(f))
     dp.prune_retired_seed_payload(str(tmp_path))
     assert not f.exists()
+
+
+def test_asset_parity_does_not_sync_retired_payload_back(tmp_path, monkeypatch):
+    import asset_parity as ap
+    ref, inst = tmp_path / "ref", tmp_path / "inst"
+    for root in (ref, inst):
+        (root / "data" / "tgl").mkdir(parents=True)
+        (root / "data" / "tgl" / "keep.ini").write_bytes(b"k")
+    (ref / "data" / "tgl" / "hangar.ini").write_bytes(b"retired")
+    monkeypatch.setitem(dp.RETIRED_SEED_PAYLOAD, "data/tgl/hangar.ini",
+                        dp.sha256_file(ref / "data" / "tgl" / "hangar.ini"))
+    assert ap.compare(inst, ref, skip=set()).missing == []
