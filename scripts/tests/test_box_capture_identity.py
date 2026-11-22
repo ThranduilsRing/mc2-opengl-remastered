@@ -41,9 +41,9 @@ def test_manifest_uses_production_format_and_installed_bytes(tmp_path):
     with (install / ab.MANIFEST).open(newline="") as stream:
         rows = list(csv.reader(stream))
     assert rows[0] == ["manifest_version", "v1", "", "", "", ""]
-    assert rows[1] == ["relpath", "sha256", "bytes", "src_commit", "timestamp", "mtime_ns"]
+    assert rows[1] == ["relpath", "sha256", "bytes", "src_commit", "timestamp", "mtime_ns", "dest_mtime_ns"]
     assert {r[0] for r in rows[2:]} == {"mc2", "shaders/vulkan/test.spv", "data/a.fit", "stock.fst"}
-    for rel, sha, size, commit, timestamp, mtime in rows[2:]:
+    for rel, sha, size, commit, timestamp, mtime, dest_mtime in rows[2:]:
         path = install / rel
         assert sha == hashlib.sha256(path.read_bytes()).hexdigest()
         assert int(size) == path.stat().st_size

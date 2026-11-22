@@ -1886,8 +1886,8 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
     items = [item for item in items if not is_deploy_artifact(item[1])]
     # Retention must reach retire_unowned(), before it can delete static files.
     # Shader inventories still belong entirely to the current build.
-    src_hashes = {rel: row for rel, row in (cache or {}).items()
-                  if not rel.startswith(("shaders/", "shaders_vk/"))} if code_only else ensure_terrain_materials(target_dir)
+    src_hashes = carry_rows({rel: row for rel, row in (cache or {}).items()
+                  if not rel.startswith(("shaders/", "shaders_vk/"))}, target_dir) if code_only else ensure_terrain_materials(target_dir)
     if not code_only:
         ensure_engine_normal_cooks(target_dir)
     elif verify_normals:
@@ -2029,6 +2029,7 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False, deploying_t
     root = Path(target_dir).resolve()
     shared = any(root == Path(preset["target_dir"]).resolve() for preset in TARGET_PRESETS.values())
     previous = read_manifest(target_dir)
+    stamps = {rel: row[3] for rel, row in carry_rows(previous, target_dir).items()}
     preserved = {p.replace("\\", "/").strip("/").casefold() for p in preserve}
     preserved.update(p.casefold() for p in intentional)
 
@@ -2056,7 +2057,7 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False, deploying_t
         parts = tuple(part.casefold() for part in Path(rel).parts)
         if deploying_target == "game" and editor_only_payload(rel):
             if retired.is_file():
-                keep[rel] = (digest, size, None)
+                keep[rel] = (digest, size, None, stamps.get(rel))  # carried claim: earlier stamp only, never one taken now
             continue
         if parts[0] in {"mods", "savegame"} or parts[:2] == ("data", "savegame"):
             continue
@@ -2065,7 +2066,7 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False, deploying_t
         if not editor_only_payload(rel) and len(parts) == 1 and (parts[0].endswith((".exe", ".pdb")) or (parts[0].startswith("run-") and parts[0].endswith(".bat"))):
             if shared and retired.is_file():
                 # Carry the previous claim, never bless changed bytes or authorize a source-mtime skip.
-                keep[rel] = (digest, size, None)
+                keep[rel] = (digest, size, None, stamps.get(rel))  # carried claim: earlier stamp only, never one taken now
             continue
         if retired.is_file():
             rparts = tuple(part.casefold() for part in resolved.relative_to(root).parts)
@@ -2198,6 +2199,17 @@ def write_manifest_only(src_root, build_dir, exe_name, pdb_name, target_dir,
 
 
 PRELAUNCH_NOTICE_SECONDS = 5.0
+
+
+def carry_rows(rows, target_dir):
+    """Previous-manifest rows re-emitted without re-hashing: each keeps the dest_mtime_ns the earlier deploy recorded (None when
+    it had none), never a stamp taken now, so write_manifest cannot bless bytes that changed since they were hashed."""
+    try:
+        with open(os.path.join(target_dir, MANIFEST_NAME), newline="", encoding="utf-8") as f:
+            stamps = {r[0]: int(r[6]) for r in list(csv.reader(f))[2:] if len(r) >= 7 and r[6].isdigit()}
+    except (OSError, csv.Error):
+        stamps = {}
+    return {rel: (*tuple(row)[:3], stamps.get(rel)) for rel, row in rows.items()}
 
 
 def staleness_report(target_dir, full=False, notice=None):
@@ -2616,7 +2628,7 @@ def deploy_from_payload(payload, target, src_root, head):
             with tmp.open('a', newline='', encoding='utf-8') as stream:
                 writer = csv.writer(stream)
                 for rel in sorted(hashes.keys() - rows.keys()):
-                    digest, size, _mtime = hashes[rel]
+                    digest, size = hashes[rel][:2]
                     writer.writerow([rel, digest, size, '', '', ''])
         replace_file(tmp, dst)
     finally:
@@ -3332,7 +3344,7 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
                         cache=cache, full_verify=args.full_verify, code_only=reuse, verified=verified,
                         deploying_target="editor" if exe_name.casefold() == "mission editor.exe" else "game")
     if getattr(args, "skip_kit", False):
-        hashes = {rel: row for rel, row in previous.items() if rel.startswith("mods/")} | hashes
+        hashes = carry_rows({rel: row for rel, row in previous.items() if rel.startswith("mods/")}, target) | hashes
     if kit_manifest:
         try:
             phase_started = time.perf_counter()

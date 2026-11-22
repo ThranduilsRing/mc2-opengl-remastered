@@ -184,3 +184,15 @@ def test_write_manifest_records_dest_stamp(tmp_path):
     row = list(csv.reader(open(d / dp.MANIFEST_NAME)))[2]
     assert row[6] == str((d / "a.txt").stat().st_mtime_ns)
     assert dp.staleness_report(str(d))["skipped"] == 1
+
+
+def test_carried_rows_keep_earlier_stamp_not_a_new_one(tmp_path):
+    d = _make_target(tmp_path, {"a.txt": "aaa"})
+    _stamp(d)
+    old = int(list(csv.reader(open(d / dp.MANIFEST_NAME)))[2][6])
+    (d / "a.txt").write_text("changed-after-hash", encoding="utf-8")  # bytes change; the carried hash does not
+    rows = dp.carry_rows(dp.read_manifest(str(d)), str(d))
+    assert rows["a.txt"][3] == old
+    dp.write_manifest(str(d), rows, "deadbeef" * 5)
+    rep = dp.staleness_report(str(d))
+    assert rep["stale"] == ["a.txt"] and rep["skipped"] == 0

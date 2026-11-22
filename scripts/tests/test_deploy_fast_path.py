@@ -122,7 +122,7 @@ def test_code_only_keeps_static_payload_and_does_not_cook(tmp_path, monkeypatch)
     monkeypatch.setattr(dp, "ensure_engine_normal_cooks", lambda *a: pytest.fail("normals recooked"))
     monkeypatch.setattr(dp, "verify_engine_normals_present", lambda *a: None)
     retained = dp.deploy([], target, False, cache=hashes, code_only=True)
-    assert retained == hashes
+    assert {k: v[:3] for k, v in retained.items()} == hashes  # retained rows also carry the earlier dest stamp
     assert (Path(target) / rel).read_bytes() == Path(src).read_bytes()
 
 
