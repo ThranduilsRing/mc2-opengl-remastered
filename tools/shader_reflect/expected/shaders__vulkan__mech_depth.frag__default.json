@@ -112,6 +112,34 @@
           "name": "prevFromCurClip",
           "offset": 224,
           "type": "mat4"
+        },
+        {
+          "array_stride": 16,
+          "matrix_stride": null,
+          "name": "sunAuthFromLive",
+          "offset": 288,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "pitchUndo",
+          "offset": 336,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "ambRelight",
+          "offset": 352,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "sunRelight",
+          "offset": 368,
+          "type": "vec4"
         }
       ],
       "name": "MechFrameUBO"

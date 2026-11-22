@@ -181,6 +181,34 @@
           "name": "prevFromCurClip",
           "offset": 224,
           "type": "mat4"
+        },
+        {
+          "array_stride": 16,
+          "matrix_stride": null,
+          "name": "sunAuthFromLive",
+          "offset": 288,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "pitchUndo",
+          "offset": 336,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "ambRelight",
+          "offset": 352,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "sunRelight",
+          "offset": 368,
+          "type": "vec4"
         }
       ],
       "name": "MechFrameUBO"
@@ -1073,6 +1101,41 @@
           "matrix_stride": null,
           "name": "sceneLight",
           "offset": 160,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "sunDirLive",
+          "offset": 176,
+          "type": "vec4"
+        },
+        {
+          "array_stride": 16,
+          "matrix_stride": null,
+          "name": "sunAuthFromLive",
+          "offset": 192,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "pitchUndo",
+          "offset": 240,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "ambRelight",
+          "offset": 256,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "sunRelight",
+          "offset": 272,
           "type": "vec4"
         }
       ],

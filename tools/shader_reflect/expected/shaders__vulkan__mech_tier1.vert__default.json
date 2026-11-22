@@ -11,7 +11,7 @@
           "matrix_stride": null,
           "name": "instances",
           "offset": 0,
-          "type": "_438"
+          "type": "_471"
         }
       ],
       "name": "InstanceBuffer"
@@ -24,7 +24,7 @@
           "matrix_stride": null,
           "name": "bones",
           "offset": 0,
-          "type": "_491"
+          "type": "_524"
         }
       ],
       "name": "BoneBuffer"
@@ -37,7 +37,7 @@
           "matrix_stride": null,
           "name": "light",
           "offset": 0,
-          "type": "_105"
+          "type": "_147"
         }
       ],
       "name": "LightsData"
@@ -152,6 +152,34 @@
           "name": "prevFromCurClip",
           "offset": 224,
           "type": "mat4"
+        },
+        {
+          "array_stride": 16,
+          "matrix_stride": null,
+          "name": "sunAuthFromLive",
+          "offset": 288,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "pitchUndo",
+          "offset": 336,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "ambRelight",
+          "offset": 352,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "sunRelight",
+          "offset": 368,
+          "type": "vec4"
         }
       ],
       "name": "MechFrameUBO"

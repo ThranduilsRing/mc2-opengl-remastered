@@ -11,7 +11,7 @@
           "matrix_stride": null,
           "name": "i",
           "offset": 0,
-          "type": "_389"
+          "type": "_419"
         }
       ],
       "name": "Instances"
@@ -112,7 +112,7 @@
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "terrainSunMC2",
+          "name": "sway",
           "offset": 80,
           "type": "vec4"
         },
@@ -239,6 +239,41 @@
           "matrix_stride": null,
           "name": "sceneLight",
           "offset": 160,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "sunDirLive",
+          "offset": 176,
+          "type": "vec4"
+        },
+        {
+          "array_stride": 16,
+          "matrix_stride": null,
+          "name": "sunAuthFromLive",
+          "offset": 192,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "pitchUndo",
+          "offset": 240,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "ambRelight",
+          "offset": 256,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "sunRelight",
+          "offset": 272,
           "type": "vec4"
         }
       ],
