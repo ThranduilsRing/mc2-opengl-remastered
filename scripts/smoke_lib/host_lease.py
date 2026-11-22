@@ -218,6 +218,24 @@ def slot_device(slot: int) -> str:
     return devices[slot % len(devices)]
 
 
+def vram_usage_by_selector() -> dict:
+    """{"<name>@<uuid>": dedicated VRAM bytes in use}; {} when the counters are unavailable."""
+    try:
+        ga = _gpu_adapters()
+        usage = ga.dedicated_usage()
+        return {ga.selector(r): usage[r["luid"]] for r in ga.adapters() if r["luid"] in usage}
+    except Exception:
+        return {}
+
+
+def order_free_slots(free, slot_devices, usage_by_selector, secondary):
+    """Free slots, least dedicated VRAM in use first; the non-display card breaks ties and is the whole order
+    when usage is unknown for any of them. slot_devices: slot -> selector (callable or mapping)."""
+    dev = slot_devices if callable(slot_devices) else slot_devices.__getitem__
+    known = all(dev(i) in usage_by_selector for i in free)
+    return sorted(free, key=lambda i: ((usage_by_selector[dev(i)] if known else 0), dev(i) != secondary))
+
+
 def device_hint(env=None) -> Optional[str]:
     """The PC lease chooses the card; other hosts retain explicit device overrides."""
     if runtime_lane_adapter():
@@ -852,7 +870,7 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
                         and i not in owner_slots
                         and not any(affinity_mask(i) & mask for mask in occupied)]
                 if pc_adapter:
-                    free.sort(key=lambda i: slot_device(i) != secondary)
+                    free = order_free_slots(free, slot_device, vram_usage_by_selector(), secondary)
                 legacy = any("slot" not in rec for _, rec in live) or (lease_path().exists() and _read(lease_path()) is None)
                 eligible = queue[0] == ticket and not (foreign and (not pc_adapter or exclusive)) and not legacy and not (priority == 1 and gate_window_blocks()) and (not live if exclusive else
                             bool(free) and not any(r.get("exclusive") for _, r in live))
