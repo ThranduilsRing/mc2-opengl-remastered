@@ -95,12 +95,11 @@ def test_shader_inventory_honours_manifest_prune(tmp_path, monkeypatch):
     rel = "shaders/vulkan/water_reflection.comp"
     shipped = [(str(live), "shaders/vulkan/live.frag.spv", "shader")]
     monkeypatch.setattr(dp, "enumerate_payload", lambda *args, **kwargs: shipped)
-    monkeypatch.setattr(dp, "verify_engine_normals_present", lambda *a: None)
     real_deploy = dp.deploy
     deployed = []
     def deploy(*args, **kwargs):
         deployed.append(args[0])
-        assert kwargs == {"code_only": True}
+        assert kwargs == {"code_only": True, "verify_normals": False}
         return real_deploy(*args, **kwargs)
     monkeypatch.setattr(dp, "deploy", deploy)
     for ownership in ("unchanged", "modified", "unowned"):

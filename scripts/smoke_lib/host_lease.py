@@ -95,6 +95,7 @@ def waiver_active(now: Optional[float] = None) -> bool:
         return False   # an empty or half-written waiver must never raise the slot count
 
 
+ONE_CARD_PATH = Path("A:/Games/mc2-ops/GPU_ONE_CARD")   # "display" | "lane": game runs on that XTX only
 GPU_SPLIT_PATH = Path("A:/Games/mc2-ops/GPU_SPLIT")   # lines `slot0=AMD`, `slot1=NVIDIA` (device-name substrings, like MC2_VK_DEVICE)
 GPU_SPLIT_DEFAULT = ("AMD", "AMD")
 DEVICE_ALIASES = {"AMD": ("amd", "radeon", "xtx", "7900"), "NVIDIA": ("nvidia", "geforce", "rtx", "2070")}
@@ -127,7 +128,15 @@ def lane_devices() -> tuple:
         return GPU_SPLIT_DEFAULT
     if runtime_lane_adapter():
         _ga = _gpu_adapters(); adapters, selector = _ga.adapters, _ga.selector
-        return tuple(selector(r) for r in adapters() if "7900 XTX" in r["name"])
+        rows = [r for r in adapters() if "7900 XTX" in r["name"]]
+        # Owner kill-switch after driver crashes: the file holds "display" or "lane" and leaves one game slot on that card.
+        try:
+            mode = ONE_CARD_PATH.read_text(encoding="utf-8").strip().lower()
+        except OSError:
+            mode = ""
+        if mode in ("display", "lane"):
+            rows = [r for r in rows if r["display"] is (mode == "display")] or rows
+        return tuple(selector(r) for r in rows)
     try:
         return _parse_gpu_split(GPU_SPLIT_PATH.read_text(encoding="utf-8"))
     except OSError:

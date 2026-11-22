@@ -1873,7 +1873,8 @@ def ensure_terrain_materials(target_dir):
 
 
 def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
-           full_verify=False, code_only=False, verified=None, deploying_target="game"):
+           full_verify=False, code_only=False, verified=None, deploying_target="game",
+           verify_normals=True):
     """Copy + verify the payload.
 
     Hash receipts retain source and destination metadata plus the hash verified
@@ -1888,7 +1889,8 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
                   if not rel.startswith(("shaders/", "shaders_vk/"))} if code_only else ensure_terrain_materials(target_dir)
     if not code_only:
         ensure_engine_normal_cooks(target_dir)
-    else:
+    elif verify_normals:
+        # The shader-inventory dry run deploys into an empty temp dir with no textures.
         verify_engine_normals_present(target_dir)
     shader_mismatches = []
     pdb_problem = None
@@ -2477,7 +2479,7 @@ def shader_inventory_problems(source_root, published):
         if manifest.is_file():
             shutil.copyfile(manifest, Path(tmp) / MANIFEST_NAME)
         hashes = deploy([(src, rel, kind) for src, rel, kind in items if rel in shipped],
-                        tmp, False, code_only=True)
+                        tmp, False, code_only=True, verify_normals=False)
         write_manifest(tmp, hashes, "shader-inventory")
         left = {p.relative_to(tmp).as_posix() for p in (Path(tmp) / 'shaders').rglob('*') if p.is_file()}
     if left != set(expected):
