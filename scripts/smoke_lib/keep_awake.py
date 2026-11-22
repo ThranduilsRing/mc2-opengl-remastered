@@ -1,8 +1,10 @@
-"""Keep the display awake while a harness runs the game.
+"""Keep the display and system awake while a harness runs the game.
 
-A screensaver that starts mid-run takes the GPU and stalls every present (perf-rerank-1121, 11-22: Ribbons.scr, frames
-260-290 ms). ES_CONTINUOUS | ES_DISPLAY_REQUIRED holds for the calling thread until it exits, so the screensaver and
-display sleep do not arm during the run; an already running screensaver is not stopped (that is the owner's session).
+A screensaver or display sleep that arms mid-run competes for the GPU and the present path, and the PC must not sleep during
+a run. ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED holds for the calling thread until it exits, so the idle
+timers do not fire during the run; it does not stop an already running screensaver (that is the owner's session). It did
+NOT explain the 11-22 present stalls (260-790 ms per frame also without any screensaver; see W135-queue 11:44, likely
+cross-adapter present with the display XTX disabled).
 """
 import sys
 
