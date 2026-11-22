@@ -47,7 +47,10 @@ inline float ambientRatio(const AuthoredSun& a, const std::array<unsigned char, 
 inline float pitchGain(const AuthoredSun& a, float livePitchDeg) {
     if (!a.valid || a.pitch <= 0.0f || a.pitch == livePitchDeg || livePitchDeg <= 0.0f) return 1.0f;
     const float k = 0.01745329252f;
-    return std::sqrt(std::sin(a.pitch * k) / std::sin(livePitchDeg * k));   // sqrt: movers keep an ambient share the pitch does not touch
+    const float sinLive = std::sin(livePitchDeg * k);
+    if (!(sinLive > 0.0f)) return 1.0f;   // live pitch in [180, 360): sun below the horizon, no ratio (a NaN here made the mission lighting compare unequal every frame)
+    const float g = std::sqrt(std::sin(a.pitch * k) / sinLive);   // sqrt: movers keep an ambient share the pitch does not touch
+    return std::isfinite(g) ? g : 1.0f;
 }
 
 // Camera::init, after a save's block has been read: the authored sun a keyed save carries wins over the (already keyed)

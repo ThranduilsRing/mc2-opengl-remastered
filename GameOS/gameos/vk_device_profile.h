@@ -482,7 +482,7 @@ inline std::string pipelineCacheStem(uint32_t vendor, uint32_t device, uint32_t 
     char buf[160]{};
     size_t at = static_cast<size_t>(std::snprintf(buf, sizeof(buf), "%08x-%08x-%08x-", vendor, device, driver));
     for (const uint8_t b : uuid) at += static_cast<size_t>(std::snprintf(buf + at, sizeof(buf) - at, "%02x", b));
-    std::snprintf(buf + at, sizeof(buf) - at, "_k%08x", extKey);
+    if (extKey) std::snprintf(buf + at, sizeof(buf) - at, "_k%08x", extKey);   // key 0 (no tier): the old stem, so existing caches stay valid
     return buf;
 }
 

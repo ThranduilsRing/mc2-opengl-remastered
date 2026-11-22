@@ -93,7 +93,7 @@ TEST_CASE("ext tier: the AMD proprietary driver gets the eight parts but not gpl
 
 TEST_CASE("ext tier: pipeline cache file name carries the key") {
     const uint8_t uuid[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 255};
-    CHECK(vkp::pipelineCacheStem(0x1002, 0x744c, 7, uuid, 0) == "00001002-0000744c-00000007-000102030405060708090a0b0c0d0eff_k00000000");
+    CHECK(vkp::pipelineCacheStem(0x1002, 0x744c, 7, uuid, 0) == "00001002-0000744c-00000007-000102030405060708090a0b0c0d0eff");   // key 0 = old stem, no suffix
     CHECK(vkp::pipelineCacheStem(0x1002, 0x744c, 7, uuid, 0xdeadbeef).ends_with("_kdeadbeef"));
     CHECK(vkp::pipelineCacheStem(0x1002, 0x744c, 7, uuid, 1) != vkp::pipelineCacheStem(0x1002, 0x744c, 7, uuid, 2));
 }
