@@ -309,7 +309,8 @@ RETIRED_SEED_PAYLOAD = {
 def prune_retired_seed_payload(target_dir, preserve=()):
     preserved = {str(p).replace("\\", "/").strip("/").casefold() for p in preserve}
     for rel, digest in RETIRED_SEED_PAYLOAD.items():
-        if rel.casefold() in preserved:
+        key = rel.replace("\\", "/").strip("/").casefold()
+        if any(key == p or key.startswith(p + "/") for p in preserved):
             log(f"preserved retired seed payload: {rel}")
             continue
         p = Path(target_dir) / rel

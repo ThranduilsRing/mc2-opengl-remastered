@@ -81,3 +81,24 @@ def test_retired_seed_payload_is_not_pinned_as_stock():
     stock = json.loads((repo / "data/kit/stock-textures.json").read_text())["sha256"]
     retired = set(dp.RETIRED_SEED_PAYLOAD.values())
     assert not [k for k, v in stock.items() if retired & set(v if isinstance(v, list) else [v])]
+
+
+def test_prune_retired_seed_payload_honours_directory_prefix(tmp_path, monkeypatch):
+    tgl = tmp_path / "data" / "tgl"
+    tgl.mkdir(parents=True)
+    kept, gone = tgl / "quonset.ini", tgl / "hangar.ini"
+    for f in (kept, gone):
+        f.write_bytes(b"retired")
+        monkeypatch.setitem(dp.RETIRED_SEED_PAYLOAD, "data/tgl/" + f.name, dp.sha256_file(f))
+    dp.prune_retired_seed_payload(str(tmp_path), preserve={"data/tgl"})
+    assert kept.exists() and gone.exists()
+
+
+def test_prune_retired_seed_payload_partial_prefix_does_not_preserve(tmp_path, monkeypatch):
+    tgl = tmp_path / "data" / "tgl"
+    tgl.mkdir(parents=True)
+    kept = tgl / "quonset.ini"
+    kept.write_bytes(b"retired")
+    monkeypatch.setitem(dp.RETIRED_SEED_PAYLOAD, "data/tgl/quonset.ini", dp.sha256_file(kept))
+    dp.prune_retired_seed_payload(str(tmp_path), preserve={"data/tg"})
+    assert not kept.exists()
