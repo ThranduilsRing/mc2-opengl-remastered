@@ -25,6 +25,13 @@ struct EnvironmentUBO {
     float   shDiffuse[9][4];  // @vec4xN .w pad each
     float   hemiSky[4];       // @vec4 mission ambient hemisphere (rgb x unitAmbientScale), the fallback without SH; .w = linear ambient-key ratio for prop SH light floors (1 = no keys)
     float   sceneLight[4];    // @vec4 x = prelit ground scale (mission night scale, 1 = day); yzw = live/authored flat-light ratio applied to prelit art (1 = no sun keys)
+    // One sun (S4). Live direction/colours drive shadows, clouds and glint; the authored sun drives the shading of ground, props and mechs.
+    // Everything below is exactly identity / 1 with no sun keys, at night and with no mission.
+    float   sunDirLive[4];        // @vec4 xyz = gos_GetTerrainLightDir (live, not normalised); w = live flat-light z, clamped 0..1
+    float   sunAuthFromLive[3][4]; // @vec4xN columns of the rotation live sun direction -> authored direction; [0].w = 1 when an authored sun record exists
+    float   pitchUndo[4];         // @vec4 rgb = authored flat light at the authored elevation / at the live elevation (prop sun term, encoded space)
+    float   ambRelight[4];        // @vec4 rgb = flat-light ratio x authored ambient / live ambient (mover ambient)
+    float   sunRelight[4];        // @vec4 rgb = live sun colour / authored sun colour (glint and specular colour)
 };
 
 #include "GpuEnvironment.layout.gen.h"

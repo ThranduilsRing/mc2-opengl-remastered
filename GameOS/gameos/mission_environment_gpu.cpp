@@ -36,6 +36,16 @@ void fillGpu(const RenderCore::MissionEnvironment& env, float sceneLightScale, E
     out.hemiSky[3] = ambientLin;
     out.sceneLight[0] = sceneLightScale;
     for (int c = 0; c < 3; ++c) out.sceneLight[1 + c] = env.lighting.flatRatio[c];   // the sun keys' move of the flat light, applied to prelit art
+    const auto& l = env.lighting;
+    for (int c = 0; c < 3; ++c) {
+        out.sunDirLive[c] = l.effectiveDirection[c];
+        for (int col = 0; col < 3; ++col) out.sunAuthFromLive[col][c] = l.authFromLive[col][c];
+        out.pitchUndo[c] = l.pitchUndo[c];
+        out.ambRelight[c] = l.ambRelight[c];
+        out.sunRelight[c] = l.sunRelight[c];
+    }
+    out.sunDirLive[3] = l.sunZ;
+    out.sunAuthFromLive[0][3] = l.authoredValid ? 1.0f : 0.0f;
 }
 
 }

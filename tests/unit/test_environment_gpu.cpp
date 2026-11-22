@@ -153,3 +153,55 @@ TEST_CASE("EnvironmentGpu/mech sun gain is 1 without keys and sqrt(sin(authored)
     a.pitch = 0.0f;
     CHECK(pitchGain(a, 28.0f) == 1.0f);              // keyed save without the authored pitch
 }
+
+TEST_CASE("EnvironmentGpu/one sun: layout, and every field exactly identity/1 with no keys, at night, with no mission and for an old save") {
+    using namespace mc2::authored_sun;
+    static_assert(sizeof(EnvironmentUBO) == 288);
+    static_assert(offsetof(EnvironmentUBO, sunDirLive) == 176 && offsetof(EnvironmentUBO, sunAuthFromLive) == 192 && offsetof(EnvironmentUBO, pitchUndo) == 240 &&
+                  offsetof(EnvironmentUBO, ambRelight) == 256 && offsetof(EnvironmentUBO, sunRelight) == 272);
+    const std::array<unsigned char,3> sun{255, 255, 225}, amb{71, 71, 78};
+    const Vec3 live = normalized3({0.7f, 0.5f, 0.6f});
+    const std::array<float,3> one{1.0f, 1.0f, 1.0f};
+    const OneSun id{};
+    auto isId = [&](OneSun s) { s.authoredValid = false; return s == id; };   // the record-exists flag is not a value
+    AuthoredSun a = resolve(sun, amb, false, {}, {});
+    a.pitch = 36.87f; a.yaw = 12.0f; a.hasYaw = true;
+    CHECK(isId(oneSun(a, live, 36.87f, 12.0f, sun, amb, 0.6f, one, 0)));              // no keys: live angles == authored angles
+    CHECK(isId(oneSun(AuthoredSun{}, live, 20.0f, 0.0f, {255, 214, 160}, {50, 50, 55}, 0.34f, one, 0)));   // night / no mission: no record
+    a.hasYaw = false;                                                                  // an old keyed save has no yaw: the live yaw stands in
+    CHECK(isId(oneSun(a, live, 36.87f, 99.0f, sun, amb, 0.6f, one, 0)));
+    // the producer carries the identity through
+    EnvironmentUBO def{};
+    mc2::environment::fillGpu(RenderCore::MissionEnvironment{}, 1.0f, def);
+    for (int c = 0; c < 3; ++c) {
+        CHECK((def.pitchUndo[c] == 1.0f && def.ambRelight[c] == 1.0f && def.sunRelight[c] == 1.0f));
+        for (int col = 0; col < 3; ++col) CHECK(def.sunAuthFromLive[col][c] == (col == c ? 1.0f : 0.0f));
+    }
+    CHECK(def.sunAuthFromLive[0][3] == 0.0f);
+}
+
+TEST_CASE("EnvironmentGpu/one sun: keyed values (pitch 45 -> 28, colour 255/214/160, ambient x0.70)") {
+    using namespace mc2::authored_sun;
+    const std::array<unsigned char,3> sun{255, 255, 225}, amb{71, 71, 78}, keySun{255, 214, 160}, keyAmb{50, 50, 55};
+    AuthoredSun a = resolve(sun, amb, false, {}, {});
+    a.pitch = 45.0f; a.yaw = 0.0f; a.hasYaw = true;
+    const float k = 0.01745329252f;
+    const Vec3 live = {std::cos(45.0f * k), std::sin(45.0f * k), std::sin(28.0f * k)};
+    const float zLive = std::sin(28.0f * k), zAuth = std::sin(45.0f * k);
+    const auto R = flatRatio(a, keySun, keyAmb, zLive, 0);
+    const auto s = oneSun(a, live, 28.0f, 0.0f, keySun, keyAmb, zLive, R, 0);
+    // the rotation takes the live direction to the authored one and keeps lengths
+    const Vec3 ln = normalized3(live), want = authoredDir(a, 0.0f);
+    Vec3 got{};
+    for (int c = 0; c < 3; ++c) for (int r = 0; r < 3; ++r) got[r] += s.authFromLive[c][r] * ln[c];
+    for (int i = 0; i < 3; ++i) CHECK(got[i] == doctest::Approx(want[i]).epsilon(1e-4));
+    // pitchUndo: authored flat light at the authored elevation over the live elevation, per channel (bytes truncate like Camera::getLight)
+    for (int i = 0; i < 3; ++i) {
+        const float num = std::floor(sun[i] * zAuth + amb[i]), den = std::floor(sun[i] * zLive + amb[i]);
+        CHECK(s.pitchUndo[i] == doctest::Approx(std::min(num, 255.0f) / std::min(den, 255.0f)));
+        CHECK(s.pitchUndo[i] > 1.0f);                    // a lower live sun: the undo brightens
+        CHECK(s.sunRelight[i] == doctest::Approx(float(keySun[i]) / float(sun[i])));
+        CHECK(s.ambRelight[i] == doctest::Approx(R[i] * float(amb[i]) / float(keyAmb[i])));
+    }
+    CHECK(s.authoredValid);
+}
