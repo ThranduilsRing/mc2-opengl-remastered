@@ -291,6 +291,24 @@ IMPORTED_STRUCTURE_PAYLOAD = [
     "data/tgl/MarbleCliffGLB.glb",
 ]
 
+# Retired repo payload that lean-seed installs still carry (the deploy manifest never owned them, so retire_unowned
+# cannot prune them). Removed only when the bytes match the retired file. data/tgl/quonset.ini silently replaced the
+# stock quonset through [Import] with QuonsetGLB (PBR roof), lighting four huts unlike the stock Quonset2 (quonset-light-2).
+RETIRED_SEED_PAYLOAD = {
+    "data/tgl/quonset.ini": "71fb4ec98d1cf2149e1ef6dfc5568de1442da54f010acac3329de9ceaa64fce2",
+    "data/tgl/QuonsetGLB.glb": "f11603d9d313367db94e2334739c9c595714336ddab41f92035d7ee26a22dff1",
+    "data/tgl/QuonsetGLB.mcasset.json": "bcc095d0a858de35445a35c8fc24024da1dcd050803156a028228cdc216f199f",
+}
+
+
+def prune_retired_seed_payload(target_dir):
+    for rel, digest in RETIRED_SEED_PAYLOAD.items():
+        p = Path(target_dir) / rel
+        if p.is_file() and sha256_file(p) == digest:
+            p.unlink()
+            log(f"pruned retired seed payload: {rel}")
+
+
 # Renderer config JSON read directly off "data/<name>.json" relative paths by
 # GameOS/gameos (terrain_material_lib.cpp, visual_tuning_profile.cpp) -- both
 # game AND editor installs load these (shared renderer core), so they must
@@ -1959,6 +1977,7 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
         log("PDB check OK: deployed PDB matches source hash")
 
     sweep_asides(target_dir)
+    prune_retired_seed_payload(target_dir)
     retire_unowned(target_dir, src_hashes, preserve,
                    deploying_target=deploying_target,
                    own_shaders=any(kind == "shader" and rel.startswith("shaders/vulkan/") and rel.endswith(".spv")
