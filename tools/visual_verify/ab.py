@@ -456,6 +456,21 @@ def lane_base_ref():
     return out.stdout.strip() or None
 
 
+def arm_exe_record(arm, exe):
+    """{arm, path, exe_sha256} of the exe about to launch; prints the one [AB] line so the logs say which exe each arm ran."""
+    with open(exe, "rb") as stream:
+        digest = hashlib.file_digest(stream, "sha256").hexdigest()
+    print(f"[AB] arm={arm} exe_sha256={digest} path={exe}", flush=True)
+    return {"arm": arm, "path": str(exe), "exe_sha256": digest}
+
+
+def same_exe_warning(rec_a, rec_b):
+    """WARNING line when both arms launched byte-identical exes (they are meant to differ), else None."""
+    if rec_a["exe_sha256"] == rec_b["exe_sha256"]:
+        return f"[AB] WARNING: arm A and arm B launched the same exe (sha256 {rec_a['exe_sha256']}); the A/B compares a build with itself"
+    return None
+
+
 def exe_a_base_check(commit_a, commit_b):
     """(warning line or None, {exe_a, lane_base} or None) when the A exe is not built from the lane base (the merge-base of
     B and the lane base branch). A clean A/B has the A exe built exactly at the lane base; anything else may be cross-base."""
@@ -695,7 +710,7 @@ def stamp_cross_base(img: Image.Image, text: str = "CROSS-BASE") -> Image.Image:
 
 
 def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None, cross_base=False, data_delta_accepted=None,
-            exe_a_base_mismatch=None, exe_a_swap=None, hud=False, data_parity=None, identity_receipt=None):
+            exe_a_base_mismatch=None, exe_a_swap=None, hud=False, data_parity=None, identity_receipt=None, exe_sha256=None):
     """Returns the compared rows; compare.problems lists missing/empty evidence (callers exit nonzero on it)."""
     if not bookmarks:
         bookmarks = discover_bookmarks(gl_dir, vk_dir)
@@ -773,7 +788,7 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None, cross_
     (out / "summary.json").write_text(json.dumps(
         {"gl": str(gl_dir), "vk": str(vk_dir), "threshold": THRESH, "cross_base": cross_base, "hud": hud,
          "data_delta_accepted": list(data_delta_accepted or []), "exe_a_base_mismatch": exe_a_base_mismatch,
-         "exe_a_swap": exe_a_swap, "data_parity": data_parity, "eol_equivalences": list(identity_receipt or []),
+         "exe_a_swap": exe_a_swap, "exe_sha256": exe_sha256, "data_parity": data_parity, "eol_equivalences": list(identity_receipt or []),
          "cross_data": bool(data_parity and data_parity.get("cross_data")),
          "rows": rows, "poses_compared": len(rows), "problems": problems,
          "gpu": {"a": gpu_a, "b": gpu_b, "same": gpu_a == gpu_b}}, indent=2))
@@ -1488,8 +1503,13 @@ def main(argv=None):
         if base_line:
             print("[ab] WARNING: " + base_line, flush=True)
         env = ["MC2_RENDER_BACKEND=vulkan", "MC2_VK_SHARED_GBUFFER=1"] + pin_stock_overlay_concrete(a.env) + env_pin.focus_declarations(a.focus, a.focus_zoom)
+        exe_recs = [arm_exe_record("A", game_executable(ia))]
         run_capture(ia, a.bookmarks, out / "a", env, hud=a.hud, allow_asset_drift=a.allow_asset_drift)
         stamp_identity(out / "a", identities[0])
+        exe_recs.append(arm_exe_record("B", game_executable(ib)))
+        same_exe = same_exe_warning(*exe_recs)
+        if same_exe:
+            print(same_exe, flush=True)
         run_capture(ib, a.bookmarks, out / "b", env, hud=a.hud, allow_asset_drift=a.allow_asset_drift)
         stamp_identity(out / "b", identities[1])
         for line in capture_commit_report(identities[0]["commit"], identities[1]["commit"], worktree_head()):
@@ -1498,7 +1518,7 @@ def main(argv=None):
             print(line, flush=True)
         compare(out / "a", out / "b", out / "cmp", crops, [bookmark_sets.spec_stem(s) for s in a.bookmarks.split(",") if s.strip()],
                 cross_base=bool(bad), exe_a_base_mismatch=exe_a_base_mismatch, exe_a_swap=exe_a_swap, hud=a.hud,
-                data_parity=dpar, identity_receipt=identity_receipt)
+                data_parity=dpar, identity_receipt=identity_receipt, exe_sha256=exe_recs)
         rc = 1 if getattr(compare, "problems", None) else 0
     finally:
         cleanup_stage(a.staged, keep=a.keep_stage)  # a/, b/ and cmp/ stay; the 13 GB stage goes, pass or fail
