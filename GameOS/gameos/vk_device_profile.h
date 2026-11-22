@@ -19,6 +19,7 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <span>
 #include <string>
 #include <string_view>
@@ -484,6 +485,46 @@ inline std::string pipelineCacheStem(uint32_t vendor, uint32_t device, uint32_t 
     for (const uint8_t b : uuid) at += static_cast<size_t>(std::snprintf(buf + at, sizeof(buf) - at, "%02x", b));
     if (extKey) std::snprintf(buf + at, sizeof(buf) - at, "_k%08x", extKey);   // key 0 (no tier): the old stem, so existing caches stay valid
     return buf;
+}
+
+// App pipeline cache file envelope. `buildId` ties the blob to the exe that wrote it: a driver blob made by an older exe was reused after deploys and the AMD
+// ICD silently dropped draws with it (owner install 11-21). The magic changes with the layout, so older files fail it and are deleted.
+struct PipeCacheHeader {
+    uint64_t magic = 0x324548434143324dull;   // "M2CACHE2"
+    uint64_t bytes = 0, hash = 0;
+    uint32_t vendor = 0, device = 0, driver = 0;
+    unsigned char uuid[16]{};
+    uint64_t buildId = 0;
+};
+
+inline uint64_t buildIdFromLiteral(std::string_view s) {
+    uint64_t h = 14695981039346656037ull;
+    for (const char c : s) { h ^= static_cast<unsigned char>(c); h *= 1099511628211ull; }
+    return h ? h : 1ull;
+}
+
+// nullptr when the header read from a file of `fileBytes` matches `want` (device identity + this exe's buildId); otherwise the reject reason.
+inline const char* pipelineCacheEnvelopeReject(const PipeCacheHeader* got, uint64_t fileBytes, const PipeCacheHeader& want, uint64_t maxBytes) {
+    if (!got || fileBytes < sizeof(PipeCacheHeader)) return "truncated";
+    if (got->magic != want.magic) return "old_format";
+    if (got->vendor != want.vendor || got->device != want.device || got->driver != want.driver || std::memcmp(got->uuid, want.uuid, 16) != 0) return "device_mismatch";
+    if (got->buildId != want.buildId) return "build_mismatch";
+    if (got->bytes < 32 || got->bytes > maxBytes || fileBytes != sizeof(PipeCacheHeader) + got->bytes) return "truncated";
+    return nullptr;
+}
+
+// "<vendor>-<device>-": files with this prefix but another driver/uuid stem belong to an older driver of the same GPU.
+inline std::string pipelineCacheDevicePrefix(uint32_t vendor, uint32_t device) {
+    char buf[32]{};
+    std::snprintf(buf, sizeof(buf), "%08x-%08x-", vendor, device);
+    return buf;
+}
+
+// True when `name` (a .bin file name) is stale next to the live `current` file: same device but another driver/uuid, or the retired key-0 orphan "_k00000000".
+inline bool pipelineCacheSiblingStale(std::string_view name, std::string_view current, std::string_view devicePrefix, std::string_view driverStem) {
+    if (name == current || !name.ends_with(".bin") || !name.starts_with(devicePrefix)) return false;
+    if (!name.starts_with(driverStem)) return true;
+    return name.substr(driverStem.size()) == "_k00000000.bin";
 }
 
 // Picks the extension parts from the device caps. Each part needs its extension, its feature bit and its registry dependencies and is judged independently, as
