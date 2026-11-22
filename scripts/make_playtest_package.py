@@ -144,7 +144,8 @@ def excluded(rel):
     importer = rel in {'tools/import_campaign.py', 'scripts/console_child.py',
         'scripts/smoke_lib/child_registry.py'} or rel.startswith(
         ('tools/mc2_import/', 'tools/mc2x_import/', 'tools/mco_import/'))
-    return (bool(set(p.parts) & SKIP_DIRS) or any(x.startswith('sample_') for x in p.parts)
+    # paks/stock.mc2pak is a derived repack of the shipped FSTs; startup falls back to the FSTs without it.
+    return (bool(set(p.parts) & SKIP_DIRS) or rel.startswith('paks/') or any(x.startswith('sample_') for x in p.parts)
             or 'bt2018_mechs' in p.parts
             or low.startswith(tuple(token.decode().lower() for token in release_asset_guard.TOKENS))
             or any(x in low for x in ('.bak', '.orig'))
