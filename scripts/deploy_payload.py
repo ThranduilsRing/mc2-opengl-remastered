@@ -1781,6 +1781,21 @@ def ensure_engine_normal_cooks(target_dir, cooker=subprocess.run):
         f.write(ENGINE_NORMAL_COOK_VERSION + "\n")
 
 
+def verify_engine_normals_present(target_dir):
+    """A code-only deploy skips the cook; the target must still hold all six normals and a current cook stamp (asset_parity does not check them)."""
+    tex = os.path.join(target_dir, "data", "textures")
+    problems = [f"mat{i}_normal.ktx2 missing" for i in range(6) if not os.path.isfile(os.path.join(tex, f"mat{i}_normal.ktx2"))]
+    try:
+        with open(os.path.join(tex, "engine_normals.cookver"), encoding="utf-8") as f:
+            found = f.read().strip()
+    except OSError:
+        found = None
+    if found != ENGINE_NORMAL_COOK_VERSION:
+        problems.append(f"engine_normals.cookver is {found!r}, expected {ENGINE_NORMAL_COOK_VERSION!r}")
+    if problems:
+        fail(f"engine normals in {tex} not deploy-ready ({'; '.join(problems)}); run a full (non code-only) deploy to cook them")
+
+
 # MC2_GOLDEN_MATERIAL_ROOT: a copy of the golden install's 14 material files (the Linux box has no A: drive); hashes are still checked.
 GOLDEN_MATERIAL_ROOT = Path(os.environ.get("MC2_GOLDEN_MATERIAL_ROOT") or "A:/Games/mc2-opengl/mc2-win64-v0.4c")
 MATERIAL_MANIFEST = Path(__file__).with_name("terrain_materials.json")
@@ -1846,6 +1861,8 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
                   if not rel.startswith(("shaders/", "shaders_vk/"))} if code_only else ensure_terrain_materials(target_dir)
     if not code_only:
         ensure_engine_normal_cooks(target_dir)
+    else:
+        verify_engine_normals_present(target_dir)
     shader_mismatches = []
     pdb_problem = None
     preserve = {p.replace(os.sep, "/") for p in preserve}

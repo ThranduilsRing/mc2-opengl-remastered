@@ -160,6 +160,7 @@ def test_readonly_hardlink_replacement_preserves_source(tmp_path, monkeypatch, r
             monkeypatch.setattr(deploy_payload, "seed_receipt_rows", lambda: {})
             deploy_payload.prepare_seed_delta([(str(source), rel, "support")], target, full_verify=True, allow_legacy=True)
         else:
+            monkeypatch.setattr(deploy_payload, "verify_engine_normals_present", lambda *a: None)
             deploy_payload.deploy([(str(source), rel, "support")], target, False, code_only=True)
         expected = b"seed bytes" if route == "seed" else b"new bytes"
         assert dst.read_bytes() == expected

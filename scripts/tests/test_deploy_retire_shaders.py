@@ -95,6 +95,7 @@ def test_shader_inventory_honours_manifest_prune(tmp_path, monkeypatch):
     rel = "shaders/vulkan/water_reflection.comp"
     shipped = [(str(live), "shaders/vulkan/live.frag.spv", "shader")]
     monkeypatch.setattr(dp, "enumerate_payload", lambda *args, **kwargs: shipped)
+    monkeypatch.setattr(dp, "verify_engine_normals_present", lambda *a: None)
     real_deploy = dp.deploy
     deployed = []
     def deploy(*args, **kwargs):
