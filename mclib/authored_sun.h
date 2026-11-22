@@ -50,7 +50,7 @@ inline float pitchGain(const AuthoredSun& a, float livePitchDeg) {
     const float sinLive = std::sin(livePitchDeg * k);
     if (!(sinLive > 0.0f)) return 1.0f;   // live pitch in [180, 360): sun below the horizon, no ratio (a NaN here made the mission lighting compare unequal every frame)
     const float g = std::sqrt(std::sin(a.pitch * k) / sinLive);   // sqrt: movers keep an ambient share the pitch does not touch
-    return std::isfinite(g) ? g : 1.0f;
+    return std::isfinite(g) ? std::clamp(g, 0.5f, 2.0f) : 1.0f;   // bounded: a near-horizon live sun must not blow the mover light rows up
 }
 
 // Camera::init, after a save's block has been read: the authored sun a keyed save carries wins over the (already keyed)

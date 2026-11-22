@@ -300,13 +300,18 @@ RETIRED_SEED_PAYLOAD = {
     "data/tgl/QuonsetGLB.mcasset.json": "bcc095d0a858de35445a35c8fc24024da1dcd050803156a028228cdc216f199f",
     "data/tgl/hangar.ini": "91d5dee7aa635fb3dfb4d352dcbe52d663f0b0730446f5cb8d6eb11adcee6ae3",
     "data/tgl/hangar.ini.cookstamp": "7190167cb86787999627e64504ce2196ec5e93f83e26844427db2798efea60f1",
+    "data/tgl/quonset.ini.cookstamp": "6258c7713cdcdb61701fba3e9d1840c0792f5aa4bd8583febf550a7517ea48d0",
     "data/tgl/HangarGLB.glb": "77ec151d3e4d5977a30506db8dd22b97c1daddb3acf742356b743ab2fcba3af3",
     "data/tgl/HangarGLB.mcasset.json": "45a8de06ad0100929615c66525d34f34ae4beecb748f1d0ecfb4c2a93a71ac02",
 }
 
 
-def prune_retired_seed_payload(target_dir):
+def prune_retired_seed_payload(target_dir, preserve=()):
+    preserved = {str(p).replace("\\", "/").strip("/").casefold() for p in preserve}
     for rel, digest in RETIRED_SEED_PAYLOAD.items():
+        if rel.casefold() in preserved:
+            log(f"preserved retired seed payload: {rel}")
+            continue
         p = Path(target_dir) / rel
         if p.is_file() and sha256_file(p) == digest:
             p.unlink()
@@ -1981,7 +1986,7 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
         log("PDB check OK: deployed PDB matches source hash")
 
     sweep_asides(target_dir)
-    prune_retired_seed_payload(target_dir)
+    prune_retired_seed_payload(target_dir, preserve)
     retire_unowned(target_dir, src_hashes, preserve,
                    deploying_target=deploying_target,
                    own_shaders=any(kind == "shader" and rel.startswith("shaders/vulkan/") and rel.endswith(".spv")
