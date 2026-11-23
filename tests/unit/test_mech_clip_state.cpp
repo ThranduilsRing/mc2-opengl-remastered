@@ -12,6 +12,9 @@
 #include "mech_skel_import.h"
 #include "save_archive.h"
 #include <assimp/scene.h>
+#include <assimp/Importer.hpp>
+#include <cstdlib>
+#include <cstdio>
 #include <string>
 
 using namespace mc2clip;
@@ -303,4 +306,79 @@ TEST_CASE("clip state: fades use longer prone transitions and advance outgoing c
     CHECK(advanceClipTime(0.5f, 0.1f, 2, 1, Mode::Loop) == doctest::Approx(0.7f));
     CHECK(advanceClipTime(0.9f, 0.1f, 2, 1, Mode::Loop) == doctest::Approx(0.1f));
     CHECK(advanceClipTime(0.9f, 0.1f, 2, 1, Mode::Once) == 1);
+}
+
+TEST_CASE("clip state: BT2018 planted stride bone oracle") {
+    // Optional external art, supplied by the lane's installed mod; never substituted by synthetic bones.
+    const char* root = std::getenv("BT2018_TEST_TGL");
+    if (!root) { WARN("BT2018 art unavailable: set BT2018_TEST_TGL to run the bone oracle"); return; }
+    for (const auto& asset : {std::pair{"hunchback", 0.089690f}, std::pair{"centurion", 0.089382f}}) {
+        Assimp::Importer importer;
+        const auto* scene = importer.ReadFile(std::string(root) + "/" + asset.first + ".glb", 0);
+        REQUIRE(scene != nullptr);
+        const aiAnimation* clip = nullptr;
+        for (unsigned i = 0; i < scene->mNumAnimations; ++i)
+            if (scene->mAnimations[i]->mName == aiString("atlas_moveCoreWalkFwd")) clip = scene->mAnimations[i];
+        REQUIRE(clip != nullptr);
+        const float duration = static_cast<float>(clip->mDuration / (clip->mTicksPerSecond ? clip->mTicksPerSecond : 1000));
+        const auto plan = mc2skel::BuildPlan(scene, {"j_LFoot", "j_RFoot"});
+        std::vector<aiVector3D> feet[2];
+        std::vector<mc2skel::GpuBone> bones;
+        for (int f = 0; f <= static_cast<int>(duration * 30); ++f) {
+            REQUIRE(mc2skel::EvaluateClipGpuBones(*plan, "atlas_moveCoreWalkFwd", static_cast<float>(f), bones));
+            for (int k = 0; k < 2; ++k) feet[k].push_back({bones[k].m[3], bones[k].m[7], bones[k].m[11]});
+        }
+        const auto stride = measureStride(feet, duration);
+        std::printf("[STRIDE_ORACLE] %s planted=%.6f estimate=%.6f selected=%.6f local u/s\n",
+            asset.first, stride.planted, stride.estimate, stride.speed());
+        CHECK(stride.planted == doctest::Approx(asset.second).epsilon(0.001).scale(0));
+        CHECK(stride.speed() == stride.planted);
+        CHECK(stride.estimate > stride.planted);
+    }
+}
+
+TEST_CASE("clip state: digitigrade contact-joint stride guard") {
+    // The lower j_Foot moves much faster than 2R/T: it is not the planted contact joint.
+    std::vector<aiVector3D> feet[2] = {{{0, 0, 0}, {0, 0, -1}, {0, 0, -2}},
+                                     {{0, 1, -2}, {0, 1, -1}, {0, 1, 0}}};
+    const auto stride = measureStride(feet, 1);
+    CHECK(stride.planted == doctest::Approx(30));
+    CHECK(stride.estimate == doctest::Approx(4));
+    CHECK(stride.speed() == stride.estimate);
+    CHECK(StrideMeasurement{1, 0.49f}.speed() == 1);
+    CHECK(StrideMeasurement{1, 0.5f}.speed() == 0.5f);
+    CHECK(StrideMeasurement{1, 1.1f}.speed() == 1.1f);
+}
+
+TEST_CASE("clip state: presentation clocks follow root alpha without changing simulation") {
+    mc2::sim::ImportedAnimState previous;
+    previous.activeClip = "walk"; previous.durationSec = 1; previous.playRate = 2;
+    previous.clipTimeSec = 0.98f;
+    const float dt = 1.0f / 30;
+    auto current = previous;
+    current.clipTimeSec = advanceClipTime(previous.clipTimeSec, dt, current.playRate, 1, Mode::Loop);
+    for (float alpha : {0.0f, 0.25f, 0.5f, 1.0f}) {
+        auto draw = current;
+        mc2::sim::presentImportedAnimation(previous, draw, alpha);
+        CHECK(draw.clipTimeSec == doctest::Approx(advanceClipTime(previous.clipTimeSec, alpha * dt, 2, 1, Mode::Loop)));
+    }
+    CHECK(previous.clipTimeSec == 0.98f);
+    auto draw = current;
+    previous = current; // paused: identical published clocks stay frozen
+    mc2::sim::presentImportedAnimation(previous, draw, 0.5f);
+    CHECK(draw.clipTimeSec == current.clipTimeSec);
+    previous.mode = current.mode = Mode::Once;
+    previous.clipTimeSec = 0.99f; current.clipTimeSec = 1;
+    previous.previousClip = current.previousClip = "outgoing";
+    previous.previousClipTimeSec = 0.1f; current.previousClipTimeSec = 0.2f;
+    previous.fadeTimeSec = 0.02f; current.fadeTimeSec = 0.04f;
+    draw = current;
+    mc2::sim::presentImportedAnimation(previous, draw, 0.5f);
+    CHECK(draw.clipTimeSec == doctest::Approx(0.995f));
+    CHECK(draw.previousClipTimeSec == doctest::Approx(0.15f));
+    CHECK(draw.fadeTimeSec == doctest::Approx(0.03f));
+    current.activeClip = "land"; current.clipTimeSec = 0;
+    draw = current;
+    mc2::sim::presentImportedAnimation(previous, draw, 0.5f);
+    CHECK(draw.clipTimeSec == 0);
 }

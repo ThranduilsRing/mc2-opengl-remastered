@@ -518,6 +518,7 @@ void presentationPose(GameObject* object, glm::vec3& pos, float& rot)
 	auto* appearance = object->getAppearance();
 	appearance->presentAnimation(prev.animation);
 	auto& animation = appearance->unitAnim();
+	mc2::sim::presentImportedAnimation(prev.previousAnimation.imported, animation.imported, s_presentationAlpha);
 	if (animation.currentGestureId == prev.previousAnimation.currentGestureId &&
         animation.currentFrame >= prev.previousAnimation.currentFrame)
         animation.currentFrame = prev.previousAnimation.currentFrame +
