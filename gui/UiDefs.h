@@ -80,6 +80,8 @@ public:
     // On-screen rect of an element (using the current page scale) so game code can
     // overlay dynamic content (e.g. mission-briefing objective markers) aligned to it.
     bool getElementScreenRect(const std::string& key, float& x, float& y, float& w, float& h);
+    // Authored page-local rect of an element (800x600 logical units).
+    bool getElementPageRect(const std::string& key, long& x, long& y, long& w, long& h) const;
     // page mirrors this legacy control section?
     bool coversLegacySection(const char* section) const;
     // kind ("Rect"/"Static"/"Text"/"Button") + index, prefix-agnostic.

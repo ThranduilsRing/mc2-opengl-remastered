@@ -1154,6 +1154,17 @@ bool LogisticsScreen::setDefsListItemColors(const std::string& key, const std::v
 	return defsUiPage->setListItemColors(key, colors);
 }
 
+bool LogisticsScreen::getDefsDeploymentSlots(const char* pageKey, std::array<std::array<long,4>,12>& slots)
+{
+	if (!defsUiPage || !defsUiPage->isLoaded()) return false;
+	for (int i = 0; i < 12; i++)
+	{
+		const std::string key = std::string(pageKey) + ".image.dep_team_combo_item_" + std::to_string(i + 1);
+		if (!defsUiPage->getElementPageRect(key, slots[i][0], slots[i][1], slots[i][2], slots[i][3])) return false;
+	}
+	return true;
+}
+
 bool LogisticsScreen::getDefsElementScreenRect(const std::string& key, float& x, float& y, float& w, float& h)
 {
 	if (!defsUiPage || !defsUiPage->isLoaded()) return false;

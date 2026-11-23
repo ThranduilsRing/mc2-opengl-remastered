@@ -8,6 +8,7 @@ LogisticsScreen.h			: Interface for the LogisticsScreen component.
 \*************************************************************************************************/
 
 #include"asystem.h"
+#include <array>
 #include <string>
 #include <vector>
 //*************************************************************************************************
@@ -126,6 +127,8 @@ class LogisticsScreen : public aObject
 	// bridge-render legacy widgets the defs page does not mirror.
 	void renderUncoveredLegacyWidgets( int xOffset, int yOffset );
 	bool getDefsElementScreenRect(const std::string& key, float& x, float& y, float& w, float& h);
+	// The page's twelve deployment slots (<pageKey>.image.dep_team_combo_item_1..12), page-local x,y,w,h.
+	bool getDefsDeploymentSlots(const char* pageKey, std::array<std::array<long,4>,12>& slots);
 	void drawDefsRect(float x, float y, float w, float h, unsigned int color, bool filled);
 
 	// GuiSlider value (0..maxValue) — seed from prefs, read back the user's drag.

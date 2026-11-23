@@ -374,6 +374,18 @@ bool UiDefs::GameOSPage::getElementScreenRect(const std::string& key, float& x, 
     return false;
 }
 
+bool UiDefs::GameOSPage::getElementPageRect(const std::string& key, long& x, long& y, long& w, long& h) const
+{
+    if (!isLoaded()) return false;
+    for (const UiElement& e : impl->elements) {
+        if (e.key != key)
+            continue;
+        x = e.rect.x; y = e.rect.y; w = e.rect.w; h = e.rect.h;
+        return true;
+    }
+    return false;
+}
+
 bool UiDefs::GameOSPage::setElementGosTexture(const std::string& key, unsigned int gosHandle)
 {
     if (!isLoaded()) return false;
