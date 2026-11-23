@@ -372,3 +372,65 @@ TEST_CASE("LightingState/parser hardening: key cap, non-finite, float range, neg
 	CHECK((*ok)->keys[1].pitch == kMaxCurvePitch);
 	CHECK((*ok)->droppedKeys == 0);
 }
+
+// Execute the production Camera methods through the existing source-slice seam;
+// only the world-light sink and FIT storage are device-free substitutes.
+#include <glm/glm.hpp>
+#include <algorithm>
+#include <sstream>
+namespace camera_lighting_test {
+constexpr int NO_ERR = 0;
+using MemoryPtr = unsigned char*;
+struct FitIniFile {
+    std::map<std::string, double> values;
+    long readIdFloat(const char* key, float& v) { auto i=values.find(key); if(i==values.end()) return 1; v=float(i->second); return 0; }
+    long readIdULong(const char* key, unsigned long& v) { auto i=values.find(key); if(i==values.end()) return 1; v=static_cast<unsigned long>(i->second); return 0; }
+    long readIdUCharArray(const char* key, uint8_t* v, int n) { for(int i=0;i<n;++i) v[i]=uint8_t(values.at(std::string(key)+char('0'+i))); return 0; }
+    void writeIdUCharArray(const char* key, uint8_t* v, int n) { for(int i=0;i<n;++i) values[std::string(key)+char('0'+i)]=v[i]; }
+    void writeIdULong(const char* key, uint32_t v) { values[key]=v; }
+    void write(MemoryPtr p, size_t n) { std::istringstream in(std::string(reinterpret_cast<char*>(p),n)); std::string type,key,eq; double v; in>>type>>key>>eq>>v; values[key]=v; }
+};
+namespace mc2 { namespace lighting = ::mc2::lighting;
+namespace fmt { template<class... A> void to_buf(char (&line)[128], const char*, const char* key, float v) { std::snprintf(line,128,"f %s = %.9g\r\n",key,double(v)); } }
+namespace options { struct Options { bool sunElevationFix=true; }; inline const Options& current() { static Options o; return o; } }
+namespace math { struct Euler { Euler(float,float,float) {} }; inline void buildTranslation(glm::mat4&,glm::vec3) {} inline void buildRotation(glm::mat4&,Euler) {} }
+}
+struct Light { void SetLightToWorld(glm::mat4*) {} };
+struct Camera {
+    glm::vec3 lightDirection{};
+    float lightPitch=50,lightYaw=11,fogStart=-1,fogFull=-2;
+    uint8_t lightRed=240,lightGreen=200,lightBlue=160,ambientRed=80,ambientGreen=60,ambientBlue=40;
+    uint8_t dayLightRed=240,dayLightGreen=200,dayLightBlue=160,dayAmbientRed=80,dayAmbientGreen=60,dayAmbientBlue=40;
+    uint32_t fogColor=0xffe1ded4;
+    Light** worldLights=nullptr;
+    uint8_t killSavedAmbient[3]{};
+    std::shared_ptr<const TodCurve> todCurve;
+    LightingState todBase,bakeSnapshot;
+    LightMods lightMods;
+    double todT=0; float todRate=0;
+    LightingState lightMembers() const; LightingState currentLighting() const; LightingState bakeReferenceLighting() const;
+    void captureBakeReference(FitIniFile*); void saveBakeReference(FitIniFile*) const;
+    void publishLight(); void setRainLight(float); void clearRainLight(); void setKillAmbient(bool); void advanceTimeOfDay();
+    static glm::vec3 sunDirectionFor(float,float);
+};
+#include "camera_sun_direction.inc"
+#include "camera_lighting.inc"
+}
+
+TEST_CASE("LightingState/Camera bake snapshot survives rain KillAmbient moved sun and save restore") {
+    using namespace camera_lighting_test;
+    Camera c;
+    c.lightDirection=c.sunDirectionFor(c.lightPitch,c.lightYaw);
+    c.captureBakeReference(nullptr);
+    const auto loaded=c.lightMembers();
+    c.setRainLight(2); c.setKillAmbient(true); c.lightPitch=15; c.lightYaw=90;
+    c.lightDirection=c.sunDirectionFor(15,90);
+    CHECK(c.currentLighting()!=loaded);
+    CHECK(c.bakeReferenceLighting()==loaded);
+    FitIniFile save; c.saveBakeReference(&save);
+    CHECK(save.values.count("BakePitch")==1);
+    Camera restored; restored.lightPitch=15; restored.captureBakeReference(&save);
+    CHECK(restored.bakeReferenceLighting()==loaded);
+    Camera stock; stock.captureBakeReference(nullptr); FitIniFile unchanged; stock.saveBakeReference(&unchanged);
+    CHECK(unchanged.values.empty());
+}

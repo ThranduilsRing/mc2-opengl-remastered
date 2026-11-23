@@ -851,6 +851,13 @@ set_source_files_properties(test_objectives_panel.cpp PROPERTIES INCLUDE_DIRECTO
 mc2_height_slice(camera_world_lights mclib/camera.h
     "long addWorldLight (" "glm::vec3 getScreenRes (")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_world_lights.inc" CONTENT "${camera_world_lights}")
+mc2_height_slice(camera_lighting mclib/camera.cpp
+    "mc2::lighting::LightingState Camera::lightMembers() const" "void Camera::flatLight(")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_lighting.inc" CONTENT "${camera_lighting}")
+mc2_height_slice(camera_sun_direction mclib/camera_update.cpp
+    "glm::vec3 Camera::sunDirectionFor (" "long Camera::update (")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_sun_direction.inc" CONTENT "${camera_sun_direction}")
+set_source_files_properties(test_lighting_state.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 mc2_height_slice(camera_release_object code/simplecamera.cpp
     "void SimpleCamera::releaseObject()" "SimpleCamera::~SimpleCamera()")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_release_object.inc" CONTENT "${camera_release_object}")

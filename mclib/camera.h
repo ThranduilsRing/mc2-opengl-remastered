@@ -1501,6 +1501,9 @@ class Camera
 		// The state the load-time bakes read (terrain burn-in, forest light, scene capture): the state at load, the authored one for every
 		// stock mission (the members) and the curve's start state with a curve. A bake is a fixed reference, never a live state.
 		mc2::lighting::LightingState bakeReferenceLighting (void) const;
+		void captureBakeReference(FitIniFile* file);
+		void saveBakeReference(FitIniFile* file) const;
+		mc2::lighting::LightingState bakeSnapshot;
 		// Weather / KillAmbientLight / sun control go through these, never the members, so a curve cannot override them.
 		void setRainLight (float divisor);   // sun and ambient divided by `divisor` (the old weather expression)
 		void clearRainLight (void);          // back to the base

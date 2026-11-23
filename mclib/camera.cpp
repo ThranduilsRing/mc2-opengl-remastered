@@ -610,6 +610,7 @@ long Camera::init (FitIniFilePtr cameraFile )
 		dayAmbientRed = start.amb[0]; dayAmbientGreen = start.amb[1]; dayAmbientBlue = start.amb[2];
 		publishLight();   // the mission's own fog stays dayFogColor (the editor's)
 	}
+	captureBakeReference(cameraFile); // authored sun/ambient/fog, before weather or the legacy cycle
 
 	result = cameraFile->readIdFloat("FogTransparency",fogTransparency);
 
@@ -951,15 +952,53 @@ mc2::lighting::LightingState Camera::currentLighting() const
 }
 
 // The state the load-time bakes (terrain burn-in, forest light, scene capture) take as their reference: the state AT LOAD, never a live
-// one. No curve (every stock mission): the members, which are the authored state. A curve: its start state, which is what the static
+// one. No curve: captured authored members. A curve: its start state, which is what the static
 // shadows key on too (the first frame's sun), so the bakes and the shadows agree. A live clock does not re-bake: T3/T6 decide that.
 mc2::lighting::LightingState Camera::bakeReferenceLighting() const
 {
-	if (!todCurve) return mc2::lighting::bakeReference(lightMembers());
-	auto start = mc2::lighting::compose(todCurve.get(), todCurve->start, todBase, {});
-	const glm::vec3 d = sunDirectionFor(start.pitch, start.yaw);
-	start.sunDir[0] = d.x; start.sunDir[1] = d.y; start.sunDir[2] = d.z;
-	return mc2::lighting::bakeReference(start);
+	return bakeSnapshot;
+}
+
+void Camera::captureBakeReference(FitIniFile* file)
+{
+	bakeSnapshot = lightMembers();
+	if (todCurve) {
+		bakeSnapshot = mc2::lighting::compose(todCurve.get(), todCurve->start, todBase, {});
+		const auto d = sunDirectionFor(bakeSnapshot.pitch, bakeSnapshot.yaw);
+		bakeSnapshot.sunDir[0] = d.x; bakeSnapshot.sunDir[1] = d.y; bakeSnapshot.sunDir[2] = d.z;
+	}
+	// Optional keys preserve the original load reference when a save's live fields have moved.
+	if (file && file->readIdFloat("BakePitch", bakeSnapshot.pitch) == NO_ERR) {
+		file->readIdFloat("BakeYaw", bakeSnapshot.yaw);
+		file->readIdFloat("BakeDirX", bakeSnapshot.sunDir[0]);
+		file->readIdFloat("BakeDirY", bakeSnapshot.sunDir[1]);
+		file->readIdFloat("BakeDirZ", bakeSnapshot.sunDir[2]);
+		file->readIdUCharArray("BakeSun", bakeSnapshot.sun, 3);
+		file->readIdUCharArray("BakeAmbient", bakeSnapshot.amb, 3);
+		unsigned long color = bakeSnapshot.fogColor;
+		file->readIdULong("BakeFogColor", color); bakeSnapshot.fogColor = static_cast<uint32_t>(color);
+		file->readIdFloat("BakeFogStart", bakeSnapshot.fogStart);
+		file->readIdFloat("BakeFogFull", bakeSnapshot.fogFull);
+	}
+}
+
+void Camera::saveBakeReference(FitIniFile* file) const
+{
+	auto saved = todCurve ? mc2::lighting::compose(todCurve.get(), todCurve->start, todBase, {}) : lightMembers();
+	// Direction is recomputed during rendering; compare the serialized camera fields only.
+	std::copy_n(bakeSnapshot.sunDir, 3, saved.sunDir);
+	if (saved == bakeSnapshot) return;
+	auto precise = [file](const char* key, float value) {
+		char line[128]; mc2::fmt::to_buf(line, "f {} = {:.9g}\r\n", key, value);
+		file->write(reinterpret_cast<MemoryPtr>(line), strlen(line));
+	};
+	precise("BakePitch", bakeSnapshot.pitch); precise("BakeYaw", bakeSnapshot.yaw);
+	precise("BakeDirX", bakeSnapshot.sunDir[0]); precise("BakeDirY", bakeSnapshot.sunDir[1]); precise("BakeDirZ", bakeSnapshot.sunDir[2]);
+	auto snapshot = bakeSnapshot;
+	file->writeIdUCharArray("BakeSun", snapshot.sun, 3);
+	file->writeIdUCharArray("BakeAmbient", snapshot.amb, 3);
+	file->writeIdULong("BakeFogColor", snapshot.fogColor);
+	precise("BakeFogStart", snapshot.fogStart); precise("BakeFogFull", snapshot.fogFull);
 }
 
 // The one writer of the light members. No curve: the day colours through the rain modulator (weather.cpp's old expression, byte
@@ -1042,6 +1081,7 @@ bool Camera::save( FitIniFile* file )
 		}
 		void writeIdULong(std::string_view name, uint32_t value) { file.writeIdULong(name, value); }
 	} clockSave{*file};
+	saveBakeReference(file);
 	mc2::lighting::saveTod(clockSave, todCurve.get(), todT, todRate);
 	if (todCurve && mc2_diag::tagRequested("TOD"))
 		mc2::fmt::print_err("[TOD] save t={:.9f} pitch={:.6f} yaw={:.6f}\n", todT, lightPitch, lightYaw);
