@@ -863,6 +863,12 @@ file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_sun_direction.inc" CONT
 mc2_height_slice(camera_daylight mclib/camera_daylight.cpp
     "float Camera::setDaylightFraction (" "void Camera::updateLetterboxAndFade (")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_daylight.inc" CONTENT "${camera_daylight}")
+mc2_height_slice(camera_tod_init mclib/camera.cpp
+    "void Camera::initTimeOfDay(" "mc2::lighting::LightingState Camera::lightMembers() const")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_tod_init.inc" CONTENT "${camera_tod_init}")
+mc2_height_slice(camera_clock_save mclib/camera.cpp
+    "struct ClockSave {" "\tif (todCurve && mc2_diag::tagRequested(\"TOD\"))")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_clock_save.inc" CONTENT "${camera_clock_save}")
 set_source_files_properties(test_lighting_state.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 mc2_height_slice(camera_release_object code/simplecamera.cpp
     "void SimpleCamera::releaseObject()" "SimpleCamera::~SimpleCamera()")

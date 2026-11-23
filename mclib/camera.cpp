@@ -469,46 +469,7 @@ long Camera::init (FitIniFilePtr cameraFile )
 		// allowTimeOfDay) and day suns only (a night mission keeps its night profile until T7).
 		// No block (every stock mission): nothing below runs and the members above stand. The authored record (s_authoredSun) stays the
 		// pre-key bake reference. The curve's start state is written (and day* seeded) at the fog read below, once fog is known.
-		todCurve.reset();
-		todT = 0.0f;
-		lightMods = {};
-		if (allowTimeOfDay && !missionLightName.empty() && mc2_mission_light::nightFromSun(dayLightPitch) == 0.0f)   // day suns only, as the sun keys
-			if (const auto& block = visualTuning_timeOfDay(); !block.empty())
-			{
-				const auto parsed = mc2::lighting::parseTodCurve(block);
-				if (!parsed)
-				{
-					if (mc2_diag::tagRequested("TOD"))
-						mc2::fmt::print_err("[TOD] ignored timeOfDay block: {}\n", parsed.error());
-				}
-				else if (*parsed)
-				{
-					todCurve = *parsed;
-					todT = todCurve->start;
-					todRate = todCurve->rate;
-					if (fromSave)
-					{
-						DWORD hash = 0;
-						float t = todCurve->start, rate = todRate;
-						const bool match = cameraFile->readIdULong("TodCurveHash", hash) == NO_ERR && hash == todCurve->hash;
-						if (match && cameraFile->readIdFloat("TimeOfDay", t) == NO_ERR)
-						{
-							todT = mc2::lighting::restoreTod(*todCurve, hash, t);
-							if (cameraFile->readIdFloat("TimeOfDayRate", rate) == NO_ERR && std::isfinite(rate) && rate >= 0.0f) todRate = rate;
-						}
-						else if (mc2_diag::tagRequested("TOD"))
-							mc2::fmt::print_err("[TOD] save missing clock or curve hash mismatch; restarting at {:.6f}\n", todCurve->start);
-					}
-					todBase = lightMembers();   // the authored state (sun keys applied); the fog is added at the fog read
-					if (fromSave) restoreSunOverride(cameraFile);
-					if (todCurve->droppedKeys && mc2_diag::tagRequested("TOD"))
-						mc2::fmt::print_err("[TOD] warning: dropped {} keys past the cap of {}\n", todCurve->droppedKeys, mc2::lighting::kMaxTodKeys);
-					if (mc2_diag::tagRequested("TOD"))
-						mc2::fmt::print_err("[TOD] curve keys={} t={:.9f} rate={:.9f} hash={} mode=Live\n", todCurve->keys.size(), todT, todRate, todCurve->hash);
-					if (day2NightTransitionTime > 0.0f && mc2_diag::tagRequested("TOD"))
-						mc2::fmt::print_err("[TOD] curve owns lighting; legacy DayToNightTime cycle disabled\n");
-				}
-			}
+		initTimeOfDay(cameraFile, fromSave);
 	}
 
 	result = cameraFile->readIdFloat("NewScale",newScaleFactor);
@@ -929,6 +890,50 @@ void mc2_OneSun(const float liveDir[3], float livePitchDeg, float liveYawDeg, co
 float mc2_AmbientRatio(const unsigned char liveAmb[3])
 {
 	return mc2::authored_sun::ambientRatio(s_authoredSun, {liveAmb[0], liveAmb[1], liveAmb[2]});
+}
+
+void Camera::initTimeOfDay(FitIniFile* cameraFile, bool fromSave)
+{
+	todCurve.reset();
+	todT = 0.0f;
+	lightMods = {};
+	if (allowTimeOfDay && !missionLightName.empty() && mc2_mission_light::nightFromSun(dayLightPitch) == 0.0f)   // day suns only, as the sun keys
+		if (const auto& block = visualTuning_timeOfDay(); !block.empty())
+		{
+			const auto parsed = mc2::lighting::parseTodCurve(block);
+			if (!parsed)
+			{
+				if (mc2_diag::tagRequested("TOD"))
+					mc2::fmt::print_err("[TOD] ignored timeOfDay block: {}\n", parsed.error());
+			}
+			else if (*parsed)
+			{
+				todCurve = *parsed;
+				todT = todCurve->start;
+				todRate = todCurve->rate;
+				if (fromSave)
+				{
+					DWORD hash = 0;
+					float t = todCurve->start, rate = todRate;
+					const bool match = cameraFile->readIdULong("TodCurveHash", hash) == NO_ERR && hash == todCurve->hash;
+					if (match && cameraFile->readIdFloat("TimeOfDay", t) == NO_ERR)
+					{
+						todT = mc2::lighting::restoreTod(*todCurve, hash, t);
+						if (cameraFile->readIdFloat("TimeOfDayRate", rate) == NO_ERR && std::isfinite(rate) && rate >= 0.0f) todRate = rate;
+					}
+					else if (mc2_diag::tagRequested("TOD"))
+						mc2::fmt::print_err("[TOD] save missing clock or curve hash mismatch; restarting at {:.6f}\n", todCurve->start);
+				}
+				todBase = lightMembers();   // the authored state (sun keys applied); the fog is added at the fog read
+				if (fromSave) restoreSunOverride(cameraFile);
+				if (todCurve->droppedKeys && mc2_diag::tagRequested("TOD"))
+					mc2::fmt::print_err("[TOD] warning: dropped {} keys past the cap of {}\n", todCurve->droppedKeys, mc2::lighting::kMaxTodKeys);
+				if (mc2_diag::tagRequested("TOD"))
+					mc2::fmt::print_err("[TOD] curve keys={} t={:.9f} rate={:.9f} hash={} mode=Live\n", todCurve->keys.size(), todT, todRate, todCurve->hash);
+				if (day2NightTransitionTime > 0.0f && mc2_diag::tagRequested("TOD"))
+					mc2::fmt::print_err("[TOD] curve owns lighting; legacy DayToNightTime cycle disabled\n");
+			}
+		}
 }
 
 // The camera's light members as a LightingState (the legacy, no-curve state).

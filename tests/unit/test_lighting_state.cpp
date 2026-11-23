@@ -378,9 +378,14 @@ TEST_CASE("LightingState/parser hardening: key cap, non-finite, float range, neg
 #include <glm/glm.hpp>
 #include <algorithm>
 #include <sstream>
+#include "../../mclib/mission_light_profile.h"
 namespace camera_lighting_test {
 constexpr int NO_ERR = 0;
+using DWORD = unsigned long;
 float frameLength=1.0f/30.0f;
+std::string tuningBlock;
+const std::string& visualTuning_timeOfDay() { return tuningBlock; }
+namespace mc2_diag { bool tagRequested(const char*) { return false; } }
 using MemoryPtr = unsigned char*;
 struct FitIniFile {
     std::map<std::string, double> values;
@@ -388,12 +393,15 @@ struct FitIniFile {
     long readIdULong(const char* key, unsigned long& v) { auto i=values.find(key); if(i==values.end()) return 1; v=static_cast<unsigned long>(i->second); return 0; }
     long readIdUCharArray(const char* key, uint8_t* v, int n) { for(int i=0;i<n;++i) v[i]=uint8_t(values.at(std::string(key)+char('0'+i))); return 0; }
     void writeIdUCharArray(const char* key, uint8_t* v, int n) { for(int i=0;i<n;++i) values[std::string(key)+char('0'+i)]=v[i]; }
-    void writeIdULong(const char* key, uint32_t v) { values[key]=v; }
+    void writeIdULong(std::string_view key, uint32_t v) { values[std::string(key)]=v; }
     void writeIdUChar(const char* key, uint8_t v) { values[key]=v; }
     void write(MemoryPtr p, size_t n) { std::istringstream in(std::string(reinterpret_cast<char*>(p),n)); std::string type,key,eq; double v; in>>type>>key>>eq>>v; values[key]=v; }
 };
 namespace mc2 { namespace lighting = ::mc2::lighting;
-namespace fmt { template<class... A> void to_buf(char (&line)[128], const char*, const char* key, float v) { std::snprintf(line,128,"f %s = %.9g\r\n",key,double(v)); } }
+namespace fmt {
+template<class K> void to_buf(char (&line)[128], const char*, K key, float v) { std::snprintf(line,128,"f %s = %.9g\r\n",std::string(key).c_str(),double(v)); }
+template<class... A> void print_err(const char*, A&&...) {}
+}
 namespace options { struct Options { bool sunElevationFix=true; }; inline const Options& current() { static Options o; return o; } }
 namespace math { struct Euler { Euler(float,float,float) {} }; inline void buildTranslation(glm::mat4&,glm::vec3) {} inline void buildRotation(glm::mat4&,Euler) {} }
 }
@@ -415,9 +423,15 @@ struct Camera {
     LightingState todBase,bakeSnapshot;
     LightMods lightMods;
     double todT=0; float todRate=0;
+    bool allowTimeOfDay=false;
+    std::string missionLightName="mc2_01";
     LightingState lightMembers() const; LightingState currentLighting() const; LightingState bakeReferenceLighting() const;
     void captureBakeReference(FitIniFile*); void saveBakeReference(FitIniFile*) const;
     void restoreSunOverride(FitIniFile*); void saveSunOverride(FitIniFile*) const;
+    void initTimeOfDay(FitIniFile*,bool);
+    void saveClock(FitIniFile* file) {
+#include "camera_clock_save.inc"
+    }
     void saveColors(FitIniFile* file) const {
 #include "camera_save_colors.inc"
     }
@@ -429,6 +443,7 @@ struct Camera {
 #include "camera_sun_direction.inc"
 #include "camera_lighting.inc"
 #include "camera_daylight.inc"
+#include "camera_tod_init.inc"
 }
 
 TEST_CASE("LightingState/Camera bake snapshot survives rain KillAmbient moved sun and save restore") {
@@ -494,4 +509,29 @@ TEST_CASE("LightingState/Camera curve excludes legacy daylight writes and initia
     c.todCurve.reset(); Light light; Light* lights[]={&light}; c.worldLights=lights;
     c.updateDaylight(false);
     CHECK(c.lightPitch==90); CHECK(c.dayLightTime>900);
+}
+
+TEST_CASE("LightingState/Camera allowTimeOfDay and curve rain save load round trip") {
+    using namespace camera_lighting_test;
+    tuningBlock=R"({"start":0.25,"keys":[{"t":0,"sunPitch":20},{"t":1,"sunPitch":80}]})";
+    FitIniFile save; Camera c;
+    c.initTimeOfDay(&save,false); CHECK_FALSE(c.todCurve);
+    c.allowTimeOfDay=true; c.dayLightPitch=180; c.initTimeOfDay(&save,false); CHECK_FALSE(c.todCurve);
+    c.dayLightPitch=50; c.initTimeOfDay(&save,false); REQUIRE(c.todCurve);
+    c.publishLight(); c.captureBakeReference(nullptr);
+    c.todT=0.625; c.setSunPitch(31.234567f,true,-62.345678f); c.setRainLight(2);
+    const auto before=c.currentLighting(); const auto bake=c.bakeReferenceLighting();
+    c.saveColors(&save); c.saveClock(&save);
+    Camera loaded; loaded.allowTimeOfDay=true;
+    const char* sun[]={"LightRed","LightGreen","LightBlue"}; const char* amb[]={"AmbientRed","AmbientGreen","AmbientBlue"};
+    // Camera::init reads these saved base bytes before accepting the sidecar curve.
+    loaded.lightRed=uint8_t(save.values.at(sun[0])); loaded.lightGreen=uint8_t(save.values.at(sun[1])); loaded.lightBlue=uint8_t(save.values.at(sun[2]));
+    loaded.ambientRed=uint8_t(save.values.at(amb[0])); loaded.ambientGreen=uint8_t(save.values.at(amb[1])); loaded.ambientBlue=uint8_t(save.values.at(amb[2]));
+    loaded.initTimeOfDay(&save,true); REQUIRE(loaded.todCurve);
+    loaded.captureBakeReference(&save); loaded.setRainLight(2);
+    CHECK(loaded.todT==c.todT); CHECK(loaded.todRate==c.todRate);
+    CHECK(loaded.currentLighting()==before); CHECK(loaded.bakeReferenceLighting()==bake);
+    save.values["TodCurveHash"]=0; loaded.initTimeOfDay(&save,true); CHECK(loaded.todT==0.25);
+    tuningBlock.clear(); Camera stock; stock.initTimeOfDay(&save,true); CHECK_FALSE(stock.todCurve);
+    stock.captureBakeReference(nullptr); FitIniFile stockSave; stock.saveClock(&stockSave); CHECK(stockSave.values.empty());
 }
