@@ -125,7 +125,8 @@ def _real_install(tmp_path, zeroed_textures=False):
 
 
 def _pak(path: Path, target: Path, entries_for_textures=5, names=8) -> Path:
-    sources = [{"name": n, "size": (target / n).stat().st_size, "toc_hash": "0", "entries": c}
+    sources = [{"name": n, "size": (target / n).stat().st_size, "entries": c,
+                "toc_hash": dp._toc_hash((target / n).read_bytes()[:8 + c * 266])}
                for n, c in (("a.fst", 3), ("textures.fst", entries_for_textures))]
     with zipfile.ZipFile(path, "w") as z:
         z.writestr("mc2pak.json", json.dumps({"format": 1, "sources": sources}))
@@ -158,8 +159,7 @@ def test_pak_defect_refuses_unreadable_and_too_small_paks(tmp_path):
 def test_defective_pack_keeps_the_old_pak_and_is_never_cached(monkeypatch, tmp_path):
     target = _real_install(tmp_path)
     (target / "paks").mkdir()
-    old = b"the working v0.4 pak" * 10
-    (target / dp.PAK_REL).write_bytes(old)
+    old = _pak(target / dp.PAK_REL, target).read_bytes()  # a good kept pak (a bad one is moved aside, tested below)
     monkeypatch.setattr(dp, "PAK_CACHE_ROOT", tmp_path / "cache")
     monkeypatch.setattr(dp, "stock_pak_key", lambda *_: "k")
     monkeypatch.setattr(dp, "_mc2pak_python", lambda: ["py"])
@@ -203,3 +203,88 @@ def test_retire_unowned_never_prunes_the_stock_pak(tmp_path):
     dp.write_manifest(str(target), {dp.PAK_REL: (_sha(b"pak"), 3, None, None)}, "a" * 40)
     dp.retire_unowned(str(target), {})
     assert (target / dp.PAK_REL).read_bytes() == b"pak"
+
+
+# --- review follow-ups 11-22: kept bad pak, source drift, toc_hash, payload publish, v0.4 publish status ---
+
+def _setup_real(monkeypatch, tmp_path):
+    target = _real_install(tmp_path)
+    monkeypatch.setattr(dp, "PAK_CACHE_ROOT", tmp_path / "cache")
+    monkeypatch.setattr(dp, "stock_pak_key", lambda *_: "k")
+    monkeypatch.setattr(dp, "_mc2pak_python", lambda: ["py"])
+    return target
+
+
+def _timeout(cmd, **_kw):
+    raise dp.subprocess.TimeoutExpired(cmd, 1)
+
+
+def test_fallback_moves_an_already_bad_kept_pak_aside_and_drops_its_row(monkeypatch, tmp_path):
+    target = _setup_real(monkeypatch, tmp_path)
+    (target / "paks").mkdir()
+    _pak(target / dp.PAK_REL, target, entries_for_textures=0, names=4)  # kept from an earlier bad deploy
+    monkeypatch.setattr(dp.subprocess, "run", _timeout)
+    hashes = {}
+    dp.ensure_stock_pak(tmp_path, target, hashes)
+    assert not (target / dp.PAK_REL).exists() and list((target / "paks").glob("stock.mc2pak.defect-*"))
+    assert dp.PAK_REL not in hashes and "kept pak refused" in (target / dp.PAK_STATUS_NAME).read_text()
+
+
+def test_fallback_keeps_a_good_kept_pak(monkeypatch, tmp_path):
+    target = _setup_real(monkeypatch, tmp_path)
+    (target / "paks").mkdir()
+    _pak(target / dp.PAK_REL, target)
+    monkeypatch.setattr(dp.subprocess, "run", _timeout)
+    hashes = {}
+    dp.ensure_stock_pak(tmp_path, target, hashes)
+    assert (target / dp.PAK_REL).is_file() and dp.PAK_REL in hashes
+
+
+def test_pak_defect_refuses_a_toc_hash_mismatch_at_equal_size_and_count(tmp_path):
+    target = _real_install(tmp_path)
+    pak = _pak(tmp_path / "p.mc2pak", target)
+    other = target / "textures.fst"
+    data = bytearray(other.read_bytes())
+    data[8 + 250] ^= 0xFF  # same size, same entry count, different TOC
+    other.write_bytes(bytes(data))
+    assert "toc_hash" in dp.pak_defect(pak, target)
+
+
+def test_a_source_fst_changing_during_the_pack_is_refused(monkeypatch, tmp_path):
+    target = _setup_real(monkeypatch, tmp_path)
+
+    class Result:
+        returncode, stdout, stderr = 0, "", ""
+
+    def fake_run(cmd, **_kw):
+        _pak(Path(cmd[cmd.index("--out") + 1]), target)
+        os.utime(target / "textures.fst", ns=(1, 1))  # touched while the pack ran
+        return Result()
+
+    monkeypatch.setattr(dp.subprocess, "run", fake_run)
+    dp.ensure_stock_pak(tmp_path, target, {})
+    assert "changed while packing" in (target / dp.PAK_STATUS_NAME).read_text()
+    assert not (tmp_path / "cache" / "k" / "stock.mc2pak").exists()
+
+
+def test_payload_publish_checks_the_incoming_pak_and_writes_the_status(monkeypatch, tmp_path):
+    from test_deploy_stamp_at_hash import _payload
+    files = {"mc2.exe": b"exe", dp.PAK_REL: b"bad pak"}
+    payload, target = _payload(tmp_path, monkeypatch, files, staged={"mc2.exe"})  # the bad pak is already in the install
+    _fst(target / "a.fst", 3)
+    (target / "system.cfg").write_text('[FastFiles]\nl NumFastFiles=1\nst File0="a.fst"\n')
+    dp.deploy_from_payload(payload, target, tmp_path, "c" * 40)
+    assert not (target / dp.PAK_REL).exists() and list((target / "paks").glob("stock.mc2pak.defect-*"))
+    assert (target / dp.PAK_STATUS_NAME).read_text().startswith("FALLBACK payload pak refused")
+    assert dp.PAK_REL not in (target / dp.MANIFEST_NAME).read_text()
+
+
+def test_v04_publish_requires_an_ok_pak_status(tmp_path):
+    import pytest
+    with pytest.raises(ValueError, match="missing"):
+        dp.require_pak_ok(tmp_path)
+    (tmp_path / dp.PAK_STATUS_NAME).write_text("FALLBACK mc2pak pack failed\n")
+    with pytest.raises(ValueError, match="FALLBACK"):
+        dp.require_pak_ok(tmp_path)
+    (tmp_path / dp.PAK_STATUS_NAME).write_text("OK key=k\n")
+    dp.require_pak_ok(tmp_path)

@@ -2000,7 +2000,7 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
                     from deploy_payload import verify_published_identity
                     target = (Path(command[command.index('--allow-new-target') - 1])
                               if '--allow-new-target' in command else Path('A:/Games/mc2-opengl/mc2-win64-v0.4'))
-                    verify_published_identity(target, ROOT, head)
+                    verify_published_identity(target, ROOT, head, **({'require_pak': True} if name == 'publish-v0.4' else {}))
                 measured = getattr(result, "gate_elapsed", None)
                 scheduler_wait = getattr(result, 'gate_scheduler_wait', 0.0)
                 status = (smoke_report_status(getattr(result, "stdout", "")) or perf_warn_status(getattr(result, "stdout", ""))) if result.returncode == 0 else (
