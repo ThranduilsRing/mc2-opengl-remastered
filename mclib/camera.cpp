@@ -466,13 +466,13 @@ long Camera::init (FitIniFilePtr cameraFile )
 					static_cast<unsigned>(ambientRed), static_cast<unsigned>(ambientGreen), static_cast<unsigned>(ambientBlue), sunAmbientScaled ? 1 : 0);
 		}
 		// Optional time-of-day curve (sidecar timeOfDay{}), MISSION camera only (the mech-bay / SimpleCamera preview never sets
-		// allowTimeOfDay) and day suns only (this block is inside the day-sun scope: a night mission keeps its night profile until T7).
+		// allowTimeOfDay) and day suns only (a night mission keeps its night profile until T7).
 		// No block (every stock mission): nothing below runs and the members above stand. The authored record (s_authoredSun) stays the
 		// pre-key bake reference. The curve's start state is written (and day* seeded) at the fog read below, once fog is known.
 		todCurve.reset();
 		todT = 0.0f;
 		lightMods = {};
-		if (allowTimeOfDay)
+		if (allowTimeOfDay && !missionLightName.empty() && mc2_mission_light::nightFromSun(dayLightPitch) == 0.0f)   // day suns only, as the sun keys
 			if (const auto& block = visualTuning_timeOfDay(); !block.empty())
 			{
 				const auto parsed = mc2::lighting::parseTodCurve(block);
@@ -492,7 +492,6 @@ long Camera::init (FitIniFilePtr cameraFile )
 						mc2::fmt::print_err("[TOD] curve keys={} start={:.3f} mode=Live (clock not wired: T3)\n", todCurve->keys.size(), todCurve->start);
 				}
 			}
-		}
 	}
 
 	result = cameraFile->readIdFloat("NewScale",newScaleFactor);
