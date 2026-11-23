@@ -2,12 +2,63 @@
 #include "../../mclib/lighting_legacy.h"
 #include "../../mclib/lighting_state.h"
 #include "../../mclib/lighting_tod_json.h"
+#include <map>
+#include "../../code/sim_tick_clock.h"
 #include <string>
 #include <cstring>
 
 // Trigger paths: mclib/lighting_state.h, mclib/lighting_legacy.h, mclib/lighting_tod_json.h, mclib/camera.cpp (sun keys),
 // mclib/camera_daylight.cpp, code/gamecam.cpp (renderTerrainSceneState).
 using namespace mc2::lighting;
+
+TEST_CASE("LightingState/clock: sim ticks, pause, fixed path and member publication") {
+	TodCurve curve; curve.keys = {{0.0f}, {1.0f}};
+	double t = 0.5;
+	int writes = 0;
+	float memberPitch = 0.0f;
+	curve.keys[0].mask = curve.keys[1].mask = kPitch;
+	curve.keys[0].pitch = 20.0f; curve.keys[1].pitch = 80.0f;
+	auto publish = [&] { ++writes; memberPitch = compose(&curve, t, {}, {}).pitch; };
+	mc2::sim::TickClock clock;
+	for (int frame = 0; frame < 300; ++frame)
+		for (int i = clock.advance(1.0 / 30.0, 1.0); i > 0; --i) tickTod(&curve, t, curve.rate, publish);
+	CHECK(t == doctest::Approx(0.5 + 10.0 / 86400.0).epsilon(1e-9));
+	CHECK(writes == 300);
+	CHECK(memberPitch == compose(&curve, t, {}, {}).pitch);
+	CHECK(memberPitch > 50.0f);
+	const double paused = t;
+	for (int i = clock.advance(1.0 / 30.0, 0.0); i > 0; --i) tickTod(&curve, t, curve.rate, publish);
+	CHECK(t == paused);
+	tickTod(nullptr, t, 1.0f, publish);
+	tickTod(&curve, t, 0.0f, publish);
+	CHECK(t == paused); CHECK(writes == 300);
+	tickTod(&curve, t, 60.0f, publish);
+	CHECK(t == 1.0); // curve endpoints hold, never jump back to dawn
+}
+
+TEST_CASE("LightingState/save: matching hash, mismatch, old save and stock bytes") {
+	const auto parsed = parseTodCurve(R"({"start":0.28,"keys":[{"t":0},{"t":1}]})");
+	REQUIRE((parsed && *parsed));
+	const auto& c = **parsed;
+	CHECK(c.rate == 1.0f / 86400.0f);
+	struct Save {
+		std::map<std::string, double> keys;
+		std::string bytes = "[Cameras]\n";
+		void writeIdFloat(const char* k, float v) { keys[k] = v; bytes += std::string(k) + "=" + std::to_string(v) + "\n"; }
+		void writeIdULong(const char* k, uint32_t v) { keys[k] = v; bytes += std::string(k) + "=" + std::to_string(v) + "\n"; }
+	} stock, live;
+	const std::string before = stock.bytes;
+	saveTod(stock, nullptr, 0.45, c.rate);
+	CHECK(stock.bytes == before); CHECK(stock.keys.empty());
+	saveTod(live, &c, 0.45f, c.rate);
+	CHECK(live.keys.size() == 3);
+	CHECK(restoreTod(c, uint32_t(live.keys.at("TodCurveHash")), float(live.keys.at("TimeOfDay"))) == 0.45f);
+	CHECK(live.keys.at("TimeOfDayRate") == c.rate);
+	CHECK(restoreTod(c, c.hash ^ 1u, 0.45f) == c.start);
+	CHECK(restoreTod(c, 0, 0.0f) == c.start);
+	const auto changed = parseTodCurve(R"({"start":0.29,"keys":[{"t":0},{"t":1}]})");
+	REQUIRE((changed && *changed)); CHECK((*changed)->hash != c.hash);
+}
 
 namespace {
 // Stock camera blocks (mc2srcdata missions/*.fit: LightDirPitch/Yaw, DayLight*, DayAmbient*; mc2_10 is the night one).

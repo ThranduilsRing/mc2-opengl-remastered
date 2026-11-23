@@ -1505,7 +1505,6 @@ class Camera
 		void setRainLight (float divisor);   // sun and ambient divided by `divisor` (the old weather expression)
 		void clearRainLight (void);          // back to the base
 		void setKillAmbient (bool on);       // ambient forced white for the render window (mission.cpp KillAmbientLight)
-		void noteSunMoved (void);            // the sun hotkeys / setSunPitch changed lightPitch/lightYaw: with a curve they become an override
 		// Flat light for z `intensity` from a given state (Camera::getLightRed/Green/Blue arithmetic on its bytes).
 		void flatLight (const mc2::lighting::LightingState& s, float intensity, unsigned char out[3]) const;
 		mc2::lighting::LightingState lightMembers (void) const;   // the members as a state (the legacy, no-curve result)
@@ -1515,7 +1514,10 @@ class Camera
 		// The curve applies to the MISSION camera only (set before init(file)); the mech-bay / SimpleCamera preview never has one.
 		bool allowTimeOfDay = false;
 		std::shared_ptr<const mc2::lighting::TodCurve> todCurve;
-		float todT = 0.0f;                          // T1 holds it at the curve start; the clock (T3) advances it on the sim tick
+		void advanceTimeOfDay();                   // exactly one 30 Hz simulation tick
+		bool hasTimeOfDay() const { return static_cast<bool>(todCurve); }
+		double todT = 0.0;
+		float todRate = 0.0f;
 		mc2::lighting::LightingState todBase;       // the authored state the curve evaluates over (captured when the curve is accepted)
 		mc2::lighting::LightMods lightMods;
 

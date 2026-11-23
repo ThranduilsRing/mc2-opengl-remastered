@@ -1,6 +1,7 @@
 // Render/GameOS side of the sim hook table (code/sim_render_hooks.h). Not part of mc2_sim: it names gos_* and gpu_cull::.
 // Installed by static initialisation, before main, so every exe (game, headless runner) has the table filled.
 #include "sim_render_hooks.h"
+#include "../mclib/camera.h"
 #include "gameos.hpp"
 #include "../GameOS/gameos/gos_terrain_lod_chunk.h"
 #include "../GameOS/gameos/gpu_cull_substrate.h"
@@ -33,6 +34,8 @@ void hookMeasureDebugText(mc2::czstring text, uint32_t* width, uint32_t* height)
 
 const bool s_installed = []() {
 	auto& h = mc2::sim::g_renderHooks;
+	h.advanceTimeOfDay = [] { if (eye) eye->advanceTimeOfDay(); };
+	h.liveLighting = [] { return eye && eye->hasTimeOfDay(); };
 	h.keyPressed = hookKeyPressed;
 	h.getTerrainShadowSoftness = &gos_GetTerrainShadowSoftness;
 	h.setTerrainShadowSoftness = &gos_SetTerrainShadowSoftness;

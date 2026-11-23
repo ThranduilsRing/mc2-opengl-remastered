@@ -14,6 +14,13 @@ float Camera::setDaylightFraction (float f)
 {
 	// Wrap rather than clamp: 0.25 == noon, 0.5 == sunset, 0.75 == midnight.
 	f = f - floorf(f);
+	if (todCurve)
+	{
+		todT = std::clamp(f, todCurve->keys.front().t, todCurve->keys.back().t);
+		lightMods.sunPitch.reset(); lightMods.sunYaw.reset();
+		publishLight();
+		return lightPitch;
+	}
 
 	// updateDaylight()'s entire body is inside `if (day2NightTransitionTime >
 	// 0.0f)`, and missions without a DayToNightTime park it at -1 (camera.cpp
@@ -47,6 +54,13 @@ float Camera::setDaylightFraction (float f)
 
 float Camera::setSunPitch (float pitchDeg, bool setYaw, float yawDeg)
 {
+	if (todCurve)
+	{
+		lightMods.sunPitch = pitchDeg;
+		if (setYaw) lightMods.sunYaw = yawDeg;
+		publishLight();
+		return lightPitch;
+	}
 	while (pitchDeg < 0.0f)     pitchDeg += 360.0f;
 	while (pitchDeg >= 360.0f)  pitchDeg -= 360.0f;
 	lightPitch = pitchDeg;
@@ -65,7 +79,6 @@ float Camera::setSunPitch (float pitchDeg, bool setYaw, float yawDeg)
 			lightPitch * DEGREES_TO_RADS, (lightYaw + 135.0) * DEGREES_TO_RADS, 0.0f));
 		worldLights[0]->SetLightToWorld(&lightToWorldMatrix);
 	}
-	noteSunMoved();   // with a curve: the new angle becomes an override of the curve's sun
 	return lightPitch;
 }
 

@@ -485,11 +485,25 @@ long Camera::init (FitIniFilePtr cameraFile )
 				{
 					todCurve = *parsed;
 					todT = todCurve->start;
+					todRate = todCurve->rate;
+					if (fromSave)
+					{
+						DWORD hash = 0;
+						float t = todCurve->start, rate = todRate;
+						const bool match = cameraFile->readIdULong("TodCurveHash", hash) == NO_ERR && hash == todCurve->hash;
+						if (match && cameraFile->readIdFloat("TimeOfDay", t) == NO_ERR)
+						{
+							todT = mc2::lighting::restoreTod(*todCurve, hash, t);
+							if (cameraFile->readIdFloat("TimeOfDayRate", rate) == NO_ERR && std::isfinite(rate) && rate >= 0.0f) todRate = rate;
+						}
+						else if (mc2_diag::tagRequested("TOD"))
+							mc2::fmt::print_err("[TOD] save missing clock or curve hash mismatch; restarting at {:.6f}\n", todCurve->start);
+					}
 					todBase = lightMembers();   // the authored state (sun keys applied); the fog is added at the fog read
 					if (todCurve->droppedKeys && mc2_diag::tagRequested("TOD"))
 						mc2::fmt::print_err("[TOD] warning: dropped {} keys past the cap of {}\n", todCurve->droppedKeys, mc2::lighting::kMaxTodKeys);
 					if (mc2_diag::tagRequested("TOD"))
-						mc2::fmt::print_err("[TOD] curve keys={} start={:.3f} mode=Live (clock not wired: T3)\n", todCurve->keys.size(), todCurve->start);
+						mc2::fmt::print_err("[TOD] curve keys={} t={:.9f} rate={:.9f} hash={} mode=Live\n", todCurve->keys.size(), todT, todRate, todCurve->hash);
 				}
 			}
 	}
@@ -1002,13 +1016,10 @@ void Camera::setKillAmbient(bool on)
 	}
 }
 
-// With a curve the sun hotkeys and the runtime sun control become an override of the curve's pitch/yaw (a modulator), so the
-// next evaluation still honours them. Without a curve the members they wrote are the state: nothing to do.
-void Camera::noteSunMoved()
+// Only the simulation tick advances the live clock; publication keeps legacy member readers coherent.
+void Camera::advanceTimeOfDay()
 {
-	if (!todCurve) return;
-	lightMods.sunPitch = lightPitch;
-	lightMods.sunYaw = lightYaw;
+	mc2::lighting::tickTod(todCurve.get(), todT, todRate, [this] { publishLight(); });
 }
 
 void Camera::flatLight(const mc2::lighting::LightingState& s, float intensity, unsigned char out[3]) const
@@ -1020,6 +1031,20 @@ void Camera::flatLight(const mc2::lighting::LightingState& s, float intensity, u
 bool Camera::save( FitIniFile* file )
 {
 	file->writeBlock("Cameras");
+	// The legacy writer fixes floats to six decimals: that changes the real-time rate by ~4% on reload.
+	// Only the opt-in clock keys need round-trip float precision; stock Cameras bytes keep their old format.
+	struct ClockSave {
+		FitIniFile& file;
+		void writeIdFloat(std::string_view name, float value) {
+			char line[128];
+			mc2::fmt::to_buf(line, "f {} = {:.9g}\r\n", name, value);
+			file.write(reinterpret_cast<MemoryPtr>(line), strlen(line));
+		}
+		void writeIdULong(std::string_view name, uint32_t value) { file.writeIdULong(name, value); }
+	} clockSave{*file};
+	mc2::lighting::saveTod(clockSave, todCurve.get(), todT, todRate);
+	if (todCurve && mc2_diag::tagRequested("TOD"))
+		mc2::fmt::print_err("[TOD] save t={:.9f} pitch={:.6f} yaw={:.6f}\n", todT, lightPitch, lightYaw);
 	file->writeIdFloat( "ProjectionAngle", projectionAngle );
 	file->writeIdFloat( "PositionX", position.x );
 	file->writeIdFloat( "PositionY", position.y );
@@ -1038,12 +1063,12 @@ bool Camera::save( FitIniFile* file )
 		file->writeIdUChar( "AuthoredAmbientGreen", s_authoredSun.amb[1] ); file->writeIdUChar( "AuthoredAmbientBlue", s_authoredSun.amb[2] );
 	}
 
-	file->writeIdUChar( "LightRed", lightRed );
-	file->writeIdUChar( "LightGreen", lightGreen );
-	file->writeIdUChar( "LightBlue", lightBlue );
-	file->writeIdUChar( "AmbientBlue", ambientBlue );
-	file->writeIdUChar( "AmbientGreen", ambientGreen );
-	file->writeIdUChar( "AmbientRed", ambientRed );
+	file->writeIdUChar( "LightRed", todCurve ? todBase.sun[0] : lightRed );
+	file->writeIdUChar( "LightGreen", todCurve ? todBase.sun[1] : lightGreen );
+	file->writeIdUChar( "LightBlue", todCurve ? todBase.sun[2] : lightBlue );
+	file->writeIdUChar( "AmbientBlue", todCurve ? todBase.amb[2] : ambientBlue );
+	file->writeIdUChar( "AmbientGreen", todCurve ? todBase.amb[1] : ambientGreen );
+	file->writeIdUChar( "AmbientRed", todCurve ? todBase.amb[0] : ambientRed );
 	if (terrainShadowColorEnabled)
 	{
 		file->writeIdUChar( "TerrainShadowColorEnabled", 1 );
@@ -1057,12 +1082,12 @@ bool Camera::save( FitIniFile* file )
 	file->writeIdUChar( "TerrainShadowRed", terrainShadowRed );
 
 	
-	file->writeIdUChar( "DayLightRed", dayLightRed );
-	file->writeIdUChar( "DayLightGreen", dayLightGreen );
-	file->writeIdUChar( "DayLightBlue", dayLightBlue );
-	file->writeIdUChar( "DayAmbientBlue", dayAmbientBlue );
-	file->writeIdUChar( "DayAmbientGreen", dayAmbientGreen );
-	file->writeIdUChar( "DayAmbientRed", dayAmbientRed );
+	file->writeIdUChar( "DayLightRed", todCurve ? todBase.sun[0] : dayLightRed );
+	file->writeIdUChar( "DayLightGreen", todCurve ? todBase.sun[1] : dayLightGreen );
+	file->writeIdUChar( "DayLightBlue", todCurve ? todBase.sun[2] : dayLightBlue );
+	file->writeIdUChar( "DayAmbientBlue", todCurve ? todBase.amb[2] : dayAmbientBlue );
+	file->writeIdUChar( "DayAmbientGreen", todCurve ? todBase.amb[1] : dayAmbientGreen );
+	file->writeIdUChar( "DayAmbientRed", todCurve ? todBase.amb[0] : dayAmbientRed );
 	file->writeIdUChar( "SunsetLightRed", sunsetLightRed );
 	file->writeIdUChar( "SunsetLightGreen", sunsetLightGreen );
 	file->writeIdUChar( "SunsetLightBlue", sunsetLightBlue );
@@ -1080,11 +1105,11 @@ bool Camera::save( FitIniFile* file )
 	file->writeIdUChar( "BaseGreen", baseGreen );
 	file->writeIdUChar( "BaseRed", baseRed );
 	
-	file->writeIdFloat( "LightDirPitch", lightPitch );
-	file->writeIdFloat("DayLightPitch",dayLightPitch);
+	file->writeIdFloat( "LightDirPitch", todCurve ? todBase.pitch : lightPitch );
+	file->writeIdFloat("DayLightPitch",todCurve ? todBase.pitch : dayLightPitch);
 
 	file->writeIdFloat("DayToNightTime",day2NightTransitionTime);
-	file->writeIdFloat( "LightDirYaw", lightYaw );
+	file->writeIdFloat( "LightDirYaw", todCurve ? todBase.yaw : lightYaw );
 	
 	file->writeIdFloat( "NewScale", newScaleFactor );
 	file->writeIdFloat( "StartRotation", getCameraRotation() );
@@ -1094,8 +1119,8 @@ bool Camera::save( FitIniFile* file )
 	file->writeIdFloat( "ZoomMin", zoomMin );
 	file->writeIdFloat( "FOVMax",FOVMax);
 	file->writeIdFloat( "FOVMin",FOVMin);
-	file->writeIdFloat( "FogStart", fogStart );
-	file->writeIdFloat( "FogFull", fogFull );
+	file->writeIdFloat( "FogStart", todCurve ? todBase.fogStart : fogStart );
+	file->writeIdFloat( "FogFull", todCurve ? todBase.fogFull : fogFull );
 	file->writeIdULong( "FogColor", dayFogColor );
 	file->writeIdFloat( "FogTransparency", fogTransparency );
 	long userMin, userMax;
