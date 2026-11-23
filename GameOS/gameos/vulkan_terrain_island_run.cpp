@@ -20,6 +20,7 @@
 
 #include "visual_tuning_profile.h"
 #include "mission_environment_gpu.h"
+#include "../../mclib/camera.h"
 #include "vk_water_planar.h"
 #include "water_planar_terrain.h"
 
@@ -40,7 +41,9 @@ bool vk_terrain_detail::bind_environment(TerrainIsland* s, uint32_t par) {
     const mc2vk::FrameAlloc slice = rctx.frameAlloc(sizeof(EnvironmentUBO));
     if (!slice) return false;
     EnvironmentUBO env;
-    mc2::environment::fillGpu(visualTuning_environment(), mc2SceneLightScale(), env);
+    mc2::environment::fillGpu(visualTuning_environment(), mc2SceneLightScale(), env,
+        eye ? eye->currentLighting() : mc2::lighting::LightingState{},
+        eye ? eye->bakeReferenceLighting() : mc2::lighting::LightingState{});
     std::memcpy(slice.ptr, &env, sizeof(env));
     const VkDescriptorBufferInfo info{slice.buffer, slice.offset, sizeof(EnvironmentUBO)};
     VkWriteDescriptorSet w{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};

@@ -151,6 +151,76 @@
           "name": "sunRelight",
           "offset": 368,
           "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "sunLive",
+          "offset": 384,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "sunLiveDir",
+          "offset": 400,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "ambLive",
+          "offset": 416,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "sunBake",
+          "offset": 432,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "sunBakeDir",
+          "offset": 448,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "ambBake",
+          "offset": 464,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "fog",
+          "offset": 480,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "cementSky",
+          "offset": 496,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "edgeHazeSky",
+          "offset": 512,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "lightingParams",
+          "offset": 528,
+          "type": "vec4"
         }
       ],
       "name": "MechFrameUBO"

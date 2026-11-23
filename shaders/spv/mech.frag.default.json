@@ -6,8 +6,8 @@
   "specializationParams": [],
   "artifact": "mech.frag.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "5f3e556871aaa2c550e09c92ee9ddc3c848848fcb2460acc8f0fa3e2454ca050",
-  "spirv_sha256": "41e7085ab36a749f731de1289af54ceee33b3440e876d99bb3ab94f462701c2d",
+  "source_sha256": "deb1c014e168b9d8ffb12983476fb3b025d9bef179392b5ef4d7730c629a552d",
+  "spirv_sha256": "2d7c49062516795f249b6f1988b4cd0c55273515bce67ba4e9a52b0a9d334da6",
   "bindings": {
     "ubos": [
       {
@@ -20,14 +20,14 @@
       {
         "type": "_1179",
         "name": "MechFrameUBO",
-        "block_size": 384,
+        "block_size": 544,
         "set": 0,
         "binding": 0
       },
       {
         "type": "_1787",
         "name": "EnvironmentUBO",
-        "block_size": 288,
+        "block_size": 448,
         "set": 1,
         "binding": 26
       },
@@ -987,6 +987,56 @@
           "name": "sunRelight",
           "type": "vec4",
           "offset": 368
+        },
+        {
+          "name": "sunLive",
+          "type": "vec4",
+          "offset": 384
+        },
+        {
+          "name": "sunLiveDir",
+          "type": "vec4",
+          "offset": 400
+        },
+        {
+          "name": "ambLive",
+          "type": "vec4",
+          "offset": 416
+        },
+        {
+          "name": "sunBake",
+          "type": "vec4",
+          "offset": 432
+        },
+        {
+          "name": "sunBakeDir",
+          "type": "vec4",
+          "offset": 448
+        },
+        {
+          "name": "ambBake",
+          "type": "vec4",
+          "offset": 464
+        },
+        {
+          "name": "fog",
+          "type": "vec4",
+          "offset": 480
+        },
+        {
+          "name": "cementSky",
+          "type": "vec4",
+          "offset": 496
+        },
+        {
+          "name": "edgeHazeSky",
+          "type": "vec4",
+          "offset": 512
+        },
+        {
+          "name": "lightingParams",
+          "type": "vec4",
+          "offset": 528
         }
       ]
     },
@@ -1046,6 +1096,56 @@
           "name": "sunRelight",
           "type": "vec4",
           "offset": 272
+        },
+        {
+          "name": "sunLive",
+          "type": "vec4",
+          "offset": 288
+        },
+        {
+          "name": "sunLiveDir",
+          "type": "vec4",
+          "offset": 304
+        },
+        {
+          "name": "ambLive",
+          "type": "vec4",
+          "offset": 320
+        },
+        {
+          "name": "sunBake",
+          "type": "vec4",
+          "offset": 336
+        },
+        {
+          "name": "sunBakeDir",
+          "type": "vec4",
+          "offset": 352
+        },
+        {
+          "name": "ambBake",
+          "type": "vec4",
+          "offset": 368
+        },
+        {
+          "name": "fog",
+          "type": "vec4",
+          "offset": 384
+        },
+        {
+          "name": "cementSky",
+          "type": "vec4",
+          "offset": 400
+        },
+        {
+          "name": "edgeHazeSky",
+          "type": "vec4",
+          "offset": 416
+        },
+        {
+          "name": "lightingParams",
+          "type": "vec4",
+          "offset": 432
         }
       ]
     },
