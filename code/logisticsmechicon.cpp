@@ -106,12 +106,12 @@ int LogisticsMechIcon::init( FitIniFile& file, const long* slot )
 		{
 			// The page's slots are the grid; a card box of another size (MCO: 90 x 80 at x 75) is scaled into slot 1.
 			LogisticsMechIcon& t = *s_pTemplateIcon;
-			const auto k = unit_icons::cardScale( (int)slot[2], (int)slot[3], (int)t.outline.width(), (int)t.outline.height() );
+			const auto k = unit_icons::cardScale( static_cast<int>(slot[2]), static_cast<int>(slot[3]), static_cast<int>(t.outline.width()), static_cast<int>(t.outline.height()) );
 			for ( aObject* o : { &t.iconConnector, &t.icon, &t.pilotIcon } )
-				unit_icons::scaleCardChild( *o, (float)o->globalX(), (float)o->globalY(), k, true );
-			for ( aObject* o : { (aObject*)&t.pilotName, (aObject*)&t.chassisName } )
-				unit_icons::scaleCardChild( *o, (float)o->globalX(), (float)o->globalY(), k, false );
-			t.outline.move( (float)(slot[0] - t.outline.globalX()), (float)(slot[1] - t.outline.globalY()) );
+				unit_icons::scaleCardChild( *o, static_cast<float>(o->globalX()), static_cast<float>(o->globalY()), k, true );
+			for ( aObject* o : { static_cast<aObject*>(&t.pilotName), static_cast<aObject*>(&t.chassisName) } )
+				unit_icons::scaleCardChild( *o, static_cast<float>(o->globalX()), static_cast<float>(o->globalY()), k, false );
+			t.outline.move( static_cast<float>(slot[0] - t.outline.globalX()), static_cast<float>(slot[1] - t.outline.globalY()) );
 			t.outline.resize( slot[2], slot[3] );
 		}
 	}

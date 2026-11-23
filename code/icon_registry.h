@@ -148,7 +148,7 @@ template <class Widget>
 inline void scaleCardChild(Widget& widget, float x, float y, const std::array<float, 2>& k, bool art) {
     const float w = widget.width(), h = widget.height();
     widget.move(x * (k[0] - 1.f), y * (k[1] - 1.f));
-    if (art) widget.resize(std::max(1l, std::lround(w * k[0])), std::max(1l, std::lround(h * k[1])));
+    if (art) widget.resize(std::clamp(std::lround(w * k[0]), 1l, 65535l), std::clamp(std::lround(h * k[1]), 1l, 65535l));
 }
 
 // LookupModPriority ranks: a mod's load-order slot (the active mod 0, its dependencies 1..), else one of the

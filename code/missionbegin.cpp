@@ -1229,6 +1229,25 @@ void MissionBegin::updateSoakAutoPurchase() {
 							Candidate tmp = cands[i]; cands[i] = cands[j]; cands[j] = tmp;
 						}
 
+						// MECH_PREVIEW_CHASSIS=a,b: those chassis (substring of the variant name) lead the lance.
+						if ( const std::string_view want = std::getenv( "MECH_PREVIEW_CHASSIS" ) ? std::getenv( "MECH_PREVIEW_CHASSIS" ) : ""; !want.empty() )
+						{
+							const std::string list = "," + std::string( want ) + ",";
+							int front = 0;
+							for ( int i = 0; i < nCands; ++i )
+							{
+								std::string name = cands[i].variant->getName().c_str();
+								for ( char& c : name ) c = static_cast<char>( std::tolower( static_cast<unsigned char>( c ) ) );
+								bool hit = false;
+								for ( size_t at = 1, end; at < list.size() && !hit; at = end + 1 )
+								{
+									end = list.find( ',', at );
+									hit = end > at && name.find( list.substr( at, end - at ) ) != std::string::npos;
+								}
+								if ( hit ) std::swap( cands[i], cands[front++] );
+							}
+						}
+
 						// -- deploy down shuffled list --------------------------------------
 						int deployed    = 0;
 						int fromSalvage = 0;

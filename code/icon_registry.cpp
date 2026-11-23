@@ -211,6 +211,14 @@ void init(std::string first = {}, int cw = 25, int ch = 30) {
         }
         if (!src.data.empty() && registry.add(key, src.w, src.h, src.data)) {
             namedPriority[key] = priority;
+            // A mod's grey silhouette is drawn like stock's blue HUD art, not tinted by the orange card animation.
+            const bool mono = std::ranges::all_of(src.data, [](uint32_t p) { return ((p >> 16) & 255) == ((p >> 8) & 255) && ((p >> 8) & 255) == (p & 255); });
+            if (key.starts_with("mech/") && mono && priority < 999998) {
+                auto blue = src.data;
+                for (auto& p : blue) p = (p & 0xff000000u) | (((p >> 16) & 255) * 110 / 255) << 16 | (((p >> 8) & 255) * 170 / 255) << 8 | ((p & 255) * 225 / 255);
+                const std::string blueKey = "monohud/" + key.substr(5);
+                if (registry.add(blueKey, src.w, src.h, blue)) namedPriority[blueKey] = priority;
+            }
         } else if (raw) cacheable = false;
       }
       if (!cacheHit && cacheable) {
@@ -294,8 +302,8 @@ bool apply(aObject& widget, const aObject& source, long index, const Subject& su
         const auto hud = hudIconSource(Environment.drawableWidth, Environment.screenWidth, vehicle);
         return std::format("hud/{}/front/{}", std::filesystem::path(hud.sheet).stem().string(), query.stem);
     };
-    query.hud = {"hud/front/" + query.stem, tiered(false), tiered(true)};
-    const auto pick = registry.select(namedPriority, query);
+    query.hud = {"hud/front/" + query.stem, tiered(false), tiered(true), "monohud/" + query.stem, "monohud/" + query.name};
+    auto pick = registry.select(namedPriority, query);
     const Icon* icon = pick.icon;
     if (!icon) {
         if (mc2_diag::tagRequested("ICON_REGISTRY")) {
@@ -303,7 +311,15 @@ bool apply(aObject& widget, const aObject& source, long index, const Subject& su
             if (inserted)
                 mc2::fmt::print_err("[ICON_REGISTRY] no art for chassis {} (placeholder)\n", query.stem);
         }
-        icon = registry.find("missing");
+        // No source has art for this chassis: a stock mech silhouette, never the missing-texture checkerboard.
+        const Icon* generic = registry.find("hud/front/bushwacker");
+        if (!generic)
+            if (const auto any = registry.icons.lower_bound("hud/front/"); any != registry.icons.end()) {
+                const auto& [name, art] = *any;
+                if (name.starts_with("hud/front/")) generic = &art;
+            }
+        if (generic) { icon = generic; pick.hud = generic; }
+        else icon = registry.find("missing");
     }
     if (widget.getTextureHandle() != texture) widget.setTexture(mc2::textures::retain(texture));
     widget.setFileWidth(static_cast<float>(registry.edge)); widget.setFileHeight(static_cast<float>(registry.edge));
