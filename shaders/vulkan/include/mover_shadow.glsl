@@ -25,9 +25,14 @@ float moverCompare(vec2 uv, float depth) {
     return mix(mix(taps.w, taps.z, f.x), mix(taps.x, taps.y, f.x), f.y);
 }
 
-float moverVisibility(vec3 worldPos, vec3 N) {
+// slopeBias > 0: a static-prop receiver. The building is its own caster in this map, so a wall near the terminator
+// (N.L small) needs its normal offset and depth bias to grow with the surface slope, or its texels stair-step against
+// themselves (ATC acne). Ground and mover receivers pass 0, so contact shadows keep the exact bias (no peter-panning).
+float moverVisibilityEx(vec3 worldPos, vec3 N, float slopeBias) {
     if (moverFrame.flags.x == 0) return 1.0;
-    vec3 samplePos = worldPos + N * moverFrame.params.z;
+    float ndl = clamp(dot(N, moverFrame.sun.xyz), 0.0, 1.0);
+    float slope = slopeBias * min(sqrt(max(1.0 - ndl * ndl, 0.0)) / max(ndl, 0.2), 4.0);
+    vec3 samplePos = worldPos + N * moverFrame.params.z * (1.0 + slope);
     vec4 light = moverFrame.matrix * vec4(samplePos, 1.0);
     vec3 pc = light.xyz / light.w;
     pc.xy = pc.xy * 0.5 + 0.5;
@@ -38,7 +43,7 @@ float moverVisibility(vec3 worldPos, vec3 N) {
         uint lo = (moverFrame.coverage[cell >> 4u][(cell >> 2u) & 3u] >> ((cell & 3u) * 8u)) & 255u;
         if (lo == 255u || pc.z * 255.0 < float(lo)) return 1.0;
     }
-    float bias = 2.0 / 65535.0 + 0.25 * moverFrame.params.x * moverFrame.params.y;
+    float bias = 2.0 / 65535.0 + (0.25 + 0.75 * slope) * moverFrame.params.x * moverFrame.params.y;
     // Contact hardening without the bake's short-blocker lift: the penumbra is
     // meanD * tanT, so mech-height casters stay crisp away from the feet.
     // Raw depth shares the existing image view and descriptor slot.
@@ -88,4 +93,5 @@ float moverVisibility(vec3 worldPos, vec3 N) {
     // No distance fade: a mover's shadow keeps its darkness from the feet to the tip.
     return visibility / float(count);
 }
+float moverVisibility(vec3 worldPos, vec3 N) { return moverVisibilityEx(worldPos, N, 0.0); }
 #endif

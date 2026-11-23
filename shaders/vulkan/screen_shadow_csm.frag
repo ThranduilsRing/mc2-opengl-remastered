@@ -40,7 +40,7 @@ void main() {
     vec3 N=prop?mc2ToRender(decodedNormal):decodedNormal;
     float shadow=u.enableShadows!=0 && !prop?objectStaticVisibility(worldPos):1.0;
     if (u.enableDynamicShadows!=0) {
-        float v=moverVisibility(worldPos,N);
+        float v=moverVisibilityEx(worldPos,N,prop?1.0:0.0);
         if (!prop && u.mechSoft>0.0)
             v=mix(1.0,v,smoothstep(0.0,0.15+0.30*u.mechSoft,max(dot(N,moverFrame.sun.xyz),0.0)));
         float moverShadow = v;
