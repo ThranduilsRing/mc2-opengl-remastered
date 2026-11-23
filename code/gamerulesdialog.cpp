@@ -123,7 +123,10 @@ void GameRulesDialog::refreshRows()
 		setDefsElementText( rowKey( "text", i ), labelFor( r.key ) + ( active ? "" : "  (not yet active)" ) );
 		if ( !slider )	// setting text reveals an element, so a slider row's value button is never given any
 		{
-			setDefsElementText( rowKey( "button", i ), valueText( working, r ) );
+			// Upper case, like the labels: Agency's lower-case 'u' glyph renders a stray superscript ("est") over the letter.
+			std::string vt = valueText( working, r );
+			for ( char& c : vt ) c = static_cast<char>( std::toupper( static_cast<unsigned char>( c ) ) );
+			setDefsElementText( rowKey( "button", i ), vt );
 			setDefsElementTextColor( rowKey( "button", i ), active ? kActiveValueColor : kGreyColor );
 		}
 		setDefsElementTextColor( rowKey( "text", i ), active ? kActiveColor : kGreyColor );
