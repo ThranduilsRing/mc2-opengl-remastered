@@ -16,6 +16,7 @@ struct DDSURFACEDESC2 {
 #include<ddraw.h>
 #endif
 #include"loadscreen.h"
+#include <cmath>
 #include"aanimobject.h"
 #include"tgainfo.h"
 #include"mclib.h"
@@ -221,7 +222,37 @@ void LoadScreenWrapper::changeRes()
 
 	exitScreen->setupOutAnims();
 
+	{	// "mcl_loadingscreen_1600" -> 1600x900 art; owner 4K: it was drawn 1:1 top-left with black margins
+		const char* us = strrchr( fileName, '_' );
+		const long layoutW = us ? atol( us + 1 ) : 0;
+		if ( layoutW > 0 )
+			exitScreen->fitToWindow( layoutW, layoutW == 1600 ? 900 : layoutW * 3 / 4 );
+	}
+
 	LoadScreen::changeRes( outFile );
+}
+
+void LoadScreen::fitToWindow( long layoutW, long layoutH )
+{
+	const float sx = static_cast<float>(Environment.screenWidth) / static_cast<float>(layoutW);
+	const float sy = static_cast<float>(Environment.screenHeight) / static_cast<float>(layoutH);
+	const float s = std::min( sx, sy );
+	if ( !( s > 0.f ) || std::fabs( s - 1.f ) < 0.01f )
+		return;
+	const float offX = ( static_cast<float>(Environment.screenWidth) - layoutW * s ) * 0.5f;
+	const float offY = ( static_cast<float>(Environment.screenHeight) - layoutH * s ) * 0.5f;
+	auto fit = [&]( aObject& o )
+	{
+		const float x = o.x(), y = o.y(), w = o.width(), h = o.height();
+		o.resize( std::lround( w * s ), std::lround( h * s ) );
+		o.moveTo( std::lround( x * s + offX ), std::lround( y * s + offY ) );
+	};
+	for ( long i = 0; i < staticCount; i++ ) fit( statics[i] );
+	for ( long i = 0; i < rectCount; i++ ) fit( rects[i] );
+	for ( long i = 0; i < textCount; i++ ) fit( textObjects[i] );
+	for ( long i = 0; i < buttonCount; i++ ) fit( buttons[i] );
+	for ( long i = 0; i < animObjectsCount; i++ ) fit( animObjects[i] );
+	fit( text );
 }
 
 void LoadScreen::changeRes( FitIniFile& outFile )
