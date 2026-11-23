@@ -103,9 +103,11 @@ inline TodParse parseTodCurve(std::string_view text)
 		curve->keys.resize(kMaxTodKeys);
 	}
 	curve->start = detail::jsonNum(doc, "start").value_or(0.0f);
-	curve->rate = detail::jsonNum(doc, "rate").value_or(0.0f);
+	curve->rate = detail::jsonNum(doc, "rate").value_or(curve->rate);
 	if (curve->rate < 0.0f) return fail("timeOfDay: negative rate");
 	curve->start = std::clamp(curve->start, curve->keys.front().t, curve->keys.back().t);
+	curve->hash = 2166136261u;
+	for (unsigned char c : doc.dump()) curve->hash = (curve->hash ^ c) * 16777619u;
 	return curve;
 }
 

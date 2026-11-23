@@ -86,9 +86,41 @@ inline constexpr size_t kMaxTodKeys = 64;   // one cap for every channel (parseT
 struct TodCurve {
 	std::vector<TodKey> keys;       // sorted by t, strictly increasing (parseTodCurve guarantees it)
 	float start = 0.0f;             // normalized time a mission begins at
-	float rate = 0.0f;              // normalized time per second (>= 0); read by the T3 clock, not by evaluate
+	float rate = 1.0f / 86400.0f;   // normalized time per sim second; default is one real-time day
+	uint32_t hash = 0;             // stable identity of the accepted sidecar block
 	size_t droppedKeys = 0;         // keys past kMaxTodKeys that parseTodCurve discarded (the camera logs a [TOD] warning)
 };
+
+inline double advanceTod(const TodCurve& curve, double t, float rate)
+{
+	// Double accumulation avoids float rounding changing the real-time rate near noon.
+	return std::min(static_cast<double>(curve.keys.back().t), t + static_cast<double>(rate) / 30.0);
+}
+
+inline float restoreTod(const TodCurve& curve, uint32_t hash, float t)
+{
+	return hash == curve.hash && std::isfinite(t)
+		? std::clamp(t, curve.keys.front().t, curve.keys.back().t) : curve.start;
+}
+
+template<class Save>
+inline void saveTod(Save& file, const TodCurve* curve, double t, float rate)
+{
+	if (!curve) return;
+	file.writeIdFloat("TimeOfDay", static_cast<float>(t));
+	file.writeIdFloat("TimeOfDayRate", rate);
+	file.writeIdULong("TodCurveHash", curve->hash);
+}
+
+template<class Publish>
+inline void tickTod(const TodCurve* curve, double& t, float rate, Publish publish)
+{
+	if (!curve) return;
+	const double next = advanceTod(*curve, t, rate);
+	if (next == t) return;
+	t = next;
+	publish();
+}
 
 namespace detail {
 

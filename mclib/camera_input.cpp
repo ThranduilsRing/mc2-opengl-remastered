@@ -639,6 +639,7 @@ void Camera::updateInputSmoothing (glm::vec3 &newPosition)
 //---------------------------------------------------------------------------
 void Camera::rotateLightLeft(float amount)
 {
+	if (todCurve) { setSunPitch(lightPitch, true, lightYaw + amount); return; }
 	lightYaw += amount;
 	if (lightYaw > 360.0)
 		lightYaw -= 360;
@@ -650,12 +651,12 @@ void Camera::rotateLightLeft(float amount)
 	mc2::math::buildRotation(lightToWorldMatrix, mc2::math::Euler(lightPitch * DEGREES_TO_RADS, (lightYaw + 135.0) * DEGREES_TO_RADS, 0.0f));
 
 	worldLights[0]->SetLightToWorld(&lightToWorldMatrix);
-	noteSunMoved();   // with a time-of-day curve the hotkey becomes an override of the curve's sun
 }	
 
 //---------------------------------------------------------------------------
 void Camera::rotateLightRight(float amount)
 {
+	if (todCurve) { setSunPitch(lightPitch, true, lightYaw - amount); return; }
 	lightYaw -= amount;
 	if (lightYaw < -360.0)
 		lightYaw += 360;
@@ -666,12 +667,12 @@ void Camera::rotateLightRight(float amount)
 	mc2::math::buildRotation(lightToWorldMatrix, mc2::math::Euler(lightPitch * DEGREES_TO_RADS, (lightYaw + 135.0) * DEGREES_TO_RADS, 0.0f));
 
 	worldLights[0]->SetLightToWorld(&lightToWorldMatrix);
-	noteSunMoved();   // with a time-of-day curve the hotkey becomes an override of the curve's sun
 }	
 
 //---------------------------------------------------------------------------
 void Camera::rotateLightUp(float amount)
 {
+	if (todCurve) { setSunPitch(std::min(lightPitch + amount, 90.0f)); return; }
 	lightPitch += amount;
 	lightPitch = std::min<double>(lightPitch, 90.0);
 
@@ -682,12 +683,12 @@ void Camera::rotateLightUp(float amount)
 	mc2::math::buildRotation(lightToWorldMatrix, mc2::math::Euler(lightPitch * DEGREES_TO_RADS, (lightYaw + 135.0) * DEGREES_TO_RADS, 0.0f));
 
 	worldLights[0]->SetLightToWorld(&lightToWorldMatrix);
-	noteSunMoved();   // with a time-of-day curve the hotkey becomes an override of the curve's sun
 }	
 
 //---------------------------------------------------------------------------
 void Camera::rotateLightDown(float amount)
 {
+	if (todCurve) { setSunPitch(std::max(lightPitch - amount, 5.0f)); return; }
 	lightPitch -= amount;
 	lightPitch = std::max(lightPitch, 5.0f);
 
@@ -698,7 +699,6 @@ void Camera::rotateLightDown(float amount)
 	mc2::math::buildRotation(lightToWorldMatrix, mc2::math::Euler(lightPitch * DEGREES_TO_RADS, (lightYaw + 135.0) * DEGREES_TO_RADS, 0.0f));
 
 	worldLights[0]->SetLightToWorld(&lightToWorldMatrix);
-	noteSunMoved();   // with a time-of-day curve the hotkey becomes an override of the curve's sun
 }	
 
 //---------------------------------------------------------------------------
