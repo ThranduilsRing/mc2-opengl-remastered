@@ -167,6 +167,7 @@ inline size_t fillEnclosedGlassHoles(std::span<uint8_t> rgba, uint32_t width, ui
     }
     size_t filled = 0;
     const size_t minArea = std::max<size_t>(24, static_cast<size_t>(contentW) * contentH / 4096);
+    const uint32_t minSide = std::clamp(std::min(contentW, contentH) / 32u, 4u, 1024u);
     uint32_t id = 2;
     for (uint32_t y = 0; y < contentH; ++y)
         for (uint32_t x = 0; x < contentW; ++x) {
@@ -175,6 +176,7 @@ inline size_t fillEnclosedGlassHoles(std::span<uint8_t> rgba, uint32_t width, ui
             const size_t area = flood(x, y, mine);
             const size_t boxArea = static_cast<size_t>(box[2] - box[0] + 1) * (box[3] - box[1] + 1);
             if (area < minArea || area * 10 < boxArea * 8) continue;
+            if (std::min(box[2] - box[0], box[3] - box[1]) + 1 < minSide) continue;   // slits and bars are not panes
             // Glass sits in a wall: the ring around the hole must be mostly opaque. An opening in a frame, grating or fence panel
             // (surround mostly clear) is meant to be open and stays cut. Neighbouring windows in a grid may share the ring.
             const int64_t pad = std::clamp<int64_t>((box[2] - box[0] + 1) / 4, 2, 64);
