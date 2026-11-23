@@ -200,6 +200,11 @@ void overlay(Environment& env, const Json& values, std::string_view providerView
     if (!values.is_object()) { env.diagnostics.push_back("expected object: " + provider); return; }
     for (auto it=values.begin(); it!=values.end(); ++it) {
         if (it.key() == "terrainLightingV1Strength" || it.key() == "terrainLightingV2Floor") continue;
+        if (it.key() == "timeOfDay") {   // optional time-of-day curve block: kept as JSON text, parsed by mclib/lighting_tod_json.h
+            if (it->is_object()) env.timeOfDay = it->dump();
+            else env.diagnostics.push_back("invalid value: " + provider + ":timeOfDay");
+            continue;
+        }
         if (!env.legacyTuning.contains(it.key())) {
             env.diagnostics.push_back("unknown key: " + provider + ":" + it.key());
         } else if (!it->is_number() || !validValue(it.key(), it->get<double>())) {
@@ -416,6 +421,8 @@ std::optional<float> visualTuning_sunValue(std::string_view key) {
     const float v = tuning.contains(k) ? tuning.at(k) : kSunAbsent;
     return v > kSunAbsent ? std::optional<float>(v) : std::nullopt;
 }
+
+const std::string& visualTuning_timeOfDay() { return s_environment.timeOfDay; }
 
 const char* visualTuning_getProfilePath() { return s_profilePath.c_str(); }
 const char* visualTuning_getActiveMission() { return s_environment.mission.c_str(); }

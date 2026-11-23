@@ -69,6 +69,7 @@ struct MissionEnvironment {
     std::string clouds = "legacy-whole-color-multiply";
     std::string cacheStatus = "legacy-no-environment-cook";
     std::map<std::string, float> legacyTuning;
+    std::string timeOfDay;   // timeOfDay{} sidecar block as JSON text; empty = Fixed. Not part of the effective hash.
     std::vector<std::string> providers;
     std::vector<std::string> diagnostics;
     uint64_t effectiveHash = 0;

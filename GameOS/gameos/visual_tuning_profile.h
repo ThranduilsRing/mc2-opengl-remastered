@@ -20,6 +20,8 @@ bool visualTuning_saveCurrentToMission();  // write current slider state to JSON
 
 // Per-mission sun override (sunPitch/sunYaw/sunColorR/G/B): nullopt = key absent, keep the mission's sun.
 std::optional<float> visualTuning_sunValue(std::string_view key);
+// Optional per-mission timeOfDay{} block as JSON text; empty = none (the mission stays Fixed, bit-identical to stock).
+const std::string& visualTuning_timeOfDay();
 const char* visualTuning_getProfilePath();
 const char* visualTuning_getActiveMission();
 bool        visualTuning_hasProfileFile();
