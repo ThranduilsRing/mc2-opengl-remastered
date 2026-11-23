@@ -177,7 +177,7 @@ def test_defective_pack_keeps_the_old_pak_and_is_never_cached(monkeypatch, tmp_p
     hashes = {}
     dp.ensure_stock_pak(tmp_path, target, hashes)
     assert (target / dp.PAK_REL).read_bytes() == old  # the working pak stays
-    assert (target / dp.PAK_STATUS_NAME).read_text().startswith("FALLBACK packed pak refused")
+    assert (target / dp.PAK_STATUS_NAME).read_text().startswith("OK kept previous pak (packed pak refused")  # a good kept pak is OK
     assert hashes[dp.PAK_REL][0] == _sha(old) and hashes[dp.PAK_REL][3] == (target / dp.PAK_REL).stat().st_mtime_ns
     assert not (tmp_path / "cache" / "k" / "stock.mc2pak").exists()
 
@@ -238,6 +238,56 @@ def test_fallback_keeps_a_good_kept_pak(monkeypatch, tmp_path):
     hashes = {}
     dp.ensure_stock_pak(tmp_path, target, hashes)
     assert (target / dp.PAK_REL).is_file() and dp.PAK_REL in hashes
+    assert (target / dp.PAK_STATUS_NAME).read_text().startswith("OK kept previous pak (mc2pak pack timed out")
+
+
+def test_code_only_deploy_with_a_carried_bad_pak_row_still_judges_it(monkeypatch, tmp_path):
+    target = _setup_real(monkeypatch, tmp_path)
+    (target / "paks").mkdir()
+    _pak(target / dp.PAK_REL, target, entries_for_textures=0, names=4)
+    monkeypatch.setattr(dp.subprocess, "run", _timeout)
+    hashes = {dp.PAK_REL: ("carried", 1, None, None)}
+    dp.ensure_stock_pak(tmp_path, target, hashes)
+    assert dp.PAK_REL not in hashes and not (target / dp.PAK_REL).exists()
+    assert (target / dp.PAK_STATUS_NAME).read_text().startswith("FALLBACK")
+
+
+def test_only_the_newest_defect_file_is_kept(tmp_path):
+    target = _real_install(tmp_path)
+    (target / "paks").mkdir()
+    for stamp in ("20260101-000000", "20260102-000000"):
+        (target / "paks" / f"stock.mc2pak.defect-{stamp}").write_bytes(b"old")
+    _pak(target / dp.PAK_REL, target, entries_for_textures=0, names=4)
+    assert dp.quarantine_bad_pak(target)
+    left = sorted(p.name for p in (target / "paks").glob("stock.mc2pak.defect-*"))
+    assert len(left) == 1 and left[0] != "stock.mc2pak.defect-20260101-000000" and left[0] != "stock.mc2pak.defect-20260102-000000"
+
+
+def test_failed_status_write_removes_the_stale_status(monkeypatch, tmp_path):
+    (tmp_path / dp.PAK_STATUS_NAME).write_text("OK key=old\n")
+    real = Path.write_text
+    monkeypatch.setattr(Path, "write_text", lambda self, *a, **k: (_ for _ in ()).throw(OSError("disk")) if self.name == dp.PAK_STATUS_NAME else real(self, *a, **k))
+    dp.write_pak_status(tmp_path, "OK key=new")
+    assert not (tmp_path / dp.PAK_STATUS_NAME).exists()
+    import pytest
+    with pytest.raises(ValueError, match="missing"):
+        dp.require_pak_ok(tmp_path)
+
+
+def test_pak_defect_matches_sources_by_basename(tmp_path):
+    target = _real_install(tmp_path)
+    (target / "data/assets").mkdir(parents=True)
+    (target / "data/assets/b.fst").write_bytes((target / "a.fst").read_bytes())
+    (target / "system.cfg").write_text('[FastFiles]\nl NumFastFiles=2\nst File0="data\\assets\\b.fst"\nst File1="textures.fst"\n')
+    pak = _pak(tmp_path / "p.mc2pak", target)
+    with zipfile.ZipFile(pak) as z:
+        meta = json.loads(z.read("mc2pak.json"))
+    meta["sources"][0]["name"] = "b.fst"
+    with zipfile.ZipFile(tmp_path / "q.mc2pak", "w") as z:
+        z.writestr("mc2pak.json", json.dumps(meta))
+        for i in range(8):
+            z.writestr(f"data/{i}.bin", b"x")
+    assert dp.pak_defect(tmp_path / "q.mc2pak", target) is None
 
 
 def test_pak_defect_refuses_a_toc_hash_mismatch_at_equal_size_and_count(tmp_path):
@@ -279,6 +329,70 @@ def test_payload_publish_checks_the_incoming_pak_and_writes_the_status(monkeypat
     assert dp.PAK_REL not in (target / dp.MANIFEST_NAME).read_text()
 
 
+def _payload_with_pak(tmp_path, monkeypatch, pak_bytes, staged_pak, good_installed=False, with_fsts=True):
+    from test_deploy_stamp_at_hash import _payload
+    files = {"mc2.exe": b"exe", dp.PAK_REL: pak_bytes}
+    payload, target = _payload(tmp_path, monkeypatch, files, staged={"mc2.exe"} | ({dp.PAK_REL} if staged_pak else set()))
+    if with_fsts:
+        _fst(target / "a.fst", 3)
+        (target / "system.cfg").write_text('[FastFiles]\nl NumFastFiles=1\nst File0="a.fst"\n')
+    return payload, target
+
+
+def _a_pak(path, target):
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("mc2pak.json", json.dumps({"format": 1, "sources": [
+            {"name": "a.fst", "size": (target / "a.fst").stat().st_size, "entries": 3,
+             "toc_hash": dp._toc_hash((target / "a.fst").read_bytes()[:8 + 3 * 266])}]}))
+        for i in range(3):
+            z.writestr(f"data/{i}.bin", b"x")
+    return path.read_bytes()
+
+
+def test_incoming_bad_pak_never_overwrites_the_installed_good_one(monkeypatch, tmp_path):
+    payload, target = _payload_with_pak(tmp_path, monkeypatch, b"bad pak", staged_pak=True)
+    (target / "paks").mkdir()
+    good = _a_pak(target / dp.PAK_REL, target)
+    dp.deploy_from_payload(payload, target, tmp_path, "c" * 40)
+    assert (target / dp.PAK_REL).read_bytes() == good
+    assert (target / dp.PAK_STATUS_NAME).read_text().startswith("OK kept installed pak (incoming refused")
+    assert good and dp._toc_hash(b"x") and dp.PAK_REL in (target / dp.MANIFEST_NAME).read_text()
+    assert dp.sha256_file(target / dp.PAK_REL) in (target / dp.MANIFEST_NAME).read_text()
+    dp.require_pak_ok(target)
+
+
+def test_good_incoming_pak_is_installed_with_an_ok_status_and_an_unchanged_second_deploy_stays_ok(monkeypatch, tmp_path):
+    payload, target = _payload_with_pak(tmp_path, monkeypatch, b"x", staged_pak=True)
+    data = _a_pak(tmp_path / "good.mc2pak", target)
+    import csv
+    rows = list(csv.reader(open(payload / ".deployed_manifest.csv", newline="")))
+    for row in rows[2:]:
+        if row[0] == dp.PAK_REL:
+            row[1], row[2] = dp.hashlib.sha256(data).hexdigest(), str(len(data))
+    with open(payload / ".deployed_manifest.csv", "w", newline="") as f:
+        csv.writer(f).writerows(rows)
+    (payload / "files" / dp.PAK_REL).write_bytes(data)
+    dp.deploy_from_payload(payload, target, tmp_path, "c" * 40)
+    assert (target / dp.PAK_REL).read_bytes() == data and (target / dp.PAK_STATUS_NAME).read_text().startswith("OK payload pak checked")
+    (payload / "files" / dp.PAK_REL).unlink()  # the second deploy finds the pak already installed and unchanged
+    dp.deploy_from_payload(payload, target, tmp_path, "c" * 40)
+    assert (target / dp.PAK_REL).read_bytes() == data and (target / dp.PAK_STATUS_NAME).read_text().startswith("OK payload pak checked")
+
+
+def test_payload_status_says_not_judged_without_fsts_and_records_a_pak_missing_from_the_manifest(monkeypatch, tmp_path):
+    payload, target = _payload_with_pak(tmp_path, monkeypatch, b"x", staged_pak=False, with_fsts=False)
+    dp.deploy_from_payload(payload, target, tmp_path, "c" * 40)
+    assert (target / dp.PAK_STATUS_NAME).read_text().startswith("SKIP pak not judged (no FSTs)")
+    # a pak on disk that the payload manifest does not list
+    from test_deploy_stamp_at_hash import _payload
+    payload, target = _payload(tmp_path / "two", monkeypatch, {"mc2.exe": b"exe"}, staged={"mc2.exe"})
+    (target / "paks").mkdir()
+    (target / dp.PAK_REL).write_bytes(b"stray")
+    dp.deploy_from_payload(payload, target, tmp_path, "c" * 40)
+    assert dp.PAK_REL in (target / dp.MANIFEST_NAME).read_text()
+    assert (target / dp.PAK_STATUS_NAME).read_text().startswith("SKIP pak not judged")
+
+
 def test_v04_publish_requires_an_ok_pak_status(tmp_path):
     import pytest
     with pytest.raises(ValueError, match="missing"):
@@ -288,3 +402,10 @@ def test_v04_publish_requires_an_ok_pak_status(tmp_path):
         dp.require_pak_ok(tmp_path)
     (tmp_path / dp.PAK_STATUS_NAME).write_text("OK key=k\n")
     dp.require_pak_ok(tmp_path)
+
+
+def test_verify_published_identity_with_require_pak_refuses_a_fallback_status(tmp_path):
+    import pytest
+    (tmp_path / dp.PAK_STATUS_NAME).write_text("FALLBACK mc2pak pack failed\n")
+    with pytest.raises(ValueError, match="pak deploy status is not OK"):
+        dp.verify_published_identity(tmp_path, tmp_path, "a" * 40, require_pak=True)

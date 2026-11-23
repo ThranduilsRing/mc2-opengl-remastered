@@ -94,3 +94,19 @@ def test_pack_refuses_an_incomplete_fst_and_writes_nothing(tmp_path, capsys, dam
     assert pak.main(['pack', '--install', str(install), '--out', str(out)]) == 1
     assert 'FST' in capsys.readouterr().err
     assert not out.exists() and not out.with_name(out.name + '.tmp').exists()
+
+
+def test_deploy_payload_toc_hash_matches_the_packer(tmp_path):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    from scripts import deploy_payload as dp
+    install = tmp_path / 'install'
+    make_install(install)
+    out = tmp_path / 'p.mc2pak'
+    assert pak.main(['pack', '--install', str(install), '--out', str(out)]) == 0
+    with zipfile.ZipFile(out) as z:
+        stored = {s['name']: s['toc_hash'] for s in json.loads(z.read('mc2pak.json'))['sources']}
+    for name in ('first.fst', 'second.fst'):
+        data = (install / name).read_bytes()
+        toc = data[:8 + struct.unpack_from('<I', data, 4)[0] * 266]
+        assert dp._toc_hash(toc) == pak.fast_hash(toc) == stored[name]
+        assert dp._toc_hash(toc[:-3]) == pak.fast_hash(toc[:-3])  # the unaligned tail loop too

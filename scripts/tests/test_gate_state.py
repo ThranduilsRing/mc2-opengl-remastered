@@ -490,3 +490,15 @@ def test_contracts_host_infra_rows_make_a_named_pass_never_a_bare_pass(journal, 
     assert gate.host_infra_status("no marker", "PASS") == "PASS"
     assert gate.host_infra_status(out, "FAIL (1)") == "FAIL (1)"
     gate.ROW_RESULTS.clear()
+
+
+def test_publish_v04_step_requires_the_pak_status(journal, monkeypatch):
+    import deploy_payload
+    target = journal[0].parent / 'v04'
+    target.mkdir()
+    planned = [('publish-v0.4', ['scripts/deploy_payload.py', '--target', 'game'], {})]
+    steps = [('publish-v0.4', planned[0][1] + [str(target), '--allow-new-target'], {})]
+    seen = []
+    monkeypatch.setattr(deploy_payload, 'verify_published_identity', lambda target, source, head, **kw: seen.append(kw))
+    result, _state = run_state(journal, monkeypatch, steps, lambda command, **kw: types.SimpleNamespace(returncode=0), planned=planned)
+    assert result == 0 and seen == [{'require_pak': True}]

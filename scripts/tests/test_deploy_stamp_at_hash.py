@@ -208,6 +208,7 @@ def _payload(tmp_path, monkeypatch, files, staged, inherited_stamp="999"):
         for rel, data in files.items():
             w.writerow([rel, dp.hashlib.sha256(data).hexdigest(), len(data), "c" * 40, "2026-11-22T00:00:00", "5", inherited_stamp])
             if rel in staged:
+                (payload / "files" / rel).parent.mkdir(parents=True, exist_ok=True)
                 (payload / "files" / rel).write_bytes(data)
             else:
                 (target / rel).parent.mkdir(parents=True, exist_ok=True)
