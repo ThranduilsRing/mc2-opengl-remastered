@@ -33,8 +33,38 @@
 #include "../GameOS/gameos/load_scope.h"
 
 namespace mc2::textures {
-std::string stockPbrOverride(std::string_view legacy, bool vehicle, StockPbrTextures& maps) {
+// A root FST that is not the shipped stock archive (standalone mods replace root FSTs without a mod.json owner).
+static bool userPackedArchive(std::string_view original) {
+    const auto archive = LookupArchivePath(original);
+    if (archive.empty()) return false;
+    static std::unordered_map<std::string, bool> userArchives;
+    auto [it, inserted] = userArchives.try_emplace(archive, false);
+    auto& [archiveKey, isUserArchive] = *it;
+    if (inserted) {
+        std::ifstream input(archive, std::ios::binary); // path-audit: loose-only root FST provenance
+        uLong crc = crc32(0, nullptr, 0);
+        char buffer[65536];
+        while (input.read(buffer, sizeof(buffer)) || input.gcount())
+            crc = crc32(crc, reinterpret_cast<const Bytef*>(buffer), static_cast<uInt>(input.gcount()));
+        std::error_code error;
+        const auto bytes = std::filesystem::file_size(archive, error);
+        isUserArchive = error || !input.eof() || !RenderCore::stockPbrArchive(bytes, static_cast<uint32_t>(crc));
+    }
+    return isUserArchive;
+}
+bool stockMeshAssets(std::initializer_list<std::string_view> paths) {
+    for (const auto path : paths) {
+        const std::string name(path);
+        if (LookupModOwner(name.c_str()) || userPackedArchive(name)) return false;
+    }
+    return true;
+}
+std::string stockPbrOverride(std::string_view legacy, bool vehicle, StockPbrTextures& maps, bool stockMesh) {
     const std::string original(legacy);
+    if (!stockMesh) {
+        maps = {};
+        return original;
+    }
     const auto stem = RenderCore::stockPbrStem(legacy);
     const auto base = RenderCore::stockPbrBase(legacy, vehicle);
     const auto albedo = base + "_albedo.png";
@@ -50,26 +80,7 @@ std::string stockPbrOverride(std::string_view legacy, bool vehicle, StockPbrText
     }
     // Standalone mods replace root FSTs or loose files without a mod.json owner.
     // Apply the same stock provenance rule as the bundled building replacements.
-    bool userArchive = false;
-    if (!legacyMod) {
-        const auto archive = LookupArchivePath(original);
-        if (!archive.empty()) {
-            static std::unordered_map<std::string, bool> userArchives;
-            auto [it, inserted] = userArchives.try_emplace(archive, false);
-            auto& [archiveKey, isUserArchive] = *it;
-            if (inserted) {
-                std::ifstream input(archive, std::ios::binary); // path-audit: loose-only root FST provenance
-                uLong crc = crc32(0, nullptr, 0);
-                char buffer[65536];
-                while (input.read(buffer, sizeof(buffer)) || input.gcount())
-                    crc = crc32(crc, reinterpret_cast<const Bytef*>(buffer), static_cast<uInt>(input.gcount()));
-                std::error_code error;
-                const auto bytes = std::filesystem::file_size(archive, error);
-                isUserArchive = error || !input.eof() || !RenderCore::stockPbrArchive(bytes, static_cast<uint32_t>(crc));
-            }
-            userArchive = isUserArchive;
-        }
-    }
+    const bool userArchive = !legacyMod && userPackedArchive(original);
     if (userArchive || (!legacyMod && userLooseBuildingAsset(original, "", [&] {
             return ReadArchiveBytes(original.c_str(), 64u * 1024u * 1024u); }))) {
         maps = {};

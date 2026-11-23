@@ -12,6 +12,7 @@
 // Plan: docs/superpowers/plans/2026-04-27-assimp-mech-importer.md
 // Findings: docs/superpowers/explorations/2026-05-02-track-d-mvp-adversarial-findings.md
 #include "mc2_czstring.h"
+#include <chrono>
 #include "assimp_importer.h"
 #include "unit_anim_state.h"
 #include "mech_model_delta.h"
@@ -215,6 +216,10 @@ struct SkelBake {
     std::vector<mc2skel::GpuBone> rest;       // joint-global rest matrices, parallel to names
     std::map<std::string, int> nameIdx;
     float scale = 1.0f;                        // auto-scale bind pose to MC2 size
+    // Package "atlasStack": the deployed albedo/AO/normal carry the base atlas in the top half and the
+    // *_weapons atlas in the bottom half (tools/bt2018_mechs/stack_weapons_atlas.py), so weapon-material
+    // parts sample their own art through the single mech skin slot.
+    bool atlasStack = false;
     std::string forcedClip;                    // 1B: posed-clip bake (empty = rest)
     int forcedFrame = 0;
     // 1B-RUNTIME: when non-null, PopulateMergedSkinnedShape records each part's
@@ -754,6 +759,14 @@ long PopulateMergedSkinnedShape(const aiScene* scene, mc2::content::Asset& out, 
 			bake.recParts->push_back(pr);
 		}
 		const bool hasUV = me->HasTextureCoords(0);
+		// Stacked atlas: glTF V runs top-down, so the base maps to V/2 and the weapons atlas to 0.5 + V/2.
+		float vScale = 1.0f, vBias = 0.0f;
+		if (bake.atlasStack) {
+			aiString matName; scene->mMaterials[me->mMaterialIndex]->Get(AI_MATKEY_NAME, matName);
+			std::string mn(matName.C_Str()); for (char& c : mn) c = static_cast<char>(tolower(c));
+			vScale = 0.5f;
+			if (mn.find("weapons") != std::string::npos) vBias = 0.5f;
+		}
 
 		for (unsigned v = 0; v < me->mNumVertices; ++v) {
 			aiVector3D p, n;
@@ -788,11 +801,11 @@ long PopulateMergedSkinnedShape(const aiScene* scene, mc2::content::Asset& out, 
 			t.faceNormal = fn;
 			if (hasUV) {
 				t.uvdata.u0 = me->mTextureCoords[0][fc.mIndices[0]].x;
-				t.uvdata.v0 = toMC2V(me->mTextureCoords[0][fc.mIndices[0]].y);
+				t.uvdata.v0 = toMC2V(me->mTextureCoords[0][fc.mIndices[0]].y * vScale + vBias);
 				t.uvdata.u1 = me->mTextureCoords[0][fc.mIndices[1]].x;
-				t.uvdata.v1 = toMC2V(me->mTextureCoords[0][fc.mIndices[1]].y);
+				t.uvdata.v1 = toMC2V(me->mTextureCoords[0][fc.mIndices[1]].y * vScale + vBias);
 				t.uvdata.u2 = me->mTextureCoords[0][fc.mIndices[2]].x;
-				t.uvdata.v2 = toMC2V(me->mTextureCoords[0][fc.mIndices[2]].y);
+				t.uvdata.v2 = toMC2V(me->mTextureCoords[0][fc.mIndices[2]].y * vScale + vBias);
 			}
 		}
 		vOff += me->mNumVertices; tOff += me->mNumFaces;
@@ -1049,6 +1062,20 @@ void measureClipStrides(ImportedAnimEntry& e) {
             mc2::fmt::print_err("[MECH_IMPORT] stride '{}' planted-foot speed={:.2f} u/s (cycle {:.2f}s)\n", clip, sum / n, *dur);
         }
     }
+}
+
+// True when the mech's <stem>.package.json declares "atlasStack" (stacked base + weapons atlas).
+bool PackageDeclaresAtlasStack(mc2::czstring glbPath) {
+    if (!glbPath) return false;
+    std::string p(glbPath);
+    const size_t dot = p.rfind(".glb");
+    const std::string side = (dot != std::string::npos ? p.substr(0, dot) : p) + ".package.json";
+    FILE* f = fopen(side.c_str(), "rb");
+    if (!f) return false;
+    std::string buf; char tmp[4096]; size_t n;
+    while ((n = fread(tmp, 1, sizeof(tmp), f)) > 0) buf.append(tmp, n);
+    fclose(f);
+    return buf.find("\"atlasStack\"") != std::string::npos;
 }
 
 // BT2018-MECH-NODE-MANIFEST-1A: load the per-mech package's "nodes" map
@@ -1592,6 +1619,10 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
             s.playRate = 1.0f;
             if (e.strideSpeed.contains(s.activeClip))
                 s.playRate = mc2clip::strideRate(speed, e.strideSpeed.at(s.activeClip));
+            static unsigned strideLogTick = 0;
+            if ((++strideLogTick % 120u) == 0 && mc2_diag::tagRequested("MECH_STRIDE"))
+                mc2::fmt::print_err("[MECH_STRIDE] clip={} speed={:.1f} stride={:.1f} rate={:.2f} dt={:.4f}\n", s.activeClip, speed,
+                    e.strideSpeed.contains(s.activeClip) ? e.strideSpeed.at(s.activeClip) : 0.0f, s.playRate, dt);
         }
     }
     const bool holdAtEnd = (preview || e.pinnedClip.empty()) && s.mode == mc2clip::Mode::Once;
@@ -1793,6 +1824,7 @@ long ImportGeometryFromFile(mc2::czstring path, TG_TypeMultiShape* out, bool aut
 		cached.parameters = staticParameters;
 		if (mc2::content::loadCached(cached, path)) return out->BuildContentIR(std::move(cached), path);
 	}
+	const auto importT0 = std::chrono::steady_clock::now();
 	auto impOwner = std::make_unique<Assimp::Importer>();
 	Assimp::Importer& imp = *impOwner;
 	auto io = std::make_unique<ContentIO>();
@@ -1804,6 +1836,7 @@ long ImportGeometryFromFile(mc2::czstring path, TG_TypeMultiShape* out, bool aut
 		aiProcess_JoinIdenticalVertices |
 		aiProcess_ValidateDataStructure |
 		aiProcess_SortByPType);
+	const auto readMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - importT0).count();
 
 	if (!scene) {
 		PAUSE(("[importer] %s: Assimp ReadFile failed: %s",
@@ -1862,6 +1895,7 @@ long ImportGeometryFromFile(mc2::czstring path, TG_TypeMultiShape* out, bool aut
 		}
 		for (size_t i = 0; i < bake.names.size(); ++i) bake.nameIdx[bake.names[i]] = static_cast<int>(i);
 		bake.active = !bake.names.empty();
+		bake.atlasStack = PackageDeclaresAtlasStack(path);
 		// 1B-RUNTIME / 1C: opt-in gate enables per-frame animation. With a forced
 		// clip it loops that one clip (1B); without, the clip is chosen each frame
 		// from the mech's movement (1C). Gate off → static bind/posed bake stands.
@@ -2050,6 +2084,9 @@ long ImportGeometryFromFile(mc2::czstring path, TG_TypeMultiShape* out, bool aut
 
 	SPEW(("ASSIMP", "%s: %u meshes, %u materials imported",
 	      path, scene->mNumMeshes, scene->mNumMaterials));
+	if (mc2_diag::tagRequested("MECH_IMPORT"))
+		mc2::fmt::print_err("[MECH_IMPORT] timing '{}': Assimp ReadFile {:.0f} ms, import total {:.0f} ms\n", path, readMs,
+			std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - importT0).count());
 	return 0;
 }
 

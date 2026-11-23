@@ -6,6 +6,7 @@
 #include "texture_probe_memo.h"
 #include "../RenderCore/axis_convert.h"
 #include "content_error.h"
+#include "texture_assets.h"
 #include <format>
 #include <vector>
 #include "arm_node_remap.h"
@@ -124,6 +125,14 @@ void Mech3DAppearanceType::init (mc2::czstring fileName)
 			animBase[0] = '\0';
 	}
 	const char* gestureClipBase = animBase[0] ? animBase : fileName;
+	{
+		// Stock PBR reskins fit the stock UV atlas only (MCO and other mod meshes keep their own textures).
+		FullPathFileName aseName, tglName;
+		aseName.init(tglPath,fileName,".ase");
+		tglName.init(tglPath,fileName,".tgl");
+		stockMesh = !importSourceBase[0] && mc2::textures::stockMeshAssets({
+			static_cast<const char*>(mechIniName), static_cast<const char*>(aseName), static_cast<const char*>(tglName)});
+	}
 
 	result = mechFile.seekBlock("TGLData");
 	if (result != NO_ERR)

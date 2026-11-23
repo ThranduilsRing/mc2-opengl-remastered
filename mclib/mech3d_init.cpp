@@ -992,7 +992,7 @@ void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 
 	FullPathFileName legacyTextureName;
 	legacyTextureName.init(texturePath,txmName,"");
-	const auto pbrAlbedo = mc2::textures::stockPbrOverride(static_cast<const char*>(legacyTextureName), false, stockPbr);
+	const auto pbrAlbedo = mc2::textures::stockPbrOverride(static_cast<const char*>(legacyTextureName), false, stockPbr, !mechType || mechType->stockMesh);
 	const char* textureName = pbrAlbedo.c_str();
 
 	/* The texture manager asks for a unique 32bit identifier for every texture instance.

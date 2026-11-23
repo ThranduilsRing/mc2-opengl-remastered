@@ -37,6 +37,7 @@
   },
   "direct_spawn": {
     "scripts/tests/test_hdr_ui_blend.py": "Offline HDR UI proof: runs only glslangValidator and spirv-val through shader_common.find_tool with hidden console children; never the game.",
+    "tools/bt2018_mechs/stack_weapons_atlas.py": "Runs only the ktx texture tool to completion with captured stdio; never the game.",
     "scripts/run_mp_pair_linux.py": "Linux headless peers under slot.sh --game; only owned PIDs are stopped",
     "tools/farm/mod_smoke.py": "Runs only sys.executable scripts/run_smoke.py with console_child; that harness owns offscreen launch, leases and game PID cleanup.",
     "tools/import_campaign.py": "Runs only innoextract --extract with console_child and captured stdio; never executes the supplied installer or the game.",

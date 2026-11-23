@@ -78,6 +78,7 @@
   "tools/box/unit_report.py": "Run on the Linux box by tools/box_run.py\u0027s unit row (python3 ../tools/box/unit_report.py unit.xml unit_out.txt inside the remote shell string; the caller scanner does not follow it).",
   "tools/box_run.py": "Manual orchestrator entry point: runs the Linux box gate (py -3 tools/box_run.py --gate); documented in A:/Games/mc2-ops/box-game-runs.md.",
   "tools/brief_check.py": "Operator-run brief citation checker (py -3 tools/brief_check.py \u003cbrief.md\u003e [--repo DIR]); verifies the paths and shas a lane brief cites before the lane starts; no in-repo caller by design.",
+  "tools/bt2018_mechs/stack_weapons_atlas.py": "Owner-run pack post-process (stacks the weapons atlas into an installed BT2018 pack); no automated caller.",
   "tools/bt2018_import/build_bt2018_mod.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
   "tools/bt2018_import/check_mech_packages.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
   "tools/bt2018_import/convert_all_bt2018.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",

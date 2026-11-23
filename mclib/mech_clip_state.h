@@ -168,11 +168,13 @@ inline float advanceClipTime(float clipSec, float dt, float rate, float duration
 }
 
 // Playback rate for a locomotion clip: the clip's measured planted-foot speed (world units/s
-// at rate 1) against the actor's actual ground speed. Clamped so a stop or a teleport never
-// freezes or spins the legs; a clip without a measured stride plays at 1.
+// at rate 1) against the actor's actual ground speed. The bounds only guard a stop or a
+// teleport: the light chassis' run speed is 2.4-2.8x their clip's stride (assassin, locust,
+// cicada, spider), so a 2x ceiling left their feet gliding. A clip without a measured stride plays at 1.
+inline constexpr float kStrideRateMin = 0.1f, kStrideRateMax = 4.0f;
 inline float strideRate(float actualSpeed, float clipStrideSpeed) {
     if (clipStrideSpeed <= 1e-3f) return 1.0f;
-    return std::clamp(actualSpeed / clipStrideSpeed, 0.35f, 2.0f);
+    return std::clamp(actualSpeed / clipStrideSpeed, kStrideRateMin, kStrideRateMax);
 }
 
 // Residual planted-foot drift (world units/s) left after rate matching.

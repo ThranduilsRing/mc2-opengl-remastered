@@ -111,6 +111,7 @@ class Mech3DAppearanceType: public AppearanceType
 	// Stores Multi-Shapes, Animation Data, etc.
 	public:
 		std::unique_ptr<TG_TypeMultiShape> mechShape[MAX_LODS];
+		bool stockMesh = true; // false: mod/user-archive/imported mesh, so stock PBR reskins (stock UV atlas) must not apply
 		std::unique_ptr<TG_TypeMultiShape> mechShadowShape;
 		float						lodDistance[MAX_LODS];
 		std::unique_ptr<TG_AnimateShape> mechAnim[MAX_MECH_ANIMATIONS];
