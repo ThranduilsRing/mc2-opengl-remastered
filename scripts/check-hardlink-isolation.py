@@ -162,6 +162,7 @@ MUTATED_ROOTS = (
     "data/vegetation", "data/terrain_layers", "data/textures",
     "data/art/mechicons", "data/art/missionmaps", "data/art/ui", "data/art/pilots",
     "data/art/gui",   # campaign-globe (W147): the campaign chrome sheets (mcl_cm_*, mcl_mn_4) GAME_DATA_PAYLOAD rewrites on every deploy
+    "data/fonts",     # game-rules-ui-2: the UI TTFs (data/fonts/ui) GAME_DATA_PAYLOAD rewrites on every deploy
     "saved_bookmarks",
     "cache/content-model",
 )

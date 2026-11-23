@@ -1070,7 +1070,7 @@ bool PackageDeclaresAtlasStack(mc2::czstring glbPath) {
     std::string p(glbPath);
     const size_t dot = p.rfind(".glb");
     const std::string side = (dot != std::string::npos ? p.substr(0, dot) : p) + ".package.json";
-    FILE* f = fopen(side.c_str(), "rb");
+    FILE* f = fopen(side.c_str(), "rb"); // path-audit: loose-only (sidecar beside the loose GLB Assimp reads)
     if (!f) return false;
     std::string buf; char tmp[4096]; size_t n;
     while ((n = fread(tmp, 1, sizeof(tmp), f)) > 0) buf.append(tmp, n);

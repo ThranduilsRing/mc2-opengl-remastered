@@ -158,13 +158,13 @@ long	LogisticsData::save( FitIniFile& file )
 	file.writeIdLong( "PilotCount", static_cast<long>(std::ssize(pilots)) );
 	file.writeIdLong( "InventoryCount", static_cast<long>(std::ssize(inventory)) );
 	file.writeIdBoolean( "FirstTimeResults", MissionResults::FirstTimeResults);
+	// The mod layers this campaign runs under: loading it from another mod relaunches into these (mainmenu reads them
+	// from [General]). Written before missionInfo->save, which ends in its own [AdditionalPurchaseFiles]/[GameRules] blocks.
+	file.writeIdString( "ActiveMod", PlayerFrontEnd::saveModField( PlayerFrontEnd::activeModId() ).c_str() );
+	file.writeIdString( "ModDeps", PlayerFrontEnd::saveModField( PlayerFrontEnd::activeModDeps() ).c_str() );
 
 	// save the campaign info
 	missionInfo->save( file );
-
-	// The mod layers this campaign runs under: loading it from another mod relaunches into these (mainmenu).
-	file.writeIdString( "ActiveMod", PlayerFrontEnd::saveModField( PlayerFrontEnd::activeModId() ).c_str() );
-	file.writeIdString( "ModDeps", PlayerFrontEnd::saveModField( PlayerFrontEnd::activeModDeps() ).c_str() );
 
 	int pilotCount = 0;
 	// save the pilots

@@ -18,7 +18,8 @@ def test_hdr_output_windows_state_key_matches_baseline():
     assert hdr[0][3][-1] == "windows_hdr"
     baseline = json.loads((root / "tests/unit/log_tag_baseline.json").read_text(encoding="utf-8"))
     assert not lc.diff(lc.collections.Counter({hdr[0]: rows[hdr[0]]}),
-                       {"emitters": [r for r in baseline["emitters"] if r["tag"] == "HDR_OUTPUT"]})
+                       {"emitters": [r for r in baseline["emitters"]
+                                     if r["tag"] == "HDR_OUTPUT" and "policy" in r["keys"]]})
 
 
 @pytest.mark.parametrize("callee,args", [

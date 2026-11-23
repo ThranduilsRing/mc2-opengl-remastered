@@ -18,7 +18,7 @@ click 229 248
 wait 30
 click 554 435
 wait 150
-click 192 508
+key Return
 await (?i)\[VIDEO\] init: opened \S*cinema1 120
 wait 300
 key SPACE
