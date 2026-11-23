@@ -101,10 +101,11 @@ void GameRulesDialog::refreshRows()
 		const bool used = i < mc2::rules::kRuleCount;
 		setDefsElementVisible( rowKey( "text", i ), used );
 		const bool slider = used && mc2::rules::isSlider( mc2::rules::kRules[i] );
-		setDefsElementVisible( rowKey( "button", i ), used && !slider );
-		setDefsElementVisible( sliderKey( i ), slider );
-		setDefsElementVisible( rowKey( "value", i ), slider );
-		if ( !used ) continue;
+		if ( !used )
+		{
+			setDefsElementVisible( rowKey( "button", i ), false );
+			continue;
+		}
 		const mc2::rules::Rule& r = mc2::rules::kRules[i];
 		if ( slider )
 		{
@@ -116,9 +117,15 @@ void GameRulesDialog::refreshRows()
 		}
 		const bool active = ruleActive( r.key );
 		setDefsElementText( rowKey( "text", i ), labelFor( r.key ) + ( active ? "" : "  (not yet active)" ) );
-		setDefsElementText( rowKey( "button", i ), valueText( working, r ) );
+		if ( !slider )	// setting text reveals an element, so a slider row's value button is never given any
+		{
+			setDefsElementText( rowKey( "button", i ), valueText( working, r ) );
+			setDefsElementTextColor( rowKey( "button", i ), active ? kActiveValueColor : kGreyColor );
+		}
 		setDefsElementTextColor( rowKey( "text", i ), active ? kActiveColor : kGreyColor );
-		setDefsElementTextColor( rowKey( "button", i ), active ? kActiveValueColor : kGreyColor );
+		setDefsElementVisible( rowKey( "button", i ), !slider );
+		setDefsElementVisible( sliderKey( i ), slider );
+		setDefsElementVisible( rowKey( "value", i ), slider );
 	}
 }
 
