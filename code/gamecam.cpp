@@ -443,8 +443,16 @@ void GameCamera::renderTerrainSceneState() {
 		inputs.flatRatio = {r[0], r[1], r[2]};
 		extern float mc2_AmbientRatio(const unsigned char liveAmb[3]);
 		inputs.ambientRatio = mc2_AmbientRatio(liveAmb);
-		extern float mc2_SunPitchGain(float livePitchDeg);
-		inputs.sunGain = mc2_SunPitchGain(lightPitch);
+		extern void mc2_OneSun(const float liveDir[3], float livePitchDeg, float liveYawDeg, const unsigned char liveSun[3], const unsigned char liveAmb[3],
+		                       float zLive, const float R[3], float out[19]);
+		float o[19];
+		mc2_OneSun(inputs.effectiveDirection.data(), lightPitch, lightYaw, liveSun, liveAmb, flatIntensity, r, o);
+		for (int c = 0; c < 3; ++c) {
+			for (int k = 0; k < 3; ++k) inputs.authFromLive[c][k] = o[c * 3 + k];
+			inputs.pitchUndo[c] = o[9 + c]; inputs.ambRelight[c] = o[12 + c]; inputs.sunRelight[c] = o[15 + c];
+		}
+		inputs.authoredValid = o[18] != 0.0f;
+		inputs.sunZ = flatIntensity;
 	}
 	inputs.authoredPitch = eye->getDayLightPitch();
 	inputs.night = eye->getIsNight();

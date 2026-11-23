@@ -191,7 +191,7 @@ void main() {
                 bool authored = (vImportedMech & 8u) != 0u;
                 vec3 f0 = authored ? mix(vec3(0.04), tex_color.rgb, surface.metallic) : vec3(1.0);
                 if (authored)
-                    rgb += mechGgxSpecular(Nshade, V, vMechSunDirGL, tex_color.rgb, surface.metallic, surface.roughness, kernelVar, uFrame.shadeA.y);
+                    rgb += mechGgxSpecular(Nshade, V, vMechSunDirGL, tex_color.rgb, surface.metallic, surface.roughness, kernelVar, uFrame.shadeA.y) * uFrame.sunRelight.rgb;   // takes the sun keys' colour (1 without keys)
                 else
                 rgb += f0 * msh_blinnSpecular(Nshade, V, vMechSunDirGL, !authored && isGlass,
                                          authored ? surface.roughness : uFrame.shadeA.z, uFrame.shadeA.w, uFrame.shadeA.y);

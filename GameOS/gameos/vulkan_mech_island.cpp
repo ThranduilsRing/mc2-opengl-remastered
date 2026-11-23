@@ -247,6 +247,14 @@ bool make_buffer(MechIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkBu
 // Initial buffer bindings; frame allocation can grow the ring before recording.
 constexpr VkDeviceSize kUboRange = sizeof(MechFrameUBO);
 
+// The one-sun tail of the environment block (the mech pass has no terrain set, so it carries its own copy).
+void copyOneSun(MechFrameUBO& u, const EnvironmentUBO& e) {
+    std::memcpy(u.sunAuthFromLive, e.sunAuthFromLive, sizeof(u.sunAuthFromLive));
+    std::memcpy(u.pitchUndo, e.pitchUndo, sizeof(u.pitchUndo));
+    std::memcpy(u.ambRelight, e.ambRelight, sizeof(u.ambRelight));
+    std::memcpy(u.sunRelight, e.sunRelight, sizeof(u.sunRelight));
+}
+
 void write_ring_bindings(MechIsland* s, VkDescriptorSet set) {
     if (set == VK_NULL_HANDLE) return;
     const VkBuffer ring = mc2vk::getOrCreateEngineVulkanContext().frameRingBuffer();
@@ -1044,7 +1052,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
       // The environment producer's hemisphere. The mech lab preview pass has no terrain set 1, so the mech keeps this UBO copy of it.
       EnvironmentUBO environment; mc2::environment::fillGpu(visualTuning_environment(), 1.0f, environment);
       for (size_t c=0; c<3; ++c) u.environmentAmbient[c] = environment.hemiSky[c];
-      u.environmentAmbient[3] = visualTuning_environment().lighting.sunGain;
+      copyOneSun(u, environment);
       std::memcpy(mainPtr, &u, sizeof(u)); }
     // This flight's set follows the buffers; each pass supplies its dynamic offsets.
     sync_ring_bindings(s, par, mainSpan, lightSpan);
@@ -1363,7 +1371,7 @@ static int mech_preview_flush_impl(void* colorView, void* normalView, void* dept
       u.miscI[1] = mechFill;
       EnvironmentUBO environment; mc2::environment::fillGpu(visualTuning_environment(), 1.0f, environment);
       for (size_t c = 0; c < 3; ++c) u.environmentAmbient[c] = environment.hemiSky[c];
-      u.environmentAmbient[3] = 1.0f;   // the bay preview always uses gain 1.0, never the last mission's sunGain
+      { EnvironmentUBO identity; mc2::environment::fillGpu(RenderCore::MissionEnvironment{}, 1.0f, identity); copyOneSun(u, identity); }   // the bay is lit by no mission sun: identity
       std::memcpy(mainPtr, &u, sizeof(u)); }
     sync_ring_bindings(s, par, mainSpan, lightSpan);
     const uint32_t dynOffsets[5] = {

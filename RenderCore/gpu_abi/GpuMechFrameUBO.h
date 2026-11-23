@@ -35,6 +35,12 @@ struct MechFrameUBO {
     int32_t miscI[4];           // @ivec4 specDebugMask, mechFill, boneCount (object-motion tail start; 0 = none), -
     float   environmentAmbient[4]; // @vec4 mission sky RGB; ground is half the sky
     float   prevFromCurClip[16];   // @mat4 previous-frame clip from current clip (camera reprojection), object motion vectors
+    // One sun (EnvironmentUBO's tail, copied by the producer): live sun direction -> authored direction rotation (columns) and the
+    // authored-sun ratios. Identity / 1 with no keys, at night, with no mission and in the mech lab.
+    float   sunAuthFromLive[3][4]; // @vec4xN columns; [0].w = 1 when an authored sun record exists
+    float   pitchUndo[4];          // @vec4 rgb
+    float   ambRelight[4];         // @vec4 rgb
+    float   sunRelight[4];         // @vec4 rgb
 };
 
 #include "GpuMechFrameUBO.layout.gen.h"

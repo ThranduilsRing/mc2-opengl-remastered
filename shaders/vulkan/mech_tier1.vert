@@ -74,6 +74,8 @@ bool GetFalloff(float len, vec3 fd, out float falloff) {
 // mech.vert calls calc_light with MC2_STATIC_PROP_LIGHTING defined -> the
 // numLights==0 early-return preserves base_light (not vec3(1)). Match that.
 #define MC2_ENVIRONMENT_AMBIENT
+// One-sun rule (see include/one_sun_vk.glsl; the mech pass carries its own copy of the tail): live direction -> authored direction.
+mat3 oneSunRotation() { return mat3(uFrame.sunAuthFromLive[0].xyz, uFrame.sunAuthFromLive[1].xyz, uFrame.sunAuthFromLive[2].xyz); }
 //PORT-BEGIN:calc_light
 vec3 calc_light(int idx, vec3 normal, vec3 wpos, vec3 base_light, int sunAxisMc2Fix, bool legacyVehicle) {
     const int fillMode = legacyVehicle ? 0 : uFrame.miscI.y;   // MC2_MECH_FILL; ground vehicles keep the original look
@@ -89,12 +91,15 @@ vec3 calc_light(int idx, vec3 normal, vec3 wpos, vec3 base_light, int sunAxisMc2
         int lt = int(uLights.light[idx].light_dir[i].w);
         vec3 lc = uLights.light[idx].light_color[i].xyz;
         if (lt == TG_LIGHT_AMBIENT) {
-            if (legacyVehicle) ambient += lc;   // the light row's own ambient, not the environment's
+            if (legacyVehicle) ambient += lc * uFrame.ambRelight.rgb;   // the light row's own ambient, not the environment's; moves like the ground (one-sun rule)
         } else if (lt == TG_LIGHT_INFINITE) {
-            vec3 sd = (sunAxisMc2Fix != 0) ? mc2ToRender(uLights.light[idx].light_dir[i].xyz) : uLights.light[idx].light_dir[i].xyz;
+            // One-sun rule (shaders/vulkan/include/one_sun_vk.glsl): shade against the authored sun direction and undo the live pitch in the row colour.
+            // The rotation lives in the MC2 world frame; the row direction is a Stuff vector, so go through the exact swizzles and back.
+            vec3 sd = oneSunRotation() * mc2ToRender(uLights.light[idx].light_dir[i].xyz);
+            if (sunAxisMc2Fix == 0) sd = renderToMc2(sd);
             float ndlRaw = dot(normal, -sd);
             float ndl = (fillMode >= 2) ? clamp((ndlRaw + 0.25) / 1.25, 0.0, 1.0) : clamp(ndlRaw, 0.0, 1.0);
-            lc *= (uFrame.environmentAmbient.w > 0.0 ? uFrame.environmentAmbient.w : 1.0);   // sun keys: authored/live elevation gain (1 without keys)
+            lc *= uFrame.pitchUndo.rgb;
             final += ndl * lc;
             sunLc = max(sunLc, lc);
         } else if (lt == TG_LIGHT_INFINITEWITHFALLOFF) {
@@ -218,7 +223,7 @@ void main() {
     bool legacyVehicle = (inst.renderFlags & MECH_RENDER_FLAG_LEGACY_VEHICLE) != 0u;
     bool mechFill = !legacyVehicle && uFrame.miscI.y >= 1;   // MC2_MECH_FILL applies to mechs only
     float ambUp = worldNormal.z;
-    vec3 environmentAmbient = uFrame.environmentAmbient.rgb
+    vec3 environmentAmbient = uFrame.environmentAmbient.rgb * uFrame.ambRelight.rgb   // moves like the ground (R x authored/live ambient; one-sun rule)
         * mix(0.5, 1.0, clamp(ambUp * 0.5 + 0.5, 0.0, 1.0));
     const uint  kRenderFlagLightsOut = 0x2u;
     bool lightsOut = (inst.renderFlags & kRenderFlagLightsOut) != 0u;

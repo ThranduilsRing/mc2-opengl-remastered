@@ -278,7 +278,6 @@ struct ColorPropIsland : mc2vk::IslandState {
     uint64_t alphaContentHash = 0;
     std::span<const float> hotCpu; // borrowed map table, also identifies profiled tree groups
     bool          hotReady = false;         // the hot-colour table was uploaded for the current map (cleared at a map change)
-    float         terrainSunMC2[3] = {0.0f, 0.0f, 1.0f};
 
     // VK-P11 STATIC-PROP MATERIAL alpha-ON (class 1): second copy-once array import +
     // second per-type layer SSBO. Class-1 types (alpha-MIXED buildings) sample this
@@ -1609,9 +1608,6 @@ static bool prepare_mission_resources(ColorPropIsland* s) {
                 if (!cp_import_authored(s, &mf))
                     vlog("authored material upload failed; keeping legacy packet routing.");
             }
-            s->terrainSunMC2[0] = mf.terrainSunMC2[0];
-            s->terrainSunMC2[1] = mf.terrainSunMC2[1];
-            s->terrainSunMC2[2] = mf.terrainSunMC2[2];
             if (s->materialReady && s->materialReadyOn &&
                 s->albedoGlTexImported == mf.arrayKeyOff && s->albedoOnGlTexImported == mf.arrayKeyOn) return true;
             bool changed = false;
@@ -1643,8 +1639,7 @@ static bool prepare_mission_resources(ColorPropIsland* s) {
                     for (uint32_t b = buckets; b < mc2::prop_buckets::kMaxBuckets; ++b) s->albedoTexture[b] = {};
                     cp_upload_layer_table(s, layerTbl.data(), mf.typeCount);
                     changed = true;
-                    vlog("material feed active: alpha-OFF %u types textured (sun=%.2f,%.2f,%.2f).",
-                         mf.typeCount, s->terrainSunMC2[0], s->terrainSunMC2[1], s->terrainSunMC2[2]);
+                    vlog("material feed active: alpha-OFF %u types textured.", mf.typeCount);
                 }
             }
             // VK-FLIP-FIELD-REPORT-2 BLACK-FENCE FIX: snapshot the per-packet layer
@@ -2435,13 +2430,10 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
                  s->albedoOffBuckets, sum(s->albedoTexture, s->albedoOffBuckets),
                  s->albedoOnBuckets, sum(s->albedoOnTexture, s->albedoOnBuckets));
         }
-        u.terrainSunMC2[0] = s->terrainSunMC2[0];
-        u.terrainSunMC2[1] = s->terrainSunMC2[1];
-        u.terrainSunMC2[2] = s->terrainSunMC2[2];
         // Match the interpolated poses, using only the extracted sim snapshot.
         // Seconds stay seconds: the shader's wind speed and amplitude are unchanged.
         const auto& clock = mc2::render_view::clock();
-        u.terrainSunMC2[3] = std::max(0.0f, clock.scenarioTime -
+        u.sway[0] = std::max(0.0f, clock.scenarioTime -
             (1.0f - clock.alpha) * mc2::sim::kTickSecondsF);
         // VK-PROP-AMBIENT-IBL-1: IBL-SH coeffs (std140 vec3[9] tail, .w pad each) +
         // strength + lightingReady. lightingReady gates the vert shader's real
@@ -2482,12 +2474,11 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
             static bool s_lit_dumped = false;
             if (mc2::gate::get<"MC2_VK_PROP_LIGHT_PROBE">() && !s_lit_dumped) {
                 s_lit_dumped = true;
-                mc2::fmt::print_err("[PROP_LIGHT_PROBE v1] lightingReady={:d} haveLightFeed={:d} tier1={:d} wantLighting={:d} wantMaterial={:d} materialReady={:d} iblShStrength={:.4f} lightDataCpuBytes={:d} terrainSun=({:.3f},{:.3f},{:.3f})\n",
+                mc2::fmt::print_err("[PROP_LIGHT_PROBE v1] lightingReady={:d} haveLightFeed={:d} tier1={:d} wantLighting={:d} wantMaterial={:d} materialReady={:d} iblShStrength={:.4f} lightDataCpuBytes={:d}\n",
                     mc2::fmt::as_i32(u.lightingReady), mc2::fmt::as_i32(haveLightFeed ? 1 : 0), mc2::fmt::as_i32(s->tier1 ? 1 : 0),
                     mc2::fmt::as_i32(s->wantLighting ? 1 : 0), mc2::fmt::as_i32(s->wantMaterial ? 1 : 0), mc2::fmt::as_i32(u.materialReady),
                     u.iblShStrength,
-                    mc2::fmt::as_u64(static_cast<unsigned long long>(lightFeed.lights.bytes)),
-                    u.terrainSunMC2[0], u.terrainSunMC2[1], u.terrainSunMC2[2]);
+                    mc2::fmt::as_u64(static_cast<unsigned long long>(lightFeed.lights.bytes)));
                 std::fflush(stderr);
             }
         }

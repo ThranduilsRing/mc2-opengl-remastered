@@ -10,7 +10,7 @@ static_assert(offsetof(ColorFrameUBO, objectDepthBias) == 64, "objectDepthBias o
 static_assert(offsetof(ColorFrameUBO, instBase) == 68, "instBase offset");
 static_assert(offsetof(ColorFrameUBO, materialReady) == 72, "materialReady offset");
 static_assert(offsetof(ColorFrameUBO, materialReadyOn) == 76, "materialReadyOn offset");
-static_assert(offsetof(ColorFrameUBO, terrainSunMC2) == 80, "terrainSunMC2 offset");
+static_assert(offsetof(ColorFrameUBO, sway) == 80, "sway offset");
 static_assert(offsetof(ColorFrameUBO, iblShStrength) == 96, "iblShStrength offset");
 static_assert(offsetof(ColorFrameUBO, lightingReady) == 100, "lightingReady offset");
 static_assert(offsetof(ColorFrameUBO, isNight) == 104, "isNight offset");

@@ -40,7 +40,7 @@
           "matrix_stride": null,
           "name": "poolLights",
           "offset": 0,
-          "type": "_1211"
+          "type": "_1245"
         }
       ],
       "name": "TerrainLightPoolVK"
@@ -53,7 +53,7 @@
           "matrix_stride": null,
           "name": "materials",
           "offset": 0,
-          "type": "_1897"
+          "type": "_1930"
         }
       ],
       "name": "PropMaterials"
@@ -128,7 +128,7 @@
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "terrainSunMC2",
+          "name": "sway",
           "offset": 80,
           "type": "vec4"
         },
@@ -1121,6 +1121,41 @@
           "matrix_stride": null,
           "name": "sceneLight",
           "offset": 160,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "sunDirLive",
+          "offset": 176,
+          "type": "vec4"
+        },
+        {
+          "array_stride": 16,
+          "matrix_stride": null,
+          "name": "sunAuthFromLive",
+          "offset": 192,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "pitchUndo",
+          "offset": 240,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "ambRelight",
+          "offset": 256,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "sunRelight",
+          "offset": 272,
           "type": "vec4"
         }
       ],

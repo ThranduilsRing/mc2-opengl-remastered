@@ -423,6 +423,8 @@ long Camera::init (FitIniFilePtr cameraFile )
 			s_authoredSun = mc2::authored_sun::resolve({lightRed, lightGreen, lightBlue}, {ambientRed, ambientGreen, ambientBlue}, savedHas, savedSun, savedAmb);
 			s_authoredSun.pitch = lightPitch;   // the pitch before the keys; a keyed save carries it (a save without it: no pitch gain)
 			if (savedHas) cameraFile->readIdFloat("AuthoredLightPitch", s_authoredSun.pitch);
+			s_authoredSun.yaw = lightYaw; s_authoredSun.hasYaw = true;   // the yaw before the keys; a keyed save without it falls back to the live yaw (pitch-only rotation)
+			if (savedHas) s_authoredSun.hasYaw = cameraFile->readIdFloat("AuthoredLightYaw", s_authoredSun.yaw) == NO_ERR;
 			if (const auto v = visualTuning_sunValue("sunPitch")) lightPitch = dayLightPitch = std::max(*v, 26.0f);
 			if (const auto v = visualTuning_sunValue("sunYaw")) lightYaw = *v;
 			lightDirection.x = cos((lightYaw + 45.0f) * DEGREES_TO_RADS);
@@ -846,10 +848,17 @@ void mc2_FlatLightRatio(float z, const unsigned char liveSun[3], const unsigned 
 	const auto r = mc2::authored_sun::flatRatio(s_authoredSun, {liveSun[0], liveSun[1], liveSun[2]}, {liveAmb[0], liveAmb[1], liveAmb[2]}, z, mc2NightAmbientFloor());
 	out[0] = r[0]; out[1] = r[1]; out[2] = r[2];}
 
-// Authored/live sun elevation gain for the mech and vehicle directional term (1 with no keys).
-float mc2_SunPitchGain(float livePitchDeg)
+// The authored sun next to the live one (authored_sun.h OneSun): rotation, pitch undo, ambient and sun-colour relights. Identity / 1 with no keys.
+void mc2_OneSun(const float liveDir[3], float livePitchDeg, float liveYawDeg, const unsigned char liveSun[3], const unsigned char liveAmb[3],
+                float zLive, const float R[3], float out[19])   // out: 9 rotation (column-major), 3 pitchUndo, 3 ambRelight, 3 sunRelight, 1 authored-valid
 {
-	return mc2::authored_sun::pitchGain(s_authoredSun, livePitchDeg);
+	const auto s = mc2::authored_sun::oneSun(s_authoredSun, {liveDir[0], liveDir[1], liveDir[2]}, livePitchDeg, liveYawDeg, {liveSun[0], liveSun[1], liveSun[2]},
+		{liveAmb[0], liveAmb[1], liveAmb[2]}, zLive, {R[0], R[1], R[2]}, mc2NightAmbientFloor());
+	for (int c = 0; c < 3; ++c) {
+		for (int r = 0; r < 3; ++r) out[c * 3 + r] = s.authFromLive[c][r];
+		out[9 + c] = s.pitchUndo[c]; out[12 + c] = s.ambRelight[c]; out[15 + c] = s.sunRelight[c];
+	}
+	out[18] = s.authoredValid ? 1.0f : 0.0f;
 }
 
 // Live/authored ambient luma: the sun keys' move of the sky fill (scales the prop SH).
@@ -873,6 +882,7 @@ bool Camera::save( FitIniFile* file )
 	{
 		file->writeIdBoolean( "AuthoredSunValid", true );
 		file->writeIdFloat( "AuthoredLightPitch", s_authoredSun.pitch );
+		if (s_authoredSun.hasYaw) file->writeIdFloat( "AuthoredLightYaw", s_authoredSun.yaw );
 		file->writeIdUChar( "AuthoredLightRed", s_authoredSun.sun[0] ); file->writeIdUChar( "AuthoredLightGreen", s_authoredSun.sun[1] );
 		file->writeIdUChar( "AuthoredLightBlue", s_authoredSun.sun[2] ); file->writeIdUChar( "AuthoredAmbientRed", s_authoredSun.amb[0] );
 		file->writeIdUChar( "AuthoredAmbientGreen", s_authoredSun.amb[1] ); file->writeIdUChar( "AuthoredAmbientBlue", s_authoredSun.amb[2] );
