@@ -505,6 +505,8 @@ long Camera::init (FitIniFilePtr cameraFile )
 						mc2::fmt::print_err("[TOD] warning: dropped {} keys past the cap of {}\n", todCurve->droppedKeys, mc2::lighting::kMaxTodKeys);
 					if (mc2_diag::tagRequested("TOD"))
 						mc2::fmt::print_err("[TOD] curve keys={} t={:.9f} rate={:.9f} hash={} mode=Live\n", todCurve->keys.size(), todT, todRate, todCurve->hash);
+					if (day2NightTransitionTime > 0.0f && mc2_diag::tagRequested("TOD"))
+						mc2::fmt::print_err("[TOD] curve owns lighting; legacy DayToNightTime cycle disabled\n");
 				}
 			}
 	}

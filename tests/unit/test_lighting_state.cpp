@@ -380,6 +380,7 @@ TEST_CASE("LightingState/parser hardening: key cap, non-finite, float range, neg
 #include <sstream>
 namespace camera_lighting_test {
 constexpr int NO_ERR = 0;
+float frameLength=1.0f/30.0f;
 using MemoryPtr = unsigned char*;
 struct FitIniFile {
     std::map<std::string, double> values;
@@ -403,6 +404,11 @@ struct Camera {
     uint8_t lightRed=240,lightGreen=200,lightBlue=160,ambientRed=80,ambientGreen=60,ambientBlue=40;
     uint8_t dayLightRed=240,dayLightGreen=200,dayLightBlue=160,dayAmbientRed=80,dayAmbientGreen=60,dayAmbientBlue=40;
     uint32_t fogColor=0xffe1ded4;
+    uint32_t dayFogColor=0xffe1ded4;
+    uint8_t sunsetLightRed=120,sunsetLightGreen=80,sunsetLightBlue=40,nightLightRed=64,nightLightGreen=64,nightLightBlue=64;
+    uint8_t nightAmbientRed=32,nightAmbientGreen=32,nightAmbientBlue=32;
+    float day2NightTransitionTime=-1,dayLightTime=0,dayLightPitch=50,nightFactor=0,fogTransparency=0;
+    bool isNight=false;
     Light** worldLights=nullptr;
     uint8_t killSavedAmbient[3]{};
     std::shared_ptr<const TodCurve> todCurve;
@@ -417,9 +423,12 @@ struct Camera {
     }
     void publishLight(); void setRainLight(float); void clearRainLight(); void setKillAmbient(bool); void advanceTimeOfDay();
     static glm::vec3 sunDirectionFor(float,float);
+    void updateDaylight(bool); float setDaylightFraction(float); float setSunPitch(float,bool=false,float=0);
+    float getCameraRotation() const { return 0; }
 };
 #include "camera_sun_direction.inc"
 #include "camera_lighting.inc"
+#include "camera_daylight.inc"
 }
 
 TEST_CASE("LightingState/Camera bake snapshot survives rain KillAmbient moved sun and save restore") {
@@ -473,4 +482,16 @@ TEST_CASE("LightingState/Camera readers use published curve members until the ne
     CHECK(c.currentLighting().amb[0]==255);
     c.setKillAmbient(false); CHECK(c.currentLighting().amb[0]==40);
     Camera stock; CHECK(stock.currentLighting()==stock.lightMembers());
+}
+
+TEST_CASE("LightingState/Camera curve excludes legacy daylight writes and initialization") {
+    using namespace camera_lighting_test;
+    Camera c; c.todBase=c.lightMembers(); c.todCurve=std::make_shared<TodCurve>(TodCurve{{{0},{1}}});
+    c.day2NightTransitionTime=3600; c.dayLightTime=900; c.publishLight();
+    const auto before=c.currentLighting();
+    c.updateDaylight(false); c.updateDaylight(true);
+    CHECK(c.currentLighting()==before); CHECK(c.dayLightTime==900);
+    c.todCurve.reset(); Light light; Light* lights[]={&light}; c.worldLights=lights;
+    c.updateDaylight(false);
+    CHECK(c.lightPitch==90); CHECK(c.dayLightTime>900);
 }

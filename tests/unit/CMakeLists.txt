@@ -860,6 +860,9 @@ file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_save_colors.inc" CONTEN
 mc2_height_slice(camera_sun_direction mclib/camera_update.cpp
     "glm::vec3 Camera::sunDirectionFor (" "long Camera::update (")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_sun_direction.inc" CONTENT "${camera_sun_direction}")
+mc2_height_slice(camera_daylight mclib/camera_daylight.cpp
+    "float Camera::setDaylightFraction (" "void Camera::updateLetterboxAndFade (")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_daylight.inc" CONTENT "${camera_daylight}")
 set_source_files_properties(test_lighting_state.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 mc2_height_slice(camera_release_object code/simplecamera.cpp
     "void SimpleCamera::releaseObject()" "SimpleCamera::~SimpleCamera()")
