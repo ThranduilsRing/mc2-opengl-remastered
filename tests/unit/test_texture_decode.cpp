@@ -209,6 +209,15 @@ TEST_CASE("texture decode: PNG magenta becomes transparent black only when keyed
     CHECK(unkeyed.format == gos_Texture_Solid);
 }
 
+TEST_CASE("texture decode: PNG atlas fill 0xE2007F becomes black (no pink edge bleed)") {
+    auto atlas = rgba({0xE2, 0x00, 0x7F, 255, 0xE2, 0x00, 0x7E, 255}, 2, 1);
+    mc2tex::applyFormatPolicy(atlas, gos_Texture_Solid, true);
+    CHECK(atlas.pixels[0] == 0);
+    CHECK(atlas.pixels[2] == 0);
+    CHECK(atlas.pixels[3] == 255);   // Solid forces opaque: black, not transparent
+    CHECK(atlas.pixels[4] == 0xE2);  // one off the key is art
+}
+
 TEST_CASE("texture decode: a 24-bit TGA decodes to RGB8 top-down, R first") {
     // Bottom row (first in the file) blue, top row red.
     const auto file = tga(1, 2, 24, {255, 0, 0, /* top: */ 0, 0, 255});

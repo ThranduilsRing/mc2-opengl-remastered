@@ -45,6 +45,11 @@ TEST_CASE("mechlab loc: list item cost/heat/warning rects stay inside the item a
         const ItemRects r = componentItemRects(cw, ch);
         for (const Rect* t : {&r.cost, &r.costIcon, &r.heat, &r.heatIcon, &r.iconOutline, &r.warn}) CHECK(inside(*t, r.item));
         for (const Rect* t : {&r.cost, &r.costIcon, &r.heat, &r.heatIcon}) CHECK(!overlap(*t, r.iconOutline));   // digits never cross the icon box
+        for (const Rect* t : {&r.weight, &r.weightIcon}) {   // weight sits with the heat: in the item, off the icon, off every other cell
+            CHECK(inside(*t, r.item)); CHECK(!overlap(*t, r.iconOutline)); CHECK(!overlap(*t, r.name));
+            for (const Rect* o : {&r.cost, &r.costIcon, &r.heat, &r.heatIcon}) CHECK(!overlap(*t, *o));
+        }
+        CHECK(!overlap(r.weight, r.weightIcon));
         CHECK(!overlap(r.cost, r.heat)); CHECK(!overlap(r.cost, r.heatIcon)); CHECK(!overlap(r.heat, r.costIcon));
         for (const Rect* t : {&r.cost, &r.costIcon, &r.heat, &r.heatIcon}) CHECK(!overlap(r.name, *t));   // a long name never runs into the header/cost row
         CHECK(inside(r.name, r.item));

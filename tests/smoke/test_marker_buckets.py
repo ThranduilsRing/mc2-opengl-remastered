@@ -197,3 +197,16 @@ def test_stock_only_presets_skip_vegetation_floors_but_keep_other_floors():
         assert ("vegetation_floor_missing" in result.buckets) == (preset in ("Medium", "High"))
         assert ("vegetation_visible_missing" in result.buckets) == (preset in ("Medium", "High"))
         assert "video_floor_missing" in result.buckets
+
+
+def test_vegetation_floors_follow_the_cards_gate():
+    from scripts.smoke_lib.gates import GateConfig, evaluate, vegetation_cards_on
+
+    assert not vegetation_cards_on({}) and not vegetation_cards_on({"MC2_VEGETATION_CARDS": "0"})
+    assert vegetation_cards_on({"MC2_VEGETATION_CARDS": "1"})
+    for env, expect in (({}, False), ({"MC2_VEGETATION_CARDS": "1"}, True)):
+        s = parse_log("")
+        s.mission_ready_ms = 5000.0
+        result = evaluate(s, GateConfig(stem="mc2_10", vegetation_expected=vegetation_cards_on(env)), exit_code=0, walltime_s=31)
+        assert ("vegetation_floor_missing" in result.buckets) == expect
+        assert ("vegetation_visible_missing" in result.buckets) == expect

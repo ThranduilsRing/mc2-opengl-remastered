@@ -47,6 +47,15 @@ ComponentListItem::ComponentListItem( LogisticsComponent* pComp )
 		costText.setText(  numericText  );
 		mc2::fmt::to_buf(numericText, "{:.0f}", pComponent->getHeat());
 		heatText.setText( numericText );
+		{	// tonnage: "2", "0.5", "16" (no trailing .0)
+			float w = pComponent->getWeight();
+			if ( w == static_cast<float>(static_cast<long>(w)) )
+				mc2::fmt::to_buf(numericText, "{:.0f}", w);
+			else
+				mc2::fmt::to_buf(numericText, "{:.1f}", w);
+			weightText.setText( numericText );
+			weightIcon.setUVs( 0.f, 0.f, 15.f, 15.f );
+		}
 
 		int sizeX = pComponent->getComponentWidth();
 		int sizeY = pComponent->getComponentHeight();
@@ -74,8 +83,14 @@ ComponentListItem::ComponentListItem( LogisticsComponent* pComp )
 		heatText.moveTo( ox + R.heat.x, oy + R.heat.y );
 		costText.moveTo( ox + R.cost.x, oy + R.cost.y );
 		costIcon.moveTo( ox + R.costIcon.x, oy + R.costIcon.y );
+		weightIcon.moveTo( ox + R.weightIcon.x, oy + R.weightIcon.y );
+		weightText.moveTo( ox + R.weight.x, oy + R.weight.y );
+		weightText.resize( static_cast<long>(R.weight.w), static_cast<long>(R.weight.h) );
 		if ( rowDy )
+		{
 			heatText.alignment = 0;
+			weightText.alignment = 0;
+		}
 
 		// outline and icon outline sizes come from the same table (so the layout test pins the real placement)
 		outline.resize( static_cast<long>(R.item.w), static_cast<long>(R.item.h) );
@@ -97,6 +112,8 @@ ComponentListItem::ComponentListItem( LogisticsComponent* pComp )
 		addChild( &costIcon );
 		addChild( &heatIcon );
 		addChild( &disabledText );
+		addChild( &weightText );
+		addChild( &weightIcon );
 
 		if ( s_templateItem )
 		{
@@ -158,6 +175,10 @@ int ComponentListItem::init( FitIniFile& file )
 
 		s_templateItem->disabledText.init( &file, "ComponentDisabledText" );
 
+		// weight shares the heat's text/icon style; the icon is the atlas tile next to the heat tile
+		s_templateItem->weightText.init( &file, "ComponentHeatText" );
+		s_templateItem->weightIcon.init( &file, "ComponentHeatIcon" );
+
 		// The stock fit (read directly, not through the defs overlay) is 210 wide; the list is kDx narrower.
 		const float dx = mc2::mechlab_loc::kDx;
 		auto& t = *s_templateItem;
@@ -210,6 +231,8 @@ void ComponentListItem::render( )
 		{
 			long color = pChildAnims[i]->getCurrentColor( pChildAnims[i]->getState() );
 			child(i)->setColor( color );
+			if ( i == 3 ) weightText.setColor( color );
+			if ( i == 5 ) weightIcon.setColor( color );
 		}
 	}
 

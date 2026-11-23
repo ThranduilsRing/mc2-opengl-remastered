@@ -115,6 +115,14 @@ void applyFormatPolicy(DecodedTexture& t, gos_TextureFormat requested, bool keyM
     const bool rgba = t.layout == PixelLayout::RGBA8;
     const size_t n = static_cast<size_t>(t.width) * static_cast<size_t>(t.height);
     uint8_t* p = t.pixels.data();
+    if (keyMagenta) {
+        // The stock GUI atlases fill their unused cells with 0xE2007F. Filtering at a cell edge bleeds it into the neighbouring
+        // widget as a one-pixel pink line (deployment slots, team weight gauge): make it black so the bleed is dark.
+        const size_t stride = rgba ? 4 : 3;
+        for (size_t i = 0; i < n; ++i, p += stride)
+            if (p[0] == 0xE2 && p[1] == 0x00 && p[2] == 0x7F) { p[0] = p[1] = p[2] = 0; if (rgba) p[3] = 0; }
+        p = t.pixels.data();
+    }
     if (rgba && keyMagenta) {
         // Transparent so the key cuts out, black so bilinear filtering halos dark instead of pink.
         for (size_t i = 0; i < n; ++i, p += 4)

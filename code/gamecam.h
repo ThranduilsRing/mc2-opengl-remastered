@@ -60,7 +60,7 @@ class GameCamera : public Camera
 
 			//Check if data not in registry yet.  Goober!
 			if (!szData)
-				drawCompass = true;
+				drawCompass = false;	// owner 11-23: compass off by default (backslash toggles it, the choice is saved)
 		}
 			
 		~GameCamera (void)

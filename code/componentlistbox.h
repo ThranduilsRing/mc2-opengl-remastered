@@ -89,6 +89,8 @@ class ComponentListItem : public aListItem
 		aText		heatText;
 		aObject		costIcon;
 		aObject		heatIcon;
+		aText		weightText;   // tonnage, next to the heat (same font/colour as heat)
+		aObject		weightIcon;   // kettlebell tile from the heat icon's atlas
 		ComponentIcon icon;
 		aRect		iconOutline;
 		aRect		outline;

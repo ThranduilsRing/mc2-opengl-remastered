@@ -15,6 +15,8 @@ MechIcon.cpp			: Implementation of the MechIcon component.
 #include "icon_registry.h"
 #include "mechicon_package_hud.h"
 #include <mdspan>
+#include <optional>
+#include <vector>
 #include "../GameOS/gameos/texture_decode.h"
 #include "mc2fmt.h"
 #include"mover.h"
@@ -95,7 +97,45 @@ DWORD ForceGroupIcon::ForceGroupColors[11] = {
 
  };
 
-ForceGroupIcon::AnimationInfo ForceGroupIcon::animationInfos[NUM_DEATH_INFOS] = 
+// The sheet paints each body location in one shade family with the location number added to the red channel (the damage
+// recolour matches on it). Where two different locations touch, clear the pixel so the segments read as separate pieces.
+static std::optional<int> damageLocationCode( DWORD px, const DWORD (*colors)[3] )
+{
+	if ( !(px >> 24) )
+		return std::nullopt;
+	for ( int ci = 0; ci < 3; ++ci )
+	{
+		const DWORD base = colors[0][ci];
+		if ( (px & 0xff00ffff) == (base & 0xff00ffff) )
+		{
+			const int d = static_cast<int>((px >> 16) & 0xff) - static_cast<int>((base >> 16) & 0xff);
+			if ( d >= 0 && d < 8 )
+				return d;
+		}
+	}
+	return std::nullopt;
+}
+
+static void carveDamageGaps( DWORD* dest, long pitch, int w, int h, const DWORD (*colors)[3] )
+{
+	std::mdspan<DWORD, std::dextents<size_t, 2>> px( dest, static_cast<size_t>(h), static_cast<size_t>(pitch) );
+	std::vector<std::pair<int, int>> cut;
+	for ( int y = 0; y + 1 < h; ++y )
+		for ( int x = 0; x + 1 < w; ++x )
+		{
+			const auto c = damageLocationCode( px[y, x], colors );
+			if ( !c )
+				continue;
+			const auto r = damageLocationCode( px[y, x + 1], colors );
+			const auto b = damageLocationCode( px[y + 1, x], colors );
+			if ( ( r && *r != *c ) || ( b && *b != *c ) )
+				cut.emplace_back( y, x );
+		}
+	for ( const auto& [y, x] : cut )
+		px[y, x] = 0;
+}
+
+ForceGroupIcon::AnimationInfo ForceGroupIcon::animationInfos[NUM_DEATH_INFOS] =
 {
 	0.f, 0,
 	2.5f, 0, 
@@ -386,6 +426,7 @@ bool MechIcon::init( long whichIndex )
     if (!mechicon_package_hud::blit(unit, unitIconX, unitIconY, false, dest, page.Width, static_cast<int>(unitIconX), static_cast<int>(unitIconY)))
         unit_icons::blit(hudSheet(false), whichIndex, false, reinterpret_cast<uint32_t*>(dest),
                          page.Width, static_cast<int>(unitIconX), static_cast<int>(unitIconY), (unit && unit->getObjectType()) ? unit->getObjectType()->getAppearanceTypeName() : "");
+    carveDamageGaps(dest, page.Width, static_cast<int>(unitIconX), static_cast<int>(unitIconY), damageColors);
     gos_UnLockTexture(handle);
 
 	for ( int i = 0; i < 5; ++i )
@@ -875,6 +916,9 @@ void ForceGroupIcon::renderUnitIcon( float left, float top, float right, float b
 	gos_SetRenderState( gos_State_Filter, gos_FilterNone);
 	gos_SetRenderState( gos_State_AlphaTest, true);
 
+	// owner 11-23: the paperdoll was too bright; tint it down a notch
+	for ( int i = 0; i < 5; ++i )
+		bmpLocation[locationIndex][i].argb = 0xffd0d0d0;
 
 	bmpLocation[locationIndex][0].u = bmpLocation[locationIndex][1].u = u;
 	bmpLocation[locationIndex][2].u = bmpLocation[locationIndex][3].u = u + uDelta;

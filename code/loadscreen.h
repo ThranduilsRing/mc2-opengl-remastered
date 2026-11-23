@@ -71,6 +71,9 @@ class LoadScreen: public LogisticsScreen
 		void setupOutAnims();
 
 		static void changeRes(FitIniFile& file);
+
+		// The fit is authored in layoutW x layoutH pixels; scale and centre every element to the window.
+		void fitToWindow( long layoutW, long layoutH );
 		
 
 

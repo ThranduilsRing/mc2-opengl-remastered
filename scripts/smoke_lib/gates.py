@@ -11,6 +11,11 @@ from . import vk_validation
 from .logparse import MARKER_BUCKETS, PRESENCE_RULES, LogSummary
 
 
+def vegetation_cards_on(env) -> bool:
+    """MC2_VEGETATION_CARDS defaults off; the vegetation presence floors apply only when the run turned it on."""
+    return str(env.get("MC2_VEGETATION_CARDS", "")).strip().lower() in ("1", "true", "yes", "on")
+
+
 PERF_CEILINGS_PATH = Path(__file__).resolve().parents[2] / "tests" / "smoke" / "perf_counter_ceilings.json"
 
 

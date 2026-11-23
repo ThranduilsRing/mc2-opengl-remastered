@@ -720,9 +720,44 @@ mc2::armor::Allocation LogisticsVariant::armorAllocation(bool legacy) const {
 bool LogisticsVariant::stepArmor(int location, int delta) {
 	if (!chassis->armorEditable) return false;
 	auto a = armorAllocation();
-	if (!mc2::armor::step(a, location, delta, armorCapacity(), getArmor())) return false;
+	const auto cap = armorCapacity();
+	// Armor weight lives in the BULK plating components (each = N points), so the steppers own them:
+	// "+" with the pool full buys one plating (refused when it does not fit the payload), and "-"
+	// returns a plating once a whole unit of points is unallocated, which is what frees the weight.
+	if (delta > 0 && getArmor() - mc2::armor::total(a) <= 0 &&
+		mc2::armor::available(a, location, cap, 255 * 11) > 0) {
+		LogisticsComponent* plating = nullptr;
+		for (int i = 0; i < componentCount && !plating; ++i)
+			if (components[i].component->getType() == COMPONENT_FORM_BULK) plating = components[i].component;
+		if (!plating) {
+			LogisticsComponent* all[255]; int n = 255;
+			LogisticsData::instance->getAllComponents(all, n);
+			for (int i = 0; i < n && i < 255; ++i)
+				if (all[i]->getType() == COMPONENT_FORM_BULK && (!plating || all[i]->getDamage() < plating->getDamage()))
+					plating = all[i];
+		}
+		long x = -1, y = -1;
+		if (!plating || addComponent(plating, x, y) != 0) return false;
+		layoutState.armor = a;
+		layoutState.armorExplicit = true;
+	}
+	if (!mc2::armor::step(a, location, delta, cap, getArmor())) return false;
 	layoutState.armor = a;
 	layoutState.armorExplicit = true;
+	if (delta < 0) {
+		for (bool again = true; again;) {
+			again = false;
+			const int spare = getArmor() - mc2::armor::total(a);
+			for (int i = 0; i < componentCount; ++i) {
+				auto* c = components[i].component;
+				if (c->getType() != COMPONENT_FORM_BULK) continue;
+				const int pts = static_cast<int>(c->getDamage()) > 0 ? static_cast<int>(c->getDamage()) : 32;
+				if (spare >= pts && removeComponent(components[i].xCoord, components[i].yCoord)) { again = true; break; }
+			}
+		}
+		layoutState.armor = a;
+		layoutState.armorExplicit = true;
+	}
 	return true;
 }
 // Armor allocation end.

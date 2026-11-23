@@ -47,7 +47,8 @@ G("MC2_UNIT_DEFINITION_SOURCE", Enum, "legacy", "code", "", "", passthrough | to
 // history: docs/gate-history.md#MC2_UNIT_PROFILE_DATA
 L(Lead0, "MC2_UNIT_PROFILE_DATA", Bool, false, "unclassified", "", "UNIT-PROFILE-ARC: data-driven unit+equipment definition source (code/unitprofile.cpp).", passthrough | registry(Feature, "MC2_FEATURE_UNIT_PROFILE_DATA", -1, false) | verified),
 G("MC2_VEGETATION_ATLAS", String, "", "gameos", "", "Allow env-var override at runtime too.", passthrough | verified),
-L(DefOnLead0, "MC2_VEGETATION_CARDS", Bool, true, "gameos", "", "", passthrough | verified),
+// Owner 11-23: vegetation cards default OFF (=1 turns them on); the code stays.
+L(Lead0, "MC2_VEGETATION_CARDS", Bool, false, "gameos", "", "", passthrough | verified),
 P("MC2_VEGETATION_DENSITY", Int, 25, "code", "", "", verified),
 P("MC2_VEGETATION_MAX", Int, 10000000,"code", "", "", verified),
 P("MC2_VEG_MAX_DIST", Float, 4096.0, "gameos", "", "", verified),
