@@ -469,43 +469,7 @@ long Camera::init (FitIniFilePtr cameraFile )
 		// allowTimeOfDay) and day suns only (a night mission keeps its night profile until T7).
 		// No block (every stock mission): nothing below runs and the members above stand. The authored record (s_authoredSun) stays the
 		// pre-key bake reference. The curve's start state is written (and day* seeded) at the fog read below, once fog is known.
-		todCurve.reset();
-		todT = 0.0f;
-		lightMods = {};
-		if (allowTimeOfDay && !missionLightName.empty() && mc2_mission_light::nightFromSun(dayLightPitch) == 0.0f)   // day suns only, as the sun keys
-			if (const auto& block = visualTuning_timeOfDay(); !block.empty())
-			{
-				const auto parsed = mc2::lighting::parseTodCurve(block);
-				if (!parsed)
-				{
-					if (mc2_diag::tagRequested("TOD"))
-						mc2::fmt::print_err("[TOD] ignored timeOfDay block: {}\n", parsed.error());
-				}
-				else if (*parsed)
-				{
-					todCurve = *parsed;
-					todT = todCurve->start;
-					todRate = todCurve->rate;
-					if (fromSave)
-					{
-						DWORD hash = 0;
-						float t = todCurve->start, rate = todRate;
-						const bool match = cameraFile->readIdULong("TodCurveHash", hash) == NO_ERR && hash == todCurve->hash;
-						if (match && cameraFile->readIdFloat("TimeOfDay", t) == NO_ERR)
-						{
-							todT = mc2::lighting::restoreTod(*todCurve, hash, t);
-							if (cameraFile->readIdFloat("TimeOfDayRate", rate) == NO_ERR && std::isfinite(rate) && rate >= 0.0f) todRate = rate;
-						}
-						else if (mc2_diag::tagRequested("TOD"))
-							mc2::fmt::print_err("[TOD] save missing clock or curve hash mismatch; restarting at {:.6f}\n", todCurve->start);
-					}
-					todBase = lightMembers();   // the authored state (sun keys applied); the fog is added at the fog read
-					if (todCurve->droppedKeys && mc2_diag::tagRequested("TOD"))
-						mc2::fmt::print_err("[TOD] warning: dropped {} keys past the cap of {}\n", todCurve->droppedKeys, mc2::lighting::kMaxTodKeys);
-					if (mc2_diag::tagRequested("TOD"))
-						mc2::fmt::print_err("[TOD] curve keys={} t={:.9f} rate={:.9f} hash={} mode=Live\n", todCurve->keys.size(), todT, todRate, todCurve->hash);
-				}
-			}
+		initTimeOfDay(cameraFile, fromSave);
 	}
 
 	result = cameraFile->readIdFloat("NewScale",newScaleFactor);
@@ -604,12 +568,13 @@ long Camera::init (FitIniFilePtr cameraFile )
 	if (todCurve)   // the curve at its start time: the authored fog joins the base, day* is seeded, the members are published once
 	{
 		todBase.fogColor = static_cast<uint32_t>(fogColor); todBase.fogStart = fogStart; todBase.fogFull = fogFull;
+		publishLight();   // populate the cached members before seeding legacy day values
 		const auto start = currentLighting();
 		dayLightPitch = start.pitch;
 		dayLightRed = start.sun[0]; dayLightGreen = start.sun[1]; dayLightBlue = start.sun[2];
 		dayAmbientRed = start.amb[0]; dayAmbientGreen = start.amb[1]; dayAmbientBlue = start.amb[2];
-		publishLight();   // the mission's own fog stays dayFogColor (the editor's)
 	}
+	captureBakeReference(cameraFile); // authored sun/ambient/fog, before weather or the legacy cycle
 
 	result = cameraFile->readIdFloat("FogTransparency",fogTransparency);
 
@@ -927,6 +892,50 @@ float mc2_AmbientRatio(const unsigned char liveAmb[3])
 	return mc2::authored_sun::ambientRatio(s_authoredSun, {liveAmb[0], liveAmb[1], liveAmb[2]});
 }
 
+void Camera::initTimeOfDay(FitIniFile* cameraFile, bool fromSave)
+{
+	todCurve.reset();
+	todT = 0.0f;
+	lightMods = {};
+	if (allowTimeOfDay && !missionLightName.empty() && mc2_mission_light::nightFromSun(dayLightPitch) == 0.0f)   // day suns only, as the sun keys
+		if (const auto& block = visualTuning_timeOfDay(); !block.empty())
+		{
+			const auto parsed = mc2::lighting::parseTodCurve(block);
+			if (!parsed)
+			{
+				if (mc2_diag::tagRequested("TOD"))
+					mc2::fmt::print_err("[TOD] ignored timeOfDay block: {}\n", parsed.error());
+			}
+			else if (*parsed)
+			{
+				todCurve = *parsed;
+				todT = todCurve->start;
+				todRate = todCurve->rate;
+				if (fromSave)
+				{
+					DWORD hash = 0;
+					float t = todCurve->start, rate = todRate;
+					const bool match = cameraFile->readIdULong("TodCurveHash", hash) == NO_ERR && hash == todCurve->hash;
+					if (match && cameraFile->readIdFloat("TimeOfDay", t) == NO_ERR)
+					{
+						todT = mc2::lighting::restoreTod(*todCurve, hash, t);
+						if (cameraFile->readIdFloat("TimeOfDayRate", rate) == NO_ERR && std::isfinite(rate) && rate >= 0.0f) todRate = rate;
+					}
+					else if (mc2_diag::tagRequested("TOD"))
+						mc2::fmt::print_err("[TOD] save missing clock or curve hash mismatch; restarting at {:.6f}\n", todCurve->start);
+				}
+				todBase = lightMembers();   // the authored state (sun keys applied); the fog is added at the fog read
+				if (fromSave) restoreSunOverride(cameraFile);
+				if (todCurve->droppedKeys && mc2_diag::tagRequested("TOD"))
+					mc2::fmt::print_err("[TOD] warning: dropped {} keys past the cap of {}\n", todCurve->droppedKeys, mc2::lighting::kMaxTodKeys);
+				if (mc2_diag::tagRequested("TOD"))
+					mc2::fmt::print_err("[TOD] curve keys={} t={:.9f} rate={:.9f} hash={} mode=Live\n", todCurve->keys.size(), todT, todRate, todCurve->hash);
+				if (day2NightTransitionTime > 0.0f && mc2_diag::tagRequested("TOD"))
+					mc2::fmt::print_err("[TOD] curve owns lighting; legacy DayToNightTime cycle disabled\n");
+			}
+		}
+}
+
 // The camera's light members as a LightingState (the legacy, no-curve state).
 mc2::lighting::LightingState Camera::lightMembers() const
 {
@@ -939,27 +948,80 @@ mc2::lighting::LightingState Camera::lightMembers() const
 	return s;
 }
 
-// The single producer of the published sun, ambient and fog. No curve: exactly the members. A curve: the base (authored state
-// through the curve at todT) with the modulators composed on top, once (lighting_state.h modulate).
+// The published members are the cache: only publishLight evaluates the live curve.
+// Actor readers copy this small state; the no-curve result remains exactly the legacy members.
 mc2::lighting::LightingState Camera::currentLighting() const
 {
-	if (!todCurve) return lightMembers();
-	auto s = mc2::lighting::compose(todCurve.get(), todT, todBase, lightMods);
-	const glm::vec3 d = sunDirectionFor(s.pitch, s.yaw);   // the direction Camera::update() derives from the same angles
-	s.sunDir[0] = d.x; s.sunDir[1] = d.y; s.sunDir[2] = d.z;
+	auto s = lightMembers();
+	if (todCurve) { s.mode = mc2::lighting::Mode::Live; s.todWeight = 1.0f; }
 	return s;
 }
 
 // The state the load-time bakes (terrain burn-in, forest light, scene capture) take as their reference: the state AT LOAD, never a live
-// one. No curve (every stock mission): the members, which are the authored state. A curve: its start state, which is what the static
+// one. No curve: captured authored members. A curve: its start state, which is what the static
 // shadows key on too (the first frame's sun), so the bakes and the shadows agree. A live clock does not re-bake: T3/T6 decide that.
 mc2::lighting::LightingState Camera::bakeReferenceLighting() const
 {
-	if (!todCurve) return mc2::lighting::bakeReference(lightMembers());
-	auto start = mc2::lighting::compose(todCurve.get(), todCurve->start, todBase, {});
-	const glm::vec3 d = sunDirectionFor(start.pitch, start.yaw);
-	start.sunDir[0] = d.x; start.sunDir[1] = d.y; start.sunDir[2] = d.z;
-	return mc2::lighting::bakeReference(start);
+	return bakeSnapshot;
+}
+
+void Camera::captureBakeReference(FitIniFile* file)
+{
+	bakeSnapshot = lightMembers();
+	if (todCurve) {
+		bakeSnapshot = mc2::lighting::compose(todCurve.get(), todCurve->start, todBase, {});
+		const auto d = sunDirectionFor(bakeSnapshot.pitch, bakeSnapshot.yaw);
+		bakeSnapshot.sunDir[0] = d.x; bakeSnapshot.sunDir[1] = d.y; bakeSnapshot.sunDir[2] = d.z;
+	}
+	// Optional keys preserve the original load reference when a save's live fields have moved.
+	// FIT reads zero the destination on a missing key; keep the mission snapshot intact.
+	float savedPitch;
+	if (file && file->readIdFloat("BakePitch", savedPitch) == NO_ERR) {
+		bakeSnapshot.pitch = savedPitch;
+		file->readIdFloat("BakeYaw", bakeSnapshot.yaw);
+		file->readIdFloat("BakeDirX", bakeSnapshot.sunDir[0]);
+		file->readIdFloat("BakeDirY", bakeSnapshot.sunDir[1]);
+		file->readIdFloat("BakeDirZ", bakeSnapshot.sunDir[2]);
+		file->readIdUCharArray("BakeSun", bakeSnapshot.sun, 3);
+		file->readIdUCharArray("BakeAmbient", bakeSnapshot.amb, 3);
+		unsigned long color = bakeSnapshot.fogColor;
+		file->readIdULong("BakeFogColor", color); bakeSnapshot.fogColor = static_cast<uint32_t>(color);
+		file->readIdFloat("BakeFogStart", bakeSnapshot.fogStart);
+		file->readIdFloat("BakeFogFull", bakeSnapshot.fogFull);
+	}
+}
+
+void Camera::saveBakeReference(FitIniFile* file) const
+{
+	if (!todCurve && !lightMods.sunPitch && !lightMods.sunYaw) return;
+	auto precise = [file](std::string_view key, float value) {
+		char line[128]; mc2::fmt::to_buf(line, "f {} = {:.9g}\r\n", key, value);
+		file->write(reinterpret_cast<MemoryPtr>(line), strlen(line));
+	};
+	precise("BakePitch", bakeSnapshot.pitch); precise("BakeYaw", bakeSnapshot.yaw);
+	precise("BakeDirX", bakeSnapshot.sunDir[0]); precise("BakeDirY", bakeSnapshot.sunDir[1]); precise("BakeDirZ", bakeSnapshot.sunDir[2]);
+	auto snapshot = bakeSnapshot;
+	file->writeIdUCharArray("BakeSun", snapshot.sun, 3);
+	file->writeIdUCharArray("BakeAmbient", snapshot.amb, 3);
+	file->writeIdULong("BakeFogColor", snapshot.fogColor);
+	precise("BakeFogStart", snapshot.fogStart); precise("BakeFogFull", snapshot.fogFull);
+}
+
+void Camera::restoreSunOverride(FitIniFile* file)
+{
+	float angle;
+	if (file->readIdFloat("TodSunPitch", angle) == NO_ERR && std::isfinite(angle)) lightMods.sunPitch = angle;
+	if (file->readIdFloat("TodSunYaw", angle) == NO_ERR && std::isfinite(angle)) lightMods.sunYaw = angle;
+}
+
+void Camera::saveSunOverride(FitIniFile* file) const
+{
+	const auto write = [file](std::string_view key, float angle) {
+		char line[128]; mc2::fmt::to_buf(line, "f {} = {:.9g}\r\n", key, angle);
+		file->write(reinterpret_cast<MemoryPtr>(line), strlen(line));
+	};
+	if (lightMods.sunPitch) write("TodSunPitch", *lightMods.sunPitch);
+	if (lightMods.sunYaw) write("TodSunYaw", *lightMods.sunYaw);
 }
 
 // The one writer of the light members. No curve: the day colours through the rain modulator (weather.cpp's old expression, byte
@@ -987,6 +1049,10 @@ void Camera::publishLight()
 	lightRed = s.sun[0]; lightGreen = s.sun[1]; lightBlue = s.sun[2];
 	ambientRed = s.amb[0]; ambientGreen = s.amb[1]; ambientBlue = s.amb[2];
 	fogColor = s.fogColor; fogStart = s.fogStart; fogFull = s.fogFull;
+	if (lightMods.killAmbient) {
+		std::copy_n(s.amb, 3, killSavedAmbient);
+		ambientRed = ambientGreen = ambientBlue = 0xFF;
+	}
 	if (worldLights && worldLights[0])
 	{
 		glm::mat4 lightToWorldMatrix;
@@ -1042,6 +1108,8 @@ bool Camera::save( FitIniFile* file )
 		}
 		void writeIdULong(std::string_view name, uint32_t value) { file.writeIdULong(name, value); }
 	} clockSave{*file};
+	saveBakeReference(file);
+	saveSunOverride(file);
 	mc2::lighting::saveTod(clockSave, todCurve.get(), todT, todRate);
 	if (todCurve && mc2_diag::tagRequested("TOD"))
 		mc2::fmt::print_err("[TOD] save t={:.9f} pitch={:.6f} yaw={:.6f}\n", todT, lightPitch, lightYaw);

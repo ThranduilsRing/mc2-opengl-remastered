@@ -372,3 +372,195 @@ TEST_CASE("LightingState/parser hardening: key cap, non-finite, float range, neg
 	CHECK((*ok)->keys[1].pitch == kMaxCurvePitch);
 	CHECK((*ok)->droppedKeys == 0);
 }
+
+// Execute the production Camera methods through the existing source-slice seam;
+// only the world-light sink and FIT storage are device-free substitutes.
+#include <glm/glm.hpp>
+#include <algorithm>
+#include <sstream>
+#include "../../mclib/mission_light_profile.h"
+namespace camera_lighting_test {
+constexpr int NO_ERR = 0;
+using DWORD = unsigned long;
+float frameLength=1.0f/30.0f;
+std::string tuningBlock;
+const std::string& visualTuning_timeOfDay() { return tuningBlock; }
+namespace mc2_diag { bool tagRequested(const char*) { return false; } }
+using MemoryPtr = unsigned char*;
+struct FitIniFile {
+    std::map<std::string, double> values;
+    long readIdFloat(const char* key, float& v) { auto i=values.find(key); if(i==values.end()) { v=0; return 1; } v=float(i->second); return 0; }
+    long readIdULong(const char* key, unsigned long& v) { auto i=values.find(key); if(i==values.end()) return 1; v=static_cast<unsigned long>(i->second); return 0; }
+    long readIdUCharArray(const char* key, uint8_t* v, int n) { for(int i=0;i<n;++i) v[i]=uint8_t(values.at(std::string(key)+char('0'+i))); return 0; }
+    void writeIdUCharArray(const char* key, uint8_t* v, int n) { for(int i=0;i<n;++i) values[std::string(key)+char('0'+i)]=v[i]; }
+    void writeIdULong(std::string_view key, uint32_t v) { values[std::string(key)]=v; }
+    void writeIdUChar(const char* key, uint8_t v) { values[key]=v; }
+    void write(MemoryPtr p, size_t n) { std::istringstream in(std::string(reinterpret_cast<char*>(p),n)); std::string type,key,eq; double v; in>>type>>key>>eq>>v; values[key]=v; }
+};
+namespace mc2 { namespace lighting = ::mc2::lighting;
+namespace fmt {
+template<class K> void to_buf(char (&line)[128], const char*, K key, float v) { std::snprintf(line,128,"f %s = %.9g\r\n",std::string(key).c_str(),double(v)); }
+template<class... A> void print_err(const char*, A&&...) {}
+}
+namespace options { struct Options { bool sunElevationFix=true; }; inline const Options& current() { static Options o; return o; } }
+namespace math { struct Euler { Euler(float,float,float) {} }; inline void buildTranslation(glm::mat4&,glm::vec3) {} inline void buildRotation(glm::mat4&,Euler) {} }
+}
+struct Light { void SetLightToWorld(glm::mat4*) {} };
+struct Camera {
+    glm::vec3 lightDirection{};
+    float lightPitch=50,lightYaw=11,fogStart=-1,fogFull=-2;
+    uint8_t lightRed=240,lightGreen=200,lightBlue=160,ambientRed=80,ambientGreen=60,ambientBlue=40;
+    uint8_t dayLightRed=240,dayLightGreen=200,dayLightBlue=160,dayAmbientRed=80,dayAmbientGreen=60,dayAmbientBlue=40;
+    uint32_t fogColor=0xffe1ded4;
+    uint32_t dayFogColor=0xffe1ded4;
+    uint8_t sunsetLightRed=120,sunsetLightGreen=80,sunsetLightBlue=40,nightLightRed=64,nightLightGreen=64,nightLightBlue=64;
+    uint8_t nightAmbientRed=32,nightAmbientGreen=32,nightAmbientBlue=32;
+    float day2NightTransitionTime=-1,dayLightTime=0,dayLightPitch=50,nightFactor=0,fogTransparency=0;
+    bool isNight=false;
+    Light** worldLights=nullptr;
+    uint8_t killSavedAmbient[3]{};
+    std::shared_ptr<const TodCurve> todCurve;
+    LightingState todBase,bakeSnapshot;
+    LightMods lightMods;
+    double todT=0; float todRate=0;
+    bool allowTimeOfDay=false;
+    std::string missionLightName="mc2_01";
+    LightingState lightMembers() const; LightingState currentLighting() const; LightingState bakeReferenceLighting() const;
+    void captureBakeReference(FitIniFile*); void saveBakeReference(FitIniFile*) const;
+    void restoreSunOverride(FitIniFile*); void saveSunOverride(FitIniFile*) const;
+    void initTimeOfDay(FitIniFile*,bool);
+    void saveClock(FitIniFile* file) {
+#include "camera_clock_save.inc"
+    }
+    void saveColors(FitIniFile* file) const {
+#include "camera_save_colors.inc"
+    }
+    void publishLight(); void setRainLight(float); void clearRainLight(); void setKillAmbient(bool); void advanceTimeOfDay();
+    static glm::vec3 sunDirectionFor(float,float);
+    void updateDaylight(bool); float setDaylightFraction(float); float setSunPitch(float,bool=false,float=0);
+    float getCameraRotation() const { return 0; }
+};
+#include "camera_sun_direction.inc"
+#include "camera_lighting.inc"
+#include "camera_daylight.inc"
+#include "camera_tod_init.inc"
+}
+
+TEST_CASE("LightingState/Camera bake snapshot survives rain KillAmbient moved sun and save restore") {
+    using namespace camera_lighting_test;
+    Camera c;
+    c.lightDirection=c.sunDirectionFor(c.lightPitch,c.lightYaw);
+    c.captureBakeReference(nullptr);
+    const auto loaded=c.lightMembers();
+    c.setRainLight(2); c.setKillAmbient(true); c.lightPitch=15; c.lightYaw=90;
+    c.lightMods.sunPitch=15;
+    c.lightDirection=c.sunDirectionFor(15,90);
+    CHECK(c.currentLighting()!=loaded);
+    CHECK(c.bakeReferenceLighting()==loaded);
+    FitIniFile save; c.saveBakeReference(&save);
+    CHECK(save.values.count("BakePitch")==1);
+    Camera restored; restored.lightPitch=15; restored.captureBakeReference(&save);
+    CHECK(restored.bakeReferenceLighting()==loaded);
+    Camera stock; stock.captureBakeReference(nullptr); FitIniFile unchanged; stock.saveBakeReference(&unchanged);
+    CHECK(unchanged.values.empty());
+}
+
+TEST_CASE("LightingState/Camera stock bake preserves authored pitch without optional FIT keys") {
+    using namespace camera_lighting_test;
+    tuningBlock.clear();
+    for (bool fromSave : {false, true}) {
+        Camera c; FitIniFile mission;
+        c.lightPitch=50; c.lightYaw=28.75f;
+        c.lightDirection=c.sunDirectionFor(c.lightPitch,c.lightYaw);
+        c.initTimeOfDay(&mission,fromSave);
+        const auto authored=c.lightMembers();
+        c.captureBakeReference(&mission);
+        CHECK(c.bakeReferenceLighting()==authored);
+        CHECK(c.bakeReferenceLighting().pitch==50);
+        FitIniFile save; c.saveBakeReference(&save);
+        CHECK(save.values.empty());
+        c.setRainLight(2); c.setKillAmbient(true);
+        c.lightPitch=15; c.lightYaw=90;
+        c.saveBakeReference(&save);
+        CHECK(save.values.empty());
+    }
+}
+
+TEST_CASE("LightingState/Camera curve save keeps the undimmed base and optional sun override") {
+    using namespace camera_lighting_test;
+    Camera c; c.todBase=c.lightMembers();
+    c.todCurve=std::make_shared<TodCurve>(TodCurve{{{0}, {1}}});
+    c.lightMods.sunPitch=31.234567f; c.lightMods.sunYaw=-62.345678f;
+    c.setRainLight(2);
+    const auto before=c.currentLighting();
+    FitIniFile save; c.saveColors(&save); c.saveSunOverride(&save);
+    CHECK(save.values.at("LightRed")==240); CHECK(save.values.at("AmbientRed")==80);
+    Camera restored; restored.todCurve=c.todCurve; restored.todBase=c.todBase;
+    const char* sun[]={"LightRed","LightGreen","LightBlue"};
+    const char* amb[]={"AmbientRed","AmbientGreen","AmbientBlue"};
+    for(int i=0;i<3;++i) { restored.todBase.sun[i]=uint8_t(save.values.at(sun[i])); restored.todBase.amb[i]=uint8_t(save.values.at(amb[i])); }
+    restored.restoreSunOverride(&save); restored.setRainLight(2);
+    CHECK(restored.currentLighting()==before);
+    CHECK(restored.lightMods.sunPitch==c.lightMods.sunPitch); CHECK(restored.lightMods.sunYaw==c.lightMods.sunYaw);
+    Camera stock; FitIniFile unchanged; stock.saveSunOverride(&unchanged); CHECK(unchanged.values.empty());
+}
+
+TEST_CASE("LightingState/Camera readers use published curve members until the next publication") {
+    using namespace camera_lighting_test;
+    Camera c; c.todBase=c.lightMembers();
+    const auto curve=parseTodCurve(R"({"keys":[{"t":0,"sunPitch":20},{"t":1,"sunPitch":80}]})");
+    REQUIRE((curve && *curve)); c.todCurve=*curve;
+    c.publishLight(); CHECK(c.lightPitch==20);
+    const auto cached=c.currentLighting();
+    c.todT=1;
+    CHECK(c.currentLighting()==cached); CHECK(c.lightPitch==20);
+    c.publishLight(); CHECK(c.currentLighting().pitch==80); CHECK(c.lightPitch==80);
+    c.setKillAmbient(true); c.setRainLight(2);
+    CHECK(c.currentLighting().amb[0]==255);
+    c.setKillAmbient(false); CHECK(c.currentLighting().amb[0]==40);
+    Camera stock; CHECK(stock.currentLighting()==stock.lightMembers());
+}
+
+TEST_CASE("LightingState/Camera curve excludes legacy daylight writes and initialization") {
+    using namespace camera_lighting_test;
+    Camera c; c.todBase=c.lightMembers(); c.todCurve=std::make_shared<TodCurve>(TodCurve{{{0},{1}}});
+    c.day2NightTransitionTime=3600; c.dayLightTime=900; c.publishLight();
+    const auto before=c.currentLighting();
+    c.updateDaylight(false); c.updateDaylight(true);
+    CHECK(c.currentLighting()==before); CHECK(c.dayLightTime==900);
+    c.todCurve.reset(); Light light; Light* lights[]={&light}; c.worldLights=lights;
+    c.updateDaylight(false);
+    CHECK(c.lightPitch==90); CHECK(c.dayLightTime>900);
+}
+
+TEST_CASE("LightingState/Camera allowTimeOfDay and curve rain save load round trip") {
+    using namespace camera_lighting_test;
+    tuningBlock=R"({"start":0.25,"keys":[{"t":0,"sunPitch":20},{"t":1,"sunPitch":80}]})";
+    FitIniFile save; Camera c;
+    c.initTimeOfDay(&save,false); CHECK_FALSE(c.todCurve);
+    c.allowTimeOfDay=true; c.dayLightPitch=180; c.initTimeOfDay(&save,false); CHECK_FALSE(c.todCurve);
+    c.dayLightPitch=50; c.initTimeOfDay(&save,false); REQUIRE(c.todCurve);
+    c.publishLight(); c.captureBakeReference(nullptr);
+    FitIniFile curveSave; c.saveBakeReference(&curveSave);
+    CHECK(curveSave.values.count("BakePitch")==1);
+    Camera curveLoaded; curveLoaded.todCurve=c.todCurve; curveLoaded.todBase=c.todBase;
+    curveLoaded.captureBakeReference(&curveSave);
+    CHECK(curveLoaded.bakeReferenceLighting()==c.bakeReferenceLighting());
+    c.todT=0.625; c.setSunPitch(31.234567f,true,-62.345678f); c.setRainLight(2);
+    const auto before=c.currentLighting(); const auto bake=c.bakeReferenceLighting();
+    c.saveColors(&save); c.saveClock(&save);
+    CHECK(save.values.count("BakePitch")==1);
+    CHECK(save.values.count("BakeFogFull")==1);
+    Camera loaded; loaded.allowTimeOfDay=true;
+    const char* sun[]={"LightRed","LightGreen","LightBlue"}; const char* amb[]={"AmbientRed","AmbientGreen","AmbientBlue"};
+    // Camera::init reads these saved base bytes before accepting the sidecar curve.
+    loaded.lightRed=uint8_t(save.values.at(sun[0])); loaded.lightGreen=uint8_t(save.values.at(sun[1])); loaded.lightBlue=uint8_t(save.values.at(sun[2]));
+    loaded.ambientRed=uint8_t(save.values.at(amb[0])); loaded.ambientGreen=uint8_t(save.values.at(amb[1])); loaded.ambientBlue=uint8_t(save.values.at(amb[2]));
+    loaded.initTimeOfDay(&save,true); REQUIRE(loaded.todCurve);
+    loaded.captureBakeReference(&save); loaded.setRainLight(2);
+    CHECK(loaded.todT==c.todT); CHECK(loaded.todRate==c.todRate);
+    CHECK(loaded.currentLighting()==before); CHECK(loaded.bakeReferenceLighting()==bake);
+    save.values["TodCurveHash"]=0; loaded.initTimeOfDay(&save,true); CHECK(loaded.todT==0.25);
+    tuningBlock.clear(); Camera stock; stock.initTimeOfDay(&save,true); CHECK_FALSE(stock.todCurve);
+    stock.captureBakeReference(nullptr); FitIniFile stockSave; stock.saveClock(&stockSave); CHECK(stockSave.values.empty());
+}

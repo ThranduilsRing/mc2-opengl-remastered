@@ -207,40 +207,23 @@ TEST_CASE("EnvironmentGpu/one sun: keyed values (pitch 45 -> 28, colour 255/214/
     CHECK(s.authoredValid);
 }
 
-TEST_CASE("EnvironmentGpu/T2 stock Fixed tail is exact for mc2_01, mc2_10 and mc2_03") {
-    // mission.fst Camera blocks; mc2_10's camera uses NightLight/NightAmbient at pitch 180.
-    struct Stock { const char* name; float pitch, yaw; uint8_t sun[3], amb[3]; uint32_t fog; float start, full; };
-    const Stock stock[] = {
-        {"mc2_01", 50, 11, {255,255,225}, {71,71,78}, 14802644u, -1, -2},
-        {"mc2_10", 180, 28.75f, {64,64,64}, {32,32,32}, 13026488u, -1, -2},
-        {"mc2_03", 46, -206, {242,242,225}, {31,31,31}, 11514034u, -300, -500},
+TEST_CASE("EnvironmentGpu/T2 Fixed tail matches literal golden lanes") {
+    mc2::lighting::LightingState input;
+    input.sun[0]=255; input.sun[1]=128; input.sun[2]=64;
+    input.amb[0]=32; input.amb[1]=64; input.amb[2]=128;
+    input.sunDir[0]=0.25f; input.sunDir[1]=-0.5f; input.sunDir[2]=0.75f;
+    input.fogColor=0x102030; input.fogStart=-1; input.fogFull=-2;
+    EnvironmentUBO out;
+    mc2::environment::fillGpu({}, 1.0f, out, input, input);
+    // Fixed binary32 literals, independent of fillGpu's conversion arithmetic.
+    const std::array<float,40> expected = {
+        1,0x1.010102p-1f,0x1.010102p-2f,0, 0.25f,-0.5f,0.75f,0, 0x1.010102p-3f,0x1.010102p-2f,0x1.010102p-1f,0,
+        1,0x1.010102p-1f,0x1.010102p-2f,0, 0.25f,-0.5f,0.75f,0, 0x1.010102p-3f,0x1.010102p-2f,0x1.010102p-1f,0,
+        0x1.010102p-4f,0x1.010102p-3f,0x1.818182p-3f,-1,
+        0.58f,0.65f,0.75f,0.18f, 0.58f,0.65f,0.75f,0,
+        0,0,-2,0,
     };
-    static_assert(sizeof(MechFrameUBO) == 544);
-    static_assert(offsetof(EnvironmentUBO, sunLive) == 288 && offsetof(EnvironmentUBO, lightingParams) == 432);
-    static_assert(offsetof(MechFrameUBO, sunLive) == 384 && offsetof(MechFrameUBO, lightingParams) == 528);
-    for (const auto& m : stock) {
-        CAPTURE(m.name);
-        mc2::lighting::LightingState authored;
-        authored.pitch = m.pitch; authored.yaw = m.yaw;
-        mc2::lighting::sunDirFromAngles(m.pitch, m.yaw, authored.sunDir);
-        for (int c=0; c<3; ++c) { authored.sun[c] = m.sun[c]; authored.amb[c] = m.amb[c]; }
-        authored.fogColor = m.fog; authored.fogStart = m.start; authored.fogFull = m.full;
-        const auto live = mc2::lighting::evaluate(nullptr, 0.37f, authored);
-        EnvironmentUBO out;
-        mc2::environment::fillGpu({}, 1.0f, out, live, mc2::lighting::bakeReference(authored));
-        const float s0=m.sun[0]/255.0f, s1=m.sun[1]/255.0f, s2=m.sun[2]/255.0f;
-        const float a0=m.amb[0]/255.0f, a1=m.amb[1]/255.0f, a2=m.amb[2]/255.0f;
-        const float x=authored.sunDir[0], y=authored.sunDir[1], z=authored.sunDir[2];
-        const std::array<float,40> expected = {
-            s0,s1,s2,0, x,y,z,0, a0,a1,a2,0,
-            s0,s1,s2,0, x,y,z,0, a0,a1,a2,0,
-            ((m.fog>>16)&255u)/255.0f, ((m.fog>>8)&255u)/255.0f, (m.fog&255u)/255.0f, m.start,
-            0.58f,0.65f,0.75f,0.18f, 0.58f,0.65f,0.75f,0,
-            0,0,m.full,0,
-        };
-        // Every byte in the appended tail, including all reserved lanes, must match (no epsilon).
-        CHECK(std::memcmp(out.sunLive, expected.data(), sizeof(expected)) == 0);
-    }
+    CHECK(std::memcmp(out.sunLive, expected.data(), sizeof(expected)) == 0);
 }
 
 TEST_CASE("EnvironmentGpu/T2 live state and bake reference stay independent; Fixed weight is zero") {

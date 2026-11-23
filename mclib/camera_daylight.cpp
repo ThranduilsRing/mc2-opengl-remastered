@@ -84,6 +84,7 @@ float Camera::setSunPitch (float pitchDeg, bool setYaw, float yawDeg)
 
 void Camera::updateDaylight (bool bInitialize)
 {
+	if (todCurve) return; // publishLight owns the curve; never interleave legacy member writes
 	float day2NightTransitionTime = this->day2NightTransitionTime;
 	if (bInitialize) {
 		if (day2NightTransitionTime <= 0.0f) {

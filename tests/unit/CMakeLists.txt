@@ -863,6 +863,25 @@ set_source_files_properties(test_objectives_panel.cpp PROPERTIES INCLUDE_DIRECTO
 mc2_height_slice(camera_world_lights mclib/camera.h
     "long addWorldLight (" "glm::vec3 getScreenRes (")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_world_lights.inc" CONTENT "${camera_world_lights}")
+mc2_height_slice(camera_lighting mclib/camera.cpp
+    "mc2::lighting::LightingState Camera::lightMembers() const" "void Camera::flatLight(")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_lighting.inc" CONTENT "${camera_lighting}")
+mc2_height_slice(camera_save_colors mclib/camera.cpp
+    "file->writeIdUChar( \"LightRed\"" "\tif (terrainShadowColorEnabled)")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_save_colors.inc" CONTENT "${camera_save_colors}")
+mc2_height_slice(camera_sun_direction mclib/camera_update.cpp
+    "glm::vec3 Camera::sunDirectionFor (" "long Camera::update (")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_sun_direction.inc" CONTENT "${camera_sun_direction}")
+mc2_height_slice(camera_daylight mclib/camera_daylight.cpp
+    "float Camera::setDaylightFraction (" "void Camera::updateLetterboxAndFade (")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_daylight.inc" CONTENT "${camera_daylight}")
+mc2_height_slice(camera_tod_init mclib/camera.cpp
+    "void Camera::initTimeOfDay(" "mc2::lighting::LightingState Camera::lightMembers() const")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_tod_init.inc" CONTENT "${camera_tod_init}")
+mc2_height_slice(camera_clock_save mclib/camera.cpp
+    "struct ClockSave {" "\tif (todCurve && mc2_diag::tagRequested(\"TOD\"))")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_clock_save.inc" CONTENT "${camera_clock_save}")
+set_source_files_properties(test_lighting_state.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 mc2_height_slice(camera_release_object code/simplecamera.cpp
     "void SimpleCamera::releaseObject()" "SimpleCamera::~SimpleCamera()")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_release_object.inc" CONTENT "${camera_release_object}")
