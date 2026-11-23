@@ -89,13 +89,13 @@ shaders/vulkan/terrain_tier1.frag::GBuffer1 = vec4(gbufN * 0.5 + 0.5, 1.0);
 # motion_vectors.frag (reactive mask).
 shaders/vulkan/water_geom.frag::GBuffer1 = vec4(0.5, 0.5, 1.0, 0.875);
 
-# WATER, diagnostic early-outs only (five sites, one key; added 46ef891c9 / 425ea36dc, 11-17):
-# F.debug.x modes 6/7, the kWaterDbgPass 1/2 attribution pass and the kReflectionCoverage measurement
-# variants. None runs on a shipped path: debug modes are dev-only, kWaterDbgPass/kReflectionCoverage are
-# spec constants that only the water attribution/coverage sweeps set. a = 0.0 marks the pixel as not water
-# and not own-shadow (below every >0.5 consumer threshold), which is the honest value for a debug colour.
-# No GL counterpart (Vulkan-only debug views). Adjudicated by the orchestrator 2026-11-23 after the PC
-# nightly contracts stage went red on it.
+# WATER, diagnostic and reflection-mask early-outs (five sites, one expression key):
+# F.debug.x modes 6/7 and kWaterDbgPass 1/2 are diagnostic paths. maskCoverage sets
+# kReflectionCoverage=1 unconditionally and runs on every reflection frame. Its location 1
+# is VK_FORMAT_UNDEFINED with write mask 0, so this output cannot modify an attachment.
+# For diagnostic colours, alpha 0 marks the pixel as neither water nor own-shadow.
+# The census supports only file::expression keys, not a narrower branch/site match.
+# Vulkan-only; comment correction awaiting orchestrator adjudication.
 shaders/vulkan/water_geom.frag::GBuffer1 = vec4(0.0);
 
 # TERRAIN, CSM debug early-outs (uT.csmDebugMode 1..8, eight sites collapsing to
