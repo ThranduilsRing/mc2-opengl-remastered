@@ -49,7 +49,7 @@ audio_music_stream: GameOS/gameos/music_stream.h GameOS/gameos/gameos_music_cach
 vk_pipeline_infra: GameOS RenderCore shaders scripts/check-vk-submit-funnel.sh
 render_no_update: code mclib GameAdapters scripts/check-render-no-update.py scripts/tests/test_check_render_no_update.py
 vulkan_bindings: GameOS RenderCore shaders scripts/check-vulkan-bindings.py scripts/tests/test_native_binding_contracts.py
-vk_shaders_compile: shaders GameOS RenderCore tools/check_vk_shaders.py tools/shader_offline_build tools/shader_reflect tools/gpu_abi_gen.py scripts/tests/test_window_emission.py scripts/tests/test_sdr_output.py scripts/tests/fixtures/postprocess_visual_sdr.frag
+vk_shaders_compile: shaders GameOS RenderCore tools/check_vk_shaders.py tools/shader_offline_build tools/shader_reflect tools/gpu_abi_gen.py scripts/tests/test_window_emission.py
 bookmark_honesty: tests/visual tools/visual_verify scripts/check-visual-bookmark-honesty.py
 delivery_installs: scripts/deploy_payload.py scripts/make-isolated-deploy.py scripts/check-delivery.py release_assets release_assets_src tools/fs_links.py
 split_path_contracts: @CPP tools/split scripts/check-split-path-contracts.py

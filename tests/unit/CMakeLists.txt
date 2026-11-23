@@ -41,6 +41,7 @@ add_executable(mc2_tests
     test_battle_value.cpp
     test_mech_feed_ready.cpp
     test_cloud_threshold_band.cpp
+    test_sdr_output.cpp
     test_hdr_output.cpp
     test_surface_format.cpp
     test_mech_motion_history.cpp
