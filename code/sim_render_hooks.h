@@ -9,6 +9,8 @@
 namespace mc2::sim {
 
 struct RenderHooks {
+	void (*advanceTimeOfDay)() = nullptr; // one sim tick; live light publication runs on Main
+	bool (*liveLighting)() = nullptr;    // live member writes cannot overlap rendering yet
 	// Input read in the update path (dev hotkeys). `key` is a gosEnum_KeyIndex; true when its status is KEY_PRESSED.
 	bool  (*keyPressed)(int key) = nullptr;
 	float (*getTerrainShadowSoftness)() = nullptr;
