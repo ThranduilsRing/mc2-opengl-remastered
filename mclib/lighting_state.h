@@ -97,10 +97,10 @@ inline double advanceTod(const TodCurve& curve, double t, float rate)
 	return std::min(static_cast<double>(curve.keys.back().t), t + static_cast<double>(rate) / 30.0);
 }
 
-inline float restoreTod(const TodCurve& curve, uint32_t hash, float t)
+inline double restoreTod(const TodCurve& curve, uint32_t hash, double t)
 {
 	return hash == curve.hash && std::isfinite(t)
-		? std::clamp(t, curve.keys.front().t, curve.keys.back().t) : curve.start;
+		? std::clamp(t, static_cast<double>(curve.keys.front().t), static_cast<double>(curve.keys.back().t)) : curve.start;
 }
 
 template<class Save>
@@ -108,6 +108,8 @@ inline void saveTod(Save& file, const TodCurve* curve, double t, float rate)
 {
 	if (!curve) return;
 	file.writeIdFloat("TimeOfDay", static_cast<float>(t));
+	// A slow curve can lose multiple sim ticks when the normalized clock is rounded to float.
+	file.writeIdDouble("TimeOfDayDouble", t);
 	file.writeIdFloat("TimeOfDayRate", rate);
 	file.writeIdULong("TodCurveHash", curve->hash);
 }

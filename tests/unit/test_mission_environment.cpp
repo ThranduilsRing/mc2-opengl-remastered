@@ -350,3 +350,11 @@ TEST_CASE("MissionEnvironment/visual_tuning timeOfDay overlay round-trip: the mi
 	CHECK((*other)->keys.size() == 1);
 	CHECK(visualTuning_resolve("mc2_01", {}).timeOfDay.empty());   // no block: Fixed
 }
+
+TEST_CASE("MissionEnvironment/slow long mission float clock exceeds one tick") {
+    const auto src=source(R"({"missions":{"mc2_01":{"timeOfDay":{"start":0.5,"rate":0.00000001,"keys":[{"t":0},{"t":1}]}}}})");
+    const auto curve=mc2::lighting::parseTodCurve(visualTuning_resolve("mc2_01", {src}).timeOfDay);
+    REQUIRE((curve && *curve));
+    const double t=double((*curve)->start)+double((*curve)->rate)*39600;
+    CHECK(std::abs(double(float(t))-t)>double((*curve)->rate)/30);
+}
