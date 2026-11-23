@@ -26,4 +26,4 @@ vec4 hexTileGrad(sampler2DArray tex, float layer, vec2 uv, vec2 dx, vec2 dy, flo
     }
     return clamp(mean + (acc - mean) / sqrt(dot(w, w)), 0.0, 1.0);
 }
-const float HEX_ROT_CLIFF = 0.25;   // rock strata keep their direction: +-45 degrees at most
+const float HEX_ROT_CLIFF = 0.0;   // offset-only on cliffs: rotating the scan turned its horizontal strata diagonal (proof 1, owner bar: cliff look unchanged)
