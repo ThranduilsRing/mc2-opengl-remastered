@@ -1784,7 +1784,7 @@ bool buildSharedImage(EnginePresentVk::Impl& s, uint32_t w, uint32_t h, std::str
     s.encodeFrames.clear(); s.encodeViews.clear();
     s.hdrProofFramebuffer.reset(); s.hdrProofPipe.reset();
     if (s.hdrProof.image) vkImageResourceDestroy(&s.hdrProof, s.dev);
-    s.hdrProofFrame = ~0ull;
+    s.hdrProofReady = false;
     s.encodePipe.reset(); s.encodePass.reset();
     s.encodeLayout.reset(); s.encodePool.reset(); s.encodeDsl.reset(); s.encodeSet = VK_NULL_HANDLE;
     if (s.uiLayer.image) vkImageResourceDestroy(&s.uiLayer, s.dev);
@@ -2191,7 +2191,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     vkCmdEndRenderPass(cc);
     gpuScope.end();
 
-    s.hdrProofFrame = ~0ull;
+    s.hdrProofReady = false;
     if (s.hdrProofPipe && !s.hdrProofDumped) {
         // Both draws sample the identical scene and push constants in one cbuf.
         // Limit proof to the unreconstructed seam so AA/tonemap cannot mask errors.
@@ -2204,11 +2204,12 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
             vkCmdPushConstants(cc, s.compositeLayout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), pc);
             vkCmdDraw(cc, 3, 1, 0, 0);
             vkCmdEndRenderPass(cc);
-            s.hdrProofFrame = g_mc2RenderFrame;
+            // The host advances the frame clock before setCaptureFrame. Readiness
+            // travels with compositePending, not either side of that clock seam.
+            s.hdrProofReady = true;
         } else {
-            static bool warned = false;
-            if (!warned) plog("HDR proof requires spatial/temporal AA off, render scale 1, tonemap 0, view mode 0");
-            warned = true;
+            if (!s.hdrProofSkipped) plog("[HDR_PROOF v1] skipped reason=incompatible_render_settings aa=%d tonemap=%d view=%d scaled=%d up=%d", requestedAA, tonemapMode, viewMode, scaled, static_cast<bool>(up));
+            s.hdrProofSkipped = true;
         }
     }
 
@@ -2760,7 +2761,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     }
     gpuprof::frameEndSubmitted();
     s.spatialAA.submitted();
-    if (verifyReadback || (s.hdrProofFrame != ~0ull && !s.hdrProofDumped &&
+    if (verifyReadback || (!mc2::gate::str<"MC2_HDR_PROOF_DUMP">().empty() && !s.hdrProofDumped &&
             s.captureFrame >= static_cast<uint64_t>(std::max(0, mc2::gate::get<"MC2_VK_PRESENT_DUMP_FRAME">())))) verifyReadbackContent();
     ++health_.present_frames;
 
@@ -2919,6 +2920,12 @@ void EnginePresentVk::verifyReadbackContent() {
     // First-five-frame proofs need consecutive images. Normal readbacks stay
     // asynchronous; this explicit capture mode retires each copy in its frame.
     const bool consecutive = mc2::gate::get<"MC2_SCREENSHOT_AT_FRAME">() == -5 && gos::screenshot::pending();
+    auto skipProof = [&](std::string_view reason) {
+        if (!mc2::gate::str<"MC2_HDR_PROOF_DUMP">().empty() && !s.hdrProofSkipped) {
+            plog("[HDR_PROOF v1] skipped reason=%.*s frame=%u", static_cast<int>(reason.size()), reason.data(), s.captureFrame);
+            s.hdrProofSkipped = true;
+        }
+    };
 
     // ---- consume the outstanding request, if its copy has finished ----
     auto consume = [&](const unsigned char* px, uint32_t rw, uint32_t rh, uint64_t readbackTag) {
@@ -2967,7 +2974,8 @@ void EnginePresentVk::verifyReadbackContent() {
                     ok = fclose(ppm) == 0 && ok;
                 }
                 s.hdrProofDumped = ok;
-                plog("HDR same-frame proof prefix=%s width=%u height=%u frame=%llu complete=%d", prefix.c_str(), rw, rh, static_cast<unsigned long long>(readbackTag), ok);
+                if (ok) plog("[HDR_PROOF v1] written prefix=%s width=%u height=%u frame=%llu", prefix.c_str(), rw, rh, static_cast<unsigned long long>(readbackTag));
+                else skipProof("file_write_failed");
             }
             px = preview.data(); // common RGBA8 delivery, checksum and PPM path
         }
@@ -3046,6 +3054,7 @@ void EnginePresentVk::verifyReadbackContent() {
             ctx.readbacks().release(ctx, s.readbackToken);
             s.readbackToken = {};
         } else if (stale) {
+            if (s.readbackProof) skipProof("readback_stale");
             s.readbackToken = {};   // recycled or for another frame: discarded, never used
         } else {
             return;                 // still in flight
@@ -3054,18 +3063,24 @@ void EnginePresentVk::verifyReadbackContent() {
 
     // ---- request the next one ----
     const uint32_t rw = s.imgW, rh = s.imgH;
-    const bool proof = s.hdr && !s.hdrProofDumped && s.hdrProofFrame == s.captureFrame &&
+    const bool proofDue = !mc2::gate::str<"MC2_HDR_PROOF_DUMP">().empty() && !s.hdrProofDumped &&
         s.captureFrame >= static_cast<uint64_t>(std::max(0, mc2::gate::get<"MC2_VK_PRESENT_DUMP_FRAME">()));
+    if (proofDue && !s.hdrProofRequested) {
+        plog("[HDR_PROOF v1] requested frame=%u ready=%d hdr=%d", s.captureFrame, s.hdrProofReady, s.hdr);
+        s.hdrProofRequested = true;
+    }
+    const bool proof = proofDue && s.hdr && s.hdrProofReady;
+    if (proofDue && !proof) skipProof(s.hdr ? "composite_not_ready" : "hdr_inactive");
     const VkDeviceSize needed = static_cast<VkDeviceSize>(rw) * rh * (s.hdr ? (proof ? 20u : 12u) : 4u);
-    if (needed == 0) return;
+    if (needed == 0) { if (proof) skipProof("empty_extent"); return; }
     const uint64_t tag = s.captureFrame;
     VkBuffer dst = VK_NULL_HANDLE;
     const mc2vk::ReadbackToken tok = ctx.readbacks().request(ctx, needed, tag, &dst);
-    if (!tok) return;
+    if (!tok) { if (proof) skipProof("readback_slot_unavailable"); return; }
     if (!s.readbackCbuf) {
         VkCommandBufferAllocateInfo cai{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
         cai.commandPool = s.cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
-        if (vkAllocateCommandBuffers(s.dev, &cai, &s.readbackCbuf) != VK_SUCCESS) { ctx.readbacks().release(ctx, tok); return; }
+        if (vkAllocateCommandBuffers(s.dev, &cai, &s.readbackCbuf) != VK_SUCCESS) { if (proof) skipProof("command_buffer_allocation_failed"); ctx.readbacks().release(ctx, tok); return; }
     }
     vkResetCommandPool(s.dev, s.cpool.get(), 0);   // cpool holds only readbackCbuf
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
@@ -3119,7 +3134,7 @@ void EnginePresentVk::verifyReadbackContent() {
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     si.commandBufferCount = 1; si.pCommandBuffers = &s.readbackCbuf;
     uint64_t value = 0;
-    if (ctx.submit(si, VK_NULL_HANDLE, &value) != VK_SUCCESS) { ctx.readbacks().release(ctx, tok); return; }
+    if (ctx.submit(si, VK_NULL_HANDLE, &value) != VK_SUCCESS) { if (proof) skipProof("readback_submit_failed"); ctx.readbacks().release(ctx, tok); return; }
     ctx.readbacks().seal(tok, mc2vk::GpuTicket{value, 0});
     s.readbackToken = tok;
     s.readbackTag = tag;

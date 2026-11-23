@@ -84,7 +84,8 @@ struct EnginePresentVk::Impl {
     VkImageResource hdrProof{};
     mc2vk::OwnedFramebuffer hdrProofFramebuffer;
     mc2vk::OwnedPipeline hdrProofPipe;
-    uint64_t hdrProofFrame = ~0ull;
+    bool hdrProofReady = false;
+    bool hdrProofRequested = false, hdrProofSkipped = false;
     bool hdrProofDumped = false, readbackProof = false;
     float paperNits = 200.0f, peakNits = 1000.0f;
     VkImageResource uiLayer{}, hdrOffscreen{};
