@@ -244,7 +244,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                                                              static_cast<uint32_t>(std::min(u.w, u.h)))) continue;
             const size_t n = mc2::vegetation::fillEnclosedGlassHoles(layerTexels[k], cpuArray.width, cpuArray.height,
                                                                      static_cast<uint32_t>(u.w), static_cast<uint32_t>(u.h));
-            if (n) mc2::fmt::print_err("[PROP_GLASS v1] group={} layer={:d} texels={:d}\n", group == 0u ? "off" : "on", mc2::fmt::as_i32(plan.layer[members[k]]), mc2::fmt::as_u64(n));
+            if (n && mc2_diag::tagRequested("PROP_GLASS")) mc2::fmt::print_err("[PROP_GLASS v1] group={} layer={:d} texels={:d}\n", group == 0u ? "off" : "on", mc2::fmt::as_i32(plan.layer[members[k]]), mc2::fmt::as_u64(n));
         }
         std::vector<float> keepCoverage(members.size(), -1.0f);
         if (group == 1u)
