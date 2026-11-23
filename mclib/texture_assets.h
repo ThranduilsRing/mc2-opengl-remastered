@@ -20,7 +20,9 @@ struct StockPbrTextures {
     mc2::TextureRef normal, orm;
     std::string albedo;
 };
-std::string stockPbrOverride(std::string_view legacy, bool vehicle, StockPbrTextures& maps);
+std::string stockPbrOverride(std::string_view legacy, bool vehicle, StockPbrTextures& maps, bool stockMesh = true);
+// True when every named asset (mesh/INI paths) is served by the stock install, not a mod or a user archive.
+bool stockMeshAssets(std::initializer_list<std::string_view> paths);
 // The <source>.ktx2 sidecar, unless the source comes from a higher-priority provider (a mod TGA beats a base KTX).
 std::optional<RenderCore::KtxImage> loadCookedSidecar(std::string_view source);
 void flushSources(bool all);
