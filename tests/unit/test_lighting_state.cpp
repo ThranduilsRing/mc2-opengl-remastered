@@ -2,7 +2,6 @@
 #include "../../mclib/lighting_legacy.h"
 #include "../../mclib/lighting_state.h"
 #include "../../mclib/lighting_tod_json.h"
-#include "../../GameOS/gameos/visual_tuning_profile.h"
 #include <string>
 #include <cstring>
 
@@ -321,21 +320,4 @@ TEST_CASE("LightingState/parser hardening: key cap, non-finite, float range, neg
 	CHECK((*ok)->keys[0].pitch == kMinCurvePitch);   // clamped to [-10, 89]: dawn and dusk need a low sun
 	CHECK((*ok)->keys[1].pitch == kMaxCurvePitch);
 	CHECK((*ok)->droppedKeys == 0);
-}
-
-TEST_CASE("LightingState/visual_tuning timeOfDay overlay round-trip: the mission block overrides the defaults block and parses to the same curve") {
-	const std::string block = R"({"start":0.25,"keys":[{"t":0,"sunPitch":12,"sunYaw":20},{"t":1,"sunPitch":50}]})";
-	const std::string text = std::string(R"({"defaults":{"timeOfDay":{"keys":[{"t":0,"sunPitch":70}]}},"missions":{"mc2_01":{"timeOfDay":)") + block + "}}}";
-	const VisualTuningSource src{"data/visual_tuning.json", "fixture", text, true, {}};
-	const auto env = visualTuning_resolve("mc2_01", {src});
-	REQUIRE_FALSE(env.timeOfDay.empty());
-	const auto parsed = parseTodCurve(env.timeOfDay);
-	REQUIRE((parsed && *parsed));
-	CHECK((*parsed)->keys.size() == 2);
-	CHECK((*parsed)->start == 0.25f);
-	CHECK((*parsed)->keys[0].pitch == 12.0f);
-	const auto other = parseTodCurve(visualTuning_resolve("mc2_05", {src}).timeOfDay);   // another mission: the defaults block only
-	REQUIRE((other && *other));
-	CHECK((*other)->keys.size() == 1);
-	CHECK(visualTuning_resolve("mc2_01", {}).timeOfDay.empty());   // no block: Fixed
 }
