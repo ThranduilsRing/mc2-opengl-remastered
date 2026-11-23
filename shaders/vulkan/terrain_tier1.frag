@@ -268,6 +268,18 @@ void main() {
             bool cementOwnAlpha = (cw & 0x00800000u) != 0u;
             if (isTransition && cementOwnAlpha) {
                 float cOwnA = cementTexel.a;
+                // CEMENT-EDGE-SOFT-1: the atlas coverage is a texel-stepped mask, so a pad edge magnified past ~1 texel/pixel read as a
+                // sawtooth. Rebuild a smooth field from a 3x3 blur one texel wide and re-cut it; the edge stays where the art puts it.
+                {
+                    vec2 cTexel = 1.0 / vec2(textureSize(u_cementArt, 0).xy);
+                    float cSum = 0.0;
+                    for (int j = -1; j <= 1; ++j)
+                        for (int i = -1; i <= 1; ++i) {
+                            vec2 tap = clamp(cTileUV + vec2(i, j) * cTexel, 0.5 * cTexel, 1.0 - 0.5 * cTexel);   // clamp: no wrap to the far edge of the tile
+                            cSum += textureGrad(u_cementArt, vec3(tap, float(cLayerIdx)), cGx, cGy).a * (i == 0 && j == 0 ? 2.0 : 1.0);
+                        }
+                    cOwnA = smoothstep(0.2, 0.8, cSum / 10.0);
+                }
                 base = mix(base, cementColor, cOwnA);
                 if (cOwnA > 0.5) { cementHit = true; pureConcrete = true; }
             } else if (isTransition) {
