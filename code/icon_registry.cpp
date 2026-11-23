@@ -118,6 +118,12 @@ void collect(mc2::czstring key, void* data) {
         static_cast<std::set<std::string>*>(data)->insert(std::move(path));
 }
 
+void collectStrip(mc2::czstring key, void* data) {
+    const auto path = canonical(key);
+    if (path.starts_with("data/art/") && path.ends_with(".tga") && path.find('/', 9) == std::string::npos && path.find("_hud_") != std::string::npos)
+        static_cast<std::set<std::string>*>(data)->insert(path);
+}
+
 // LookupModPriority falls back to _access() for a path no mod owns: once per portrait per frame was a disk probe each.
 // The rank of a legacy sheet is cached until the VFS index changes (mod reload / rebuild) or the registry shuts down.
 int cachedSheetRank(std::string_view sheet) {
@@ -211,14 +217,6 @@ void init(std::string first = {}, int cw = 25, int ch = 30) {
         }
         if (!src.data.empty() && registry.add(key, src.w, src.h, src.data)) {
             namedPriority[key] = priority;
-            // A mod's grey silhouette is drawn like stock's blue HUD art, not tinted by the orange card animation.
-            const bool mono = std::ranges::all_of(src.data, [](uint32_t p) { return ((p >> 16) & 255) == ((p >> 8) & 255) && ((p >> 8) & 255) == (p & 255); });
-            if (key.starts_with("mech/") && mono && priority < 999998) {
-                auto blue = src.data;
-                for (auto& p : blue) p = (p & 0xff000000u) | (((p >> 16) & 255) * 110 / 255) << 16 | (((p >> 8) & 255) * 170 / 255) << 8 | ((p & 255) * 225 / 255);
-                const std::string blueKey = "monohud/" + key.substr(5);
-                if (registry.add(blueKey, src.w, src.h, blue)) namedPriority[blueKey] = priority;
-            }
         } else if (raw) cacheable = false;
       }
       if (!cacheHit && cacheable) {
@@ -228,6 +226,27 @@ void init(std::string first = {}, int cw = 25, int ch = 30) {
             return !key.starts_with("hud/") && !key.starts_with("pilot/");
         });
         mc2cache::writeEntry(cacheDir, iconDecodeKind, decodeKey, encodeIcons(registry, rawRanks, decodeKey));
+      }
+    }
+    // Package chassis (BT2018) ship the recooked HUD strips <stem>_hud_<W>x<H>.tga (tools/bt2018_mechs/render_icons.py): row 0 is the
+    // front view in the stock tone mix. They are the logistics icon for the tier whose HUD cell has that size.
+    { std::set<std::string> strips;
+      for (std::filesystem::directory_iterator it("data/art", ec), end; !ec && it != end; it.increment(ec))
+          if (it->is_regular_file()) collectStrip(it->path().generic_string().c_str(), &strips);
+      EnumerateModFiles("data/art/", collectStrip, &strips);
+      for (const auto& path : strips) {
+        const auto sizeAt = path.rfind("_hud_");
+        const std::string stem = path.substr(9, sizeAt - 9), size = path.substr(sizeAt + 5, path.size() - sizeAt - 9);
+        for (int width : {640, 800, 1024}) {
+            const auto hud = hudIconSource(width, width);
+            if (std::format("{}x{}", hud.width, hud.height) != size) continue;
+            auto src = load(path, true);
+            if (src.data.empty() || src.h < 2) continue;
+            src.data.resize(static_cast<size_t>(src.w) * (src.h / 2));   // row 0 = front view
+            const std::string key = std::format("hud/{}/front/{}", std::filesystem::path(hud.sheet).stem().string(), stem);
+            const int priority = LookupModPriority(path.c_str());
+            if (registry.add(key, src.w, src.h / 2, src.data)) namedPriority[key] = priority;
+        }
       }
     }
     mc2::fmt::print_out("[ICON_DECODE_CACHE] {} key={:016x} sources={}\n", cacheHit ? "hit" : "miss", decodeKey, loose.size());
@@ -302,14 +321,14 @@ bool apply(aObject& widget, const aObject& source, long index, const Subject& su
         const auto hud = hudIconSource(Environment.drawableWidth, Environment.screenWidth, vehicle);
         return std::format("hud/{}/front/{}", std::filesystem::path(hud.sheet).stem().string(), stem);
     };
-    query.hud = {"hud/front/" + query.stem, tiered(query.stem, false), tiered(query.stem, true), "monohud/" + query.stem, "monohud/" + query.name};
+    query.hud = {"hud/front/" + query.stem, tiered(query.stem, false), tiered(query.stem, true)};
     auto pick = registry.select(namedPriority, query);
     const Icon* icon = pick.icon;
     // A chassis is one chassis whichever source owns its CSV: an MCO Atlas uses stock's Atlas art, an MCO Crab the bt2018 Crab.
     // Match by chassis name across sources, never by VFS rank, before any generic fallback.
     const auto byChassis = [&](std::string_view base) -> const Icon* {
         const std::string chassis(base);
-        for (const auto& key : {"hud/front/" + chassis, tiered(base, false), tiered(base, true), "monohud/" + chassis, "monohud/bt2018_" + chassis})
+        for (const auto& key : {"hud/front/" + chassis, tiered(base, false), tiered(base, true), tiered("bt2018_" + chassis, false), tiered("bt2018_" + chassis, true)})
             if (const Icon* found = registry.find(key)) return found;
         return nullptr;
     };
