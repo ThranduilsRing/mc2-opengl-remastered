@@ -49,3 +49,35 @@ def test_frame_encode_reads_are_guarded_with_sdr_fallback():
     assert "static bool logged" in body(frame, "if (s.hdr && !encodeReady)")
     assert re.search(r"if \(encodeReady\).*?\} else \{.*?vkCmdBlitImage", frame, re.S)
     assert "encodeReady ? VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT : VK_PIPELINE_STAGE_2_TRANSFER_BIT" in frame
+
+
+def test_windows_hdr_query_is_shared_cached_and_refreshed_at_toggle():
+    source = SOURCE.read_text(encoding="utf-8")
+    query = body(source, "void queryDisplayHdr(")
+    assert "!refresh && s.hdrPeakCached && s.hdrPeakMonitor == monitor" in query
+    assert "s.windowsHdr = WindowsHdrState::Unknown" in query
+    assert "desc.Monitor == monitor" in query
+    assert "windowsHdrFromColorSpace(static_cast<uint32_t>(desc.ColorSpace), true)" in query
+    assert "s.hdrPeakCached = s.windowsHdr != WindowsHdrState::Unknown" in query
+    assert source.count("GetDesc1(") == 1
+    build = body(source, "bool buildSwapchain(")
+    assert build.index("queryDisplayHdr(s, true)") < build.index("decideHdr(")
+    assert "s.windowsHdr, surfaceOffersHdr" in build
+    frame = body(source, "bool EnginePresentVk::presentFrameBody(")
+    assert "displayChanged.exchange(false, std::memory_order_relaxed)" in frame
+    assert "SDL_GetTicks64() - s.hdrQueryTicks >= 500" in frame
+    assert "if (changed && previous == VK_SUCCESS) previous = VK_SUBOPTIMAL_KHR" in frame
+    assert frame.index("queryDisplayHdr(s, true)") < frame.index("decideHdr(")
+    assert frame.count("queryDisplayHdr(") == 1
+    assert "s.sharedImg.format != s.presentFmt" in frame
+    assert "!buildSharedImage(s, drawableW, drawableH, reason) || !prewarmPipelines()" in frame
+
+
+def test_display_notifications_reach_worker_before_focus_filter():
+    source = (SOURCE.parent / "gameosmain.cpp").read_text(encoding="utf-8")
+    pump = body(source, "void process_events(")
+    for trigger in ("SDL_DISPLAYEVENT", "SDL_WINDOWEVENT_MOVED", "SDL_WINDOWEVENT_DISPLAY_CHANGED"):
+        assert trigger in pump
+    assert "SDL_SetWindowsMessageHook(displayMessageHook, nullptr)" in pump
+    assert "if (message == WM_DISPLAYCHANGE) mc2vk::notifyDisplayChanged()" in source
+    assert pump.index("mc2vk::notifyDisplayChanged()") < pump.index("if (g_focus_lost")

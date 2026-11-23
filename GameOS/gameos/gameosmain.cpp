@@ -123,6 +123,9 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 #endif
 
 #include <SDL2/SDL.h>
+#ifdef _WIN32
+#include <SDL2/SDL_system.h>
+#endif
 #include "gos_input.h"
 
 #include "utils/color_utils.h"
@@ -361,12 +364,28 @@ static void handle_key_down( SDL_Keysym* keysym ) {
     }
 }
 
+#if defined(_WIN32) && defined(MC2_VULKAN)
+static void SDLCALL displayMessageHook(void*, void*, unsigned int message, Uint64, Sint64) {
+    if (message == WM_DISPLAYCHANGE) mc2vk::notifyDisplayChanged();
+}
+#endif
+
 void process_events( void ) {
 
     input::beginUpdateMouseState();
 
+#if defined(_WIN32) && defined(MC2_VULKAN)
+    SDL_SetWindowsMessageHook(displayMessageHook, nullptr);
+#endif
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
+#ifdef MC2_VULKAN
+        // Observe display notifications before the unfocused-input filter.
+        const bool displayChange = event.type == SDL_DISPLAYEVENT ||
+            (event.type == SDL_WINDOWEVENT && (event.window.event == SDL_WINDOWEVENT_MOVED ||
+                                              event.window.event == SDL_WINDOWEVENT_DISPLAY_CHANGED));
+        if (displayChange) mc2vk::notifyDisplayChanged();
+#endif
 #ifdef MC2_IMGUI
         if (g_imguiInitialized) {
             ImGui_ImplSDL2_ProcessEvent(&event);

@@ -15,6 +15,8 @@ struct SDL_Window;
 struct ImDrawData;
 
 namespace mc2vk {
+// Main event pump signals the present worker; no Vulkan work on the pump thread.
+void notifyDisplayChanged();
 
 class VulkanContext;
 

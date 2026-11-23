@@ -1,5 +1,6 @@
 #include "../../RenderCore/TextureService.h"
 #include <algorithm>
+#include <atomic>
 #include "engine_present_vk.h"
 #include "hud_command_merge.h"
 #include "hud_texture_mips.h"
@@ -66,6 +67,8 @@ extern uint32_t g_mc2RenderFrame;
 extern uint32_t g_mc2FxFireCaptureFrame;
 
 namespace mc2vk {
+namespace { std::atomic<bool> displayChanged{false}; }
+void notifyDisplayChanged() { displayChanged.store(true, std::memory_order_relaxed); }
 namespace {
 void plog(const char* fmt, ...) {
     mc2::fmt::print_err("[VK_PRESENT] ");
@@ -233,22 +236,25 @@ void destroySwapchainOnly(EnginePresentVk::Impl& s) {
     s.swapchain.reset();
 }
 
-float displayPeakNits(EnginePresentVk::Impl& s) {
-    float peak = 1000.0f;
+void queryDisplayHdr(EnginePresentVk::Impl& s, bool refresh = false) {
 #ifdef _WIN32
     SDL_SysWMinfo wm; SDL_VERSION(&wm.version);
     SDL_Window* window = s.outputWindow;
-    if (!window || !SDL_GetWindowWMInfo(window, &wm) || wm.subsystem != SDL_SYSWM_WINDOWS) return peak;
+    if (!window || !SDL_GetWindowWMInfo(window, &wm) || wm.subsystem != SDL_SYSWM_WINDOWS) {
+        s.hdrPeakCached = false;
+        s.windowsHdr = WindowsHdrState::Unknown;
+        s.hdrDisplayPeak = 1000.0f;
+        return;
+    }
     const HMONITOR monitor = MonitorFromWindow(wm.info.win.window, MONITOR_DEFAULTTONEAREST);
-    if (s.hdrPeakCached && s.hdrPeakMonitor == monitor && s.hdrPeakActive == s.hdr)
-        return s.hdrDisplayPeak;
+    if (!refresh && s.hdrPeakCached && s.hdrPeakMonitor == monitor) return;
     s.hdrPeakMonitor = monitor;
-    s.hdrPeakActive = s.hdr;
-    s.hdrPeakCached = true;
-    s.hdrDisplayPeak = peak;
-    if (!s.hdr) return peak;
+    s.hdrPeakCached = false;
+    s.hdrQueryTicks = SDL_GetTicks64();
+    s.hdrDisplayPeak = 1000.0f;
+    s.windowsHdr = WindowsHdrState::Unknown;
     HMODULE dll = LoadLibraryW(L"dxgi.dll");
-    if (!dll) return peak;
+    if (!dll) return;
     {
         using Microsoft::WRL::ComPtr;
         using CreateFactory = HRESULT (WINAPI*)(REFIID, void**);
@@ -264,16 +270,18 @@ float displayPeakNits(EnginePresentVk::Impl& s) {
                     ComPtr<IDXGIOutput6> output6;
                     DXGI_OUTPUT_DESC1 desc{};
                     if (SUCCEEDED(output.As(&output6)) && SUCCEEDED(output6->GetDesc1(&desc)) &&
-                        desc.Monitor == monitor && std::isfinite(desc.MaxLuminance) && desc.MaxLuminance > 0.0f)
-                        peak = desc.MaxLuminance;
+                        desc.Monitor == monitor) {
+                        s.windowsHdr = windowsHdrFromColorSpace(static_cast<uint32_t>(desc.ColorSpace), true);
+                        s.hdrPeakCached = s.windowsHdr != WindowsHdrState::Unknown;
+                        if (std::isfinite(desc.MaxLuminance) && desc.MaxLuminance > 0.0f)
+                            s.hdrDisplayPeak = desc.MaxLuminance;
+                    }
                 }
             }
         }
     }
     FreeLibrary(dll);
-    s.hdrDisplayPeak = peak;
 #endif
-    return peak;
 }
 
 void logHdrCaps(EnginePresentVk::Impl& s, const std::vector<VkSurfaceFormatKHR>& formats, VkSurfaceFormatKHR actual) {
@@ -281,12 +289,13 @@ void logHdrCaps(EnginePresentVk::Impl& s, const std::vector<VkSurfaceFormatKHR>&
     const auto& options = mc2::options::current();
     const auto candidate = chooseSurfaceFormat(formats, options.hdrOutput == 0);
     s.paperNits = options.hdrPaperWhiteNits;
-    const float peak = options.hdrPeakNits > 0.0f ? options.hdrPeakNits : displayPeakNits(s);
+    const float peak = options.hdrPeakNits > 0.0f ? options.hdrPeakNits : s.hdrDisplayPeak;
     s.peakNits = std::max(s.paperNits, peak);
-    mc2::fmt::print_err("[HDR_OUTPUT v1] policy={} colorspace_ext={} metadata_ext={} offscreen={} active={} format={} colorspace={} would_format={} would_colorspace={} paper_nits={} peak_nits={} present_format={}\n",
+    mc2::fmt::print_err("[HDR_OUTPUT v1] policy={} colorspace_ext={} metadata_ext={} offscreen={} active={} format={} colorspace={} would_format={} would_colorspace={} paper_nits={} peak_nits={} present_format={} windows_hdr={}\n",
         options.hdrOutput == 0 ? "Auto" : "Off", s.ctx->swapchainColorspaceEnabled(), s.ctx->hdrMetadataEnabled(), s.offscreen,
         s.hdr ? "HDR" : "SDR", static_cast<int>(actual.format), static_cast<int>(actual.colorSpace), static_cast<int>(candidate.format), static_cast<int>(candidate.colorSpace),
-        options.hdrPaperWhiteNits, peak, static_cast<int>(s.presentFmt));
+        options.hdrPaperWhiteNits, peak, static_cast<int>(s.presentFmt),
+        s.windowsHdr == WindowsHdrState::On ? "1" : s.windowsHdr == WindowsHdrState::Off ? "0" : "unknown");
 }
 
 bool buildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
@@ -295,12 +304,13 @@ bool buildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
     s.encodeViews.clear();
     const auto& options = mc2::options::current();
     const bool force = mc2::gate::get<"MC2_HDR_FORCE">();
-    const bool wantHdr = force || (options.hdrOutput == 0 && !s.offscreen && !gos_NoUserPresentRequested());
+    queryDisplayHdr(s, true);
+    const bool wantHdr = decideHdr(options.hdrOutput, force, s.offscreen || gos_NoUserPresentRequested(), s.windowsHdr, true);
     if (s.offscreen) {   // one placeholder image index, never touched: the tail skips the blit and the present
-        s.hdr = force;
-        s.scFormat = force ? VK_FORMAT_A2B10G10R10_UNORM_PACK32 : VK_FORMAT_R8G8B8A8_UNORM;
-        s.scColorSpace = force ? VK_COLOR_SPACE_HDR10_ST2084_EXT : VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-        s.presentFmt = force ? VK_FORMAT_R16G16B16A16_SFLOAT : VK_FORMAT_R8G8B8A8_UNORM;
+        s.hdr = wantHdr;
+        s.scFormat = s.hdr ? VK_FORMAT_A2B10G10R10_UNORM_PACK32 : VK_FORMAT_R8G8B8A8_UNORM;
+        s.scColorSpace = s.hdr ? VK_COLOR_SPACE_HDR10_ST2084_EXT : VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+        s.presentFmt = s.hdr ? VK_FORMAT_R16G16B16A16_SFLOAT : VK_FORMAT_R8G8B8A8_UNORM;
         s.scExtent = {w, h};
         s.scImages.assign(1, VK_NULL_HANDLE);
         logHdrCaps(s, {}, {s.scFormat, s.scColorSpace});
@@ -315,8 +325,9 @@ bool buildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
     std::vector<VkSurfaceFormatKHR> fmts(fmtCount);
     if (fmtCount) vkGetPhysicalDeviceSurfaceFormatsKHR(s.phys, s.surface.get(), &fmtCount, fmts.data());
     const auto chosen = chooseSurfaceFormat(fmts, wantHdr);
-    s.hdr = wantHdr && (chosen.colorSpace == VK_COLOR_SPACE_HDR10_ST2084_EXT ||
-                       chosen.colorSpace == VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT);
+    const bool surfaceOffersHdr = chosen.colorSpace == VK_COLOR_SPACE_HDR10_ST2084_EXT ||
+                                  chosen.colorSpace == VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT;
+    s.hdr = decideHdr(options.hdrOutput, force, gos_NoUserPresentRequested(), s.windowsHdr, surfaceOffersHdr) && surfaceOffersHdr;
     s.scColorSpace = chosen.colorSpace;
     s.presentFmt = s.hdr ? VK_FORMAT_R16G16B16A16_SFLOAT : VK_FORMAT_R8G8B8A8_UNORM;
     logHdrCaps(s, fmts, chosen);
@@ -2555,8 +2566,13 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     }
 
     // WSI results are consumed only after main has transferred the next frame.
-    if (s.lastWsiResult != VK_SUCCESS) {
-        const VkResult previous = std::exchange(s.lastWsiResult, VK_SUCCESS);
+    const bool changed = displayChanged.exchange(false, std::memory_order_relaxed);
+    if (changed || s.lastWsiResult != VK_SUCCESS) {
+        VkResult previous = std::exchange(s.lastWsiResult, VK_SUCCESS);
+        if (changed && previous == VK_SUCCESS) previous = VK_SUBOPTIMAL_KHR;
+        if (changed || ((previous == VK_SUBOPTIMAL_KHR || previous == VK_ERROR_OUT_OF_DATE_KHR) &&
+                        SDL_GetTicks64() - s.hdrQueryTicks >= 500))
+            queryDisplayHdr(s, true);   // HDR toggle: refresh desktop mode and luminance before either rebuild path.
         // vk-present-instance 2a: SUBOPTIMAL rebuilds only when the surface extent or transform differs from the chain's; otherwise the
         // chain is still the best the surface offers and a rebuild would loop (a drain per frame). Logged once.
         bool suboptimalOnly = false;
@@ -2572,7 +2588,8 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
                 vkGetPhysicalDeviceSurfaceFormatsKHR(s.phys, s.surface.get(), &count, nullptr);
                 std::vector<VkSurfaceFormatKHR> formats(count);
                 if (count) vkGetPhysicalDeviceSurfaceFormatsKHR(s.phys, s.surface.get(), &count, formats.data());
-                const bool want = mc2::options::current().hdrOutput == 0 && !gos_NoUserPresentRequested();
+                const bool want = decideHdr(mc2::options::current().hdrOutput, mc2::gate::get<"MC2_HDR_FORCE">(),
+                    s.offscreen || gos_NoUserPresentRequested(), s.windowsHdr, true);
                 const auto chosen = chooseSurfaceFormat(formats, want);
                 suboptimalOnly = suboptimalOnly && chosen.format == s.scFormat && chosen.colorSpace == s.scColorSpace;
             }
