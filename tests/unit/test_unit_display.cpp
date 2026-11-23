@@ -275,6 +275,39 @@ TEST_CASE("unit icons: a BT2018-style mod shows its one own icon or the placehol
     CHECK(art.pick("madcat", "mad cat", 3, sheet, 1000000, 0) == cell);
 }
 
+TEST_CASE("unit icons: an unrelated sheet of a lower rank holds no precedence over a dependency chassis' own art") {
+    const std::string sheet = "data/art/mc2x_mechicons.tga";
+    constexpr int active = 0, dependency = 1;
+    Art dep;
+    const auto* cell = dep.cell(sheet, 3);
+    const auto* own = dep.icon("mech/depmech", dependency);
+    const unit_icons::Query query{"depmech", "depmech", sheet, 3, dependency, active, {}};
+    REQUIRE(cell != own);
+    CHECK(dep.registry.select(dep.priority, query).icon == own);
+    CHECK(dep.registry.select(dep.priority, query).own);
+    Art depHud;
+    const auto* ownHud = depHud.icon("hud/front/depmech", dependency);
+    depHud.cell(sheet, 3);
+    const unit_icons::Query hudQuery{"depmech", "depmech", sheet, 3, dependency, active, {"hud/front/depmech"}};
+    CHECK(depHud.registry.select(depHud.priority, hudQuery).icon == ownHud);
+    CHECK(dep.pick("othermech", "othermech", 3, sheet, dependency, active) == nullptr);
+}
+
+TEST_CASE("unit icons: a dependency's chassis keeps its authored-name icon under the active mod's sheet of the stock "
+          "path, the Exodus/MagicExpansion layering") {
+    const std::string sheet = "data/art/mcui_gn_mechicons.tga";
+    constexpr int active = 0, dependency = 1;
+    const std::string name = unit_icons::canonical(cellAfter(fixture("ryoken.csv"), "MechName"));
+    Art dep;
+    const auto* cell = dep.cell(sheet, 4);
+    const auto* stormCrow = dep.icon("mech/" + name, dependency);
+    const unit_icons::Query query{"ryoken", name, sheet, 4, dependency, active,
+                                  {"hud/front/ryoken", "hud/mcui_high7/front/ryoken", "hud/mcui_high8/front/ryoken"}};
+    REQUIRE(cell != stormCrow);
+    CHECK(dep.registry.select(dep.priority, query).icon == stormCrow);
+    CHECK(dep.registry.select(dep.priority, query).own);
+}
+
 TEST_CASE("unit icons: reassigning a cell's icon never moves the cell") {
     using unit_icons::fitCell;
     using unit_icons::fitWidget;

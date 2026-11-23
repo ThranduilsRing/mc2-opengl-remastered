@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <limits>
 #include <map>
 #include <optional>
 #include <span>
@@ -229,9 +230,10 @@ public:
         const std::string named = here(byName) && !here(stem) ? byName : stem;
         const auto namedRank = rank(named);
         // A stem another source owns names that source's mech, as little this chassis' art as its HUD file is.
-        const bool individual = here(named) && *namedRank <= q.sheetRank;
+        const int sheetRank = sheetServes(q.sheetRank, q.dataRank) ? q.sheetRank : std::numeric_limits<int>::max();
+        const bool individual = here(named) && *namedRank <= sheetRank;
         Pick pick;
-        int bestRank = individual ? *namedRank : q.sheetRank;
+        int bestRank = individual ? *namedRank : sheetRank;
         // Use the HUD front art in the existing logistics rectangle, from the chassis' own source like every
         // other candidate. Unmatched art keeps its old source.
         for (const auto& key : q.hud) {
