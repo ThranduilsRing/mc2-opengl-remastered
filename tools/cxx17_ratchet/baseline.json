@@ -2785,6 +2785,9 @@
   },
   "mclib/inifile_internal.h": {},
   "mclib/inifile_read.cpp": {},
+  "mclib/lighting_legacy.h": {},
+  "mclib/lighting_state.h": {},
+  "mclib/lighting_tod_json.h": {},
   "mclib/loose_asset_priority.h": {},
   "mclib/lz.h": {},
   "mclib/lzcomp.cpp": {},
@@ -3477,7 +3480,7 @@
    "LG20": 1
   }
  },
- "head": "51ec310a9",
+ "head": "21c2351fd",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

@@ -444,7 +444,7 @@ Split commit: `f4c986566`.
 | Piece | What it holds |
 |---|---|
 | `camera.cpp` | keeps the camera globals, init / destroy, the frustum planes and the save / light-colour accessors |
-| `camera_daylight.cpp` | Camera: daylight fraction and sun pitch, HSI colour helpers and the per-frame light update. |
+| `camera_daylight.cpp` | Camera: daylight fraction and sun pitch and the (uncalled) per-frame light update; the colour maths is lighting_legacy.h. |
 | `camera_input.cpp` | Camera: Camera::setPosition, zoom, tilt, rotate, scroll and the input smoothing. |
 | `camera_matrix.cpp` | Camera: the camera transform: activation, orthogonal setup, line of sight, origin, GL matrices and projection constants. |
 | `camera_project.cpp` | Camera: screen-to-world projection: the ground-plane and terrain approximations and inverseProject. |
