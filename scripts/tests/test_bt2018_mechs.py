@@ -888,3 +888,21 @@ def test_skin_pick_rejects_layouts_it_cannot_decode_instead_of_guessing(tmp_path
     g = _bin_glb([dict(mesh="a", mat=0, pos=_verts(3))], [("m1", "OPAQUE", "a-alb.png")])
     g.buffers[0].uri = "data:application/octet-stream;base64," + base64.b64encode(g.binary_blob()).decode()
     assert _pick(g) == "a-alb.tga"                                            # data: buffers decode
+
+
+def test_arm_lift_fix_lowers_a_raised_idle_hand_to_the_cap(tmp_path):
+    """Trigger: scripts/bt2018_retarget_clips.py. Owner 11-23: crab/rifleman/stalker arms up at idle."""
+    pygltflib = pytest.importorskip("pygltflib")
+    import numpy as np
+    from bt2018_retarget_clips import arm_lift_fix, quat_mul, quat_mat, elevation
+    N = pygltflib.Node
+    g = pygltflib.GLTF2(nodes=[N(name="j_LUpperArm", children=[1]), N(name="j_LHand", translation=[1.0, 0, 0])])
+    ident = np.array([0.0, 0.0, 0.0, 1.0])
+    h = np.radians(45) / 2
+    raised = np.array([0.0, 0.0, np.sin(h), np.cos(h)])                  # hand 45 deg above the shoulder
+    idle = [raised, raised]
+    ua, fix = arm_lift_fix(g, {1: 0}, [ident, ident], idle, "L")
+    assert ua == 0
+    hand = quat_mat(quat_mul(fix, raised)) @ [1.0, 0, 0]
+    assert abs(elevation(hand) - (-10.0)) < 0.01                          # cap = bind 0 + 10, clamped to -10
+    assert arm_lift_fix(g, {1: 0}, [ident, ident], [quat_mul(fix, raised)] * 2, "L") is None   # already low: untouched

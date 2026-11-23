@@ -51,6 +51,61 @@ def accessor_view(gltf, blob, acc_idx):
     return arr.reshape(n, 4), base, n
 
 
+ARM_CAP_LO, ARM_CAP_HI, ARM_CAP_MARGIN = -50.0, -10.0, 10.0
+
+
+def quat_mat(q):
+    x, y, z, w = q
+    return np.array([[1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+                     [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+                     [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)]])
+
+
+def elevation(v):
+    return np.degrees(np.arctan2(v[1], np.hypot(v[0], v[2])))
+
+
+def arm_lift_fix(tgt, parent, bind_world, idle_world, side):
+    """World rotation about the shoulder that stops the Atlas ready-idle lifting a hand above a
+    natural ready pose. The Atlas delta raises forearms ~55 deg, so chassis whose bind arms are
+    level or raised end with hands above the shoulder. Cap the idle hand elevation (hand - shoulder)
+    at the chassis' bind elevation + margin, clamped to [-50, -10] deg. One constant rotation,
+    applied to the whole arm subtree of every Atlas clip, so walk/run swing is kept.
+    bind_world/idle_world are per-node world quaternions. Returns (upper_idx, quat) or None."""
+    names = name_to_index(tgt)
+    ua, hand = names.get(f"j_{side}UpperArm"), names.get(f"j_{side}Hand")
+    if ua is None or hand is None:
+        return None
+
+    def positions(wq):
+        cache = {}
+        def m(i):
+            if i not in cache:
+                n = tgt.nodes[i]
+                loc = quat_mul(quat_conj(wq[parent[i]]), wq[i]) if i in parent else wq[i]
+                t = np.eye(4)
+                t[:3, :3] = quat_mat(loc) * np.array(n.scale or [1, 1, 1])
+                t[:3, 3] = n.translation or [0, 0, 0]
+                cache[i] = (m(parent[i]) if i in parent else np.eye(4)) @ t
+            return cache[i]
+        return lambda i: m(i)[:3, 3]
+    pb, pi = positions(bind_world), positions(idle_world)
+    v_bind, v = pb(hand) - pb(ua), pi(hand) - pi(ua)
+    hz = np.array([v[0], 0.0, v[2]])
+    if np.linalg.norm(hz) < 1e-9:
+        return None
+    cap = float(np.clip(elevation(v_bind) + ARM_CAP_MARGIN, ARM_CAP_LO, ARM_CAP_HI))
+    delta = min(elevation(v), cap) - elevation(v)
+    if delta > -1e-6:
+        return None
+    axis = np.cross([0.0, 1.0, 0.0], hz / np.linalg.norm(hz))
+    axis /= np.linalg.norm(axis)
+    # a positive turn about (up x horizontal-dir) lowers the arm, so turn by -delta
+    half = np.radians(-delta) / 2
+    print(f"[retarget] {side} arm idle hand elev {elevation(v):.0f} -> cap {cap:.0f} (bind {elevation(v_bind):.0f})")
+    return ua, np.append(axis * np.sin(half), np.cos(half))
+
+
 def retarget_file(target_path, atlas_path, out_path):
     """Retarget Atlas rotation clips in target_path from the Atlas-skeleton bind
     into target_path's own bind frame; write to out_path. Returns (channels, keys)."""
@@ -76,6 +131,44 @@ def retarget_file(target_path, atlas_path, out_path):
     atl_blob = atl.binary_blob()
     atl_anims = {a.name: a for a in atl.animations}
 
+    def children_of(i):
+        out = [i]
+        for c in tgt.nodes[i].children or []:
+            out += children_of(c)
+        return out
+
+    def make_pose(source_world, fix):
+        posed = {}
+        def target_pose(i):
+            # Model space: the target bone turns in the world exactly as the Atlas bone turns
+            # away from its own bind (Wt = Wa * conj(WaBind) * WtBind). A local-frame copy
+            # rotates arms about the wrong axes wherever clavicle/arm bind frames differ.
+            if i not in posed:
+                bone = tgt.nodes[i].name
+                inherited = target_pose(parent[i]) if i in parent else np.array([0., 0., 0., 1.])
+                posed[i] = (quat_mul(quat_mul(source_world[atl_names[bone]], quat_conj(atlas_world[atl_names[bone]])), target_world[i])
+                    if bone in atl_names else quat_mul(inherited, target_bind[i]))
+                if i in fix:
+                    posed[i] = quat_mul(fix[i], posed[i])
+            return posed[i]
+        return target_pose
+
+    # Arm lift fix from the Atlas ready-idle (first key), shared by every Atlas clip.
+    arm_fix = {}
+    idle = atl_anims.get("atlas_moveCoreIdle")
+    if idle is not None:
+        loc0 = list(atlas_bind)
+        for c in idle.channels:
+            if c.target.path == "rotation":
+                loc0[c.target.node] = accessor_view(atl, atl_blob, idle.samplers[c.sampler].output)[0][0].astype(np.float64)
+        pose0 = make_pose(globals_for(atl, loc0), {})
+        idle_world = [pose0(i) for i in range(len(tgt.nodes))]
+        for side in "LR":
+            r = arm_lift_fix(tgt, parent, target_world, idle_world, side)
+            if r:
+                for i in children_of(r[0]):
+                    arm_fix[i] = r[1]
+
     n_chan = 0
     n_keys = 0
     missing = []
@@ -99,18 +192,7 @@ def retarget_file(target_path, atlas_path, out_path):
                 if np.dot(keys[k-1], keys[k]) < 0: keys[k] *= -1
             q = np.stack([np.interp(grid, times(atl, atl_blob, src, ch), keys[:, k]) for k in range(4)], axis=-1)
             local[ch.target.node] = q / np.linalg.norm(q, axis=-1, keepdims=True)
-        source_world = globals_for(atl, local)
-        posed = {}
-        def target_pose(i):
-            # Model space: the target bone turns in the world exactly as the Atlas bone turns
-            # away from its own bind (Wt = Wa * conj(WaBind) * WtBind). A local-frame copy
-            # rotates arms about the wrong axes wherever clavicle/arm bind frames differ.
-            if i not in posed:
-                bone = tgt.nodes[i].name
-                inherited = target_pose(parent[i]) if i in parent else np.array([0., 0., 0., 1.])
-                posed[i] = (quat_mul(quat_mul(source_world[atl_names[bone]], quat_conj(atlas_world[atl_names[bone]])), target_world[i])
-                    if bone in atl_names else quat_mul(inherited, target_bind[i]))
-            return posed[i]
+        target_pose = make_pose(globals_for(atl, local), arm_fix)
         for ch in anim.channels:
             if ch.target.path != "rotation":
                 continue
