@@ -275,18 +275,14 @@ void note_window_pumped() { s_lastWindowPumpMs.store(SDL_GetTicks64(), std::memo
 static void start_main_stall_watchdog()
 {
     std::thread([] {
-        Uint64 worst = 0;
+        mc2::loadpump::StallWatch watch;
         for (;;) {
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
             const Uint64 last = s_lastWindowPumpMs.load(std::memory_order_relaxed);
-            const Uint64 gap = last ? SDL_GetTicks64() - last : 0;
-            if (gap < 4000 && !worst) continue;
+            const int edge = watch.step(last ? SDL_GetTicks64() - last : 0);
+            if (edge == 0 || !mc2_diag::enabled()) continue;
             char data[96];
-            const bool begin = gap >= 4000;
-            if (begin && worst) { worst = gap; continue; }
-            mc2::fmt::to_buf(data, "{{\"event\":\"{}\",\"gap_ms\":{}}}", begin ? "begin" : "end", begin ? gap : worst);
-            worst = begin ? gap : 0;
-            if (!mc2_diag::enabled()) continue;
+            mc2::fmt::to_buf(data, "{{\"event\":\"{}\",\"gap_ms\":{}}}", edge > 0 ? "begin" : "end", watch.gap);
             mc2_diag::writeEvent("MAIN_STALL", 1, 0, data);
             mc2_diag::flush();
         }
