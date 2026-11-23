@@ -6,8 +6,8 @@
   "specializationParams": [],
   "artifact": "mech.frag.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "45130472ede6c349fb2d3bdb3f6d12182f3e06c61e8cc851e5bf1287fb44eef1",
-  "spirv_sha256": "2eb26b9d419de424f240fefd2137b9836c40ee448fdcab8fa79e813aa48b5804",
+  "source_sha256": "5f3e556871aaa2c550e09c92ee9ddc3c848848fcb2460acc8f0fa3e2454ca050",
+  "spirv_sha256": "41e7085ab36a749f731de1289af54ceee33b3440e876d99bb3ab94f462701c2d",
   "bindings": {
     "ubos": [
       {
@@ -18,21 +18,21 @@
         "binding": 0
       },
       {
-        "type": "_1178",
+        "type": "_1179",
         "name": "MechFrameUBO",
-        "block_size": 288,
+        "block_size": 384,
         "set": 0,
         "binding": 0
       },
       {
-        "type": "_1780",
+        "type": "_1787",
         "name": "EnvironmentUBO",
-        "block_size": 176,
+        "block_size": 288,
         "set": 1,
         "binding": 26
       },
       {
-        "type": "_1787",
+        "type": "_1794",
         "name": "MoverShadowFrame",
         "block_size": 14544,
         "set": 0,
@@ -65,7 +65,7 @@
         "binding": 13
       },
       {
-        "type": "_1795",
+        "type": "_1802",
         "name": "TerrainCementBuf",
         "readonly": true,
         "block_size": 0,
@@ -881,7 +881,7 @@
         }
       ]
     },
-    "_1178": {
+    "_1179": {
       "name": "MechFrameUBO",
       "members": [
         {
@@ -960,10 +960,37 @@
           "type": "mat4",
           "offset": 224,
           "matrix_stride": 16
+        },
+        {
+          "name": "sunAuthFromLive",
+          "type": "vec4",
+          "array": [
+            3
+          ],
+          "array_size_is_literal": [
+            true
+          ],
+          "offset": 288,
+          "array_stride": 16
+        },
+        {
+          "name": "pitchUndo",
+          "type": "vec4",
+          "offset": 336
+        },
+        {
+          "name": "ambRelight",
+          "type": "vec4",
+          "offset": 352
+        },
+        {
+          "name": "sunRelight",
+          "type": "vec4",
+          "offset": 368
         }
       ]
     },
-    "_1780": {
+    "_1787": {
       "name": "EnvironmentUBO",
       "members": [
         {
@@ -987,10 +1014,42 @@
           "name": "sceneLight",
           "type": "vec4",
           "offset": 160
+        },
+        {
+          "name": "sunDirLive",
+          "type": "vec4",
+          "offset": 176
+        },
+        {
+          "name": "sunAuthFromLive",
+          "type": "vec4",
+          "array": [
+            3
+          ],
+          "array_size_is_literal": [
+            true
+          ],
+          "offset": 192,
+          "array_stride": 16
+        },
+        {
+          "name": "pitchUndo",
+          "type": "vec4",
+          "offset": 240
+        },
+        {
+          "name": "ambRelight",
+          "type": "vec4",
+          "offset": 256
+        },
+        {
+          "name": "sunRelight",
+          "type": "vec4",
+          "offset": 272
         }
       ]
     },
-    "_1787": {
+    "_1794": {
       "name": "MoverShadowFrame",
       "members": [
         {
@@ -1038,7 +1097,7 @@
         }
       ]
     },
-    "_1795": {
+    "_1802": {
       "name": "TerrainCementBuf",
       "members": [
         {

@@ -182,7 +182,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/mech_backdrop.frag",
-        "line": 6,
+        "line": 7,
         "role": "MechFrameUBO",
         "std": "std140",
         "type": "uniform",
@@ -194,7 +194,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/mech_depth.frag",
-        "line": 6,
+        "line": 7,
         "role": "MechFrameUBO",
         "std": "std140",
         "type": "uniform",
@@ -206,7 +206,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/mech_depth.vert",
-        "line": 6,
+        "line": 7,
         "role": "MechFrameUBO",
         "std": "std140",
         "type": "uniform",
@@ -228,7 +228,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/mech_tier1.frag",
-        "line": 6,
+        "line": 7,
         "role": "MechFrameUBO",
         "std": "std140",
         "type": "uniform",
@@ -240,7 +240,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/mech_tier1.vert",
-        "line": 6,
+        "line": 7,
         "role": "MechFrameUBO",
         "std": "std140",
         "type": "uniform",
@@ -586,7 +586,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 58,
+        "line": 59,
         "role": "Instances",
         "std": "std430",
         "type": "buffer",
@@ -1143,7 +1143,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 151,
+        "line": 152,
         "role": "uTreeObjectMap",
         "std": null,
         "type": "sampler2DShadow",
@@ -1219,7 +1219,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 147,
+        "line": 148,
         "role": "Compact",
         "std": "std430",
         "type": "buffer",
@@ -1381,7 +1381,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 64,
+        "line": 65,
         "role": "TypeAlbedoLayer",
         "std": "std430",
         "type": "buffer",
@@ -1850,7 +1850,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_decal_tier1.frag",
-        "line": 10,
+        "line": 11,
         "role": "EnvironmentUBO",
         "std": "std140",
         "type": "uniform",
@@ -1863,7 +1863,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_overlay_tier1.frag",
-        "line": 10,
+        "line": 11,
         "role": "EnvironmentUBO",
         "std": "std140",
         "type": "uniform",
@@ -1876,7 +1876,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 10,
+        "line": 11,
         "role": "EnvironmentUBO",
         "std": "std140",
         "type": "uniform",
@@ -2175,7 +2175,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 70,
+        "line": 71,
         "role": "TypeAlbedoLayerOn",
         "std": "std430",
         "type": "buffer",
@@ -2387,7 +2387,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 104,
+        "line": 105,
         "role": "TypeHotColors",
         "std": "std430",
         "type": "buffer",
@@ -2987,7 +2987,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 10,
+        "line": 11,
         "role": "EnvironmentUBO",
         "std": "std140",
         "type": "uniform",
@@ -3000,7 +3000,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 10,
+        "line": 11,
         "role": "EnvironmentUBO",
         "std": "std140",
         "type": "uniform",
@@ -3012,7 +3012,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/mech_tier1.frag",
-        "line": 10,
+        "line": 11,
         "role": "EnvironmentUBO",
         "std": "std140",
         "type": "uniform",
@@ -3026,7 +3026,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 10,
+        "line": 11,
         "role": "EnvironmentUBO",
         "std": "std140",
         "type": "uniform",
@@ -3336,7 +3336,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/vfx_vegetation.frag",
-        "line": 10,
+        "line": 11,
         "role": "EnvironmentUBO",
         "std": "std140",
         "type": "uniform",

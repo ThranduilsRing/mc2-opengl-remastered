@@ -6,21 +6,21 @@
   "specializationParams": [],
   "artifact": "mech.vert.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "93b5b8f45326e005bef290e85c0a6fc0975253b99f249fed6d293dc0f45c37d2",
-  "spirv_sha256": "ba5081a2cbe3189f6c195e0e10c589a4bceb3376779b12495e7a11ef237f8243",
+  "source_sha256": "1958d388acd698481280fbf526cfe21a5246ea0dd7d894155cb30fad6595de84",
+  "spirv_sha256": "2ac20954fb1f14a21286bd8dece15d4a52e86d6c73112fea42a8e073116a2571",
   "bindings": {
     "ubos": [
       {
-        "type": "_84",
+        "type": "_91",
         "name": "MechFrameUBO",
-        "block_size": 288,
+        "block_size": 384,
         "set": 0,
         "binding": 0
       }
     ],
     "ssbos": [
       {
-        "type": "_107",
+        "type": "_149",
         "name": "LightsData",
         "readonly": true,
         "block_size": 0,
@@ -28,7 +28,7 @@
         "binding": 4
       },
       {
-        "type": "_440",
+        "type": "_473",
         "name": "InstanceBuffer",
         "readonly": true,
         "block_size": 0,
@@ -36,7 +36,7 @@
         "binding": 1
       },
       {
-        "type": "_493",
+        "type": "_526",
         "name": "BoneBuffer",
         "readonly": true,
         "block_size": 0,
@@ -48,7 +48,7 @@
     "images": []
   },
   "types": {
-    "_84": {
+    "_91": {
       "name": "MechFrameUBO",
       "members": [
         {
@@ -127,10 +127,37 @@
           "type": "mat4",
           "offset": 224,
           "matrix_stride": 16
+        },
+        {
+          "name": "sunAuthFromLive",
+          "type": "vec4",
+          "array": [
+            3
+          ],
+          "array_size_is_literal": [
+            true
+          ],
+          "offset": 288,
+          "array_stride": 16
+        },
+        {
+          "name": "pitchUndo",
+          "type": "vec4",
+          "offset": 336
+        },
+        {
+          "name": "ambRelight",
+          "type": "vec4",
+          "offset": 352
+        },
+        {
+          "name": "sunRelight",
+          "type": "vec4",
+          "offset": 368
         }
       ]
     },
-    "_97": {
+    "_139": {
       "name": "ObjectLights",
       "members": [
         {
@@ -179,7 +206,7 @@
         }
       ]
     },
-    "_105": {
+    "_147": {
       "name": "ObjectLights",
       "members": [
         {
@@ -238,12 +265,12 @@
         }
       ]
     },
-    "_107": {
+    "_149": {
       "name": "LightsData",
       "members": [
         {
           "name": "light",
-          "type": "_105",
+          "type": "_147",
           "array": [
             0
           ],
@@ -255,7 +282,7 @@
         }
       ]
     },
-    "_435": {
+    "_468": {
       "name": "GpuMechInstance",
       "members": [
         {
@@ -300,7 +327,7 @@
         }
       ]
     },
-    "_438": {
+    "_471": {
       "name": "GpuMechInstance",
       "members": [
         {
@@ -355,12 +382,12 @@
         }
       ]
     },
-    "_440": {
+    "_473": {
       "name": "InstanceBuffer",
       "members": [
         {
           "name": "instances",
-          "type": "_438",
+          "type": "_471",
           "array": [
             0
           ],
@@ -372,7 +399,7 @@
         }
       ]
     },
-    "_488": {
+    "_521": {
       "name": "GpuMechBone",
       "members": [
         {
@@ -393,7 +420,7 @@
         }
       ]
     },
-    "_491": {
+    "_524": {
       "name": "GpuMechBone",
       "members": [
         {
@@ -418,12 +445,12 @@
         }
       ]
     },
-    "_493": {
+    "_526": {
       "name": "BoneBuffer",
       "members": [
         {
           "name": "bones",
-          "type": "_491",
+          "type": "_524",
           "array": [
             0
           ],
@@ -435,7 +462,7 @@
         }
       ]
     },
-    "_891": {
+    "_924": {
       "name": "gl_PerVertex",
       "members": [
         {
