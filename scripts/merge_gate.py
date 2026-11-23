@@ -2026,7 +2026,8 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
                     elif mismatch:
                         print(f"[merge_gate] {name}: MAD within bounds, but the pipeline change above is unexplained: stays FAIL")
                 if result.returncode == 0 and name.startswith(EXCLUSIVE_PREFIXES) and "--out" in command:
-                    veg = capture_vegetation_problem(command[command.index("--out") + 1])
+                    veg = (capture_vegetation_problem(command[command.index("--out") + 1])
+                           if os.environ.get("MC2_VEGETATION_CARDS", "").strip().lower() in ("1", "true", "yes", "on") else None)
                     if veg:
                         status = "FAIL: " + veg.replace("|", "/")
                         print(f"[merge_gate] {name}: {status}", flush=True)

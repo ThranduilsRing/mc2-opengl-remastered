@@ -14,7 +14,7 @@ from pathlib import Path, PurePosixPath
 from typing import List, Optional
 
 from . import nofocus, stall, vk_validation
-from .gates import GateConfig, Verdict, evaluate
+from .gates import GateConfig, Verdict, evaluate, vegetation_cards_on
 from .logparse import LogSummary, parse_log
 from .firewall_dialog import Guard as FirewallGuard
 
@@ -409,7 +409,9 @@ def run_one(cfg: RunConfig) -> RunResult:
     summary = parse_log(stdout, line_wallclocks=line_wallclocks)
     from . import render_options_pin
     options = render_options_pin.record(Path(exe_dir), env)["values"]
-    vegetation_expected = options["ShadowQuality"] != 0 and options.get("BaseQuality", 2) == 2
+    # MC2_VEGETATION_CARDS defaults off (owner directive): the vegetation floors apply only when the run turned it on.
+    vegetation_expected = (options["ShadowQuality"] != 0 and options.get("BaseQuality", 2) == 2
+                           and vegetation_cards_on(env))
     gcfg = GateConfig(
         heartbeat_timeout_load_s=cfg.heartbeat_timeout_load_s,
         heartbeat_timeout_play_s=cfg.heartbeat_timeout_play_s,
