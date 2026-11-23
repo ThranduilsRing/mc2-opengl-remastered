@@ -149,6 +149,32 @@ void TreeAppearance::invalidateStaticRegistration()
 	}
 }
 
+// Root footprint radius of a tree model: horizontal reach (about the pivot) of the vertices in the lowest 4% of its height.
+// The pivot sits at the trunk base, so on a slope the downhill root flare floats unless the tree sinks to the lowest ground under it.
+static float treeRootRadius(TG_TypeMultiShape* ms)
+{
+	static std::unordered_map<TG_TypeMultiShape*, float> cache;
+	if (const auto cached = cache.find(ms); cached != cache.end()) { const auto& [key, radius] = *cached; return radius; }
+	float lo = 1e30f, hi = -1e30f, r = 0.0f;
+	const long n = ms->GetNumShapes();
+	for (int pass = 0; pass < 2; ++pass)
+		for (long i = 0; i < n; ++i)
+		{
+			TG_TypeNodePtr node = ms->GetTypeNode(i);
+			if (!node || node->GetNodeType() != SHAPE_NODE) continue;
+			auto* shape = static_cast<TG_TypeShape*>(node);
+			const glm::vec3 c = node->GetNodeCenter();
+			const TG_TypeVertex* verts = shape->GetTypeVertices();
+			for (int v = 0; verts && v < shape->GetNumTypeVertices(); ++v)
+			{
+				const glm::vec3 p = verts[v].position + c;
+				if (pass == 0) { lo = std::min(lo, p.y); hi = std::max(hi, p.y); }
+				else if (p.y - lo <= (hi - lo) * 0.04f) r = std::max(r, std::hypot(p.x, p.z));
+			}
+		}
+	return cache[ms] = r;
+}
+
 // Task 5 (Track B): mission-load bulk static-prop registration (mirror of
 // BldgAppearance::registerStatic). HC-1: writes directly to typed staticReg.
 void TreeAppearance::registerStatic() {
@@ -188,6 +214,10 @@ void TreeAppearance::registerStatic() {
 	glm::vec3 xlatPosition;
 	xlatPosition.x = -position.x;
 	xlatPosition.y = TerrainRuntime::sampleVisibleGroundHeight(position);
+	if (appearType && appearType->treeRenderShape[0])
+		if (const float r = treeRootRadius(appearType->treeRenderShape[0].get()); r > 0.0f)
+			for (const glm::vec3 d : {glm::vec3(r, 0, 0), glm::vec3(-r, 0, 0), glm::vec3(0, r, 0), glm::vec3(0, -r, 0)})
+				xlatPosition.y = std::min(xlatPosition.y, TerrainRuntime::sampleVisibleGroundHeight(position + d));
 	xlatPosition.z = position.y;
 
 	// TREE-OVERRIDE-LOD-MVP M-A (load-bearing): build the recipe AND capture the

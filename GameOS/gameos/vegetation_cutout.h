@@ -31,6 +31,27 @@ inline void preserveCutoutAlpha(std::span<uint8_t> rgba, float target, long thre
         rgba[i] = static_cast<uint8_t>(std::clamp(std::lround(static_cast<float>(rgba[i]) * best), 0L, 255L));
 }
 
+// One 2x downsample of a cutout layer: alpha is the plain box mean, colour is the ALPHA-WEIGHTED mean. A plain box mean mixes the
+// black RGB that sits under transparent texels into every leaf edge, so each mip darkens (a far canopy reads as a dark hollow).
+inline std::vector<uint8_t> downsampleCutoutRgba8(const std::vector<uint8_t>& src, uint32_t width, uint32_t height) {
+    const uint32_t dw = std::clamp(width / 2, 1u, width), dh = std::clamp(height / 2, 1u, height);
+    std::vector<uint8_t> dst(static_cast<size_t>(dw) * dh * 4);
+    for (uint32_t y = 0; y < dh; ++y)
+        for (uint32_t x = 0; x < dw; ++x) {
+            uint32_t rgb[3]{}, alpha = 0, weight = 0;
+            for (uint32_t k = 0; k < 4; ++k) {
+                const uint32_t sx = std::clamp(2 * x + (k & 1), 0u, width - 1), sy = std::clamp(2 * y + (k >> 1), 0u, height - 1);
+                const uint8_t* p = &src[(static_cast<size_t>(sy) * width + sx) * 4];
+                for (int c = 0; c < 3; ++c) rgb[c] += p[c] * p[3];
+                alpha += p[3]; weight += p[3];
+            }
+            uint8_t* o = &dst[(static_cast<size_t>(y) * dw + x) * 4];
+            for (int c = 0; c < 3; ++c) o[c] = weight ? static_cast<uint8_t>((rgb[c] + weight / 2) / weight) : 0;
+            o[3] = static_cast<uint8_t>((alpha + 2) / 4);
+        }
+    return dst;
+}
+
 // Filtering a cutout must find its edge colours outside coverage, rather than
 // average the edge with the transparent image's black background.
 inline void dilateCutoutRgb(std::vector<uint8_t>& rgba, uint32_t width, uint32_t height) {

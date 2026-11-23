@@ -341,6 +341,24 @@ TEST_CASE("vegetation mips preserve hard-test coverage without making empty texe
     CHECK(mc2::vegetation::cutoutCoverage(rgba) == 0.0f);
 }
 
+TEST_CASE("tree layer mips keep leaf colour and 0.5-cut coverage at every level") {
+    // Sparse leaves (bright green, alpha 255) on black transparent texels, like the kit broadleaf atlas.
+    uint32_t size = 64;
+    std::vector<uint8_t> layer(size * size * 4, 0);
+    for (uint32_t y = 0; y < size; ++y)
+        for (uint32_t x = 0; x < size; ++x)
+            if ((x % 8) < 2 && (y % 8) < 2) { uint8_t* p = &layer[(y * size + x) * 4]; p[0] = 40; p[1] = 200; p[2] = 40; p[3] = 255; }
+    const float target = mc2::vegetation::cutoutCoverage(layer);
+    for (uint32_t level = 1; level <= 4; ++level) {
+        layer = mc2::vegetation::downsampleCutoutRgba8(layer, size, size);
+        size /= 2;
+        mc2::vegetation::preserveCutoutAlpha(layer, target, 128);
+        CHECK(mc2::vegetation::cutoutCoverage(layer) == doctest::Approx(target).epsilon(0.35));
+        for (size_t i = 0; i < layer.size(); i += 4)
+            if (layer[i + 3] >= 128) { CHECK(layer[i + 1] >= 190); CHECK(layer[i] <= 50); }
+    }
+}
+
 TEST_CASE("vegetation colour dilation keeps alpha and filled texels intact") {
     std::vector<uint8_t> rgba(3 * 3 * 4, 0);
     rgba[16] = 120; rgba[17] = 80; rgba[18] = 40; rgba[19] = 255;

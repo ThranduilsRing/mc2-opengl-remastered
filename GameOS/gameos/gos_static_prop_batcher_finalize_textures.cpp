@@ -262,9 +262,12 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
             for (size_t k = 0; k < layerTexels.size(); ++k) std::memcpy(level.data() + k * layerBytes, layerTexels[k].data(), layerBytes);
             if (lvl + 1u < levelCount)
                 for (size_t k = 0; k < layerTexels.size(); ++k) {
-                    layerTexels[k] = mc2tex::boxDownsampleRgba8(layerTexels[k], lw, lh);
-                    if (keepCoverage[k] < 0.0f) continue;
-                    mc2::vegetation::preserveCutoutAlpha(layerTexels[k], keepCoverage[k], mc2::vegetation::propCutThreshold(lvl + 1u));
+                    if (keepCoverage[k] < 0.0f) { layerTexels[k] = mc2tex::boxDownsampleRgba8(layerTexels[k], lw, lh); continue; }
+                    layerTexels[k] = mc2::vegetation::downsampleCutoutRgba8(layerTexels[k], lw, lh);
+                    // A tree layer is cut at a fixed 0.5 in the colour, depth and shadow passes (color_prop_tier1.frag propCoverage), so its
+                    // mips keep coverage at 0.5; other cutouts follow the rising cut.
+                    mc2::vegetation::preserveCutoutAlpha(layerTexels[k], keepCoverage[k],
+                        uniques[members[k]].tree ? 128L : mc2::vegetation::propCutThreshold(lvl + 1u));
                     mc2::vegetation::dilateCutoutRgb(layerTexels[k], mc2tex::mipExtent(cpuArray.width, lvl + 1u), mc2tex::mipExtent(cpuArray.height, lvl + 1u));
                 }
         }
