@@ -30,8 +30,38 @@ TEST_CASE("HDR capture/paper white preview and premultiplied UI") {
         CHECK(captureSdr(hdrDecode(code / 255.0), 0, 0) == code);
         CHECK(captureSdr(0.0, static_cast<uint8_t>(code), 255) == code);
     }
-    CHECK(captureSdr(0.0, 128, 128) == 188);
-    CHECK(captureSdr(1.0, 0, 128) == 187);
+    CHECK(captureSdr(0.0, 128, 128) == 128);
+    CHECK(captureSdr(1.0, 0, 128) == 127);
     CHECK(captureSdr(8.0, 0, 0) == 255);
     CHECK(captureSdr(-1.0, 0, 0) == 0);
+}
+TEST_CASE("HDR output/UI composite matches SDR alpha premultiplied additive and opaque") {
+    using namespace mc2vk::hdr;
+    // Exercise the production GLSL function, not a C++ copy of its equation.
+    for (double scene : {0.0, 0.04, 0.25, 0.5, 0.75}) {
+        for (double source : {0.0, 0.04, 0.125, 0.25}) {
+            for (double alpha : {0.0, 0.125, 0.5, 1.0}) {
+                for (int mode = 0; mode < 4; ++mode) {
+                    const double coverage = mode == 2 ? 0.0 : mode == 3 ? 1.0 : alpha;
+                    const double rgb = mode == 0 ? source * alpha : source;
+                    const double sdr = scene * (1.0 - coverage) + rgb;
+                    const double hdr = hdrUiComposite(hdrDecode(scene), rgb, coverage);
+                    const double decoded = hdrEncode(hdrPqInverse(hdrPq(hdr * 200.0)) / 200.0);
+                    CHECK(std::abs(decoded - sdr) <= 1.0 / 255.0);
+                    CHECK(std::abs(captureSdr(hdrDecode(scene), quantizeSdr(rgb), quantizeSdr(coverage)) / 255.0 - sdr) <= 1.0 / 255.0);
+                }
+            }
+        }
+    }
+    // Additive (nonzero source alpha) followed by straight alpha and a
+    // premultiplied draw: coverage tracks attenuation, never additive alpha.
+    double sdr = 0.25, ui = 0.0, coverage = 0.0;
+    for (int mode : {2, 0, 1, 3}) {
+        const double a = mode == 2 ? 0.0 : mode == 3 ? 1.0 : 0.5;
+        const double rgb = mode == 0 ? 0.125 * a : 0.125;
+        sdr = sdr * (1.0 - a) + rgb;
+        ui = ui * (1.0 - a) + rgb;
+        coverage = coverage * (1.0 - a) + a;
+        CHECK(hdrEncode(hdrUiComposite(hdrDecode(0.25), ui, coverage)) == doctest::Approx(sdr));
+    }
 }

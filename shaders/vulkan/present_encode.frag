@@ -10,9 +10,9 @@ void main() {
     vec2 uv = vec2(TexCoord.x, 1.0 - TexCoord.y);
     vec3 scene = texture(sceneTex, uv).rgb;
     vec4 ui = texture(uiTex, uv);
-    vec3 straight = ui.a > 0.0 ? ui.rgb / ui.a : vec3(0.0);
-    vec3 linearUi = vec3(hdrDecode(straight.r), hdrDecode(straight.g), hdrDecode(straight.b));
-    vec3 nits = (scene * (1.0 - ui.a) + linearUi * ui.a) * u.paperNits;
+    vec3 nits = vec3(hdrUiComposite(scene.r, ui.r, ui.a),
+                     hdrUiComposite(scene.g, ui.g, ui.a),
+                     hdrUiComposite(scene.b, ui.b, ui.a)) * u.paperNits;
     if (u.scRgb != 0.0) {
         FragColor = vec4(nits / 80.0, 1.0);
     } else {
