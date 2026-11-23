@@ -14,6 +14,7 @@
 #include "Gates/gate.h"
 #include "vfs.h"
 #include "../GameOS/gameos/load_scope.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
 #include <filesystem>
 #include <unordered_map>
 #include <set>
@@ -315,9 +316,11 @@ bool apply(aObject& widget, const aObject& source, long index, const Subject& su
     if (!icon && individual) icon = registry.find(named);
     if (!icon && sheetServes(sheetRank, dataRank)) icon = registry.find(legacyKey(sheet, index));
     if (!icon) {
-        const auto [position, inserted] = warned.insert("no-icon:" + stem);
-        if (inserted)
-            mc2::fmt::print_err("[ICON_REGISTRY] no art for chassis {} (placeholder)\n", stem);
+        if (mc2_diag::tagRequested("ICON_REGISTRY")) {
+            const auto [position, inserted] = warned.insert("no-icon:" + stem);
+            if (inserted)
+                mc2::fmt::print_err("[ICON_REGISTRY] no art for chassis {} (placeholder)\n", stem);
+        }
         icon = registry.find("missing");
     }
     if (widget.getTextureHandle() != texture) widget.setTexture(mc2::textures::retain(texture));
