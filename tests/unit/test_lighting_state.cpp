@@ -389,7 +389,7 @@ namespace mc2_diag { bool tagRequested(const char*) { return false; } }
 using MemoryPtr = unsigned char*;
 struct FitIniFile {
     std::map<std::string, double> values;
-    long readIdFloat(const char* key, float& v) { auto i=values.find(key); if(i==values.end()) return 1; v=float(i->second); return 0; }
+    long readIdFloat(const char* key, float& v) { auto i=values.find(key); if(i==values.end()) { v=0; return 1; } v=float(i->second); return 0; }
     long readIdULong(const char* key, unsigned long& v) { auto i=values.find(key); if(i==values.end()) return 1; v=static_cast<unsigned long>(i->second); return 0; }
     long readIdUCharArray(const char* key, uint8_t* v, int n) { for(int i=0;i<n;++i) v[i]=uint8_t(values.at(std::string(key)+char('0'+i))); return 0; }
     void writeIdUCharArray(const char* key, uint8_t* v, int n) { for(int i=0;i<n;++i) values[std::string(key)+char('0'+i)]=v[i]; }
@@ -453,6 +453,7 @@ TEST_CASE("LightingState/Camera bake snapshot survives rain KillAmbient moved su
     c.captureBakeReference(nullptr);
     const auto loaded=c.lightMembers();
     c.setRainLight(2); c.setKillAmbient(true); c.lightPitch=15; c.lightYaw=90;
+    c.lightMods.sunPitch=15;
     c.lightDirection=c.sunDirectionFor(15,90);
     CHECK(c.currentLighting()!=loaded);
     CHECK(c.bakeReferenceLighting()==loaded);
@@ -462,6 +463,27 @@ TEST_CASE("LightingState/Camera bake snapshot survives rain KillAmbient moved su
     CHECK(restored.bakeReferenceLighting()==loaded);
     Camera stock; stock.captureBakeReference(nullptr); FitIniFile unchanged; stock.saveBakeReference(&unchanged);
     CHECK(unchanged.values.empty());
+}
+
+TEST_CASE("LightingState/Camera stock bake preserves authored pitch without optional FIT keys") {
+    using namespace camera_lighting_test;
+    tuningBlock.clear();
+    for (bool fromSave : {false, true}) {
+        Camera c; FitIniFile mission;
+        c.lightPitch=50; c.lightYaw=28.75f;
+        c.lightDirection=c.sunDirectionFor(c.lightPitch,c.lightYaw);
+        c.initTimeOfDay(&mission,fromSave);
+        const auto authored=c.lightMembers();
+        c.captureBakeReference(&mission);
+        CHECK(c.bakeReferenceLighting()==authored);
+        CHECK(c.bakeReferenceLighting().pitch==50);
+        FitIniFile save; c.saveBakeReference(&save);
+        CHECK(save.values.empty());
+        c.setRainLight(2); c.setKillAmbient(true);
+        c.lightPitch=15; c.lightYaw=90;
+        c.saveBakeReference(&save);
+        CHECK(save.values.empty());
+    }
 }
 
 TEST_CASE("LightingState/Camera curve save keeps the undimmed base and optional sun override") {
@@ -519,9 +541,16 @@ TEST_CASE("LightingState/Camera allowTimeOfDay and curve rain save load round tr
     c.allowTimeOfDay=true; c.dayLightPitch=180; c.initTimeOfDay(&save,false); CHECK_FALSE(c.todCurve);
     c.dayLightPitch=50; c.initTimeOfDay(&save,false); REQUIRE(c.todCurve);
     c.publishLight(); c.captureBakeReference(nullptr);
+    FitIniFile curveSave; c.saveBakeReference(&curveSave);
+    CHECK(curveSave.values.count("BakePitch")==1);
+    Camera curveLoaded; curveLoaded.todCurve=c.todCurve; curveLoaded.todBase=c.todBase;
+    curveLoaded.captureBakeReference(&curveSave);
+    CHECK(curveLoaded.bakeReferenceLighting()==c.bakeReferenceLighting());
     c.todT=0.625; c.setSunPitch(31.234567f,true,-62.345678f); c.setRainLight(2);
     const auto before=c.currentLighting(); const auto bake=c.bakeReferenceLighting();
     c.saveColors(&save); c.saveClock(&save);
+    CHECK(save.values.count("BakePitch")==1);
+    CHECK(save.values.count("BakeFogFull")==1);
     Camera loaded; loaded.allowTimeOfDay=true;
     const char* sun[]={"LightRed","LightGreen","LightBlue"}; const char* amb[]={"AmbientRed","AmbientGreen","AmbientBlue"};
     // Camera::init reads these saved base bytes before accepting the sidecar curve.

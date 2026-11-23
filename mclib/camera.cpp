@@ -974,7 +974,10 @@ void Camera::captureBakeReference(FitIniFile* file)
 		bakeSnapshot.sunDir[0] = d.x; bakeSnapshot.sunDir[1] = d.y; bakeSnapshot.sunDir[2] = d.z;
 	}
 	// Optional keys preserve the original load reference when a save's live fields have moved.
-	if (file && file->readIdFloat("BakePitch", bakeSnapshot.pitch) == NO_ERR) {
+	// FIT reads zero the destination on a missing key; keep the mission snapshot intact.
+	float savedPitch;
+	if (file && file->readIdFloat("BakePitch", savedPitch) == NO_ERR) {
+		bakeSnapshot.pitch = savedPitch;
 		file->readIdFloat("BakeYaw", bakeSnapshot.yaw);
 		file->readIdFloat("BakeDirX", bakeSnapshot.sunDir[0]);
 		file->readIdFloat("BakeDirY", bakeSnapshot.sunDir[1]);
@@ -990,10 +993,7 @@ void Camera::captureBakeReference(FitIniFile* file)
 
 void Camera::saveBakeReference(FitIniFile* file) const
 {
-	auto saved = todCurve ? mc2::lighting::compose(todCurve.get(), todCurve->start, todBase, {}) : lightMembers();
-	// Direction is recomputed during rendering; compare the serialized camera fields only.
-	std::copy_n(bakeSnapshot.sunDir, 3, saved.sunDir);
-	if (!todCurve && saved == bakeSnapshot) return;
+	if (!todCurve && !lightMods.sunPitch && !lightMods.sunYaw) return;
 	auto precise = [file](std::string_view key, float value) {
 		char line[128]; mc2::fmt::to_buf(line, "f {} = {:.9g}\r\n", key, value);
 		file->write(reinterpret_cast<MemoryPtr>(line), strlen(line));
