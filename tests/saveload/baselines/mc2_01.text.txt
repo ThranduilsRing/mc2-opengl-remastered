@@ -12,6 +12,7 @@ b NightProfileApplied = FALSE
 b SunAmbientScaled = FALSE
 b AuthoredSunValid = TRUE
 f AuthoredLightPitch = 50.000000
+f AuthoredLightYaw = 11.000000
 uc AuthoredLightRed = 255
 uc AuthoredLightGreen = 255
 uc AuthoredLightBlue = 225

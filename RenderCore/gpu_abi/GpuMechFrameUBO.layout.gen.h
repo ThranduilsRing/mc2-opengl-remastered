@@ -4,7 +4,7 @@
 #pragma once
 
 static_assert(std::is_trivially_copyable<MechFrameUBO>::value, "MechFrameUBO must be trivially copyable");
-static_assert(sizeof(MechFrameUBO) == 384, "MechFrameUBO size must match std140 GLSL struct");
+static_assert(sizeof(MechFrameUBO) == 544, "MechFrameUBO size must match std140 GLSL struct");
 static_assert(offsetof(MechFrameUBO, worldToClipGL) == 0, "worldToClipGL offset");
 static_assert(offsetof(MechFrameUBO, objectDepthBias) == 64, "objectDepthBias offset");
 static_assert(offsetof(MechFrameUBO, materialReady) == 68, "materialReady offset");
@@ -24,3 +24,13 @@ static_assert(offsetof(MechFrameUBO, sunAuthFromLive) == 288, "sunAuthFromLive o
 static_assert(offsetof(MechFrameUBO, pitchUndo) == 336, "pitchUndo offset");
 static_assert(offsetof(MechFrameUBO, ambRelight) == 352, "ambRelight offset");
 static_assert(offsetof(MechFrameUBO, sunRelight) == 368, "sunRelight offset");
+static_assert(offsetof(MechFrameUBO, sunLive) == 384, "sunLive offset");
+static_assert(offsetof(MechFrameUBO, sunLiveDir) == 400, "sunLiveDir offset");
+static_assert(offsetof(MechFrameUBO, ambLive) == 416, "ambLive offset");
+static_assert(offsetof(MechFrameUBO, sunBake) == 432, "sunBake offset");
+static_assert(offsetof(MechFrameUBO, sunBakeDir) == 448, "sunBakeDir offset");
+static_assert(offsetof(MechFrameUBO, ambBake) == 464, "ambBake offset");
+static_assert(offsetof(MechFrameUBO, fog) == 480, "fog offset");
+static_assert(offsetof(MechFrameUBO, cementSky) == 496, "cementSky offset");
+static_assert(offsetof(MechFrameUBO, edgeHazeSky) == 512, "edgeHazeSky offset");
+static_assert(offsetof(MechFrameUBO, lightingParams) == 528, "lightingParams offset");

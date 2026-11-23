@@ -18,7 +18,8 @@ void missionL0Chroma(const std::array<float,3>& ambient, float out[3]) {
         out[c] = std::clamp((ambient[c]/amb) / (ref[c]/refL), 0.6f, 1.6f);
 }
 
-void fillGpu(const RenderCore::MissionEnvironment& env, float sceneLightScale, EnvironmentUBO& out) {
+void fillGpu(const RenderCore::MissionEnvironment& env, float sceneLightScale, EnvironmentUBO& out,
+             const mc2::lighting::LightingState& live, const mc2::lighting::LightingState& bake) {
     out = EnvironmentUBO{};
     const float night = env.lighting.night ? 1.0f : std::clamp(env.lighting.nightFactor, 0.0f, 1.0f);
     float chroma[3];
@@ -46,6 +47,23 @@ void fillGpu(const RenderCore::MissionEnvironment& env, float sceneLightScale, E
     }
     out.sunDirLive[3] = l.sunZ;
     out.sunAuthFromLive[0][3] = l.authoredValid ? 1.0f : 0.0f;
+    for (int c = 0; c < 3; ++c) {
+        out.sunLive[c] = live.sun[c] / 255.0f;
+        out.sunLiveDir[c] = live.sunDir[c];
+        out.ambLive[c] = live.amb[c] / 255.0f;
+        out.sunBake[c] = bake.sun[c] / 255.0f;
+        out.sunBakeDir[c] = bake.sunDir[c];
+        out.ambBake[c] = bake.amb[c] / 255.0f;
+        out.fog[c] = ((live.fogColor >> (16 - 8*c)) & 255u) / 255.0f;
+    }
+    out.fog[3] = live.fogStart;
+    out.cementSky[0] = out.edgeHazeSky[0] = 0.58f;
+    out.cementSky[1] = out.edgeHazeSky[1] = 0.65f;
+    out.cementSky[2] = out.edgeHazeSky[2] = 0.75f;
+    out.cementSky[3] = 0.18f;
+    out.lightingParams[0] = static_cast<float>(live.mode);
+    out.lightingParams[1] = live.mode == mc2::lighting::Mode::Fixed ? 0.0f : live.todWeight;
+    out.lightingParams[2] = live.fogFull;
 }
 
 }

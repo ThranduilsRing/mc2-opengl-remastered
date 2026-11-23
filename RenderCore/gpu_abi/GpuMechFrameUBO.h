@@ -41,6 +41,17 @@ struct MechFrameUBO {
     float   pitchUndo[4];          // @vec4 rgb
     float   ambRelight[4];         // @vec4 rgb
     float   sunRelight[4];         // @vec4 rgb
+    // Dynamic ToD T2: same fill-only tail as EnvironmentUBO; encoded colours, MC2-world directions.
+    float   sunLive[4];           // @vec4 rgb encoded sun; w reserved
+    float   sunLiveDir[4];        // @vec4 xyz live direction; w reserved
+    float   ambLive[4];           // @vec4 rgb encoded ambient; w reserved
+    float   sunBake[4];           // @vec4 rgb encoded load-time sun; w reserved
+    float   sunBakeDir[4];        // @vec4 xyz load-time direction; w reserved
+    float   ambBake[4];           // @vec4 rgb encoded load-time ambient; w reserved
+    float   fog[4];               // @vec4 rgb encoded fog; w start distance
+    float   cementSky[4];         // @vec4 rgb cement/overlay sky; w water SKY_AMBIENT
+    float   edgeHazeSky[4];       // @vec4 rgb EDGE_HAZE_SKY; w reserved
+    float   lightingParams[4];    // @vec4 mode (0 Fixed, 1 Live), todWeight (0 Fixed), fog full distance, reserved
 };
 
 #include "GpuMechFrameUBO.layout.gen.h"

@@ -6,14 +6,14 @@
   "specializationParams": [],
   "artifact": "mech.vert.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "1958d388acd698481280fbf526cfe21a5246ea0dd7d894155cb30fad6595de84",
-  "spirv_sha256": "2ac20954fb1f14a21286bd8dece15d4a52e86d6c73112fea42a8e073116a2571",
+  "source_sha256": "ae763c288367bc6d70e97811598dcf41cdd143b5ffc0acb8562702540e2048fb",
+  "spirv_sha256": "b9656ed9a7d5bcea11b19d413218fa8f1cb6e76adc7906a4fd4c2cdf3c36ef16",
   "bindings": {
     "ubos": [
       {
         "type": "_91",
         "name": "MechFrameUBO",
-        "block_size": 384,
+        "block_size": 544,
         "set": 0,
         "binding": 0
       }
@@ -154,6 +154,56 @@
           "name": "sunRelight",
           "type": "vec4",
           "offset": 368
+        },
+        {
+          "name": "sunLive",
+          "type": "vec4",
+          "offset": 384
+        },
+        {
+          "name": "sunLiveDir",
+          "type": "vec4",
+          "offset": 400
+        },
+        {
+          "name": "ambLive",
+          "type": "vec4",
+          "offset": 416
+        },
+        {
+          "name": "sunBake",
+          "type": "vec4",
+          "offset": 432
+        },
+        {
+          "name": "sunBakeDir",
+          "type": "vec4",
+          "offset": 448
+        },
+        {
+          "name": "ambBake",
+          "type": "vec4",
+          "offset": 464
+        },
+        {
+          "name": "fog",
+          "type": "vec4",
+          "offset": 480
+        },
+        {
+          "name": "cementSky",
+          "type": "vec4",
+          "offset": 496
+        },
+        {
+          "name": "edgeHazeSky",
+          "type": "vec4",
+          "offset": 512
+        },
+        {
+          "name": "lightingParams",
+          "type": "vec4",
+          "offset": 528
         }
       ]
     },

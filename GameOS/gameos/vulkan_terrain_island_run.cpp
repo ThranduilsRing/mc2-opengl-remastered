@@ -1,3 +1,4 @@
+#include "../../mclib/camera.h"  // LightingState before the terrain headers introduce Windows min/max macros.
 #include "Gates/gate_cold.h"
 // VK terrain island: the extern C entry points: enabled / ready / prepare, the frame UBO and light-pool staging, and the per-frame run.
 // Declared in the class headers; shared names in vulkan_terrain_island_internal.h.
@@ -40,7 +41,9 @@ bool vk_terrain_detail::bind_environment(TerrainIsland* s, uint32_t par) {
     const mc2vk::FrameAlloc slice = rctx.frameAlloc(sizeof(EnvironmentUBO));
     if (!slice) return false;
     EnvironmentUBO env;
-    mc2::environment::fillGpu(visualTuning_environment(), mc2SceneLightScale(), env);
+    mc2::environment::fillGpu(visualTuning_environment(), mc2SceneLightScale(), env,
+        eye ? eye->currentLighting() : mc2::lighting::LightingState{},
+        eye ? eye->bakeReferenceLighting() : mc2::lighting::LightingState{});
     std::memcpy(slice.ptr, &env, sizeof(env));
     const VkDescriptorBufferInfo info{slice.buffer, slice.offset, sizeof(EnvironmentUBO)};
     VkWriteDescriptorSet w{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
