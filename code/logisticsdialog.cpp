@@ -672,13 +672,25 @@ void LogisticsSaveDialog::initDialog( mc2::czstring path, bool bCampaign )
 	{
 		// Campaigns come from the merged VFS index (mods + loose + FST); "campaign" and "tutorial"
 		// are added below in their fixed positions. Enumerated at menu time only.
+		// The base-game campaign comes first. A mod that ships its own campaign.fit replaces "campaign", so the index
+		// keeps the base one under kStockCampaignKey (absent when nothing shadows it); otherwise it is added below.
+		std::vector<std::string> campaignNames;
+		std::string stockAlias( mc2::vfs::kStockCampaignKey.substr( mc2::vfs::kStockCampaignKey.rfind( '/' ) + 1 ) );
+		stockAlias.resize( stockAlias.size() - 4 );
+		if ( mc2::vfs::lookup( mc2::vfs::kStockCampaignKey ) )
+			campaignNames.push_back( stockAlias );
 		for ( const auto& campEntry : mc2::vfs::enumerate( "data/campaign/", ".fit" ) )
 		{
 			std::string fname = campEntry.name;
 			if ( fname.size() > 4 )
 				fname.resize( fname.size() - 4 );	// strip ".fit"
-			if ( _stricmp( fname.c_str(), "campaign" ) == 0 || _stricmp( fname.c_str(), "tutorial" ) == 0 )
+			if ( _stricmp( fname.c_str(), "campaign" ) == 0 || _stricmp( fname.c_str(), "tutorial" ) == 0 ||
+				_stricmp( fname.c_str(), stockAlias.c_str() ) == 0 )
 				continue;
+			campaignNames.push_back( std::move( fname ) );
+		}
+		for ( const std::string& fname : campaignNames )
+		{
 
 			// Tolerant name read: a malformed mod campaign falls back to its file name, never asserts.
 			char campaignName[1024];

@@ -646,6 +646,56 @@ TEST_CASE("vfs index: a mod-only map appears in the MP map list (data/missions/*
 	_putenv_s(mc2::gate::name<"MC2_REBUILD_MOD_CACHE">(),"");
 }
 
+TEST_CASE("stock campaign stays in the campaign list when a mod ships its own data/campaign/campaign.fit")
+{
+	// Owner 11-23: with an Exodus mod active, its campaign.fit replaced the stock "campaign" and the New Campaign
+	// list lost the stock campaign. The index keeps the base chain under kStockCampaignKey.
+	_putenv_s(mc2::gate::name<"MC2_REBUILD_MOD_CACHE">(),"1");
+	const std::string fstPath = scratchPath("stock_campaign.fst");
+	authorFst(fstPath, "data/campaign/campaign.fit", fitPayload(3));
+	const std::string base = std::string(kModsRoot) + "/" + kModId;
+	_mkdir(kModsRoot);
+	_mkdir(base.c_str());
+	_mkdir((base + "/data").c_str());
+	_mkdir((base + "/data/campaign").c_str());
+	writeRaw(base + "/data/campaign/campaign.fit", fitPayload(1));
+	writeRaw(base + "/data/campaign/other.fit", fitPayload(1));
+	setActiveMod(kModId);
+	InitModSearchPaths(kModsRoot);
+	{
+		FstRegistry reg(fstPath.c_str());
+		REQUIRE(reg.ok);
+		mc2::vfs::rebuild();
+
+		CHECK(layerViaFile("data/campaign/campaign.fit") == 1);        // the mod still wins "campaign"
+		const std::string stock(mc2::vfs::kStockCampaignKey);
+		REQUIRE(mc2::vfs::lookup(stock).has_value());
+		CHECK(layerViaFile(stock.c_str()) == 3);                       // the base-game bytes, opened by the alias
+		bool listed = false, other = false;
+		for (const auto& e : mc2::vfs::enumerate("data/campaign/", ".fit")) {
+			listed = listed || e.name == "stock_campaign.fit";
+			other = other || e.key == "data/campaign/other.fit";
+		}
+		CHECK(listed);
+		CHECK(other);
+
+		setActiveMod(nullptr);                                         // no mod shadowing: no alias, "campaign" is the stock one
+		InitModSearchPaths("mvh_perm_mods_nonexistent");
+		mc2::vfs::rebuild();
+		CHECK_FALSE(mc2::vfs::lookup(stock).has_value());
+		CHECK(layerViaFile("data/campaign/campaign.fit") == 3);
+	}
+	remove(fstPath.c_str());
+	remove((base + "/data/campaign/campaign.fit").c_str());
+	remove((base + "/data/campaign/other.fit").c_str());
+	remove((base + "/.modindex-cache").c_str());
+	_rmdir((base + "/data/campaign").c_str());
+	_rmdir((base + "/data").c_str());
+	_rmdir(base.c_str());
+	_rmdir(kModsRoot);
+	_putenv_s(mc2::gate::name<"MC2_REBUILD_MOD_CACHE">(),"");
+}
+
 TEST_CASE("vfs join/key: one value-type helper, exactly one separator, canonical key")
 {
 	CHECK(mc2::vfs::key("Data\\Missions/Foo.FIT") == "data/missions/foo.fit");
