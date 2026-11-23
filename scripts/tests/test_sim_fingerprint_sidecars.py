@@ -33,27 +33,6 @@ def _digest(inst):
     return sim.data_fingerprint(str(inst), {"overlay": {}, "stock_digest": ""})["stock_digest"]
 
 
-def test_ao_workspace_is_excluded_but_final_textures_are_pinned(tmp_path):
-    inst = _install(tmp_path)
-    before = sim.data_fingerprint(str(inst), {"overlay": {}})
-    workspace = inst / "data/tgl/_aoktxtmp"
-    workspace.mkdir()
-    (workspace / "ao.uastc.ktx2").write_bytes(b"temporary cook")
-    (workspace / "normal.pre.png").write_bytes(b"preprocessed")
-    assert sim.data_fingerprint(str(inst), {"overlay": {}, "stock_digest": before["stock_digest"]}) == before
-    (inst / "data/tgl/ao.ktx2").write_bytes(b"final cook")
-    assert _digest(inst) != before["stock_digest"]
-
-
-def test_legacy_pin_with_workspace_requires_repin(tmp_path):
-    inst = _install(tmp_path)
-    entries = ["data/tgl/128/a_palm.tga 5", "data/tgl/_aoktxtmp/ao.ktx2 4"]
-    legacy = hashlib.sha256("".join(e + "\n" for e in entries).encode()).hexdigest()[:16]
-    got = sim.data_fingerprint(str(inst), {"overlay": {}, "stock_digest": legacy})
-    assert got["stock_digest"] != legacy
-    assert "not the manifest's" in got["problems"][0]
-
-
 def test_deploy_upscale_leaves_the_stock_digest_where_the_stock_cook_put_it(tmp_path, monkeypatch):
     _pins(tmp_path, monkeypatch, bytes=len(UPSCALED), stock_bytes=len(STOCK))
     stock = _digest(_install(tmp_path / "a", STOCK))

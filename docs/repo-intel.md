@@ -26,8 +26,6 @@ Vulkan-only before/after from two builds (the engine has no GL arm): montage, cr
 
 A/B captures default to 3840x2160; `--res 1080` opts out, and explicit `--env MC2_WIDTH=... --env MC2_HEIGHT=...` overrides remain supported. Each invocation stages in a unique directory under `MC2_LANE_SCRATCH`, or under `<install>/../_ab-stage` when unset; `--stage-root DIR` overrides the parent. Cleanup removes only that invocation's stages and private directory, retaining the parent; `--keep-stage` retains the stages too.
 
-Simulation/save-load data fingerprints exclude the AO cook workspace `data/tgl/_aoktxtmp` (the cooker copies final textures into `data/tgl/` and `data/tgl/128/`). Legacy stock/data pins computed with that workspace require an orchestrator re-pin of `tests/smoke/sim_determinism/data_overlay.json` and affected determinism/save-load baselines on the clean canonical install. Historical hashes cannot be converted without their file inventory; pins computed without the workspace remain valid. This lane does not re-pin or assert that existing baselines verify.
-
 ## graphify
 
 AST-only graph of owned code: `graphify-out/graph.json`, report `graphify-out/GRAPH_REPORT.md`. Run from the repo root: `graphify query "<question>"`, `graphify path "A" "B"`, `graphify explain "gosRenderer"`. Community labels are generic.

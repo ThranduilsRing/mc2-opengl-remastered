@@ -11,6 +11,9 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import seed_parity as sp  # noqa: E402
 
 SHARED = {
+    "data/tgl/_aoktxtmp/ao.uastc.ktx2": b"ao",
+    "data/tgl/_aoktxtmp/nested/normal.pre.png": b"normal",
+    "data/tgl/_aoktxtmp/work.tmp": b"temporary",
     "options.cfg": b"b ShadowCSM = TRUE\n",
     "orgprefs.cfg": b"org",
     "data/textures/1.2.txm": b"transition",
