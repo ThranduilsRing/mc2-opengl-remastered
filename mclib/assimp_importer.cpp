@@ -12,6 +12,7 @@
 // Plan: docs/superpowers/plans/2026-04-27-assimp-mech-importer.md
 // Findings: docs/superpowers/explorations/2026-05-02-track-d-mvp-adversarial-findings.md
 #include "mc2_czstring.h"
+#include <chrono>
 #include "assimp_importer.h"
 #include "unit_anim_state.h"
 #include "mech_model_delta.h"
@@ -1823,6 +1824,7 @@ long ImportGeometryFromFile(mc2::czstring path, TG_TypeMultiShape* out, bool aut
 		cached.parameters = staticParameters;
 		if (mc2::content::loadCached(cached, path)) return out->BuildContentIR(std::move(cached), path);
 	}
+	const auto importT0 = std::chrono::steady_clock::now();
 	auto impOwner = std::make_unique<Assimp::Importer>();
 	Assimp::Importer& imp = *impOwner;
 	auto io = std::make_unique<ContentIO>();
@@ -1834,6 +1836,7 @@ long ImportGeometryFromFile(mc2::czstring path, TG_TypeMultiShape* out, bool aut
 		aiProcess_JoinIdenticalVertices |
 		aiProcess_ValidateDataStructure |
 		aiProcess_SortByPType);
+	const auto readMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - importT0).count();
 
 	if (!scene) {
 		PAUSE(("[importer] %s: Assimp ReadFile failed: %s",
@@ -2081,6 +2084,9 @@ long ImportGeometryFromFile(mc2::czstring path, TG_TypeMultiShape* out, bool aut
 
 	SPEW(("ASSIMP", "%s: %u meshes, %u materials imported",
 	      path, scene->mNumMeshes, scene->mNumMaterials));
+	if (mc2_diag::tagRequested("MECH_IMPORT"))
+		mc2::fmt::print_err("[MECH_IMPORT] timing '{}': Assimp ReadFile {:.0f} ms, import total {:.0f} ms\n", path, readMs,
+			std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - importT0).count());
 	return 0;
 }
 
