@@ -144,11 +144,12 @@ inline size_t fillEnclosedGlassHoles(std::span<uint8_t> rgba, uint32_t width, ui
             const uint32_t v = stack.back(); stack.pop_back(); ++area;
             const uint32_t x = v % contentW, y = v / contentW;
             box[0] = std::min(box[0], x); box[1] = std::min(box[1], y); box[2] = std::max(box[2], x); box[3] = std::max(box[3], y);
-            const int64_t nx[4] = {int64_t(x) - 1, int64_t(x) + 1, int64_t(x), int64_t(x)};
-            const int64_t ny[4] = {int64_t(y), int64_t(y), int64_t(y) - 1, int64_t(y) + 1};
+            const int64_t sx = static_cast<int64_t>(x), sy = static_cast<int64_t>(y);
+            const int64_t nx[4] = {sx - 1, sx + 1, sx, sx};
+            const int64_t ny[4] = {sy, sy, sy - 1, sy + 1};
             for (int k = 0; k < 4; ++k) {
-                if (nx[k] < 0 || ny[k] < 0 || nx[k] >= int64_t(contentW) || ny[k] >= int64_t(contentH)) continue;
-                const uint32_t ux = uint32_t(nx[k]), uy = uint32_t(ny[k]);
+                if (nx[k] < 0 || ny[k] < 0 || nx[k] >= static_cast<int64_t>(contentW) || ny[k] >= static_cast<int64_t>(contentH)) continue;
+                const uint32_t ux = static_cast<uint32_t>(nx[k]), uy = static_cast<uint32_t>(ny[k]);
                 if (at(ux, uy) || !clear(ux, uy)) continue;
                 at(ux, uy) = id;
                 stack.push_back(uy * contentW + ux);

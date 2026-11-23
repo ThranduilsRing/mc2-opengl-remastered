@@ -447,3 +447,21 @@ TEST_CASE("prop alpha-ON mips: solid canopy keeps coverage at the shader cut, la
     preserveCutoutAlpha(mip, target, cut);
     CHECK(cutoutCoverage(mip, 1.0f, cut) == doctest::Approx(target).epsilon(0.08));
 }
+
+TEST_CASE("building glass: an enclosed rectangular window fills opaque dark, a silhouette notch and a lattice stay cut") {
+    using namespace mc2::vegetation;
+    const uint32_t N = 128;
+    std::vector<uint8_t> wall(N * N * 4, 255);
+    const auto clear = [&](uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1) {
+        for (uint32_t y = y0; y < y1; ++y)
+            for (uint32_t x = x0; x < x1; ++x) wall[(y * N + x) * 4 + 3] = 0;
+    };
+    clear(30, 30, 50, 44);   // window: enclosed rectangle
+    clear(0, 60, 12, 70);    // notch open to the content edge
+    for (uint32_t i = 0; i < 6; ++i) clear(70 + i * 6, 90, 72 + i * 6, 120);   // thin slits: below the rectangle fill
+    CHECK(fillEnclosedGlassHoles(wall, N, N, N, N) == 20u * 14u);
+    CHECK(wall[(36 * N + 40) * 4 + 3] == 255);
+    CHECK(wall[(36 * N + 40) * 4] < 16);
+    CHECK(wall[(65 * N + 5) * 4 + 3] == 0);
+    CHECK(wall[(100 * N + 70) * 4 + 3] == 0);
+}
