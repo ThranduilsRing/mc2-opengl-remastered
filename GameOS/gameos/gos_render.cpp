@@ -20,6 +20,9 @@
 #include "present_thread_wait.h"
 #include "engine_present_vk.h"
 #include "present_thread.h"
+#include <atomic>
+#include <chrono>
+#include <thread>
 
 // FIXME: think how to make it better when different parts need window
 SDL_Window* g_sdl_window = nullptr;
@@ -261,7 +264,33 @@ void pump_loading_events()
     s_loadPumps.pumped(stamp);
     // Pump only: do not consume quit/focus/input events or reenter the game mid-load.
     SDL_PumpEvents();
+    note_window_pumped();
     meter.service(SDL_GetTicks64(), false);
+}
+
+// unfocused-not-responding breadcrumb: a window thread that pumps nothing for 4 s is about to be ghosted ("not responding"), and a
+// ghost the user or Windows closes leaves no dump and no EXIT_REASON. A watchdog writes MAIN_STALL begin/end to the diagnostic trace.
+static std::atomic<Uint64> s_lastWindowPumpMs{0};
+void note_window_pumped() { s_lastWindowPumpMs.store(SDL_GetTicks64(), std::memory_order_relaxed); }
+static void start_main_stall_watchdog()
+{
+    std::thread([] {
+        Uint64 worst = 0;
+        for (;;) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            const Uint64 last = s_lastWindowPumpMs.load(std::memory_order_relaxed);
+            const Uint64 gap = last ? SDL_GetTicks64() - last : 0;
+            if (gap < 4000 && !worst) continue;
+            char data[96];
+            const bool begin = gap >= 4000;
+            if (begin && worst) { worst = gap; continue; }
+            mc2::fmt::to_buf(data, "{{\"event\":\"{}\",\"gap_ms\":{}}}", begin ? "begin" : "end", begin ? gap : worst);
+            worst = begin ? gap : 0;
+            if (!mc2_diag::enabled()) continue;
+            mc2_diag::writeEvent("MAIN_STALL", 1, 0, data);
+            mc2_diag::flush();
+        }
+    }).detach();
 }
 
 void begin_variant_load()
@@ -704,6 +733,9 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
 
     g_sdl_window = window;
     g_window_thread = SDL_ThreadID();
+    note_window_pumped();
+    static const bool watchdogStarted = (start_main_stall_watchdog(), true);
+    (void)watchdogStarted;
     // CURSOR-GRAB-FIX-1: still requested unconditionally -- this records the
     // engine's INTENT to grab, which is correct for an ordinary interactive
     // launch. apply_mouse_grab() decides whether it is ALLOWED, and refuses when

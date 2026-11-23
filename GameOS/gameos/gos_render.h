@@ -137,6 +137,7 @@ void                apply_os_cursor_policy  (std::string_view why, bool focused)
 void                set_native_cursor       (SDL_Cursor* cursor, bool visible);
 // Main-thread checkpoints during synchronous loads; queues input without running game logic.
 void                pump_loading_events     ();
+void                note_window_pumped      ();   // the window thread just serviced its message queue (MAIN_STALL watchdog)
 // Independent lazy logistics scope; includes entry and exit gaps.
 void                begin_variant_load      ();
 void                end_variant_load        ();

@@ -503,6 +503,7 @@ void process_events( void ) {
         }
     }
 
+    graphics::note_window_pumped();
     input::updateMouseState();
     input::updateKeyboardState();
 }
