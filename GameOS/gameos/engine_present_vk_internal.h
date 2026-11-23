@@ -81,6 +81,11 @@ struct EnginePresentVk::Impl {
     VkFormat presentFmt = VK_FORMAT_R8G8B8A8_UNORM;
     VkColorSpaceKHR scColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
     bool hdr = false;
+    VkImageResource hdrProof{};
+    mc2vk::OwnedFramebuffer hdrProofFramebuffer;
+    mc2vk::OwnedPipeline hdrProofPipe;
+    uint64_t hdrProofFrame = ~0ull;
+    bool hdrProofDumped = false, readbackProof = false;
     float paperNits = 200.0f, peakNits = 1000.0f;
     VkImageResource uiLayer{}, hdrOffscreen{};
     mc2vk::OwnedRenderPass encodePass;
@@ -240,7 +245,9 @@ struct EnginePresentVk::Impl {
         shadowDebugFramebuffer.reset();
         encodeFrames.clear();
         encodeViews.clear();
+        hdrProofFramebuffer.reset();
         if (dev != VK_NULL_HANDLE) {
+            vkImageResourceDestroy(&hdrProof, dev);
             vkImageResourceDestroy(&uiLayer, dev);
             vkImageResourceDestroy(&hdrOffscreen, dev);
         }

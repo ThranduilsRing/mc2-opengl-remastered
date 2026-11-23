@@ -30,6 +30,8 @@
 #include "vk_image_resource.h"
 #include "vulkan_spatial_aa.h"
 #include "vk_surface_format.h"
+#include "RenderCore/hdr_capture.h"
+#include <glm/gtc/packing.hpp>
 #include "engine_present_vk_internal.h"   // EnginePresentVk::Impl, fillLoadPassDeps, the ImGui piece (engine_present_vk_imgui.cpp)
 #include "Gates/render_options.h"
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
@@ -585,6 +587,15 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
             s.compositeVkFailed = true; return false;
         }
     }
+    if (s.hdrProof.image && !s.hdrProofFramebuffer) {
+        // Mode 0 display encoding in F16; quantize only when writing the PPM.
+        VkImageView view = s.hdrProof.view.get();
+        VkFramebufferCreateInfo fb{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
+        fb.renderPass = s.compositeRenderPass.get();
+        fb.attachmentCount = 1; fb.pAttachments = &view;
+        fb.width = s.imgW; fb.height = s.imgH; fb.layers = 1;
+        if (!mc2vk::create(s.hdrProofFramebuffer, s.dev, [&](auto* h) { return vkCreateFramebuffer(s.dev, &fb, nullptr, h); })) return false;
+    }
     if (s.scaledComposite.image && !s.scaledCompositeFramebuffer) {
         VkImageView att = s.scaledComposite.view.get();
         VkFramebufferCreateInfo fb{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
@@ -710,6 +721,13 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
         gp.renderPass = s.compositeRenderPass.get();
         if (!mc2vk::create(s.compositePipe, s.dev, [&](auto* h) { return mc2vk::infra::graphics(s.dev, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
             s.compositeVkFailed = true; return false;
+        }
+        if (s.hdr && !mc2::gate::str<"MC2_HDR_PROOF_DUMP">().empty()) {
+            const uint32_t proofSpecData[]{0, 0}; // output mode 0, no dither
+            const VkSpecializationMapEntry entries[]{{0, 0, 4}, {1, 4, 4}};
+            const VkSpecializationInfo spec{2, entries, sizeof(proofSpecData), proofSpecData};
+            st[1].pSpecializationInfo = &spec;
+            if (!mc2vk::create(s.hdrProofPipe, s.dev, [&](auto* h) { return mc2vk::infra::graphics(s.dev, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) return false;
         }
         mc2vk::nameObject(s.dev, s.compositePipe.get(), "present.compositePipe");
     }
@@ -1764,6 +1782,9 @@ bool buildSharedImage(EnginePresentVk::Impl& s, uint32_t w, uint32_t h, std::str
     destroyCompositeFramebuffer(s);
     destroyShadowDebugFramebuffer(s);
     s.encodeFrames.clear(); s.encodeViews.clear();
+    s.hdrProofFramebuffer.reset(); s.hdrProofPipe.reset();
+    if (s.hdrProof.image) vkImageResourceDestroy(&s.hdrProof, s.dev);
+    s.hdrProofFrame = ~0ull;
     s.encodePipe.reset(); s.encodePass.reset();
     s.encodeLayout.reset(); s.encodePool.reset(); s.encodeDsl.reset(); s.encodeSet = VK_NULL_HANDLE;
     if (s.uiLayer.image) vkImageResourceDestroy(&s.uiLayer, s.dev);
@@ -1791,11 +1812,18 @@ bool buildSharedImage(EnginePresentVk::Impl& s, uint32_t w, uint32_t h, std::str
     s.imgW = w; s.imgH = h;
     if (s.hdr) {
         if (!vkImageResourceCreate(&s.uiLayer, s.dev, s.phys, w, h, VK_FORMAT_R8G8B8A8_UNORM,
-                VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
                 "present.hdrUi")) { reason = "HDR UI allocation failed"; return false; }
         if (s.offscreen && !vkImageResourceCreate(&s.hdrOffscreen, s.dev, s.phys, w, h, s.scFormat,
                 VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
                 "present.hdrEncoded")) { reason = "HDR offscreen allocation failed"; return false; }
+        if (!mc2::gate::str<"MC2_HDR_PROOF_DUMP">().empty()) {
+            if (!vkImageResourceCreate(&s.hdrProof, s.dev, s.phys, w, h, s.presentFmt,
+                    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+                    "present.hdrProof")) { reason = "HDR proof allocation failed"; return false; }
+            // Recreate the pipeline together with its proof specialization at prewarm.
+            s.compositePipe.reset();
+        }
     }
     static bool loggedOnce = false;
     if (!loggedOnce) {
@@ -2162,6 +2190,27 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     vkCmdDraw(cc, 3, 1, 0, 0);
     vkCmdEndRenderPass(cc);
     gpuScope.end();
+
+    s.hdrProofFrame = ~0ull;
+    if (s.hdrProofPipe && !s.hdrProofDumped) {
+        // Both draws sample the identical scene and push constants in one cbuf.
+        // Limit proof to the unreconstructed seam so AA/tonemap cannot mask errors.
+        if (!scaled && !up && requestedAA == 0 && tonemapMode == 0 && viewMode == 0) {
+            rp.framebuffer = s.hdrProofFramebuffer.get();
+            vkCmdBeginRenderPass(cc, &rp, VK_SUBPASS_CONTENTS_INLINE);
+            vkCmdSetViewport(cc, 0, 1, &vp); vkCmdSetScissor(cc, 0, 1, &sc);
+            mc2vk::infra::bind(cc, VK_PIPELINE_BIND_POINT_GRAPHICS, s.hdrProofPipe.get());
+            vkCmdBindDescriptorSets(cc, VK_PIPELINE_BIND_POINT_GRAPHICS, s.compositeLayout.get(), 0, 1, &sceneSet, 0, nullptr);
+            vkCmdPushConstants(cc, s.compositeLayout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), pc);
+            vkCmdDraw(cc, 3, 1, 0, 0);
+            vkCmdEndRenderPass(cc);
+            s.hdrProofFrame = g_mc2RenderFrame;
+        } else {
+            static bool warned = false;
+            if (!warned) plog("HDR proof requires spatial/temporal AA off, render scale 1, tonemap 0, view mode 0");
+            warned = true;
+        }
+    }
 
     if (aaReady) s.spatialAA.record(cc, aaOutput);
     if (scaled) {
@@ -2711,7 +2760,8 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     }
     gpuprof::frameEndSubmitted();
     s.spatialAA.submitted();
-    if (verifyReadback) verifyReadbackContent();
+    if (verifyReadback || (s.hdrProofFrame != ~0ull && !s.hdrProofDumped &&
+            s.captureFrame >= static_cast<uint64_t>(std::max(0, mc2::gate::get<"MC2_VK_PRESENT_DUMP_FRAME">())))) verifyReadbackContent();
     ++health_.present_frames;
 
     // Capture everything before frameBoundary advances the slot. Only these handles and worker-owned WSI result survive seal.
@@ -2872,16 +2922,19 @@ void EnginePresentVk::verifyReadbackContent() {
 
     // ---- consume the outstanding request, if its copy has finished ----
     auto consume = [&](const unsigned char* px, uint32_t rw, uint32_t rh, uint64_t readbackTag) {
+        std::vector<unsigned char> preview;
         if (s.hdr) {
-            // H3 proof artifact: native bottom-up RGBA16F, before UI/encode.
-            // HDR screenshots/SDR previews are owned by H4; never deliver F16 as RGBA8.
+            const size_t pixels = static_cast<size_t>(rw) * rh;
+            const auto* ui = px + pixels * 8;
+            preview.resize(pixels * 4);
+            for (size_t i = 0; i < pixels; ++i) {
+                uint64_t packed; std::memcpy(&packed, px + i * 8, 8);
+                const auto scene = glm::unpackHalf4x16(packed);
+                for (unsigned c = 0; c < 3; ++c) preview[i * 4 + c] = hdr::captureSdr(scene[c], ui[i * 4 + c], ui[i * 4 + 3]);
+                preview[i * 4 + 3] = 255;
+            }
+            // Native bottom-up RGBA16F remains available to existing H3 callers.
             static bool dumped = false;
-            uint64_t checksum = 1469598103934665603ull;
-            const size_t bytes = static_cast<size_t>(rw) * rh * 8;
-            for (size_t i = 0; i < bytes; i += 257) { checksum ^= px[i]; checksum *= 1099511628211ull; }
-            health_.prev_readback_checksum = health_.last_readback_checksum;
-            health_.last_readback_checksum = checksum;
-            if (health_.prev_readback_checksum && health_.prev_readback_checksum != checksum) health_.readback_changed = true;
             const auto path = mc2::gate::str<"MC2_VK_PRESENT_DUMP_PPM">();
             const auto pin = mc2::gate::get<"MC2_VK_PRESENT_DUMP_FRAME">();
             if (!dumped && !path.empty() && readbackTag >= static_cast<uint64_t>(std::max(0, pin))) {
@@ -2894,7 +2947,29 @@ void EnginePresentVk::verifyReadbackContent() {
                         path + ".f16.raw", rw, rh, readbackTag, dumped);
                 }
             }
-            return;
+            if (s.readbackProof && !s.hdrProofDumped) {
+                const auto prefix = mc2::gate::str<"MC2_HDR_PROOF_DUMP">() + ".frame-" + std::to_string(readbackTag);
+                FILE* raw = fopen((prefix + ".f16.raw").c_str(), "wb");
+                FILE* ppm = fopen((prefix + ".sdr.ppm").c_str(), "wb");
+                bool ok = raw && ppm;
+                if (raw) { ok = fwrite(px, 1, pixels * 8, raw) == pixels * 8 && ok; ok = fclose(raw) == 0 && ok; }
+                if (ppm) {
+                    const auto header = "P6\n# frame=" + std::to_string(readbackTag) + " mode=0 dither=0 scene-only\n" +
+                        std::to_string(rw) + " " + std::to_string(rh) + "\n255\n";
+                    ok = fwrite(header.data(), 1, header.size(), ppm) == header.size() && ok;
+                    const auto* reference = px + pixels * 12;
+                    for (uint32_t y = 0; y < rh; ++y) for (uint32_t x = 0; x < rw; ++x) {
+                        uint64_t packed; std::memcpy(&packed, reference + (static_cast<size_t>(rh - 1 - y) * rw + x) * 8, 8);
+                        const auto color = glm::unpackHalf4x16(packed);
+                        const unsigned char rgb[]{hdr::quantizeSdr(color.r), hdr::quantizeSdr(color.g), hdr::quantizeSdr(color.b)};
+                        ok = fwrite(rgb, 1, 3, ppm) == 3 && ok;
+                    }
+                    ok = fclose(ppm) == 0 && ok;
+                }
+                s.hdrProofDumped = ok;
+                plog("HDR same-frame proof prefix=%s width=%u height=%u frame=%llu complete=%d", prefix.c_str(), rw, rh, static_cast<unsigned long long>(readbackTag), ok);
+            }
+            px = preview.data(); // common RGBA8 delivery, checksum and PPM path
         }
         const VkDeviceSize needed = static_cast<VkDeviceSize>(rw) * rh * 4u;
     // FNV-1a over a strided sample (every 257th byte) -- cheap, sensitive to change.
@@ -2979,7 +3054,9 @@ void EnginePresentVk::verifyReadbackContent() {
 
     // ---- request the next one ----
     const uint32_t rw = s.imgW, rh = s.imgH;
-    const VkDeviceSize needed = static_cast<VkDeviceSize>(rw) * rh * (s.hdr ? 8u : 4u);
+    const bool proof = s.hdr && !s.hdrProofDumped && s.hdrProofFrame == s.captureFrame &&
+        s.captureFrame >= static_cast<uint64_t>(std::max(0, mc2::gate::get<"MC2_VK_PRESENT_DUMP_FRAME">()));
+    const VkDeviceSize needed = static_cast<VkDeviceSize>(rw) * rh * (s.hdr ? (proof ? 20u : 12u) : 4u);
     if (needed == 0) return;
     const uint64_t tag = s.captureFrame;
     VkBuffer dst = VK_NULL_HANDLE;
@@ -3021,6 +3098,22 @@ void EnginePresentVk::verifyReadbackContent() {
             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    if (s.hdr) {
+        // All three copies are ordered on the render queue before the next frame.
+        auto copy = [&](VkImage image, VkDeviceSize offset) {
+            barrier(s.readbackCbuf, image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
+                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+            bic.bufferOffset = offset;
+            vkCmdCopyImageToBuffer(s.readbackCbuf, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dst, 1, &bic);
+            barrier(s.readbackCbuf, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+        };
+        copy(s.uiLayer.image.get(), static_cast<VkDeviceSize>(rw) * rh * 8);
+        if (proof) copy(s.hdrProof.image.get(), static_cast<VkDeviceSize>(rw) * rh * 12);
+        vkCmdPipelineBarrier(s.readbackCbuf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_HOST_BIT, 0, 0, nullptr, 1, &toHost, 0, nullptr);
+    }
     vkEndCommandBuffer(s.readbackCbuf);
 
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
@@ -3032,6 +3125,7 @@ void EnginePresentVk::verifyReadbackContent() {
     s.readbackTag = tag;
     s.readbackW = rw;
     s.readbackH = rh;
+    s.readbackProof = proof;
     if (consecutive) {
         if (const void* bytes = ctx.readbacks().wait(ctx, tok, tag, 5000000000ull)) {
             consume(static_cast<const unsigned char*>(bytes), rw, rh, tag);

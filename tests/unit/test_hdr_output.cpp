@@ -1,6 +1,6 @@
 #include "doctest.h"
 #include <initializer_list>
-#include "../../shaders/vulkan/hdr_transfer.glsl"
+#include "../../RenderCore/hdr_capture.h"
 
 TEST_CASE("HDR output/PQ luminance anchors and extended decode") {
     using namespace mc2vk::hdr;
@@ -23,4 +23,15 @@ TEST_CASE("HDR output/EETF preserves paper white and is monotone bounded") {
             previous = out;
         }
     }
+}
+TEST_CASE("HDR capture/paper white preview and premultiplied UI") {
+    using namespace mc2vk::hdr;
+    for (int code = 0; code <= 255; ++code) {
+        CHECK(captureSdr(hdrDecode(code / 255.0), 0, 0) == code);
+        CHECK(captureSdr(0.0, static_cast<uint8_t>(code), 255) == code);
+    }
+    CHECK(captureSdr(0.0, 128, 128) == 188);
+    CHECK(captureSdr(1.0, 0, 128) == 187);
+    CHECK(captureSdr(8.0, 0, 0) == 255);
+    CHECK(captureSdr(-1.0, 0, 0) == 0);
 }

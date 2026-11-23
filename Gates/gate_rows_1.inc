@@ -47,6 +47,7 @@ L(Lead1, "MC2_GPU_PARTICLES_LOG", Bool, false, "code", "", "", passthrough | ver
 L(Lead0Kill, "MC2_HDRI_SKY", Bool, true, "post", "", "", verified),
 P("MC2_HDRI_SKY_AZ_OFFSET", Float, 0.0, "post", "", "", verified),
 L(Lead1, "MC2_HDR_FORCE", Bool, false, "vk", "", "Developer HDR offscreen proof override; harness defaults remain SDR.", passthrough | registry(Trace, "MC2_TRACE_HDR_FORCE", -1, false) | verified),
+G("MC2_HDR_PROOF_DUMP", String, "", "vk", "", "Developer same-frame F16 and undithered output mode 0 dump prefix.", passthrough | registry(Trace, "MC2_TRACE_HDR_PROOF_DUMP", -1, false) | verified),
 L(Presence, "MC2_HEARTBEAT", Bool, false, "gameos", "", "", passthrough | verified),
 P("MC2_HEIGHT", Int, 0, "gameos", "", "", passthrough | verified),
 P("MC2_HITCH_MS", Float, 0.0, "gameos", "", "", passthrough | verified),  // default not derivable from the tree
