@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <map>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -212,26 +213,29 @@ public:
     // Order: the mod's own art (CSV stem, then the author's MechName) -> HUD front art -> a sheet cell the same
     // source declares -> none (the caller draws its placeholder). One cell; the caller fits it.
     Pick select(const std::map<std::string, int>& priority, const Query& q) const {
-        const auto rank = [&](const auto& key) {
+        const auto rank = [&](const auto& key) -> std::optional<int> {
             const auto found = priority.find(key);
-            if (found == priority.end()) return -1;
+            if (found == priority.end()) return std::nullopt;
             const auto& [file, r] = *found;
             return r;
         };
         const std::string stem = "mech/" + q.stem, byName = "mech/" + q.name;
-        const auto here = [&](const auto& key) { return rank(key) >= 0 && sameSource(rank(key), q.dataRank) && find(key); };
+        const auto here = [&](const auto& key) {
+            const auto r = rank(key);
+            return r && sameSource(*r, q.dataRank) && find(key);
+        };
         // The author's MechName names art too, when the same source that owns the chassis owns that file. It wins
         // over a same-stem icon another source owns: that one is the stock chassis' art, not this mod's.
         const std::string named = here(byName) && !here(stem) ? byName : stem;
-        const int namedRank = rank(named);
-        const bool individual = namedRank >= 0 && namedRank <= q.sheetRank && find(named);
+        const auto namedRank = rank(named);
+        const bool individual = namedRank && *namedRank <= q.sheetRank && find(named);
         Pick pick;
-        int bestRank = individual ? namedRank : q.sheetRank;
+        int bestRank = individual ? *namedRank : q.sheetRank;
         // Use the HUD front art in the existing logistics rectangle. Unmatched art keeps its old source.
         for (const auto& key : q.hud) {
-            const int r = rank(key);
-            if (r < 0 || r > bestRank || (pick.hud && r == bestRank)) continue;
-            if (const Icon* icon = find(key)) { pick.hud = icon; bestRank = r; }
+            const auto r = rank(key);
+            if (!r || *r > bestRank || (pick.hud && *r == bestRank)) continue;
+            if (const Icon* icon = find(key)) { pick.hud = icon; bestRank = *r; }
         }
         if (pick.hud) { pick.icon = pick.hud; return pick; }
         if (individual) { pick.icon = find(named); pick.own = true; }
