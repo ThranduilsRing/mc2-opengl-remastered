@@ -18,6 +18,7 @@ constexpr unsigned long kRowBase = 100;     // value button of row i sends 100 +
 constexpr unsigned long kAccept = 90, kDefaults = 91, kPreset = 92, kBack = 93;
 
 std::string sliderKey( std::size_t row ) { return std::string( "game.mcl_gamerules.slider.row" ).append( std::to_string( row ) ); }
+std::string valueKey( std::size_t row ) { return std::string( "game.mcl_gamerules.text.value" ).append( std::to_string( row ) ); }
 std::string rowKey( std::string_view kind, std::size_t row ) { return std::string( "game.mcl_gamerules." ).append( kind ).append( ".row" ).append( std::to_string( row ) ); }
 
 // "PilotSkillWeight" -> "PILOT SKILL WEIGHT", "CBillMultiplier" -> "C BILL MULTIPLIER".
@@ -112,8 +113,8 @@ void GameRulesDialog::refreshRows()
 			lastSlider[i] = mc2::rules::sliderFromValue( r, mc2::rules::getLong( working, r ) );
 			setDefsSliderValue( sliderKey( i ), static_cast<int>( lastSlider[i] ) );
 			const long v = mc2::rules::getLong( working, r );
-			setDefsElementText( rowKey( "value", i ), std::to_string( v ) + ( r.kind == mc2::rules::Kind::Percent ? "%" : "" ) );
-			setDefsElementTextColor( rowKey( "value", i ), ruleActive( r.key ) ? kActiveValueColor : kGreyColor );
+			setDefsElementText( valueKey( i ), std::to_string( v ) + ( r.kind == mc2::rules::Kind::Percent ? "%" : "" ) );
+			setDefsElementTextColor( valueKey( i ), ruleActive( r.key ) ? kActiveValueColor : kGreyColor );
 		}
 		const bool active = ruleActive( r.key );
 		setDefsElementText( rowKey( "text", i ), labelFor( r.key ) + ( active ? "" : "  (not yet active)" ) );
@@ -125,7 +126,7 @@ void GameRulesDialog::refreshRows()
 		setDefsElementTextColor( rowKey( "text", i ), active ? kActiveColor : kGreyColor );
 		setDefsElementVisible( rowKey( "button", i ), !slider );
 		setDefsElementVisible( sliderKey( i ), slider );
-		setDefsElementVisible( rowKey( "value", i ), slider );
+		setDefsElementVisible( valueKey( i ), slider );
 	}
 }
 
