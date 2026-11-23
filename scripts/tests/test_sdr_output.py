@@ -31,7 +31,7 @@ def test_real_sdr_shader(tmp_path, mode):
     run(compiler, "-V", str(golden), "-o", str(tmp_path / "golden.spv"))
     text = run(compiler, "-E", str(src))
     seam = re.search(r"layout\(constant_id\s*=\s*0\).*?\n}\s*", text, re.S)
-    body = re.search(r"if\s*\(OUTPUT_MODE == 0\)\s*{(.*?)\n\s*}", seam[0], re.S)[1]
+    body = re.search(r"if\s*\(OUTPUT_MODE == 0\)\s*{(.*?)\n\s*}\s*return color;\s*}", seam[0], re.S)[1]
     reconstructed, ordinary = re.search(r"if\s*\(reconstructed\) return (.*?);(.*)", body, re.S).groups()
     text = text[:seam.start()] + text[seam.end():]
     text = text.replace("outputTransform(color, true)", reconstructed)
