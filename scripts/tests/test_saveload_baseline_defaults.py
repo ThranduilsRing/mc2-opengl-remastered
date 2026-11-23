@@ -13,6 +13,15 @@ sys.path.insert(0, str(ROOT / "tools"))
 import saveload_roundtrip as sl  # noqa: E402
 
 
+def test_masked_policy_mismatch_prints_exact_check_flags():
+    base = {"runs": [{}], "overall": "hash", "comparison": {"mode": "zero-masked-bytes-v1"}}
+    current = {"runs": [{}], "packets": 1, "resave_present": True}
+    ok, report = sl.check_baseline_record(base, current)
+    assert not ok
+    assert "baseline comparison policy differs" in report[0]
+    assert "--mask tools/save_noise_mask.json --first-save-only" in report[0]
+
+
 class _Stop(Exception):
     pass
 

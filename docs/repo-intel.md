@@ -24,6 +24,8 @@ Use these before grepping blind. Route by question:
 
 Vulkan-only before/after from two builds (the engine has no GL arm): montage, crops, diff heatmap and a MAD table. `--compare-only DIR_A DIR_B` reuses captures. Always A/B a day AND a night map (`mc2_01_saved_205644`, `mc2_10_saved_204523`). MAD is NOT a pass signal: mc2_10 with every building missing scored MAD 0.62. Look at the montage. Captures exit as soon as the PNG and sidecar are complete; the duration is only a timeout. See also [visual-verify.md](visual-verify.md).
 
+A/B captures default to 3840x2160; `--res 1080` opts out, and explicit `--env MC2_WIDTH=... --env MC2_HEIGHT=...` overrides remain supported. Each invocation stages in a unique directory under `MC2_LANE_SCRATCH`, or under `<install>/../_ab-stage` when unset; `--stage-root DIR` overrides the parent. Cleanup removes only that invocation's stages and private directory, retaining the parent; `--keep-stage` retains the stages too.
+
 ## graphify
 
 AST-only graph of owned code: `graphify-out/graph.json`, report `graphify-out/GRAPH_REPORT.md`. Run from the repo root: `graphify query "<question>"`, `graphify path "A" "B"`, `graphify explain "gosRenderer"`. Community labels are generic.

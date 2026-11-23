@@ -48,6 +48,7 @@ def default_seed() -> Path:
 ROOT_FILES = ("options.cfg", "system.cfg", "prefs.cfg", "minprefs.cfg", "orgprefs.cfg")
 # (prefix, excluded subdirectories under it). Backups and the random-map picker art are never read by a mission.
 TREES = (
+    ("data/tgl/_aoktxtmp/", ()),
     ("data/textures/", ("_txm_cache_bak/", "txm_backup/", "random_maps/")),
     ("data/art/mechicons/", ()),
     ("saved_bookmarks/", ()),
@@ -58,6 +59,8 @@ SKIP_SUFFIXES = (".bak", ".orig", ".orig_normal", ".tmp", ".log")
 def is_parity(rel: str) -> bool:
     """True when `rel` (install-relative, any case/slashes) is data a lane install must carry exactly as v0.4 does."""
     low = rel.replace("\\", "/").lstrip("/").casefold()
+    if low.startswith("data/tgl/_aoktxtmp/"):
+        return True  # Stock fingerprints count every workspace file, including temporary suffixes.
     if low in ROOT_FILES:
         return True
     if low.endswith(SKIP_SUFFIXES):
