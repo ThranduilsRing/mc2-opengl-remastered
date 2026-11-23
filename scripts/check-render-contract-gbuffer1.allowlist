@@ -89,6 +89,15 @@ shaders/vulkan/terrain_tier1.frag::GBuffer1 = vec4(gbufN * 0.5 + 0.5, 1.0);
 # motion_vectors.frag (reactive mask).
 shaders/vulkan/water_geom.frag::GBuffer1 = vec4(0.5, 0.5, 1.0, 0.875);
 
+# WATER, diagnostic early-outs only (five sites, one key; added 46ef891c9 / 425ea36dc, 11-17):
+# F.debug.x modes 6/7, the kWaterDbgPass 1/2 attribution pass and the kReflectionCoverage measurement
+# variants. None runs on a shipped path: debug modes are dev-only, kWaterDbgPass/kReflectionCoverage are
+# spec constants that only the water attribution/coverage sweeps set. a = 0.0 marks the pixel as not water
+# and not own-shadow (below every >0.5 consumer threshold), which is the honest value for a debug colour.
+# No GL counterpart (Vulkan-only debug views). Adjudicated by the orchestrator 2026-11-23 after the PC
+# nightly contracts stage went red on it.
+shaders/vulkan/water_geom.frag::GBuffer1 = vec4(0.0);
+
 # TERRAIN, CSM debug early-outs (uT.csmDebugMode 1..8, eight sites collapsing to
 # one key -- the expression is identical at every one). Same flatUp value as the
 # main pass above, which is the correct behaviour for a debug view: the debug
