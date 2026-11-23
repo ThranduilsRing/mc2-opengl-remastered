@@ -73,6 +73,15 @@ def test_material_source_failure_refuses_deploy(tmp_path, materials, corrupt, re
         dp.deploy([], tmp_path / 'target', False)
 
 
+def test_material_rows_carry_the_dest_stamp(tmp_path, materials):
+    _, manifest = materials
+    target = tmp_path / 'target'
+    rows = dp.ensure_terrain_materials(target)
+    assert set(rows) == set(manifest)
+    for rel, row in rows.items():
+        assert len(row) == 4 and row[3] == (target / rel).stat().st_mtime_ns
+
+
 def test_correct_target_does_not_need_golden(tmp_path, materials):
     source, manifest = materials
     target = tmp_path / 'target'

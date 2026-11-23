@@ -1865,10 +1865,14 @@ def ensure_terrain_materials(target_dir):
                     if temporary is not None and temporary.exists():
                         temporary.unlink()
                 log(f"restored required terrain material: {rel}")
+            before = dst.stat()
             content = dst.read_bytes()
+            after = dst.stat()
             if hashlib.sha1(content).hexdigest() != expected:
                 raise ValueError(f"deployed terrain material hash mismatch: {dst}")
-            hashes[rel] = (hashlib.sha256(content).hexdigest(), len(content))
+            # Stamped like every other row (None when the file changed while it was read), so the next prelaunch trusts it.
+            stable = (before.st_mtime_ns, before.st_size) == (after.st_mtime_ns, after.st_size)
+            hashes[rel] = (hashlib.sha256(content).hexdigest(), len(content), None, after.st_mtime_ns if stable else None)
         log("terrain materials verified: 14/14")
     except (OSError, ValueError, TypeError) as exc:
         fail(f"required terrain materials unavailable: {exc}")
@@ -1914,7 +1918,7 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
             # Lane seed: source hash and the verified seed file identity plus
             # NTFS ChangeTime match. No write, no second read of unchanged bytes.
             stamp = source_stamp(src)
-            dst_st = os.stat(dst)  # the seed verification confirmed this file's identity just above
+            dst_st = os.stat(dst)  # `verified` came from prepare_seed_delta, which confirmed this file's identity before deploy() started
             src_hashes[rel] = (verified[rel], dst_st.st_size, stamp[1] if stamp else None, dst_st.st_mtime_ns)
             skipped += 1
             continue
@@ -2602,10 +2606,23 @@ def shader_inventory_problems(source_root, published):
     return bad
 
 
-def verify_published_identity(target, source_root, head):
-    """Hash the published exe/shaders against the clean HEAD build, not its own CSV."""
+def require_pak_ok(target):
+    """A v0.4 publish must serve stock assets from the pak: raise unless <target>/.pak_deploy_status starts with OK."""
+    try:
+        status = (Path(target) / PAK_STATUS_NAME).read_text(encoding="utf-8").strip()
+    except OSError:
+        status = "missing"
+    if not status.startswith("OK"):
+        raise ValueError(f"{target}: pak deploy status is not OK ({status[:200]}); the published install would read FSTs")
+
+
+def verify_published_identity(target, source_root, head, require_pak=False):
+    """Hash the published exe/shaders against the clean HEAD build, not its own CSV. require_pak (the v0.4 publish): also
+    refuse a FALLBACK/SKIP/missing .pak_deploy_status."""
     from exe_fingerprint import extract, sha_agrees, build_current
     target, source_root = Path(target), Path(source_root)
+    if require_pak:
+        require_pak_ok(target)
     build = source_root / 'build64-ninja'
     for exe in (build / 'mc2.exe', target / 'mc2.exe'):
         fp = extract(exe)
@@ -2677,8 +2694,18 @@ def deploy_from_payload(payload, target, src_root, head):
                  'not in the payload and the target copy does not match the manifest (size or sha256); the PC v0.4 drifted since the delta was taken'))
     exe = target / 'mc2.exe'
     fp = extract(exe)
-    if sha256_file(str(exe)) != rows['mc2.exe']['sha256'] or not fp.get('present')             or not build_current(fp.get('sha'), head, Path(src_root), bool(fp.get('dirty'))):
+    if (sha256_file(str(exe)) != rows['mc2.exe']['sha256'] or not fp.get('present')
+            or not build_current(fp.get('sha'), head, Path(src_root), bool(fp.get('dirty')))):
         fail(f'{exe}: fingerprint != clean HEAD {head}')
+    # The incoming pak was packed elsewhere: judge it against the FSTs now installed here and record the outcome.
+    if (target / PAK_REL).is_file():
+        defect = quarantine_bad_pak(target)
+        if defect:
+            rows.pop(PAK_REL, None)
+            stamps.pop(PAK_REL, None)
+        write_pak_status(target, f"FALLBACK payload pak refused and moved aside ({defect})" if defect else "OK payload pak checked")
+    else:
+        write_pak_status(target, "SKIP no pak in the payload")
     hashes = {rel: (row['sha256'], int(row['bytes']), None, stamps[rel]) for rel, row in rows.items()}
     retire_unowned(str(target), hashes, own_shaders=any(rel.startswith('shaders/vulkan/') and rel.endswith('.spv') for rel in rows))
     dst = target / '.deployed_manifest.csv'
@@ -3196,6 +3223,24 @@ def registered_fsts(target):
     return found
 
 
+def _toc_hash(data):
+    """tools/mc2pak.fast_hash (that module refuses to import below Python 3.14, so it is mirrored here)."""
+    h, mask = 14695981039346656037, (1 << 64) - 1
+    end = len(data) // 8 * 8
+    for (w,) in struct.iter_unpack('<Q', data[:end]):
+        h = ((h ^ w) * 0x9E3779B97F4A7C15) & mask
+        h ^= h >> 29
+    for b in data[end:]:
+        h = ((h ^ b) * 1099511628211) & mask
+    return f'{h:016x}'
+
+
+def fst_snapshot(target):
+    """{name: (size, mtime_ns)} of the registered FSTs, or None: taken before and after a pack to catch a source that changed."""
+    fsts = registered_fsts(target)
+    return None if fsts is None else {name: (st.st_size, st.st_mtime_ns) for name, path in fsts for st in [path.stat()]}
+
+
 def pak_defect(pak, target):
     """Why `pak` cannot be the stock pak of `target`, or None. Cheap (central directory + 8 header bytes per FST, no decoding):
     the pak's own source list must equal the installed FSTs (name, size, entry count), every FST must be a whole archive with
@@ -3216,12 +3261,16 @@ def pak_defect(pak, target):
     for name, path in fsts:
         with open(path, "rb") as f:
             head = f.read(8)
-        magic, count = struct.unpack("<II", head) if len(head) == 8 else (0, 0)
-        if magic not in (0xFADDECAF, 0xCADDECAF) or count == 0 or 8 + count * 266 > path.stat().st_size:
+            magic, count = struct.unpack("<II", head) if len(head) == 8 else (0, 0)
+            whole = magic in (0xFADDECAF, 0xCADDECAF) and count > 0 and 8 + count * 266 <= path.stat().st_size
+            toc = head + f.read(count * 266) if whole else b""
+        if not whole:
             return f"{name} is not a whole FST (magic {magic:#x}, {count} entries, {path.stat().st_size} bytes): unfinished copy?"
         src = sources.get(name.lower())
         if src is None or src.get("size") != path.stat().st_size or src.get("entries") != count:
             return f"pak source {name} ({src and src.get('entries')} entries, {src and src.get('size')} bytes) != installed FST ({count} entries, {path.stat().st_size} bytes)"
+        if src.get("toc_hash") and src["toc_hash"] != _toc_hash(toc):  # same size and count but different content: packed from another FST
+            return f"pak source {name} toc_hash {src['toc_hash']} != installed FST {_toc_hash(toc)}"
         largest = max(largest, count)
     if len(items) - 1 < largest:
         return f"pak holds {len(items) - 1} entries, fewer than its largest source ({largest})"
@@ -3252,14 +3301,37 @@ def ensure_stock_pak(src_root, target, hashes):
     status = _ensure_stock_pak(src_root, target, hashes)
     kept = Path(target) / PAK_REL
     if not status.startswith("OK") and PAK_REL not in hashes and kept.is_file():
-        # retire_unowned never prunes the pak, so a failed or refused repack keeps the previous one: record it as it is on disk.
-        digest, size, stamp = hash_with_stamp(kept, sha256_file)
-        hashes[PAK_REL] = (digest, size, None, stamp)
-        log(f"WARN [PAK_DEPLOY] kept the previous {PAK_REL} ({size} bytes)")
+        # retire_unowned never prunes the pak, so a failed or refused repack keeps the previous one: record it as it is on disk,
+        # unless it is itself defective (then the game must read the FSTs, not a pak that disagrees with them).
+        defect = quarantine_bad_pak(target) if status.startswith("FALLBACK") else None
+        if defect:
+            status += f"; kept pak refused and moved aside ({defect})"
+        else:
+            digest, size, stamp = hash_with_stamp(kept, sha256_file)
+            hashes[PAK_REL] = (digest, size, None, stamp)
+            log(f"WARN [PAK_DEPLOY] kept the previous {PAK_REL} ({size} bytes)")
+    write_pak_status(target, status)
+
+
+def write_pak_status(target, status):
     try:
         (Path(target) / PAK_STATUS_NAME).write_text(status + "\n", encoding="utf-8")
     except OSError as exc:
         log(f"WARN [PAK_DEPLOY] could not write {PAK_STATUS_NAME}: {exc}")
+
+
+def quarantine_bad_pak(target):
+    """pak_defect of the installed pak; when defective, move it to paks/stock.mc2pak.defect-<ts> and return the reason, else None.
+    Not judged (None) without a registered FST set to compare against."""
+    kept = Path(target) / PAK_REL
+    if not kept.is_file() or registered_fsts(target) is None:
+        return None
+    defect = pak_defect(kept, target)
+    if defect:
+        aside = kept.with_name(f"{kept.name}.defect-{time.strftime('%Y%m%d-%H%M%S')}")
+        replace_file(str(kept), str(aside))
+        log(f"WARN [PAK_DEPLOY] installed {PAK_REL} is defective ({defect}); moved to {aside.name}, the game reads the FSTs")
+    return defect
 
 
 def fail_status(reason):
@@ -3287,6 +3359,7 @@ def _ensure_stock_pak(src_root, target, hashes):
             cache.mkdir(parents=True, exist_ok=True)
             partial = cache / f"stock.{os.getpid()}.partial"
             started = time.perf_counter()
+            fsts_before = fst_snapshot(target)
             log(f"[PAK_DEPLOY] cache miss key={key}: packing (about 9 minutes)")
             # Outside the bounded deploy clock: a timeout here must fall back to FST (rc 0, manifest written), never os._exit(8).
             try:
@@ -3300,7 +3373,8 @@ def _ensure_stock_pak(src_root, target, hashes):
             if r.returncode != 0 or not partial.is_file():
                 partial.unlink(missing_ok=True)
                 return fail_status(f"mc2pak pack failed rc={r.returncode}: {(r.stderr or r.stdout).strip()[-300:]}")
-            defect = pak_defect(partial, target)
+            defect = ("a source FST changed while packing (size or mtime differs from before the pack)"
+                      if fst_snapshot(target) != fsts_before else pak_defect(partial, target))
             if defect:
                 partial.unlink(missing_ok=True)
                 return fail_status(f"packed pak refused, not cached ({defect})")
@@ -3316,19 +3390,21 @@ def _ensure_stock_pak(src_root, target, hashes):
             log(f"[PAK_DEPLOY] cache hit key={key}")
         dst = Path(target) / PAK_REL
         dst.parent.mkdir(parents=True, exist_ok=True)
-        if not pak_copy_current(dst, pak, digest_file.read_text().strip()):
+        want = digest_file.read_text().strip()
+        row = pak_copy_current(dst, pak, want)  # (digest, size, stamp) when the installed pak is already the private copy: hashed once
+        if row is None:
             # Always a private copy: the engine maps the pak, and a hardlinked mapped pak makes every install sharing it
             # undeletable (WinError 5) while any one game runs.
             tmp = dst.with_name(f".stock.mc2pak.new-{os.getpid()}")
             tmp.unlink(missing_ok=True)
             shutil.copy2(pak, tmp)
-            if sha256_file(tmp) != digest_file.read_text().strip():  # a bad copy never replaces the pak that is there
+            if sha256_file(tmp) != want:  # a bad copy never replaces the pak that is there
                 tmp.unlink(missing_ok=True)
                 return fail_status("copy of the cached pak does not match its digest")
             replace_file(str(tmp), str(dst))
-        # Hash the destination itself (the stamp is taken with this hash), never inherit the cache's digest unverified.
-        want = digest_file.read_text().strip()
-        got, size, stamp = hash_with_stamp(dst, sha256_file)
+            row = hash_with_stamp(dst, sha256_file)
+        # The row's hash is of the destination itself (the stamp is taken with it), never the cache's digest unverified.
+        got, size, stamp = row
         if got != want:
             return fail_status(f"installed pak sha256 {got[:16]} != cached {want[:16]}")
         hashes[PAK_REL] = (got, size, None, stamp)
@@ -3339,12 +3415,16 @@ def _ensure_stock_pak(src_root, target, hashes):
 
 
 def pak_copy_current(dst, pak, digest):
-    """True when dst is already a private (st_nlink == 1) copy of the cached pak: same size and recorded digest."""
+    """(digest, size, dest stamp) when dst is already a private (st_nlink == 1) copy of the cached pak (same size, recorded
+    digest; hashed once, with its stamp), else None."""
     try:
         st = dst.stat()
-        return st.st_nlink == 1 and st.st_size == pak.stat().st_size and sha256_file(dst) == digest
+        if st.st_nlink != 1 or st.st_size != pak.stat().st_size:
+            return None
+        row = hash_with_stamp(dst, sha256_file)
+        return row if row[0] == digest else None
     except OSError:
-        return False
+        return None
 
 
 def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
