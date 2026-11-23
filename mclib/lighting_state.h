@@ -100,7 +100,7 @@ inline double advanceTod(const TodCurve& curve, double t, float rate)
 inline double restoreTod(const TodCurve& curve, uint32_t hash, double t)
 {
 	return hash == curve.hash && std::isfinite(t)
-		? std::clamp(t, double(curve.keys.front().t), double(curve.keys.back().t)) : curve.start;
+		? std::clamp(t, static_cast<double>(curve.keys.front().t), static_cast<double>(curve.keys.back().t)) : curve.start;
 }
 
 template<class Save>

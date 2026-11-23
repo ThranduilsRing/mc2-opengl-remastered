@@ -994,7 +994,8 @@ void Camera::captureBakeReference(FitIniFile* file)
 	read(file->readIdFloat("BakeFogFull", saved.fogFull));
 	if (!present) return;
 	if (present != 10) {
-		mc2::fmt::print_err("[TOD] warning: incomplete Bake keys; using authored/curve-start reference\n");
+		if (mc2_diag::tagRequested("TOD"))
+			mc2::fmt::print_err("[TOD] warning: incomplete Bake keys; using authored/curve-start reference\n");
 		return;
 	}
 	float angle = 0;
@@ -1002,7 +1003,8 @@ void Camera::captureBakeReference(FitIniFile* file)
 		(file->readIdFloat("TodSunYaw", angle) == NO_ERR && std::isfinite(angle));
 	const bool match = file->readIdULong("TodCurveHash", hash) == NO_ERR && todCurve && hash == todCurve->hash;
 	if (!match && !overrideSaved) {
-		mc2::fmt::print_err("[TOD] ignored Bake keys: curve absent or hash mismatch; using authored/curve-start reference\n");
+		if (mc2_diag::tagRequested("TOD"))
+			mc2::fmt::print_err("[TOD] ignored Bake keys: curve absent or hash mismatch; using authored/curve-start reference\n");
 		return;
 	}
 	saved.fogColor = static_cast<uint32_t>(color);
