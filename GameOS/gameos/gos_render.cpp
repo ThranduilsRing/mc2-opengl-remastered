@@ -279,10 +279,10 @@ static void start_main_stall_watchdog()
         for (;;) {
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
             const Uint64 last = s_lastWindowPumpMs.load(std::memory_order_relaxed);
-            const int edge = watch.step(last ? SDL_GetTicks64() - last : 0);
-            if (edge == 0 || !mc2_diag::enabled()) continue;
+            const auto edge = watch.step(last ? SDL_GetTicks64() - last : 0);
+            if (edge == mc2::loadpump::StallEdge::None || !mc2_diag::enabled()) continue;
             char data[96];
-            mc2::fmt::to_buf(data, "{{\"event\":\"{}\",\"gap_ms\":{}}}", edge > 0 ? "begin" : "end", watch.gap);
+            mc2::fmt::to_buf(data, "{{\"event\":\"{}\",\"gap_ms\":{}}}", edge == mc2::loadpump::StallEdge::Begin ? "begin" : "end", watch.gap);
             mc2_diag::writeEvent("MAIN_STALL", 1, 0, data);
             mc2_diag::flush();
         }
