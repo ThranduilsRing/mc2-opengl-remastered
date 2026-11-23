@@ -388,6 +388,7 @@ struct FitIniFile {
     long readIdUCharArray(const char* key, uint8_t* v, int n) { for(int i=0;i<n;++i) v[i]=uint8_t(values.at(std::string(key)+char('0'+i))); return 0; }
     void writeIdUCharArray(const char* key, uint8_t* v, int n) { for(int i=0;i<n;++i) values[std::string(key)+char('0'+i)]=v[i]; }
     void writeIdULong(const char* key, uint32_t v) { values[key]=v; }
+    void writeIdUChar(const char* key, uint8_t v) { values[key]=v; }
     void write(MemoryPtr p, size_t n) { std::istringstream in(std::string(reinterpret_cast<char*>(p),n)); std::string type,key,eq; double v; in>>type>>key>>eq>>v; values[key]=v; }
 };
 namespace mc2 { namespace lighting = ::mc2::lighting;
@@ -410,6 +411,10 @@ struct Camera {
     double todT=0; float todRate=0;
     LightingState lightMembers() const; LightingState currentLighting() const; LightingState bakeReferenceLighting() const;
     void captureBakeReference(FitIniFile*); void saveBakeReference(FitIniFile*) const;
+    void restoreSunOverride(FitIniFile*); void saveSunOverride(FitIniFile*) const;
+    void saveColors(FitIniFile* file) const {
+#include "camera_save_colors.inc"
+    }
     void publishLight(); void setRainLight(float); void clearRainLight(); void setKillAmbient(bool); void advanceTimeOfDay();
     static glm::vec3 sunDirectionFor(float,float);
 };
@@ -433,4 +438,23 @@ TEST_CASE("LightingState/Camera bake snapshot survives rain KillAmbient moved su
     CHECK(restored.bakeReferenceLighting()==loaded);
     Camera stock; stock.captureBakeReference(nullptr); FitIniFile unchanged; stock.saveBakeReference(&unchanged);
     CHECK(unchanged.values.empty());
+}
+
+TEST_CASE("LightingState/Camera curve save keeps the undimmed base and optional sun override") {
+    using namespace camera_lighting_test;
+    Camera c; c.todBase=c.lightMembers();
+    c.todCurve=std::make_shared<TodCurve>(TodCurve{{{0}, {1}}});
+    c.lightMods.sunPitch=31.234567f; c.lightMods.sunYaw=-62.345678f;
+    c.setRainLight(2);
+    const auto before=c.currentLighting();
+    FitIniFile save; c.saveColors(&save); c.saveSunOverride(&save);
+    CHECK(save.values.at("LightRed")==240); CHECK(save.values.at("AmbientRed")==80);
+    Camera restored; restored.todCurve=c.todCurve; restored.todBase=c.todBase;
+    const char* sun[]={"LightRed","LightGreen","LightBlue"};
+    const char* amb[]={"AmbientRed","AmbientGreen","AmbientBlue"};
+    for(int i=0;i<3;++i) { restored.todBase.sun[i]=uint8_t(save.values.at(sun[i])); restored.todBase.amb[i]=uint8_t(save.values.at(amb[i])); }
+    restored.restoreSunOverride(&save); restored.setRainLight(2);
+    CHECK(restored.currentLighting()==before);
+    CHECK(restored.lightMods.sunPitch==c.lightMods.sunPitch); CHECK(restored.lightMods.sunYaw==c.lightMods.sunYaw);
+    Camera stock; FitIniFile unchanged; stock.saveSunOverride(&unchanged); CHECK(unchanged.values.empty());
 }

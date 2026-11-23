@@ -854,6 +854,9 @@ file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_world_lights.inc" CONTE
 mc2_height_slice(camera_lighting mclib/camera.cpp
     "mc2::lighting::LightingState Camera::lightMembers() const" "void Camera::flatLight(")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_lighting.inc" CONTENT "${camera_lighting}")
+mc2_height_slice(camera_save_colors mclib/camera.cpp
+    "file->writeIdUChar( \"LightRed\"" "\tif (terrainShadowColorEnabled)")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_save_colors.inc" CONTENT "${camera_save_colors}")
 mc2_height_slice(camera_sun_direction mclib/camera_update.cpp
     "glm::vec3 Camera::sunDirectionFor (" "long Camera::update (")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_sun_direction.inc" CONTENT "${camera_sun_direction}")

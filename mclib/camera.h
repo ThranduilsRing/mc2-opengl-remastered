@@ -1503,6 +1503,8 @@ class Camera
 		mc2::lighting::LightingState bakeReferenceLighting (void) const;
 		void captureBakeReference(FitIniFile* file);
 		void saveBakeReference(FitIniFile* file) const;
+		void restoreSunOverride(FitIniFile* file);
+		void saveSunOverride(FitIniFile* file) const;
 		mc2::lighting::LightingState bakeSnapshot;
 		// Weather / KillAmbientLight / sun control go through these, never the members, so a curve cannot override them.
 		void setRainLight (float divisor);   // sun and ambient divided by `divisor` (the old weather expression)

@@ -500,6 +500,7 @@ long Camera::init (FitIniFilePtr cameraFile )
 							mc2::fmt::print_err("[TOD] save missing clock or curve hash mismatch; restarting at {:.6f}\n", todCurve->start);
 					}
 					todBase = lightMembers();   // the authored state (sun keys applied); the fog is added at the fog read
+					if (fromSave) restoreSunOverride(cameraFile);
 					if (todCurve->droppedKeys && mc2_diag::tagRequested("TOD"))
 						mc2::fmt::print_err("[TOD] warning: dropped {} keys past the cap of {}\n", todCurve->droppedKeys, mc2::lighting::kMaxTodKeys);
 					if (mc2_diag::tagRequested("TOD"))
@@ -1001,6 +1002,23 @@ void Camera::saveBakeReference(FitIniFile* file) const
 	precise("BakeFogStart", snapshot.fogStart); precise("BakeFogFull", snapshot.fogFull);
 }
 
+void Camera::restoreSunOverride(FitIniFile* file)
+{
+	float angle;
+	if (file->readIdFloat("TodSunPitch", angle) == NO_ERR && std::isfinite(angle)) lightMods.sunPitch = angle;
+	if (file->readIdFloat("TodSunYaw", angle) == NO_ERR && std::isfinite(angle)) lightMods.sunYaw = angle;
+}
+
+void Camera::saveSunOverride(FitIniFile* file) const
+{
+	const auto write = [file](const char* key, float angle) {
+		char line[128]; mc2::fmt::to_buf(line, "f {} = {:.9g}\r\n", key, angle);
+		file->write(reinterpret_cast<MemoryPtr>(line), strlen(line));
+	};
+	if (lightMods.sunPitch) write("TodSunPitch", *lightMods.sunPitch);
+	if (lightMods.sunYaw) write("TodSunYaw", *lightMods.sunYaw);
+}
+
 // The one writer of the light members. No curve: the day colours through the rain modulator (weather.cpp's old expression, byte
 // for byte; nothing else is touched). A curve: sun, ambient, pitch, yaw, direction and fog from the composed state, and the
 // directional world light re-aimed, so the member readers the renderer still has agree with currentLighting().
@@ -1082,6 +1100,7 @@ bool Camera::save( FitIniFile* file )
 		void writeIdULong(std::string_view name, uint32_t value) { file.writeIdULong(name, value); }
 	} clockSave{*file};
 	saveBakeReference(file);
+	saveSunOverride(file);
 	mc2::lighting::saveTod(clockSave, todCurve.get(), todT, todRate);
 	if (todCurve && mc2_diag::tagRequested("TOD"))
 		mc2::fmt::print_err("[TOD] save t={:.9f} pitch={:.6f} yaw={:.6f}\n", todT, lightPitch, lightYaw);
