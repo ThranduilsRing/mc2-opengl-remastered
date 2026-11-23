@@ -114,7 +114,8 @@ bool clearMenuMatte(std::string_view path, Pixels& px) {
                       key == "mcl_mm_5" || key == "mcl_mm_12";
     const bool dialog = key.starts_with("mcl_dialog_");
     const bool frame = key == "mcl_splashscreen_frame_1" || key == "mcl_splashscreen_frame_2";
-    if ((!menu && !dialog && !frame) || px.w <= 0 || px.h <= 0 || (px.channels != 3 && px.channels != 4)) return false;
+    const bool saveList = key.size() == 8 && key.starts_with("mcl_sm_") && key[7] >= '1' && key[7] <= '4';
+    if ((!menu && !dialog && !frame && !saveList) || px.w <= 0 || px.h <= 0 || (px.channels != 3 && px.channels != 4)) return false;
     std::vector<uint8_t> rgba(static_cast<size_t>(px.w) * px.h * 4);
     for (int y = 0; y < px.h; ++y) for (int x = 0; x < px.w; ++x) {
         const size_t i = static_cast<size_t>(y) * px.w + x, src = i * px.channels, dst = i * 4;
@@ -173,6 +174,48 @@ bool clearMenuMatte(std::string_view path, Pixels& px) {
     }
     for (size_t i = 0; i < exterior.size(); ++i)
         if (dialog && !exterior[i]) rgba[i * 4 + 3] = px.channels == 4 ? px.data[i * 4 + 3] : 255;
+    if (!dialog && !frame) {
+        // Pure-black matte (value < 4) connected to the sheet edge is empty space, including the
+        // hazard-stripe and frame pieces the openings above leave opaque; stripe paint is 4+ and stays.
+        // Dark pixels (< 16) within two pixels of that matte ramp out so no black fringe is left.
+        const size_t w = static_cast<size_t>(px.w), h = static_cast<size_t>(px.h);
+        const auto srcValue = [&](size_t i) { return std::max({px.data[i * px.channels], px.data[i * px.channels + 1], px.data[i * px.channels + 2]}); };
+        const auto skip = [&](size_t i) { return key == "mcl_mm_12" && i / w < 96; };
+        std::vector<bool> clear(w * h, false);
+        pending.clear();
+        const auto seed = [&](size_t i) {
+            if (!clear[i] && !skip(i) && (srcValue(i) < 4 || rgba[i * 4 + 3] == 0)) { clear[i] = true; pending.push_back(i); }
+        };
+        for (size_t x = 0; x < w; ++x) { seed(x); seed((h - 1) * w + x); }
+        for (size_t y = 0; y < h; ++y) { seed(y * w); seed(y * w + w - 1); }
+        for (size_t at = 0; at < pending.size(); ++at) {
+            const size_t i = pending[at];
+            if (i % w) seed(i - 1);
+            if (i % w + 1 < w) seed(i + 1);
+            if (i >= w) seed(i - w);
+            if (i + w < clear.size()) seed(i + w);
+        }
+        std::vector<bool> grown = clear;
+        for (size_t i = 0; i < clear.size(); ++i) if (clear[i]) rgba[i * 4 + 3] = 0;
+        for (int pass = 0; pass < 2; ++pass) {
+            std::vector<bool> next = grown;
+            for (size_t y = 0; y < h; ++y) for (size_t x = 0; x < w; ++x) {
+                const size_t i = y * w + x;
+                if (grown[i] || skip(i) || srcValue(i) >= 16) continue;
+                bool touches = false;
+                for (int dy = -1; dy <= 1 && !touches; ++dy) for (int dx = -1; dx <= 1; ++dx) {
+                    const long nx = static_cast<long>(x) + dx, ny = static_cast<long>(y) + dy;
+                    const long j = static_cast<long>(i) + dy * static_cast<long>(w) + dx;
+                    if (nx >= 0 && ny >= 0 && nx < static_cast<long>(w) && ny < static_cast<long>(h) && grown[static_cast<size_t>(j)]) { touches = true; break; }
+                }
+                if (!touches) continue;
+                next[i] = true;
+                const int ramp = std::clamp((srcValue(i) - 4) * 255 / 12, 0, 255);
+                rgba[i * 4 + 3] = static_cast<uint8_t>(std::min<int>(rgba[i * 4 + 3], ramp));
+            }
+            grown = std::move(next);
+        }
+    }
     px.channels = 4;
     px.data = std::move(rgba);
     return true;
