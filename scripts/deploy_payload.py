@@ -339,6 +339,14 @@ GAME_DATA_PAYLOAD = [
     "data/art/gui/mcl_mn_4.tga",
     "data/terrain_materials.json",
     "data/visual_tuning.json",
+    # ImGui UI fonts (GuiRuntime resolves exe/data/fonts/ui first); without them every defs UI text falls back
+    # to the ImGui bitmap default font (blocky, low-res at 4K).
+    "data/fonts/ui/Agency-Regular.ttf",
+    "data/fonts/ui/Roboto-Medium.ttf",
+    "data/fonts/ui/Cousine-Regular.ttf",
+    "data/fonts/ui/Impact.ttf",
+    "data/fonts/ui/LiberationSans-Regular.ttf",
+    "data/fonts/ui/LiberationSansNarrow-Regular.ttf",
     # Native vegetation packs these tracked cards into its 4x2 atlas at load.
     "data/vegetation/cards/grass_01.png",
     "data/vegetation/cards/grass_02.png",

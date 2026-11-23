@@ -764,9 +764,6 @@ void UiDefs::GameOSPage::render(int xOffset, int yOffset)
                 } else if (e.kind == UiElement::List) {
                     drawUiListElement(e, xOffset, yOffset, s);
                     ++drawn;
-                } else if (e.kind == UiElement::Slider) {
-                    drawUiSliderElement(e, xOffset, yOffset, s);
-                    ++drawn;
                 } else if (e.kind == UiElement::Combo) {
                     ++drawn;
                     // Collapsed header: fill, border, arrow indicator, selected item text.
@@ -814,7 +811,10 @@ void UiDefs::GameOSPage::render(int xOffset, int yOffset)
                 }
                 break;
             case Buttons: {
-                if (e.kind == UiElement::Button &&
+                if (e.kind == UiElement::Slider) {	// above the translucent fills (a translucent panel must not dim its sliders)
+                    drawUiSliderElement(e, xOffset, yOffset, s);
+                    ++drawn;
+                } else if (e.kind == UiElement::Button &&
                     e.buttonStyle != UiElement::ButtonStyle::Normal) {
                     // Modern checkbox/radio glyph + stable label (no flash).
                     drawUiCheckRadioElement(e, xOffset, yOffset, s);

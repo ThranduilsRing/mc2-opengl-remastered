@@ -17,6 +17,8 @@ namespace {
 constexpr unsigned long kRowBase = 100;     // value button of row i sends 100 + i
 constexpr unsigned long kAccept = 90, kDefaults = 91, kPreset = 92, kBack = 93;
 
+std::string sliderKey( std::size_t row ) { return std::string( "game.mcl_gamerules.slider.row" ).append( std::to_string( row ) ); }
+std::string valueKey( std::size_t row ) { return std::string( "game.mcl_gamerules.text.value" ).append( std::to_string( row ) ); }
 std::string rowKey( std::string_view kind, std::size_t row ) { return std::string( "game.mcl_gamerules." ).append( kind ).append( ".row" ).append( std::to_string( row ) ); }
 
 // "PilotSkillWeight" -> "PILOT SKILL WEIGHT", "CBillMultiplier" -> "C BILL MULTIPLIER".
@@ -55,6 +57,7 @@ bool ruleActive( std::string_view key )
 		if ( k == key ) return false;
 	return true;
 }
+constexpr long kMountX = 489, kMountY = 200;
 constexpr unsigned int kActiveColor = 0xffc66600, kGreyColor = 0xff6b6b6b, kActiveValueColor = 0xff5C96C2;
 }  // namespace
 
@@ -83,6 +86,10 @@ bool GameRulesDialog::init()
 void GameRulesDialog::begin( const mc2::rules::GameRules& start )
 {
 	working = start;
+	focusRow = -1;
+	showFocus = false;
+	moveFocus( 1 );
+	moveTo( kMountX, kMountY );	// page space is 1778x1000 (16:9, 1:1 at 1080p); centre the 600x500 panel in it
 	status = RUNNING;
 	bDone = false;
 	refreshRows();
@@ -97,14 +104,35 @@ void GameRulesDialog::refreshRows()
 	{
 		const bool used = i < mc2::rules::kRuleCount;
 		setDefsElementVisible( rowKey( "text", i ), used );
-		setDefsElementVisible( rowKey( "button", i ), used );
-		if ( !used ) continue;
+		const bool slider = used && mc2::rules::isSlider( mc2::rules::kRules[i] );
+		if ( !used )
+		{
+			setDefsElementVisible( rowKey( "button", i ), false );
+			continue;
+		}
 		const mc2::rules::Rule& r = mc2::rules::kRules[i];
+		if ( slider )
+		{
+			lastSlider[i] = mc2::rules::sliderFromValue( r, mc2::rules::getLong( working, r ) );
+			setDefsSliderValue( sliderKey( i ), static_cast<int>( lastSlider[i] ) );
+			const long v = mc2::rules::getLong( working, r );
+			setDefsElementText( valueKey( i ), std::to_string( v ) + ( r.kind == mc2::rules::Kind::Percent ? "%" : "" ) );
+			setDefsElementTextColor( valueKey( i ), ruleActive( r.key ) ? kActiveValueColor : kGreyColor );
+		}
 		const bool active = ruleActive( r.key );
 		setDefsElementText( rowKey( "text", i ), labelFor( r.key ) + ( active ? "" : "  (not yet active)" ) );
-		setDefsElementText( rowKey( "button", i ), valueText( working, r ) );
+		if ( !slider )	// setting text reveals an element, so a slider row's value button is never given any
+		{
+			// Upper case, like the labels: Agency's lower-case 'u' glyph renders a stray superscript ("est") over the letter.
+			std::string vt = valueText( working, r );
+			for ( char& c : vt ) c = static_cast<char>( std::toupper( static_cast<unsigned char>( c ) ) );
+			setDefsElementText( rowKey( "button", i ), vt );
+			setDefsElementTextColor( rowKey( "button", i ), active ? kActiveValueColor : kGreyColor );
+		}
 		setDefsElementTextColor( rowKey( "text", i ), active ? kActiveColor : kGreyColor );
-		setDefsElementTextColor( rowKey( "button", i ), active ? kActiveValueColor : kGreyColor );
+		setDefsElementVisible( rowKey( "button", i ), !slider );
+		setDefsElementVisible( sliderKey( i ), slider );
+		setDefsElementVisible( valueKey( i ), slider );
 	}
 }
 
@@ -125,7 +153,9 @@ int GameRulesDialog::handleMessage( unsigned long, unsigned long who )
 {
 	if ( bDone ) return 0;
 	if ( who >= kRowBase && who < kRowBase + mc2::rules::kRuleCount )
-		cycleRow( who - kRowBase );
+	{
+		if ( !mc2::rules::isSlider( mc2::rules::kRules[who - kRowBase] ) ) cycleRow( who - kRowBase );
+	}
 	else if ( who == kDefaults )
 		working = mc2::rules::GameRules{};
 	else if ( who == kPreset )
@@ -144,12 +174,60 @@ int GameRulesDialog::handleMessage( unsigned long, unsigned long who )
 	return 0;
 }
 
+// The slider rows: the page's GuiSlider (drag + click) moved -> apply the nearest notch and put the slider on it.
+void GameRulesDialog::pollSliders()
+{
+	for ( std::size_t i = 0; i < mc2::rules::kRuleCount; ++i )
+	{
+		const mc2::rules::Rule& r = mc2::rules::kRules[i];
+		if ( !mc2::rules::isSlider( r ) ) continue;
+		const long pos = getDefsSliderValue( sliderKey( i ) );
+		if ( pos == lastSlider[i] ) continue;
+		focusRow = static_cast<int>( i );
+		showFocus = false;	// pointer use: no outline
+		const long v = mc2::rules::valueFromSlider( r, pos );
+		if ( v != mc2::rules::getLong( working, r ) )
+		{
+			mc2::rules::setLong( working, r, v );
+			soundSystem->playDigitalSample( LOG_MAINMENUBUTTON );
+		}
+		refreshRows();	// re-snaps the slider and the value text
+	}
+}
+
+// Up/Down (and Tab) pick which slider Left/Right move.
+void GameRulesDialog::moveFocus( int dir )
+{
+	const int n = static_cast<int>( mc2::rules::kRuleCount );
+	for ( int k = 1; k <= n; ++k )
+	{
+		const int i = ( ( focusRow < 0 ? ( dir > 0 ? -1 : 0 ) : focusRow ) + dir * k % n + n ) % n;
+		if ( mc2::rules::isSlider( mc2::rules::kRules[i] ) ) { focusRow = i; return; }
+	}
+}
+
 void GameRulesDialog::update()
 {
 	if ( bDone ) return;
 	userInput->mouseOn();
 	userInput->setMouseCursor( mState_NORMAL );
 	LogisticsScreen::update();
+	pollSliders();
+	if ( focusRow >= 0 )
+	{
+		const mc2::rules::Rule& fr = mc2::rules::kRules[focusRow];
+		const int dir = gos_GetKeyStatus( KEY_LEFT ) == KEY_RELEASED ? -1 : ( gos_GetKeyStatus( KEY_RIGHT ) == KEY_RELEASED ? 1 : 0 );
+		if ( dir || gos_GetKeyStatus( KEY_UP ) == KEY_RELEASED || gos_GetKeyStatus( KEY_DOWN ) == KEY_RELEASED || gos_GetKeyStatus( KEY_TAB ) == KEY_RELEASED )
+			showFocus = true;
+		if ( dir )
+		{
+			mc2::rules::setLong( working, fr, mc2::rules::nudgeValue( fr, mc2::rules::getLong( working, fr ), dir ) );
+			soundSystem->playDigitalSample( LOG_MAINMENUBUTTON );
+			refreshRows();
+		}
+		if ( gos_GetKeyStatus( KEY_UP ) == KEY_RELEASED ) moveFocus( -1 );
+		else if ( gos_GetKeyStatus( KEY_DOWN ) == KEY_RELEASED || gos_GetKeyStatus( KEY_TAB ) == KEY_RELEASED ) moveFocus( 1 );
+	}
 	if ( gos_GetKeyStatus( KEY_RETURN ) == KEY_RELEASED ) handleMessage( 0, kAccept );
 	else if ( gos_GetKeyStatus( KEY_ESCAPE ) == KEY_RELEASED ) handleMessage( 0, kBack );
 }
@@ -160,5 +238,17 @@ void GameRulesDialog::render()
 	GUI_RECT rect = { 0, 0, Environment.screenWidth, Environment.screenHeight };
 	drawRect( rect, 0xaf000000 );
 	LogisticsScreen::render( 0, 0 );
+	// Default mark (orange tick above the groove) and the keyboard focus outline, per slider row.
+	for ( std::size_t i = 0; i < mc2::rules::kRuleCount; ++i )
+	{
+		const mc2::rules::Rule& r = mc2::rules::kRules[i];
+		float x, y, w, h;
+		if ( !mc2::rules::isSlider( r ) || !getDefsElementScreenRect( sliderKey( i ), x, y, w, h ) ) continue;
+		const float thumbW = h * 0.55f > 8.0f ? h * 0.55f : 8.0f;
+		const float frac = static_cast<float>( mc2::rules::sliderFromValue( r, mc2::rules::getLong( mc2::rules::GameRules{}, r ) ) ) / mc2::rules::kSliderRes;
+		const float tickW = h * 0.12f > 2.0f ? h * 0.12f : 2.0f;
+		drawDefsRect( x + frac * ( w - thumbW ) + ( thumbW - tickW ) * 0.5f, y - h * 0.22f, tickW, h * 0.3f, 0xffc66600, true );
+		if ( showFocus && static_cast<int>( i ) == focusRow ) drawDefsRect( x - 2.0f, y - 2.0f, w + 4.0f, h + 4.0f, 0xff5C96C2, false );
+	}
 	gos_SetHudScaleExempt( false );
 }

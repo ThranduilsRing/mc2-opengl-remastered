@@ -9,8 +9,8 @@ GuiPage {
     sourceKind = "defs_only_screen"
     layout = "absolute"
     coordinateSpace = "screen_absolute"
-    localWidth = 800
-    localHeight = 600
+    localWidth = 1778
+    localHeight = 1000
     mountOffset = "0,0"
     overlayGameOS = true
     renderMode = "gameos_overlay"
@@ -586,4 +586,283 @@ GuiButton {
     borderColorArgb = "0xff005392"
     legacyAnimateBmp = false
     legacyAnimateText = false
+}
+
+GuiSlider {
+    key = "game.mcl_gamerules.slider.row0"
+    pageKey = "game.mcl_gamerules"
+    rect = "440,118,150,20"
+    maxValue = 1000
+    fillColorArgb = "0xff10242e"
+    colorArgb = "0xff5C96C2"
+    highlightColorArgb = "0xffc66600"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcl_gamerules.text.value0"
+    pageKey = "game.mcl_gamerules"
+    role = "text"
+    layer = "text"
+    rect = "598,112,72,32"
+    controlRect = "598,112,72,32"
+    textRect = "598,112,72,32"
+    visibleText = "-"
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "left"
+    textAnchor = "left"
+    wrapText = false
+    colorArgb = "0xff5C96C2"
+    legacyColor = 0
+    outline = "FALSE"
+    visible = false
+}
+
+GuiSlider {
+    key = "game.mcl_gamerules.slider.row1"
+    pageKey = "game.mcl_gamerules"
+    rect = "440,158,150,20"
+    maxValue = 1000
+    fillColorArgb = "0xff10242e"
+    colorArgb = "0xff5C96C2"
+    highlightColorArgb = "0xffc66600"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcl_gamerules.text.value1"
+    pageKey = "game.mcl_gamerules"
+    role = "text"
+    layer = "text"
+    rect = "598,152,72,32"
+    controlRect = "598,152,72,32"
+    textRect = "598,152,72,32"
+    visibleText = "-"
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "left"
+    textAnchor = "left"
+    wrapText = false
+    colorArgb = "0xff5C96C2"
+    legacyColor = 0
+    outline = "FALSE"
+    visible = false
+}
+
+GuiSlider {
+    key = "game.mcl_gamerules.slider.row2"
+    pageKey = "game.mcl_gamerules"
+    rect = "440,198,150,20"
+    maxValue = 1000
+    fillColorArgb = "0xff10242e"
+    colorArgb = "0xff5C96C2"
+    highlightColorArgb = "0xffc66600"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcl_gamerules.text.value2"
+    pageKey = "game.mcl_gamerules"
+    role = "text"
+    layer = "text"
+    rect = "598,192,72,32"
+    controlRect = "598,192,72,32"
+    textRect = "598,192,72,32"
+    visibleText = "-"
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "left"
+    textAnchor = "left"
+    wrapText = false
+    colorArgb = "0xff5C96C2"
+    legacyColor = 0
+    outline = "FALSE"
+    visible = false
+}
+
+GuiSlider {
+    key = "game.mcl_gamerules.slider.row3"
+    pageKey = "game.mcl_gamerules"
+    rect = "440,238,150,20"
+    maxValue = 1000
+    fillColorArgb = "0xff10242e"
+    colorArgb = "0xff5C96C2"
+    highlightColorArgb = "0xffc66600"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcl_gamerules.text.value3"
+    pageKey = "game.mcl_gamerules"
+    role = "text"
+    layer = "text"
+    rect = "598,232,72,32"
+    controlRect = "598,232,72,32"
+    textRect = "598,232,72,32"
+    visibleText = "-"
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "left"
+    textAnchor = "left"
+    wrapText = false
+    colorArgb = "0xff5C96C2"
+    legacyColor = 0
+    outline = "FALSE"
+    visible = false
+}
+
+GuiSlider {
+    key = "game.mcl_gamerules.slider.row4"
+    pageKey = "game.mcl_gamerules"
+    rect = "440,278,150,20"
+    maxValue = 1000
+    fillColorArgb = "0xff10242e"
+    colorArgb = "0xff5C96C2"
+    highlightColorArgb = "0xffc66600"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcl_gamerules.text.value4"
+    pageKey = "game.mcl_gamerules"
+    role = "text"
+    layer = "text"
+    rect = "598,272,72,32"
+    controlRect = "598,272,72,32"
+    textRect = "598,272,72,32"
+    visibleText = "-"
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "left"
+    textAnchor = "left"
+    wrapText = false
+    colorArgb = "0xff5C96C2"
+    legacyColor = 0
+    outline = "FALSE"
+    visible = false
+}
+
+GuiSlider {
+    key = "game.mcl_gamerules.slider.row5"
+    pageKey = "game.mcl_gamerules"
+    rect = "440,318,150,20"
+    maxValue = 1000
+    fillColorArgb = "0xff10242e"
+    colorArgb = "0xff5C96C2"
+    highlightColorArgb = "0xffc66600"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcl_gamerules.text.value5"
+    pageKey = "game.mcl_gamerules"
+    role = "text"
+    layer = "text"
+    rect = "598,312,72,32"
+    controlRect = "598,312,72,32"
+    textRect = "598,312,72,32"
+    visibleText = "-"
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "left"
+    textAnchor = "left"
+    wrapText = false
+    colorArgb = "0xff5C96C2"
+    legacyColor = 0
+    outline = "FALSE"
+    visible = false
+}
+
+GuiSlider {
+    key = "game.mcl_gamerules.slider.row6"
+    pageKey = "game.mcl_gamerules"
+    rect = "440,358,150,20"
+    maxValue = 1000
+    fillColorArgb = "0xff10242e"
+    colorArgb = "0xff5C96C2"
+    highlightColorArgb = "0xffc66600"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcl_gamerules.text.value6"
+    pageKey = "game.mcl_gamerules"
+    role = "text"
+    layer = "text"
+    rect = "598,352,72,32"
+    controlRect = "598,352,72,32"
+    textRect = "598,352,72,32"
+    visibleText = "-"
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "left"
+    textAnchor = "left"
+    wrapText = false
+    colorArgb = "0xff5C96C2"
+    legacyColor = 0
+    outline = "FALSE"
+    visible = false
+}
+
+GuiSlider {
+    key = "game.mcl_gamerules.slider.row7"
+    pageKey = "game.mcl_gamerules"
+    rect = "440,398,150,20"
+    maxValue = 1000
+    fillColorArgb = "0xff10242e"
+    colorArgb = "0xff5C96C2"
+    highlightColorArgb = "0xffc66600"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcl_gamerules.text.value7"
+    pageKey = "game.mcl_gamerules"
+    role = "text"
+    layer = "text"
+    rect = "598,392,72,32"
+    controlRect = "598,392,72,32"
+    textRect = "598,392,72,32"
+    visibleText = "-"
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "left"
+    textAnchor = "left"
+    wrapText = false
+    colorArgb = "0xff5C96C2"
+    legacyColor = 0
+    outline = "FALSE"
+    visible = false
+}
+
+GuiSlider {
+    key = "game.mcl_gamerules.slider.row8"
+    pageKey = "game.mcl_gamerules"
+    rect = "440,438,150,20"
+    maxValue = 1000
+    fillColorArgb = "0xff10242e"
+    colorArgb = "0xff5C96C2"
+    highlightColorArgb = "0xffc66600"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcl_gamerules.text.value8"
+    pageKey = "game.mcl_gamerules"
+    role = "text"
+    layer = "text"
+    rect = "598,432,72,32"
+    controlRect = "598,432,72,32"
+    textRect = "598,432,72,32"
+    visibleText = "-"
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "left"
+    textAnchor = "left"
+    wrapText = false
+    colorArgb = "0xff5C96C2"
+    legacyColor = 0
+    outline = "FALSE"
+    visible = false
 }
