@@ -31,6 +31,9 @@ data/art/*
 !data/art/mcl_mc_*.tga
 !data/art/mc2_component_*.tga
 !data/defs/
+!data/fonts/
+!data/fonts/ui/
+!data/fonts/ui/*.ttf
 !data/hdr/
 !data/visual_tuning.json
 !data/terrain_materials.json

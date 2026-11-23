@@ -39,6 +39,7 @@ private:
 
 	long lastSlider[kPageRows] = {};	// last slider position the dialog applied (the page slider is re-set to the snapped notch)
 	int focusRow = -1;				// slider row the left/right keys move
+	bool showFocus = false;			// the focus outline appears only after keyboard use
 
 	mc2::rules::GameRules working;
 	static std::unique_ptr<GameRulesDialog> s_instance;

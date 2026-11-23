@@ -57,6 +57,7 @@ bool ruleActive( std::string_view key )
 		if ( k == key ) return false;
 	return true;
 }
+constexpr long kMountX = 489, kMountY = 200;
 constexpr unsigned int kActiveColor = 0xffc66600, kGreyColor = 0xff6b6b6b, kActiveValueColor = 0xff5C96C2;
 }  // namespace
 
@@ -86,7 +87,9 @@ void GameRulesDialog::begin( const mc2::rules::GameRules& start )
 {
 	working = start;
 	focusRow = -1;
+	showFocus = false;
 	moveFocus( 1 );
+	moveTo( kMountX, kMountY );	// page space is 1778x1000 (16:9, 1:1 at 1080p); centre the 600x500 panel in it
 	status = RUNNING;
 	bDone = false;
 	refreshRows();
@@ -178,6 +181,7 @@ void GameRulesDialog::pollSliders()
 		const long pos = getDefsSliderValue( sliderKey( i ) );
 		if ( pos == lastSlider[i] ) continue;
 		focusRow = static_cast<int>( i );
+		showFocus = false;	// pointer use: no outline
 		const long v = mc2::rules::valueFromSlider( r, pos );
 		if ( v != mc2::rules::getLong( working, r ) )
 		{
@@ -210,6 +214,8 @@ void GameRulesDialog::update()
 	{
 		const mc2::rules::Rule& fr = mc2::rules::kRules[focusRow];
 		const int dir = gos_GetKeyStatus( KEY_LEFT ) == KEY_RELEASED ? -1 : ( gos_GetKeyStatus( KEY_RIGHT ) == KEY_RELEASED ? 1 : 0 );
+		if ( dir || gos_GetKeyStatus( KEY_UP ) == KEY_RELEASED || gos_GetKeyStatus( KEY_DOWN ) == KEY_RELEASED || gos_GetKeyStatus( KEY_TAB ) == KEY_RELEASED )
+			showFocus = true;
 		if ( dir )
 		{
 			mc2::rules::setLong( working, fr, mc2::rules::nudgeValue( fr, mc2::rules::getLong( working, fr ), dir ) );
@@ -239,7 +245,7 @@ void GameRulesDialog::render()
 		const float frac = static_cast<float>( mc2::rules::sliderFromValue( r, mc2::rules::getLong( mc2::rules::GameRules{}, r ) ) ) / mc2::rules::kSliderRes;
 		const float tickW = h * 0.12f > 2.0f ? h * 0.12f : 2.0f;
 		drawDefsRect( x + frac * ( w - thumbW ) + ( thumbW - tickW ) * 0.5f, y - h * 0.22f, tickW, h * 0.3f, 0xffc66600, true );
-		if ( static_cast<int>( i ) == focusRow ) drawDefsRect( x - 2.0f, y - 2.0f, w + 4.0f, h + 4.0f, 0xff5C96C2, false );
+		if ( showFocus && static_cast<int>( i ) == focusRow ) drawDefsRect( x - 2.0f, y - 2.0f, w + 4.0f, h + 4.0f, 0xff5C96C2, false );
 	}
 	gos_SetHudScaleExempt( false );
 }

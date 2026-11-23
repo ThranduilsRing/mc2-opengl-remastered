@@ -9,8 +9,8 @@ GuiPage {
     sourceKind = "defs_only_screen"
     layout = "absolute"
     coordinateSpace = "screen_absolute"
-    localWidth = 800
-    localHeight = 600
+    localWidth = 1778
+    localHeight = 1000
     mountOffset = "0,0"
     overlayGameOS = true
     renderMode = "gameos_overlay"
@@ -27,9 +27,9 @@ GuiRect {
     legacyColor = 0
     outline = "FALSE"
     filled = true
-    fillColorArgb = "0xff0a121c"
+    fillColorArgb = "0xf0080c10"
     borderColorArgb = "0x00000000"
-    colorArgb = "0xff0a121c"
+    colorArgb = "0xf0080c10"
 }
 
 GuiRect {
@@ -610,8 +610,8 @@ GuiText {
     visibleText = "-"
     font = "Agency Regular"
     fontSize = 17
-    textAlign = "right"
-    textAnchor = "right"
+    textAlign = "left"
+    textAnchor = "left"
     wrapText = false
     colorArgb = "0xff5C96C2"
     legacyColor = 0
@@ -641,8 +641,8 @@ GuiText {
     visibleText = "-"
     font = "Agency Regular"
     fontSize = 17
-    textAlign = "right"
-    textAnchor = "right"
+    textAlign = "left"
+    textAnchor = "left"
     wrapText = false
     colorArgb = "0xff5C96C2"
     legacyColor = 0
@@ -672,8 +672,8 @@ GuiText {
     visibleText = "-"
     font = "Agency Regular"
     fontSize = 17
-    textAlign = "right"
-    textAnchor = "right"
+    textAlign = "left"
+    textAnchor = "left"
     wrapText = false
     colorArgb = "0xff5C96C2"
     legacyColor = 0
@@ -703,8 +703,8 @@ GuiText {
     visibleText = "-"
     font = "Agency Regular"
     fontSize = 17
-    textAlign = "right"
-    textAnchor = "right"
+    textAlign = "left"
+    textAnchor = "left"
     wrapText = false
     colorArgb = "0xff5C96C2"
     legacyColor = 0
@@ -734,8 +734,8 @@ GuiText {
     visibleText = "-"
     font = "Agency Regular"
     fontSize = 17
-    textAlign = "right"
-    textAnchor = "right"
+    textAlign = "left"
+    textAnchor = "left"
     wrapText = false
     colorArgb = "0xff5C96C2"
     legacyColor = 0
@@ -765,8 +765,8 @@ GuiText {
     visibleText = "-"
     font = "Agency Regular"
     fontSize = 17
-    textAlign = "right"
-    textAnchor = "right"
+    textAlign = "left"
+    textAnchor = "left"
     wrapText = false
     colorArgb = "0xff5C96C2"
     legacyColor = 0
@@ -796,8 +796,8 @@ GuiText {
     visibleText = "-"
     font = "Agency Regular"
     fontSize = 17
-    textAlign = "right"
-    textAnchor = "right"
+    textAlign = "left"
+    textAnchor = "left"
     wrapText = false
     colorArgb = "0xff5C96C2"
     legacyColor = 0
@@ -827,8 +827,8 @@ GuiText {
     visibleText = "-"
     font = "Agency Regular"
     fontSize = 17
-    textAlign = "right"
-    textAnchor = "right"
+    textAlign = "left"
+    textAnchor = "left"
     wrapText = false
     colorArgb = "0xff5C96C2"
     legacyColor = 0
@@ -858,8 +858,8 @@ GuiText {
     visibleText = "-"
     font = "Agency Regular"
     fontSize = 17
-    textAlign = "right"
-    textAnchor = "right"
+    textAlign = "left"
+    textAnchor = "left"
     wrapText = false
     colorArgb = "0xff5C96C2"
     legacyColor = 0
