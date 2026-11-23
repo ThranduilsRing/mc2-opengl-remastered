@@ -100,8 +100,15 @@ TEST_CASE("ui_chrome credits bay follows the menu frame at 1080p and 4K") {
     }
 }
 
+// Stripe paint is dark but not matte (value 4+): a 7x7 block of 8 around (x, y).
+static void stripe(Pixels& p, int x, int y) {
+    for (int dy = -3; dy <= 3; ++dy) for (int dx = -3; dx <= 3; ++dx)
+        for (int c = 0; c < 3; ++c) p.data[((y + dy) * 256 + x + dx) * 3 + c] = 8;
+}
+
 TEST_CASE("ui_chrome menu openings preserve cable and hazard paint") {
     Pixels p = solid(256, 256, 3, 0);
+    stripe(p, 80, 210); stripe(p, 40, 40);
     const size_t cable = (140 * 256 + 170) * 3;
     p.data[cable] = 64;
     REQUIRE(clearMenuMatte("data/art/gui/mcl_mm_1.png", p));
@@ -115,6 +122,7 @@ TEST_CASE("ui_chrome menu openings preserve cable and hazard paint") {
     CHECK(p.data[(40 * 256 + 40) * 4 + 3] == 0);
     CHECK(p.data[(140 * 256 + 40) * 4 + 3] == 0);
     p = solid(256, 256, 3, 0);
+    stripe(p, 140, 50); stripe(p, 40, 245); stripe(p, 80, 220);
     REQUIRE(clearMenuMatte("mcl_mm_3.png", p));
     CHECK(p.data[(100 * 256 + 20) * 4 + 3] == 0);
     CHECK(p.data[(50 * 256 + 140) * 4 + 3] == 255);
@@ -123,6 +131,12 @@ TEST_CASE("ui_chrome menu openings preserve cable and hazard paint") {
     CHECK(p.data[(210 * 256 + 110) * 4 + 3] == 0);
     CHECK(p.data[(220 * 256 + 80) * 4 + 3] == 255);
     CHECK(p.data[(40 * 256 + 180) * 4 + 3] == 0);
+    CHECK(p.data[(50 * 256 + 20) * 4 + 3] == 0);   // pure-black matte joined to the sheet edge is empty
+    p = solid(256, 256, 3, 0);
+    stripe(p, 100, 100);
+    REQUIRE(clearMenuMatte("MCL_SM_2.png", p));    // save/load list frame uses the same matte pass
+    CHECK(p.data[(20 * 256 + 20) * 4 + 3] == 0);
+    CHECK(p.data[(100 * 256 + 100) * 4 + 3] == 255);
     CHECK_FALSE(clearMenuMatte("other.png", p));
 }
 

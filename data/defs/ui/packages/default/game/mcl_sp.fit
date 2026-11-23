@@ -1423,7 +1423,7 @@ GuiAnimation {
     previewFrame = 0
     textLegacyId = 60017
     textKey = "legacy.mc2res.60017"
-    visibleText = "(c) & (p) 1999-2001 Microsoft Corporation. All rights reserved. This program is protected by U.S. and International copyright laws as described in the i screen.\\\\\\n"
+    visibleText = "(c) & (p) 1999-2001 Microsoft Corporation. All rights reserved. This program is protected by U.S. and International copyright laws as described in the i screen."
     textLegacySymbol = "IDS_LAWYER_BABBLE2"
     textSource = "mc2res"
     textMissing = false

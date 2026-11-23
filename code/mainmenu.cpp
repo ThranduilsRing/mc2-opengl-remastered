@@ -196,6 +196,9 @@ int MainMenu::init( FitIniFile& file )
 
 	setLayoutNeeds( { "mcl_mm.fit", 14, 3, 10, 0, 2, false } ); // stock element counts; see LayoutNeeds
 	LogisticsScreen::init( file, "Static", "Text", "Rect", "Button", nullptr, "AnimObject" );
+	// Text0 is the stock hover-help box (top right); feed it like every other screen.
+	helpTextArrayID = 0;
+	defsHelpTextKey = "game.mcl_mm.text.help_text_area";
 
 	FullPathFileName name;
 	name.init( artPath, "mcl_sp", ".fit" );
@@ -1069,6 +1072,7 @@ void MainMenu::render()
         // Owner 11-15: the community/credits panel appears only once the real menu
         // does, i.e. after the splash logo animation (render() returns early until then).
         PlayerFrontEnd::drawMainMenu(bDrawBackground && !bLegal && !bRulesDlg &&
+                                     !bSave && !bLoad && !bLoadSingle && !bLoadCampaign &&
                                      (intro.allAnimObjectsDone() || introOver || bHostLeftDlg));
     if (!introMovie && bDrawBackground && !bOptions && !bDrawMechlopedia)
         if (coopOpen) drawCoopLobby();
