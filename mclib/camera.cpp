@@ -1035,12 +1035,12 @@ bool Camera::save( FitIniFile* file )
 	// Only the opt-in clock keys need round-trip float precision; stock Cameras bytes keep their old format.
 	struct ClockSave {
 		FitIniFile& file;
-		void writeIdFloat(const char* name, float value) {
+		void writeIdFloat(std::string_view name, float value) {
 			char line[128];
 			mc2::fmt::to_buf(line, "f {} = {:.9g}\r\n", name, value);
 			file.write(reinterpret_cast<MemoryPtr>(line), strlen(line));
 		}
-		void writeIdULong(const char* name, uint32_t value) { file.writeIdULong(name, value); }
+		void writeIdULong(std::string_view name, uint32_t value) { file.writeIdULong(name, value); }
 	} clockSave{*file};
 	mc2::lighting::saveTod(clockSave, todCurve.get(), todT, todRate);
 	if (todCurve && mc2_diag::tagRequested("TOD"))
