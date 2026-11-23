@@ -2123,6 +2123,16 @@
    "count": 1
   },
   {
+   "tag": "CAMPAIGN_PICKER",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "mod",
+    "deps"
+   ],
+   "count": 1
+  },
+  {
    "tag": "CAPTURE_FOCUS",
    "ver": 1,
    "stream": "stderr",
@@ -6096,7 +6106,7 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 6
+   "count": 7
   },
   {
    "tag": "MECH_IMPORT",
@@ -6288,6 +6298,19 @@
    "ver": -1,
    "stream": "stdout",
    "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "MECH_STRIDE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "clip",
+    "speed",
+    "stride",
+    "rate",
+    "dt"
+   ],
    "count": 1
   },
   {
@@ -8281,6 +8304,17 @@
     "packets",
     "triangles",
     "hzb"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PROP_GLASS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "group",
+    "layer",
+    "texels"
    ],
    "count": 1
   },

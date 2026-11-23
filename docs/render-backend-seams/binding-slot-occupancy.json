@@ -118,7 +118,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/hud_tex.frag",
-        "line": 3,
+        "line": 4,
         "role": "HudTexels",
         "std": "std430",
         "type": "buffer",
@@ -626,7 +626,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/hud_tex.frag",
-        "line": 6,
+        "line": 7,
         "role": "sceneNormal",
         "std": null,
         "type": "sampler2D",
@@ -1411,7 +1411,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/hud_tex.frag",
-        "line": 7,
+        "line": 8,
         "role": "sceneDepth",
         "std": null,
         "type": "sampler2D",
