@@ -144,7 +144,8 @@ void LogisticsMechIcon::setMech( LogisticsMech* pNewMech )
 	if ( pMech )
 	{
         hudArt = unit_icons::apply(icon, s_pTemplateIcon->icon, pMech->getIconIndex(),
-                                   { pMech->getFileName(), pMech->getVariant()->getChassis()->getAuthoredName() });
+                                   { pMech->getFileName(), pMech->getVariant()->getChassis()->getAuthoredName(),
+                                     pMech->getVariant()->getMaxWeight(), pMech->getVariant()->getChassis()->isVehicle() });
 
 		chassisName.setText( pMech->getChassisDisplayName().c_str() );
 

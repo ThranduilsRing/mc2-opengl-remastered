@@ -164,7 +164,7 @@ inline bool sheetServes(int sheetRank, int dataRank) { return !modOwned(dataRank
 
 // What the resolver knows about the unit it finds art for: the chassis CSV path (its stem is the first
 // own-art name) and the name the author wrote in that file (the second; MCO ships "mechicons/Storm crow.tga").
-struct Subject { std::string file; std::string name; };
+struct Subject { std::string file; std::string name; float tons = 0; bool vehicle = false; };
 
 // One chassis' art question, with everything apply() knows about where its files come from.
 struct Query {

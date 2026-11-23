@@ -500,7 +500,8 @@ bool MechListBox::initIcon( LogisticsMech* pMech, aObject& mechIcon )
 	mechIcon = (MechListBoxItem::s_templateItem->mechIcon);
 
     return unit_icons::apply(mechIcon, MechListBoxItem::s_templateItem->mechIcon,
-                      pMech->getIconIndex(), { pMech->getFileName(), pMech->getVariant()->getChassis()->getAuthoredName() });
+                      pMech->getIconIndex(), { pMech->getFileName(), pMech->getVariant()->getChassis()->getAuthoredName(),
+                      pMech->getVariant()->getMaxWeight(), pMech->getVariant()->getChassis()->isVehicle() });
 
 }
 

@@ -298,26 +298,40 @@ bool apply(aObject& widget, const aObject& source, long index, const Subject& su
     query.index = index;
     query.dataRank = LookupModPriority(dataKey(subject.file).c_str());
     query.sheetRank = LookupModPriority(sheet.c_str());
-    const auto tiered = [&](bool vehicle) {
+    const auto tiered = [&](std::string_view stem, bool vehicle) {
         const auto hud = hudIconSource(Environment.drawableWidth, Environment.screenWidth, vehicle);
-        return std::format("hud/{}/front/{}", std::filesystem::path(hud.sheet).stem().string(), query.stem);
+        return std::format("hud/{}/front/{}", std::filesystem::path(hud.sheet).stem().string(), stem);
     };
-    query.hud = {"hud/front/" + query.stem, tiered(false), tiered(true), "monohud/" + query.stem, "monohud/" + query.name};
+    query.hud = {"hud/front/" + query.stem, tiered(query.stem, false), tiered(query.stem, true), "monohud/" + query.stem, "monohud/" + query.name};
     auto pick = registry.select(namedPriority, query);
     const Icon* icon = pick.icon;
+    // A chassis is one chassis whichever source owns its CSV: an MCO Atlas uses stock's Atlas art, an MCO Crab the bt2018 Crab.
+    // Match by chassis name across sources, never by VFS rank, before any generic fallback.
+    const auto byChassis = [&](std::string_view base) -> const Icon* {
+        const std::string chassis(base);
+        for (const auto& key : {"hud/front/" + chassis, tiered(base, false), tiered(base, true), "monohud/" + chassis, "monohud/bt2018_" + chassis})
+            if (const Icon* found = registry.find(key)) return found;
+        return nullptr;
+    };
+    if (!icon) {
+        const std::string base = query.stem.starts_with("bt2018_") ? query.stem.substr(7) : query.stem;
+        if ((icon = byChassis(base)) || (icon = byChassis(query.name))) pick.hud = icon;
+    }
     if (!icon) {
         if (mc2_diag::tagRequested("ICON_REGISTRY")) {
             const auto [position, inserted] = warned.insert("no-icon:" + query.stem);
             if (inserted)
-                mc2::fmt::print_err("[ICON_REGISTRY] no art for chassis {} (placeholder)\n", query.stem);
+                mc2::fmt::print_err("[ICON_REGISTRY] no art for chassis {} (class fallback)\n", query.stem);
         }
-        // No source has art for this chassis: a stock mech silhouette, never the missing-texture checkerboard.
-        const Icon* generic = registry.find("hud/front/bushwacker");
-        if (!generic)
-            if (const auto any = registry.icons.lower_bound("hud/front/"); any != registry.icons.end()) {
-                const auto& [name, art] = *any;
-                if (name.starts_with("hud/front/")) generic = &art;
-            }
+        // No source has art for this chassis: a stock silhouette of its class (copter, tank or weight class), never the
+        // missing-texture checkerboard and never a mech standing in for a vehicle.
+        std::string cls = "bushwacker";
+        if (subject.vehicle)
+            cls = query.name.find("copter") != std::string::npos || query.name.find("vtol") != std::string::npos ? "mediumcopter"
+                : query.name.find("trooper") != std::string::npos || query.name.find("armor") != std::string::npos || query.name.find("elemental") != std::string::npos ? "infantry" : "bulldog";
+        else
+            cls = subject.tons < 40 ? "jenner" : subject.tons < 60 ? "bushwacker" : subject.tons < 80 ? "catapult" : "atlas";
+        const Icon* generic = registry.find("hud/front/" + cls);
         if (generic) { icon = generic; pick.hud = generic; }
         else icon = registry.find("missing");
     }
