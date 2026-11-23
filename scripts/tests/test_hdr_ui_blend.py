@@ -18,6 +18,7 @@ def test_hdr_ui_real_shader(tmp_path, shader):
     for args in ([shader_common.find_tool("glslangValidator"), "-V",
                   str(ROOT / f"shaders/vulkan/{shader}.frag"), "-o", spv],
                  [shader_common.find_tool("spirv-val"), spv]):
+        # background-launch: allow glslangValidator and spirv-val only; hidden shader compilers
         subprocess.run(args, check=True, **console_child.child_kwargs(redirected=True))
 
 
