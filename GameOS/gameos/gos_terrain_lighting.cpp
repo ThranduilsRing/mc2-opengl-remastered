@@ -845,11 +845,12 @@ void PackAndDispatch() {
         sn.numLights    = numLights;
         sn.lights       = s_lightBuf.data();
         if (eye) {
-            sn.sunDir[0] = eye->lightDirection.x; sn.sunDir[1] = eye->lightDirection.y; sn.sunDir[2] = eye->lightDirection.z;
-            sn.lightRgb[0] = static_cast<int>(eye->lightRed);   sn.lightRgb[1] = static_cast<int>(eye->lightGreen);   sn.lightRgb[2] = static_cast<int>(eye->lightBlue);
-            sn.ambientRgb[0] = static_cast<int>(eye->ambientRed); sn.ambientRgb[1] = static_cast<int>(eye->ambientGreen); sn.ambientRgb[2] = static_cast<int>(eye->ambientBlue);
-            sn.fogStart = eye->fogStart;
-            sn.fogFull  = eye->fogFull;
+            const auto lit = eye->currentLighting();   // the one producer (a curve's state, else the camera's members)
+            sn.sunDir[0] = lit.sunDir[0]; sn.sunDir[1] = lit.sunDir[1]; sn.sunDir[2] = lit.sunDir[2];
+            sn.lightRgb[0] = static_cast<int>(lit.sun[0]);   sn.lightRgb[1] = static_cast<int>(lit.sun[1]);   sn.lightRgb[2] = static_cast<int>(lit.sun[2]);
+            sn.ambientRgb[0] = static_cast<int>(lit.amb[0]); sn.ambientRgb[1] = static_cast<int>(lit.amb[1]); sn.ambientRgb[2] = static_cast<int>(lit.amb[2]);
+            sn.fogStart = lit.fogStart;
+            sn.fogFull  = lit.fogFull;
             sn.camPos[0] = -eye->getCameraOrigin().x; sn.camPos[1] = eye->getCameraOrigin().z; sn.camPos[2] = eye->getCameraOrigin().y;
         }
         sn.baseRgb[0] = static_cast<int>((BaseVertexColor >> 16) & 0xFFu);

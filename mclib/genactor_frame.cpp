@@ -321,8 +321,9 @@ long GenericAppearance::update (bool animate)
 		eye->setLightIntensity(0,1.0);
 	
 		DWORD fogRGB = 0xff<<24;
-		float fogStart = eye->fogStart;
-		float fogFull = eye->fogFull;
+		const auto fogState = eye->currentLighting();
+		float fogStart = fogState.fogStart;
+		float fogFull = fogState.fogFull;
 	
 		mc2ToRender(xlatPosition, position);
 	

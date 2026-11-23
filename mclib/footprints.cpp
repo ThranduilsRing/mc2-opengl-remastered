@@ -85,7 +85,8 @@ void render()
             if (distance > Camera::MinHazeDistance)
                 haze = Camera::fogHaze(distance);
         }
-        unsigned char r = eye->ambientRed, g = eye->ambientGreen, b = eye->ambientBlue;
+        const auto lit = eye->currentLighting();
+        unsigned char r = lit.amb[0], g = lit.amb[1], b = lit.amb[2];
         if (Terrain::terrainTextures2) {
             if (TerrainQuad::rainLightLevel < 1.0f) {
                 r = static_cast<float>(r) * TerrainQuad::rainLightLevel;
@@ -95,7 +96,7 @@ void render()
         }
         float fog = 1.0f;
         if (useFog) {
-            DWORD fogValue = static_cast<DWORD>(mc2FogHeightAlpha(print.corners[0].z, eye->fogStart, eye->fogFull));
+            DWORD fogValue = static_cast<DWORD>(mc2FogHeightAlpha(print.corners[0].z, lit.fogStart, lit.fogFull));
             fog = static_cast<float>(fogValue) / 255.0f;
             if (haze != 0.0f) {
                 const DWORD distanceFog = float2long((1.0f - haze) * 255.0f);

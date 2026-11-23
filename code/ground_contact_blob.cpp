@@ -86,9 +86,10 @@ float ambientCoupledAlpha()
 {
     if (!eye) return kAlphaMin;
     // eye->ambient{Red,Green,Blue} are unsigned char [0,255].
-    float ambientLum = (0.299f * eye->ambientRed +
-                         0.587f * eye->ambientGreen +
-                         0.114f * eye->ambientBlue) / 255.0f;
+    const auto lit = eye->currentLighting();
+    float ambientLum = (0.299f * lit.amb[0] +
+                         0.587f * lit.amb[1] +
+                         0.114f * lit.amb[2]) / 255.0f;
     // Inverse-couple: low ambient (dark map) -> alpha near kAlphaMax (blob
     // must be visible without pure-black crush); high ambient (bright map)
     // -> alpha near kAlphaMin (contact hint only, avoid stage-spotlight look).

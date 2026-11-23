@@ -95,10 +95,10 @@ void mc2::VkSceneRenderer::vkLegacySubmitNode (RenderSubmissions& submissions, l
 void mc2::VkSceneRenderer::vkLegacyRun (RenderSubmissions& submissions)
 {
 		// fog_color_ is what gosRenderer would have latched from gos_State_Fog (set in the
-		// renderLists preamble: eye->fogColor when fog is on, else 0). The additive loops
+		// renderLists preamble: eye->currentLighting().fogColor when fog is on, else 0). The additive loops
 		// clear fog themselves (the island ADD pass ignores this).
 		Mc2LegacyMlrFrame ff{};
-		const vec4 fcv = uint32_to_vec4(useFog ? static_cast<uint32_t>(eye->fogColor) : 0u);
+		const vec4 fcv = uint32_to_vec4(useFog ? static_cast<uint32_t>(eye->currentLighting().fogColor) : 0u);
 		ff.fogColor[0] = fcv.x; ff.fogColor[1] = fcv.y; ff.fogColor[2] = fcv.z; ff.fogColor[3] = fcv.w;
 		if (gosPostProcess* ppVkLeg = getGosPostProcess())
 			(void)mc2_vk_legacy_shape_island_run(ppVkLeg->getWidth(), ppVkLeg->getHeight(), &ff);

@@ -45,7 +45,7 @@ void mc2::VkSceneRenderer::renderListsPreamble (RenderSubmissions& submissions)
 		gos_SetRenderState(	gos_State_ZWrite, 1);
 	}
 
-	DWORD fogColor = eye->fogColor;
+	DWORD fogColor = eye->currentLighting().fogColor;
 	// FOG time.  Set Render state to FOG on!
 	if (useFog)
 	{
@@ -64,7 +64,7 @@ void mc2::VkSceneRenderer::renderListsPreamble (RenderSubmissions& submissions)
 void mc2::VkSceneRenderer::renderListsSceneDataUpload (RenderSubmissions& submissions)
 {
     // Vulkan reads this CPU fog snapshot; the legacy GL SceneData UBO is gone.
-    const vec4 fc = uint32_to_vec4(eye->fogColor);
+    const vec4 fc = uint32_to_vec4(eye->currentLighting().fogColor);
 
     mc2SetSceneFogColorRGB(fc.z, fc.y, fc.x);
 }

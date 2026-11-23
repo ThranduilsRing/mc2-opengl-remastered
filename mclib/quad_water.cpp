@@ -81,7 +81,7 @@ void TerrainQuad::drawWater (void)
 		// FOG time.  Set Render state to FOG on!
 		if (useFog)
 		{
-			DWORD fogColor = eye->fogColor;
+			DWORD fogColor = eye->currentLighting().fogColor;
 			//gos_SetRenderState( gos_State_Fog, (int)&fogColor);
 			gos_SetRenderState( gos_State_Fog, fogColor);
 		}

@@ -18,7 +18,7 @@ void Terrain::render (void)
 	// MemoryBarrier, BucketSort, etc.) live inside this and break out the
 	// ~290 us PatchStream slice; the residual ~1.7 ms is non-PatchStream
 	// per-quad CPU work that stays attributed to drawPass at coarse level.
-	DWORD fogColor = eye->fogColor;
+	DWORD fogColor = eye->currentLighting().fogColor;
 
 	if (drawTerrainTiles)
 	{
