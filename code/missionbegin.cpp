@@ -1667,7 +1667,11 @@ void MissionBegin::updateSoakScreenWalk(LogisticsScreen* pCurScreen, bool& soakF
 				{
 					stopX = 2; stopY = (curScreenY == 1) ? 1 : 2;
 				}
-				if ( s_soakStopAtBay && curScreenX == stopX && curScreenY == stopY )
+				// A shot target other than the held cell (MC2_BOOT_TO_SCREEN=bay + MC2_SHOT_SCREEN=pilots) walks on after the bay purchase.
+				mc2::screen_settle::Spec shotSpec;
+				const bool shotElsewhere = mc2::screen_settle::parseSpec(mc2::gate::str<"MC2_SHOT_SCREEN">(), shotSpec) && shotSpec.cell &&
+					shotSpec.cell->x >= 0 && ( shotSpec.cell->x != stopX || shotSpec.cell->y != stopY ) && !mc2::gate::str<"MC2_BOOT_TO_SCREEN">().empty();
+				if ( s_soakStopAtBay && !shotElsewhere && curScreenX == stopX && curScreenY == stopY )
 				{
 					s_soakLastAdvX = curScreenX;
 					s_soakLastAdvY = curScreenY;
