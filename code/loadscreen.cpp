@@ -250,7 +250,6 @@ void LoadScreen::fitToWindow( long layoutW, long layoutH )
 	for ( long i = 0; i < staticCount; i++ ) fit( statics[i] );
 	for ( long i = 0; i < rectCount; i++ ) fit( rects[i] );
 	for ( long i = 0; i < textCount; i++ ) fit( textObjects[i] );
-	for ( long i = 0; i < buttonCount; i++ ) fit( buttons[i] );
 	for ( long i = 0; i < animObjectsCount; i++ ) fit( animObjects[i] );
 	fit( text );
 }
