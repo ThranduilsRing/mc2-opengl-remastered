@@ -8,6 +8,8 @@
 #ifndef MC2_RENDER_BACKEND_SELECT_H
 #define MC2_RENDER_BACKEND_SELECT_H
 
+#include <string_view>
+
 namespace mc2 {
 
 // What MC2_RENDER_BACKEND text asked for. The engine has ONE backend (Vulkan); the variable is only read to tell the user
@@ -29,6 +31,10 @@ void noteBackendEnv();
 // message box unless the run is automated (smoke / crash-fast-exit), and ends the
 // process with exit code 3. Does not return.
 [[noreturn]] void fatalBackendFailure(const char* reason);
+
+// The crash bundle registers here at init so a fatal backend exit (a plain _Exit: no SEH, no WER entry) still leaves crash.txt,
+// the instrumentation ring and a minidump. Called once from fatalBackendFailure, before the message box.
+void setFatalBackendSink(void (*sink)(std::string_view reason));
 
 }  // namespace mc2
 

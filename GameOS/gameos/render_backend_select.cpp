@@ -46,11 +46,18 @@ void noteBackendEnv() {
     std::fflush(stdout);
 }
 
+namespace {
+void (*g_fatalSink)(std::string_view) = nullptr;
+}
+void setFatalBackendSink(void (*sink)(std::string_view)) { g_fatalSink = sink; }
+
 void fatalBackendFailure(const char* reason) {
     const char* why = reason && reason[0] ? reason : "(unspecified)";
     mc2::fmt::print_out("[RENDER_BACKEND] FATAL: Vulkan could not be started: {}. There is no OpenGL fallback; exiting.\n", mc2::fmt::safe(why));
     std::fflush(stdout);
     std::fflush(stderr);
+    // stdout/stderr are NUL in normal play and _Exit leaves no WER entry: this bundle is the only durable record of the exit.
+    if (auto* sink = g_fatalSink) { g_fatalSink = nullptr; sink(why); }
 #ifdef _WIN32
     // Automated runs (smoke, crash fast-exit) must not block on a modal box.
     const bool automated = mc2::gate::isSet<"MC2_SMOKE_MODE">() || mc2::gate::isSet<"MC2_NO_LAUNCHER">() ||

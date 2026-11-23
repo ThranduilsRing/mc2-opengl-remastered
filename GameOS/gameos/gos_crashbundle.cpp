@@ -14,6 +14,7 @@
 
 #include "gos_crashbundle.h"
 #include "gos_crashpad.h"
+#include "render_backend_select.h"
 #include "../../mclib/sim_overlap.h"
 #include <atomic>
 #include "crash_content.h"
@@ -783,6 +784,11 @@ extern "C" void crashbundle_init(void)
     }
     AddVectoredExceptionHandler(1, crashbundle_heap_corruption_handler);
     mc2::overlap::installFatalHandlers(crashbundle_fatal);
+    mc2::setFatalBackendSink([](std::string_view why) {
+        char line[480];
+        const int n = mc2::fmt::to_buf(line, "fatal backend exit 3: {}", why);
+        crashbundle_fatal(std::string_view(line, n > 0 ? std::min<size_t>(static_cast<size_t>(n), sizeof line - 1) : 0));
+    });
 }
 
 extern "C" void crashbundle_trigger_test_crash(void)
