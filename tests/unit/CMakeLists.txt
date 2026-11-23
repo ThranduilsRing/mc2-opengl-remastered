@@ -105,6 +105,7 @@ add_executable(mc2_tests
     test_camera_elevation.cpp
     test_spawn_tree_clear.cpp
     test_quality_presets.cpp
+    test_campaign_menu.cpp
     test_rendercore.cpp     # RENDERCORE-UNIT-TESTS-1: GL-free substrate invariants
     test_frame_arena.cpp    # FRAME-ARENA-1: FrameArena typed L2 allocator invariants
     test_depth_hzb.cpp      # HZB-DEPTH-CONVENTION-TESTS-1: reverse-Z / HZB reduction contract

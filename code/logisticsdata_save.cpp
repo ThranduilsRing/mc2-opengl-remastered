@@ -11,6 +11,7 @@
 #include "objective_text.h"
 #include "purchase_catalog.h"
 #include "economy_rules.h"
+#include "../GuiRuntime/PlayerFrontEnd.h"
 #include "../GameOS/gameos/diagnostic_trace.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
@@ -160,6 +161,10 @@ long	LogisticsData::save( FitIniFile& file )
 
 	// save the campaign info
 	missionInfo->save( file );
+
+	// The mod layers this campaign runs under: loading it from another mod relaunches into these (mainmenu).
+	file.writeIdString( "ActiveMod", PlayerFrontEnd::saveModField( PlayerFrontEnd::activeModId() ).c_str() );
+	file.writeIdString( "ModDeps", PlayerFrontEnd::saveModField( PlayerFrontEnd::activeModDeps() ).c_str() );
 
 	int pilotCount = 0;
 	// save the pilots

@@ -3,6 +3,7 @@
 #include "PlayerOptionRows.h"
 #include "PlayerSettings.h"
 #include "../mclib/ui_chrome_sheets.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
 #include <map>
 #include "GraphicsOptionsWindow.h"
 #include "GuiRuntime_internal.h"
@@ -53,7 +54,7 @@ struct Pack {
 };
 Json settings = Json::object();
 std::vector<Pack> packs;
-std::string campaign, base, texture, campaignFit, pendingStart, pendingMission, error;
+std::string campaign, base, texture, campaignFit, pendingStart, pendingMission, pendingLoad, error;
 bool pickerOpen = false, scanned = false, restart = false, settingsChanged = false;
 std::map<std::string, std::optional<std::string>> inheritedEnv;
 
@@ -184,9 +185,23 @@ void setEnv(std::string_view key, std::string_view value) {
 #endif
 }
 Json readJson(const fs::path& path) {
+#ifdef _WIN32
+    // Read once and close, sharing delete/write: the campaign importer replaces mods/.campaign-auto.json while we poll it,
+    // and an ifstream held open without FILE_SHARE_DELETE makes that replace fail with Access denied.
+    const HANDLE file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
+                                    OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (file == INVALID_HANDLE_VALUE) return Json::object();
+    std::string bytes;
+    char chunk[4096];
+    DWORD got = 0;
+    while (ReadFile(file, chunk, sizeof(chunk), &got, nullptr) && got) bytes.append(chunk, got);
+    CloseHandle(file);
+    auto result = Json::parse(bytes, nullptr, false);
+#else
     std::ifstream stream(path);
     if (!stream) return Json::object();
     auto result = Json::parse(stream, nullptr, false);
+#endif
     return result.is_object() ? result : Json::object();
 }
 std::string text(const Json& json, std::string_view key, std::string_view fallback = {}) {
@@ -407,12 +422,61 @@ void loadSettings() {
     if (!pendingStart.empty()) { settings.erase("start_campaign"); saveSettings(); }
     pendingMission = text(settings, "start_mission");
     if (!pendingMission.empty()) { settings.erase("start_mission"); saveSettings(); }
+    pendingLoad = text(settings, "start_load");
+    if (!pendingLoad.empty()) { settings.erase("start_load"); saveSettings(); }
     mc2::gate::invalidateAll();
 }
 
 void requestCampaignStart(std::string fit) { pendingStart = std::move(fit); }
 std::string takeCampaignStart() { return std::exchange(pendingStart, {}); }
 std::string takeMissionStart() { return std::exchange(pendingMission, {}); }
+std::string takeSaveLoad() { return std::exchange(pendingLoad, {}); }
+
+std::string activeModId() { return env(mc2::gate::name<"MC2_ACTIVE_MOD">()).value_or(""); }
+std::string activeModDeps() { return env(mc2::gate::name<"MC2_MOD_DEPS">()).value_or(""); }
+
+std::vector<CampaignMenuEntry> otherModCampaigns() {
+    // Rescanned on every menu open (cheap: a few small FITs); the picker's import-source filter applies when a scan is live.
+    std::vector<CampaignMenuEntry> result;
+    for (auto& entry : modCampaignEntries(scanModCampaigns("mods"), activeModId(), importSourceHidden))
+        result.push_back({std::move(entry.key), std::move(entry.text)});
+    return result;
+}
+
+// Record the content choice in launcher_env.json (the game's own saved-settings file) and relaunch; the child mounts it before the menu.
+static bool commitRelaunch(std::string_view mod, std::string_view modBase, std::string_view modTexture, std::string_view deps,
+                           std::string_view pendingKey, std::string_view pendingValue) {
+    settings["last_campaign"] = std::string(mod);
+    settings["last_base"] = std::string(modBase);
+    settings["tex_pack_mod"] = std::string(modTexture);
+    settings["last_addons"] = std::string(deps);
+    settings[std::string(pendingKey)] = std::string(pendingValue);
+    if (!saveSettings()) return false;
+    // A saved choice supersedes a startup mod override (same as the Campaigns & mods picker).
+    inheritedEnv[mc2::gate::name<"MC2_ACTIVE_MOD">()] = std::nullopt;
+    inheritedEnv[mc2::gate::name<"MC2_MOD_DEPS">()] = std::nullopt;
+    restart = true;
+    if (mc2_diag::tagRequested("CAMPAIGN_PICKER")) std::printf("[CAMPAIGN_PICKER] relaunch mod=%s deps=%s %s=%s\n", std::string(mod).c_str(), std::string(deps).c_str(),
+                std::string(pendingKey).c_str(), std::string(pendingValue).c_str());
+    gos_TerminateApplication();
+    return true;
+}
+
+bool relaunchForCampaign(std::string_view key) {
+    std::string mod, fit;
+    if (!splitCampaignKey(key, mod, fit)) return false;
+    if (!scanned) scan();
+    campaign = mod;
+    campaignFit = fit;
+    autoBase();
+    return commitRelaunch(mod, base, texture, dependencies(), "start_campaign", fit);
+}
+
+bool relaunchForSave(bool recorded, std::string_view savedMod, std::string_view savedDeps, std::string_view saveFile) {
+    if (!saveNeedsRelaunch(recorded, savedMod, savedDeps, activeModId(), activeModDeps())) return false;
+    // The saved deps already list the base and texture packs; the loader folds last_base/tex_pack_mod in, so leave them empty.
+    return commitRelaunch(savedMod, {}, {}, std::string(savedDeps), "start_load", std::string(saveFile));
+}
 
 static void drawCommunityCredits() {
     const auto* vp = ImGui::GetMainViewport();

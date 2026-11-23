@@ -257,6 +257,18 @@ def repair_shared_components(existing, root, scratch):
     print(f"Repaired shared component table: {destination} from {origin}", file=sys.stderr)
 
 
+def replace_with_retry(temporary, destination, attempts=8):
+    """os.replace that survives a reader holding the destination open (Windows PermissionError / WinError 5)."""
+    for attempt in range(attempts):
+        try:
+            os.replace(temporary, destination)
+            return
+        except PermissionError:
+            if attempt == attempts - 1:
+                raise
+            time.sleep(0.05 * (2 ** attempt))
+
+
 def find_root(folder):
     candidates = [folder] + sorted(p for p in folder.iterdir() if p.is_dir())
     roots = [p for p in candidates if (p / "data").is_dir() or (p / "Data").is_dir()
@@ -491,7 +503,7 @@ def auto_import(deploy):
         state["message"] = message
         temporary = status.with_suffix(".tmp")
         temporary.write_text(json.dumps(state, indent=2), encoding="utf-8")
-        temporary.replace(status)
+        replace_with_retry(temporary, status)
 
     publish(state["message"])
     candidates = []
