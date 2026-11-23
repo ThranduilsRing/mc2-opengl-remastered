@@ -233,12 +233,20 @@ void destroySwapchainOnly(EnginePresentVk::Impl& s) {
     s.swapchain.reset();
 }
 
-float displayPeakNits(SDL_Window* window) {
+float displayPeakNits(EnginePresentVk::Impl& s) {
     float peak = 1000.0f;
 #ifdef _WIN32
     SDL_SysWMinfo wm; SDL_VERSION(&wm.version);
+    SDL_Window* window = s.outputWindow;
     if (!window || !SDL_GetWindowWMInfo(window, &wm) || wm.subsystem != SDL_SYSWM_WINDOWS) return peak;
     const HMONITOR monitor = MonitorFromWindow(wm.info.win.window, MONITOR_DEFAULTTONEAREST);
+    if (s.hdrPeakCached && s.hdrPeakMonitor == monitor && s.hdrPeakActive == s.hdr)
+        return s.hdrDisplayPeak;
+    s.hdrPeakMonitor = monitor;
+    s.hdrPeakActive = s.hdr;
+    s.hdrPeakCached = true;
+    s.hdrDisplayPeak = peak;
+    if (!s.hdr) return peak;
     HMODULE dll = LoadLibraryW(L"dxgi.dll");
     if (!dll) return peak;
     {
@@ -263,6 +271,7 @@ float displayPeakNits(SDL_Window* window) {
         }
     }
     FreeLibrary(dll);
+    s.hdrDisplayPeak = peak;
 #endif
     return peak;
 }
@@ -271,7 +280,9 @@ void logHdrCaps(EnginePresentVk::Impl& s, const std::vector<VkSurfaceFormatKHR>&
     s.hdrCapsLogged = true;
     const auto& options = mc2::options::current();
     const auto candidate = chooseSurfaceFormat(formats, options.hdrOutput == 0);
-    const float peak = options.hdrPeakNits > 0.0f ? options.hdrPeakNits : displayPeakNits(s.outputWindow);
+    s.paperNits = options.hdrPaperWhiteNits;
+    const float peak = options.hdrPeakNits > 0.0f ? options.hdrPeakNits : displayPeakNits(s);
+    s.peakNits = std::max(s.paperNits, peak);
     mc2::fmt::print_err("[HDR_OUTPUT v1] policy={} colorspace_ext={} metadata_ext={} offscreen={} active={} format={} colorspace={} would_format={} would_colorspace={} paper_nits={} peak_nits={} present_format={}\n",
         options.hdrOutput == 0 ? "Auto" : "Off", s.ctx->swapchainColorspaceEnabled(), s.ctx->hdrMetadataEnabled(), s.offscreen,
         s.hdr ? "HDR" : "SDR", static_cast<int>(actual.format), static_cast<int>(actual.colorSpace), static_cast<int>(candidate.format), static_cast<int>(candidate.colorSpace),
@@ -285,8 +296,6 @@ bool buildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
     const auto& options = mc2::options::current();
     const bool force = mc2::gate::get<"MC2_HDR_FORCE">();
     const bool wantHdr = force || (options.hdrOutput == 0 && !s.offscreen && !gos_NoUserPresentRequested());
-    s.paperNits = options.hdrPaperWhiteNits;
-    s.peakNits = std::max(s.paperNits, options.hdrPeakNits > 0.0f ? options.hdrPeakNits : displayPeakNits(s.outputWindow));
     if (s.offscreen) {   // one placeholder image index, never touched: the tail skips the blit and the present
         s.hdr = force;
         s.scFormat = force ? VK_FORMAT_A2B10G10R10_UNORM_PACK32 : VK_FORMAT_R8G8B8A8_UNORM;
@@ -513,6 +522,22 @@ void destroyCompositeFramebuffer(EnginePresentVk::Impl& s) {
 }
 void destroyShadowDebugFramebuffer(EnginePresentVk::Impl& s) { s.shadowDebugFramebuffer.reset(); }
 
+bool ensurePresentSampler(EnginePresentVk::Impl& s) {
+    if (!s.compositeSampler) {
+        VkSamplerCreateInfo ci{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+        ci.magFilter = VK_FILTER_LINEAR;
+        ci.minFilter = VK_FILTER_LINEAR;
+        ci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+        ci.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        ci.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        ci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        if (!mc2vk::create(s.compositeSampler, s.dev, [&](auto* h) { return vkCreateSampler(s.dev, &ci, nullptr, h); })) {
+            s.compositeVkFailed = true; return false;
+        }
+    }
+    return true;
+}
+
 bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
     if (!s.ctx) return false;
     if (s.compositePipe.get() && s.compositeFramebuffer.get()) return true;
@@ -531,18 +556,7 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
                 "present.renderResolutionColor")) return false;
     }
 
-    if (!s.compositeSampler) {
-        VkSamplerCreateInfo ci{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
-        ci.magFilter = VK_FILTER_LINEAR;
-        ci.minFilter = VK_FILTER_LINEAR;
-        ci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-        ci.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        ci.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        ci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        if (!mc2vk::create(s.compositeSampler, s.dev, [&](auto* h) { return vkCreateSampler(s.dev, &ci, nullptr, h); })) {
-            s.compositeVkFailed = true; return false;
-        }
-    }
+    if (!ensurePresentSampler(s)) return false;
     if (!s.compositeNearestSampler) {
         VkSamplerCreateInfo ci{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
         ci.magFilter = VK_FILTER_NEAREST;
@@ -734,10 +748,11 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
     return true;
 }
 
-// Called only by prewarmPipelines, never by frame recording. Plain pipelines
+// Called by shared-image construction and prewarm, never by frame recording. Plain pipelines
 // avoid AMD's GPL/device-loss path; targets and descriptors are immutable until idle.
 bool ensureHdrEncode(EnginePresentVk::Impl& s) {
     if (!s.hdr) return true;
+    if (!ensurePresentSampler(s)) return false;
     if (!s.encodePass) {
         VkAttachmentDescription a{};
         a.format = s.scFormat; a.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -1825,6 +1840,11 @@ bool buildSharedImage(EnginePresentVk::Impl& s, uint32_t w, uint32_t h, std::str
             s.compositePipe.reset();
         }
     }
+    // Startup and every HDR rebuild must finish encoding resources before any frame records.
+    if (!ensureHdrEncode(s)) {
+        reason = "present HDR encode creation failed";
+        return false;
+    }
     static bool loggedOnce = false;
     if (!loggedOnce) {
         loggedOnce = true;
@@ -2611,7 +2631,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
         if (!rebuildSwapchain(s, drawableW, drawableH, health_, r)) {
             health_.fallback_reason = "resize: " + r; return false;
         }
-        if (!buildSharedImage(s, drawableW, drawableH, r) || (s.hdr && !prewarmPipelines())) {
+        if (!buildSharedImage(s, drawableW, drawableH, r) || !prewarmPipelines()) {
             health_.fallback_reason = "resize: " + r; return false;
         }
         ++health_.resize_count;
@@ -2812,6 +2832,12 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
         return false;
     }
     const VkImage scImg = images[imageIndex];
+    const bool encodeReady = s.hdr && s.encodePass && s.encodePipe && s.encodeSet && s.encodeLayout &&
+        imageIndex < s.encodeFrames.size() && s.encodeFrames[imageIndex];
+    if (s.hdr && !encodeReady) {
+        static bool logged = false;
+        if (!logged) { logged = true; plog("[HDR_OUTPUT v1] encode_missing fallback=sdr"); }
+    }
     VkCommandBufferBeginInfo begin{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(blitCb, &begin) != VK_SUCCESS) {
@@ -2821,7 +2847,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     { ZoneScopedN("VKIsl.Present.Tail.Blit");
       mc2::battlebench::NsScope benchBlit(mc2::battlebench::PresTailBlitNs);
     { ZoneScopedN("VKIsl.Present.Tail.Blit.BarriersAndBlit");
-    if (s.hdr) {
+    if (encodeReady) {
         for (const auto image : {sharedImage, s.uiLayer.image.get()})
             barrier(blitCb, image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                 VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
@@ -2891,7 +2917,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     const VkSemaphore renderSem = offscreen ? VK_NULL_HANDLE : rendered[imageIndex];
     vkResetFences(dev, 1, &blitFence);
     r = ctx->submitPresentTail(blitCb, offscreen ? VK_NULL_HANDLE : acquireSem, renderSem, blitFence,
-        s.hdr ? VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT : VK_PIPELINE_STAGE_2_TRANSFER_BIT);
+        encodeReady ? VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT : VK_PIPELINE_STAGE_2_TRANSFER_BIT);
     if (r != VK_SUCCESS) {
         // No replacement fence can retire the earlier Render tail. Stop WSI and let main drain the worker then idle before destruction.
         // The acquired semaphore is deliberately not reused; teardown destroys it after the idle.

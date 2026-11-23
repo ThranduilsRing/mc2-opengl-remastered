@@ -38,6 +38,9 @@ struct EnginePresentVk::Impl {
     bool offscreen = false;   // Linux: the window surface is not presentable from this GPU; composite and capture readback run, nothing is presented
     SDL_Window* outputWindow = nullptr;
     bool hdrCapsLogged = false;
+    void* hdrPeakMonitor = nullptr;
+    bool hdrPeakCached = false, hdrPeakActive = false;
+    float hdrDisplayPeak = 1000.0f;
     VkQueue          presentQ  = VK_NULL_HANDLE;
 
     // swapchain
