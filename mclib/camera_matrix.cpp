@@ -472,7 +472,12 @@ void Camera::setCameraOrigin (void)
 				for (int y = -1; y <= 1; ++y)
 					for (int x = -1; x <= 1; ++x)
 					{
-						const glm::vec3 sample = actualPosition + glm::vec3(x * radius, y * radius, 0.0f);
+						// An eye past the map edge (focus pinned at the scroll limit, low tilt, long altitude) samples 0 off-map:
+						// no floor, so the camera sat below the edge terrain and showed the map underside. Floor on the edge height.
+						glm::vec3 sample = actualPosition + glm::vec3(x * radius, y * radius, 0.0f);
+						const float edge = Terrain::worldUnitsMapSide * 0.5f - Terrain::worldUnitsPerVertex * 2.0f;
+						sample.x = std::clamp(sample.x, -edge, edge);
+						sample.y = std::clamp(sample.y, -edge, edge);
 						terrainAtCam = std::max(terrainAtCam, TerrainRuntime::sampleVisualHeight(sample));
 					}
 				const float floor = terrainAtCam + std::max(AltitudeMinimum, 10.0f);
