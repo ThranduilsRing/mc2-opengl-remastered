@@ -80,10 +80,14 @@ struct TodKey {
 	float fogStart = 0.0f, fogFull = 0.0f;
 };
 
+inline constexpr float kMinCurvePitch = -10.0f, kMaxCurvePitch = 89.0f;   // a curve's sun pitch range (low for dawn/dusk; the keys' 26 floor does not apply)
+inline constexpr size_t kMaxTodKeys = 64;   // one cap for every channel (parseTodCurve drops the rest and counts them)
+
 struct TodCurve {
 	std::vector<TodKey> keys;       // sorted by t, strictly increasing (parseTodCurve guarantees it)
 	float start = 0.0f;             // normalized time a mission begins at
-	float rate = 0.0f;              // normalized time per second; read by the T3 clock, not by evaluate
+	float rate = 0.0f;              // normalized time per second (>= 0); read by the T3 clock, not by evaluate
+	size_t droppedKeys = 0;         // keys past kMaxTodKeys that parseTodCurve discarded (the camera logs a [TOD] warning)
 };
 
 namespace detail {
@@ -147,10 +151,10 @@ inline Span bracket(const TodCurve& c, uint32_t bit, float t)
 
 inline float scalar(const TodCurve& c, uint32_t bit, float t, float TodKey::*member, float authored)
 {
-	float x[64], y[64];
+	float x[kMaxTodKeys], y[kMaxTodKeys];
 	size_t n = 0;
 	for (const auto& k : c.keys)
-		if ((k.mask & bit) && n < 64) { x[n] = k.t; y[n] = k.*member; ++n; }
+		if ((k.mask & bit) && n < kMaxTodKeys) { x[n] = k.t; y[n] = k.*member; ++n; }
 	return n ? pchip(std::span<const float>(x, n), std::span<const float>(y, n), t) : authored;
 }
 
@@ -188,6 +192,55 @@ inline LightingState evaluate(const TodCurve* curve, float t, const LightingStat
 	if (present & kFogStart) s.fogStart = detail::scalar(*curve, kFogStart, tc, &TodKey::fogStart, s.fogStart);
 	if (present & kFogFull) s.fogFull = detail::scalar(*curve, kFogFull, tc, &TodKey::fogFull, s.fogFull);
 	return s;
+}
+
+// ---- Modulators: the systems that write the camera's light on top of its base (weather, KillAmbientLight, the runtime sun control) ----
+// The base is today's day members (no curve) or evaluate() (a curve). The composition is this ONE function, so the two cases cannot
+// drift: rain dims sun and ambient by dividing the base bytes (the old weather.cpp expression), kill forces ambient to white, a sun
+// override replaces the pitch/yaw. All default to "none", which returns the base untouched.
+struct LightMods {
+	std::optional<float> rainDivisor;
+	bool killAmbient = false;
+	std::optional<float> sunPitch, sunYaw;
+};
+
+inline LightingState modulate(LightingState s, const LightMods& m)
+{
+	if (m.sunPitch || m.sunYaw) {
+		if (m.sunPitch) s.pitch = *m.sunPitch;
+		if (m.sunYaw) s.yaw = *m.sunYaw;
+		sunDirFromAngles(s.pitch, s.yaw, s.sunDir);
+	}
+	if (m.rainDivisor) {
+		const float d = *m.rainDivisor;
+		for (auto& v : s.sun) v = static_cast<uint8_t>(v / d);
+		for (auto& v : s.amb) v = static_cast<uint8_t>(v / d);
+	}
+	if (m.killAmbient) s.amb[0] = s.amb[1] = s.amb[2] = 0xFF;
+	return s;
+}
+
+// The camera's published state with a curve: the curve over the authored base at t, then the modulators. Camera::currentLighting,
+// publishLight and the bake reference all call this, so there is exactly one composition. A null curve gives modulate(base).
+inline LightingState compose(const TodCurve* curve, float t, const LightingState& base, const LightMods& mods)
+{
+	return modulate(evaluate(curve, t, base), mods);
+}
+
+// The load-time bakes (ground burn-in, forest light, scene-lighting capture) bake against the AUTHORED state, never a live one:
+// a bake is a fixed reference (the plan's "bake reference = authored"; T3/T6 decide how a live mission re-bakes). Identity today;
+// it exists so every bake site names the intent and the doctest can pin it.
+inline const LightingState& bakeReference(const LightingState& authored) { return authored; }
+
+// Camera::getLightRed/Green/Blue's arithmetic for one channel (truncation, the night-ambient floor, clamp to 255).
+inline unsigned char flatLightByte(unsigned char sun, unsigned char amb, float intensity, long floorV)
+{
+	if (intensity > 0.0f) {
+		long r = static_cast<long>(sun * intensity + amb);
+		r = std::max(r, floorV);
+		return r < 0xff ? static_cast<unsigned char>(r) : static_cast<unsigned char>(0xff);
+	}
+	return amb < floorV ? static_cast<unsigned char>(floorV) : amb;
 }
 
 } // namespace mc2::lighting

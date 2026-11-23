@@ -46,6 +46,7 @@
 #include "../../RenderCore/gpu_abi/GpuMechFrameUBO.h"  // single-source per-frame UBO
 #include "visual_tuning_profile.h"
 #include "mission_environment_gpu.h"
+#include "../../mclib/camera.h"
 #include "vk_shared_gbuffer_gate.h"      // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #include "vk_shared_light_feed.h"        // VK-LIGHTFEED-DEDUP-1: shared per-frame LightsData SSBO
 #include "gos_terrain_lighting.h"
@@ -253,6 +254,19 @@ void copyOneSun(MechFrameUBO& u, const EnvironmentUBO& e) {
     std::memcpy(u.pitchUndo, e.pitchUndo, sizeof(u.pitchUndo));
     std::memcpy(u.ambRelight, e.ambRelight, sizeof(u.ambRelight));
     std::memcpy(u.sunRelight, e.sunRelight, sizeof(u.sunRelight));
+}
+
+void copyLiveLighting(MechFrameUBO& u, const EnvironmentUBO& e) {
+    std::memcpy(u.sunLive, e.sunLive, sizeof(u.sunLive));
+    std::memcpy(u.sunLiveDir, e.sunLiveDir, sizeof(u.sunLiveDir));
+    std::memcpy(u.ambLive, e.ambLive, sizeof(u.ambLive));
+    std::memcpy(u.sunBake, e.sunBake, sizeof(u.sunBake));
+    std::memcpy(u.sunBakeDir, e.sunBakeDir, sizeof(u.sunBakeDir));
+    std::memcpy(u.ambBake, e.ambBake, sizeof(u.ambBake));
+    std::memcpy(u.fog, e.fog, sizeof(u.fog));
+    std::memcpy(u.cementSky, e.cementSky, sizeof(u.cementSky));
+    std::memcpy(u.edgeHazeSky, e.edgeHazeSky, sizeof(u.edgeHazeSky));
+    std::memcpy(u.lightingParams, e.lightingParams, sizeof(u.lightingParams));
 }
 
 void write_ring_bindings(MechIsland* s, VkDescriptorSet set) {
@@ -1050,9 +1064,12 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
       u.miscI[2] = objectMotion ? static_cast<int>(feed.boneCount) : 0;   // start of the previous-frame palette in the bone array
       mc2_mech_prev_from_cur_clip(u.prevFromCurClip);
       // The environment producer's hemisphere. The mech lab preview pass has no terrain set 1, so the mech keeps this UBO copy of it.
-      EnvironmentUBO environment; mc2::environment::fillGpu(visualTuning_environment(), 1.0f, environment);
+      EnvironmentUBO environment; mc2::environment::fillGpu(visualTuning_environment(), 1.0f, environment,
+          eye ? eye->currentLighting() : mc2::lighting::LightingState{},
+          eye ? eye->bakeReferenceLighting() : mc2::lighting::LightingState{});
       for (size_t c=0; c<3; ++c) u.environmentAmbient[c] = environment.hemiSky[c];
       copyOneSun(u, environment);
+      copyLiveLighting(u, environment);
       std::memcpy(mainPtr, &u, sizeof(u)); }
     // This flight's set follows the buffers; each pass supplies its dynamic offsets.
     sync_ring_bindings(s, par, mainSpan, lightSpan);
@@ -1369,9 +1386,12 @@ static int mech_preview_flush_impl(void* colorView, void* normalView, void* dept
       u.shadeC[0] = feed.aoStrength;       u.shadeC[1] = feed.normalStrength;
       static const int mechFill = mc2::gate::get<"MC2_MECH_FILL">();
       u.miscI[1] = mechFill;
-      EnvironmentUBO environment; mc2::environment::fillGpu(visualTuning_environment(), 1.0f, environment);
+      EnvironmentUBO environment; mc2::environment::fillGpu(visualTuning_environment(), 1.0f, environment,
+          eye ? eye->currentLighting() : mc2::lighting::LightingState{},
+          eye ? eye->bakeReferenceLighting() : mc2::lighting::LightingState{});
       for (size_t c = 0; c < 3; ++c) u.environmentAmbient[c] = environment.hemiSky[c];
       { EnvironmentUBO identity; mc2::environment::fillGpu(RenderCore::MissionEnvironment{}, 1.0f, identity); copyOneSun(u, identity); }   // the bay is lit by no mission sun: identity
+      copyLiveLighting(u, environment);
       std::memcpy(mainPtr, &u, sizeof(u)); }
     sync_ring_bindings(s, par, mainSpan, lightSpan);
     const uint32_t dynOffsets[5] = {

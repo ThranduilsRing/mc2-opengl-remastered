@@ -31,7 +31,7 @@
 #include <cstdint>  // int64_t for cull_admission_*_ns
 #include <memory>
 #include <string_view>
-namespace mc2::lighting { struct LightingState; struct TodCurve; }
+#include "lighting_state.h"   // LightingState, TodCurve, LightMods (camera members)
 #include "../shaders/include/fog_policy.hglsl"
 #include <string>
 #include "Gates/gate.h"
@@ -425,6 +425,10 @@ class Camera
 			missionLightApplied = false;
 			sunAmbientScaled = false;
 			missionGroundScale = 1.0f;
+			allowTimeOfDay = false;
+			todCurve.reset();
+			todT = 0.0f;
+			lightMods = {};
 			projectionAngle = 30;
 
 			screenResolution.x = 400.0;
@@ -1343,6 +1347,7 @@ class Camera
 		
 		virtual long update (void);
 		glm::vec3 sunDirection (void) const;
+		static glm::vec3 sunDirectionFor (float lightPitch, float lightYaw);
 		virtual void render (void);
 
 		virtual long activate (void);
@@ -1488,12 +1493,31 @@ class Camera
 			return screenResolution;
 		}
 
-		// The sun, ambient and fog the renderer publishes: the camera's own light members run through the mission's optional
-		// time-of-day curve (lighting_state.h). With no curve this is exactly those members. The single producer for gamecam.cpp.
+		// The sun, ambient and fog the renderer publishes. With NO time-of-day curve this is exactly the camera's light members (the
+		// legacy path, byte-identical). With a curve it is modulate(evaluate(curve, todT, todBase), lightMods): the curve is the BASE and
+		// weather / KillAmbientLight / the runtime sun control are modulators composed once (lighting_state.h modulate). Pure: evaluating
+		// twice gives the same state. The single producer for every renderer reader.
 		mc2::lighting::LightingState currentLighting (void) const;
-		// T1 only reads the curve's start; the clock (T3) will advance todT on the sim tick.
+		// The state the load-time bakes read (terrain burn-in, forest light, scene capture): the state at load, the authored one for every
+		// stock mission (the members) and the curve's start state with a curve. A bake is a fixed reference, never a live state.
+		mc2::lighting::LightingState bakeReferenceLighting (void) const;
+		// Weather / KillAmbientLight / sun control go through these, never the members, so a curve cannot override them.
+		void setRainLight (float divisor);   // sun and ambient divided by `divisor` (the old weather expression)
+		void clearRainLight (void);          // back to the base
+		void setKillAmbient (bool on);       // ambient forced white for the render window (mission.cpp KillAmbientLight)
+		void noteSunMoved (void);            // the sun hotkeys / setSunPitch changed lightPitch/lightYaw: with a curve they become an override
+		// Flat light for z `intensity` from a given state (Camera::getLightRed/Green/Blue arithmetic on its bytes).
+		void flatLight (const mc2::lighting::LightingState& s, float intensity, unsigned char out[3]) const;
+		mc2::lighting::LightingState lightMembers (void) const;   // the members as a state (the legacy, no-curve result)
+		unsigned char killSavedAmbient[3] = {0, 0, 0};
+		// Re-write the sun/ambient (and, with a curve, pitch/yaw/direction/fog) members from the composed state. The one writer.
+		void publishLight (void);
+		// The curve applies to the MISSION camera only (set before init(file)); the mech-bay / SimpleCamera preview never has one.
+		bool allowTimeOfDay = false;
 		std::shared_ptr<const mc2::lighting::TodCurve> todCurve;
-		float todT = 0.0f;
+		float todT = 0.0f;                          // T1 holds it at the curve start; the clock (T3) advances it on the sim tick
+		mc2::lighting::LightingState todBase;       // the authored state the curve evaluates over (captured when the curve is accepted)
+		mc2::lighting::LightMods lightMods;
 
 		bool getIsNight (void)
 		{

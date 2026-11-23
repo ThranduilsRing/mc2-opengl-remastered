@@ -32,6 +32,17 @@ struct EnvironmentUBO {
     float   pitchUndo[4];         // @vec4 rgb = authored flat light at the authored elevation / at the live elevation (prop sun term, encoded space)
     float   ambRelight[4];        // @vec4 rgb = flat-light ratio x authored ambient / live ambient (mover ambient)
     float   sunRelight[4];        // @vec4 rgb = live sun colour / authored sun colour (glint and specular colour)
+    // Dynamic ToD T2: fill only; no shader reads these fields yet. Colours are encoded bytes / 255, directions are MC2 world space.
+    float   sunLive[4];           // @vec4 rgb encoded sun; w reserved
+    float   sunLiveDir[4];        // @vec4 xyz live direction; w reserved
+    float   ambLive[4];           // @vec4 rgb encoded ambient; w reserved
+    float   sunBake[4];           // @vec4 rgb encoded load-time sun; w reserved
+    float   sunBakeDir[4];        // @vec4 xyz load-time direction; w reserved
+    float   ambBake[4];           // @vec4 rgb encoded load-time ambient; w reserved
+    float   fog[4];               // @vec4 rgb encoded fog; w start distance
+    float   cementSky[4];         // @vec4 rgb cement/overlay sky; w water SKY_AMBIENT
+    float   edgeHazeSky[4];       // @vec4 rgb EDGE_HAZE_SKY; w reserved
+    float   lightingParams[4];    // @vec4 mode (0 Fixed, 1 Live), todWeight (0 Fixed), fog full distance, reserved
 };
 
 #include "GpuEnvironment.layout.gen.h"

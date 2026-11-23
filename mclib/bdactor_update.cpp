@@ -597,8 +597,9 @@ long BldgAppearance::update (bool animate)
 			lightRGB = (lightr<<16) + (lightg<<8) + lightb;
 
 			fogRGB = 0xff<<24;
-			float fogStart = eye->fogStart;
-			float fogFull = eye->fogFull;
+			const auto fogState = eye->currentLighting();
+			float fogStart = fogState.fogStart;
+			float fogFull = fogState.fogFull;
 
 			fogRGB = static_cast<DWORD>(mc2FogHeightAlpha(xlatPosition.y, fogStart, fogFull)) << 24;
 

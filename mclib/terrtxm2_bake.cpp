@@ -431,8 +431,11 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, mc2::czstring fileName)
 	lightDir.x = lightDir.y = 0.0f;
 	lightDir.z = 1.0f;
 	
-	if (eye)
-		lightDir = eye->lightDirection;
+	if (eye)   // a bake reads the state at load (Camera::bakeReferenceLighting): the authored sun for every stock mission
+	{
+		const auto ref = eye->bakeReferenceLighting();
+		lightDir = glm::vec3(ref.sunDir[0], ref.sunDir[1], ref.sunDir[2]);
+	}
 		
 	glm::vec3 shadowDir(lightDir);
 	shadowDir *= worldUnitsPerPixel;		//Distance which is the per pixel distance for checking shadows

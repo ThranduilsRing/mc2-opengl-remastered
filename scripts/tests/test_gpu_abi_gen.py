@@ -341,7 +341,7 @@ def test_ivec4_annotation_needs_int32_quad():
 
 @pytest.mark.parametrize("header,size,block", [
     ("GpuColorFrameUBO.h", 224, "ColorFrameUBO"),  # 368 - 9 vec4 SH-L2: iblSh moved to the EnvironmentUBO (binding 26), U1 environment-gpu
-    ("GpuMechFrameUBO.h", 384, "MechFrameUBO"),  # 288 + 96: S4 one-sun appends sunAuthFromLive[3] + pitchUndo/ambRelight/sunRelight (6 vec4)
+    ("GpuMechFrameUBO.h", 544, "MechFrameUBO"),  # T2 appends ten vec4s to the 384-byte S4 block
     ("GpuLegacyFrameUBO.h", 80, "LegacyFrameUBO"),
 ])
 def test_vk_frame_ubos_are_registered_with_their_historical_sizes(header, size, block):
@@ -361,3 +361,10 @@ def test_block_can_relocate_set_without_copying_abi():
     assert out["layout"] == original["layout"]  # descriptor relocation never changes CPU packing
     with pytest.raises(g.AbiError, match="invalid descriptor set macro"):
         _build_block(BLOCK_SRC.replace("set=1", "set=1 set_macro=bad-set"))
+
+def test_environment_t2_size_and_tail_offset():
+    entry = next(s for s in g.STRUCTS if s[0].endswith("GpuEnvironment.h"))
+    with open(os.path.join(ROOT, entry[0]), encoding="utf-8") as f:
+        info = g.parse_source(f.read(), "EnvironmentUBO")
+    _, _, size = g.struct_offsets(info["fields"], "std140")
+    assert size == 448 and info["block"] == "uEnv"

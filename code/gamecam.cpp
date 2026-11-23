@@ -120,9 +120,11 @@ CameraPtr eye = nullptr;
 static bool captureSceneLighting(SceneLighting& s)
 {
     if (!eye) return false;
-    s.sun_dir[0] = eye->lightDirection.x;
-    s.sun_dir[1] = eye->lightDirection.y;
-    s.sun_dir[2] = eye->lightDirection.z;
+    // Scene capture is a bake reference too: the state at load (Camera::bakeReferenceLighting).
+    const auto ref = eye->bakeReferenceLighting();
+    s.sun_dir[0] = ref.sunDir[0];
+    s.sun_dir[1] = ref.sunDir[1];
+    s.sun_dir[2] = ref.sunDir[2];
     DWORD sc = eye->getLightColor(0);
     s.sun_color[0] = static_cast<float>((sc >> 16) & 0xFFu) / 255.0f;
     s.sun_color[1] = static_cast<float>((sc >>  8) & 0xFFu) / 255.0f;
@@ -425,7 +427,12 @@ void GameCamera::renderTerrainSceneState() {
 	RenderCore::LegacyMissionLighting inputs;
 	inputs.cameraDirection = {lighting.sunDir[0], lighting.sunDir[1], lighting.sunDir[2]};
 	gos_GetTerrainLightDir(&inputs.effectiveDirection[0], &inputs.effectiveDirection[1], &inputs.effectiveDirection[2]);
-	const DWORD directional = getLightColor(0), ambient = getLightColor(1);
+	// With a time-of-day curve the sun and ambient colours come from the state; without one they are the world-light rows exactly as
+	// before (those rows are recoloured per frame by the actors, so they are the legacy value, not a stable state).
+	const auto packRgb = [](const uint8_t c[3]) { return (static_cast<DWORD>(c[0]) << 16) | (static_cast<DWORD>(c[1]) << 8) | c[2]; };
+	const bool liveLighting = lighting.mode == mc2::lighting::Mode::Live;
+	const DWORD directional = liveLighting ? packRgb(lighting.sun) : getLightColor(0);
+	const DWORD ambient = liveLighting ? packRgb(lighting.amb) : getLightColor(1);
 	inputs.directionalColor = {static_cast<float>((directional >> 16) & 255u)/255.0f,
 		static_cast<float>((directional >> 8) & 255u)/255.0f, static_cast<float>(directional & 255u)/255.0f};
 	inputs.ambientColor = {static_cast<float>((ambient >> 16) & 255u)/255.0f,
@@ -433,8 +440,9 @@ void GameCamera::renderTerrainSceneState() {
 	float flatIntensity = lighting.sunDir[2];
 	flatIntensity = std::max(flatIntensity, 0.0f);
 	flatIntensity = std::min(flatIntensity, 1.0f);
-	inputs.flatLight = {getLightRed(flatIntensity)/255.0f,
-		getLightGreen(flatIntensity)/255.0f, getLightBlue(flatIntensity)/255.0f};
+	unsigned char flatBytes[3];
+	flatLight(lighting, flatIntensity, flatBytes);   // getLightRed/Green/Blue's arithmetic on the state's bytes (== the members without a curve)
+	inputs.flatLight = {flatBytes[0]/255.0f, flatBytes[1]/255.0f, flatBytes[2]/255.0f};
 	{
 		// Prelit art (ground, decals, grass) is scaled by live/authored flat light; cement stays on the live flat light.
 		extern void mc2_FlatLightRatio(float z, const unsigned char liveSun[3], const unsigned char liveAmb[3], float out[3]);

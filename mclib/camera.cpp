@@ -189,7 +189,7 @@ float mc2SceneLightScale()
 // the water's night sky (GameOS receivers declare it extern, like mc2SceneLightScale).
 float mc2NightLightFactor()
 {
-	return eye && !eye->missionLightName.empty() ? mc2_mission_light::darkness(eye->lightPitch) : 0.0f;
+	return eye && !eye->missionLightName.empty() ? mc2_mission_light::darkness(eye->currentLighting().pitch) : 0.0f;
 }
 
 // Night fade of the mover (mech/prop) sun shadow from the mission's current moon and ambient strength
@@ -197,8 +197,9 @@ float mc2NightLightFactor()
 float mc2MoverShadowNightFade(float* darknessOut, float* moonLumOut, float* ambientLumOut)
 {
 	const float d = mc2NightLightFactor();
-	const float moon = eye ? 0.299f*eye->lightRed + 0.587f*eye->lightGreen + 0.114f*eye->lightBlue : 0.0f;
-	const float amb = eye ? 0.299f*eye->ambientRed + 0.587f*eye->ambientGreen + 0.114f*eye->ambientBlue : 0.0f;
+	const auto live = eye ? eye->currentLighting() : mc2::lighting::LightingState{};
+	const float moon = eye ? 0.299f*live.sun[0] + 0.587f*live.sun[1] + 0.114f*live.sun[2] : 0.0f;
+	const float amb = eye ? 0.299f*live.amb[0] + 0.587f*live.amb[1] + 0.114f*live.amb[2] : 0.0f;
 	if (darknessOut) *darknessOut = d;
 	if (moonLumOut) *moonLumOut = moon;
 	if (ambientLumOut) *ambientLumOut = amb;
@@ -438,7 +439,7 @@ long Camera::init (FitIniFilePtr cameraFile )
 				sunAmbientScaled = true;
 			mc2::lighting::SunKeys sunKeys{visualTuning_sunValue("sunPitch"), visualTuning_sunValue("sunYaw"), visualTuning_sunValue("sunColorR"),
 				visualTuning_sunValue("sunColorG"), visualTuning_sunValue("sunColorB"), visualTuning_sunValue("sunAmbientScale")};
-			const mc2::lighting::LightingState keyed = mc2::lighting::applySunKeys(currentLighting(), sunKeys, scaledInSave);
+			const mc2::lighting::LightingState keyed = mc2::lighting::applySunKeys(lightMembers(), sunKeys, scaledInSave);
 			if (sunKeys.pitch) lightPitch = dayLightPitch = keyed.pitch;
 			lightYaw = keyed.yaw;
 			lightDirection.x = keyed.sunDir[0];
@@ -464,31 +465,33 @@ long Camera::init (FitIniFilePtr cameraFile )
 					static_cast<unsigned>(lightRed), static_cast<unsigned>(lightGreen), static_cast<unsigned>(lightBlue),
 					static_cast<unsigned>(ambientRed), static_cast<unsigned>(ambientGreen), static_cast<unsigned>(ambientBlue), sunAmbientScaled ? 1 : 0);
 		}
-		// Optional time-of-day curve (sidecar timeOfDay{}): evaluated at its start time. No block (every stock mission): nothing
-		// below runs and the members above stand. The authored record (s_authoredSun) stays the pre-key bake reference.
+		// Optional time-of-day curve (sidecar timeOfDay{}), MISSION camera only (the mech-bay / SimpleCamera preview never sets
+		// allowTimeOfDay) and day suns only (a night mission keeps its night profile until T7).
+		// No block (every stock mission): nothing below runs and the members above stand. The authored record (s_authoredSun) stays the
+		// pre-key bake reference. The curve's start state is written (and day* seeded) at the fog read below, once fog is known.
 		todCurve.reset();
 		todT = 0.0f;
-		if (const auto& block = visualTuning_timeOfDay(); !block.empty())
-		{
-			auto parsed = mc2::lighting::parseTodCurve(block);
-			if (parsed) todCurve = *parsed;
-			if (!parsed)
+		lightMods = {};
+		if (allowTimeOfDay && !missionLightName.empty() && mc2_mission_light::nightFromSun(dayLightPitch) == 0.0f)   // day suns only, as the sun keys
+			if (const auto& block = visualTuning_timeOfDay(); !block.empty())
 			{
-				if (mc2_diag::tagRequested("TOD"))
-					mc2::fmt::print_err("[TOD] ignored timeOfDay block: {}\n", parsed.error());
+				const auto parsed = mc2::lighting::parseTodCurve(block);
+				if (!parsed)
+				{
+					if (mc2_diag::tagRequested("TOD"))
+						mc2::fmt::print_err("[TOD] ignored timeOfDay block: {}\n", parsed.error());
+				}
+				else if (*parsed)
+				{
+					todCurve = *parsed;
+					todT = todCurve->start;
+					todBase = lightMembers();   // the authored state (sun keys applied); the fog is added at the fog read
+					if (todCurve->droppedKeys && mc2_diag::tagRequested("TOD"))
+						mc2::fmt::print_err("[TOD] warning: dropped {} keys past the cap of {}\n", todCurve->droppedKeys, mc2::lighting::kMaxTodKeys);
+					if (mc2_diag::tagRequested("TOD"))
+						mc2::fmt::print_err("[TOD] curve keys={} start={:.3f} mode=Live (clock not wired: T3)\n", todCurve->keys.size(), todCurve->start);
+				}
 			}
-			else
-			{
-				todT = todCurve->start;
-				const auto live = currentLighting();
-				lightPitch = live.pitch; lightYaw = live.yaw;
-				lightDirection.x = live.sunDir[0]; lightDirection.y = live.sunDir[1]; lightDirection.z = live.sunDir[2];
-				lightRed = live.sun[0]; lightGreen = live.sun[1]; lightBlue = live.sun[2];
-				ambientRed = live.amb[0]; ambientGreen = live.amb[1]; ambientBlue = live.amb[2];
-				if (mc2_diag::tagRequested("TOD"))
-					mc2::fmt::print_err("[TOD] curve keys={} start={:.3f} mode=Live (clock not wired: T3)\n", todCurve->keys.size(), todCurve->start);
-			}
-		}
 	}
 
 	result = cameraFile->readIdFloat("NewScale",newScaleFactor);
@@ -584,10 +587,14 @@ long Camera::init (FitIniFilePtr cameraFile )
     fogColor = static_cast<DWORD>(tmp);
 	dayFogColor = fogColor;
 	gosASSERT(result == NO_ERR);
-	if (todCurve)   // fog channels of the time-of-day curve at its start time (the mission's own fog stays dayFogColor)
+	if (todCurve)   // the curve at its start time: the authored fog joins the base, day* is seeded, the members are published once
 	{
-		const auto live = currentLighting();
-		fogColor = live.fogColor; fogStart = live.fogStart; fogFull = live.fogFull;
+		todBase.fogColor = static_cast<uint32_t>(fogColor); todBase.fogStart = fogStart; todBase.fogFull = fogFull;
+		const auto start = currentLighting();
+		dayLightPitch = start.pitch;
+		dayLightRed = start.sun[0]; dayLightGreen = start.sun[1]; dayLightBlue = start.sun[2];
+		dayAmbientRed = start.amb[0]; dayAmbientGreen = start.amb[1]; dayAmbientBlue = start.amb[2];
+		publishLight();   // the mission's own fog stays dayFogColor (the editor's)
 	}
 
 	result = cameraFile->readIdFloat("FogTransparency",fogTransparency);
@@ -812,8 +819,9 @@ static long mc2NightAmbientFloor (void)
 //---------------------------------------------------------------------------
 void Camera::getPropLightContract (int S[3], int A[3], int &F, float D[3])
 {
-	S[0] = lightRed; S[1] = lightGreen; S[2] = lightBlue;
-	A[0] = ambientRed; A[1] = ambientGreen; A[2] = ambientBlue;
+	const auto live = currentLighting();
+	S[0] = live.sun[0]; S[1] = live.sun[1]; S[2] = live.sun[2];
+	A[0] = live.amb[0]; A[1] = live.amb[1]; A[2] = live.amb[2];
 	F = static_cast<int>(mc2NightAmbientFloor());
 	D[0] = D[1] = D[2] = 0.0f;
 	if (worldLights[0])
@@ -905,9 +913,8 @@ float mc2_AmbientRatio(const unsigned char liveAmb[3])
 	return mc2::authored_sun::ambientRatio(s_authoredSun, {liveAmb[0], liveAmb[1], liveAmb[2]});
 }
 
-// The single producer of the published sun, ambient and fog: the camera's light members, evaluated through the optional curve.
-// No curve: exactly the members (evaluate returns its authored argument untouched).
-mc2::lighting::LightingState Camera::currentLighting() const
+// The camera's light members as a LightingState (the legacy, no-curve state).
+mc2::lighting::LightingState Camera::lightMembers() const
 {
 	mc2::lighting::LightingState s;
 	s.sunDir[0] = lightDirection.x; s.sunDir[1] = lightDirection.y; s.sunDir[2] = lightDirection.z;
@@ -915,7 +922,99 @@ mc2::lighting::LightingState Camera::currentLighting() const
 	s.sun[0] = lightRed; s.sun[1] = lightGreen; s.sun[2] = lightBlue;
 	s.amb[0] = ambientRed; s.amb[1] = ambientGreen; s.amb[2] = ambientBlue;
 	s.fogColor = static_cast<uint32_t>(fogColor); s.fogStart = fogStart; s.fogFull = fogFull;
-	return mc2::lighting::evaluate(todCurve.get(), todT, s);
+	return s;
+}
+
+// The single producer of the published sun, ambient and fog. No curve: exactly the members. A curve: the base (authored state
+// through the curve at todT) with the modulators composed on top, once (lighting_state.h modulate).
+mc2::lighting::LightingState Camera::currentLighting() const
+{
+	if (!todCurve) return lightMembers();
+	auto s = mc2::lighting::compose(todCurve.get(), todT, todBase, lightMods);
+	const glm::vec3 d = sunDirectionFor(s.pitch, s.yaw);   // the direction Camera::update() derives from the same angles
+	s.sunDir[0] = d.x; s.sunDir[1] = d.y; s.sunDir[2] = d.z;
+	return s;
+}
+
+// The state the load-time bakes (terrain burn-in, forest light, scene capture) take as their reference: the state AT LOAD, never a live
+// one. No curve (every stock mission): the members, which are the authored state. A curve: its start state, which is what the static
+// shadows key on too (the first frame's sun), so the bakes and the shadows agree. A live clock does not re-bake: T3/T6 decide that.
+mc2::lighting::LightingState Camera::bakeReferenceLighting() const
+{
+	if (!todCurve) return mc2::lighting::bakeReference(lightMembers());
+	auto start = mc2::lighting::compose(todCurve.get(), todCurve->start, todBase, {});
+	const glm::vec3 d = sunDirectionFor(start.pitch, start.yaw);
+	start.sunDir[0] = d.x; start.sunDir[1] = d.y; start.sunDir[2] = d.z;
+	return mc2::lighting::bakeReference(start);
+}
+
+// The one writer of the light members. No curve: the day colours through the rain modulator (weather.cpp's old expression, byte
+// for byte; nothing else is touched). A curve: sun, ambient, pitch, yaw, direction and fog from the composed state, and the
+// directional world light re-aimed, so the member readers the renderer still has agree with currentLighting().
+void Camera::publishLight()
+{
+	if (!todCurve)
+	{
+		mc2::lighting::LightingState day;
+		day.sun[0] = dayLightRed; day.sun[1] = dayLightGreen; day.sun[2] = dayLightBlue;
+		day.amb[0] = dayAmbientRed; day.amb[1] = dayAmbientGreen; day.amb[2] = dayAmbientBlue;
+		mc2::lighting::LightMods m;
+		m.rainDivisor = lightMods.rainDivisor;
+		const auto s = mc2::lighting::modulate(day, m);
+		ambientRed = s.amb[0]; ambientGreen = s.amb[1]; ambientBlue = s.amb[2];
+		lightRed = s.sun[0]; lightGreen = s.sun[1]; lightBlue = s.sun[2];
+		return;
+	}
+	mc2::lighting::LightMods m = lightMods;
+	m.killAmbient = false;   // the kill is a render-window override of the members (setKillAmbient), not a published value
+	auto s = mc2::lighting::compose(todCurve.get(), todT, todBase, m);
+	lightPitch = s.pitch; lightYaw = s.yaw;
+	lightDirection = sunDirectionFor(s.pitch, s.yaw);
+	lightRed = s.sun[0]; lightGreen = s.sun[1]; lightBlue = s.sun[2];
+	ambientRed = s.amb[0]; ambientGreen = s.amb[1]; ambientBlue = s.amb[2];
+	fogColor = s.fogColor; fogStart = s.fogStart; fogFull = s.fogFull;
+	if (worldLights && worldLights[0])
+	{
+		glm::mat4 lightToWorldMatrix;
+		mc2::math::buildTranslation(lightToWorldMatrix, glm::vec3(0.0f, 0.0f, 0.0f));
+		mc2::math::buildRotation(lightToWorldMatrix, mc2::math::Euler(lightPitch * DEGREES_TO_RADS, (lightYaw + 135.0) * DEGREES_TO_RADS, 0.0f));
+		worldLights[0]->SetLightToWorld(&lightToWorldMatrix);
+	}
+}
+
+void Camera::setRainLight(float divisor) { lightMods.rainDivisor = divisor; publishLight(); }
+void Camera::clearRainLight() { lightMods.rainDivisor.reset(); publishLight(); }
+
+// KillAmbientLight: the member readers see white ambient for the render window and get their bytes back after (the old mission.cpp
+// swap); currentLighting() reports it through the modulator, so a curve cannot hide it.
+void Camera::setKillAmbient(bool on)
+{
+	if (on == lightMods.killAmbient) return;
+	lightMods.killAmbient = on;
+	if (on)
+	{
+		killSavedAmbient[0] = ambientRed; killSavedAmbient[1] = ambientGreen; killSavedAmbient[2] = ambientBlue;
+		ambientRed = ambientGreen = ambientBlue = 0xFF;
+	}
+	else
+	{
+		ambientRed = killSavedAmbient[0]; ambientGreen = killSavedAmbient[1]; ambientBlue = killSavedAmbient[2];
+	}
+}
+
+// With a curve the sun hotkeys and the runtime sun control become an override of the curve's pitch/yaw (a modulator), so the
+// next evaluation still honours them. Without a curve the members they wrote are the state: nothing to do.
+void Camera::noteSunMoved()
+{
+	if (!todCurve) return;
+	lightMods.sunPitch = lightPitch;
+	lightMods.sunYaw = lightYaw;
+}
+
+void Camera::flatLight(const mc2::lighting::LightingState& s, float intensity, unsigned char out[3]) const
+{
+	const long floorV = mc2NightAmbientFloor();
+	for (int c = 0; c < 3; ++c) out[c] = mc2::lighting::flatLightByte(s.sun[c], s.amb[c], intensity, floorV);
 }
 
 bool Camera::save( FitIniFile* file )

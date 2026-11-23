@@ -565,7 +565,7 @@ void Appearance::drawBars (void)
 	
 	DrawBox(vertices[0].x,vertices[0].y,(leftX + trueWidth + 1.0),vertices[2].y);
 
-	DWORD fogColor = eye->fogColor;
+	DWORD fogColor = eye->currentLighting().fogColor;
 
 	//-----------------------------------------------------
 	// FOG time.  Set Render state to FOG on!

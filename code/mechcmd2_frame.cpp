@@ -42,7 +42,7 @@ void __stdcall UpdateRenderers()
 
 		DWORD bColor = 0x0;
 		if (eye && mission->isActive())
-			bColor = eye->fogColor;
+			bColor = eye->currentLighting().fogColor;
 
 		{
 			ZoneScopedN("UpdateRenderers setupStates");
