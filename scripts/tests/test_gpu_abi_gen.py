@@ -341,7 +341,7 @@ def test_ivec4_annotation_needs_int32_quad():
 
 @pytest.mark.parametrize("header,size,block", [
     ("GpuColorFrameUBO.h", 224, "ColorFrameUBO"),  # 368 - 9 vec4 SH-L2: iblSh moved to the EnvironmentUBO (binding 26), U1 environment-gpu
-    ("GpuMechFrameUBO.h", 288, "MechFrameUBO"),  # TAA object motion appends prevFromCurClip (mat4, +64)
+    ("GpuMechFrameUBO.h", 384, "MechFrameUBO"),  # 288 + 96: S4 one-sun appends sunAuthFromLive[3] + pitchUndo/ambRelight/sunRelight (6 vec4)
     ("GpuLegacyFrameUBO.h", 80, "LegacyFrameUBO"),
 ])
 def test_vk_frame_ubos_are_registered_with_their_historical_sizes(header, size, block):
