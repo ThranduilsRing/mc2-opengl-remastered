@@ -34,7 +34,7 @@
 
 namespace mc2::textures {
 // A root FST that is not the shipped stock archive (standalone mods replace root FSTs without a mod.json owner).
-static bool userPackedArchive(const std::string& original) {
+static bool userPackedArchive(std::string_view original) {
     const auto archive = LookupArchivePath(original);
     if (archive.empty()) return false;
     static std::unordered_map<std::string, bool> userArchives;
