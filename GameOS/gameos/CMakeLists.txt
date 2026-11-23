@@ -428,7 +428,7 @@ if(MC2_VULKAN)
     # vulkan_vfx_island.cpp via load_spv(spv_dir()+"vfx_particle.*.spv").
     set(MC2_VK_SHADER_BASENAMES edge_fog fog_oob hzb_reduce hzb_cull color_prop_cull shadow_debug_overlay water_geom shadow_prop shadow_prop_alpha shadow_mech shadow_terrain_static color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 mech_depth legacy_shape_tier1 terrain_overlay_tier1 terrain_decal_tier1 hdri_sky cloud_shadow shoreline screen_shadow_csm impact_decal postprocess postprocess_visual hud_color hud_tex vfx_particle)
     set(MC2_VK_SPV_OUTPUTS "")
-    list(APPEND MC2_VK_SHADER_BASENAMES water_reflection_mask)
+    list(APPEND MC2_VK_SHADER_BASENAMES water_reflection_mask present_encode)
     list(APPEND MC2_VK_SHADER_BASENAMES water_geom_early)
     set(MC2_VK_SHADER_SRC_ALIAS_water_geom_early_frag water_geom)
     set(MC2_VK_SHADER_DEFINES_water_geom_early_frag -DWATER_EARLY_TESTS=1)
@@ -460,6 +460,7 @@ if(MC2_VULKAN)
     # shared GL/VK shaders/include/*.hglsl (e.g. terrain_light_pool.hglsl); list them as
     # DEPENDS so editing an include re-bakes the SPIR-V (the bake step has no depfile).
     file(GLOB MC2_VK_SHADER_INCLUDES CONFIGURE_DEPENDS
+        "${MC2_VK_SHADER_SRC_DIR}/*.glsl"
         "${MC2_VK_SHADER_SRC_DIR}/include/*.glsl"
         "${CMAKE_SOURCE_DIR}/3rdparty/smaa/SMAA.hlsl"
         "${CMAKE_SOURCE_DIR}/shaders/include/*.hglsl")

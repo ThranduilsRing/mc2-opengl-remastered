@@ -227,6 +227,8 @@ ISLANDS = {
         "native VK tier-1 island (VULKAN-BACKEND-L6/P-ladder): structural rewrite of the GL pass (Vulkan bindings/push-constants/SPIR-V), NOT a text-lockstep sibling. Parity is enforced at runtime pixel level per RendererFeatureRegistry convention (VK arc GL/VK visual capture pairs, VFX-9 2026-07-16 + tier1 smoke), not by RULE4 hash lockstep. Declared island-only at MERGE-WAVE-2 checker reconcile 2026-07-22.",
     "shaders/vulkan/postprocess_visual.frag":
         "native VK tier-1 island (VULKAN-BACKEND-L6/P-ladder): structural rewrite of the GL pass (Vulkan bindings/push-constants/SPIR-V), NOT a text-lockstep sibling. Parity is enforced at runtime pixel level per RendererFeatureRegistry convention (VK arc GL/VK visual capture pairs, VFX-9 2026-07-16 + tier1 smoke), not by RULE4 hash lockstep. Declared island-only at MERGE-WAVE-2 checker reconcile 2026-07-22.",
+    "shaders/vulkan/present_encode.frag":
+        "Vulkan-only HDR10/scRGB present encoding; SDR keeps its original blit. H3 transfer doctests and forced-HDR F16 proof cover the display seam.",
     "shaders/vulkan/motion_vectors.frag":
         "Vulkan-only camera motion vectors by depth reprojection (temporal track, docs/plans/2026-11-06-temporal-aa.md); no GL counterpart. Graded by the Graphics Options motion-vector debug view and pan captures.",
     "shaders/vulkan/motion_vectors_debug.frag":

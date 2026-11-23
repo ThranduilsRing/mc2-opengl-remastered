@@ -79,6 +79,18 @@ struct EnginePresentVk::Impl {
 
     // Composite output, blitted into the swapchain after the UI.
     VkFormat presentFmt = VK_FORMAT_R8G8B8A8_UNORM;
+    VkColorSpaceKHR scColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+    bool hdr = false;
+    float paperNits = 200.0f, peakNits = 1000.0f;
+    VkImageResource uiLayer{}, hdrOffscreen{};
+    mc2vk::OwnedRenderPass encodePass;
+    mc2vk::OwnedPipelineLayout encodeLayout;
+    mc2vk::OwnedPipeline encodePipe;
+    mc2vk::OwnedDescriptorSetLayout encodeDsl;
+    mc2vk::OwnedDescriptorPool encodePool;
+    VkDescriptorSet encodeSet = VK_NULL_HANDLE;
+    std::vector<mc2vk::OwnedImageView> encodeViews;
+    std::vector<mc2vk::OwnedFramebuffer> encodeFrames;
     VkImageResource sharedImg{};
     VkImageResource scaledComposite{};
     mc2vk::OwnedFramebuffer scaledCompositeFramebuffer;
@@ -226,6 +238,12 @@ struct EnginePresentVk::Impl {
         hudColorFramebuffer.reset();
         compositeFramebuffer.reset();
         shadowDebugFramebuffer.reset();
+        encodeFrames.clear();
+        encodeViews.clear();
+        if (dev != VK_NULL_HANDLE) {
+            vkImageResourceDestroy(&uiLayer, dev);
+            vkImageResourceDestroy(&hdrOffscreen, dev);
+        }
         if (dev != VK_NULL_HANDLE) vkImageResourceDestroy(&sharedImg, dev);
     }
 };

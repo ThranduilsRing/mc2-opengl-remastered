@@ -190,7 +190,8 @@ public:
     // On success *outValue (when given) is the timeline value this submit signals. Thread-safe.
     VkResult submit(const VkSubmitInfo& si, VkFence fence, uint64_t* outValue = nullptr) const;
     // Blit-only continuation: no Render batch, uploads, frame timeline or allocators. Its dedicated fence owns its lifetime.
-    VkResult submitPresentTail(VkCommandBuffer cb, VkSemaphore acquire, VkSemaphore rendered, VkFence fence) const;
+    VkResult submitPresentTail(VkCommandBuffer cb, VkSemaphore acquire, VkSemaphore rendered, VkFence fence,
+                              VkPipelineStageFlags2 acquireStage = VK_PIPELINE_STAGE_2_TRANSFER_BIT) const;
     // WSI has its own queue lock when a second graphics-family queue is available.
     VkResult present(VkQueue queue, const VkPresentInfoKHR& info) const;
     // Puts the batched plain submits on the queue now. Call it after a big pass when more CPU recording follows: the age check in submit() runs only

@@ -410,6 +410,10 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "Native Card/CardCloud rendering; =0 suppresses these draws (CPU routes retired).",
     },
     {
+        "MC2_TRACE_HDR_FORCE", "MC2_HDR_FORCE", EnvVarKind::Trace, false,
+        "Developer HDR offscreen proof override; harness defaults remain SDR.",
+    },
+    {
         "MC2_FEATURE_HUD_IMGUI_TABS", "MC2_HUD_IMGUI_TABS", EnvVarKind::Feature, false,
         "IN-MISSION-HUD-IMGUI-SCOPE-1 slice C: data-driven command-bar tab registry (code/hudtabregistry.{h,cpp} + wiring in code/controlgui.cpp).",
     },

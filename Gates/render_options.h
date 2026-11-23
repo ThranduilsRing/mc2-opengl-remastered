@@ -26,7 +26,7 @@ struct RenderOptions {
     bool  postCas          = false;   // contrast-adaptive sharpening on the final image
     float postCasSharpness = 0.5f;
     int   tonemapMode      = 0;       // 0 off, 1 AgX, 2 Hable, 3 Reinhard
-    int   hdrOutput        = 0;       // 0 Auto, 1 Off; rendering remains SDR until the HDR present chain ships
+    int   hdrOutput        = 0;       // 0 Auto (surface HDR10/scRGB), 1 Off
     float hdrPaperWhiteNits = 200.0f;
     float hdrPeakNits       = 0.0f;   // 0 queries the window's display, with a 1000 nit fallback
     // Keep legacy SpatialAA=1 as SMAA: old files never recorded an explicit FSR choice.
