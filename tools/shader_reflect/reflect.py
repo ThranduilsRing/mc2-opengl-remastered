@@ -387,7 +387,7 @@ def normalize(
             [_norm_output(o) for o in raw.get("outputs", [])],
             key=lambda o: (o["location"], o["name"]),
         )
-    return {
+    contract = {
         "defines": list(defines),
         "outputs": outputs,
         "shader": shader_rel,
@@ -396,6 +396,13 @@ def normalize(
         "ubos": ubos,
         "variant": variant,
     }
+    # The display seam consumes the entire 128-byte portable push budget.
+    if shader_rel == "shaders/vulkan/postprocess_visual.frag":
+        contract["push_constants"] = [
+            {"name": b["name"], "members": _norm_block(raw, dict(b, binding=0))["members"]}
+            for b in raw.get("push_constants", [])
+        ]
+    return contract
 
 
 def serialize_contract(contract: dict) -> str:

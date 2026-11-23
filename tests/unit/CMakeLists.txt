@@ -41,6 +41,8 @@ add_executable(mc2_tests
     test_battle_value.cpp
     test_mech_feed_ready.cpp
     test_cloud_threshold_band.cpp
+    test_sdr_output.cpp
+    test_surface_format.cpp
     test_mech_motion_history.cpp
     ../../code/battle_value.cpp
     test_chassis_layout.cpp
@@ -417,6 +419,7 @@ if(MSVC)
 endif()
 
 target_include_directories(mc2_tests PRIVATE
+    "$ENV{VULKAN_SDK}/Include"
     ${MC2_WORKTREE_ROOT}/3rdparty/imgui
     ${MC2_WORKTREE_ROOT}           # for "RenderCore/RenderPassContract.h" style includes
     ${MC2_WORKTREE_ROOT}/mclib

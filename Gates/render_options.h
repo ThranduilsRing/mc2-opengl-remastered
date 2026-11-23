@@ -26,6 +26,9 @@ struct RenderOptions {
     bool  postCas          = false;   // contrast-adaptive sharpening on the final image
     float postCasSharpness = 0.5f;
     int   tonemapMode      = 0;       // 0 off, 1 AgX, 2 Hable, 3 Reinhard
+    int   hdrOutput        = 0;       // 0 Auto, 1 Off; rendering remains SDR until the HDR present chain ships
+    float hdrPaperWhiteNits = 200.0f;
+    float hdrPeakNits       = 0.0f;   // 0 queries the window's display, with a 1000 nit fallback
     // Keep legacy SpatialAA=1 as SMAA: old files never recorded an explicit FSR choice.
     int   spatialAA        = 1;       // 0 off, 1 SMAA 1x (default), 2 FXAA, 3 CMAA2, 4 FSR 3.1 native AA (opt-in)
     bool temporalAA() const { return spatialAA == 4; }
@@ -90,6 +93,9 @@ inline constexpr Option kOptions[] = {
     detail::boolOpt ("PostCAS",                       &RenderOptions::postCas),
     detail::floatOpt("PostCASSharpness",              &RenderOptions::postCasSharpness, 0.0, 1.0),
     detail::longOpt ("TonemapMode",                   &RenderOptions::tonemapMode, 0, 3),
+    detail::longOpt ("HdrOutput",                     &RenderOptions::hdrOutput, 0, 1),
+    detail::floatOpt("HdrPaperWhiteNits",             &RenderOptions::hdrPaperWhiteNits, 80.0, 500.0),
+    detail::floatOpt("HdrPeakNits",                   &RenderOptions::hdrPeakNits, 0.0, 10000.0),
     detail::longOpt ("SpatialAA",                     &RenderOptions::spatialAA, 0, 4),
     detail::longOpt ("ShadowQuality", &RenderOptions::shadowQuality, 0, 2),
     detail::longOpt ("BaseQuality", &RenderOptions::baseQuality, 0, 2),
@@ -169,6 +175,10 @@ decltype(auto) withValue(Options& o, const Option& opt, F&& f) {
 // Text form of a value (the override channel and options.cfg): booleans are TRUE/FALSE/1/0 in any case, numbers must parse in full.
 inline Verdict setFromText(RenderOptions& o, const Option& opt, std::string_view text) {
     text = detail::trim(text);
+    if (std::string_view(opt.key) == "HdrOutput") {
+        if (detail::equalsNoCase(text, "Auto")) return setLong(o, opt, 0);
+        if (detail::equalsNoCase(text, "Off")) return setLong(o, opt, 1);
+    }
     return withValue(o, opt, [&](auto& field) {
         using T = std::remove_cvref_t<decltype(field)>;
         if constexpr (std::is_same_v<T, bool>) {

@@ -28,6 +28,7 @@
 #include "mc2_diag_verbose.h"
 #include "vk_image_resource.h"
 #include "vulkan_spatial_aa.h"
+#include "vk_surface_format.h"
 #include "engine_present_vk_internal.h"   // EnginePresentVk::Impl, fillLoadPassDeps, the ImGui piece (engine_present_vk_imgui.cpp)
 #include "Gates/render_options.h"
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
@@ -43,8 +44,11 @@
 #include <SDL2/SDL_vulkan.h>
 #ifdef _WIN32
 #include <SDL2/SDL_syswm.h>   // P13b: SDL_GetWindowWMInfo -> HWND / HINSTANCE
+#include <dxgi1_6.h>
+#include <wrl/client.h>
 #endif
 #include <cstdarg>
+#include <cmath>
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
@@ -224,12 +228,59 @@ void destroySwapchainOnly(EnginePresentVk::Impl& s) {
     s.swapchain.reset();
 }
 
+float displayPeakNits(SDL_Window* window) {
+    float peak = 1000.0f;
+#ifdef _WIN32
+    SDL_SysWMinfo wm; SDL_VERSION(&wm.version);
+    if (!window || !SDL_GetWindowWMInfo(window, &wm) || wm.subsystem != SDL_SYSWM_WINDOWS) return peak;
+    const HMONITOR monitor = MonitorFromWindow(wm.info.win.window, MONITOR_DEFAULTTONEAREST);
+    HMODULE dll = LoadLibraryW(L"dxgi.dll");
+    if (!dll) return peak;
+    {
+        using Microsoft::WRL::ComPtr;
+        using CreateFactory = HRESULT (WINAPI*)(REFIID, void**);
+        const auto create = reinterpret_cast<CreateFactory>(GetProcAddress(dll, "CreateDXGIFactory1"));
+        ComPtr<IDXGIFactory1> factory;
+        if (create && SUCCEEDED(create(__uuidof(IDXGIFactory1), reinterpret_cast<void**>(factory.GetAddressOf())))) {
+            for (UINT i = 0; ; ++i) {
+                ComPtr<IDXGIAdapter1> adapter;
+                if (factory->EnumAdapters1(i, adapter.GetAddressOf()) != S_OK) break;
+                for (UINT j = 0; ; ++j) {
+                    ComPtr<IDXGIOutput> output;
+                    if (adapter->EnumOutputs(j, output.GetAddressOf()) != S_OK) break;
+                    ComPtr<IDXGIOutput6> output6;
+                    DXGI_OUTPUT_DESC1 desc{};
+                    if (SUCCEEDED(output.As(&output6)) && SUCCEEDED(output6->GetDesc1(&desc)) &&
+                        desc.Monitor == monitor && std::isfinite(desc.MaxLuminance) && desc.MaxLuminance > 0.0f)
+                        peak = desc.MaxLuminance;
+                }
+            }
+        }
+    }
+    FreeLibrary(dll);
+#endif
+    return peak;
+}
+
+void logHdrCaps(EnginePresentVk::Impl& s, const std::vector<VkSurfaceFormatKHR>& formats, VkSurfaceFormatKHR actual) {
+    if (s.hdrCapsLogged) return;
+    s.hdrCapsLogged = true;
+    const auto& options = mc2::options::current();
+    const auto candidate = chooseSurfaceFormat(formats, options.hdrOutput == 0);
+    const float peak = options.hdrPeakNits > 0.0f ? options.hdrPeakNits : displayPeakNits(s.outputWindow);
+    mc2::fmt::print_err("[HDR_OUTPUT v1] policy={} colorspace_ext={} metadata_ext={} offscreen={} active=SDR format={} colorspace={} would_format={} would_colorspace={} paper_nits={} peak_nits={} present_format={}\n",
+        options.hdrOutput == 0 ? "Auto" : "Off", s.ctx->swapchainColorspaceEnabled(), s.ctx->hdrMetadataEnabled(), s.offscreen,
+        static_cast<int>(actual.format), static_cast<int>(actual.colorSpace), static_cast<int>(candidate.format), static_cast<int>(candidate.colorSpace),
+        options.hdrPaperWhiteNits, peak, static_cast<int>(s.presentFmt));
+}
+
 bool buildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
                     VkSwapchainKHR oldSwapchain, std::string& reason) {
     if (s.offscreen) {   // one placeholder image index, never touched: the tail skips the blit and the present
         s.scFormat = VK_FORMAT_R8G8B8A8_UNORM;
         s.scExtent = {w, h};
         s.scImages.assign(1, VK_NULL_HANDLE);
+        logHdrCaps(s, {}, {s.scFormat, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR});
         return true;
     }
     VkSurfaceCapabilitiesKHR caps{};
@@ -240,12 +291,9 @@ bool buildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
     vkGetPhysicalDeviceSurfaceFormatsKHR(s.phys, s.surface.get(), &fmtCount, nullptr);
     std::vector<VkSurfaceFormatKHR> fmts(fmtCount);
     if (fmtCount) vkGetPhysicalDeviceSurfaceFormatsKHR(s.phys, s.surface.get(), &fmtCount, fmts.data());
-    VkSurfaceFormatKHR chosen = fmts.empty()
-        ? VkSurfaceFormatKHR{VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR}
-        : fmts[0];
-    for (auto& f : fmts)
-        if (f.format == VK_FORMAT_B8G8R8A8_UNORM &&
-            f.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) { chosen = f; break; }
+    // H2 advertises capabilities only. H3 owns activation and all format-keyed pipeline prewarming.
+    const auto chosen = chooseSurfaceFormat(fmts, false);
+    logHdrCaps(s, fmts, chosen);
 
     VkExtent2D extent = caps.currentExtent;
     if (extent.width == 0xFFFFFFFFu) { extent.width = w; extent.height = h; }
@@ -446,7 +494,7 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
     // AA reads display-encoded color, at scene resolution, before reconstruction.
     if ((scene->w < s.imgW || scene->h < s.imgH) && !s.scaledComposite.image) {
         if (!vkImageResourceCreate(&s.scaledComposite, s.dev, s.phys, scene->w, scene->h,
-                VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                s.presentFmt, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
                 VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT |   // STORAGE: CMAA2 (spatial AA mode 3) writes its output as a storage image
                 VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
                 "present.renderResolutionColor")) return false;
@@ -478,7 +526,7 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
     }
     if (!s.compositeRenderPass) {
         VkAttachmentDescription color{};
-        color.format = VK_FORMAT_R8G8B8A8_UNORM;
+        color.format = s.presentFmt;
         color.samples = VK_SAMPLE_COUNT_1_BIT;
         color.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
         color.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -657,7 +705,7 @@ bool ensureShadowDebugOverlayObjects(EnginePresentVk::Impl& s, VkImageView csmAr
     }
     if (!s.shadowDebugRenderPass) {
         VkAttachmentDescription color{};
-        color.format = VK_FORMAT_R8G8B8A8_UNORM;
+        color.format = s.presentFmt;
         color.samples = VK_SAMPLE_COUNT_1_BIT;
         color.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
         color.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -846,7 +894,7 @@ bool ensureHudColorObjects(EnginePresentVk::Impl& s) {
 
     if (!s.hudColorRenderPass) {
         VkAttachmentDescription color{};
-        color.format = VK_FORMAT_R8G8B8A8_UNORM;
+        color.format = s.presentFmt;
         color.samples = VK_SAMPLE_COUNT_1_BIT;
         color.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
         color.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -1582,7 +1630,7 @@ bool buildSharedImage(EnginePresentVk::Impl& s, uint32_t w, uint32_t h, std::str
     // TRANSFER_SRC so VK can blit it into the swapchain; TRANSFER_DST for the
     // initial acquire barrier bookkeeping / robustness. Non-exportable: no GL side.
     if (!vkImageResourceCreate(&s.sharedImg, s.dev, s.phys, w, h,
-                               VK_FORMAT_R8G8B8A8_UNORM,
+                               s.presentFmt,
                                VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
                                VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
                                VK_IMAGE_USAGE_STORAGE_BIT |   // CMAA2 (spatial AA mode 3) writes its output as a storage image
@@ -1627,6 +1675,7 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* window, uint32_t w, u
     s.dev       = ctx.device();
     s.gfxQ      = ctx.graphicsQueue();
     s.gfxFamily = ctx.graphicsFamily();
+    s.outputWindow = window;
 
     auto fail = [&](const std::string& r) -> bool {
         health_.fallback_reason = r;

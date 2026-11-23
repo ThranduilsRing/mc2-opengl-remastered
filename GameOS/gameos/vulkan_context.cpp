@@ -462,6 +462,19 @@ bool VulkanContext::init(bool wantPresent) {
 #endif
     }
 
+    swapchainColorspace_ = false;
+    if (wantPresent) {
+        uint32_t count = 0;
+        vkEnumerateInstanceExtensionProperties(nullptr, &count, nullptr);
+        std::vector<VkExtensionProperties> available(count);
+        if (count) vkEnumerateInstanceExtensionProperties(nullptr, &count, available.data());
+        for (const auto& e : available)
+            if (std::strcmp(e.extensionName, VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME) == 0) {
+                instExts.push_back(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
+                swapchainColorspace_ = true;
+                break;
+            }
+    }
     uint32_t layerSpec = 0, layerImpl = 0;
     bool layerSettingsExt = false;
     if (wantValidation) {
@@ -793,6 +806,8 @@ bool VulkanContext::init(bool wantPresent) {
     // estimate). No external-memory extension is requested: no VK resource is exportable.
     std::vector<const char*> devExts;
     for (const std::string& e : profile_.deviceExtensions) devExts.push_back(e.c_str());
+    hdrMetadata_ = wantPresent && caps.hasExtension(VK_EXT_HDR_METADATA_EXTENSION_NAME);
+    if (hdrMetadata_) devExts.push_back(VK_EXT_HDR_METADATA_EXTENSION_NAME);
     if (caps.hasExtension(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME)) devExts.push_back(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
     if (caps.hasExtension(VK_AMD_BUFFER_MARKER_EXTENSION_NAME)) devExts.push_back(VK_AMD_BUFFER_MARKER_EXTENSION_NAME);
     // The FidelityFX VK backend fetches the KHR-suffixed memory-requirements entry points through vkGetDeviceProcAddr; the loader returns null for a
@@ -1442,6 +1457,8 @@ void VulkanContext::endFrame() {
 }
 
 void VulkanContext::destroy() {
+    swapchainColorspace_ = false;
+    hdrMetadata_ = false;
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "VulkanContext::destroy");
     mc2::gpumem::finish();
     gpuprof::shutdown(*this);
