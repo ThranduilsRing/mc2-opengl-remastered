@@ -121,4 +121,67 @@ inline bool isSolidCutout(std::span<const uint8_t> rgba, uint32_t width, uint32_
         }
     return static_cast<float>(core) / static_cast<float>(covered) >= 0.25f;
 }
+
+// BUILDING-GLASS-1: a window of an alpha-mixed wall is a hole the 0.5 cutout discards, so the sky or the next building
+// shows through it and there is no back face behind it. A hole of the cutout mask that does not reach the content
+// edge (a pane inside solid mass), is roughly rectangular and not tiny is glass: opaque near-black. Holes that touch
+// the silhouette (notches, antenna gaps) and lattice-sized or ragged ones (chain-link diamonds) stay cut.
+// contentW/H: the image's own extent in the top-left of a larger array layer. Returns the texels filled.
+inline size_t fillEnclosedGlassHoles(std::span<uint8_t> rgba, uint32_t width, uint32_t height, uint32_t contentW, uint32_t contentH) {
+    contentW = std::min(contentW ? contentW : width, width);
+    contentH = std::min(contentH ? contentH : height, height);
+    if (rgba.size() != static_cast<size_t>(width) * height * 4 || contentW < 8 || contentH < 8) return 0;
+    const auto clear = [&](uint32_t x, uint32_t y) { return rgba[(static_cast<size_t>(y) * width + x) * 4 + 3] < 128; };
+    std::vector<uint32_t> region(static_cast<size_t>(contentW) * contentH, 0u), stack;   // 0 unseen, 1 outside, 2.. hole id
+    const auto at = [&](uint32_t x, uint32_t y) -> uint32_t& { return region[static_cast<size_t>(y) * contentW + x]; };
+    uint32_t box[4];
+    const auto flood = [&](uint32_t sx, uint32_t sy, uint32_t id) {
+        size_t area = 0;
+        stack.assign(1, sy * contentW + sx);
+        at(sx, sy) = id;
+        box[0] = box[2] = sx; box[1] = box[3] = sy;
+        while (!stack.empty()) {
+            const uint32_t v = stack.back(); stack.pop_back(); ++area;
+            const uint32_t x = v % contentW, y = v / contentW;
+            box[0] = std::min(box[0], x); box[1] = std::min(box[1], y); box[2] = std::max(box[2], x); box[3] = std::max(box[3], y);
+            const int64_t nx[4] = {int64_t(x) - 1, int64_t(x) + 1, int64_t(x), int64_t(x)};
+            const int64_t ny[4] = {int64_t(y), int64_t(y), int64_t(y) - 1, int64_t(y) + 1};
+            for (int k = 0; k < 4; ++k) {
+                if (nx[k] < 0 || ny[k] < 0 || nx[k] >= int64_t(contentW) || ny[k] >= int64_t(contentH)) continue;
+                const uint32_t ux = uint32_t(nx[k]), uy = uint32_t(ny[k]);
+                if (at(ux, uy) || !clear(ux, uy)) continue;
+                at(ux, uy) = id;
+                stack.push_back(uy * contentW + ux);
+            }
+        }
+        return area;
+    };
+    for (uint32_t x = 0; x < contentW; ++x) {      // the clear mask reachable from the content border is the outside
+        if (clear(x, 0) && !at(x, 0)) flood(x, 0, 1);
+        if (clear(x, contentH - 1) && !at(x, contentH - 1)) flood(x, contentH - 1, 1);
+    }
+    for (uint32_t y = 0; y < contentH; ++y) {
+        if (clear(0, y) && !at(0, y)) flood(0, y, 1);
+        if (clear(contentW - 1, y) && !at(contentW - 1, y)) flood(contentW - 1, y, 1);
+    }
+    size_t filled = 0;
+    const size_t minArea = std::max<size_t>(24, static_cast<size_t>(contentW) * contentH / 4096);
+    uint32_t id = 2;
+    for (uint32_t y = 0; y < contentH; ++y)
+        for (uint32_t x = 0; x < contentW; ++x) {
+            if (at(x, y) || !clear(x, y)) continue;
+            const uint32_t mine = id++;
+            const size_t area = flood(x, y, mine);
+            const size_t boxArea = static_cast<size_t>(box[2] - box[0] + 1) * (box[3] - box[1] + 1);
+            if (area < minArea || area * 10 < boxArea * 8) continue;
+            for (uint32_t yy = box[1]; yy <= box[3]; ++yy)
+                for (uint32_t xx = box[0]; xx <= box[2]; ++xx)
+                    if (at(xx, yy) == mine) {
+                        uint8_t* t = &rgba[(static_cast<size_t>(yy) * width + xx) * 4];
+                        t[0] = 8; t[1] = 9; t[2] = 11; t[3] = 255;
+                        ++filled;
+                    }
+        }
+    return filled;
+}
 } // namespace mc2::vegetation

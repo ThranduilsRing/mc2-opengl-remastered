@@ -233,6 +233,19 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
         // PROP-ALPHA-MIP-1: a solid cutout layer of the alpha-ON group (canopy, alpha-mixed wall) keeps its coverage at the
         // shader's per-mip cut instead of box-filtering down to mid alpha, which the rising cut sends to the thin blended fringe
         // (far trees read see-through). Thin lattice (isSolidCutout false) keeps the plain box mips so fences stay see-through.
+        // BUILDING-GLASS-1: enclosed rectangular windows of a solid cutout wall become opaque dark glass (both groups: a stock
+        // texture whose alpha flag is set late sits in the alpha-OFF array yet is still cut per packet).
+        for (size_t k = 0; k < layerTexels.size(); ++k) {
+            const auto& u = uniques[members[k]];
+            if (u.tree) continue;
+            bool anyClear = false;
+            for (size_t i = 3; i < layerTexels[k].size() && !anyClear; i += 4) anyClear = layerTexels[k][i] < 128;
+            if (!anyClear || !mc2::vegetation::isSolidCutout(layerTexels[k], cpuArray.width, cpuArray.height,
+                                                             static_cast<uint32_t>(std::min(u.w, u.h)))) continue;
+            const size_t n = mc2::vegetation::fillEnclosedGlassHoles(layerTexels[k], cpuArray.width, cpuArray.height,
+                                                                     static_cast<uint32_t>(u.w), static_cast<uint32_t>(u.h));
+            if (n) mc2::fmt::print_err("[PROP_GLASS v1] group={} layer={:d} texels={:d}\n", group == 0u ? "off" : "on", mc2::fmt::as_i32(plan.layer[members[k]]), mc2::fmt::as_u64(n));
+        }
         std::vector<float> keepCoverage(members.size(), -1.0f);
         if (group == 1u)
             for (size_t k = 0; k < layerTexels.size(); ++k)
