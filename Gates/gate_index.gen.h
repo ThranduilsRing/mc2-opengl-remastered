@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 434;
+inline constexpr std::size_t kGateCount = 435;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -147,6 +147,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_HDRI_SKY", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_HDRI_SKY_AZ_OFFSET", Kind::Float, Rule::Prefix, {}},
     {"MC2_HDR_FORCE", Kind::Bool, Rule::Lead1, {}},
+    {"MC2_HDR_PROOF_DUMP", Kind::String, Rule::Std, {}},
     {"MC2_HEARTBEAT", Kind::Bool, Rule::Presence, {}},
     {"MC2_HEIGHT", Kind::Int, Rule::Prefix, {}},
     {"MC2_HITCH_MS", Kind::Float, Rule::Prefix, {}},
