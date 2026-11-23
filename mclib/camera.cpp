@@ -994,7 +994,7 @@ void Camera::saveBakeReference(FitIniFile* file) const
 	// Direction is recomputed during rendering; compare the serialized camera fields only.
 	std::copy_n(bakeSnapshot.sunDir, 3, saved.sunDir);
 	if (!todCurve && saved == bakeSnapshot) return;
-	auto precise = [file](const char* key, float value) {
+	auto precise = [file](std::string_view key, float value) {
 		char line[128]; mc2::fmt::to_buf(line, "f {} = {:.9g}\r\n", key, value);
 		file->write(reinterpret_cast<MemoryPtr>(line), strlen(line));
 	};
@@ -1016,7 +1016,7 @@ void Camera::restoreSunOverride(FitIniFile* file)
 
 void Camera::saveSunOverride(FitIniFile* file) const
 {
-	const auto write = [file](const char* key, float angle) {
+	const auto write = [file](std::string_view key, float angle) {
 		char line[128]; mc2::fmt::to_buf(line, "f {} = {:.9g}\r\n", key, angle);
 		file->write(reinterpret_cast<MemoryPtr>(line), strlen(line));
 	};
