@@ -2,7 +2,7 @@
 #define GAMERULESDIALOG_H
 // The Game Rules dialog: one row per entry of the mc2::rules::kRules descriptor table (code/game_rules.h), no per-rule code.
 // Reached from New Campaign (picker -> rules -> startNewCampaign). Page: data/defs/ui/packages/default/game/mcl_gamerules.fit
-// (a defs-only screen: it has no legacy FIT). A row's value button cycles the rule; ACCEPT / DEFAULTS / BATTLETECH PRESET / BACK.
+// (a defs-only screen: it has no legacy FIT). An enum/bool row's value button cycles the rule; a numeric row is a snapping slider (drag, click, left/right); ACCEPT / DEFAULTS / BATTLETECH PRESET / BACK.
 #include <memory>
 #include "logisticsdialog.h"
 #include "game_rules.h"
@@ -34,6 +34,11 @@ private:
 
 	void refreshRows();
 	void cycleRow( std::size_t row );
+	void pollSliders();
+	void moveFocus( int dir );
+
+	long lastSlider[kPageRows] = {};	// last slider position the dialog applied (the page slider is re-set to the snapped notch)
+	int focusRow = -1;				// slider row the left/right keys move
 
 	mc2::rules::GameRules working;
 	static std::unique_ptr<GameRulesDialog> s_instance;

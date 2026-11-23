@@ -313,3 +313,46 @@ TEST_CASE("game rules: dialog page rows equal the descriptor table presets round
         if (r.kind == Kind::Enum)
             CHECK(std::string(r.labels[getLong(defaults, r) - r.lo]).rfind("MC2 Default", 0) == 0);
 }
+
+TEST_CASE("game rules: numeric rules are snapping sliders and the presets land on notches") {
+    const std::size_t pilot = *find("PilotSkillWeight"), cbill = *find("CBillMultiplier"), step = *find("DropWeightStep");
+    for (const Rule& r : kRules) CHECK(isSlider(r) == (r.kind == Kind::Int || r.kind == Kind::Percent));
+    CHECK(!isSlider(kRules[*find("Heat")]));
+    CHECK(!isSlider(kRules[*find("DropWeightPurchase")]));
+
+    for (const Rule& r : kRules) {
+        if (!isSlider(r)) continue;
+        CHECK(valueFromSlider(r, 0) == r.lo);
+        CHECK(valueFromSlider(r, kSliderRes) == r.hi);
+        for (long v = r.lo; v <= r.hi; v += sliderStep(r)) CHECK(valueFromSlider(r, sliderFromValue(r, v)) == v);   // every notch round trips
+        for (long pos = 0; pos <= kSliderRes; ++pos) {                                                             // any position snaps to an allowed value
+            const long v = valueFromSlider(r, pos);
+            CHECK(v >= r.lo);
+            CHECK(v <= r.hi);
+            CHECK((v - r.lo) % sliderStep(r) == 0);
+        }
+        // the dialog applies values through setLong: every snapped value is accepted
+        GameRules g;
+        CHECK(setLong(g, r, valueFromSlider(r, 437)) == Verdict::Ok);
+    }
+    // Percent rules snap to 25 % notches; Int rules to single steps.
+    CHECK(valueFromSlider(kRules[pilot], 500) == 100);
+    CHECK(valueFromSlider(kRules[pilot], 450) == 100);
+    CHECK(valueFromSlider(kRules[cbill], 0) == 50);
+    CHECK(valueFromSlider(kRules[cbill], 170) == 75);
+    CHECK(valueFromSlider(kRules[step], 1000) == 50);
+    // The default mark sits on a notch; the BattleTech preset values are on notches too.
+    const GameRules d;
+    for (std::size_t i : {pilot, cbill, step}) CHECK(valueFromSlider(kRules[i], sliderFromValue(kRules[i], getLong(d, kRules[i]))) == getLong(d, kRules[i]));
+    const GameRules bt = battleTechPreset();
+    for (std::size_t i : {pilot, cbill, step}) CHECK(valueFromSlider(kRules[i], sliderFromValue(kRules[i], getLong(bt, kRules[i]))) == getLong(bt, kRules[i]));
+    // Keyboard: one notch per press, clamped at both ends; an off-grid hand-edited value starts from its nearest notch.
+    CHECK(nudgeValue(kRules[pilot], 100, 1) == 125);
+    CHECK(nudgeValue(kRules[pilot], 100, -1) == 75);
+    CHECK(nudgeValue(kRules[pilot], 200, 1) == 200);
+    CHECK(nudgeValue(kRules[cbill], 50, -1) == 50);
+    CHECK(nudgeValue(kRules[step], 5, 1) == 6);
+    CHECK(nudgeValue(kRules[step], 50, 1) == 50);
+    CHECK(nudgeValue(kRules[step], 1, -1) == 1);
+    CHECK(nudgeValue(kRules[pilot], 110, 1) == 125);
+}

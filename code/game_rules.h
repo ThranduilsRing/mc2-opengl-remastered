@@ -105,6 +105,28 @@ constexpr bool labelsMatchRanges() {
 }  // namespace detail
 static_assert(detail::labelsMatchRanges(), "every Enum rule needs exactly one label per value lo..hi");
 
+// Dialog sliders: every numeric rule (Int, Percent) is a slider that snaps to notches. Percent notches are 25 %, Int notches 1.
+// A slider position is 0..kSliderRes; the page's GuiSlider uses the same full scale.
+inline constexpr long kSliderRes = 1000;
+constexpr bool isSlider(const Rule& r) { return r.kind == Kind::Int || r.kind == Kind::Percent; }
+constexpr long sliderStep(const Rule& r) { return r.kind == Kind::Percent ? 25 : 1; }
+constexpr long sliderNotches(const Rule& r) { return (r.hi - r.lo) / sliderStep(r); }
+constexpr long clampNotch(const Rule& r, long n) { return n < 0 ? 0 : (n > sliderNotches(r) ? sliderNotches(r) : n); }
+// Value at a slider position (nearest notch).
+constexpr long valueFromSlider(const Rule& r, long pos) {
+    const long n = sliderNotches(r);
+    return r.lo + clampNotch(r, (pos * n + kSliderRes / 2) / kSliderRes) * sliderStep(r);
+}
+// Canonical slider position of a value (nearest notch; a hand-edited off-grid value shows at the nearest notch).
+constexpr long sliderFromValue(const Rule& r, long v) {
+    const long n = sliderNotches(r);
+    return (clampNotch(r, (v - r.lo + sliderStep(r) / 2) / sliderStep(r)) * kSliderRes + n / 2) / n;
+}
+// Keyboard: one notch left (dir < 0) or right (dir > 0) from the value's nearest notch.
+constexpr long nudgeValue(const Rule& r, long v, int dir) {
+    return r.lo + clampNotch(r, (v - r.lo + sliderStep(r) / 2) / sliderStep(r) + (dir < 0 ? -1 : 1)) * sliderStep(r);
+}
+
 enum class Verdict { Ok, Garbage, OutOfRange };
 
 namespace detail {
