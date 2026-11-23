@@ -1064,7 +1064,7 @@ run_nightly "gpu_abi"                "py -3 tools/gpu_abi_gen.py --check && py -
 run_nightly "vk_pipeline_layout"    "py -3 scripts/check-vk-pipeline-layout.py --quiet && py -3 -B -m pytest scripts/tests/test_check_vk_pipeline_layout.py -q -p no:cacheprovider"
 # Vulkan UBO layout and offline shader compilation remain required.
 run_nightly "vk_ubo_layout"          "py -3 tools/check_ubo_layout.py"
-run_check "vk_shaders_compile"     "py -3 tools/check_vk_shaders.py && py -3 -B -m pytest scripts/tests/test_window_emission.py -q -p no:cacheprovider"
+run_check "vk_shaders_compile"     "py -3 tools/check_vk_shaders.py && py -3 -B -m pytest scripts/tests/test_window_emission.py scripts/tests/test_sdr_output.py -q -p no:cacheprovider"
 # CONTRACT-TRUTH-2: the census above enforces that shaders ROUTE THROUGH the
 # rc_* helpers. It says nothing about whether the helpers' own documentation is
 # true, and it wasn't: shaders/include/render_contract.hglsl:77 stated the
