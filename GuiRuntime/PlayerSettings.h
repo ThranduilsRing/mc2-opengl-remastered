@@ -278,6 +278,9 @@ inline bool saveNeedsRelaunch(bool recorded, std::string_view savedMod, std::str
     return recorded && (savedMod != activeMod || savedDeps != activeDeps);
 }
 
+// A relaunched child keeps the parent's priority class (a player's NORMAL, a below-normal harness run stays below normal); 0 = unknown.
+inline unsigned long relaunchPriorityClass(unsigned long parent, unsigned long normal) { return parent ? parent : normal; }
+
 inline bool hasHighObjectNumber(std::string_view source) {
     for (std::size_t at = source.find("objectnumber"); at != std::string_view::npos;
          at = source.find("objectnumber", at + 12)) {
