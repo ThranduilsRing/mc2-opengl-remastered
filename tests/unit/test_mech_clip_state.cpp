@@ -329,7 +329,7 @@ TEST_CASE("clip state: BT2018 planted stride bone oracle") {
             for (int k = 0; k < 2; ++k) feet[k].push_back({bones[k].m[3], bones[k].m[7], bones[k].m[11]});
         }
         const auto stride = measureStride(feet, duration);
-        std::printf("[STRIDE_ORACLE] %s planted=%.6f estimate=%.6f selected=%.6f local u/s\n",
+        std::printf("Stride oracle: %s planted=%.6f estimate=%.6f selected=%.6f local u/s\n",
             asset.first, stride.planted, stride.estimate, stride.speed());
         CHECK(stride.planted == doctest::Approx(asset.second).epsilon(0.001).scale(0));
         CHECK(stride.speed() == stride.planted);
