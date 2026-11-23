@@ -35,6 +35,10 @@ import console_child  # noqa: E402  (windowless console children without a conho
 
 EXPECTED_DIR = _REFLECT_DIR / "expected"
 
+# Push-constant contracts are opt-in to preserve the existing descriptor-only
+# goldens. The display seam pins its full portable 128-byte budget and member ABI.
+PUSH_CONSTANT_CONTRACTS = frozenset({"shaders/vulkan/postprocess_visual.frag"})
+
 # ---------------------------------------------------------------------------
 # SHADER_VARIANTS
 # Key: repo-relative posix path.
@@ -396,8 +400,7 @@ def normalize(
         "ubos": ubos,
         "variant": variant,
     }
-    # The display seam consumes the entire 128-byte portable push budget.
-    if shader_rel == "shaders/vulkan/postprocess_visual.frag":
+    if shader_rel in PUSH_CONSTANT_CONTRACTS:
         contract["push_constants"] = [
             {"name": b["name"], "members": _norm_block(raw, dict(b, binding=0))["members"]}
             for b in raw.get("push_constants", [])
