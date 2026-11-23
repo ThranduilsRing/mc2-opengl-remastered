@@ -18,6 +18,7 @@ LogisticsDialog.cpp			: Implementation of the LogisticsDialog component.
 \*************************************************************************************************/
 
 #include"logisticsdialog.h"
+#include "../GuiRuntime/PlayerFrontEnd.h"
 #include "vfs.h"
 #include "mc2str.h"
 #include"abutton.h"
@@ -630,6 +631,7 @@ void LogisticsSaveDialog::beginCampaign()
 void LogisticsSaveDialog::initDialog( mc2::czstring path, bool bCampaign )
 {
 	gameListBox.removeAllItems( true );
+	const std::string activeMod = bCampaign ? PlayerFrontEnd::activeModId() : std::string();
 
 	if ( !bCampaign )
 	{
@@ -672,13 +674,27 @@ void LogisticsSaveDialog::initDialog( mc2::czstring path, bool bCampaign )
 	{
 		// Campaigns come from the merged VFS index (mods + loose + FST); "campaign" and "tutorial"
 		// are added below in their fixed positions. Enumerated at menu time only.
+		// The base-game campaign comes first. A mod that ships its own campaign.fit replaces "campaign", so the index
+		// keeps the base one under kStockCampaignKey (absent when nothing shadows it); otherwise it is added below.
+		// Owner 11-23: the list shows stock + every installed mod campaign. An entry outside the mounted layers has the hidden
+		// text "<mod>::<fit>" (stock with no mod layer: "::campaign"); picking it relaunches the game into that mod (mainmenu).
+		std::vector<std::string> campaignNames;
+		std::string stockAlias( mc2::vfs::kStockCampaignKey.substr( mc2::vfs::kStockCampaignKey.rfind( '/' ) + 1 ) );
+		stockAlias.resize( stockAlias.size() - 4 );
+		if ( mc2::vfs::lookup( mc2::vfs::kStockCampaignKey ) )
+			campaignNames.push_back( stockAlias );
 		for ( const auto& campEntry : mc2::vfs::enumerate( "data/campaign/", ".fit" ) )
 		{
 			std::string fname = campEntry.name;
 			if ( fname.size() > 4 )
 				fname.resize( fname.size() - 4 );	// strip ".fit"
-			if ( _stricmp( fname.c_str(), "campaign" ) == 0 || _stricmp( fname.c_str(), "tutorial" ) == 0 )
+			if ( _stricmp( fname.c_str(), "campaign" ) == 0 || _stricmp( fname.c_str(), "tutorial" ) == 0 ||
+				_stricmp( fname.c_str(), stockAlias.c_str() ) == 0 )
 				continue;
+			campaignNames.push_back( std::move( fname ) );
+		}
+		for ( const std::string& fname : campaignNames )
+		{
 
 			// Tolerant name read: a malformed mod campaign falls back to its file name, never asserts.
 			char campaignName[1024];
@@ -701,10 +717,16 @@ void LogisticsSaveDialog::initDialog( mc2::czstring path, bool bCampaign )
 			if ( campaignName[0] == '\0' )
 				strncpy( campaignName, fname.c_str(), 1023 );
 
+			// The shadowed base campaign runs with no mod layer; the mounted mod's own campaigns carry its tag.
+			const bool isStock = _stricmp( fname.c_str(), stockAlias.c_str() ) == 0;
+			std::string shown( campaignName );
+			if ( !isStock && !activeMod.empty() )
+				shown += " [" + activeMod + "]";
+
 			auto pEntry = std::make_unique<aLocalizedListItem>();
 			*pEntry = s_instance->templateItem;
-			pEntry->setText( campaignName );
-			pEntry->setHiddenText( fname.c_str() );
+			pEntry->setText( shown.c_str() );
+			pEntry->setHiddenText( isStock ? std::string( PlayerFrontEnd::kStockNoModKey ).c_str() : fname.c_str() );
 			pEntry->setColor( edits[0].getColor() );
 			gameListBox.AddItem( pEntry.release() );
 		}
@@ -724,9 +746,16 @@ void LogisticsSaveDialog::initDialog( mc2::czstring path, bool bCampaign )
 			*pEntry = s_instance->templateItem;
 			char campaignName[1024];
 			readCampaignNameFromFile( "campaign", std::span(campaignName).first(1023) );
-			pEntry->setText( campaignName );
+			// With a mod mounted this is the mod's campaign.fit when it shadows the base one (the stock alias above exists),
+			// otherwise it is the base campaign, which must run with no mod layer.
+			const bool stockShadowed = static_cast<bool>( mc2::vfs::lookup( mc2::vfs::kStockCampaignKey ) );
+			const bool baseWithMod = !activeMod.empty() && !stockShadowed;
+			std::string shown( campaignName );
+			if ( !activeMod.empty() && stockShadowed )
+				shown += " [" + activeMod + "]";
+			pEntry->setText( shown.c_str() );
 
-			pEntry->setHiddenText( "campaign" );
+			pEntry->setHiddenText( baseWithMod ? std::string( PlayerFrontEnd::kStockNoModKey ).c_str() : "campaign" );
 			pEntry->setColor( edits[0].getColor() );
 			gameListBox.AddItem( pEntry.release() );
 		}
@@ -743,6 +772,17 @@ void LogisticsSaveDialog::initDialog( mc2::czstring path, bool bCampaign )
 			pEntry->setText( campaignName );
 
 			pEntry->setHiddenText( "tutorial" );
+			pEntry->setColor( edits[0].getColor() );
+			gameListBox.AddItem( pEntry.release() );
+		}
+
+		// Campaigns of every other installed mod (names read from their campaign FITs by the front end).
+		for ( const auto& other : PlayerFrontEnd::otherModCampaigns() )
+		{
+			auto pEntry = std::make_unique<aLocalizedListItem>();
+			*pEntry = s_instance->templateItem;
+			pEntry->setText( other.text.c_str() );
+			pEntry->setHiddenText( other.key.c_str() );
 			pEntry->setColor( edits[0].getColor() );
 			gameListBox.AddItem( pEntry.release() );
 		}
@@ -960,11 +1000,13 @@ void LogisticsSaveDialog::update()
 		}
 	}
 
-	if ( (bLoad || bCampaign) && !fileName.empty() )
+	if ( bCampaign && PlayerFrontEnd::isCrossModKey( fileName ) )
 	{
-		if ( bCampaign )
-			ActivateCampaignMod( fileName.c_str() );
-
+		// A campaign of another mod layer: there is no FIT in the mounted files, the start relaunches into it.
+		getButton( YES )->disable( false );
+	}
+	else if ( (bLoad || bCampaign) && !fileName.empty() )
+	{
 		FullPathFileName path;
 		const bool do_not_lower = true;
 		path.init( bCampaign ? campaignPath : savePath, fileName.c_str(), ".fit" , do_not_lower);

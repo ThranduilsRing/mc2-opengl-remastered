@@ -324,6 +324,15 @@ void MainMenu::setDrawBackground( bool bNewDrawBackground )
 	}
 }
 
+// A campaign save made under other mod layers than the mounted ones: save the choice and relaunch into them (true = relaunching).
+static bool saveNeedsOtherMod( FitIniFile& file, mc2::czstring saveFile )
+{
+	char mod[256] = {}, deps[1024] = {};
+	const bool recorded = file.seekBlock( "General" ) == NO_ERR && file.readIdString( "ActiveMod", mod, sizeof(mod) - 1 ) == NO_ERR &&
+		file.readIdString( "ModDeps", deps, sizeof(deps) - 1 ) == NO_ERR;
+	return PlayerFrontEnd::relaunchForSave( recorded, PlayerFrontEnd::loadModField( mod ), PlayerFrontEnd::loadModField( deps ), saveFile );
+}
+
 // A campaign that cannot start or load: tell the player with the existing one-button dialog (the host-left dialog slot) instead of silently doing nothing.
 static void showCampaignRefusal( bool& dialogFlag, mc2::czstring text )
 {
@@ -367,7 +376,18 @@ int	MainMenu::handleMessage( unsigned long what, unsigned long who )
 				if ( LogisticsSaveDialog::instance()->isDone() )
 				{
 					// a missing campaign file is logged by startNewCampaign; stay on the menu instead of RESTART
-					if ( beginCampaignRules( LogisticsSaveDialog::instance()->getFileName() ) )
+					if ( PlayerFrontEnd::isCrossModKey( LogisticsSaveDialog::instance()->getFileName() ) )
+					{
+						// A campaign of another mod: the choice is saved and the game relaunches into that mod, which starts it.
+						if ( !PlayerFrontEnd::relaunchForCampaign( LogisticsSaveDialog::instance()->getFileName() ) )
+						{
+							endAnim.end();
+							beginAnim.begin();
+							bLoadCampaign = false;
+							showCampaignRefusal( bHostLeftDlg, "This campaign needs another mod and the choice could not be saved." );
+						}
+					}
+					else if ( beginCampaignRules( LogisticsSaveDialog::instance()->getFileName() ) )
 						;	// the Game Rules dialog takes over; ACCEPT starts the campaign
 					else if ( LogisticsData::instance->startNewCampaign( LogisticsSaveDialog::instance()->getFileName().c_str()) )
 						status = RESTART;
@@ -550,11 +570,25 @@ void MainMenu::update()
         return;
     }
     if (!introMovie) mc2::prewarm::pumpMain(4.0, mc2::prewarm::Screen::MainMenu, !bDrawBackground);
+    const auto pickedLoad = PlayerFrontEnd::takeSaveLoad();
+    if (!pickedLoad.empty() && LogisticsData::instance) {
+        // The game relaunched into the mod layers a campaign save was made under: load it now.
+        skipIntro();
+        FitIniFile saveFile;
+        if (NO_ERR == saveFile.open(pickedLoad.c_str(), READ, 50, true) && LogisticsData::instance->load(saveFile)) {
+            saveFile.close();
+            status = RESTART;
+        } else
+            showCampaignRefusal( bHostLeftDlg, "This saved game could not be loaded: its campaign file is missing or damaged." );
+        return;
+    }
     const auto pickedCampaign = PlayerFrontEnd::takeCampaignStart();
     if (!pickedCampaign.empty() && LogisticsData::instance) {
         skipIntro();
-        if (LogisticsData::instance->startNewCampaign(pickedCampaign.c_str()))
+        if (LogisticsData::instance->startNewCampaign(pickedCampaign.c_str())) {
+            LogisticsData::instance->setRules(prefs.gameRules);
             status = RESTART;
+        }
         else
             showCampaignRefusal( bHostLeftDlg, "This campaign could not be started: its campaign file is missing or damaged." );
         return;
@@ -788,7 +822,17 @@ void MainMenu::update()
 			}
 			else if ( bLoadCampaign )
 			{
-				if ( beginCampaignRules( LogisticsSaveDialog::instance()->getFileName() ) )
+				if ( PlayerFrontEnd::isCrossModKey( LogisticsSaveDialog::instance()->getFileName() ) )
+				{
+					// A campaign of another mod: the choice is saved and the game relaunches into that mod, which starts it.
+					if ( !PlayerFrontEnd::relaunchForCampaign( LogisticsSaveDialog::instance()->getFileName() ) )
+					{
+						endAnim.end();
+						beginAnim.begin();
+						showCampaignRefusal( bHostLeftDlg, "This campaign needs another mod and the choice could not be saved." );
+					}
+				}
+				else if ( beginCampaignRules( LogisticsSaveDialog::instance()->getFileName() ) )
 					;	// the Game Rules dialog takes over; ACCEPT starts the campaign
 				else if ( LogisticsData::instance->startNewCampaign( LogisticsSaveDialog::instance()->getFileName().c_str()) )
 					status = endResult = RESTART;
@@ -815,6 +859,13 @@ void MainMenu::update()
 					beginAnim.begin();
 					LogisticsSaveDialog::instance()->end();
 					bSave = bLoad = 0;
+				}
+				else if ( saveNeedsOtherMod( file, name ) )
+				{
+					// Saved under another mod layer: relaunch into it, which loads the save. The old game exits.
+					LogisticsSaveDialog::instance()->end();
+					bSave = bLoad = 0;
+					file.close();
 				}
 				else if ( !LogisticsData::instance->load( file ) )
 				{

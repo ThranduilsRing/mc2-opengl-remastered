@@ -85,6 +85,9 @@ void flushContentDigests(); // atomic snapshot beside the cook caches; failure o
 // one entry per key, sorted by key.
 std::vector<Entry> enumerate(std::string_view dirKey, std::string_view ext = {});
 
+// Alias key of the base-game campaign.fit while a mod's campaign.fit shadows it (absent otherwise); the campaign list shows it first.
+inline constexpr std::string_view kStockCampaignKey = "data/campaign/stock_campaign.fit";
+
 // The read-open behind File::open and fileExists. The merged index decides (mod > loose > size-stripped loose > FST,
 // the first candidate that opens wins); the disk is probed only on an index miss (a file written after the build)
 // and, before the index, for relative paths outside data/ (the loose mount indexes data/ only).

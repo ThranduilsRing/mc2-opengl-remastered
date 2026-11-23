@@ -305,6 +305,25 @@ void buildLocked()
 			mc2::fmt::print_out("[VFS] mount pak name=paks/stock.mc2pak files={} eligible={}\n", pak->entries().size() - 1, count);
 		}
 	}
+	// A campaign mod that ships data/campaign/campaign.fit wins that key, which hid the stock campaign from the
+	// campaign list. Keep the stock one reachable under its own key: the chain minus the mod entries. The copies
+	// keep the real key (FST and pak members are found by it); only the leaf name differs.
+	if (const auto it = ix.entries.find("data/campaign/campaign.fit"); it != ix.entries.end()) {
+		const auto& [campaignKey, campaignChain] = *it;
+		std::vector<Entry> base;
+		if (campaignChain.front().provider == Provider::Mod) {
+			for (const Entry& e : campaignChain)
+				if (e.provider != Provider::Mod) base.push_back(e);
+		}
+		if (!base.empty()) {
+			for (size_t i = 0; i < base.size(); ++i) {
+				base[i].name = std::string(kStockCampaignKey.substr(kStockCampaignKey.rfind('/') + 1));
+				base[i].shadowed = static_cast<unsigned>(base.size() - 1 - i);
+				base[i].source.authorityRank = static_cast<unsigned>(i);
+			}
+			ix.entries[std::string(kStockCampaignKey)] = std::move(base);
+		}
+	}
 	ix.st.entries = ix.entries.size();
 	ix.st.mounts = mounts;
 	ix.st.pakEligible = pakEligible;
@@ -615,14 +634,14 @@ OpenedFile openRead(const char* path, const char* req, bool probeOnly)
 		for (size_t i = 0; i < chain.size() && !done; ++i) {
 			const Entry& e = chain[i];
 			if (e.provider == Provider::Pak) {
-				if (probeOnly && e.pak->find(k)) { r.layer = r.owner = "pak"; done = true; continue; }
-				if (const auto* pe = e.pak->find(k)) r.pakBytes = e.pak->read(*pe);
+				if (probeOnly && e.pak->find(e.key)) { r.layer = r.owner = "pak"; done = true; continue; }
+				if (const auto* pe = e.pak->find(e.key)) r.pakBytes = e.pak->read(*pe);
 				if (r.pakBytes) { r.layer = r.owner = "pak"; done = true; }
 				continue;
 			}
 			if (e.provider == Provider::Fst) {
 				long member = -1;
-				if (FastFile* ff = FastFileFind(path, member)) {
+				if (FastFile* ff = FastFileFind(e.key == k ? path : e.key.c_str(), member)) {
 					r.fst = ff; r.fstMember = member; r.layer = "fastfile"; r.owner = "fst";
 					done = true;
 				}

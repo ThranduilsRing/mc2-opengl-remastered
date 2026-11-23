@@ -6,7 +6,13 @@
 #include <charconv>
 #include <cctype>
 #include <algorithm>
+#include <filesystem>
+#include <fstream>
 #include <functional>
+#include <iterator>
+#include <map>
+#include <string>
+#include <vector>
 
 namespace PlayerFrontEnd {
 inline bool contains(std::string_view list, std::string_view id) {
@@ -191,6 +197,85 @@ inline void migrateLegacySettings(nlohmann::json& settings, std::string& cfg) {
         if (it.key().starts_with("MC2_") && !mc2::gate::lookupName(it.key())) it = settings.erase(it);
         else ++it;
     }
+}
+
+// ---- New Campaign menu: every installed campaign, stock + each mod (owner 11-23). ----
+// A list entry's hidden text is the plain FIT name for a campaign the running content already serves, and "<mod>::<fit>"
+// for one that needs a different mod layer ("::campaign" = stock with NO mod layer): picking it relaunches the game into that mod.
+inline std::string campaignKey(std::string_view mod, std::string_view fit) {
+    return std::string(mod) + "::" + std::string(fit);
+}
+inline bool splitCampaignKey(std::string_view key, std::string& mod, std::string& fit) {
+    const auto at = key.find("::");
+    if (at == std::string_view::npos) return false;
+    mod = key.substr(0, at);
+    fit = key.substr(at + 2);
+    return !fit.empty();
+}
+struct ModCampaigns {
+    std::string id, name, kind, problem;
+    std::map<std::string, CampaignInfo> campaigns;
+};
+// Reads mods/<id>/mod.json and mods/<id>/data/campaign/*.fit. Plain folders only; FST archives are the importer's job.
+inline std::vector<ModCampaigns> scanModCampaigns(const std::filesystem::path& modsRoot) {
+    namespace fs = std::filesystem;
+    std::vector<ModCampaigns> result;
+    std::error_code ec;
+    std::vector<fs::path> dirs;
+    for (fs::directory_iterator i(modsRoot, ec), end; !ec && i != end; i.increment(ec))
+        if (i->is_directory(ec)) dirs.push_back(i->path());
+    std::sort(dirs.begin(), dirs.end());
+    for (const auto& dir : dirs) {
+        const auto id = dir.filename().string();
+        if (id.empty() || id[0] == '.') continue;
+        std::ifstream manifest(dir / "mod.json");
+        const bool manifestExists = manifest.is_open();
+        const auto json = manifestExists ? nlohmann::json::parse(manifest, nullptr, false) : nlohmann::json::object();
+        ModCampaigns mod;
+        mod.id = id;
+        bool archives = false;
+        for (fs::directory_iterator i(dir, ec), end; !ec && i != end; i.increment(ec)) archives |= i->path().extension() == ".fst";
+        mod.problem = packProblem(json.is_discarded() ? nlohmann::json(1) : json, manifestExists, fs::is_directory(dir / "data", ec), archives, id);
+        for (fs::directory_iterator i(dir / "data" / "campaign", ec), end; !ec && i != end; i.increment(ec)) {
+            const auto ext = i->path().extension().string();
+            if (ext != ".fit" && ext != ".FIT") continue;
+            std::ifstream input(i->path());
+            mod.campaigns.emplace(i->path().stem().string(), campaignInfo(std::string(std::istreambuf_iterator<char>(input), {})));
+        }
+        ec.clear();
+        const auto text = [&](std::string_view key) { return json.is_object() && json.contains(key) && json[key].is_string() ? json[key].get<std::string>() : std::string(); };
+        std::string fitTitle;
+        if (!mod.campaigns.empty()) {
+            const auto& [fit, info] = *mod.campaigns.begin();
+            fitTitle = info.title;
+        }
+        mod.name = campaignTitle(text("name"), fitTitle, id);
+        mod.kind = packKind(text("type"), id, !mod.campaigns.empty(), false);
+        result.push_back(std::move(mod));
+    }
+    return result;
+}
+struct MenuCampaign {
+    std::string key, text;
+};
+// Campaigns of installed mods other than the one that is mounted. Mods with a manifest problem or in `hidden` (import sources) are left out.
+inline std::vector<MenuCampaign> modCampaignEntries(const std::vector<ModCampaigns>& mods, std::string_view activeMod,
+                                                  const std::function<bool(std::string_view)>& hidden = {}) {
+    std::vector<MenuCampaign> result;
+    const auto unusable = [&](std::string_view id) {
+        for (const auto& mod : mods) if (mod.id == id && !mod.problem.empty()) return true;
+        return hidden && hidden(id);
+    };
+    for (const auto& choice : campaignChoices(mods, {}, unusable)) {
+        if (choice.pack.empty() || choice.pack == activeMod) continue;
+        result.push_back({campaignKey(choice.pack, choice.fit), choice.title + " [" + choice.pack + "]"});
+    }
+    return result;
+}
+// A save records the mod layers it was made under; false = an old save with no record (loads as before).
+inline bool saveNeedsRelaunch(bool recorded, std::string_view savedMod, std::string_view savedDeps,
+                              std::string_view activeMod, std::string_view activeDeps) {
+    return recorded && (savedMod != activeMod || savedDeps != activeDeps);
 }
 
 inline bool hasHighObjectNumber(std::string_view source) {
