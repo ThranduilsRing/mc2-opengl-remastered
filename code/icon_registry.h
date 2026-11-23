@@ -210,8 +210,8 @@ public:
         return &icon;
     }
 
-    // Order: the mod's own art (CSV stem, then the author's MechName) -> HUD front art -> a sheet cell the same
-    // source declares -> none (the caller draws its placeholder). One cell; the caller fits it.
+    // Order: the mod's own art (CSV stem, then the author's MechName) -> its own HUD front art -> a sheet cell the
+    // same source declares -> none (the caller draws its placeholder). One cell; the caller fits it.
     Pick select(const std::map<std::string, int>& priority, const Query& q) const {
         const auto rank = [&](const auto& key) -> std::optional<int> {
             const auto found = priority.find(key);
@@ -228,13 +228,15 @@ public:
         // over a same-stem icon another source owns: that one is the stock chassis' art, not this mod's.
         const std::string named = here(byName) && !here(stem) ? byName : stem;
         const auto namedRank = rank(named);
-        const bool individual = namedRank && *namedRank <= q.sheetRank && find(named);
+        // A stem another source owns names that source's mech, as little this chassis' art as its HUD file is.
+        const bool individual = here(named) && *namedRank <= q.sheetRank;
         Pick pick;
         int bestRank = individual ? *namedRank : q.sheetRank;
-        // Use the HUD front art in the existing logistics rectangle. Unmatched art keeps its old source.
+        // Use the HUD front art in the existing logistics rectangle, from the chassis' own source like every
+        // other candidate. Unmatched art keeps its old source.
         for (const auto& key : q.hud) {
             const auto r = rank(key);
-            if (!r || *r > bestRank || (pick.hud && *r == bestRank)) continue;
+            if (!r || *r > bestRank || (pick.hud && *r == bestRank) || !sameSource(*r, q.dataRank)) continue;
             if (const Icon* icon = find(key)) { pick.hud = icon; bestRank = *r; }
         }
         if (pick.hud) { pick.icon = pick.hud; return pick; }

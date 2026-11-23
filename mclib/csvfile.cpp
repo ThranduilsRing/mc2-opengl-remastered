@@ -66,7 +66,9 @@ long CSVFile::countRows (void)
 	seek(0);		//Start at the top.
 	char tmp[2048];
 	
-	readLine(reinterpret_cast<MemoryPtr>(tmp),2047);
+	// A row is one readLine(), as seekRowCol() counts them. The last row ends at EOF with or without a line
+	// break, so eof() is already true once it is read: test before each read, never after. The empty stretch
+	// after a final line break is not a row.
 	while (!eof())
 	{
 		count++;

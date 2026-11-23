@@ -2,7 +2,7 @@
 // fitWidget, sheetServes, Registry::select: the order apply() draws by), with the mech-bay name and icon paths
 // that call them. The fixtures under fixtures/unit_display are copied read-only from the MCO install
 // (data/objects/ryoken.csv, compbas.csv, data/art/buildings.csv), from the stock buildings.csv (header row)
-// and from data/defs/text/en_us/mc2res_legacy.fit; buildings.csv carries one trailing comment line.
+// and from data/defs/text/en_us/mc2res_legacy.fit; buildings.csv is the header and three mech rows.
 #include "doctest.h"
 #include "csvfile.h"
 #include "unit_display_name.h"
@@ -139,8 +139,9 @@ TEST_CASE("unit display: a stock mech keeps its string-table name and a free-tex
     std::istringstream rows(fixture("buildings.csv"));
     std::string mco, stock, freeText;
     for (std::string line; std::getline(rows, line);) {
-        if (cells(line)[3] != "MECH") continue;                              // the stock header row
-        (line.rfind("RyokenCustom,", 0) == 0 ? freeText : cells(line)[1] == "4" ? stock : mco) = line;
+        const auto row = cells(line);
+        if (row.size() < 4 || row[3] != "MECH") continue;                    // the stock header row
+        (line.rfind("RyokenCustom,", 0) == 0 ? freeText : row[1] == "4" ? stock : mco) = line;
     }
     REQUIRE(cells(stock).size() > 3);
     CHECK(slot(std::stol(cells(stock)[2])) == "Ryoken");
@@ -226,6 +227,29 @@ TEST_CASE("unit icons: a mod mech's authored-name icon wins over the stock stem 
     CHECK(art.pick("ryoken", "ryoken", 4, sheet, 1000000, 1000000) == stockRyoken);
 }
 
+TEST_CASE("unit icons: a mod chassis sharing a stock stem gets no stock art, by the stem or by the HUD path") {
+    const std::string sheet = "data/art/mc2x_mechicons.tga";
+    // What apply() asks for a mod's data/objects/ryoken.csv (the Storm Crow): data rank 0, the stock sheet at
+    // 1000000, HUD front art keyed by the stem.
+    const unit_icons::Query stormCrow{"ryoken", "storm crow", sheet, 4, 0, 1000000, {"hud/front/ryoken"}};
+    Art stock;
+    const auto* stockIcon = stock.icon("mech/ryoken", 999998);           // the install's loose icon for that stem
+    const auto* stockHud = stock.icon("hud/front/ryoken", 999998);
+    stock.cell(sheet, 4);
+    REQUIRE(stockIcon != nullptr);
+    REQUIRE(stockHud != nullptr);
+    // Only the stock stem icon and the stock HUD file exist: both are another mech's, the placeholder it is.
+    CHECK(stock.registry.select(stock.priority, stormCrow).icon == nullptr);
+    CHECK(stock.registry.select(stock.priority, stormCrow).hud == nullptr);
+    // The mod's own HUD front art serves its chassis.
+    Art mod;
+    const auto* ownHud = mod.icon("hud/front/ryoken", 0);
+    CHECK(mod.registry.select(mod.priority, stormCrow).icon == ownHud);
+    // A stock Ryoken keeps the install's HUD art.
+    const unit_icons::Query stockRyoken{"ryoken", "ryoken", sheet, 4, 999998, 1000000, {"hud/front/ryoken"}};
+    CHECK(stock.registry.select(stock.priority, stockRyoken).icon == stockHud);
+}
+
 TEST_CASE("unit icons: a BT2018-style mod shows its one own icon or the placeholder, never another mech's cell") {
     const std::string sheet = "data/art/mc2x_mechicons.tga";
     Art art;
@@ -272,8 +296,8 @@ TEST_CASE("unit display: the master list's NameID cell reads as a slot or as fre
     const auto path = std::filesystem::path(__FILE__).parent_path() / "fixtures" / "unit_display" / "buildings.csv";
     CSVFile master;
     REQUIRE(master.open(path.string().c_str()) == NO_ERR);
-    // Row 1 is the header. CSVFile counts one line short, so the file needs a line after its last mech for the
-    // loader to reach it (readString(5, 4) is the break, one row later); rows 2..4 are the mechs.
+    // Row 1 is the header, rows 2..4 the mechs: the file's last row is its last mech, and the loader stops one
+    // row later, where readString fails.
     long id = -1;
     REQUIRE(master.readLong(4, 3, id) == NO_ERR);
     CHECK(id == 0);
@@ -291,10 +315,42 @@ TEST_CASE("unit display: the master list's NameID cell reads as a slot or as fre
     CHECK(std::string(text) == "Storm Crow Custom");
     CHECK(mc2::names::resolve(slot(id), text, "", "ryokencustom") == "Storm Crow Custom");
     char type[256] = "";
+    CHECK(master.readString(4, 4, type, sizeof(type)) == NO_ERR);        // the file's last row
+    CHECK(std::string(type) == "MECH");
     CHECK(master.readString(5, 4, type, sizeof(type)) != NO_ERR);        // the loader's break, one row later
     mc2::names::readNameCell(master, 5, 3, id, text, sizeof(text));     // past the last row: nothing
     CHECK(id == 0);
     CHECK(std::string(text) == "Storm Crow Custom");
+}
+
+TEST_CASE("unit display: a NameID cell is a slot only when the whole cell is one integer") {
+    struct Ram : CSVFile {                                                  // a master list held in memory
+        long load(const std::string& text) {
+            const auto result = File::open(text.data(), static_cast<int>(text.size()));
+            return result == NO_ERR ? afterOpen() : result;
+        }
+    } master;
+    // Column 3 of rows 2..5: a name starting with a digit, one starting with a sign, a slot, a negative slot.
+    REQUIRE(master.load("File Name,Group ID,NameID,Type\n"
+                        "3DCustom,22,3D Custom,MECH\n"
+                        "Uziel,22,+Uziel,MECH\n"
+                        "Ryoken,22,32081,MECH\n"
+                        "Vulture,22,-7,VEHICLE\n") == NO_ERR);
+    long id = -1;
+    char text[256] = "";
+    mc2::names::readNameCell(master, 2, 3, id, text, sizeof(text));
+    CHECK(id == -1);                                                       // no slot was read
+    CHECK(std::string(text) == "3D Custom");
+    text[0] = 'x';
+    mc2::names::readNameCell(master, 3, 3, id, text, sizeof(text));
+    CHECK(id == -1);
+    CHECK(std::string(text) == "+Uziel");
+    text[0] = 'x';
+    mc2::names::readNameCell(master, 4, 3, id, text, sizeof(text));     // a slot: the caller's text is left alone
+    CHECK(id == 32081);
+    CHECK(text[0] == 'x');
+    mc2::names::readNameCell(master, 5, 3, id, text, sizeof(text));     // the file's last row
+    CHECK(id == -7);
 }
 
 }

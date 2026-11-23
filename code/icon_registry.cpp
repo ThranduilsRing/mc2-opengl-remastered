@@ -277,8 +277,8 @@ std::string dataKey(std::string_view path) {
 }
 }
 
-// Order: the mod's own art (CSV stem, then the author's MechName) -> HUD front art -> a sheet cell the same
-// source declares -> the placeholder. One cell, fitted to the template's rect.
+// Order: the mod's own art (CSV stem, then the author's MechName) -> its own HUD front art -> a sheet cell the
+// same source declares -> the placeholder. One cell, fitted to the template's rect.
 bool apply(aObject& widget, const aObject& source, long index, const Subject& subject) {
     const char* name = mc2::textures::name(source.getTextureHandle());
     const std::string sheet = canonical(name ? name : "missing");
