@@ -36,6 +36,8 @@ struct EnginePresentVk::Impl {
     mc2vk::OwnedSurface surface;   // released with the instance it was made on (the engine context's), before the swapchain below
     uint32_t         presentFamily = UINT32_MAX;
     bool offscreen = false;   // Linux: the window surface is not presentable from this GPU; composite and capture readback run, nothing is presented
+    SDL_Window* outputWindow = nullptr;
+    bool hdrCapsLogged = false;
     VkQueue          presentQ  = VK_NULL_HANDLE;
 
     // swapchain

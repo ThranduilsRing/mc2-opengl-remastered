@@ -116,6 +116,8 @@ public:
     VkQueue          presentQueue()  const { return presentQueue_; }
     uint32_t         graphicsFamily() const { return gfxFamily_; }
     VmaAllocator     allocator()     const { return allocator_; }
+    bool swapchainColorspaceEnabled() const { return swapchainColorspace_; }
+    bool hdrMetadataEnabled() const { return hdrMetadata_; }
 
     // What the device profile decided for the device this context chose: every facility's route, the feature bits and device extensions that were
     // enabled. The five facilities of the owner ruling (dynamic rendering, synchronization2, timeline semaphores, descriptor indexing, buffer device
@@ -300,6 +302,8 @@ private:
     VkDebugUtilsMessengerEXT messenger_ = VK_NULL_HANDLE;
     VkPhysicalDevice phys_              = VK_NULL_HANDLE;
     VkDevice         device_            = VK_NULL_HANDLE;
+    bool swapchainColorspace_ = false;
+    bool hdrMetadata_ = false;
     VkQueue          gfxQueue_          = VK_NULL_HANDLE;
     VkQueue          presentQueue_      = VK_NULL_HANDLE;
     uint32_t         gfxFamily_         = UINT32_MAX;
