@@ -29,7 +29,9 @@
 // header weight low. projectZ() bumps n_calls_eventdriven when called
 // outside the render loop (TLS flag tracked by RenderLoopGuard).
 #include <cstdint>  // int64_t for cull_admission_*_ns
+#include <memory>
 #include <string_view>
+namespace mc2::lighting { struct LightingState; struct TodCurve; }
 #include "../shaders/include/fog_policy.hglsl"
 #include <string>
 #include "Gates/gate.h"
@@ -1486,11 +1488,18 @@ class Camera
 			return screenResolution;
 		}
 
+		// The sun, ambient and fog the renderer publishes: the camera's own light members run through the mission's optional
+		// time-of-day curve (lighting_state.h). With no curve this is exactly those members. The single producer for gamecam.cpp.
+		mc2::lighting::LightingState currentLighting (void) const;
+		// T1 only reads the curve's start; the clock (T3) will advance todT on the sim tick.
+		std::shared_ptr<const mc2::lighting::TodCurve> todCurve;
+		float todT = 0.0f;
+
 		bool getIsNight (void)
 		{
 			return isNight;
 		}
-		
+
 		float getNightFactor (void)
 		{
 			return nightFactor;

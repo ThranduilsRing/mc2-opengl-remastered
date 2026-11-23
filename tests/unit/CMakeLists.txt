@@ -124,6 +124,7 @@ add_executable(mc2_tests
     test_gate.cpp           # GATE-REGISTRY-G1A: truthiness matrix, slot cache, [CONFIG v1] dump
     test_tactical_overview.cpp   # TACTICAL-OVERVIEW-1: blend-state pure logic
     test_xform_convention.cpp    # XFORM-CONVENTION-HARNESS-1: clip-space convention lock
+    test_lighting_state.cpp      # dynamic ToD T1: LightingState producer (no curve = today's bytes), curve, legacy daylight maths
     test_environment_gpu.cpp     # U1: the environment block SH basis (Y-up data, MC2 up -> zenith) and the one producer
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/mission_environment_gpu.cpp
     test_mech_up_axis.cpp        # mech-up-axis: which component of the mech/prop world normal is up

@@ -17,6 +17,7 @@
 // Include Files
 #ifndef GAMECAM_H
 #include"gamecam.h"
+#include"lighting_state.h"
 #include"../RenderCore/FramePackets.h"
 #include"tex_resolve_table.h"
 #endif
@@ -414,19 +415,22 @@ void GameCamera::renderTerrainSceneState() {
 	// Light direction in raw MC2 world space (x, y, elevation)
 	// NOT swizzled — fragment shader normals are in tangent space where Z = up,
 	// which matches raw MC2 coords (Z = elevation).
-	gos_SetTerrainLightDir(lightDirection.x, lightDirection.y, lightDirection.z);
+	// The sun, ambient and fog come from the LightingState producer (mclib/lighting_state.h): the camera's light members through
+	// the mission's optional time-of-day curve; with no curve exactly those members.
+	const mc2::lighting::LightingState lighting = currentLighting();
+	gos_SetTerrainLightDir(lighting.sunDir[0], lighting.sunDir[1], lighting.sunDir[2]);
 
 	// L1 compatibility adapter records the exact legacy inputs. Physical units,
 	// common receiver composition and a shared GPU ABI are later packets.
 	RenderCore::LegacyMissionLighting inputs;
-	inputs.cameraDirection = {lightDirection.x, lightDirection.y, lightDirection.z};
+	inputs.cameraDirection = {lighting.sunDir[0], lighting.sunDir[1], lighting.sunDir[2]};
 	gos_GetTerrainLightDir(&inputs.effectiveDirection[0], &inputs.effectiveDirection[1], &inputs.effectiveDirection[2]);
 	const DWORD directional = getLightColor(0), ambient = getLightColor(1);
 	inputs.directionalColor = {static_cast<float>((directional >> 16) & 255u)/255.0f,
 		static_cast<float>((directional >> 8) & 255u)/255.0f, static_cast<float>(directional & 255u)/255.0f};
 	inputs.ambientColor = {static_cast<float>((ambient >> 16) & 255u)/255.0f,
 		static_cast<float>((ambient >> 8) & 255u)/255.0f, static_cast<float>(ambient & 255u)/255.0f};
-	float flatIntensity = lightDirection.z;
+	float flatIntensity = lighting.sunDir[2];
 	flatIntensity = std::max(flatIntensity, 0.0f);
 	flatIntensity = std::min(flatIntensity, 1.0f);
 	inputs.flatLight = {getLightRed(flatIntensity)/255.0f,
@@ -436,8 +440,8 @@ void GameCamera::renderTerrainSceneState() {
 		extern void mc2_FlatLightRatio(float z, const unsigned char liveSun[3], const unsigned char liveAmb[3], float out[3]);
 		// The camera's own colour members (what getLightRed uses and what the authored capture saw), not the world-light
 		// rows: those are rescaled per frame (155..255 on one map) and made R != 1 with no sun keys.
-		const unsigned char liveSun[3] = {lightRed, lightGreen, lightBlue};
-		const unsigned char liveAmb[3] = {ambientRed, ambientGreen, ambientBlue};
+		const unsigned char liveSun[3] = {lighting.sun[0], lighting.sun[1], lighting.sun[2]};
+		const unsigned char liveAmb[3] = {lighting.amb[0], lighting.amb[1], lighting.amb[2]};
 		float r[3];
 		mc2_FlatLightRatio(flatIntensity, liveSun, liveAmb, r);
 		inputs.flatRatio = {r[0], r[1], r[2]};
@@ -446,7 +450,7 @@ void GameCamera::renderTerrainSceneState() {
 		extern void mc2_OneSun(const float liveDir[3], float livePitchDeg, float liveYawDeg, const unsigned char liveSun[3], const unsigned char liveAmb[3],
 		                       float zLive, const float R[3], float out[19]);
 		float o[19];
-		mc2_OneSun(inputs.effectiveDirection.data(), lightPitch, lightYaw, liveSun, liveAmb, flatIntensity, r, o);
+		mc2_OneSun(inputs.effectiveDirection.data(), lighting.pitch, lighting.yaw, liveSun, liveAmb, flatIntensity, r, o);
 		for (int c = 0; c < 3; ++c) {
 			for (int k = 0; k < 3; ++k) inputs.authFromLive[c][k] = o[c * 3 + k];
 			inputs.pitchUndo[c] = o[9 + c]; inputs.ambRelight[c] = o[12 + c]; inputs.sunRelight[c] = o[15 + c];

@@ -13,6 +13,9 @@
 #include "../GameOS/gameos/utils/mc2log.h"   // LOCAL-LIGHTS-4: [MISSION_LIGHT v1]
 #include "mission_light_profile.h"
 #include "authored_sun.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
+#include "lighting_state.h"
+#include "lighting_tod_json.h"
 #include "../GameOS/gameos/visual_tuning_profile.h"
 #include "mc2fmt.h"
 
@@ -425,18 +428,7 @@ long Camera::init (FitIniFilePtr cameraFile )
 			if (savedHas) cameraFile->readIdFloat("AuthoredLightPitch", s_authoredSun.pitch);
 			s_authoredSun.yaw = lightYaw; s_authoredSun.hasYaw = true;   // the yaw before the keys; a keyed save without it falls back to the live yaw (pitch-only rotation)
 			if (savedHas) s_authoredSun.hasYaw = cameraFile->readIdFloat("AuthoredLightYaw", s_authoredSun.yaw) == NO_ERR;
-			if (const auto v = visualTuning_sunValue("sunPitch")) lightPitch = dayLightPitch = std::max(*v, 26.0f);
-			if (const auto v = visualTuning_sunValue("sunYaw")) lightYaw = *v;
-			lightDirection.x = cos((lightYaw + 45.0f) * DEGREES_TO_RADS);
-			lightDirection.y = sin((lightYaw + 45.0f) * DEGREES_TO_RADS);
-			lightDirection.z = sin(lightPitch * DEGREES_TO_RADS);
-			const auto r = visualTuning_sunValue("sunColorR"), g = visualTuning_sunValue("sunColorG"), b = visualTuning_sunValue("sunColorB");
-			if (r && g && b)
-			{
-				lightRed = dayLightRed = static_cast<unsigned char>(*r + 0.5f);
-				lightGreen = dayLightGreen = static_cast<unsigned char>(*g + 0.5f);
-				lightBlue = dayLightBlue = static_cast<unsigned char>(*b + 0.5f);
-			}
+			// The per-mission sun keys are applied by the LightingState producer (lighting_state.h applySunKeys); same arithmetic as before.
 			// sunAmbientScale: ambient* is what every shadowed surface (terrain, props, mechs, grass) is lit with.
 			// A save's ambient bytes are already scaled (Camera::save marks it): scaling again would compound on every load.
 			bool scaledInSave = false;
@@ -444,17 +436,58 @@ long Camera::init (FitIniFilePtr cameraFile )
 				scaledInSave = false;
 			if (scaledInSave)
 				sunAmbientScaled = true;
-			if (const auto k = (scaledInSave ? std::optional<float>() : visualTuning_sunValue("sunAmbientScale")))
+			mc2::lighting::SunKeys sunKeys{visualTuning_sunValue("sunPitch"), visualTuning_sunValue("sunYaw"), visualTuning_sunValue("sunColorR"),
+				visualTuning_sunValue("sunColorG"), visualTuning_sunValue("sunColorB"), visualTuning_sunValue("sunAmbientScale")};
+			const mc2::lighting::LightingState keyed = mc2::lighting::applySunKeys(currentLighting(), sunKeys, scaledInSave);
+			if (sunKeys.pitch) lightPitch = dayLightPitch = keyed.pitch;
+			lightYaw = keyed.yaw;
+			lightDirection.x = keyed.sunDir[0];
+			lightDirection.y = keyed.sunDir[1];
+			lightDirection.z = keyed.sunDir[2];
+			if (sunKeys.colorR && sunKeys.colorG && sunKeys.colorB)
+			{
+				lightRed = dayLightRed = keyed.sun[0];
+				lightGreen = dayLightGreen = keyed.sun[1];
+				lightBlue = dayLightBlue = keyed.sun[2];
+			}
+			if (sunKeys.ambientScale && !scaledInSave)
 			{
 				sunAmbientScaled = true;
-				const auto sc = [k](unsigned char& v) { v = static_cast<unsigned char>(std::min(255.0f, v * *k + 0.5f)); };
-				sc(ambientRed); sc(ambientGreen); sc(ambientBlue); sc(dayAmbientRed); sc(dayAmbientGreen); sc(dayAmbientBlue);
+				ambientRed = keyed.amb[0]; ambientGreen = keyed.amb[1]; ambientBlue = keyed.amb[2];
+				dayAmbientRed = mc2::lighting::scaleAmbientByte(dayAmbientRed, *sunKeys.ambientScale);
+				dayAmbientGreen = mc2::lighting::scaleAmbientByte(dayAmbientGreen, *sunKeys.ambientScale);
+				dayAmbientBlue = mc2::lighting::scaleAmbientByte(dayAmbientBlue, *sunKeys.ambientScale);
 			}
 			if (mc2::gate::get<"MC2_DIAG_VERBOSE">())
 				MC2_EVENT(Render, "SUN_LIGHT", 1, "mission={} from_save={} dir=({:.3f},{:.3f},{:.3f}) sun=({},{},{}) ambient=({},{},{}) ambient_scaled={}",
 					missionLightName.c_str(), fromSave ? 1 : 0, lightDirection.x, lightDirection.y, lightDirection.z,
 					static_cast<unsigned>(lightRed), static_cast<unsigned>(lightGreen), static_cast<unsigned>(lightBlue),
 					static_cast<unsigned>(ambientRed), static_cast<unsigned>(ambientGreen), static_cast<unsigned>(ambientBlue), sunAmbientScaled ? 1 : 0);
+		}
+		// Optional time-of-day curve (sidecar timeOfDay{}): evaluated at its start time. No block (every stock mission): nothing
+		// below runs and the members above stand. The authored record (s_authoredSun) stays the pre-key bake reference.
+		todCurve.reset();
+		todT = 0.0f;
+		if (const auto& block = visualTuning_timeOfDay(); !block.empty())
+		{
+			auto parsed = mc2::lighting::parseTodCurve(block);
+			if (parsed) todCurve = *parsed;
+			if (!parsed)
+			{
+				if (mc2_diag::tagRequested("TOD"))
+					mc2::fmt::print_err("[TOD] ignored timeOfDay block: {}\n", parsed.error());
+			}
+			else
+			{
+				todT = todCurve->start;
+				const auto live = currentLighting();
+				lightPitch = live.pitch; lightYaw = live.yaw;
+				lightDirection.x = live.sunDir[0]; lightDirection.y = live.sunDir[1]; lightDirection.z = live.sunDir[2];
+				lightRed = live.sun[0]; lightGreen = live.sun[1]; lightBlue = live.sun[2];
+				ambientRed = live.amb[0]; ambientGreen = live.amb[1]; ambientBlue = live.amb[2];
+				if (mc2_diag::tagRequested("TOD"))
+					mc2::fmt::print_err("[TOD] curve keys={} start={:.3f} mode=Live (clock not wired: T3)\n", todCurve->keys.size(), todCurve->start);
+			}
 		}
 	}
 
@@ -551,6 +584,11 @@ long Camera::init (FitIniFilePtr cameraFile )
     fogColor = static_cast<DWORD>(tmp);
 	dayFogColor = fogColor;
 	gosASSERT(result == NO_ERR);
+	if (todCurve)   // fog channels of the time-of-day curve at its start time (the mission's own fog stays dayFogColor)
+	{
+		const auto live = currentLighting();
+		fogColor = live.fogColor; fogStart = live.fogStart; fogFull = live.fogFull;
+	}
 
 	result = cameraFile->readIdFloat("FogTransparency",fogTransparency);
 
@@ -865,6 +903,19 @@ void mc2_OneSun(const float liveDir[3], float livePitchDeg, float liveYawDeg, co
 float mc2_AmbientRatio(const unsigned char liveAmb[3])
 {
 	return mc2::authored_sun::ambientRatio(s_authoredSun, {liveAmb[0], liveAmb[1], liveAmb[2]});
+}
+
+// The single producer of the published sun, ambient and fog: the camera's light members, evaluated through the optional curve.
+// No curve: exactly the members (evaluate returns its authored argument untouched).
+mc2::lighting::LightingState Camera::currentLighting() const
+{
+	mc2::lighting::LightingState s;
+	s.sunDir[0] = lightDirection.x; s.sunDir[1] = lightDirection.y; s.sunDir[2] = lightDirection.z;
+	s.pitch = lightPitch; s.yaw = lightYaw;
+	s.sun[0] = lightRed; s.sun[1] = lightGreen; s.sun[2] = lightBlue;
+	s.amb[0] = ambientRed; s.amb[1] = ambientGreen; s.amb[2] = ambientBlue;
+	s.fogColor = static_cast<uint32_t>(fogColor); s.fogStart = fogStart; s.fogFull = fogFull;
+	return mc2::lighting::evaluate(todCurve.get(), todT, s);
 }
 
 bool Camera::save( FitIniFile* file )
