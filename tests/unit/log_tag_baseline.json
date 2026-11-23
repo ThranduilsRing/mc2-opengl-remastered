@@ -4477,6 +4477,27 @@
    "count": 1
   },
   {
+   "tag": "HDR_OUTPUT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "policy",
+    "colorspace_ext",
+    "metadata_ext",
+    "offscreen",
+    "windows_hdr",
+    "active",
+    "format",
+    "colorspace",
+    "would_format",
+    "would_colorspace",
+    "paper_nits",
+    "peak_nits",
+    "present_format"
+   ],
+   "count": 1
+  },
+  {
    "tag": "HEARTBEAT",
    "ver": -1,
    "stream": "buffer",

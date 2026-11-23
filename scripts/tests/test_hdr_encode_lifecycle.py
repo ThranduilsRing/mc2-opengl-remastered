@@ -49,3 +49,22 @@ def test_frame_encode_reads_are_guarded_with_sdr_fallback():
     assert "static bool logged" in body(frame, "if (s.hdr && !encodeReady)")
     assert re.search(r"if \(encodeReady\).*?\} else \{.*?vkCmdBlitImage", frame, re.S)
     assert "encodeReady ? VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT : VK_PIPELINE_STAGE_2_TRANSFER_BIT" in frame
+
+
+def test_windows_hdr_query_is_shared_cached_and_refreshed_at_toggle():
+    source = SOURCE.read_text(encoding="utf-8")
+    query = body(source, "void queryDisplayHdr(")
+    assert "!refresh && s.hdrPeakCached && s.hdrPeakMonitor == monitor" in query
+    assert "s.windowsHdr = WindowsHdrState::Unknown" in query
+    assert "desc.Monitor == monitor" in query
+    assert "desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020" in query
+    assert source.count("GetDesc1(") == 1
+    build = body(source, "bool buildSwapchain(")
+    assert build.index("queryDisplayHdr(s)") < build.index("decideHdr(")
+    assert "s.windowsHdr, surfaceOffersHdr" in build
+    frame = body(source, "bool EnginePresentVk::presentFrameBody(")
+    assert "if (previous == VK_SUBOPTIMAL_KHR || previous == VK_ERROR_OUT_OF_DATE_KHR)\n            queryDisplayHdr(s, true)" in frame
+    assert frame.index("queryDisplayHdr(s, true)") < frame.index("decideHdr(")
+    assert frame.count("queryDisplayHdr(") == 1
+    assert "s.sharedImg.format != s.presentFmt" in frame
+    assert "!buildSharedImage(s, drawableW, drawableH, reason) || !prewarmPipelines()" in frame

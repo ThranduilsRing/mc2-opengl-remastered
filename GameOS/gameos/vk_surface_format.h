@@ -3,6 +3,11 @@
 #include <vector>
 
 namespace mc2vk {
+enum class WindowsHdrState { Unknown, Off, On };
+// Auto follows the desktop; a failed/non-Windows query is deliberately SDR.
+inline bool decideHdr(int policy, bool force, bool offscreen, WindowsHdrState windowsHdrActive, bool surfaceOffersHdr) {
+    return force || (policy == 0 && !offscreen && windowsHdrActive == WindowsHdrState::On && surfaceOffersHdr);
+}
 // Pure WSI policy. The SDR fallback deliberately preserves the historical first-entry choice.
 inline VkSurfaceFormatKHR chooseSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats, bool wantHdr) {
     if (wantHdr) {

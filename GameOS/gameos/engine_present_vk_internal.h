@@ -16,6 +16,7 @@
 #include "../../RenderCore/UpscalerProvider.h"
 #include "../../RenderCore/TemporalInputs.h"
 #include "present_imgui_snapshot.h"
+#include "vk_surface_format.h"
 #include "imgui.h"
 
 #include <cstdint>
@@ -39,7 +40,8 @@ struct EnginePresentVk::Impl {
     SDL_Window* outputWindow = nullptr;
     bool hdrCapsLogged = false;
     void* hdrPeakMonitor = nullptr;
-    bool hdrPeakCached = false, hdrPeakActive = false;
+    bool hdrPeakCached = false;
+    WindowsHdrState windowsHdr = WindowsHdrState::Unknown;
     float hdrDisplayPeak = 1000.0f;
     VkQueue          presentQ  = VK_NULL_HANDLE;
 
