@@ -13,6 +13,7 @@
 #include "../GameOS/gameos/utils/mc2log.h"   // LOCAL-LIGHTS-4: [MISSION_LIGHT v1]
 #include "mission_light_profile.h"
 #include "authored_sun.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
 #include "lighting_state.h"
 #include "lighting_tod_json.h"
 #include "../GameOS/gameos/visual_tuning_profile.h"
@@ -472,7 +473,10 @@ long Camera::init (FitIniFilePtr cameraFile )
 			auto parsed = mc2::lighting::parseTodCurve(block);
 			if (parsed) todCurve = *parsed;
 			if (!parsed)
-				mc2::fmt::print_err("[TOD] ignored timeOfDay block: {}\n", parsed.error());
+			{
+				if (mc2_diag::tagRequested("TOD"))
+					mc2::fmt::print_err("[TOD] ignored timeOfDay block: {}\n", parsed.error());
+			}
 			else
 			{
 				todT = todCurve->start;
@@ -481,7 +485,8 @@ long Camera::init (FitIniFilePtr cameraFile )
 				lightDirection.x = live.sunDir[0]; lightDirection.y = live.sunDir[1]; lightDirection.z = live.sunDir[2];
 				lightRed = live.sun[0]; lightGreen = live.sun[1]; lightBlue = live.sun[2];
 				ambientRed = live.amb[0]; ambientGreen = live.amb[1]; ambientBlue = live.amb[2];
-				mc2::fmt::print_err("[TOD] curve keys={} start={:.3f} mode=Live (clock not wired: T3)\n", todCurve->keys.size(), todCurve->start);
+				if (mc2_diag::tagRequested("TOD"))
+					mc2::fmt::print_err("[TOD] curve keys={} start={:.3f} mode=Live (clock not wired: T3)\n", todCurve->keys.size(), todCurve->start);
 			}
 		}
 	}
