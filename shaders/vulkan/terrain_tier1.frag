@@ -97,6 +97,7 @@ layout(set = 0, binding = 10, std430) readonly buffer TerrainVisualHeightBuf {
     float heightsFine[];
 };
 #include "include/terrain_cliff_surface.glsl"
+#include "include/terrain_hex_tiling.glsl"
 // The filtered height is baked per bake version (terrain_fine_height_bake.h): plane 3 of heightsFine, (V+2)^2 cells, p = -1..V.
 // Outside the apron (only a zero-weight tap at the map edge) the per-tap path gives the exact old value.
 float mv_fineH(ivec2 p) {
@@ -135,6 +136,9 @@ vec2 mv_hash22(vec2 p) {
 }
 vec4 mv_sampleAntiTileArr(int layer, vec2 uv, float scale, vec2 dx, vec2 dy, float fw) {
     vec4 s0 = textureGrad(u_matNormalArray, vec3(uv,        float(layer)), dx, dy);
+    // Hex-tiling (Mikkelsen 2022) replaces the cell-offset blend on natural layers; concrete keeps its grid-aligned slabs.
+    if (layer != MAT_LAYER_CONCRETE)
+        return mix(s0, hexTileGrad(u_matNormalArray, float(layer), uv, dx, dy, 1.0, true, vec4(0.5)), smoothstep(0.4, 0.6, fw));
     vec2 f = fract(uv / scale);
     float w1 = smoothstep(0.2, 0.5, f.x) * smoothstep(0.2, 0.5, f.y);
     float w2 = smoothstep(0.2, 0.5, 1.0 - f.x) * smoothstep(0.2, 0.5, 1.0 - f.y);
@@ -384,7 +388,7 @@ void main() {
         float cliffBlend = 1.0 - smoothstep(0.55, 0.85, abs(macroNzF3));
         if (cliffBlend > 0.01) {
             float luma = dot(baseColor, vec3(0.299, 0.587, 0.114));
-            vec3  cliffColor = mix(vec3(luma), vec3(uT.tintRockR, uT.tintRockG, uT.tintRockB), 0.6) * 0.8;
+            vec3  cliffColor = mix(vec3(luma), vec3(uT.tintRockR, uT.tintRockG, uT.tintRockB), 0.6) * 1.0;   // was 0.8: darkened the slope skirt into a halo around cliffs
             baseColor = mix(baseColor, cliffColor, cliffBlend * 0.7 * (1.0 - F3pc));
         }
         // World-space two-octave break-up noise (non-snow, non-concrete).
