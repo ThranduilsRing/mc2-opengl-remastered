@@ -8,12 +8,13 @@ to BC7 .ktx2 under the names the package already declares, and marks the package
 importer (mclib/assimp_importer.cpp PopulateMergedSkinnedShape) remaps weapon-material UVs into the lower half.
 
   py -3 tools/bt2018_mechs/stack_weapons_atlas.py --pack <pack mod dir> --dump <BattleTech_2018_Dump> \
-      [--ktx A:/Games/mc2-tools/ktx/ktx.exe] [--only hunchback,crab]
+      [--ktx $MC2_KTX_EXE] [--only hunchback,crab]
 
 Chassis whose dump has no weapons albedo, or whose package is already marked, are skipped. Idempotent.
 """
 import argparse
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -25,7 +26,7 @@ from PIL import Image
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "bt2018_import"))
 from cook_ao_from_package import preprocess_unity_normal  # noqa: E402
 
-DEFAULT_KTX = r"A:/Games/mc2-tools/ktx/ktx.exe"
+DEFAULT_KTX = os.environ.get("MC2_KTX_EXE", "ktx")
 
 
 def stack(base: Image.Image, weapons: Image.Image) -> Image.Image:
@@ -38,8 +39,10 @@ def stack(base: Image.Image, weapons: Image.Image) -> Image.Image:
 
 def cook(ktx, png, dst, tmp):
     uastc = Path(tmp) / (dst.name + ".uastc.ktx2")
+    # background-launch: allow offline texture cook, runs to completion
     r1 = subprocess.run([ktx, "create", "--encode", "uastc", "--format", "R8G8B8A8_UNORM", "--assign-tf", "linear",
                          "--levels", "1", str(png), str(uastc)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    # background-launch: allow offline texture cook, runs to completion
     r2 = subprocess.run([ktx, "transcode", "--target", "bc7", str(uastc), str(dst)],
                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) if r1.returncode == 0 else r1
     if r1.returncode or r2.returncode:
