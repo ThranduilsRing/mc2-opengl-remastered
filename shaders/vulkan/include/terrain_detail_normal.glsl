@@ -63,6 +63,29 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz, vec2
             dN.xy += w.y * MATV_NORMAL_BOOST.y * 0.6 * fwGrassMacro * dfGrassMac * (transpose(mat2(0.8, 0.6, -0.6, 0.8)) * gm);
         }
     }
+    // GROUND-DETAIL-FINE-1 (owner 11-23, base terrain too coarse): one 4.3x finer, rotated tap of the turf and of the dirt, so
+    // the mid-zoom ground carries ~90-180 wu detail on top of the 384/768 wu tiles. Each has its own texel-footprint fade
+    // (dfFine) and fwidth fade (fwFine), so it vanishes as it goes sub-pixel instead of speckling at distance.
+    {
+        const float kFine = 4.3;
+        const mat2 kFineUnit = mat2(0.6, 0.8, -0.8, 0.6);
+        const mat2 kFineRot = kFineUnit * kFine;
+        const mat2 kFineBack = transpose(kFineUnit);
+        float dfGrassFine = mv_detailFade(mv_detailTexelGM * MATV_TILING.y * kFine);
+        float dfDirtFine  = mv_detailFade(mv_detailTexelGM * MATV_TILING.z * kFine);
+        if (w.y > 0.01 && dfGrassFine > 0.0) {
+            float fwFine = clamp(1.0 - (length(uvWidth * MATV_TILING.y * kFine) - 0.5) * 2.0, 0.0, 1.0);
+            vec2 g = textureGrad(u_matNormalArray, vec3(kFineRot * uvGrass, float(MAT_LAYER_GRASS)),
+                                 kFineRot * (uvDx * MATV_TILING.y), kFineRot * (uvDy * MATV_TILING.y)).rg * 2.0 - 1.0;
+            dN.xy += w.y * MATV_NORMAL_BOOST.y * 0.8 * fwFine * dfGrassFine * (kFineBack * g);
+        }
+        if (w.z > 0.01 && dfDirtFine > 0.0) {
+            float fwFine = clamp(1.0 - (length(uvWidth * MATV_TILING.z * kFine) - 0.5) * 2.0, 0.0, 1.0);
+            vec2 g = textureGrad(u_matNormalArray, vec3(kFineRot * uvDirt, float(MAT_LAYER_DIRT)),
+                                 kFineRot * (uvDx * MATV_TILING.z), kFineRot * (uvDy * MATV_TILING.z)).rg * 2.0 - 1.0;
+            dN.xy += w.z * MATV_NORMAL_BOOST.z * 0.8 * fwFine * dfDirtFine * (kFineBack * g);
+        }
+    }
     if (w.z > 0.01 && fwDirt != 0.0 && dfDirt > 0.0) {
         vec4 s = (atsDirt > 0.01 && fwDirt > 0.4)
                ? mv_sampleAntiTileArr(MAT_LAYER_DIRT, uvDirt, atsDirt, uvDx * MATV_TILING.z, uvDy * MATV_TILING.z, fwDirt)
