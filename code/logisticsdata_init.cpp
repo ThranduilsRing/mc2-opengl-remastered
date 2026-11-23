@@ -8,6 +8,7 @@
 #include "content_error.h"
 #include "../GameOS/gameos/diagnostic_trace.h"
 #include "package_chassis.h"
+#include "unit_display_name.h"
 #include "../GameOS/gameos/gos_render.h"
 #include "../GameOS/gameos/loading_pump_meter.h"
 #include "../GameOS/gameos/utils/mc2log.h"
@@ -451,6 +452,7 @@ mc2::prewarm::Sequence LogisticsData::loadVariants()
 		long fitID;
 		float scale;
 		int chassisId;
+		std::string freeName;
 		LogisticsChassis* chassis = nullptr;
 		std::vector<std::unique_ptr<LogisticsVariant>> varList;
 		bool package = false;
@@ -464,7 +466,10 @@ mc2::prewarm::Sequence LogisticsData::loadVariants()
 		co_yield 0;
 		long fitID;
 		long nameID = 0;
-		variantFile.readLong( i, 3, nameID );
+		char freeName[256] = "";
+		// The NameID cell also takes free text: that is the chassis' display name, not a slot number.
+		if ( variantFile.readLong( i, 3, nameID ) != NO_ERR )
+			variantFile.readString( i, 3, freeName, sizeof( freeName ) );
 
 		int retVal = variantFile.readString( i, 4, tmpStr, 256 );
 		
@@ -479,8 +484,8 @@ mc2::prewarm::Sequence LogisticsData::loadVariants()
 			{
 				variantFile.readLong( i, 5, fitID );
 				char csvName[256] = "";
-				if ( readCsvFileName( variantFile, i, csvName, sizeof( csvName ) ) )
-					addVehicle( fitID, pakFile, scale, nameID, csvName );
+			if ( readCsvFileName( variantFile, i, csvName, sizeof( csvName ) ) )
+				addVehicle( fitID, pakFile, scale, nameID, csvName, freeName );
 			}
 			i++;
 			continue;
@@ -533,6 +538,7 @@ mc2::prewarm::Sequence LogisticsData::loadVariants()
 		S_strlwr( variantFullPath );
 
 		mechJobs.push_back({ variantFullPath, fitID, scale, chassisID++ });
+		mechJobs.back().freeName = freeName;
 
 		i++;
 
@@ -585,6 +591,7 @@ mc2::prewarm::Sequence LogisticsData::loadVariants()
 		job.chassis->init(&mechFile, job.chassisId);
 		job.chassis->setFitID(job.fitID);
 		job.chassis->setScale(job.scale);
+		if ( mc2::names::usable( job.freeName ) ) job.chassis->setAuthoredName( job.freeName );
 		const auto variantStart = Clock::now();
 		lap.chassis += variantStart - chassisStart;
 		lap.maxStep = std::max(lap.maxStep, variantStart - chassisStart);
@@ -634,7 +641,7 @@ mc2::prewarm::Sequence LogisticsData::loadVariants()
 	// ---- post-load diagnostics ----
 }
 
-void LogisticsData::addVehicle( long fitID, PacketFile& objectFile, float scale, long nameID, std::string_view csvName )
+void LogisticsData::addVehicle( long fitID, PacketFile& objectFile, float scale, long nameID, std::string_view csvName, std::string_view freeName )
 {
 	// MCO buildings.csv VEHICLE rows use FitIDs (2000+) past the mod's object2.pak; like ObjectTypeManager, take
 	// their definition from the loose data/objects/<File Name>.fit named by the CSV row instead of the pak packet.
@@ -654,6 +661,7 @@ void LogisticsData::addVehicle( long fitID, PacketFile& objectFile, float scale,
 	pVehicle->init( file );
 	pVehicle->setScale( scale );
 	if ( nameID ) pVehicle->setNameID( nameID );
+	if ( mc2::names::usable( freeName ) ) pVehicle->setAuthoredName( std::string( freeName ) );
 	vehicles.push_back( std::move(pVehicle) );
 }
 

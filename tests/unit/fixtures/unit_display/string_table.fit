@@ -1,0 +1,40 @@
+String {
+    key = "legacy.mc2res.30915"
+    text = "Ryoken"
+    legacyId = 30915
+    legacySymbol = "IDS_STRING30915"
+    source = "mc2res"
+    sourceKey = "ui.string30915"
+    category = "ui_common"
+    sourceFile = "data/defs/text/en_us/ui_common.fit"
+}
+String {
+    key = "legacy.mc2res.32001"
+    text = "Fusion Engine"
+    legacyId = 32001
+    legacySymbol = "IDS_COMP1"
+    source = "mc2res"
+    sourceKey = "component.1.name"
+    category = "components"
+    sourceFile = "data/defs/text/en_us/components.fit"
+}
+String {
+    key = "legacy.mc2res.32081"
+    text = "undefined"
+    legacyId = 32081
+    legacySymbol = "IDS_COMP81"
+    source = "mc2res"
+    sourceKey = "component.81.name"
+    category = "placeholders"
+    sourceFile = "data/defs/text/en_us/placeholders.fit"
+}
+String {
+    key = "legacy.mc2res.32128"
+    text = "undefined"
+    legacyId = 32128
+    legacySymbol = "IDS_COMP128"
+    source = "mc2res"
+    sourceKey = "component.128.name"
+    category = "placeholders"
+    sourceFile = "data/defs/text/en_us/placeholders.fit"
+}

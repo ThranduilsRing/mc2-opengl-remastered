@@ -182,7 +182,7 @@ MechListBoxItem::MechListBoxItem( LogisticsMech* pRefMech, long count )
 	aObject::init( 0, outline.top(), outline.width(), outline.height() );
 	setColor( 0, 0 );
 
-	chassisName.setText( pMech->getChassisName() );
+	chassisName.setText( pMech->getChassisDisplayName().c_str() );
 	
 	char text[32];
 	mc2::fmt::to_buf(text, "{:d}", mc2::fmt::as_i32(pMech->getCost()));
@@ -500,7 +500,7 @@ bool MechListBox::initIcon( LogisticsMech* pMech, aObject& mechIcon )
 	mechIcon = (MechListBoxItem::s_templateItem->mechIcon);
 
     return unit_icons::apply(mechIcon, MechListBoxItem::s_templateItem->mechIcon,
-                      pMech->getIconIndex(), pMech->getFileName().c_str());
+                      pMech->getIconIndex(), { pMech->getFileName(), pMech->getVariant()->getChassis()->getAuthoredName() });
 
 }
 
@@ -510,9 +510,7 @@ long MechListBox::AddItem(std::unique_ptr<aListItem> itemString)
 		return TOO_MANY_ITEMS;
 	itemString->setID( ID );
 	MechListBoxItem* pItem = dynamic_cast<MechListBoxItem*>(itemString.get());
-	char tmp[256];
-	cLoadString( pItem->getMech()->getChassisName(), tmp, 255 );
-	const std::string addedName = tmp;
+	const std::string addedName = pItem->getMech()->getChassisDisplayName();
 	
 	if ( pItem )
 	{
@@ -529,10 +527,7 @@ long MechListBox::AddItem(std::unique_ptr<aListItem> itemString)
 		for ( int i = 0; i < itemCount; i++ )
 		{
 
-			long ID = (static_cast<MechListBoxItem*>(items[i]))->pMech->getChassisName();
-			char tmpChassisName[256];
-			cLoadString( ID, tmpChassisName, 255 );
-			const std::string chassisName = tmpChassisName;
+			const std::string chassisName = (static_cast<MechListBoxItem*>(items[i]))->pMech->getChassisDisplayName();
 			if ( (static_cast<MechListBoxItem*>(items[i]))->pMech->getMaxWeight() < pItem->pMech->getMaxWeight() )
 			{
 				return InsertItem( itemString.release(), i );

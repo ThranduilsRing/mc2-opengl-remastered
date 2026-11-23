@@ -199,6 +199,15 @@ void init(std::string first = {}, int cw = 25, int ch = 30) {
             src.w = icon.width; src.h = icon.height;
             src.data = std::move(icon.pixels);
         } else src = load(path, raw);
+        if (!src.data.empty() && key.starts_with("mech/")) {
+            // A named icon is one cell: a sheet that reached the named path contributes its first.
+            const auto [cw, ch] = firstCell(src.w, src.h, src.data);
+            if (cw != src.w || ch != src.h) {
+                mc2::fmt::print_out("[ICON_REGISTRY] {} is a {}x{} sheet; using its first {}x{} cell\n", key, src.w, src.h, cw, ch);
+                src.data = topLeft(src.w, src.data, cw, ch);
+                src.w = cw; src.h = ch;
+            }
+        }
         if (!src.data.empty() && registry.add(key, src.w, src.h, src.data)) {
             namedPriority[key] = priority;
         } else if (raw) cacheable = false;
@@ -259,19 +268,35 @@ const Icon& resolve(std::string key) {
         mc2::fmt::print_err("[ICON_REGISTRY] missing key={} (placeholder)\n", key);
     return *registry.find("missing");
 }
+
+// The VFS keys a file by its "data/..." tail; a chassis CSV path may carry the install root in front.
+std::string dataKey(std::string_view path) {
+    const auto at = path.rfind("data/");
+    return std::string(at == std::string_view::npos ? path : path.substr(at));
+}
 }
 
-bool apply(aObject& widget, const aObject& source, long index, std::string chassis) {
+// Order: the mod's own art (CSV stem, then the author's MechName) -> HUD front art -> a sheet the same
+// source owns as the chassis -> the placeholder. One cell, fitted to the template's rect.
+bool apply(aObject& widget, const aObject& source, long index, const Subject& subject) {
     const char* name = mc2::textures::name(source.getTextureHandle());
     const std::string sheet = canonical(name ? name : "missing");
     init(sheet, static_cast<int>(source.width()), static_cast<int>(source.height()));
-    const std::string named = "mech/" + canonical(std::filesystem::path(chassis).stem().string());
+    const auto stem = canonical(std::filesystem::path(subject.file).stem().string());
+    const int dataRank = LookupModPriority(dataKey(subject.file).c_str());
+    std::string named = "mech/" + stem;
+    // The author's MechName names art too, when the same source that owns the chassis owns that file.
+    const std::string byName = "mech/" + canonical(subject.name);
+    const auto byNameRank = namedPriority.find(byName);
+    if (!registry.find(named) && byNameRank != namedPriority.end()) {
+        const auto& [file, rank] = *byNameRank;
+        if (rank == dataRank) named = byName;
+    }
     const auto found = namedPriority.find(named);
     const int sheetRank = LookupModPriority(sheet.c_str());
     bool individual = found != namedPriority.end() && namedPriority.at(named) <= sheetRank && registry.find(named);
     const Icon* selected = nullptr;
     int bestRank = individual ? namedPriority.at(named) : sheetRank;
-    const auto stem = canonical(std::filesystem::path(chassis).stem().string());
     // Use the HUD front art in the existing logistics rectangle. Unmatched art keeps its old source.
     for (bool vehicle : {false, true}) {
         const auto hud = hudIconSource(Environment.drawableWidth, Environment.screenWidth, vehicle);
@@ -286,13 +311,28 @@ bool apply(aObject& widget, const aObject& source, long index, std::string chass
         }
     }
     individual = individual || selected;
-    const auto& icon = selected ? *selected : resolve(individual ? named : legacyKey(sheet, index));
+    const Icon* icon = selected;
+    if (!icon && individual) icon = registry.find(named);
+    if (!icon && sheetServes(sheetRank, dataRank)) icon = registry.find(legacyKey(sheet, index));
+    if (!icon) {
+        const auto [position, inserted] = warned.insert("no-icon:" + stem);
+        if (inserted)
+            mc2::fmt::print_err("[ICON_REGISTRY] no art for chassis {} (placeholder)\n", stem);
+        icon = registry.find("missing");
+    }
     if (widget.getTextureHandle() != texture) widget.setTexture(mc2::textures::retain(texture));
     widget.setFileWidth(static_cast<float>(registry.edge)); widget.setFileHeight(static_cast<float>(registry.edge));
     // aObject adds 0.1 texel; preserve its old logical-pixel bias on upscaled art.
     const auto scale = individual ? AssetScale::Vec2{1.f, 1.f} : sourceScale[sheet];
-    widget.setUVs(icon.x + .1f * scale.x - .1f, icon.y + .1f * scale.y - .1f,
-                  icon.x + icon.width + .1f * scale.x - .1f, icon.y + icon.height + .1f * scale.y - .1f);
+    widget.setUVs(icon->x + .1f * scale.x - .1f, icon->y + .1f * scale.y - .1f,
+                  icon->x + icon->width + .1f * scale.x - .1f, icon->y + icon->height + .1f * scale.y - .1f);
+    // The cell is the template's rect. Undo the fit a previous call left, then fit this icon into it.
+    const int cw = static_cast<int>(source.width()), ch = static_cast<int>(source.height());
+    widget.move(-static_cast<float>(cw - static_cast<int>(widget.width())) / 2, -static_cast<float>(ch - static_cast<int>(widget.height())) / 2);
+    widget.resize(cw, ch);
+    const auto [x, y, w, h] = fitCell(cw, ch, icon->width, icon->height);
+    widget.resize(w, h);
+    widget.move(static_cast<float>(x), static_cast<float>(y));
     if (selected) widget.setColor(0xffffffff);
     return selected != nullptr;
 }

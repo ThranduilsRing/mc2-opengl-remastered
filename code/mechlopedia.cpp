@@ -27,6 +27,7 @@ Mechlopedia.cpp			: Implementation of the Mechlopedia component.
 #include"../GuiRuntime/GuiRuntime.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "unit_display_name.h"
 
 constexpr int ENCYCLO_MECHS = 130;
 constexpr int ENCYCLO_BUILD = 131;
@@ -138,7 +139,7 @@ int Mechlopedia::init()
 // them from every encyclopedia list.
 static bool mc2IsUndefinedName( mc2::czstring n )
 {
-	return !n || !n[0] || S_stricmp( n, "undefined" ) == 0;
+	return !mc2::names::usable( std::string_view( mc2::str::from_c( n ) ) );
 }
 
 // ENCYCLO-UNDEFINED-FILTER-2: mod content can carry a VALID display name but a
@@ -443,9 +444,8 @@ void Mechlopedia::MechScreen::begin()
 		for (int i = 0; i < count; i++ )
 		{
 			auto pEntry = std::make_unique<MechlopediaListItem>();
-			char name[256];
-			cLoadString( pVehicles[i]->getNameID(), name, 255 );
-			if ( mc2IsUndefinedName( name ) ) continue;
+			const std::string name = pVehicles[i]->getDisplayName();
+			if ( mc2IsUndefinedName( name.c_str() ) ) continue;
 			if ( mc2IsUndefinedDescription( pVehicles[i]->getEncyclopediaID() ) ) continue;   // ENCYCLO-UNDEFINED-FILTER-2
 			pEntry->setText( mc2::str::ascii_upper( name ) );
 			pEntry->resize( groupListBox->width() - groupListBox->getScrollBarWidth() - 18, pEntry->height() );
@@ -454,7 +454,7 @@ void Mechlopedia::MechScreen::begin()
 			for ( int j = 0; j < groupListBox->GetItemCount(); j++ )
 			{
 				aTextListItem* pItem = static_cast<aTextListItem*>(groupListBox->GetItem( j ));
-				if ( S_stricmp( name, pItem->getText() ) < 0 )
+				if ( S_stricmp( name.c_str(), pItem->getText() ) < 0 )
 				{
 					groupListBox->InsertItem( pEntry.release(), j );
 					bFound = true;
@@ -518,14 +518,11 @@ void Mechlopedia::MechScreen::begin()
 		groupListBox->removeAllItems( true );
 		for (int i = 0; i < count; i++ )
 		{
-			{
-				// getChassisName() is a string ID here — resolve before filtering.
-				char chassisName[256] = {0};
-				cLoadString( pChassis[i]->getChassisName(), chassisName, 255 );
-				if ( mc2IsUndefinedName( chassisName ) ) continue;
-			}
+			// The chassis name is text once the shared resolver has picked it; filter on that.
+			const std::string chassisName = pChassis[i]->getChassisDisplayName();
+			if ( mc2IsUndefinedName( chassisName.c_str() ) ) continue;
 			auto pEntry = std::make_unique<MechlopediaListItem>();
-			pEntry->setText( pChassis[i]->getChassisName() );
+			pEntry->setText( chassisName.c_str() );
 			pEntry->resize( groupListBox->width() - groupListBox->getScrollBarWidth() - 18,
 				pEntry->height() );
 			groupListBox->AddItem( pEntry.release() );
@@ -754,8 +751,7 @@ void Mechlopedia::MechScreen::setMech( LogisticsVariant* pChassis, bool bShowJum
 
 	int descID = pChassis->getEncyclopediaID();
 
-	char name[256];
-	cLoadString( pChassis->getChassisName(), name, 255 );
+	const std::string name = pChassis->getChassisDisplayName();
 	const std::string upper = mc2::str::ascii_upper( name );
 
 	std::unique_ptr<aTextListItem> pItem;
@@ -796,7 +792,7 @@ void Mechlopedia::MechScreen::setMech( LogisticsVariant* pChassis, bool bShowJum
 	{
 		if ( bool f = mc2::log::enabled(mc2::log::Cat::Ui, mc2::log::Level::Info) )
 		{
-			MC2_LOG(Ui, Info, "[ENCYCLO] setMech '{}' chassisScale={:.3f} file={}", mc2::fmt::safe(name), pChassis->getChassis()->getScale(), pChassis->getFileName().c_str());
+			MC2_LOG(Ui, Info, "[ENCYCLO] setMech '{}' chassisScale={:.3f} file={}", mc2::fmt::safe(name.c_str()), pChassis->getChassis()->getScale(), pChassis->getFileName().c_str());
 
 		}
 	}

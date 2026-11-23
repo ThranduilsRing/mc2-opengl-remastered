@@ -16,6 +16,7 @@
 #include "mc2_czstring.h"
 #include <new>
 #include "component_rules.h"
+#include "unit_display_name.h"
 
 #ifndef HEAP_H
 #include"heap.h"
@@ -115,6 +116,12 @@ long MasterComponent::initEXCEL (char* dataLine, float baseSensorRange) {
 	
 	field = strtok(nullptr, ","); // authored component name, independent of localized strings
 	ammoAmount = mc2::components::rackSize(field);
+	// A mod row keeps its master ID's stock slot, which the stock table never filled: the name is the author's.
+	if ( field && !mc2::names::usable( name ) && mc2::names::usable( field ) )
+	{
+		strncpy(name, field, MAXLEN_COMPONENT_NAME - 1);
+		name[MAXLEN_COMPONENT_NAME - 1] = '\0';
+	}
 
 	field = strtok(nullptr, ",");
 	size = atof(field);

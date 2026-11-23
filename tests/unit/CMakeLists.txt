@@ -63,6 +63,7 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_curve.cpp
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_mesh_data.cpp
     test_component_rules.cpp
+    test_unit_display.cpp
     test_support_craft.cpp
     test_jump_target.cpp
     test_path_work.cpp

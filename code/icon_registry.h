@@ -1,13 +1,16 @@
 #pragma once
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <map>
 #include <span>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 #include <format>
 #include "../mclib/fst_hash.h"
+#include "unit_display_name.h"
 
 namespace unit_icons {
 
@@ -73,6 +76,59 @@ inline HudPick pickHudSingle(std::string single, int singleRank, std::string exa
 inline std::string hudSizedKey(std::string_view side, std::string_view stem, int w, int h) {
     return std::format("hud/{}/{}@{}x{}", side, stem, w, h);
 }
+
+// A named icon is one cell, but sheets reach the named path too (a two-row HUD strip, a row of views).
+// A sheet has a transparent gutter straight through it between cells that recurs at one pitch tiling the
+// image; one icon has no such gutter. `opaque(i, j)` reports pixel i along the scanned axis, j across.
+// Returns the cell pitch along that axis, 0 for one cell.
+template <class F> inline int cellPitch(int length, int cross, F opaque) {
+    std::vector<bool> any(static_cast<size_t>(length), false);
+    for (int i = 0; i < length; ++i)
+        for (int j = 0; j < cross; ++j)
+            if (opaque(i, j)) { any[static_cast<size_t>(i)] = true; break; }
+    const auto first = std::find(any.begin(), any.end(), true);
+    if (first == any.end()) return 0;
+    const int lead = static_cast<int>(first - any.begin());
+    int i = lead;
+    while (i < length && any[static_cast<size_t>(i)]) ++i;
+    if (i == length) return 0;
+    while (i < length && !any[static_cast<size_t>(i)]) ++i;
+    if (i == length) return 0;
+    const int pitch = i - lead;
+    return length % pitch == 0 ? pitch : 0;
+}
+
+// The first cell of a named icon (top-left), the whole image when it is one icon. Pixels are BGRA.
+inline std::pair<int, int> firstCell(int w, int h, std::span<const uint32_t> pixels) {
+    const int pw = cellPitch(w, h, [&](int x, int y) { return pixels[static_cast<size_t>(y) * w + x] >> 24; });
+    const int ph = cellPitch(h, w, [&](int y, int x) { return pixels[static_cast<size_t>(y) * w + x] >> 24; });
+    return {pw ? pw : w, ph ? ph : h};
+}
+
+inline std::vector<uint32_t> topLeft(int w, std::span<const uint32_t> pixels, int cw, int ch) {
+    std::vector<uint32_t> out;
+    out.reserve(static_cast<size_t>(cw) * ch);
+    for (int y = 0; y < ch; ++y)
+        out.insert(out.end(), pixels.begin() + static_cast<size_t>(y) * w, pixels.begin() + static_cast<size_t>(y) * w + cw);
+    return out;
+}
+
+// An icon of any source size fits the cell it is drawn in: uniform scale, centered, never spilling.
+inline std::array<int, 4> fitCell(int cw, int ch, int iw, int ih) {
+    if (iw <= 0 || ih <= 0) return {0, 0, cw, ch};
+    const float scale = std::min(static_cast<float>(cw) / iw, static_cast<float>(ch) / ih);
+    const int w = std::max(1, static_cast<int>(iw * scale + .5f));
+    const int h = std::max(1, static_cast<int>(ih * scale + .5f));
+    return {(cw - w) / 2, (ch - h) / 2, w, h};
+}
+
+// A legacy sheet serves a chassis only when the same source owns both. A mod that brings its own chassis
+// CSV and no sheet is defining a new chassis: its index names another mech's cell in a base-game sheet.
+inline bool sheetServes(int sheetRank, int dataRank) { return sheetRank <= dataRank; }
+
+// What the resolver knows about the unit it finds art for: the chassis CSV path (its stem is the first
+// own-art name) and the name the author wrote in that file (the second; MCO ships "mechicons/Storm crow.tga").
+struct Subject { std::string file; std::string name; };
 
 // Source keys survive packing. Only this load-time cache owns atlas coordinates.
 class Registry {
@@ -181,7 +237,7 @@ public:
 
 class aObject;
 namespace unit_icons {
-bool apply(aObject& widget, const aObject& source, long index, std::string chassis);
+bool apply(aObject& widget, const aObject& source, long index, const Subject& subject);
 void blit(std::string sheet, long index, bool back, uint32_t* dest, int stride, int width, int height,
           std::string chassis = {});
 // Single-file pilot portrait (data/art/pilots/NN.png). Null when absent or when a mod's replacement
