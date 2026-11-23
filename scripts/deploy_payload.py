@@ -341,10 +341,9 @@ GAME_DATA_PAYLOAD = [
     "data/visual_tuning.json",
     # ImGui UI fonts (GuiRuntime resolves exe/data/fonts/ui first); without them every defs UI text falls back
     # to the ImGui bitmap default font (blocky, low-res at 4K).
-    "data/fonts/ui/Agency-Regular.ttf",
     "data/fonts/ui/Roboto-Medium.ttf",
     "data/fonts/ui/Cousine-Regular.ttf",
-    "data/fonts/ui/Impact.ttf",
+    "data/fonts/ui/LiberationSansNarrow-Bold.ttf",
     "data/fonts/ui/LiberationSans-Regular.ttf",
     "data/fonts/ui/LiberationSansNarrow-Regular.ttf",
     # Native vegetation packs these tracked cards into its 4x2 atlas at load.
