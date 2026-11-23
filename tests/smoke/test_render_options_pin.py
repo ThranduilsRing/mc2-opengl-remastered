@@ -21,7 +21,8 @@ def values(**changes):
 
 def test_table_has_the_engines_options_with_their_defaults():
     t = {o.key: o for o in rop.table()}
-    assert len(t) == 26   # includes DrawDistance (fog profile)
+    assert len(t) == 29   # includes DrawDistance (fog profile) and HdrOutput/HdrPaperWhiteNits/HdrPeakNits
+    assert t["HdrOutput"].default == 0 and (t["HdrOutput"].lo, t["HdrOutput"].hi) == (0, 1)
     assert t["MechLabLocations"].default is True
     assert t["StockOverlayConcrete"].default is False
     assert t["TextureQuality"].default == -1 and (t["TextureQuality"].lo, t["TextureQuality"].hi) == (-1, 3)

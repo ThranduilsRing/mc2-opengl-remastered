@@ -1507,7 +1507,7 @@ TEST_CASE("render option keys are unique and findable") {
     CHECK(mo::find("NotAnOption") == nullptr);
     CHECK(mo::find("cpuphongretire") == mo::find("CpuPhongRetire"));   // keys are case-insensitive like options.cfg
     CHECK(mo::find("PostCAS") != mo::find("PostCASSharpness"));
-    CHECK(mo::kOptionCount == 26);   // includes reflection quality, water detail and MechLabLocations
+    CHECK(mo::kOptionCount == 29);   // includes HdrOutput/HdrPaperWhiteNits/HdrPeakNits, reflection quality, water detail and MechLabLocations
 }
 
 TEST_CASE("render option values outside their bounds, NaN and garbage are rejected and change nothing") {
@@ -1713,7 +1713,8 @@ TEST_CASE("the render options serialize as one JSON object of all option values 
     namespace mo = mc2::options;
     mo::RenderOptions o{};
     const std::string d = mo::toJson(o);
-    CHECK(d.rfind("{\"RemasteredBuildings\": false, \"PostCAS\": false, \"PostCASSharpness\": 0.5, \"TonemapMode\": 0, \"SpatialAA\": 1, \"ShadowQuality\": 2", 0) == 0);
+    CHECK(d.rfind("{\"RemasteredBuildings\": false, \"PostCAS\": false, \"PostCASSharpness\": 0.5, \"TonemapMode\": 0, \"HdrOutput\": 0, ", 0) == 0);
+    CHECK(d.find("\"SpatialAA\": 1, \"ShadowQuality\": 2") != std::string::npos);
     CHECK(d.find("\"StaticPropIblSunRotateFloor\": 0.45") != std::string::npos);
     CHECK(d.find("\"StaticPropPbr\": false") != std::string::npos);
     CHECK(d.back() == '}');

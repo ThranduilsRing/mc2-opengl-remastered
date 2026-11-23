@@ -418,8 +418,17 @@ if(MSVC)
     set_source_files_properties(test_printf_corpus.cpp PROPERTIES COMPILE_FLAGS "/bigobj")
 endif()
 
+# test_surface_format.cpp needs <vulkan/vulkan_core.h> only. The SDK Include dir also ships its own glm, which
+# collides with the vendored glm::glm target (glm::qualifier redefinition), so expose just the vulkan/ headers.
+if(DEFINED ENV{VULKAN_SDK} AND EXISTS "$ENV{VULKAN_SDK}/Include/vulkan/vulkan_core.h")
+    set(MC2_TEST_VK_HEADERS "${CMAKE_CURRENT_BINARY_DIR}/vk_headers")
+    if(NOT EXISTS "${MC2_TEST_VK_HEADERS}/vk_video")
+        file(COPY "$ENV{VULKAN_SDK}/Include/vulkan" "$ENV{VULKAN_SDK}/Include/vk_video" DESTINATION "${MC2_TEST_VK_HEADERS}")
+    endif()
+endif()
+
 target_include_directories(mc2_tests PRIVATE
-    "$ENV{VULKAN_SDK}/Include"
+    ${MC2_TEST_VK_HEADERS}
     ${MC2_WORKTREE_ROOT}/3rdparty/imgui
     ${MC2_WORKTREE_ROOT}           # for "RenderCore/RenderPassContract.h" style includes
     ${MC2_WORKTREE_ROOT}/mclib
