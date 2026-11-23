@@ -1010,7 +1010,7 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 							mc2::fmt::print_out("[VISUAL_HEIGHT v1] SIG OK path={} gameplay height signature '{}' matches; bake applied\n", mc2::fmt::safe(vhPath), mc2::fmt::safe(sigWant));
 							fflush(stdout);
 						}
-						if (sigState == 0 && cornerMean > 16.0)
+						if (sigState == 0 && !synth && cornerMean > 16.0)   // synth: derived from this terrain, mismatch impossible
 						{
 							mc2::fmt::print_out("[VISUAL_HEIGHT v1] REJECTED path={} mean corner offset {:.1f}wu > 16wu: bake does not match this terrain (mod?); drawing undisplaced\n", mc2::fmt::safe(vhPath), cornerMean);
 							fflush(stdout);
