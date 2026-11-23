@@ -39,11 +39,11 @@ def stack(base: Image.Image, weapons: Image.Image) -> Image.Image:
 
 def cook(ktx, png, dst, tmp):
     uastc = Path(tmp) / (dst.name + ".uastc.ktx2")
-    # background-launch: allow offline texture cook, runs to completion
-    r1 = subprocess.run([ktx, "create", "--encode", "uastc", "--format", "R8G8B8A8_UNORM", "--assign-tf", "linear",
+    r1 = subprocess.run(  # background-launch: allow offline texture cook, runs to completion
+        [ktx, "create", "--encode", "uastc", "--format", "R8G8B8A8_UNORM", "--assign-tf", "linear",
                          "--levels", "1", str(png), str(uastc)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    # background-launch: allow offline texture cook, runs to completion
-    r2 = subprocess.run([ktx, "transcode", "--target", "bc7", str(uastc), str(dst)],
+    r2 = subprocess.run(  # background-launch: allow offline texture cook, runs to completion
+        [ktx, "transcode", "--target", "bc7", str(uastc), str(dst)],
                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) if r1.returncode == 0 else r1
     if r1.returncode or r2.returncode:
         sys.exit(f"ktx failed for {dst.name}: {(r1.stdout + r2.stdout)[:200]}")
