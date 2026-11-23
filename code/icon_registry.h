@@ -212,12 +212,14 @@ public:
     // Order: the mod's own art (CSV stem, then the author's MechName) -> HUD front art -> a sheet cell the same
     // source declares -> none (the caller draws its placeholder). One cell; the caller fits it.
     Pick select(const std::map<std::string, int>& priority, const Query& q) const {
-        const auto rank = [&](const std::string& key) {
-            const auto it = priority.find(key);
-            return it == priority.end() ? -1 : it->second;
+        const auto rank = [&](const auto& key) {
+            const auto found = priority.find(key);
+            if (found == priority.end()) return -1;
+            const auto& [file, r] = *found;
+            return r;
         };
         const std::string stem = "mech/" + q.stem, byName = "mech/" + q.name;
-        const auto here = [&](const std::string& key) { return rank(key) >= 0 && sameSource(rank(key), q.dataRank) && find(key); };
+        const auto here = [&](const auto& key) { return rank(key) >= 0 && sameSource(rank(key), q.dataRank) && find(key); };
         // The author's MechName names art too, when the same source that owns the chassis owns that file. It wins
         // over a same-stem icon another source owns: that one is the stock chassis' art, not this mod's.
         const std::string named = here(byName) && !here(stem) ? byName : stem;
