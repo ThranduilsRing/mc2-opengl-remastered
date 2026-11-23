@@ -1031,7 +1031,18 @@ void Camera::flatLight(const mc2::lighting::LightingState& s, float intensity, u
 bool Camera::save( FitIniFile* file )
 {
 	file->writeBlock("Cameras");
-	mc2::lighting::saveTod(*file, todCurve.get(), todT, todRate);
+	// The legacy writer fixes floats to six decimals: that changes the real-time rate by ~4% on reload.
+	// Only the opt-in clock keys need round-trip float precision; stock Cameras bytes keep their old format.
+	struct ClockSave {
+		FitIniFile& file;
+		void writeIdFloat(const char* name, float value) {
+			char line[128];
+			mc2::fmt::to_buf(line, "f {} = {:.9g}\r\n", name, value);
+			file.write(reinterpret_cast<MemoryPtr>(line), strlen(line));
+		}
+		void writeIdULong(const char* name, uint32_t value) { file.writeIdULong(name, value); }
+	} clockSave{*file};
+	mc2::lighting::saveTod(clockSave, todCurve.get(), todT, todRate);
 	if (todCurve && mc2_diag::tagRequested("TOD"))
 		mc2::fmt::print_err("[TOD] save t={:.9f} pitch={:.6f} yaw={:.6f}\n", todT, lightPitch, lightYaw);
 	file->writeIdFloat( "ProjectionAngle", projectionAngle );
