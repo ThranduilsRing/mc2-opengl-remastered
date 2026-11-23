@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 292,
+    "glsl_blocks_with_binding": 294,
     "native_pairs": 4,
     "fails": 0,
     "warns": 1
@@ -287,6 +287,16 @@
         "std": null,
         "type": "sampler2D",
         "source": "shaders/vulkan/postprocess_visual.frag",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/present_encode.frag",
+        "line": 6,
+        "role": "sceneTex",
+        "std": null,
+        "type": "sampler2D",
+        "source": "shaders/vulkan/present_encode.frag",
         "branch": {}
       },
       {
@@ -721,6 +731,16 @@
         "std": null,
         "type": "usampler2D",
         "source": "shaders/vulkan/postprocess_visual.frag",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/present_encode.frag",
+        "line": 7,
+        "role": "uiTex",
+        "std": null,
+        "type": "sampler2D",
+        "source": "shaders/vulkan/present_encode.frag",
         "branch": {}
       },
       {
@@ -3416,6 +3436,7 @@
     "shaders/vulkan/postprocess.vert",
     "shaders/vulkan/postprocess_visual.frag",
     "shaders/vulkan/postprocess_visual.vert",
+    "shaders/vulkan/present_encode.frag",
     "shaders/vulkan/screen_shadow_csm.frag",
     "shaders/vulkan/screen_shadow_csm.vert",
     "shaders/vulkan/shadow_bake_bc4.comp",

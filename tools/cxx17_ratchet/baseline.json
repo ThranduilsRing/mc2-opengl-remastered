@@ -1279,6 +1279,7 @@
   "RenderCore/gpu_abi/GpuStaticPropInstance.layout.gen.h": {},
   "RenderCore/gpu_abi/GpuTerrainFrameUBO.h": {},
   "RenderCore/gpu_abi/GpuTerrainFrameUBO.layout.gen.h": {},
+  "RenderCore/hdr_capture.h": {},
   "RenderCore/hzb_prop_bounds.h": {},
   "RenderCore/postprocess_subpass_order.h": {
    "LG05": 1,
@@ -3481,7 +3482,7 @@
    "LG20": 1
   }
  },
- "head": "7a6a3a735",
+ "head": "d96ed6eaf",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

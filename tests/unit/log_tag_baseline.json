@@ -4481,6 +4481,19 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
+    "f16_dump",
+    "width",
+    "height",
+    "frame",
+    "complete"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HDR_OUTPUT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
     "policy",
     "colorspace_ext",
     "metadata_ext",
@@ -10997,7 +11010,7 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 3
+   "count": 6
   },
   {
    "tag": "TOD",
