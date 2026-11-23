@@ -37,7 +37,10 @@ float Camera::setDaylightFraction (float f)
 	// for. Night is then produced the same way a mission that SHIPS as night
 	// produces it: a low/negative sun altitude, not a pitch past 180.
 	const float sunPitch = f * 360.0f;
-	updateDaylight(false);            // ambient / sun / sky / fog for this time
+	// With a time-of-day curve the curve owns the colours: this verb only overrides the sun angle (a modulator); the legacy colour
+	// recompute would write members the curve then overrides.
+	if (!todCurve)
+		updateDaylight(false);        // ambient / sun / sky / fog for this time
 	setSunPitch(sunPitch);            // ... but hand update() the SUN angle
 	return lightPitch;
 }
@@ -62,6 +65,7 @@ float Camera::setSunPitch (float pitchDeg, bool setYaw, float yawDeg)
 			lightPitch * DEGREES_TO_RADS, (lightYaw + 135.0) * DEGREES_TO_RADS, 0.0f));
 		worldLights[0]->SetLightToWorld(&lightToWorldMatrix);
 	}
+	noteSunMoved();   // with a curve: the new angle becomes an override of the curve's sun
 	return lightPitch;
 }
 

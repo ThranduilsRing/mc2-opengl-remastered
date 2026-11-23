@@ -814,20 +814,12 @@ long Mission::render (void)
 	ZoneScopedN("Camera.UpdateRenderers Mission.render");
 	if (mc2::render_view::clock().missionActive)   // the extracted flag: the overlapped tick can end the mission mid-draw
 	{
-		unsigned char tempAmbientLight[3];
-		if (KillAmbientLight) {
-			tempAmbientLight[0] = eye->ambientRed;
-			tempAmbientLight[1] = eye->ambientGreen;
-			tempAmbientLight[2] = eye->ambientBlue;
-			eye->ambientRed = 0xFF;
-			eye->ambientGreen = 0xFF;
-			eye->ambientBlue = 0xFF;
-		}
+		if (KillAmbientLight) eye->setKillAmbient(true);   // a modulator of the camera's light (a time-of-day curve cannot override it)
 		{ ZoneScopedN("Camera.UpdateRenderers eye.render"); eye->render(); }
 
 		//-----------------------------------------------------
 		// FOG time.  Set Render state to FOG on!
-		DWORD fogColor = eye->fogColor;
+		DWORD fogColor = eye->currentLighting().fogColor;
 		if (useFog)
 		{
 			gos_SetRenderState( gos_State_Fog, fogColor);
@@ -849,11 +841,7 @@ long Mission::render (void)
 			missionInterface->render();
 		}
 
-		if (KillAmbientLight) {
-			eye->ambientRed = tempAmbientLight[0];
-			eye->ambientGreen = tempAmbientLight[1];
-			eye->ambientBlue = tempAmbientLight[2];
-		}
+		if (KillAmbientLight) eye->setKillAmbient(false);
 	}
 
 	return mc2::render_view::clock().missionResult;

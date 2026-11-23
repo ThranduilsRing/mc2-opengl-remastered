@@ -925,6 +925,7 @@ void Mission::initWeatherCamera(MissionInitFrame& f) {
 	gosASSERT(eye != nullptr);
 
 	mc2SetMissionLightProfileName(missionFileName);   // LOCAL-LIGHTS-4: before the profile applies in init
+	eye->allowTimeOfDay = true;   // the mission camera only: a sidecar timeOfDay curve applies here, never to the mech-bay preview camera
 	result = eye->init(missionFile);
 	gosASSERT(result == NO_ERR);
 
@@ -1067,6 +1068,7 @@ void Mission::initFinalizeGeometry() {
     // load barrier so sky/water upload the mission HDRI rather than the boot sky.
     GameAdapters::Sky::setSkyNumber(static_cast<int>(theSkyNumber));
     // The load barrier bakes the static shadows (F1); they key on the terrain sun, which the first frame's camera sets. Set the same one now.
+    // Bake reference = the state at load (Camera::bakeReferenceLighting): the forest bake and the shadow bake read the load-time sun.
     { const glm::vec3 sun = eye->sunDirection(); gos_SetTerrainLightDir(sun.x, sun.y, sun.z);
       MC2_LOAD_SCOPE("finalize.forestOcclusion"); GpuStaticPropRegistry::bakeForestOcclusion(sun.x, sun.y, sun.z); } // forest light bake needs the sun
     // Effect specifications register their images before actors spawn. Admit

@@ -146,6 +146,13 @@ void Camera::updateGoalPosition (glm::vec3 &pos)
 // update, so the load-time shadow bake keys on the same sun as frame 0.
 glm::vec3 Camera::sunDirection (void) const
 {
+	return sunDirectionFor(lightPitch, lightYaw);
+}
+
+// The same expression for any pitch/yaw: the time-of-day curve's composed angles go through it, so the published direction is the
+// one Camera::update() derives (not lighting_state.h's older non-spherical init expression).
+glm::vec3 Camera::sunDirectionFor (float lightPitch, float lightYaw)
+{
 	static const bool s_sunElevationFix = mc2::options::current().sunElevationFix;
 
 	const float sunAzimuthRad = (lightYaw + 45.0f) * DEGREES_TO_RADS;

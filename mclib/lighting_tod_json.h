@@ -3,9 +3,13 @@
 //   {"start":0.30,"rate":0.0,"keys":[{"t":0.0,"sunPitch":28,"sunYaw":20,"sunColorR":255,"sunColorG":214,"sunColorB":160,
 //     "ambientR":50,"ambientG":50,"ambientB":55,"fogColorR":..,"fogColorG":..,"fogColorB":..,"fogStart":..,"fogFull":..}, ...]}
 // A key sets only the channels it names; a colour needs all three components. Anything malformed leaves the mission Fixed
-// (null result plus a message): a bad block never changes a stock look.
+// (null result plus a message): a bad block never changes a stock look. Malformed includes a non-finite or out-of-float-range number
+// and a negative rate. Keys past kMaxTodKeys are dropped (TodCurve::droppedKeys); sun pitch is clamped to [-10, 89] (dawn and dusk
+// need a low sun; the low-sun shadows are T6).
 #include <algorithm>
 #include <array>
+#include <cfloat>
+#include <cmath>
 #include <expected>
 #include <memory>
 #include <optional>
@@ -25,6 +29,17 @@ inline std::optional<float> jsonNum(const nlohmann::json& o, std::string_view na
 	const auto it = o.find(std::string(name));
 	if (it == o.end() || !it->is_number()) return std::nullopt;
 	return it->get<float>();
+}
+
+// Every number a key or the block carries must fit a finite float (nlohmann reads 1e999 as inf): else the block is rejected whole.
+inline bool numbersFitFloat(const nlohmann::json& o)
+{
+	for (const auto& v : o)
+		if (v.is_number()) {
+			const double d = v.get<double>();
+			if (!std::isfinite(d) || std::fabs(d) > static_cast<double>(FLT_MAX)) return false;
+		}
+	return true;
 }
 
 // Three bytes <base>R/G/B. nullopt + partial=true when only some of the components are present.
@@ -56,14 +71,16 @@ inline TodParse parseTodCurve(std::string_view text)
 	if (!doc.is_object()) return fail("timeOfDay: not an object");
 	const auto keys = doc.find("keys");
 	if (keys == doc.end() || !keys->is_array() || keys->empty()) return fail("timeOfDay: no keys array");
+	if (!detail::numbersFitFloat(doc)) return fail("timeOfDay: non-finite or out-of-range number");
 	auto curve = std::make_shared<TodCurve>();
 	for (const auto& k : *keys) {
 		if (!k.is_object()) return fail("timeOfDay: key is not an object");
+		if (!detail::numbersFitFloat(k)) return fail("timeOfDay: non-finite or out-of-range number in a key");
 		TodKey key;
 		const auto t = detail::jsonNum(k, "t");
 		if (!t) return fail("timeOfDay: key without t");
 		key.t = *t;
-		if (const auto v = detail::jsonNum(k, "sunPitch")) { key.pitch = *v; key.mask |= kPitch; }
+		if (const auto v = detail::jsonNum(k, "sunPitch")) { key.pitch = std::clamp(*v, kMinCurvePitch, kMaxCurvePitch); key.mask |= kPitch; }
 		if (const auto v = detail::jsonNum(k, "sunYaw")) { key.yaw = *v; key.mask |= kYaw; }
 		bool partial = false;
 		if (const auto v = detail::jsonBytes(k, "sunColor", partial)) { std::copy(v->begin(), v->end(), key.sun); key.mask |= kSun; }
@@ -81,8 +98,13 @@ inline TodParse parseTodCurve(std::string_view text)
 	std::stable_sort(curve->keys.begin(), curve->keys.end(), [](const TodKey& a, const TodKey& b) { return a.t < b.t; });
 	for (size_t i = 1; i < curve->keys.size(); ++i)
 		if (!(curve->keys[i].t > curve->keys[i - 1].t)) return fail("timeOfDay: key times must be strictly increasing");
+	if (curve->keys.size() > kMaxTodKeys) {
+		curve->droppedKeys = curve->keys.size() - kMaxTodKeys;
+		curve->keys.resize(kMaxTodKeys);
+	}
 	curve->start = detail::jsonNum(doc, "start").value_or(0.0f);
 	curve->rate = detail::jsonNum(doc, "rate").value_or(0.0f);
+	if (curve->rate < 0.0f) return fail("timeOfDay: negative rate");
 	curve->start = std::clamp(curve->start, curve->keys.front().t, curve->keys.back().t);
 	return curve;
 }

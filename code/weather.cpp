@@ -366,15 +366,7 @@ void Weather::update (void)
 			
 			unsigned char lightening = lighteningLevel;
 			TerrainQuad::rainLightLevel = rainLightLevel * 0.2f;
-			{
-				eye->ambientRed  = eye->dayAmbientRed / rainLightLevel;
-				eye->ambientGreen = eye->dayAmbientGreen / rainLightLevel;
-				eye->ambientBlue = eye->dayAmbientBlue / rainLightLevel;
-								 
-				eye->lightRed = eye->dayLightRed / rainLightLevel;
-				eye->lightGreen = eye->dayLightGreen / rainLightLevel;
-				eye->lightBlue = eye->dayLightBlue / rainLightLevel;
-			}
+			eye->setRainLight(rainLightLevel);   // rain dims the base light through the camera's one composition point (a time-of-day curve cannot override it)
 		
 			if (lighteningLevel != 0.0f)
 			{
@@ -384,15 +376,7 @@ void Weather::update (void)
 		}
 		else
 		{
-			{
-				eye->ambientRed  = eye->dayAmbientRed;
-				eye->ambientGreen = eye->dayAmbientGreen;
-				eye->ambientBlue = eye->dayAmbientBlue;
-								 
-				eye->lightRed = eye->dayLightRed;
-				eye->lightGreen = eye->dayLightGreen;
-				eye->lightBlue = eye->dayLightBlue;
-			}
+			eye->clearRainLight();
 		}
 
   		//-----------------------
@@ -446,15 +430,7 @@ void Weather::update (void)
 	}
 	else
 	{
-		{
-			eye->ambientRed  = eye->dayAmbientRed;
-			eye->ambientGreen = eye->dayAmbientGreen;
-			eye->ambientBlue = eye->dayAmbientBlue;
-							 
-			eye->lightRed = eye->dayLightRed;
-			eye->lightGreen = eye->dayLightGreen;
-			eye->lightBlue = eye->dayLightBlue;
-		}
+		eye->clearRainLight();
 	}
 }
 		
