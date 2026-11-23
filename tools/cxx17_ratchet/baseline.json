@@ -907,6 +907,7 @@
   "GameOS/gameos/vk_shared_gbuffer_gate.h": {},
   "GameOS/gameos/vk_shared_light_feed.cpp": {},
   "GameOS/gameos/vk_shared_light_feed.h": {},
+  "GameOS/gameos/vk_surface_format.h": {},
   "GameOS/gameos/vk_texture_pending.h": {},
   "GameOS/gameos/vk_texture_residency.cpp": {
    "LG10": 1
@@ -3480,7 +3481,7 @@
    "LG20": 1
   }
  },
- "head": "3addd63f8",
+ "head": "7a6a3a735",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

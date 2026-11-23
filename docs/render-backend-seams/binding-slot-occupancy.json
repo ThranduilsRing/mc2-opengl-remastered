@@ -282,7 +282,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/postprocess_visual.frag",
-        "line": 8,
+        "line": 9,
         "role": "sceneTex",
         "std": null,
         "type": "sampler2D",
@@ -716,7 +716,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/postprocess_visual.frag",
-        "line": 9,
+        "line": 10,
         "role": "objectIdTex",
         "std": null,
         "type": "usampler2D",

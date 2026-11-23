@@ -4477,6 +4477,26 @@
    "count": 1
   },
   {
+   "tag": "HDR_OUTPUT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "policy",
+    "colorspace_ext",
+    "metadata_ext",
+    "offscreen",
+    "active",
+    "format",
+    "colorspace",
+    "would_format",
+    "would_colorspace",
+    "paper_nits",
+    "peak_nits",
+    "present_format"
+   ],
+   "count": 1
+  },
+  {
    "tag": "HEARTBEAT",
    "ver": -1,
    "stream": "buffer",
@@ -10977,7 +10997,7 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 2
+   "count": 3
   },
   {
    "tag": "TOD",
@@ -10985,8 +11005,21 @@
    "stream": "stderr",
    "keys": [
     "keys",
-    "start",
+    "t",
+    "rate",
+    "hash",
     "mode"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TOD",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "t",
+    "pitch",
+    "yaw"
    ],
    "count": 1
   },
