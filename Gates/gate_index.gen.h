@@ -372,7 +372,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_UNIT_DEFINITION_SOURCE", Kind::Enum, Rule::Std, "legacy|generated"},
     {"MC2_UNIT_PROFILE_DATA", Kind::Bool, Rule::Lead0, {}},
     {"MC2_VEGETATION_ATLAS", Kind::String, Rule::Std, {}},
-    {"MC2_VEGETATION_CARDS", Kind::Bool, Rule::DefOnLead0, {}},
+    {"MC2_VEGETATION_CARDS", Kind::Bool, Rule::Lead0, {}},
     {"MC2_VEGETATION_DENSITY", Kind::Int, Rule::Prefix, {}},
     {"MC2_VEGETATION_MAX", Kind::Int, Rule::Prefix, {}},
     {"MC2_VEG_MAX_DIST", Kind::Float, Rule::Prefix, {}},

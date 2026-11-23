@@ -2852,8 +2852,8 @@ flags:
     verified: true
   - name: MC2_VEGETATION_CARDS
     kind: Bool
-    default: true
-    rule: DefOnLead0
+    default: false
+    rule: Lead0
     owner: gameos
     doc: ""
     smoke_passthrough: true
