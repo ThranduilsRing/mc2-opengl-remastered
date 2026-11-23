@@ -18,6 +18,7 @@
 #include <vector>
 #include "../GameOS/gameos/terrain_field_store.h"
 #include "../GameOS/gameos/height_sig.h"
+#include "../GameOS/gameos/terrain_visual_smooth.h"
 #include "../GameOS/gameos/load_scope.h"
 
 
@@ -849,17 +850,25 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 					return;
 				}
 				FILE* vf = fopen(vhPath, "rb");
-			if (!vf)
+			// TERRAIN-VALLEY-SMOOTH-1: no baked sidecar (mod / new map) -> synthesize the visual height at load.
+			std::optional<std::vector<float>> synthVh;
+			if (!vf) synthVh = mc2terrain::buildSmoothedVisualHeight(elev.data(), mapSide);
+			const bool synth = synthVh.has_value();
+			if (!vf && !synth)
 			{
 				mc2::fmt::print_out("[VISUAL_HEIGHT v1] bake NOT FOUND path={} (gate on, V={:d} mapSide={:d})\n", mc2::fmt::safe(vhPath), mc2::fmt::as_i32(V), mc2::fmt::as_i32(mapSide));
 				fflush(stdout);
 			}
 			else
 			{
-				fseek(vf, 0, SEEK_END);
-				long vsz = ftell(vf);
-				fseek(vf, 0, SEEK_SET);
 				const size_t want = static_cast<size_t>(V) * static_cast<size_t>(V) * sizeof(float);
+				long vsz = static_cast<long>(want);
+				if (vf)
+				{
+					fseek(vf, 0, SEEK_END);
+					vsz = ftell(vf);
+					fseek(vf, 0, SEEK_SET);
+				}
 				if (static_cast<size_t>(vsz) != want)
 				{
 					mc2::fmt::print_out("[VISUAL_HEIGHT v1] SIZE MISMATCH path={} got={:d} want={:d} (V={:d} mapSide={:d})\n", mc2::fmt::safe(vhPath), mc2::fmt::as_i32(vsz), mc2::fmt::as_size(want), mc2::fmt::as_i32(V), mc2::fmt::as_i32(mapSide));
@@ -869,8 +878,9 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 				else
 				{
 					std::vector<float> vh(static_cast<size_t>(V) * static_cast<size_t>(V));
-					size_t rd = fread(vh.data(), sizeof(float), vh.size(), vf);
-					fclose(vf);
+					size_t rd = vh.size();
+					if (synth) vh.swap(*synthVh);
+					else { rd = fread(vh.data(), sizeof(float), vh.size(), vf); fclose(vf); }
 					if (rd != vh.size())
 					{
 						mc2::fmt::print_out("[VISUAL_HEIGHT v1] READ FAIL path={} read={:d} want={:d}\n", mc2::fmt::safe(vhPath), mc2::fmt::as_size(rd), mc2::fmt::as_size(vh.size()));
