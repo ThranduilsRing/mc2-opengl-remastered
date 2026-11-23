@@ -21,6 +21,7 @@ import shutil
 import subprocess
 import sys
 import time
+import uuid
 from pathlib import Path
 
 import numpy as np
@@ -1012,13 +1013,10 @@ def cleanup_stage(staged, keep=False) -> None:
             shutil.rmtree(d, onexc=onexc)
             print(f"[ab] stage removed: {d}" if not stuck else
                   f"[ab] !!! stage NOT fully removed: {d} ({len(stuck)} files, first: {stuck[0]}); delete it by hand", flush=True)
-        for level, parent in enumerate((d.parent, d.parent.parent)):  # the run dir, then the default _ab-stage root, each only when empty
-            if level and parent.name != "_ab-stage":
-                break
-            try:
-                parent.rmdir()
-            except OSError:
-                break
+        try:
+            d.parent.rmdir()  # only this invocation's private run directory
+        except OSError:
+            pass
 
 
 def _swap_spv_rows(rows, dest, shaders_parent, commit, exe_name, exe_path):
@@ -1303,10 +1301,11 @@ def bookmark_parity_problems(ia, ib, bookmarks: str) -> list:
 
 
 def _stage_root(a, out: Path, install: Path, count: int) -> Path:
-    """Where the staged installs go: --stage-root, else <install>/../_ab-stage/<run> on the install's own volume (hardlinks need
-    one volume). Runs the DISK_GUARD for `count` stages before anything is written."""
-    root = Path(a.stage_root) / out.name if a.stage_root else Path(install).resolve().parent / "_ab-stage" / out.name
-    if not a.stage_root:
+    """Private per-invocation staging; prefer lane scratch, otherwise the install volume for hardlinks."""
+    scratch = os.environ.get("MC2_LANE_SCRATCH")
+    parent = Path(a.stage_root or scratch) if a.stage_root or scratch else Path(install).resolve().parent / "_ab-stage"
+    root = parent / ("ab-" + uuid.uuid4().hex)
+    if not a.stage_root and not scratch:
         root = shorten_stage_root(root, Path(install))
     disk_guard(root, count * estimate_stage_bytes(Path(install), root))
     return root
@@ -1351,7 +1350,7 @@ def resolve_installs(a, out: Path):
         if not exe.is_file():
             sys.exit(f"exe not found: {exe}")
         root = _stage_root(a, out, Path(a.install_b), 1)
-        return (_staged(a, stage_exe_swap(Path(a.install_b), exe, root / "install_a")), a.install_b)
+        return (stage_exe_swap(Path(a.install_b), exe, Path(_staged(a, root / "install_a"))), a.install_b)
     if a.install_a or a.install_b:
         if not (a.install_a and a.install_b) or a.exe_a or a.exe_b:
             sys.exit("use --install-a with --install-b, or --exe-a with --exe-b, or --exe-a with --install-b, not a mix")
@@ -1373,8 +1372,8 @@ def resolve_installs(a, out: Path):
         root = _stage_root(a, out, Path(a.install), 2)
         if sa is None:   # shader_side_plan compares shaders/vulkan/*.spv; default_shaders_a (ab-data-parity) the whole shaders/ tree
             sa = default_shaders_a(Path(a.install), Path(a.exe_a))
-        return (_staged(a, stage_install(Path(a.install), Path(a.exe_a), root / "install_a", sa)),
-                _staged(a, stage_install(Path(a.install), Path(a.exe_b), root / "install_b", sb)))
+        return (stage_install(Path(a.install), Path(a.exe_a), Path(_staged(a, root / "install_a")), sa),
+                stage_install(Path(a.install), Path(a.exe_b), Path(_staged(a, root / "install_b")), sb))
     sys.exit("need --install-a/--install-b, or --exe-a/--exe-b, or --exe-a/--install-b (or --compare-only DIR_A DIR_B)")
 
 
@@ -1388,8 +1387,8 @@ def main(argv=None):
                          "as a hardlink copy of B with A's mc2.exe/pdb + shaders/ swapped in from the exe's install dir")
     ap.add_argument("--exe-b", metavar="EXE")
     ap.add_argument("--stage-root", metavar="DIR",
-                    help="where --exe-a/--exe-b stage their install copies (default <install>/../_ab-stage/<run>, the install's own "
-                         "volume so shared files are hardlinked)")
+                    help="parent for private staging directories (default MC2_LANE_SCRATCH, else <install>/../_ab-stage; "
+                         "same-volume files are hardlinked)")
     ap.add_argument("--shaders-a", metavar="DIR",
                     help="with --exe-a/--exe-b: stage side A with the shaders/ of this install (e.g. v0.4) and rewrite A's manifest "
                          "rows from the swapped bytes")
@@ -1410,6 +1409,7 @@ def main(argv=None):
     ap.add_argument("--focus-zoom", type=float, default=None, metavar="ALT",
                     help="camera altitude with --focus (default 200 = mech at about a fifth of the frame)")
     ap.add_argument("--env", action="append", default=[], metavar="K=V", help="extra env for both captures")
+    ap.add_argument("--res", choices=("4k", "1080"), default="4k", help="capture resolution (default: 4k; --env size overrides win)")
     ap.add_argument("--hud", action="store_true",
                     help="keep the HUD visible in both captures (default: capture.py --clean hides it)")
     ap.add_argument("--crop", action="append", default=[], help="x0,y0,x1,y1 fractions")
@@ -1502,7 +1502,8 @@ def main(argv=None):
         base_line, exe_a_base_mismatch = exe_a_base_check(identities[0]["commit"], identities[1]["commit"])
         if base_line:
             print("[ab] WARNING: " + base_line, flush=True)
-        env = ["MC2_RENDER_BACKEND=vulkan", "MC2_VK_SHARED_GBUFFER=1"] + pin_stock_overlay_concrete(a.env) + env_pin.focus_declarations(a.focus, a.focus_zoom)
+        width, height = (3840, 2160) if a.res == "4k" else (1920, 1080)
+        env = ["MC2_RENDER_BACKEND=vulkan", "MC2_VK_SHARED_GBUFFER=1", f"MC2_WIDTH={width}", f"MC2_HEIGHT={height}"] + pin_stock_overlay_concrete(a.env) + env_pin.focus_declarations(a.focus, a.focus_zoom)
         exe_recs = [arm_exe_record("A", game_executable(ia))]
         run_capture(ia, a.bookmarks, out / "a", env, hud=a.hud, allow_asset_drift=a.allow_asset_drift)
         stamp_identity(out / "a", identities[0])

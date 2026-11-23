@@ -153,7 +153,7 @@ def data_fingerprint(install: str = INSTALL_DIR, manifest: dict | None = None) -
     """-> {"digest", "inputs", "stock_digest", "overlay", "problems"}: a digest of the install data the simulation reads.
 
     The digest covers two parts. STOCK: the archives by content and the loose trees by relative path and size, leaving out the declared
-    overlay, `*.beauty` presentation sidecars, texture cook receipts, and counting a deploy-cooked tree sidecar at its stock cook size. OVERLAY: the
+    overlay, `*.beauty` presentation sidecars, data/tgl/_aoktxtmp cook workspace, texture cook receipts, and counting a deploy-cooked tree sidecar at its stock cook size. OVERLAY: the
     files tests/smoke/sim_determinism/data_overlay.json declares, by content. `problems` names a declared overlay file that is missing or
     changed and a stock part that no longer equals the manifest's `stock_digest`, so a dirty install says why instead of only differing.
     """
@@ -174,6 +174,8 @@ def data_fingerprint(install: str = INSTALL_DIR, manifest: dict | None = None) -
         entries = []
         for dp, dn, fns in os.walk(base):
             dn[:] = [d for d in dn if not d.endswith(".beauty")]
+            if os.path.normcase(os.path.normpath(dp)) == os.path.normcase(os.path.normpath(os.path.join(install, "data/tgl"))):
+                dn[:] = [d for d in dn if d.lower() != "_aoktxtmp"]
             for fn in fns:
                 if tree == "data/tgl" and fn.endswith(".cookstamp"):
                     continue  # Texture provenance receipts do not affect simulation data.

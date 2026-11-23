@@ -484,6 +484,9 @@ def check_baseline_record(base: dict, cur: dict):
     if not cur.get("resave_present"):
         return False, ["no valid re-save this run: a missing, empty or crashed re-save is not a pass"]
     if json.dumps(base.get("comparison", {"mode": "exact"}), sort_keys=True) != json.dumps(cur.get("comparison", {"mode": "exact"}), sort_keys=True):
+        if base.get("comparison", {}).get("mode") == "zero-masked-bytes-v1":
+            return False, ["baseline comparison policy differs; retry check with --mask tools/save_noise_mask.json --first-save-only; "
+                           "historical hashes cannot be remasked: if the mask changed, record --baseline with the same flags"]
         return False, ["baseline comparison policy differs; historical hashes cannot be remasked: record --baseline with the same --mask"]
     # A save taken at another frame is another scenario moment: its digest cannot match, and a silent mismatch once hid a re-record at the CLI default.
     if (base.get("save_at"), base.get("load_at")) != (cur.get("save_at"), cur.get("load_at")):

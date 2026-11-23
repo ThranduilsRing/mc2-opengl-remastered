@@ -102,8 +102,40 @@ def test_stage_removed_after_success_and_failure(tmp_path, monkeypatch, fail):
         ab.main(["--bookmarks", "x", "--exe-a", str(ea), "--exe-b", str(eb), "--install", str(inst), "--out-root", str(out)])
     assert len(seen) == 2
     assert not any(p.exists() for p in seen)
-    assert not (tmp_path / "_ab-stage").exists()  # the empty stage root goes too
+    assert all(not p.parent.exists() for p in seen)  # private run directory goes; shared parent stays
     assert (inst / "data/big.fst").read_bytes() == b"shared data"  # the source install is untouched
+
+
+@pytest.mark.parametrize("scratch", [False, True])
+def test_stage_roots_are_private_even_with_same_output(tmp_path, monkeypatch, scratch):
+    from types import SimpleNamespace
+    monkeypatch.delenv("MC2_LANE_SCRATCH", raising=False)
+    if scratch:
+        monkeypatch.setenv("MC2_LANE_SCRATCH", str(tmp_path / "scratch"))
+    monkeypatch.setattr(ab, "disk_guard", lambda *a: None)
+    monkeypatch.setattr(ab, "estimate_stage_bytes", lambda *a: 0)
+    args = SimpleNamespace(stage_root=None)
+    roots = [ab._stage_root(args, tmp_path / "same-output", tmp_path / "install", 1) for _ in range(2)]
+    assert roots[0] != roots[1]
+    assert roots[0].parent == tmp_path / ("scratch" if scratch else "_ab-stage")
+    for root in roots:
+        (root / "install_a").mkdir(parents=True)
+    ab.cleanup_stage([roots[0] / "install_a"])
+    assert not roots[0].exists() and roots[1].is_dir() and roots[0].parent.is_dir()
+    args.stage_root = str(tmp_path / "explicit")
+    assert ab._stage_root(args, tmp_path / "same-output", tmp_path / "install", 1).parent == tmp_path / "explicit"
+
+
+@pytest.mark.parametrize("flags,size", [([], (3840, 2160)), (["--res", "1080"], (1920, 1080)),
+    (["--env", "MC2_WIDTH=640", "--env", "MC2_HEIGHT=360"], (640, 360))])
+def test_capture_resolution_defaults_and_opt_out(tmp_path, monkeypatch, flags, size):
+    inst, ea, eb = _stage_setup(tmp_path, monkeypatch)
+    seen = []
+    monkeypatch.setattr(ab, "run_capture", lambda install, bms, out, env, **kw: seen.append(ab.requested_size(env)))
+    with pytest.raises(SystemExit):
+        ab.main(["--bookmarks", "x", "--exe-a", str(ea), "--exe-b", str(eb), "--install", str(inst),
+                 "--out-root", str(tmp_path / "out"), *flags])
+    assert seen == [size, size]
 
 
 def test_keep_stage_leaves_the_stage(tmp_path, monkeypatch):
