@@ -196,6 +196,7 @@ inline constexpr std::string_view kExtDynamicRendering = "VK_KHR_dynamic_renderi
 inline constexpr std::string_view kExtSynchronization2 = "VK_KHR_synchronization2";
 inline constexpr std::string_view kExtSwapchain = "VK_KHR_swapchain";
 inline constexpr std::string_view kExtMemoryBudget = "VK_EXT_memory_budget";   // the OS's per-heap budget and usage; the VRAM report reads it
+inline constexpr std::string_view kExtHdrMetadata = "VK_EXT_hdr_metadata";
 
 namespace detail {
 
@@ -273,6 +274,9 @@ inline Evaluation evaluate(const DeviceCaps& c, bool wantPresent) {
     const bool budget = c.hasExtension(kExtMemoryBudget);
     add("memory_budget", Need::Wanted, budget, Route::Ext);
     if (budget) e.deviceExtensions.emplace_back(kExtMemoryBudget);
+
+    // Optional present-only metadata; absence leaves presentation usable without mastering metadata.
+    if (wantPresent && c.hasExtension(kExtHdrMetadata)) e.deviceExtensions.emplace_back(kExtHdrMetadata);
 
     add("sampler_anisotropy", Need::Wanted, c.samplerAnisotropy, Route::Core);
     if (c.samplerAnisotropy) e.enabledFeatures.push_back("samplerAnisotropy");

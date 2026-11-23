@@ -16,6 +16,8 @@ float Camera::setDaylightFraction (float f)
 	f = f - floorf(f);
 	if (todCurve)
 	{
+		// T3 curves author sun pitch independently of time: f is their normalized t,
+		// not an angle to invert. Noon at 0.25 applies only to the legacy sweep below.
 		todT = std::clamp(f, todCurve->keys.front().t, todCurve->keys.back().t);
 		lightMods.sunPitch.reset(); lightMods.sunYaw.reset();
 		publishLight();

@@ -1816,6 +1816,19 @@ TEST_CASE("vk profile: a device with everything is accepted and every facility t
     CHECK(vkp::featureEnabled(e, "synchronization2"));
 }
 
+TEST_CASE("vk profile: HDR metadata is optional and present-only") {
+    vkp::DeviceCaps c = fullCaps();
+    CHECK(vkp::evaluate(c, true).accepted);
+    CHECK_FALSE(hasId(vkp::evaluate(c, true).deviceExtensions, vkp::kExtHdrMetadata));
+    c.extensions.emplace_back(vkp::kExtHdrMetadata);
+    const auto present = vkp::evaluate(c, true);
+    CHECK(present.accepted);
+    CHECK(hasId(present.deviceExtensions, vkp::kExtHdrMetadata));
+    CHECK_FALSE(hasId(vkp::evaluate(c, false).deviceExtensions, vkp::kExtHdrMetadata));
+    c.timelineSemaphore = false;
+    CHECK(vkp::evaluate(c, true).deviceExtensions.empty());
+}
+
 TEST_CASE("vk profile: on a 1.2 device dynamic rendering and synchronization2 come from their KHR extensions") {
     const vkp::Evaluation e = vkp::evaluate(device12Caps(true), true);
     CHECK(e.accepted);

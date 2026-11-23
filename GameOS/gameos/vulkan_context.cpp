@@ -806,8 +806,7 @@ bool VulkanContext::init(bool wantPresent) {
     // estimate). No external-memory extension is requested: no VK resource is exportable.
     std::vector<const char*> devExts;
     for (const std::string& e : profile_.deviceExtensions) devExts.push_back(e.c_str());
-    hdrMetadata_ = wantPresent && caps.hasExtension(VK_EXT_HDR_METADATA_EXTENSION_NAME);
-    if (hdrMetadata_) devExts.push_back(VK_EXT_HDR_METADATA_EXTENSION_NAME);
+    hdrMetadata_ = std::ranges::find(profile_.deviceExtensions, profile::kExtHdrMetadata) != profile_.deviceExtensions.end();
     if (caps.hasExtension(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME)) devExts.push_back(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
     if (caps.hasExtension(VK_AMD_BUFFER_MARKER_EXTENSION_NAME)) devExts.push_back(VK_AMD_BUFFER_MARKER_EXTENSION_NAME);
     // The FidelityFX VK backend fetches the KHR-suffixed memory-requirements entry points through vkGetDeviceProcAddr; the loader returns null for a
