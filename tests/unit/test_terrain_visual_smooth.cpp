@@ -24,7 +24,7 @@ TEST_CASE("visual smooth: terraced wall melts, flats stay, gameplay input untouc
     float maxStep = 0.0f;                                            // baseline riser is 200 wu in one cell (50 wu per fine step)
     for (int fx = 30; fx < 46; ++fx)
         maxStep = std::max(maxStep, std::fabs(vh[static_cast<size_t>(row) * V + fx + 1] - vh[static_cast<size_t>(row) * V + fx]));
-    CHECK(maxStep < 40.0f);
+    CHECK(maxStep < 45.0f);
     for (int cx = 0; cx < N; ++cx)                                   // drift stays inside the cliff limit
-        CHECK(std::fabs(vh[static_cast<size_t>(row) * V + cx * 4] - before[static_cast<size_t>(cx) + static_cast<size_t>(row / 4) * N]) <= 112.0f + 1e-3f);
+        CHECK(std::fabs(vh[static_cast<size_t>(row) * V + cx * 4] - before[static_cast<size_t>(cx) + static_cast<size_t>(row / 4) * N]) <= 56.0f + 1e-3f);
 }

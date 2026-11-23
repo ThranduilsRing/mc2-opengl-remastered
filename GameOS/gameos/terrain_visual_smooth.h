@@ -17,8 +17,8 @@ inline std::optional<std::vector<float>> buildSmoothedVisualHeight(const float* 
 {
     constexpr int F = 4;                  // visual factor, matches visual_height_4x.r32
     constexpr float kCell = 128.0f;       // world units per coarse cell
-    constexpr float kFlatDrift = 4.0f, kCliffDrift = 112.0f;
-    constexpr int kPasses = 160;
+    constexpr float kFlatDrift = 4.0f, kCliffDrift = 56.0f;
+    constexpr int kPasses = 90;
     if (!elev || mapSide < 3) return std::nullopt;
     const int N = mapSide, V = (N - 1) * F + 1;
     auto E = [&](int x, int y) { return elev[static_cast<size_t>(x) + static_cast<size_t>(y) * N]; };
@@ -75,7 +75,7 @@ inline std::optional<std::vector<float>> buildSmoothedVisualHeight(const float* 
         h.swap(nx);
     }
 
-    // soft drift clamp (C1 tanh) against the baseline: flats <= 4 wu, steep faces <= 112 wu
+    // soft drift clamp (C1 tanh) against the baseline: flats <= 4 wu, steep faces <= 56 wu
     for (size_t i = 0; i < h.size(); ++i) {
         const float lim = kFlatDrift + (kCliffDrift - kFlatDrift) * w[i];
         h[i] = base[i] + lim * std::tanh((h[i] - base[i]) / lim);
