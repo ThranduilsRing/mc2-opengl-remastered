@@ -1085,7 +1085,8 @@ VkResult VulkanContext::submit(const VkSubmitInfo& si, VkFence fence, uint64_t* 
     return submitLocked(si, fence, outValue);
 }
 
-VkResult VulkanContext::submitPresentTail(VkCommandBuffer cb, VkSemaphore acquire, VkSemaphore rendered, VkFence fence) const {
+VkResult VulkanContext::submitPresentTail(VkCommandBuffer cb, VkSemaphore acquire, VkSemaphore rendered, VkFence fence,
+                                        VkPipelineStageFlags2 acquireStage) const {
     mc2::overlap::assertOwner(mc2::overlap::Owner::Present, "VulkanContext::submitPresentTail");
     const auto lock = lockSubmit(submitMutex_);
     if (infra::deviceLostLatched()) return VK_ERROR_DEVICE_LOST;
@@ -1093,7 +1094,7 @@ VkResult VulkanContext::submitPresentTail(VkCommandBuffer cb, VkSemaphore acquir
     command.commandBuffer = cb;
     VkSemaphoreSubmitInfo wait{VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO};
     wait.semaphore = acquire;
-    wait.stageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+    wait.stageMask = acquireStage;
     VkSemaphoreSubmitInfo signal{VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO};
     signal.semaphore = rendered;
     signal.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;

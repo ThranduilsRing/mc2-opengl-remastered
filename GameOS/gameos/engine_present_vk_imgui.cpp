@@ -20,7 +20,7 @@ bool ensureImguiRenderPass(EnginePresentVk::Impl& s) {
     if (s.imguiRenderPass.get()) return true;
 
     VkAttachmentDescription color{};
-    color.format = s.presentFmt;
+    color.format = VK_FORMAT_R8G8B8A8_UNORM;
     color.samples = VK_SAMPLE_COUNT_1_BIT;
     color.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
     color.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -54,7 +54,7 @@ bool ensureImguiFramebuffer(EnginePresentVk::Impl& s) {
     if (!ensureImguiRenderPass(s) || !s.sharedImg.view || s.imgW == 0 || s.imgH == 0)
         return false;
 
-    VkImageView attachments[] = { s.sharedImg.view.get() };
+    VkImageView attachments[] = { s.hdr ? s.uiLayer.view.get() : s.sharedImg.view.get() };
     VkFramebufferCreateInfo fb{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
     fb.renderPass = s.imguiRenderPass.get();
     fb.attachmentCount = 1;

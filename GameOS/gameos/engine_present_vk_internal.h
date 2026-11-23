@@ -38,6 +38,9 @@ struct EnginePresentVk::Impl {
     bool offscreen = false;   // Linux: the window surface is not presentable from this GPU; composite and capture readback run, nothing is presented
     SDL_Window* outputWindow = nullptr;
     bool hdrCapsLogged = false;
+    void* hdrPeakMonitor = nullptr;
+    bool hdrPeakCached = false, hdrPeakActive = false;
+    float hdrDisplayPeak = 1000.0f;
     VkQueue          presentQ  = VK_NULL_HANDLE;
 
     // swapchain
@@ -79,6 +82,24 @@ struct EnginePresentVk::Impl {
 
     // Composite output, blitted into the swapchain after the UI.
     VkFormat presentFmt = VK_FORMAT_R8G8B8A8_UNORM;
+    VkColorSpaceKHR scColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+    bool hdr = false;
+    VkImageResource hdrProof{};
+    mc2vk::OwnedFramebuffer hdrProofFramebuffer;
+    mc2vk::OwnedPipeline hdrProofPipe;
+    bool hdrProofReady = false;
+    bool hdrProofRequested = false, hdrProofSkipped = false;
+    bool hdrProofDumped = false, readbackProof = false;
+    float paperNits = 200.0f, peakNits = 1000.0f;
+    VkImageResource uiLayer{}, hdrOffscreen{};
+    mc2vk::OwnedRenderPass encodePass;
+    mc2vk::OwnedPipelineLayout encodeLayout;
+    mc2vk::OwnedPipeline encodePipe;
+    mc2vk::OwnedDescriptorSetLayout encodeDsl;
+    mc2vk::OwnedDescriptorPool encodePool;
+    VkDescriptorSet encodeSet = VK_NULL_HANDLE;
+    std::vector<mc2vk::OwnedImageView> encodeViews;
+    std::vector<mc2vk::OwnedFramebuffer> encodeFrames;
     VkImageResource sharedImg{};
     VkImageResource scaledComposite{};
     mc2vk::OwnedFramebuffer scaledCompositeFramebuffer;
@@ -226,6 +247,14 @@ struct EnginePresentVk::Impl {
         hudColorFramebuffer.reset();
         compositeFramebuffer.reset();
         shadowDebugFramebuffer.reset();
+        encodeFrames.clear();
+        encodeViews.clear();
+        hdrProofFramebuffer.reset();
+        if (dev != VK_NULL_HANDLE) {
+            vkImageResourceDestroy(&hdrProof, dev);
+            vkImageResourceDestroy(&uiLayer, dev);
+            vkImageResourceDestroy(&hdrOffscreen, dev);
+        }
         if (dev != VK_NULL_HANDLE) vkImageResourceDestroy(&sharedImg, dev);
     }
 };
