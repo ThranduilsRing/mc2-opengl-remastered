@@ -175,6 +175,21 @@ inline size_t fillEnclosedGlassHoles(std::span<uint8_t> rgba, uint32_t width, ui
             const size_t area = flood(x, y, mine);
             const size_t boxArea = static_cast<size_t>(box[2] - box[0] + 1) * (box[3] - box[1] + 1);
             if (area < minArea || area * 10 < boxArea * 8) continue;
+            // Glass sits in a wall: the ring around the hole must be mostly opaque. An opening in a frame, grating or fence panel
+            // (surround mostly clear) is meant to be open and stays cut. Neighbouring windows in a grid may share the ring.
+            const int64_t pad = std::clamp<int64_t>((box[2] - box[0] + 1) / 4, 2, 64);
+            const int64_t maxX = static_cast<int64_t>(contentW) - 1, maxY = static_cast<int64_t>(contentH) - 1;
+            const uint32_t rx0 = static_cast<uint32_t>(std::clamp<int64_t>(static_cast<int64_t>(box[0]) - pad, 0, maxX));
+            const uint32_t ry0 = static_cast<uint32_t>(std::clamp<int64_t>(static_cast<int64_t>(box[1]) - pad, 0, maxY));
+            const uint32_t rx1 = static_cast<uint32_t>(std::clamp<int64_t>(static_cast<int64_t>(box[2]) + pad, 0, maxX));
+            const uint32_t ry1 = static_cast<uint32_t>(std::clamp<int64_t>(static_cast<int64_t>(box[3]) + pad, 0, maxY));
+            size_t ring = 0, ringOpaque = 0;
+            for (uint32_t yy = ry0; yy <= ry1; ++yy)
+                for (uint32_t xx = rx0; xx <= rx1; ++xx) {
+                    if (xx >= box[0] && xx <= box[2] && yy >= box[1] && yy <= box[3]) continue;
+                    ++ring; ringOpaque += !clear(xx, yy);
+                }
+            if (!ring || ringOpaque * 10 < ring * 8) continue;
             for (uint32_t yy = box[1]; yy <= box[3]; ++yy)
                 for (uint32_t xx = box[0]; xx <= box[2]; ++xx)
                     if (at(xx, yy) == mine) {

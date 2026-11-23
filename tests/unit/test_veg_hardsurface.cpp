@@ -465,3 +465,13 @@ TEST_CASE("building glass: an enclosed rectangular window fills opaque dark, a s
     CHECK(wall[(65 * N + 5) * 4 + 3] == 0);
     CHECK(wall[(100 * N + 70) * 4 + 3] == 0);
 }
+
+TEST_CASE("building glass: an opening in a thin frame (grating, gate) stays cut") {
+    using namespace mc2::vegetation;
+    const uint32_t N = 128;
+    std::vector<uint8_t> frame(N * N * 4, 0);
+    for (uint32_t y = 20; y < 108; ++y)
+        for (uint32_t x = 20; x < 108; ++x)
+            if (x < 26 || x >= 102 || y < 26 || y >= 102) frame[(y * N + x) * 4 + 3] = 255;   // 6 px frame, 76 px opening
+    CHECK(fillEnclosedGlassHoles(frame, N, N, N, N) == 0u);
+}
