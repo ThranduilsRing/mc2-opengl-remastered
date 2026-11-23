@@ -31,7 +31,7 @@
 #include "vulkan_spatial_aa.h"
 #include "vk_surface_format.h"
 #include "RenderCore/hdr_capture.h"
-#include <glm/gtc/packing.hpp>
+#include "3rdparty/glm/glm/gtc/packing.hpp"
 #include "engine_present_vk_internal.h"   // EnginePresentVk::Impl, fillLoadPassDeps, the ImGui piece (engine_present_vk_imgui.cpp)
 #include "Gates/render_options.h"
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
