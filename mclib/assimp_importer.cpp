@@ -215,6 +215,10 @@ struct SkelBake {
     std::vector<mc2skel::GpuBone> rest;       // joint-global rest matrices, parallel to names
     std::map<std::string, int> nameIdx;
     float scale = 1.0f;                        // auto-scale bind pose to MC2 size
+    // Package "atlasStack": the deployed albedo/AO/normal carry the base atlas in the top half and the
+    // *_weapons atlas in the bottom half (tools/bt2018_mechs/stack_weapons_atlas.py), so weapon-material
+    // parts sample their own art through the single mech skin slot.
+    bool atlasStack = false;
     std::string forcedClip;                    // 1B: posed-clip bake (empty = rest)
     int forcedFrame = 0;
     // 1B-RUNTIME: when non-null, PopulateMergedSkinnedShape records each part's
@@ -754,6 +758,14 @@ long PopulateMergedSkinnedShape(const aiScene* scene, mc2::content::Asset& out, 
 			bake.recParts->push_back(pr);
 		}
 		const bool hasUV = me->HasTextureCoords(0);
+		// Stacked atlas: glTF V runs top-down, so the base maps to V/2 and the weapons atlas to 0.5 + V/2.
+		float vScale = 1.0f, vBias = 0.0f;
+		if (bake.atlasStack) {
+			aiString matName; scene->mMaterials[me->mMaterialIndex]->Get(AI_MATKEY_NAME, matName);
+			std::string mn(matName.C_Str()); for (char& c : mn) c = static_cast<char>(tolower(c));
+			vScale = 0.5f;
+			if (mn.find("weapons") != std::string::npos) vBias = 0.5f;
+		}
 
 		for (unsigned v = 0; v < me->mNumVertices; ++v) {
 			aiVector3D p, n;
@@ -788,11 +800,11 @@ long PopulateMergedSkinnedShape(const aiScene* scene, mc2::content::Asset& out, 
 			t.faceNormal = fn;
 			if (hasUV) {
 				t.uvdata.u0 = me->mTextureCoords[0][fc.mIndices[0]].x;
-				t.uvdata.v0 = toMC2V(me->mTextureCoords[0][fc.mIndices[0]].y);
+				t.uvdata.v0 = toMC2V(me->mTextureCoords[0][fc.mIndices[0]].y * vScale + vBias);
 				t.uvdata.u1 = me->mTextureCoords[0][fc.mIndices[1]].x;
-				t.uvdata.v1 = toMC2V(me->mTextureCoords[0][fc.mIndices[1]].y);
+				t.uvdata.v1 = toMC2V(me->mTextureCoords[0][fc.mIndices[1]].y * vScale + vBias);
 				t.uvdata.u2 = me->mTextureCoords[0][fc.mIndices[2]].x;
-				t.uvdata.v2 = toMC2V(me->mTextureCoords[0][fc.mIndices[2]].y);
+				t.uvdata.v2 = toMC2V(me->mTextureCoords[0][fc.mIndices[2]].y * vScale + vBias);
 			}
 		}
 		vOff += me->mNumVertices; tOff += me->mNumFaces;
@@ -1049,6 +1061,20 @@ void measureClipStrides(ImportedAnimEntry& e) {
             mc2::fmt::print_err("[MECH_IMPORT] stride '{}' planted-foot speed={:.2f} u/s (cycle {:.2f}s)\n", clip, sum / n, *dur);
         }
     }
+}
+
+// True when the mech's <stem>.package.json declares "atlasStack" (stacked base + weapons atlas).
+bool PackageDeclaresAtlasStack(mc2::czstring glbPath) {
+    if (!glbPath) return false;
+    std::string p(glbPath);
+    const size_t dot = p.rfind(".glb");
+    const std::string side = (dot != std::string::npos ? p.substr(0, dot) : p) + ".package.json";
+    FILE* f = fopen(side.c_str(), "rb");
+    if (!f) return false;
+    std::string buf; char tmp[4096]; size_t n;
+    while ((n = fread(tmp, 1, sizeof(tmp), f)) > 0) buf.append(tmp, n);
+    fclose(f);
+    return buf.find("\"atlasStack\"") != std::string::npos;
 }
 
 // BT2018-MECH-NODE-MANIFEST-1A: load the per-mech package's "nodes" map
@@ -1866,6 +1892,7 @@ long ImportGeometryFromFile(mc2::czstring path, TG_TypeMultiShape* out, bool aut
 		}
 		for (size_t i = 0; i < bake.names.size(); ++i) bake.nameIdx[bake.names[i]] = static_cast<int>(i);
 		bake.active = !bake.names.empty();
+		bake.atlasStack = PackageDeclaresAtlasStack(path);
 		// 1B-RUNTIME / 1C: opt-in gate enables per-frame animation. With a forced
 		// clip it loops that one clip (1B); without, the clip is chosen each frame
 		// from the mech's movement (1C). Gate off → static bind/posed bake stands.
