@@ -247,8 +247,10 @@ TEST_CASE("clip state: stride matching removes planted-foot drift across speeds"
         CHECK(strideRate(speed, clipStride) == doctest::Approx(speed / clipStride));
     }
     // Unmatched playback (rate 1) would slide by |speed - stride|; the clamp bounds extremes.
-    CHECK(strideRate(0.0f, clipStride) == doctest::Approx(0.35f));
-    CHECK(strideRate(100.0f, clipStride) == doctest::Approx(2.0f));
+    CHECK(strideRate(0.0f, clipStride) == doctest::Approx(kStrideRateMin));
+    CHECK(strideRate(1000.0f, clipStride) == doctest::Approx(kStrideRateMax));
+    // Light-chassis run: 155 u/s ground speed on a 60 u/s clip is 2.6x and must stay planted (was clamped at 2x).
+    CHECK(footDrift(155.0f, 60.0f) == doctest::Approx(0.0f).epsilon(1e-4));
     CHECK(strideRate(5.0f, 0.0f) == doctest::Approx(1.0f));
 }
 

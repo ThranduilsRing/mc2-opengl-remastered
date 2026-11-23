@@ -1592,6 +1592,10 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
             s.playRate = 1.0f;
             if (e.strideSpeed.contains(s.activeClip))
                 s.playRate = mc2clip::strideRate(speed, e.strideSpeed.at(s.activeClip));
+            static unsigned strideLogTick = 0;
+            if ((++strideLogTick % 120u) == 0 && mc2_diag::tagRequested("MECH_STRIDE"))
+                mc2::fmt::print_err("[MECH_STRIDE] clip={} speed={:.1f} stride={:.1f} rate={:.2f} dt={:.4f}\n", s.activeClip, speed,
+                    e.strideSpeed.contains(s.activeClip) ? e.strideSpeed.at(s.activeClip) : 0.0f, s.playRate, dt);
         }
     }
     const bool holdAtEnd = (preview || e.pinnedClip.empty()) && s.mode == mc2clip::Mode::Once;
