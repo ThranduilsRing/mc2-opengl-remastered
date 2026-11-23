@@ -95,7 +95,7 @@ shaders/vulkan/water_geom.frag::GBuffer1 = vec4(0.5, 0.5, 1.0, 0.875);
 # is VK_FORMAT_UNDEFINED with write mask 0, so this output cannot modify an attachment.
 # For diagnostic colours, alpha 0 marks the pixel as neither water nor own-shadow.
 # The census supports only file::expression keys, not a narrower branch/site match.
-# Vulkan-only; comment correction awaiting orchestrator adjudication.
+# Vulkan-only. Adjudicated by the orchestrator 2026-11-23 (correction accepted after checking vulkan_water_island_init.cpp).
 shaders/vulkan/water_geom.frag::GBuffer1 = vec4(0.0);
 
 # TERRAIN, CSM debug early-outs (uT.csmDebugMode 1..8, eight sites collapsing to
