@@ -458,3 +458,19 @@ TEST_CASE("LightingState/Camera curve save keeps the undimmed base and optional 
     CHECK(restored.lightMods.sunPitch==c.lightMods.sunPitch); CHECK(restored.lightMods.sunYaw==c.lightMods.sunYaw);
     Camera stock; FitIniFile unchanged; stock.saveSunOverride(&unchanged); CHECK(unchanged.values.empty());
 }
+
+TEST_CASE("LightingState/Camera readers use published curve members until the next publication") {
+    using namespace camera_lighting_test;
+    Camera c; c.todBase=c.lightMembers();
+    const auto curve=parseTodCurve(R"({"keys":[{"t":0,"sunPitch":20},{"t":1,"sunPitch":80}]})");
+    REQUIRE((curve && *curve)); c.todCurve=*curve;
+    c.publishLight(); CHECK(c.lightPitch==20);
+    const auto cached=c.currentLighting();
+    c.todT=1;
+    CHECK(c.currentLighting()==cached); CHECK(c.lightPitch==20);
+    c.publishLight(); CHECK(c.currentLighting().pitch==80); CHECK(c.lightPitch==80);
+    c.setKillAmbient(true); c.setRainLight(2);
+    CHECK(c.currentLighting().amb[0]==255);
+    c.setKillAmbient(false); CHECK(c.currentLighting().amb[0]==40);
+    Camera stock; CHECK(stock.currentLighting()==stock.lightMembers());
+}

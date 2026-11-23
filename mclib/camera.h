@@ -1495,11 +1495,10 @@ class Camera
 
 		// The sun, ambient and fog the renderer publishes. With NO time-of-day curve this is exactly the camera's light members (the
 		// legacy path, byte-identical). With a curve it is modulate(evaluate(curve, todT, todBase), lightMods): the curve is the BASE and
-		// weather / KillAmbientLight / the runtime sun control are modulators composed once (lighting_state.h modulate). Pure: evaluating
-		// twice gives the same state. The single producer for every renderer reader.
+		// weather / KillAmbientLight / the runtime sun control are composed by publishLight. Readers copy its cached members.
 		mc2::lighting::LightingState currentLighting (void) const;
 		// The state the load-time bakes read (terrain burn-in, forest light, scene capture): the state at load, the authored one for every
-		// stock mission (the members) and the curve's start state with a curve. A bake is a fixed reference, never a live state.
+		// stock mission and the curve's start state with a curve. A bake is a fixed reference, never a live state.
 		mc2::lighting::LightingState bakeReferenceLighting (void) const;
 		void captureBakeReference(FitIniFile* file);
 		void saveBakeReference(FitIniFile* file) const;

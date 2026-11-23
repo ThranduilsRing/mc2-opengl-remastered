@@ -605,11 +605,11 @@ long Camera::init (FitIniFilePtr cameraFile )
 	if (todCurve)   // the curve at its start time: the authored fog joins the base, day* is seeded, the members are published once
 	{
 		todBase.fogColor = static_cast<uint32_t>(fogColor); todBase.fogStart = fogStart; todBase.fogFull = fogFull;
+		publishLight();   // populate the cached members before seeding legacy day values
 		const auto start = currentLighting();
 		dayLightPitch = start.pitch;
 		dayLightRed = start.sun[0]; dayLightGreen = start.sun[1]; dayLightBlue = start.sun[2];
 		dayAmbientRed = start.amb[0]; dayAmbientGreen = start.amb[1]; dayAmbientBlue = start.amb[2];
-		publishLight();   // the mission's own fog stays dayFogColor (the editor's)
 	}
 	captureBakeReference(cameraFile); // authored sun/ambient/fog, before weather or the legacy cycle
 
@@ -941,14 +941,12 @@ mc2::lighting::LightingState Camera::lightMembers() const
 	return s;
 }
 
-// The single producer of the published sun, ambient and fog. No curve: exactly the members. A curve: the base (authored state
-// through the curve at todT) with the modulators composed on top, once (lighting_state.h modulate).
+// The published members are the cache: only publishLight evaluates the live curve.
+// Actor readers copy this small state; the no-curve result remains exactly the legacy members.
 mc2::lighting::LightingState Camera::currentLighting() const
 {
-	if (!todCurve) return lightMembers();
-	auto s = mc2::lighting::compose(todCurve.get(), todT, todBase, lightMods);
-	const glm::vec3 d = sunDirectionFor(s.pitch, s.yaw);   // the direction Camera::update() derives from the same angles
-	s.sunDir[0] = d.x; s.sunDir[1] = d.y; s.sunDir[2] = d.z;
+	auto s = lightMembers();
+	if (todCurve) { s.mode = mc2::lighting::Mode::Live; s.todWeight = 1.0f; }
 	return s;
 }
 
@@ -988,7 +986,7 @@ void Camera::saveBakeReference(FitIniFile* file) const
 	auto saved = todCurve ? mc2::lighting::compose(todCurve.get(), todCurve->start, todBase, {}) : lightMembers();
 	// Direction is recomputed during rendering; compare the serialized camera fields only.
 	std::copy_n(bakeSnapshot.sunDir, 3, saved.sunDir);
-	if (saved == bakeSnapshot) return;
+	if (!todCurve && saved == bakeSnapshot) return;
 	auto precise = [file](const char* key, float value) {
 		char line[128]; mc2::fmt::to_buf(line, "f {} = {:.9g}\r\n", key, value);
 		file->write(reinterpret_cast<MemoryPtr>(line), strlen(line));
@@ -1044,6 +1042,10 @@ void Camera::publishLight()
 	lightRed = s.sun[0]; lightGreen = s.sun[1]; lightBlue = s.sun[2];
 	ambientRed = s.amb[0]; ambientGreen = s.amb[1]; ambientBlue = s.amb[2];
 	fogColor = s.fogColor; fogStart = s.fogStart; fogFull = s.fogFull;
+	if (lightMods.killAmbient) {
+		std::copy_n(s.amb, 3, killSavedAmbient);
+		ambientRed = ambientGreen = ambientBlue = 0xFF;
+	}
 	if (worldLights && worldLights[0])
 	{
 		glm::mat4 lightToWorldMatrix;
