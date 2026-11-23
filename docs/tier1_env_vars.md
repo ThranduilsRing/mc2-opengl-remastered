@@ -995,7 +995,7 @@ Crash handlers still write to stderr as the last-resort path.
 - `MC2_DIAGNOSTIC_TRACE_FILE=<path>` — JSONL output file. Default: `debug_state/diagnostic_trace.jsonl`. Set to `off` to disable.
 - `MC2_VK_EXT_DENY=<list>` — test knob (Trace kind, not a feature gate), default empty. Comma list of optional Vulkan extension tier parts to leave unselected (`mesh,fsr,quad,host_copy,pipeline_binary,gpl,dgc,heap,csd`) or `all`; an unknown token adds `deny_unknown_<tok>` to the `[VK_EXT v1]` reason. `MC2_DIAG_TAGS=VK_EXT` also runs the one-shot `[VK_EXT_SELFTEST v1]` per part.
 - `MC2_DIAG_TAGS=<list>` — comma-separated tag whitelist. Controls which tags write events.
-  - Unset: default high-value whitelist (`GPU_CULL,LIGHTBAKE_PROOF,ANIM_GATE,CONFIG,BUILD,DEVICE,SHADER_COMPILE`).
+  - Unset: default high-value whitelist (`GPU_CULL,LIGHTBAKE_PROOF,ANIM_GATE,CONFIG,BUILD,DEVICE,EXIT_REASON,SHADER_COMPILE`).
   - `*` — all registered tags.
   - `none` — disable JSONL output entirely.
   - Unknown tag names in list → startup warning to stderr, tag ignored.
@@ -1017,6 +1017,7 @@ Crash handlers still write to stderr as the last-resort path.
 | `CONFIG` | Feature gate snapshot at startup | (new) |
 | `BUILD` | Build identity at startup | (new) |
 | `DEVICE` | GPU/driver info at startup | (new) |
+| `EXIT_REASON` | Why the frame loop ended (`sdl_quit`, `ralt_escape`, `game_request`); absent after a crash or hard exit | (new) |
 | `SHADER_COMPILE` | Shader compile results | (new) |
 
 ### MCP query
