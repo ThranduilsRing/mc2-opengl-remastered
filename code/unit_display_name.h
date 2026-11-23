@@ -10,6 +10,24 @@
 
 namespace mc2::names {
 
+// The NameID cell of the master list holds an mc2res.dll slot or free text, the chassis' display name.
+// CSVFile::readLong always reports success (text that is not a number reads as 0), so the cell is read as
+// text first: one that starts with a digit or a sign is the slot, anything else is the name.
+template <class Csv>
+inline void readNameCell(Csv& csv, long row, long col, long& id, char* text, size_t textSize) {
+	std::string cell(256, '\0');
+	if (csv.readString(row, col, cell.data(), static_cast<unsigned long>(cell.size())) != 0) return; // NO_ERR
+	size_t at = 0;
+	while (std::isspace(static_cast<unsigned char>(cell[at]))) ++at;
+	if (std::isdigit(static_cast<unsigned char>(cell[at])) || cell[at] == '-' || cell[at] == '+') {
+		csv.readLong(row, col, id);
+		return;
+	}
+	const size_t length = std::min(cell.find('\0'), textSize - 1);
+	std::copy_n(cell.begin(), static_cast<std::ptrdiff_t>(length), text);
+	text[length] = '\0';
+}
+
 inline bool iequals(std::string_view a, std::string_view b) {
 	return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(),
 		[](char l, char r) { return std::tolower(static_cast<unsigned char>(l)) == std::tolower(static_cast<unsigned char>(r)); });

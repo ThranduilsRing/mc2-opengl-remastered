@@ -122,13 +122,43 @@ inline std::array<int, 4> fitCell(int cw, int ch, int iw, int ih) {
     return {(cw - w) / 2, (ch - h) / 2, w, h};
 }
 
-// A legacy sheet serves a chassis only when the same source owns both. A mod that brings its own chassis
-// CSV and no sheet is defining a new chassis: its index names another mech's cell in a base-game sheet.
-inline bool sheetServes(int sheetRank, int dataRank) { return sheetRank <= dataRank; }
+// Restores the cell an earlier fit left, then fits an icon of iw x ih into it. The undo is fitCell's own
+// integer offset: a float half of an odd padding moved the widget half a pixel on every reassignment.
+// aObject's contract: move() is relative, resize() keeps the top-left.
+template <class Widget>
+inline void fitWidget(Widget& widget, int cw, int ch, int iw, int ih) {
+    const std::array<int, 4> undo = fitCell(cw, ch, static_cast<int>(widget.width()), static_cast<int>(widget.height()));
+    widget.move(-static_cast<float>(undo[0]), -static_cast<float>(undo[1]));
+    widget.resize(cw, ch);
+    const std::array<int, 4> fit = fitCell(cw, ch, iw, ih);
+    widget.resize(fit[2], fit[3]);
+    widget.move(static_cast<float>(fit[0]), static_cast<float>(fit[1]));
+}
+
+// LookupModPriority ranks: a mod's load-order slot (the active mod 0, its dependencies 1..), else one of the
+// install's own (loose 999998, kit 999999, stock 1000000). Only a mod's rank names a source of its own.
+inline constexpr int kBaseRank = 999998;
+inline bool modOwned(int rank) { return rank >= 0 && rank < kBaseRank; }
+inline bool sameSource(int a, int b) { return modOwned(a) ? a == b : !modOwned(b); }
+
+// A legacy sheet cell serves a chassis only when the cell is known to be that chassis: the same source
+// declares the index and lays out the sheet, and the install's own chassis keep the stock layout under any
+// drop-in sheet. A mod that brings its own chassis CSV has no cell in another source's sheet.
+inline bool sheetServes(int sheetRank, int dataRank) { return !modOwned(dataRank) || sameSource(sheetRank, dataRank); }
 
 // What the resolver knows about the unit it finds art for: the chassis CSV path (its stem is the first
 // own-art name) and the name the author wrote in that file (the second; MCO ships "mechicons/Storm crow.tga").
 struct Subject { std::string file; std::string name; };
+
+// One chassis' art question, with everything apply() knows about where its files come from.
+struct Query {
+    std::string stem, name;        // the chassis CSV stem; the author's MechName
+    std::string sheet;             // the template's sheet, holding the chassis' declared cell
+    long index = 0;
+    int dataRank = 0, sheetRank = 0;
+    std::vector<std::string> hud;  // HUD front art keys for the stem, best first
+};
+struct Pick { const Icon* icon = nullptr; const Icon* hud = nullptr; bool own = false; };
 
 // Source keys survive packing. Only this load-time cache owns atlas coordinates.
 class Registry {
@@ -177,6 +207,34 @@ public:
         if (it == icons.end()) return nullptr;
         const auto& [name, icon] = *it;
         return &icon;
+    }
+
+    // Order: the mod's own art (CSV stem, then the author's MechName) -> HUD front art -> a sheet cell the same
+    // source declares -> none (the caller draws its placeholder). One cell; the caller fits it.
+    Pick select(const std::map<std::string, int>& priority, const Query& q) const {
+        const auto rank = [&](const std::string& key) {
+            const auto it = priority.find(key);
+            return it == priority.end() ? -1 : it->second;
+        };
+        const std::string stem = "mech/" + q.stem, byName = "mech/" + q.name;
+        const auto here = [&](const std::string& key) { return rank(key) >= 0 && sameSource(rank(key), q.dataRank) && find(key); };
+        // The author's MechName names art too, when the same source that owns the chassis owns that file. It wins
+        // over a same-stem icon another source owns: that one is the stock chassis' art, not this mod's.
+        const std::string named = here(byName) && !here(stem) ? byName : stem;
+        const int namedRank = rank(named);
+        const bool individual = namedRank >= 0 && namedRank <= q.sheetRank && find(named);
+        Pick pick;
+        int bestRank = individual ? namedRank : q.sheetRank;
+        // Use the HUD front art in the existing logistics rectangle. Unmatched art keeps its old source.
+        for (const auto& key : q.hud) {
+            const int r = rank(key);
+            if (r < 0 || r > bestRank || (pick.hud && r == bestRank)) continue;
+            if (const Icon* icon = find(key)) { pick.hud = icon; bestRank = r; }
+        }
+        if (pick.hud) { pick.icon = pick.hud; return pick; }
+        if (individual) { pick.icon = find(named); pick.own = true; }
+        if (!pick.icon && sheetServes(q.sheetRank, q.dataRank)) pick.icon = find(legacyKey(q.sheet, q.index));
+        return pick;
     }
 
     // Lower VFS rank wins: a mod atlas must beat a base game's split icon.

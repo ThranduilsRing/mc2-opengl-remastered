@@ -468,8 +468,7 @@ mc2::prewarm::Sequence LogisticsData::loadVariants()
 		long nameID = 0;
 		char freeName[256] = "";
 		// The NameID cell also takes free text: that is the chassis' display name, not a slot number.
-		if ( variantFile.readLong( i, 3, nameID ) != NO_ERR )
-			variantFile.readString( i, 3, freeName, sizeof( freeName ) );
+		mc2::names::readNameCell( variantFile, i, 3, nameID, freeName, sizeof( freeName ) );
 
 		int retVal = variantFile.readString( i, 4, tmpStr, 256 );
 		

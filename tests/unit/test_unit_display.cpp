@@ -1,14 +1,17 @@
-// Trigger: code/unit_display_name.h and code/icon_registry.h (firstCell, fitCell, sheetServes), with the
-// mech-bay name and icon paths that call them. The fixtures under fixtures/unit_display are copied
-// read-only from the MCO install (data/objects/ryoken.csv, compbas.csv, data/art/buildings.csv), from the
-// stock buildings.csv and from data/defs/text/en_us/mc2res_legacy.fit.
+// Trigger: code/unit_display_name.h (resolve, readNameCell) and code/icon_registry.h (firstCell, fitCell,
+// fitWidget, sheetServes, Registry::select: the order apply() draws by), with the mech-bay name and icon paths
+// that call them. The fixtures under fixtures/unit_display are copied read-only from the MCO install
+// (data/objects/ryoken.csv, compbas.csv, data/art/buildings.csv), from the stock buildings.csv (header row)
+// and from data/defs/text/en_us/mc2res_legacy.fit; buildings.csv carries one trailing comment line.
 #include "doctest.h"
+#include "csvfile.h"
 #include "unit_display_name.h"
 #include "icon_registry.h"
 
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <map>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -84,6 +87,38 @@ std::vector<uint32_t> sheet(int cols, int rows, int cw, int ch)
                     pixels[static_cast<size_t>(r * ch + y) * cols * cw + c * cw + x] = 0xff00ff00;
     return pixels;
 }
+
+// aObject's rect contract: move() is relative, resize() keeps the top-left, width()/height() are floats.
+struct FakeWidget {
+    float x = 0, y = 0, w = 0, h = 0;
+    float width() const { return w; }
+    float height() const { return h; }
+    void move(float dx, float dy) { x += dx; y += dy; }
+    void resize(long ww, long hh) { w = static_cast<float>(ww); h = static_cast<float>(hh); }
+};
+
+// Art as init() registers it: named icons with their source's rank, and a sheet of eight 25 x 30 cells.
+// Ranks are LookupModPriority's: 0 the active mod, 1 its dependency, 999998 loose in the install, 1000000 stock.
+struct Art {
+    unit_icons::Registry registry;
+    std::map<std::string, int> priority;
+    Art() { registry.add("missing", 16, 16, std::vector<uint32_t>(256, 0xff202020)); }
+    const unit_icons::Icon* icon(const std::string& key, int rank, int size = 64) {
+        registry.add(key, size, size, std::vector<uint32_t>(static_cast<size_t>(size) * size, 0xff00ff00));
+        priority[key] = rank;
+        return registry.find(key);
+    }
+    const unit_icons::Icon* cell(const std::string& key, long index) {
+        if (!registry.find(unit_icons::legacyKey(key, 0))) registry.sheet(key, sheet(8, 1, 25, 30), 200, 30, 25, 30);
+        return registry.find(unit_icons::legacyKey(key, index));
+    }
+    // What apply() asks for one chassis: null is the placeholder it draws.
+    const unit_icons::Icon* pick(const char* stem, const char* name, long index, const std::string& file,
+                                 int dataRank, int sheetRank) {
+        const unit_icons::Query query{stem, name, file, index, dataRank, sheetRank, {}};
+        return registry.select(priority, query).icon;
+    }
+};
 }
 
 TEST_SUITE("unit display") {
@@ -103,8 +138,10 @@ TEST_CASE("unit display: the MCO Storm Crow row resolves to a real name at every
 TEST_CASE("unit display: a stock mech keeps its string-table name and a free-text NameID cell names the chassis") {
     std::istringstream rows(fixture("buildings.csv"));
     std::string mco, stock, freeText;
-    for (std::string line; std::getline(rows, line);)
+    for (std::string line; std::getline(rows, line);) {
+        if (cells(line)[3] != "MECH") continue;                              // the stock header row
         (line.rfind("RyokenCustom,", 0) == 0 ? freeText : cells(line)[1] == "4" ? stock : mco) = line;
+    }
     REQUIRE(cells(stock).size() > 3);
     CHECK(slot(std::stol(cells(stock)[2])) == "Ryoken");
     CHECK(chassisName(std::stol(cells(stock)[2]), "Mad Dog", "Ryoken Prime", "ryoken") == "Ryoken");
@@ -164,14 +201,100 @@ TEST_CASE("unit icons: an icon of any source size maps inside the cell rect") {
     }
 }
 
-TEST_CASE("unit icons: a sheet serves only the chassis the same source owns") {
+TEST_CASE("unit icons: a sheet serves only the chassis the same source declares") {
     using unit_icons::sheetServes;
     CHECK(sheetServes(1000000, 1000000));   // base sheet, base chassis
     CHECK(sheetServes(999998, 999998));     // both loose in the install
     CHECK(sheetServes(5, 1000000));         // a mod's sheet may serve a base chassis
     CHECK(sheetServes(5, 5));               // a mod's sheet serves its own chassis
+    CHECK(sheetServes(1000000, 999998));    // v0.4c: loose chassis CSV, sheet packed with the stock data
     CHECK_FALSE(sheetServes(1000000, 5));   // a mod chassis has no cell in a base sheet
-    CHECK_FALSE(sheetServes(1000000, 999998));
+    CHECK_FALSE(sheetServes(5, 6));         // nor in another mod's sheet: that index names another mech
+}
+
+TEST_CASE("unit icons: a mod mech's authored-name icon wins over the stock stem icon another source owns") {
+    const std::string sheet = "data/art/mcui_gn_mechicons.tga";
+    Art art;
+    const auto* stockRyoken = art.icon("mech/ryoken", 999998);    // the install's loose icon for that stem
+    const auto* stormCrow = art.icon("mech/storm crow", 0);       // MCO's own file
+    const auto* cell = art.cell(sheet, 4);
+    REQUIRE(stockRyoken != stormCrow);
+    // MCO's data/objects/ryoken.csv is the Storm Crow: the stock Ryoken art is another mech's.
+    CHECK(art.pick("ryoken", "storm crow", 4, sheet, 0, 1000000) == stormCrow);
+    // A stock Ryoken keeps the install's icon.
+    CHECK(art.pick("ryoken", "ryoken", 4, sheet, 999998, 1000000) == stockRyoken);
+    CHECK(art.pick("ryoken", "ryoken", 4, sheet, 1000000, 1000000) == stockRyoken);
+}
+
+TEST_CASE("unit icons: a BT2018-style mod shows its one own icon or the placeholder, never another mech's cell") {
+    const std::string sheet = "data/art/mc2x_mechicons.tga";
+    Art art;
+    const auto* cell = art.cell(sheet, 3);                        // the stock cell the copied CSV still names
+    // One own icon (data/art/mechicons/bt2018_enforcer.png), authored "Enforcer MC2 Adaptation": the stem comes first.
+    const auto* own = art.icon("mech/bt2018_enforcer", 0);
+    art.icon("mech/enforcer mc2 adaptation", 0);
+    CHECK(art.pick("bt2018_enforcer", "enforcer mc2 adaptation", 3, sheet, 0, 1000000) == own);
+    // No own art: the placeholder, although the stock sheet has the cell the CSV names.
+    CHECK(art.pick("bt2018_hunchback", "hunchback mc2 adaptation", 3, sheet, 0, 1000000) == nullptr);
+    // Another mod's drop-in sheet (Exodus, MCO ship the stock path) is not this mod's layout either.
+    CHECK(art.pick("bt2018_hunchback", "hunchback mc2 adaptation", 3, sheet, 0, 1) == nullptr);
+    // A dependency's file that happens to carry the authored name is not the mod's art.
+    Art borrowed;
+    borrowed.icon("mech/hunchback mc2 adaptation", 1);
+    borrowed.cell(sheet, 3);
+    CHECK(borrowed.pick("bt2018_hunchback", "hunchback mc2 adaptation", 3, sheet, 0, 1000000) == nullptr);
+    // The mod's own sheet does carry its chassis.
+    CHECK(art.pick("bt2018_hunchback", "hunchback mc2 adaptation", 3, sheet, 0, 0) == cell);
+    // A stock mech keeps its cell under the stock sheet, under a loose CSV, and under a mod's drop-in sheet.
+    CHECK(art.pick("madcat", "mad cat", 3, sheet, 1000000, 1000000) == cell);
+    CHECK(art.pick("madcat", "mad cat", 3, sheet, 999998, 1000000) == cell);
+    CHECK(art.pick("madcat", "mad cat", 3, sheet, 1000000, 0) == cell);
+}
+
+TEST_CASE("unit icons: reassigning a cell's icon never moves the cell") {
+    using unit_icons::fitCell;
+    using unit_icons::fitWidget;
+    // A 25 x 30 cell at (100, 200). 64 x 64 and 100 x 60 leave an odd padding whose float half is .5.
+    FakeWidget widget{100, 200, 25, 30};
+    for (int round = 0; round < 4; ++round)
+        for (const auto [iw, ih] : {std::array{64, 64}, std::array{100, 60}, std::array{25, 30}, std::array{16, 16}}) {
+            const std::array<int, 4> expected = fitCell(25, 30, iw, ih);
+            fitWidget(widget, 25, 30, iw, ih);
+            CHECK(widget.x == 100 + expected[0]);
+            CHECK(widget.y == 200 + expected[1]);
+            CHECK(widget.w == expected[2]);
+            CHECK(widget.h == expected[3]);
+        }
+    CHECK(widget.y == 200 + fitCell(25, 30, 16, 16)[1]);
+}
+
+TEST_CASE("unit display: the master list's NameID cell reads as a slot or as free text through the real CSVFile") {
+    const auto path = std::filesystem::path(__FILE__).parent_path() / "fixtures" / "unit_display" / "buildings.csv";
+    CSVFile master;
+    REQUIRE(master.open(path.string().c_str()) == NO_ERR);
+    // Row 1 is the header. CSVFile counts one line short, so the file needs a line after its last mech for the
+    // loader to reach it (readString(5, 4) is the break, one row later); rows 2..4 are the mechs.
+    long id = -1;
+    REQUIRE(master.readLong(4, 3, id) == NO_ERR);
+    CHECK(id == 0);
+    char text[256] = "";
+    mc2::names::readNameCell(master, 2, 3, id, text, sizeof(text));     // MCO's row: its own slot
+    CHECK(id == 32081);
+    CHECK(std::string(text).empty());
+    mc2::names::readNameCell(master, 3, 3, id, text, sizeof(text));     // the stock row: the stock slot
+    CHECK(id == 30915);
+    CHECK(std::string(text).empty());
+    id = 0;
+    text[0] = 'x';
+    mc2::names::readNameCell(master, 4, 3, id, text, sizeof(text));     // free text: the chassis' name
+    CHECK(id == 0);
+    CHECK(std::string(text) == "Storm Crow Custom");
+    CHECK(mc2::names::resolve(slot(id), text, "", "ryokencustom") == "Storm Crow Custom");
+    char type[256] = "";
+    CHECK(master.readString(5, 4, type, sizeof(type)) != NO_ERR);        // the loader's break, one row later
+    mc2::names::readNameCell(master, 5, 3, id, text, sizeof(text));     // past the last row: nothing
+    CHECK(id == 0);
+    CHECK(std::string(text) == "Storm Crow Custom");
 }
 
 }
