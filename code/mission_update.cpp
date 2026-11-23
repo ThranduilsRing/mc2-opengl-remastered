@@ -1335,7 +1335,8 @@ OverlapPre s_pre;
 // a pending in-mission save or load.
 void Mission::overlapKick()
 {
-	// Live ticks publish camera/world-light members still read by the render thread.
+	// Keep live lighting ticks on the main thread: they publish camera/world-light members
+	// still read directly by rendering, so worker overlap would race those reads.
 	if (mc2::sim::g_renderHooks.liveLighting && mc2::sim::g_renderHooks.liveLighting()) return;
 	if (!mc2::gate::get<"MC2_SIM_OVERLAP">() || !mc2::gate::get<"MC2_DETERMINISTIC_RNG">() || !active || s_pre.valid)
 		return;

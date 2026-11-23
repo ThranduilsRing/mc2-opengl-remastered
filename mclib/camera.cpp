@@ -914,9 +914,12 @@ void Camera::initTimeOfDay(FitIniFile* cameraFile, bool fromSave)
 				if (fromSave)
 				{
 					DWORD hash = 0;
-					float t = todCurve->start, rate = todRate;
+					float oldT = todCurve->start, rate = todRate;
+					double t = todCurve->start;
+					bool clock = cameraFile->readIdDouble("TimeOfDayDouble", t) == NO_ERR;
+					if (!clock && cameraFile->readIdFloat("TimeOfDay", oldT) == NO_ERR) { t = oldT; clock = true; }
 					const bool match = cameraFile->readIdULong("TodCurveHash", hash) == NO_ERR && hash == todCurve->hash;
-					if (match && cameraFile->readIdFloat("TimeOfDay", t) == NO_ERR)
+					if (match && clock)
 					{
 						todT = mc2::lighting::restoreTod(*todCurve, hash, t);
 						if (cameraFile->readIdFloat("TimeOfDayRate", rate) == NO_ERR && std::isfinite(rate) && rate >= 0.0f) todRate = rate;
@@ -973,22 +976,37 @@ void Camera::captureBakeReference(FitIniFile* file)
 		const auto d = sunDirectionFor(bakeSnapshot.pitch, bakeSnapshot.yaw);
 		bakeSnapshot.sunDir[0] = d.x; bakeSnapshot.sunDir[1] = d.y; bakeSnapshot.sunDir[2] = d.z;
 	}
-	// Optional keys preserve the original load reference when a save's live fields have moved.
-	// FIT reads zero the destination on a missing key; keep the mission snapshot intact.
-	float savedPitch;
-	if (file && file->readIdFloat("BakePitch", savedPitch) == NO_ERR) {
-		bakeSnapshot.pitch = savedPitch;
-		file->readIdFloat("BakeYaw", bakeSnapshot.yaw);
-		file->readIdFloat("BakeDirX", bakeSnapshot.sunDir[0]);
-		file->readIdFloat("BakeDirY", bakeSnapshot.sunDir[1]);
-		file->readIdFloat("BakeDirZ", bakeSnapshot.sunDir[2]);
-		file->readIdUCharArray("BakeSun", bakeSnapshot.sun, 3);
-		file->readIdUCharArray("BakeAmbient", bakeSnapshot.amb, 3);
-		unsigned long color = bakeSnapshot.fogColor;
-		file->readIdULong("BakeFogColor", color); bakeSnapshot.fogColor = static_cast<uint32_t>(color);
-		file->readIdFloat("BakeFogStart", bakeSnapshot.fogStart);
-		file->readIdFloat("BakeFogFull", bakeSnapshot.fogFull);
+	// Restore a complete reference only for the same curve or a saved sun override.
+	if (!file) return;
+	auto saved = bakeSnapshot;
+	unsigned long color = 0, hash = 0;
+	int present = 0;
+	const auto read = [&present](long result) { present += result == NO_ERR; };
+	read(file->readIdFloat("BakePitch", saved.pitch));
+	read(file->readIdFloat("BakeYaw", saved.yaw));
+	read(file->readIdFloat("BakeDirX", saved.sunDir[0]));
+	read(file->readIdFloat("BakeDirY", saved.sunDir[1]));
+	read(file->readIdFloat("BakeDirZ", saved.sunDir[2]));
+	read(file->readIdUCharArray("BakeSun", saved.sun, 3));
+	read(file->readIdUCharArray("BakeAmbient", saved.amb, 3));
+	read(file->readIdULong("BakeFogColor", color));
+	read(file->readIdFloat("BakeFogStart", saved.fogStart));
+	read(file->readIdFloat("BakeFogFull", saved.fogFull));
+	if (!present) return;
+	if (present != 10) {
+		mc2::fmt::print_err("[TOD] warning: incomplete Bake keys; using authored/curve-start reference\n");
+		return;
 	}
+	float angle = 0;
+	const bool overrideSaved = (file->readIdFloat("TodSunPitch", angle) == NO_ERR && std::isfinite(angle)) ||
+		(file->readIdFloat("TodSunYaw", angle) == NO_ERR && std::isfinite(angle));
+	const bool match = file->readIdULong("TodCurveHash", hash) == NO_ERR && todCurve && hash == todCurve->hash;
+	if (!match && !overrideSaved) {
+		mc2::fmt::print_err("[TOD] ignored Bake keys: curve absent or hash mismatch; using authored/curve-start reference\n");
+		return;
+	}
+	saved.fogColor = static_cast<uint32_t>(color);
+	bakeSnapshot = saved;
 }
 
 void Camera::saveBakeReference(FitIniFile* file) const
@@ -1104,6 +1122,11 @@ bool Camera::save( FitIniFile* file )
 		void writeIdFloat(std::string_view name, float value) {
 			char line[128];
 			mc2::fmt::to_buf(line, "f {} = {:.9g}\r\n", name, value);
+			file.write(reinterpret_cast<MemoryPtr>(line), strlen(line));
+		}
+		void writeIdDouble(std::string_view name, double value) {
+			char line[128];
+			mc2::fmt::to_buf(line, "f {} = {:.17g}\r\n", name, value);
 			file.write(reinterpret_cast<MemoryPtr>(line), strlen(line));
 		}
 		void writeIdULong(std::string_view name, uint32_t value) { file.writeIdULong(name, value); }

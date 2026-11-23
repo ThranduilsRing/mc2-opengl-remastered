@@ -44,6 +44,7 @@ TEST_CASE("LightingState/save: matching hash, mismatch, old save and stock bytes
 	struct Save {
 		std::map<std::string, double> keys;
 		std::string bytes = "[Cameras]\n";
+		void writeIdDouble(const char* k, double v) { keys[k] = v; }
 		void writeIdFloat(const char* k, float v) { keys[k] = v; bytes += std::string(k) + "=" + std::to_string(v) + "\n"; }
 		void writeIdULong(const char* k, uint32_t v) { keys[k] = v; bytes += std::string(k) + "=" + std::to_string(v) + "\n"; }
 	} stock, live;
@@ -51,7 +52,7 @@ TEST_CASE("LightingState/save: matching hash, mismatch, old save and stock bytes
 	saveTod(stock, nullptr, 0.45, c.rate);
 	CHECK(stock.bytes == before); CHECK(stock.keys.empty());
 	saveTod(live, &c, 0.45f, c.rate);
-	CHECK(live.keys.size() == 3);
+	CHECK(live.keys.size() == 4);
 	CHECK(restoreTod(c, uint32_t(live.keys.at("TodCurveHash")), float(live.keys.at("TimeOfDay"))) == 0.45f);
 	CHECK(live.keys.at("TimeOfDayRate") == c.rate);
 	CHECK(restoreTod(c, c.hash ^ 1u, 0.45f) == c.start);
@@ -389,9 +390,10 @@ namespace mc2_diag { bool tagRequested(const char*) { return false; } }
 using MemoryPtr = unsigned char*;
 struct FitIniFile {
     std::map<std::string, double> values;
+    long readIdDouble(const char* key, double& v) { auto i=values.find(key); if(i==values.end()) return 1; v=i->second; return 0; }
     long readIdFloat(const char* key, float& v) { auto i=values.find(key); if(i==values.end()) { v=0; return 1; } v=float(i->second); return 0; }
     long readIdULong(const char* key, unsigned long& v) { auto i=values.find(key); if(i==values.end()) return 1; v=static_cast<unsigned long>(i->second); return 0; }
-    long readIdUCharArray(const char* key, uint8_t* v, int n) { for(int i=0;i<n;++i) v[i]=uint8_t(values.at(std::string(key)+char('0'+i))); return 0; }
+    long readIdUCharArray(const char* key, uint8_t* v, int n) { for(int i=0;i<n;++i) { auto it=values.find(std::string(key)+char('0'+i)); if(it==values.end()) return 1; v[i]=uint8_t(it->second); } return 0; }
     void writeIdUCharArray(const char* key, uint8_t* v, int n) { for(int i=0;i<n;++i) values[std::string(key)+char('0'+i)]=v[i]; }
     void writeIdULong(std::string_view key, uint32_t v) { values[std::string(key)]=v; }
     void writeIdUChar(const char* key, uint8_t v) { values[key]=v; }
@@ -400,6 +402,7 @@ struct FitIniFile {
 namespace mc2 { namespace lighting = ::mc2::lighting;
 namespace fmt {
 template<class K> void to_buf(char (&line)[128], const char*, K key, float v) { std::snprintf(line,128,"f %s = %.9g\r\n",std::string(key).c_str(),double(v)); }
+template<class K> void to_buf(char (&line)[128], const char*, K key, double v) { std::snprintf(line,128,"f %s = %.17g\r\n",std::string(key).c_str(),v); }
 template<class... A> void print_err(const char*, A&&...) {}
 }
 namespace options { struct Options { bool sunElevationFix=true; }; inline const Options& current() { static Options o; return o; } }
@@ -457,7 +460,7 @@ TEST_CASE("LightingState/Camera bake snapshot survives rain KillAmbient moved su
     c.lightDirection=c.sunDirectionFor(15,90);
     CHECK(c.currentLighting()!=loaded);
     CHECK(c.bakeReferenceLighting()==loaded);
-    FitIniFile save; c.saveBakeReference(&save);
+    FitIniFile save; c.saveBakeReference(&save); c.saveSunOverride(&save);
     CHECK(save.values.count("BakePitch")==1);
     Camera restored; restored.lightPitch=15; restored.captureBakeReference(&save);
     CHECK(restored.bakeReferenceLighting()==loaded);
@@ -541,7 +544,7 @@ TEST_CASE("LightingState/Camera allowTimeOfDay and curve rain save load round tr
     c.allowTimeOfDay=true; c.dayLightPitch=180; c.initTimeOfDay(&save,false); CHECK_FALSE(c.todCurve);
     c.dayLightPitch=50; c.initTimeOfDay(&save,false); REQUIRE(c.todCurve);
     c.publishLight(); c.captureBakeReference(nullptr);
-    FitIniFile curveSave; c.saveBakeReference(&curveSave);
+    FitIniFile curveSave; c.saveBakeReference(&curveSave); curveSave.values["TodCurveHash"]=c.todCurve->hash;
     CHECK(curveSave.values.count("BakePitch")==1);
     Camera curveLoaded; curveLoaded.todCurve=c.todCurve; curveLoaded.todBase=c.todBase;
     curveLoaded.captureBakeReference(&curveSave);
@@ -563,4 +566,44 @@ TEST_CASE("LightingState/Camera allowTimeOfDay and curve rain save load round tr
     save.values["TodCurveHash"]=0; loaded.initTimeOfDay(&save,true); CHECK(loaded.todT==0.25);
     tuningBlock.clear(); Camera stock; stock.initTimeOfDay(&save,true); CHECK_FALSE(stock.todCurve);
     stock.captureBakeReference(nullptr); FitIniFile stockSave; stock.saveClock(&stockSave); CHECK(stockSave.values.empty());
+}
+
+TEST_CASE("LightingState/Camera Bake restore eligibility and partial keys") {
+    using namespace camera_lighting_test;
+    Camera source;
+    source.todCurve=std::make_shared<TodCurve>(TodCurve{{{0},{1}},0.25f,1.0f/86400,123});
+    source.todBase=source.lightMembers(); source.captureBakeReference(nullptr);
+    FitIniFile save; source.saveBakeReference(&save); save.values["TodCurveHash"]=123;
+    Camera target; target.lightPitch=70; target.todCurve=source.todCurve; target.todBase=target.lightMembers();
+    target.captureBakeReference(&save); CHECK(target.bakeReferenceLighting()==source.bakeReferenceLighting());
+    save.values["TodCurveHash"]=124;
+    target.captureBakeReference(nullptr); const auto start=target.bakeReferenceLighting();
+    target.captureBakeReference(&save); CHECK(target.bakeReferenceLighting()==start);
+    target.todCurve.reset(); target.captureBakeReference(nullptr); const auto authored=target.bakeReferenceLighting();
+    target.captureBakeReference(&save); CHECK(target.bakeReferenceLighting()==authored);
+    save.values["TodSunYaw"]=30;
+    auto fixedReference=source.bakeReferenceLighting(); fixedReference.mode=Mode::Fixed; fixedReference.todWeight=0;
+    target.captureBakeReference(&save); CHECK(target.bakeReferenceLighting()==fixedReference);
+    for (const char* key : {"BakePitch","BakeYaw","BakeDirX","BakeDirY","BakeDirZ","BakeSun0","BakeAmbient0","BakeFogColor","BakeFogStart","BakeFogFull"}) {
+        auto partial=save; partial.values.erase(key);
+        target.captureBakeReference(&partial); CHECK(target.bakeReferenceLighting()==authored);
+    }
+    FitIniFile pitchOnly; pitchOnly.values["BakePitch"]=15;
+    target.captureBakeReference(&pitchOnly); CHECK(target.bakeReferenceLighting()==authored);
+}
+
+TEST_CASE("LightingState/Camera double clock preserves slow long mission and legacy float") {
+    using namespace camera_lighting_test;
+    tuningBlock=R"({"start":0.5,"rate":0.00000001,"keys":[{"t":0},{"t":1}]})";
+    Camera source; source.allowTimeOfDay=true; FitIniFile save;
+    source.initTimeOfDay(&save,false); REQUIRE(source.todCurve);
+    // Eleven hours of simulation at a valid slow rate: float loses more than a 30 Hz tick.
+    source.todT=double(source.todCurve->start)+double(source.todRate)*39600;
+    CHECK(std::abs(double(float(source.todT))-source.todT)>double(source.todRate)/30);
+    source.saveClock(&save);
+    Camera loaded; loaded.allowTimeOfDay=true; loaded.initTimeOfDay(&save,true);
+    CHECK(loaded.todT==source.todT);
+    save.values.erase("TimeOfDayDouble"); loaded.initTimeOfDay(&save,true);
+    CHECK(loaded.todT==double(float(source.todT)));
+    tuningBlock.clear();
 }
