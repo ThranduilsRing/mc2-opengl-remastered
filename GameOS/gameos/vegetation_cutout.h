@@ -6,6 +6,17 @@
 #include <vector>
 
 namespace mc2::vegetation {
+// Tree foliage tone (owner 11-23: the corrected mips read too light/lime). tone 0 = authored colour, 1 = fully toned: RGB is
+// darkened and pulled toward its luma. Applied to tree layers before the mip chain so every mip, 0 included, carries it.
+inline void toneFoliageRgb(std::span<uint8_t> rgba, float tone) {
+    if (tone <= 0.0f) return;
+    const float mul = 1.0f - 0.4f * tone, desat = 0.5f * tone;
+    for (size_t i = 0; i + 3 < rgba.size(); i += 4) {
+        const float luma = 0.299f * rgba[i] + 0.587f * rgba[i + 1] + 0.114f * rgba[i + 2];
+        for (int c = 0; c < 3; ++c)
+            rgba[i + c] = static_cast<uint8_t>(std::clamp(std::lround((rgba[i + c] + (luma - rgba[i + c]) * desat) * mul), 0L, 255L));
+    }
+}
 inline float cutoutCoverage(std::span<const uint8_t> rgba, float scale = 1.0f, long threshold = 128) {
     size_t covered = 0;
     for (size_t i = 3; i < rgba.size(); i += 4)

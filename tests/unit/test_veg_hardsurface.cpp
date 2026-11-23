@@ -465,3 +465,13 @@ TEST_CASE("prop alpha-ON mips: solid canopy keeps coverage at the shader cut, la
     preserveCutoutAlpha(mip, target, cut);
     CHECK(cutoutCoverage(mip, 1.0f, cut) == doctest::Approx(target).epsilon(0.08));
 }
+
+TEST_CASE("toneFoliageRgb darkens and desaturates RGB, leaves alpha, tone 0 is identity") {
+    std::vector<uint8_t> px{120, 200, 40, 255}, same = px;
+    mc2::vegetation::toneFoliageRgb(same, 0.0f);
+    CHECK(same == px);
+    mc2::vegetation::toneFoliageRgb(px, 1.0f);
+    CHECK(px[3] == 255);
+    CHECK(px[1] < 200);
+    CHECK((px[1] - px[0]) < (200 - 120));
+}
