@@ -2607,7 +2607,9 @@ def shader_inventory_problems(source_root, published):
 
 
 def require_pak_ok(target):
-    """A v0.4 publish must serve stock assets from the pak: raise unless <target>/.pak_deploy_status starts with OK."""
+    """Post-publish verdict, not a guard: raise unless <target>/.pak_deploy_status (written by the publish) starts with OK, so a v0.4
+    publish that would read FSTs is reported failed. The pre-publish checks are in ensure_stock_pak (the cached pak is judged before it
+    is copied) and deploy_from_payload (the incoming pak is judged before it overwrites the installed one)."""
     try:
         status = (Path(target) / PAK_STATUS_NAME).read_text(encoding="utf-8").strip()
     except OSError:
@@ -2670,11 +2672,15 @@ def deploy_from_payload(payload, target, src_root, head):
         fail("payload contains diagnostic or backup artifacts; republish a clean payload")
     staged = payload / 'files'
     stamps = {}  # rel -> dest_mtime_ns taken with the destination's own sha256, never inherited from the payload
-    for rel, row in rows.items():
+    refused = None  # why the incoming pak was not installed (it is judged before it can overwrite the pak that is there)
+    for rel, row in sorted(rows.items(), key=lambda item: item[0] == PAK_REL):  # the pak last: its FSTs may be in this payload
         src, dst = staged / rel, target / rel
         if src.is_file():
             if sha256_file(str(src)) != row['sha256']:
                 fail(f'payload file {rel}: sha256 != manifest')
+            if rel == PAK_REL and registered_fsts(target) is not None and (refused := pak_defect(src, target)):
+                log(f"WARN [PAK_DEPLOY] incoming payload pak refused ({refused}); the installed pak is kept")
+                continue
             dst.parent.mkdir(parents=True, exist_ok=True)
             fd, tmp = tempfile.mkstemp(prefix=dst.name + '.payload-', dir=dst.parent)
             os.close(fd)
@@ -2698,15 +2704,30 @@ def deploy_from_payload(payload, target, src_root, head):
             or not build_current(fp.get('sha'), head, Path(src_root), bool(fp.get('dirty')))):
         fail(f'{exe}: fingerprint != clean HEAD {head}')
     # The incoming pak was packed elsewhere: judge it against the FSTs now installed here and record the outcome.
-    if (target / PAK_REL).is_file():
-        defect = quarantine_bad_pak(target)
-        if defect:
-            rows.pop(PAK_REL, None)
-            stamps.pop(PAK_REL, None)
-        write_pak_status(target, f"FALLBACK payload pak refused and moved aside ({defect})" if defect else "OK payload pak checked")
+    # An incoming pak that failed the check above never overwrote the installed one; the installed pak (carried by the payload
+    # or not in its manifest at all) is judged too, and recorded as it is on disk.
+    if refused:
+        rows.pop(PAK_REL, None)
+    on_disk = (target / PAK_REL).is_file()
+    defect = quarantine_bad_pak(target) if on_disk else None
+    carried = None
+    if defect:
+        rows.pop(PAK_REL, None)
+        stamps.pop(PAK_REL, None)
+        status = f"FALLBACK payload pak refused and moved aside ({defect})" + (f"; incoming refused ({refused})" if refused else "")
+    elif on_disk:
+        if PAK_REL not in rows:
+            carried = hash_with_stamp(target / PAK_REL, sha256_file)
+        if registered_fsts(target) is None:
+            status = "SKIP pak not judged (no FSTs)"
+        else:
+            status = f"OK kept installed pak (incoming refused: {refused})" if refused else "OK payload pak checked"
     else:
-        write_pak_status(target, "SKIP no pak in the payload")
+        status = f"FALLBACK incoming pak refused ({refused}); no installed pak" if refused else "SKIP no pak in the payload"
+    write_pak_status(target, status)
     hashes = {rel: (row['sha256'], int(row['bytes']), None, stamps[rel]) for rel, row in rows.items()}
+    if carried:
+        hashes[PAK_REL] = (carried[0], carried[1], None, carried[2])
     retire_unowned(str(target), hashes, own_shaders=any(rel.startswith('shaders/vulkan/') and rel.endswith('.spv') for rel in rows))
     dst = target / '.deployed_manifest.csv'
     fd, tmp = tempfile.mkstemp(prefix=dst.name + '.payload-', dir=dst.parent)
@@ -3266,7 +3287,7 @@ def pak_defect(pak, target):
             toc = head + f.read(count * 266) if whole else b""
         if not whole:
             return f"{name} is not a whole FST (magic {magic:#x}, {count} entries, {path.stat().st_size} bytes): unfinished copy?"
-        src = sources.get(name.lower())
+        src = sources.get(Path(name.replace("\\", "/")).name.lower())  # mc2pak keys sources by basename
         if src is None or src.get("size") != path.stat().st_size or src.get("entries") != count:
             return f"pak source {name} ({src and src.get('entries')} entries, {src and src.get('size')} bytes) != installed FST ({count} entries, {path.stat().st_size} bytes)"
         if src.get("toc_hash") and src["toc_hash"] != _toc_hash(toc):  # same size and count but different content: packed from another FST
@@ -3300,24 +3321,33 @@ def ensure_stock_pak(src_root, target, hashes):
     The outcome (OK / FALLBACK / SKIP) is recorded in <target>/.pak_deploy_status so run_smoke can refuse a silent FST fallback."""
     status = _ensure_stock_pak(src_root, target, hashes)
     kept = Path(target) / PAK_REL
-    if not status.startswith("OK") and PAK_REL not in hashes and kept.is_file():
-        # retire_unowned never prunes the pak, so a failed or refused repack keeps the previous one: record it as it is on disk,
-        # unless it is itself defective (then the game must read the FSTs, not a pak that disagrees with them).
+    if not status.startswith("OK") and kept.is_file():
+        # retire_unowned never prunes the pak, so a failed or refused repack keeps the previous one (also when a code-only deploy
+        # carried its row): judge it, then record it as it is on disk, unless it is itself defective (then the game must read the
+        # FSTs, not a pak that disagrees with them). A good kept pak is OK; FALLBACK is only for a refused or missing pak.
         defect = quarantine_bad_pak(target) if status.startswith("FALLBACK") else None
         if defect:
+            hashes.pop(PAK_REL, None)
             status += f"; kept pak refused and moved aside ({defect})"
         else:
             digest, size, stamp = hash_with_stamp(kept, sha256_file)
             hashes[PAK_REL] = (digest, size, None, stamp)
             log(f"WARN [PAK_DEPLOY] kept the previous {PAK_REL} ({size} bytes)")
+            if status.startswith("FALLBACK") and registered_fsts(target) is not None:
+                status = "OK kept previous pak (" + status[len("FALLBACK "):] + ")"
     write_pak_status(target, status)
 
 
 def write_pak_status(target, status):
+    path = Path(target) / PAK_STATUS_NAME
     try:
-        (Path(target) / PAK_STATUS_NAME).write_text(status + "\n", encoding="utf-8")
+        path.write_text(status + "\n", encoding="utf-8")
     except OSError as exc:
         log(f"WARN [PAK_DEPLOY] could not write {PAK_STATUS_NAME}: {exc}")
+        try:
+            path.unlink(missing_ok=True)  # never leave an older OK behind: require_pak_ok then fails closed
+        except OSError:
+            pass
 
 
 def quarantine_bad_pak(target):
@@ -3331,6 +3361,8 @@ def quarantine_bad_pak(target):
         aside = kept.with_name(f"{kept.name}.defect-{time.strftime('%Y%m%d-%H%M%S')}")
         replace_file(str(kept), str(aside))
         log(f"WARN [PAK_DEPLOY] installed {PAK_REL} is defective ({defect}); moved to {aside.name}, the game reads the FSTs")
+        for old in sorted(kept.parent.glob(f"{kept.name}.defect-*"))[:-1]:  # keep only the newest
+            old.unlink(missing_ok=True)
     return defect
 
 
