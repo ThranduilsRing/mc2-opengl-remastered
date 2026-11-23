@@ -361,6 +361,12 @@ struct LogisticsData {
         for (auto& c : components) if (c.id == id) return c;
         return std::nullopt;
     }
+    int getAllComponents(LogisticsComponent** out, int& maxCount) {
+        int n = 0;
+        for (auto& c : components) if (n < maxCount) out[n++] = &c;
+        maxCount = n;
+        return 0;
+    }
 };
 LogisticsData* LogisticsData::instance = nullptr;
 struct Chassis {
@@ -393,6 +399,21 @@ struct LogisticsVariant {
     mc2::armor::Allocation armorAllocation(bool legacy = false) const;
     bool hasExplicitArmor() const { return chassis->armorEditable && layoutState.armorExplicit; }
     bool stepArmor(int location,int delta);
+    // Doubles for the plating buy/return in stepArmor: append / drop one component record.
+    int addComponent(LogisticsComponent* c, long& x, long& y) {
+        if (componentCount >= 54) return NEED_BIGGER_ARRAY;
+        components[componentCount] = ComponentInfo{x, y, CHEST, c};
+        ++componentCount;
+        return 0;
+    }
+    std::expected<void, int> removeComponent(long x, long y) {
+        for (long i = 0; i < componentCount; ++i)
+            if (components[i].xCoord == x && components[i].yCoord == y) {
+                components[i] = components[--componentCount];
+                return {};
+            }
+        return std::unexpected(-1);
+    }
     auto locationRecord() const { return layoutState; } // legality is covered by the shared validator cases
 };
 #include "layout_deployment.inc"
