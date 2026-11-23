@@ -1,6 +1,7 @@
 #pragma once
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <limits>
 #include <map>
@@ -135,6 +136,19 @@ inline void fitWidget(Widget& widget, int cw, int ch, int iw, int ih) {
     const std::array<int, 4> fit = fitCell(cw, ch, iw, ih);
     widget.resize(fit[2], fit[3]);
     widget.move(static_cast<float>(fit[0]), static_cast<float>(fit[1]));
+}
+
+// A deployment card authored for a box of another size (MCO ships 90 x 80, the page's slots are 75 x 64) lands in
+// the page's slot: the card keeps its origin and each child at card-local (x, y) scales by slot / box, art in size too.
+inline std::array<float, 2> cardScale(int slotW, int slotH, int boxW, int boxH) {
+    if (slotW <= 0 || slotH <= 0 || boxW <= 0 || boxH <= 0) return {1.f, 1.f};
+    return {static_cast<float>(slotW) / boxW, static_cast<float>(slotH) / boxH};
+}
+template <class Widget>
+inline void scaleCardChild(Widget& widget, float x, float y, const std::array<float, 2>& k, bool art) {
+    const float w = widget.width(), h = widget.height();
+    widget.move(x * (k[0] - 1.f), y * (k[1] - 1.f));
+    if (art) widget.resize(std::max(1l, std::lround(w * k[0])), std::max(1l, std::lround(h * k[1])));
 }
 
 // LookupModPriority ranks: a mod's load-order slot (the active mod 0, its dependencies 1..), else one of the

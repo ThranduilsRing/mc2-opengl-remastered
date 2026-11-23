@@ -70,7 +70,7 @@ LogisticsMechIcon::~LogisticsMechIcon()
 
 
 
-int LogisticsMechIcon::init( FitIniFile& file )
+int LogisticsMechIcon::init( FitIniFile& file, const aObject* slot )
 {
 	if ( !s_pTemplateIcon )
 	{
@@ -100,6 +100,19 @@ int LogisticsMechIcon::init( FitIniFile& file )
 		{
 			mc2::fmt::to_buf(blockName, "Animation{:d}", mc2::fmt::as_i32(i));
 			s_pTemplateIcon->animations[i].init( &file, blockName );
+		}
+
+		if ( slot )
+		{
+			// The page's slots are the grid; a card box of another size (MCO: 90 x 80 at x 75) is scaled into slot 1.
+			LogisticsMechIcon& t = *s_pTemplateIcon;
+			const auto k = unit_icons::cardScale( (int)slot->width(), (int)slot->height(), (int)t.outline.width(), (int)t.outline.height() );
+			for ( aObject* o : { &t.iconConnector, &t.icon, &t.pilotIcon } )
+				unit_icons::scaleCardChild( *o, (float)o->globalX(), (float)o->globalY(), k, true );
+			for ( aObject* o : { (aObject*)&t.pilotName, (aObject*)&t.chassisName } )
+				unit_icons::scaleCardChild( *o, (float)o->globalX(), (float)o->globalY(), k, false );
+			t.outline.move( (float)(slot->globalX() - t.outline.globalX()), (float)(slot->globalY() - t.outline.globalY()) );
+			t.outline.resize( (long)slot->width(), (long)slot->height() );
 		}
 	}
 	

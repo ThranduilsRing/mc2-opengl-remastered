@@ -68,12 +68,15 @@ void MechBayScreen::init(FitIniFile* file)
 		gosASSERT( "couldn't open the MCL_GN_DevploymentTeams file" );
 		return;
 	}
-	LogisticsMechIcon::init(iconFile);
+	// MechBayStatic48..59 ("dep team combo item N") are the page's twelve deployment slots: the cards sit in them.
+	constexpr int firstSlot = 48;
+	const bool onGrid = staticCount >= firstSlot + ICON_COUNT;
+	LogisticsMechIcon::init(iconFile, onGrid ? &statics[firstSlot] : nullptr);
 	pIcons = std::make_unique_for_overwrite<LogisticsMechIcon[]>(ICON_COUNT);
 
 	int count = 0;
 
-	
+
 	long x = 0;
 	long y = 0;
 
@@ -82,6 +85,11 @@ void MechBayScreen::init(FitIniFile* file)
         int i = 0;
 		for (; i < ICON_COUNT_X; i++ )
 		{
+			if ( onGrid )
+			{
+				x = statics[firstSlot + count].globalX() - statics[firstSlot].globalX();
+				y = statics[firstSlot + count].globalY() - statics[firstSlot].globalY();
+			}
 			pIcons[count].setMech( nullptr );
 			pIcons[count].move( x, y );
 			x+= pIcons[count].width();
