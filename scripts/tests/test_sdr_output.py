@@ -12,7 +12,7 @@ import shader_common
 
 
 def run(*args):
-    return subprocess.check_output(list(args), text=True,  # background-launch: allow offline Vulkan SDK tools only
+    return subprocess.check_output(list(args), text=True,
                                    **console_child.child_kwargs(redirected=True))
 
 
