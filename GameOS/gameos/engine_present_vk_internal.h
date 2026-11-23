@@ -76,6 +76,7 @@ struct EnginePresentVk::Impl {
     int             pendingShadowDebugLayer = 0;
 
     // Composite output, blitted into the swapchain after the UI.
+    VkFormat presentFmt = VK_FORMAT_R8G8B8A8_UNORM;
     VkImageResource sharedImg{};
     VkImageResource scaledComposite{};
     mc2vk::OwnedFramebuffer scaledCompositeFramebuffer;

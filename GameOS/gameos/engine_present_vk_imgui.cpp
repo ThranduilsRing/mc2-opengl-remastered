@@ -20,7 +20,7 @@ bool ensureImguiRenderPass(EnginePresentVk::Impl& s) {
     if (s.imguiRenderPass.get()) return true;
 
     VkAttachmentDescription color{};
-    color.format = VK_FORMAT_R8G8B8A8_UNORM;
+    color.format = s.presentFmt;
     color.samples = VK_SAMPLE_COUNT_1_BIT;
     color.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
     color.storeOp = VK_ATTACHMENT_STORE_OP_STORE;

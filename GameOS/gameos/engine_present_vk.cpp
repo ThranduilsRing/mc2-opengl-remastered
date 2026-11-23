@@ -446,7 +446,7 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
     // AA reads display-encoded color, at scene resolution, before reconstruction.
     if ((scene->w < s.imgW || scene->h < s.imgH) && !s.scaledComposite.image) {
         if (!vkImageResourceCreate(&s.scaledComposite, s.dev, s.phys, scene->w, scene->h,
-                VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                s.presentFmt, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
                 VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT |   // STORAGE: CMAA2 (spatial AA mode 3) writes its output as a storage image
                 VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
                 "present.renderResolutionColor")) return false;
@@ -478,7 +478,7 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
     }
     if (!s.compositeRenderPass) {
         VkAttachmentDescription color{};
-        color.format = VK_FORMAT_R8G8B8A8_UNORM;
+        color.format = s.presentFmt;
         color.samples = VK_SAMPLE_COUNT_1_BIT;
         color.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
         color.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -657,7 +657,7 @@ bool ensureShadowDebugOverlayObjects(EnginePresentVk::Impl& s, VkImageView csmAr
     }
     if (!s.shadowDebugRenderPass) {
         VkAttachmentDescription color{};
-        color.format = VK_FORMAT_R8G8B8A8_UNORM;
+        color.format = s.presentFmt;
         color.samples = VK_SAMPLE_COUNT_1_BIT;
         color.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
         color.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -846,7 +846,7 @@ bool ensureHudColorObjects(EnginePresentVk::Impl& s) {
 
     if (!s.hudColorRenderPass) {
         VkAttachmentDescription color{};
-        color.format = VK_FORMAT_R8G8B8A8_UNORM;
+        color.format = s.presentFmt;
         color.samples = VK_SAMPLE_COUNT_1_BIT;
         color.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
         color.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -1582,7 +1582,7 @@ bool buildSharedImage(EnginePresentVk::Impl& s, uint32_t w, uint32_t h, std::str
     // TRANSFER_SRC so VK can blit it into the swapchain; TRANSFER_DST for the
     // initial acquire barrier bookkeeping / robustness. Non-exportable: no GL side.
     if (!vkImageResourceCreate(&s.sharedImg, s.dev, s.phys, w, h,
-                               VK_FORMAT_R8G8B8A8_UNORM,
+                               s.presentFmt,
                                VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
                                VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
                                VK_IMAGE_USAGE_STORAGE_BIT |   // CMAA2 (spatial AA mode 3) writes its output as a storage image

@@ -53,6 +53,8 @@ struct SpatialAA::Impl {
     VulkanContext* ctx = nullptr;
     VkDevice dev = VK_NULL_HANDLE;
     uint32_t w = 0, h = 0;
+    VkFormat presentFmt = VK_FORMAT_UNDEFINED;
+    VkFormat srgbFormat() const { return presentFmt == VK_FORMAT_R8G8B8A8_UNORM ? VK_FORMAT_R8G8B8A8_SRGB : presentFmt; }
     int mode = 0;
     bool uploaded = false;
     bool lookupPending = false;
@@ -88,7 +90,7 @@ struct SpatialAA::Impl {
         const State copyRead{VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_READ_BIT, false};
         const State copyWrite{VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, true};
         const auto key = [&](uint32_t usage, uint32_t flags) {
-            return std::array<uint32_t, 6>{w, h, VK_FORMAT_R8G8B8A8_UNORM, VK_SAMPLE_COUNT_1_BIT, usage, flags};
+            return std::array<uint32_t, 6>{w, h, static_cast<uint32_t>(presentFmt), VK_SAMPLE_COUNT_1_BIT, usage, flags};
         };
         std::vector<Image> images{
             {{}, true, color},
@@ -131,13 +133,14 @@ struct SpatialAA::Impl {
     }
     bool init(VulkanContext& context, const VkImageResource& output, int selected) {
         ctx = &context; dev = ctx->device(); w = output.w; h = output.h; mode = selected;
+        presentFmt = output.format;
         if (mode == 1 && !initGraph(output)) return false;
-        if (mode != 1 && !input.create(*ctx, w, h, mode == 3 ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM,
+        if (mode != 1 && !input.create(*ctx, w, h, mode == 3 ? srgbFormat() : presentFmt,
                           VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, mode == 1)) return false;
         if (mode == 1) {
             // SMAA edges read encoded color; its neighborhood filter reads the same bytes in linear light.
             VkImageViewCreateInfo vi{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
-            vi.image = inputTexture().image.get(); vi.viewType = VK_IMAGE_VIEW_TYPE_2D; vi.format = VK_FORMAT_R8G8B8A8_SRGB;
+            vi.image = inputTexture().image.get(); vi.viewType = VK_IMAGE_VIEW_TYPE_2D; vi.format = srgbFormat();
             vi.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
             if (!mc2vk::create(inputSrgb, dev, [&](auto* hnd) { return vkCreateImageView(dev, &vi, nullptr, hnd); })) return false;
         }
@@ -155,7 +158,7 @@ struct SpatialAA::Impl {
     }
     bool initGraphics(const VkImageResource& output) {
         VkAttachmentDescription ad{};
-        ad.format = VK_FORMAT_R8G8B8A8_UNORM; ad.samples = VK_SAMPLE_COUNT_1_BIT;
+        ad.format = presentFmt; ad.samples = VK_SAMPLE_COUNT_1_BIT;
         ad.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; ad.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         ad.initialLayout = mode == 1 ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED;
         ad.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -369,7 +372,7 @@ bool SpatialAA::prepare(VulkanContext& ctx, const VkImageResource& output, int m
     if (mode < 0 || mode > 3) mode = 1;
     if (failedMode_ != mode) failedMode_ = -1;
     if (failedMode_ == mode && failedW_ == output.w && failedH_ == output.h) return false;
-    if (impl_ && impl_->w == output.w && impl_->h == output.h && impl_->mode == mode) return true;
+    if (impl_ && impl_->w == output.w && impl_->h == output.h && impl_->mode == mode && impl_->presentFmt == output.format) return true;
     if (impl_) { ctx.waitIdle("spatial_aa_change"); reset(); }
     if (!mode) return true;
     auto next = std::make_unique<Impl>();

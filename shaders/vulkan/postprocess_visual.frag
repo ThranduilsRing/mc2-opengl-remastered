@@ -1,6 +1,7 @@
 // VK-POST-COMPOSITE-NATIVE-1: conservative Visual-mode composite shader.
 // This is the first runtime slice: scene color + exposure + existing visual grade.
 #version 450
+#extension GL_GOOGLE_include_directive : require
 
 layout(location = 0) in vec2 TexCoord;
 layout(location = 0) out vec4 FragColor;
@@ -150,15 +151,16 @@ float ignTriangle(vec2 p) {
     return n0 + n1 - 1.0;
 }
 
+#include "output_transform.glsl"
+
 void main() {
     vec3 color = (u.p1.w != 0.0) ? casFilter(TexCoord)
                : reconstructedColor(TexCoord);
     if (u.p1.x != 0.0) {
-        FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
+        FragColor = vec4(outputTransform(color, true), 1.0);
         return;
     }
-    color = applyTonemap(color);
-    color = clamp(color + ignTriangle(floor(gl_FragCoord.xy)) / 255.0, 0.0, 1.0);
+    color = outputTransform(color, false);
 
     int viewMode = int(u.p2.x + 0.5);
     if (viewMode == 1) {
