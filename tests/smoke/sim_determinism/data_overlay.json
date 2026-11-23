@@ -1,6 +1,6 @@
 {
  "about": "loose fixture files a baseline run may carry on top of the stock data, by sha256; *.beauty sidecars are not fingerprinted; tools/sim_determinism.py write-overlay regenerates this",
- "stock_digest": "1966300e0dfb9a58",
+ "stock_digest": "31d0b62d997af3d2",
  "overlay": {
   "data/missions/gaea_peaks_01.fit": "aa24a7b6e35ae2b267c319b15fed1e56d0df8dda2be1715756dd26e7ec4237da",
   "data/missions/gaea_peaks_01.pak": "af7be4e2f5a9c1c4a9b02741330baf12bcdd812b1c7c5766501b58cc078e42f5"
