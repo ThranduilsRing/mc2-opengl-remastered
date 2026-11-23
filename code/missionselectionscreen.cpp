@@ -142,6 +142,25 @@ void MissionSelectionScreen::render(int xOffset, int yOffset )
 
 }
 
+// Defs page key of the active campaign operation layout ("mcl_cm_op1_2.fit" -> "game.mcl_cm_op1_2").
+static std::string operationPageKey()
+{
+	std::string stem = LogisticsData::instance->getCurrentOperationFileName();
+	const size_t dot = stem.rfind( '.' );
+	if ( dot != std::string::npos )
+		stem.resize( dot );
+	for ( char& c : stem )
+		c = static_cast<char>( std::tolower( static_cast<unsigned char>( c ) ) );
+	return "game." + stem;
+}
+
+// The generic sample/placeholder layouts carry a marker positioned for a stock planet, not for the campaign using them.
+static bool operationLayoutIsGenericPlaceholder()
+{
+	const std::string key = operationPageKey();
+	return key.rfind( "game.mcl_cm_op_sample", 0 ) == 0 || key.rfind( "game.mcl_cm_opgeneric", 0 ) == 0;
+}
+
 void MissionSelectionScreen::update()
 {
 	if (!playedLogisticsTune)
@@ -206,14 +225,17 @@ void MissionSelectionScreen::update()
 	if ( pressedButton >= 0 && pressedButton < missionCount
 		&& pressedButton < MAX_MISSIONS_IN_GROUP && missionNames[pressedButton] )
 	{
-		operationScreen.textObjects[0].setText( LogisticsData::instance->getMissionFriendlyName(
-			missionNames[pressedButton] ) );
+		const std::string friendly = LogisticsData::instance->getMissionFriendlyName( missionNames[pressedButton] );
+		operationScreen.textObjects[0].setText( friendly );
+		// The defs page draws its own caption element (previewing a stock mission name); feed it the active mission.
+		operationScreen.setDefsElementText( operationPageKey() + ".text.text", friendly );
 //		if ( highlightColor )
 //			operationScreen.textObjects[0].setColor( highlightColor );
 	}
 	else
 	{
 		operationScreen.textObjects[0].setText( "" );
+		operationScreen.setDefsElementText( operationPageKey() + ".text.text", "" );
 	}
 
 	if ( LogisticsData::instance->skipLogistics() ) // the launch button
@@ -353,6 +375,13 @@ void MissionSelectionScreen::begin()
 	for ( ; i < operationScreen.buttonCount; i++ )
 	{
 		operationScreen.buttons[i].showGUIWindow( 0 );
+	}
+
+	// A single-mission group has nothing to pick: on a generic layout its marker would sit over stock art.
+	if ( missionCount == 1 && operationLayoutIsGenericPlaceholder() && operationScreen.buttonCount > 0 )
+	{
+		operationScreen.buttons[0].showGUIWindow( 0 );
+		operationScreen.setDefsElementVisible( operationPageKey() + ".button.mission_2", false );
 	}
 
 	bStop = 0;
