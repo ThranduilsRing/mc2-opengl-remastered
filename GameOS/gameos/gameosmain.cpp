@@ -1,6 +1,7 @@
 #include "mc2_czstring.h"
 #include "../../code/net/runtime.h"
 #include "load_scope.h"
+#include "diagnostic_trace.h"
 #include "mclib/pak_zip.h"
 #include "loading_pump_meter.h"
 #include "../../GuiRuntime/PlayerFrontEnd.h"
@@ -206,6 +207,8 @@ extern "C" {
 }
 #endif
 static bool g_exit = false;
+static std::string_view g_exitWhy = "game_request";   // first requester wins; written once as the EXIT_REASON trace event when the frame loop ends
+static void request_exit(std::string_view why) { if (!g_exit) g_exitWhy = why; g_exit = true; }
 static bool g_focus_lost = false;
 
 // Owned by gos_render.cpp; needed here to query SDL_WINDOW_MINIMIZED so the
@@ -222,8 +225,9 @@ static void handle_key_down( SDL_Keysym* keysym ) {
     const bool alt_debug = (keysym->mod & KMOD_ALT) != 0;
     switch( keysym->sym ) {
         case SDLK_ESCAPE:
-            if(alt_debug)
-                g_exit = true;
+            // Documented quit is RAlt+Escape (docs/modding-guide.md). LAlt+Esc is the Windows window-cycle shortcut and must not end the game.
+            if((keysym->mod & KMOD_RALT) != 0)
+                request_exit("ralt_escape");
             break;
         case 'd':
             if(alt_debug)
@@ -409,7 +413,7 @@ void process_events( void ) {
             input::handleKeyEvent(&event);
             break;
         case SDL_QUIT:
-            g_exit = true;
+            request_exit("sdl_quit");   // WM_CLOSE / Alt+F4 / the OS closing a ghosted window
             break;
         case SDL_WINDOWEVENT:
             // Window subevents live in event.window.event, not event.type.
@@ -1328,6 +1332,12 @@ int main(int argc, char** argv)
     timeEndPeriod(1);
 #endif
 
+    {   // stdout/stderr are NUL in normal play: the trace file is the durable record of why the loop ended
+        char why[96];
+        const int n = mc2::fmt::to_buf(why, "{{\"reason\":\"{}\"}}", g_exitWhy);
+        if (n > 0 && n < static_cast<int>(sizeof why)) mc2_diag::writeEvent("EXIT_REASON", 1, g_mc2FrameCounter.load(std::memory_order_relaxed), why);
+        mc2_diag::flush();
+    }
     mc2vk::present_thread::stop();
     if (presentJoinPending) mc2::overlap::joinTail();
     mc2::overlap::shutdownWorker();   // the sim worker is joined before engine and static teardown

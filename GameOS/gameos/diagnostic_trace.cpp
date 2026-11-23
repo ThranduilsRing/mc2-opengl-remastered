@@ -51,6 +51,7 @@ const std::unordered_set<std::string>& knownTags() {
         "HITCH",    // [HITCH v2]: one line per frame over 2x the running median (worst scopes, waitIdle/pipeline/upload/bake/sim-join deltas) plus the first waitIdle callers after mission_ready. Opt-in.
         "BUILD",
         "DEVICE",
+        "EXIT_REASON",  // {"reason":...} once when the frame loop ends (gameosmain.cpp); a trace with no EXIT_REASON ended in a crash or a hard exit.
         "SHADER_COMPILE",
         "CAPTURE_FOCUS",
         "COMPASS_SYNC",   // [COMPASS_SYNC]: per-frame compass camera position/yaw/pitch at the render-time refresh. Opt-in.
@@ -93,6 +94,7 @@ constexpr std::string_view kDefaultTags[] = {
     "CONFIG",
     "BUILD",
     "DEVICE",
+    "EXIT_REASON",
     "SHADER_COMPILE",
 };
 
