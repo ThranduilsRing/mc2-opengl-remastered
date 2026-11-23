@@ -12,6 +12,14 @@ using std::pow;
 HDR_INLINE HDR_REAL hdrDecode(HDR_REAL x) {
     return x <= 0.04045 ? x / 12.92 : pow((x + 0.055) / 1.055, 2.4);
 }
+HDR_INLINE HDR_REAL hdrEncode(HDR_REAL x) {
+    return x <= 0.0031308 ? x * 12.92 : 1.055 * pow(x, 1.0 / 2.4) - 0.055;
+}
+// The UI target stores encoded premultiplied RGB and scene coverage. Composite
+// in SDR's encoded domain before decoding, including RGB with zero coverage.
+HDR_INLINE HDR_REAL hdrUiComposite(HDR_REAL scene, HDR_REAL ui, HDR_REAL alpha) {
+    return hdrDecode(hdrEncode(scene) * (1.0 - alpha) + ui);
+}
 HDR_INLINE HDR_REAL hdrPq(HDR_REAL nits) {
     HDR_REAL p = pow(nits > 0.0 ? nits / 10000.0 : 0.0, 2610.0 / 16384.0);
     return pow((3424.0 / 4096.0 + (2413.0 / 128.0) * p) /

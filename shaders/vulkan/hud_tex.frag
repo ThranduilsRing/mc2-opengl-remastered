@@ -1,4 +1,5 @@
 #version 450
+layout(constant_id = 0) const bool HDR_OPAQUE = false;
 
 layout(std430, binding = 0) readonly buffer HudTexels {
     uint texels[];
@@ -71,4 +72,5 @@ void main()
     } else {
         outColor = vColor * sampleColor;
     }
+    if (HDR_OPAQUE) outColor.a = 1.0;
 }

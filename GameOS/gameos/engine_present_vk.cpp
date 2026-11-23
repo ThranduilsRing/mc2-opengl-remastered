@@ -1123,6 +1123,10 @@ VkRenderPassCreateInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
         st[0].stage = VK_SHADER_STAGE_VERTEX_BIT; st[0].module = s.hudColorVert.get(); st[0].pName = "main";
         st[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         st[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; st[1].module = s.hudColorFrag.get(); st[1].pName = "main";
+        const VkBool32 hdrOpaque = s.hdr && !blend;
+        const VkSpecializationMapEntry opaqueEntry{0, 0, sizeof(hdrOpaque)};
+        const VkSpecializationInfo opaqueSpec{1, &opaqueEntry, sizeof(hdrOpaque), &hdrOpaque};
+        st[1].pSpecializationInfo = &opaqueSpec;
         VkVertexInputBindingDescription bind{};
         bind.binding = 0; bind.stride = sizeof(HudColorGpuVertex); bind.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         VkVertexInputAttributeDescription attr[2]{};
@@ -1144,10 +1148,10 @@ VkRenderPassCreateInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
         cba.blendEnable = blend ? VK_TRUE : VK_FALSE;
         cba.srcColorBlendFactor = srcColor;
         cba.dstColorBlendFactor = dstColor;
-        // VFX-7: pure-additive (ONE,ONE) alpha channel adds too
-        if (dstColor == VK_BLEND_FACTOR_ONE) { /* srcAlpha ONE below, dstAlpha follows color */ }
         cba.colorBlendOp = VK_BLEND_OP_ADD;
-        cba.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        // Additive RGB does not cover the scene in the HDR UI layer.
+        cba.srcAlphaBlendFactor = (s.hdr && dstColor == VK_BLEND_FACTOR_ONE)
+            ? VK_BLEND_FACTOR_ZERO : VK_BLEND_FACTOR_ONE;
         cba.dstAlphaBlendFactor = (dstColor == VK_BLEND_FACTOR_ONE)
             ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
         cba.alphaBlendOp = VK_BLEND_OP_ADD;
@@ -1263,12 +1267,17 @@ bool ensureHudTexObjects(EnginePresentVk::Impl& s) {
     auto makeTexPipe = [&](bool blend, VkBlendFactor srcColor, mc2vk::OwnedPipeline& out,
                            VkBlendFactor dstColor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA) -> bool {
         if (out) return true;
+        const VkBool32 hdrOpaque = s.hdr && !blend;
+        const VkSpecializationMapEntry opaqueEntry{0, 0, sizeof(hdrOpaque)};
+        const VkSpecializationInfo opaqueSpec{1, &opaqueEntry, sizeof(hdrOpaque), &hdrOpaque};
+        st[1].pSpecializationInfo = &opaqueSpec;
         VkPipelineColorBlendAttachmentState cba{};
         cba.blendEnable = blend ? VK_TRUE : VK_FALSE;
         cba.srcColorBlendFactor = srcColor;
         cba.dstColorBlendFactor = dstColor;
         cba.colorBlendOp = VK_BLEND_OP_ADD;
-        cba.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        cba.srcAlphaBlendFactor = (s.hdr && dstColor == VK_BLEND_FACTOR_ONE)
+            ? VK_BLEND_FACTOR_ZERO : VK_BLEND_FACTOR_ONE;
         cba.dstAlphaBlendFactor = (dstColor == VK_BLEND_FACTOR_ONE)
             ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
         cba.alphaBlendOp = VK_BLEND_OP_ADD;
