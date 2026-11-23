@@ -852,7 +852,7 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 				FILE* vf = fopen(vhPath, "rb");
 			// TERRAIN-VALLEY-SMOOTH-1: no baked sidecar (mod / new map) -> synthesize the visual height at load.
 			std::optional<std::vector<float>> synthVh;
-			if (!vf) synthVh = mc2terrain::buildSmoothedVisualHeight(elev.data(), mapSide);
+			if (!vf) synthVh = mc2terrain::buildSmoothedVisualHeight(elev.data(), mapSide, Terrain::waterElevation);
 			const bool synth = synthVh.has_value();
 			if (!vf && !synth)
 			{

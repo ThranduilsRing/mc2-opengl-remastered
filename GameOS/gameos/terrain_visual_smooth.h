@@ -13,7 +13,7 @@
 
 namespace mc2terrain {
 
-inline std::optional<std::vector<float>> buildSmoothedVisualHeight(const float* elev, int mapSide)
+inline std::optional<std::vector<float>> buildSmoothedVisualHeight(const float* elev, int mapSide, float waterElev)
 {
     constexpr int F = 4;                  // visual factor, matches visual_height_4x.r32
     constexpr float kCell = 128.0f;       // world units per coarse cell
@@ -45,6 +45,18 @@ inline std::optional<std::vector<float>> buildSmoothedVisualHeight(const float* 
                     m = std::max(m, cw[static_cast<size_t>(xx) + static_cast<size_t>(yy) * N]);
                 }
             cw2[static_cast<size_t>(x) + static_cast<size_t>(y) * N] = m;
+        }
+    for (int y = 0; y < N; ++y)
+        for (int x = 0; x < N; ++x) {
+            bool isMax = true, isMin = true;
+            for (int dy = -3; dy <= 3; ++dy)
+                for (int dx = -3; dx <= 3; ++dx) {
+                    const float o = E(std::clamp(x + dx, 0, N - 1), std::clamp(y + dy, 0, N - 1));
+                    if (dx == 0 && dy == 0) continue;
+                    isMax = isMax && E(x, y) > o;      // strict: a flat plateau or a cliff foot is not a summit
+                    isMin = isMin && E(x, y) < o;
+                }
+            if (isMax || isMin) cw2[static_cast<size_t>(x) + static_cast<size_t>(y) * N] = 0.0f;   // regional summit/pit stays pinned
         }
 
     // bilinear 4x baseline + bilinear-upsampled weight
@@ -79,6 +91,8 @@ inline std::optional<std::vector<float>> buildSmoothedVisualHeight(const float* 
     for (size_t i = 0; i < h.size(); ++i) {
         const float lim = kFlatDrift + (kCliffDrift - kFlatDrift) * w[i];
         h[i] = base[i] + lim * std::tanh((h[i] - base[i]) / lim);
+        if (base[i] > waterElev) h[i] = std::max(h[i], waterElev + 1.0f);   // never cross the water plane: shores and islands stay put
+        else h[i] = std::min(h[i], waterElev - 1.0f);
     }
     return h;
 }

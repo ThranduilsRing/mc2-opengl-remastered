@@ -13,7 +13,7 @@ TEST_CASE("visual smooth: terraced wall melts, flats stay, gameplay input untouc
         for (int x = 0; x < N; ++x)
             e[static_cast<size_t>(x) + static_cast<size_t>(y) * N] = (x < 10) ? 0.0f : (x < 14 ? 200.0f : 400.0f);  // two 200 wu risers
     const std::vector<float> before = e;
-    const auto built = mc2terrain::buildSmoothedVisualHeight(e.data(), N);
+    const auto built = mc2terrain::buildSmoothedVisualHeight(e.data(), N, -1.0e9f);
     REQUIRE(built.has_value());
     const std::vector<float>& vh = *built;
     CHECK(e == before);
