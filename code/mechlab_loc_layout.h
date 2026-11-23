@@ -72,7 +72,7 @@ inline constexpr Rect summaryRect() { return {324+kDx,404,102,72}; }
 // there, so it gets a header row (heat left, cost right) above the icon (rowDy). The warning sits on the icon.
 inline constexpr float kItemW = 210 - kDx, kItemRowDy = 17;
 struct ItemRects {
-    Rect item, name, icon, iconOutline, cost, costIcon, heat, heatIcon, warn;
+    Rect item, name, icon, iconOutline, cost, costIcon, heat, heatIcon, weight, weightIcon, warn;
     float rowDy = 0;
 };
 inline ItemRects componentItemRects(int cellsW, int cellsH) {
@@ -83,8 +83,10 @@ inline ItemRects componentItemRects(int cellsW, int cellsH) {
     r.icon = {4, 20 + r.rowDy, 48.f * static_cast<float>(cellsW), 32.f * static_cast<float>(cellsH)};
     r.iconOutline = {4, 20 + r.rowDy, r.icon.w + 4, r.icon.h + 4};
     r.cost = {149 - kDx, 18, 37, 15};   r.costIcon = {189 - kDx, 18, 15, 15};
-    if (cellsW > 1) { r.heatIcon = {4, 18, 15, 15};  r.heat = {21, 18, 37, 15}; }
-    else            { r.heatIcon = {189 - kDx, 35, 15, 15};  r.heat = {149 - kDx, 35, 37, 15}; }
+    // Weight sits with the heat: header row (heat, weight, then cost) on wide items, a third row on narrow ones.
+    if (cellsW > 1) { r.heatIcon = {4, 18, 15, 15};  r.heat = {21, 18, 16, 15};  r.weightIcon = {40, 18, 15, 15};  r.weight = {57, 18, 19, 15}; }
+    else            { r.heatIcon = {189 - kDx, 35, 15, 15};  r.heat = {149 - kDx, 35, 37, 15};
+                      r.weightIcon = {189 - kDx, 52, 15, 15};  r.weight = {149 - kDx, 52, 37, 15};  r.item.h = std::max(r.item.h, 69.f); }
     r.warn = {r.icon.x, r.icon.y + 6, r.icon.w, r.icon.h - 6};
     return r;
 }
