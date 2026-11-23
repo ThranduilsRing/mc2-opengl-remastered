@@ -5,8 +5,12 @@
 // A key sets only the channels it names; a colour needs all three components. Anything malformed leaves the mission Fixed
 // (null result plus a message): a bad block never changes a stock look.
 #include <algorithm>
+#include <array>
+#include <expected>
 #include <memory>
+#include <optional>
 #include <string>
+#include <string_view>
 
 #include <nlohmann/json.hpp>
 
@@ -14,50 +18,71 @@
 
 namespace mc2::lighting {
 
-inline std::shared_ptr<const TodCurve> parseTodCurve(const std::string& text, std::string* error = nullptr)
+namespace detail {
+
+inline std::optional<float> jsonNum(const nlohmann::json& o, std::string_view name)
 {
-	auto fail = [&](const char* why) -> std::shared_ptr<const TodCurve> { if (error) *error = why; return nullptr; };
-	if (text.empty()) return nullptr;
-	const auto doc = nlohmann::json::parse(text, nullptr, false);
+	const auto it = o.find(std::string(name));
+	if (it == o.end() || !it->is_number()) return std::nullopt;
+	return it->get<float>();
+}
+
+// Three bytes <base>R/G/B. nullopt + partial=true when only some of the components are present.
+inline std::optional<std::array<uint8_t, 3>> jsonBytes(const nlohmann::json& o, std::string_view base, bool& partial)
+{
+	std::array<uint8_t, 3> out{};
+	int have = 0;
+	const char* suffix[3] = {"R", "G", "B"};
+	for (int i = 0; i < 3; ++i) {
+		if (const auto v = jsonNum(o, std::string(base) + suffix[i])) {
+			out[i] = static_cast<uint8_t>(std::clamp(*v, 0.0f, 255.0f) + 0.5f);
+			++have;
+		}
+	}
+	partial = have != 0 && have != 3;
+	if (have != 3) return std::nullopt;
+	return out;
+}
+
+} // namespace detail
+
+// Empty text: a null curve (no block, Fixed). Malformed: the error message.
+using TodParse = std::expected<std::shared_ptr<const TodCurve>, std::string>;
+inline TodParse parseTodCurve(std::string_view text)
+{
+	auto fail = [](std::string_view why) { return TodParse(std::unexpected(std::string(why))); };
+	if (text.empty()) return TodParse(std::shared_ptr<const TodCurve>());
+	const auto doc = nlohmann::json::parse(text.begin(), text.end(), nullptr, false);
 	if (!doc.is_object()) return fail("timeOfDay: not an object");
 	const auto keys = doc.find("keys");
 	if (keys == doc.end() || !keys->is_array() || keys->empty()) return fail("timeOfDay: no keys array");
-	auto num = [](const nlohmann::json& o, const char* n, float& out) {
-		const auto it = o.find(n);
-		if (it == o.end() || !it->is_number()) return false;
-		out = it->get<float>();
-		return true;
-	};
-	auto byte3 = [&](const nlohmann::json& o, const std::string& base, uint8_t out[3]) {
-		float v[3];
-		const char* suffix[3] = {"R", "G", "B"};
-		int have = 0;
-		for (int i = 0; i < 3; ++i) have += num(o, (base + suffix[i]).c_str(), v[i]) ? 1 : 0;
-		if (have != 3) return have == 0 ? 0 : -1;
-		for (int i = 0; i < 3; ++i) out[i] = static_cast<uint8_t>(std::clamp(v[i], 0.0f, 255.0f) + 0.5f);
-		return 1;
-	};
 	auto curve = std::make_shared<TodCurve>();
 	for (const auto& k : *keys) {
 		if (!k.is_object()) return fail("timeOfDay: key is not an object");
 		TodKey key;
-		if (!num(k, "t", key.t)) return fail("timeOfDay: key without t");
-		if (num(k, "sunPitch", key.pitch)) key.mask |= kPitch;
-		if (num(k, "sunYaw", key.yaw)) key.mask |= kYaw;
-		if (const int r = byte3(k, "sunColor", key.sun); r < 0) return fail("timeOfDay: partial sunColor"); else if (r) key.mask |= kSun;
-		if (const int r = byte3(k, "ambient", key.amb); r < 0) return fail("timeOfDay: partial ambient"); else if (r) key.mask |= kAmb;
-		uint8_t fog[3];
-		if (const int r = byte3(k, "fogColor", fog); r < 0) return fail("timeOfDay: partial fogColor");
-		else if (r) { key.mask |= kFogColor; key.fogColor = (uint32_t(fog[0]) << 16) | (uint32_t(fog[1]) << 8) | fog[2]; }
-		if (num(k, "fogStart", key.fogStart)) key.mask |= kFogStart;
-		if (num(k, "fogFull", key.fogFull)) key.mask |= kFogFull;
+		const auto t = detail::jsonNum(k, "t");
+		if (!t) return fail("timeOfDay: key without t");
+		key.t = *t;
+		if (const auto v = detail::jsonNum(k, "sunPitch")) { key.pitch = *v; key.mask |= kPitch; }
+		if (const auto v = detail::jsonNum(k, "sunYaw")) { key.yaw = *v; key.mask |= kYaw; }
+		bool partial = false;
+		if (const auto v = detail::jsonBytes(k, "sunColor", partial)) { std::copy(v->begin(), v->end(), key.sun); key.mask |= kSun; }
+		else if (partial) return fail("timeOfDay: partial sunColor");
+		if (const auto v = detail::jsonBytes(k, "ambient", partial)) { std::copy(v->begin(), v->end(), key.amb); key.mask |= kAmb; }
+		else if (partial) return fail("timeOfDay: partial ambient");
+		if (const auto v = detail::jsonBytes(k, "fogColor", partial)) {
+			key.fogColor = (static_cast<uint32_t>((*v)[0]) << 16) | (static_cast<uint32_t>((*v)[1]) << 8) | (*v)[2];
+			key.mask |= kFogColor;
+		} else if (partial) return fail("timeOfDay: partial fogColor");
+		if (const auto v = detail::jsonNum(k, "fogStart")) { key.fogStart = *v; key.mask |= kFogStart; }
+		if (const auto v = detail::jsonNum(k, "fogFull")) { key.fogFull = *v; key.mask |= kFogFull; }
 		curve->keys.push_back(key);
 	}
 	std::stable_sort(curve->keys.begin(), curve->keys.end(), [](const TodKey& a, const TodKey& b) { return a.t < b.t; });
 	for (size_t i = 1; i < curve->keys.size(); ++i)
 		if (!(curve->keys[i].t > curve->keys[i - 1].t)) return fail("timeOfDay: key times must be strictly increasing");
-	num(doc, "start", curve->start);
-	num(doc, "rate", curve->rate);
+	curve->start = detail::jsonNum(doc, "start").value_or(0.0f);
+	curve->rate = detail::jsonNum(doc, "rate").value_or(0.0f);
 	curve->start = std::clamp(curve->start, curve->keys.front().t, curve->keys.back().t);
 	return curve;
 }

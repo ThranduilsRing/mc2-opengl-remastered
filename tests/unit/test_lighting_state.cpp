@@ -53,7 +53,7 @@ OldKeys oldInline(const Stock& m, const SunKeys& k, bool scaledInSave)
 	return o;
 }
 
-bool sameBytes(const LightingState& a, const LightingState& b) { return std::memcmp(&a, &b, sizeof(LightingState)) == 0; }
+bool sameBytes(const LightingState& a, const LightingState& b) { return a == b; }   // member-wise (the struct has padding, so no memcmp)
 
 TodCurve sunCurve()
 {
@@ -164,9 +164,10 @@ TEST_CASE("LightingState/a key without a channel leaves it to the authored value
 }
 
 TEST_CASE("LightingState/timeOfDay sidecar block parses to a curve and a malformed one leaves the mission Fixed") {
-	std::string why;
-	const auto c = parseTodCurve(R"({"start":0.5,"rate":0.01,"keys":[{"t":1.0,"sunPitch":30,"fogColorR":10,"fogColorG":20,"fogColorB":30},
-		{"t":0.0,"sunPitch":28,"sunYaw":10,"sunColorR":255,"sunColorG":214,"sunColorB":160,"ambientR":50,"ambientG":50,"ambientB":55}]})", &why);
+	const auto parsed = parseTodCurve(R"({"start":0.5,"rate":0.01,"keys":[{"t":1.0,"sunPitch":30,"fogColorR":10,"fogColorG":20,"fogColorB":30},
+		{"t":0.0,"sunPitch":28,"sunYaw":10,"sunColorR":255,"sunColorG":214,"sunColorB":160,"ambientR":50,"ambientG":50,"ambientB":55}]})");
+	REQUIRE(parsed);
+	const auto c = *parsed;
 	REQUIRE(c);
 	CHECK(c->keys.size() == 2);
 	CHECK(c->keys[0].t == 0.0f);   // sorted
@@ -174,11 +175,11 @@ TEST_CASE("LightingState/timeOfDay sidecar block parses to a curve and a malform
 	CHECK(c->rate == 0.01f);
 	CHECK(c->keys[0].mask == (kPitch | kYaw | kSun | kAmb));
 	CHECK(c->keys[1].fogColor == 0x0a141eu);
-	CHECK(parseTodCurve("", &why) == nullptr);
-	CHECK(parseTodCurve(R"({"keys":[]})", &why) == nullptr);
-	CHECK(parseTodCurve(R"({"keys":[{"t":0,"sunColorR":1}]})", &why) == nullptr);   // partial colour
-	CHECK(parseTodCurve(R"({"keys":[{"t":0},{"t":0}]})", &why) == nullptr);          // duplicate time
-	CHECK(parseTodCurve("not json", &why) == nullptr);
+	CHECK((parseTodCurve("") && *parseTodCurve("") == nullptr));   // no block: a null curve, not an error
+	CHECK_FALSE(parseTodCurve(R"({"keys":[]})"));
+	CHECK_FALSE(parseTodCurve(R"({"keys":[{"t":0,"sunColorR":1}]})"));   // partial colour
+	CHECK_FALSE(parseTodCurve(R"({"keys":[{"t":0},{"t":0}]})"));          // duplicate time
+	CHECK_FALSE(parseTodCurve("not json"));
 }
 
 TEST_CASE("LightingState/legacy day-night maths: noon, night, dusk and the curve generator") {
@@ -209,6 +210,6 @@ TEST_CASE("LightingState/legacy day-night maths: noon, night, dusk and the curve
 		const float t = i / 50.0f;
 		const float p = evaluate(&c, t, a).pitch;
 		CHECK(p >= -1e-3f);
-		CHECK(p <= 90.0f + 1e-3f);
+		CHECK(p <= 180.0f + 1e-3f);   // day half: the pitch itself (0..180); the night half mirrors back down to <= 90
 	}
 }

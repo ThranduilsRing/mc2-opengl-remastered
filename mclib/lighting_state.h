@@ -13,6 +13,7 @@
 #include <cmath>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <vector>
 
 #include "dstd.h"
@@ -68,9 +69,7 @@ inline LightingState applySunKeys(LightingState s, const SunKeys& k, bool ambien
 }
 
 // ---- Time-of-day curve ----
-enum TodChannel : uint32_t {
-	kPitch = 1u << 0, kYaw = 1u << 1, kSun = 1u << 2, kAmb = 1u << 3, kFogColor = 1u << 4, kFogStart = 1u << 5, kFogFull = 1u << 6,
-};
+inline constexpr uint32_t kPitch = 1u << 0, kYaw = 1u << 1, kSun = 1u << 2, kAmb = 1u << 3, kFogColor = 1u << 4, kFogStart = 1u << 5, kFogFull = 1u << 6;   // TodKey::mask bits
 
 struct TodKey {
 	float t = 0.0f;                 // normalized time
@@ -90,8 +89,9 @@ struct TodCurve {
 namespace detail {
 
 // Fritsch-Carlson monotone cubic (PCHIP) through (x[i], y[i]); no overshoot between keys. x strictly increasing, n >= 2.
-inline float pchip(const float* x, const float* y, size_t n, float t)
+inline float pchip(std::span<const float> x, std::span<const float> y, float t)
 {
+	const size_t n = x.size();
 	if (n == 1 || t <= x[0]) return y[0];
 	if (t >= x[n - 1]) return y[n - 1];
 	size_t i = 0;
@@ -151,7 +151,7 @@ inline float scalar(const TodCurve& c, uint32_t bit, float t, float TodKey::*mem
 	size_t n = 0;
 	for (const auto& k : c.keys)
 		if ((k.mask & bit) && n < 64) { x[n] = k.t; y[n] = k.*member; ++n; }
-	return n ? pchip(x, y, n, t) : authored;
+	return n ? pchip(std::span<const float>(x, n), std::span<const float>(y, n), t) : authored;
 }
 
 } // namespace detail

@@ -467,12 +467,12 @@ long Camera::init (FitIniFilePtr cameraFile )
 		// below runs and the members above stand. The authored record (s_authoredSun) stays the pre-key bake reference.
 		todCurve.reset();
 		todT = 0.0f;
-		if (const std::string& block = visualTuning_timeOfDay(); !block.empty())
+		if (const auto& block = visualTuning_timeOfDay(); !block.empty())
 		{
-			std::string why;
-			todCurve = mc2::lighting::parseTodCurve(block, &why);
-			if (!todCurve)
-				mc2::fmt::print_err("[TOD] ignored timeOfDay block: {}\n", why);
+			auto parsed = mc2::lighting::parseTodCurve(block);
+			if (parsed) todCurve = *parsed;
+			if (!parsed)
+				mc2::fmt::print_err("[TOD] ignored timeOfDay block: {}\n", parsed.error());
 			else
 			{
 				todT = todCurve->start;
