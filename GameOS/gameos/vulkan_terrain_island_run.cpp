@@ -1,3 +1,4 @@
+#include "../../mclib/camera.h"  // LightingState before the terrain headers introduce Windows min/max macros.
 #include "Gates/gate_cold.h"
 // VK terrain island: the extern C entry points: enabled / ready / prepare, the frame UBO and light-pool staging, and the per-frame run.
 // Declared in the class headers; shared names in vulkan_terrain_island_internal.h.
@@ -20,7 +21,6 @@
 
 #include "visual_tuning_profile.h"
 #include "mission_environment_gpu.h"
-#include "../../mclib/camera.h"
 #include "vk_water_planar.h"
 #include "water_planar_terrain.h"
 
