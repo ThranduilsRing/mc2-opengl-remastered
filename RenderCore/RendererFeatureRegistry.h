@@ -414,6 +414,10 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "Developer HDR offscreen proof override; harness defaults remain SDR.",
     },
     {
+        "MC2_TRACE_HDR_PROOF_DUMP", "MC2_HDR_PROOF_DUMP", EnvVarKind::Trace, false,
+        "Developer same-frame F16 and undithered output mode 0 dump prefix.",
+    },
+    {
         "MC2_FEATURE_HUD_IMGUI_TABS", "MC2_HUD_IMGUI_TABS", EnvVarKind::Feature, false,
         "IN-MISSION-HUD-IMGUI-SCOPE-1 slice C: data-driven command-bar tab registry (code/hudtabregistry.{h,cpp} + wiring in code/controlgui.cpp).",
     },
