@@ -41,6 +41,7 @@ struct EnginePresentVk::Impl {
     bool hdrCapsLogged = false;
     void* hdrPeakMonitor = nullptr;
     bool hdrPeakCached = false;
+    uint64_t hdrQueryTicks = 0;
     WindowsHdrState windowsHdr = WindowsHdrState::Unknown;
     float hdrDisplayPeak = 1000.0f;
     VkQueue          presentQ  = VK_NULL_HANDLE;

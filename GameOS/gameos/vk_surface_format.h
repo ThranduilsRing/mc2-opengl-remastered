@@ -4,6 +4,11 @@
 
 namespace mc2vk {
 enum class WindowsHdrState { Unknown, Off, On };
+// DXGI_COLOR_SPACE_TYPE values: G2084/P2020 = 12; all other desktop modes stay SDR.
+inline WindowsHdrState windowsHdrFromColorSpace(uint32_t colorSpace, bool querySucceeded) {
+    if (!querySucceeded) return WindowsHdrState::Unknown;
+    return colorSpace == 12 ? WindowsHdrState::On : WindowsHdrState::Off;
+}
 // Auto follows the desktop; a failed/non-Windows query is deliberately SDR.
 inline bool decideHdr(int policy, bool force, bool offscreen, WindowsHdrState windowsHdrActive, bool surfaceOffersHdr) {
     return force || (policy == 0 && !offscreen && windowsHdrActive == WindowsHdrState::On && surfaceOffersHdr);

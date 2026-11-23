@@ -4485,7 +4485,6 @@
     "colorspace_ext",
     "metadata_ext",
     "offscreen",
-    "windows_hdr",
     "active",
     "format",
     "colorspace",
@@ -4493,7 +4492,8 @@
     "would_colorspace",
     "paper_nits",
     "peak_nits",
-    "present_format"
+    "present_format",
+    "windows_hdr"
    ],
    "count": 1
   },

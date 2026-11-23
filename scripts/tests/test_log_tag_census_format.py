@@ -15,7 +15,7 @@ def test_hdr_output_windows_state_key_matches_baseline():
     rows = lc.census_of_text(source)
     hdr = [key for key in rows if key[0] == "HDR_OUTPUT" and "policy" in key[3]]
     assert len(hdr) == 1
-    assert hdr[0][3][4] == "windows_hdr"
+    assert hdr[0][3][-1] == "windows_hdr"
     baseline = json.loads((root / "tests/unit/log_tag_baseline.json").read_text(encoding="utf-8"))
     assert not lc.diff(lc.collections.Counter({hdr[0]: rows[hdr[0]]}),
                        {"emitters": [r for r in baseline["emitters"] if r["tag"] == "HDR_OUTPUT"]})

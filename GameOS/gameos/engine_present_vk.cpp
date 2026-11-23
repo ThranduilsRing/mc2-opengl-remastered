@@ -1,5 +1,6 @@
 #include "../../RenderCore/TextureService.h"
 #include <algorithm>
+#include <atomic>
 #include "engine_present_vk.h"
 #include "hud_command_merge.h"
 #include "hud_texture_mips.h"
@@ -66,6 +67,8 @@ extern uint32_t g_mc2RenderFrame;
 extern uint32_t g_mc2FxFireCaptureFrame;
 
 namespace mc2vk {
+namespace { std::atomic<bool> displayChanged{false}; }
+void notifyDisplayChanged() { displayChanged.store(true, std::memory_order_relaxed); }
 namespace {
 void plog(const char* fmt, ...) {
     mc2::fmt::print_err("[VK_PRESENT] ");
@@ -246,7 +249,8 @@ void queryDisplayHdr(EnginePresentVk::Impl& s, bool refresh = false) {
     const HMONITOR monitor = MonitorFromWindow(wm.info.win.window, MONITOR_DEFAULTTONEAREST);
     if (!refresh && s.hdrPeakCached && s.hdrPeakMonitor == monitor) return;
     s.hdrPeakMonitor = monitor;
-    s.hdrPeakCached = true;
+    s.hdrPeakCached = false;
+    s.hdrQueryTicks = SDL_GetTicks64();
     s.hdrDisplayPeak = 1000.0f;
     s.windowsHdr = WindowsHdrState::Unknown;
     HMODULE dll = LoadLibraryW(L"dxgi.dll");
@@ -267,8 +271,8 @@ void queryDisplayHdr(EnginePresentVk::Impl& s, bool refresh = false) {
                     DXGI_OUTPUT_DESC1 desc{};
                     if (SUCCEEDED(output.As(&output6)) && SUCCEEDED(output6->GetDesc1(&desc)) &&
                         desc.Monitor == monitor) {
-                        s.windowsHdr = desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020
-                            ? WindowsHdrState::On : WindowsHdrState::Off;
+                        s.windowsHdr = windowsHdrFromColorSpace(static_cast<uint32_t>(desc.ColorSpace), true);
+                        s.hdrPeakCached = s.windowsHdr != WindowsHdrState::Unknown;
                         if (std::isfinite(desc.MaxLuminance) && desc.MaxLuminance > 0.0f)
                             s.hdrDisplayPeak = desc.MaxLuminance;
                     }
@@ -287,11 +291,11 @@ void logHdrCaps(EnginePresentVk::Impl& s, const std::vector<VkSurfaceFormatKHR>&
     s.paperNits = options.hdrPaperWhiteNits;
     const float peak = options.hdrPeakNits > 0.0f ? options.hdrPeakNits : s.hdrDisplayPeak;
     s.peakNits = std::max(s.paperNits, peak);
-    mc2::fmt::print_err("[HDR_OUTPUT v1] policy={} colorspace_ext={} metadata_ext={} offscreen={} windows_hdr={} active={} format={} colorspace={} would_format={} would_colorspace={} paper_nits={} peak_nits={} present_format={}\n",
+    mc2::fmt::print_err("[HDR_OUTPUT v1] policy={} colorspace_ext={} metadata_ext={} offscreen={} active={} format={} colorspace={} would_format={} would_colorspace={} paper_nits={} peak_nits={} present_format={} windows_hdr={}\n",
         options.hdrOutput == 0 ? "Auto" : "Off", s.ctx->swapchainColorspaceEnabled(), s.ctx->hdrMetadataEnabled(), s.offscreen,
-        s.windowsHdr == WindowsHdrState::On ? "1" : s.windowsHdr == WindowsHdrState::Off ? "0" : "unknown",
         s.hdr ? "HDR" : "SDR", static_cast<int>(actual.format), static_cast<int>(actual.colorSpace), static_cast<int>(candidate.format), static_cast<int>(candidate.colorSpace),
-        options.hdrPaperWhiteNits, peak, static_cast<int>(s.presentFmt));
+        options.hdrPaperWhiteNits, peak, static_cast<int>(s.presentFmt),
+        s.windowsHdr == WindowsHdrState::On ? "1" : s.windowsHdr == WindowsHdrState::Off ? "0" : "unknown");
 }
 
 bool buildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
@@ -300,7 +304,7 @@ bool buildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
     s.encodeViews.clear();
     const auto& options = mc2::options::current();
     const bool force = mc2::gate::get<"MC2_HDR_FORCE">();
-    queryDisplayHdr(s);
+    queryDisplayHdr(s, true);
     const bool wantHdr = decideHdr(options.hdrOutput, force, s.offscreen || gos_NoUserPresentRequested(), s.windowsHdr, true);
     if (s.offscreen) {   // one placeholder image index, never touched: the tail skips the blit and the present
         s.hdr = wantHdr;
@@ -2562,9 +2566,12 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     }
 
     // WSI results are consumed only after main has transferred the next frame.
-    if (s.lastWsiResult != VK_SUCCESS) {
-        const VkResult previous = std::exchange(s.lastWsiResult, VK_SUCCESS);
-        if (previous == VK_SUBOPTIMAL_KHR || previous == VK_ERROR_OUT_OF_DATE_KHR)
+    const bool changed = displayChanged.exchange(false, std::memory_order_relaxed);
+    if (changed || s.lastWsiResult != VK_SUCCESS) {
+        VkResult previous = std::exchange(s.lastWsiResult, VK_SUCCESS);
+        if (changed && previous == VK_SUCCESS) previous = VK_SUBOPTIMAL_KHR;
+        if (changed || ((previous == VK_SUBOPTIMAL_KHR || previous == VK_ERROR_OUT_OF_DATE_KHR) &&
+                        SDL_GetTicks64() - s.hdrQueryTicks >= 500))
             queryDisplayHdr(s, true);   // HDR toggle: refresh desktop mode and luminance before either rebuild path.
         // vk-present-instance 2a: SUBOPTIMAL rebuilds only when the surface extent or transform differs from the chain's; otherwise the
         // chain is still the best the surface offers and a rebuild would loop (a drain per frame). Logged once.

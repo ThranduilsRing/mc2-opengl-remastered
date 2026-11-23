@@ -10,6 +10,13 @@ const VkSurfaceFormatKHR sdr{VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLI
 const VkSurfaceFormatKHR hdr{VK_FORMAT_A2B10G10R10_UNORM_PACK32, VK_COLOR_SPACE_HDR10_ST2084_EXT};
 const VkSurfaceFormatKHR scrgb{VK_FORMAT_R16G16B16A16_SFLOAT, VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT};
 }
+TEST_CASE("HDR DXGI colorspace mapping preserves desktop policy and query errors") {
+    using namespace mc2vk;
+    CHECK(windowsHdrFromColorSpace(12, true) == WindowsHdrState::On); // G2084/P2020
+    CHECK(windowsHdrFromColorSpace(0, true) == WindowsHdrState::Off); // G22/P709
+    CHECK(windowsHdrFromColorSpace(1, true) == WindowsHdrState::Off); // G10/P709 (ACM)
+    CHECK(windowsHdrFromColorSpace(12, false) == WindowsHdrState::Unknown);
+}
 TEST_CASE("HDR Auto follows Windows active state and fails safe") {
     using namespace mc2vk;
     CHECK_FALSE(decideHdr(0, false, false, WindowsHdrState::Off, true)); // owner's HDR-capable SDR desktop

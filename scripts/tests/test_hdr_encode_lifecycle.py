@@ -57,14 +57,27 @@ def test_windows_hdr_query_is_shared_cached_and_refreshed_at_toggle():
     assert "!refresh && s.hdrPeakCached && s.hdrPeakMonitor == monitor" in query
     assert "s.windowsHdr = WindowsHdrState::Unknown" in query
     assert "desc.Monitor == monitor" in query
-    assert "desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020" in query
+    assert "windowsHdrFromColorSpace(static_cast<uint32_t>(desc.ColorSpace), true)" in query
+    assert "s.hdrPeakCached = s.windowsHdr != WindowsHdrState::Unknown" in query
     assert source.count("GetDesc1(") == 1
     build = body(source, "bool buildSwapchain(")
-    assert build.index("queryDisplayHdr(s)") < build.index("decideHdr(")
+    assert build.index("queryDisplayHdr(s, true)") < build.index("decideHdr(")
     assert "s.windowsHdr, surfaceOffersHdr" in build
     frame = body(source, "bool EnginePresentVk::presentFrameBody(")
-    assert "if (previous == VK_SUBOPTIMAL_KHR || previous == VK_ERROR_OUT_OF_DATE_KHR)\n            queryDisplayHdr(s, true)" in frame
+    assert "displayChanged.exchange(false, std::memory_order_relaxed)" in frame
+    assert "SDL_GetTicks64() - s.hdrQueryTicks >= 500" in frame
+    assert "if (changed && previous == VK_SUCCESS) previous = VK_SUBOPTIMAL_KHR" in frame
     assert frame.index("queryDisplayHdr(s, true)") < frame.index("decideHdr(")
     assert frame.count("queryDisplayHdr(") == 1
     assert "s.sharedImg.format != s.presentFmt" in frame
     assert "!buildSharedImage(s, drawableW, drawableH, reason) || !prewarmPipelines()" in frame
+
+
+def test_display_notifications_reach_worker_before_focus_filter():
+    source = (SOURCE.parent / "gameosmain.cpp").read_text(encoding="utf-8")
+    pump = body(source, "void process_events(")
+    for trigger in ("SDL_DISPLAYEVENT", "SDL_WINDOWEVENT_MOVED", "SDL_WINDOWEVENT_DISPLAY_CHANGED"):
+        assert trigger in pump
+    assert "SDL_SetWindowsMessageHook(displayMessageHook, nullptr)" in pump
+    assert "if (message == WM_DISPLAYCHANGE) mc2vk::notifyDisplayChanged()" in source
+    assert pump.index("mc2vk::notifyDisplayChanged()") < pump.index("if (g_focus_lost")
