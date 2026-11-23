@@ -549,6 +549,7 @@ void Mission::loadWeatherCamera(MissionLoadFrame& f) {
 	gosASSERT(eye != nullptr);
 
 	mc2SetMissionLightProfileName(missionFileName);   // LOCAL-LIGHTS-4: the save's MissionName (authored mission)
+	eye->allowTimeOfDay = true;   // as on the fresh-load path (mission_init_load.cpp): a sidecar timeOfDay curve must survive a quickload
 	result = eye->init(&missionFile);
 	gosASSERT(result == NO_ERR);
 	eye->inMovieMode = false;
