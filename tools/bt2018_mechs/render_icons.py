@@ -122,6 +122,15 @@ def load_parts(glb: Path):
     return parts
 
 
+def _is_foot(name: str):
+    n = name.lower().split("_", 1)[-1]
+    return len(n) > 1 and n[:1] in "lr" and ("foot" in n[1:] or "toe" in n[1:])
+
+
+def _is_tgl(parts):
+    return bool(parts) and all(len(pt) == 4 for pt in parts)
+
+
 def region_of_tgl(node: str):
     """MC2/MCO shape node (ra_luarm, ra_llleg, ra_lfoot, joint_lbtoe, ra_torso2, ra_hip...) -> HUD region."""
     n = node.lower().split("_", 1)[-1]
@@ -137,6 +146,7 @@ def region_of_tgl(node: str):
     return 6
 
 
+SOLE_MIN, SOLE_THICK, ELONGATED = 0.15, 0.05, 1.6   # foot plate width / thickness (share of figure height); limb = taller than 1.6x its width
 LIMB_MIN = {"leg": 0.13, "arm": 0.10}   # minimum limb part width as a share of figure height (.tgl mechs only)
 
 
@@ -145,7 +155,7 @@ def load_parts_tgl(tgl: Path):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
     from tools.assets.common import parse_tgl
     mesh = parse_tgl(Path(tgl).read_bytes())
-    parts, rotors, at = [], set(), 0
+    parts, rotors, at, node_names = [], set(), 0, {}
     for index, node in enumerate(mesh.nodes):
         if not node["triangles"] or node["helper"]:
             continue
@@ -153,16 +163,29 @@ def load_parts_tgl(tgl: Path):
         at += 3 * node["triangles"]
         if any(k in node["name"].lower() for k in ("rotor", "blade", "prop")):
             rotors.add(index)
+        node_names[index] = node["name"]
         parts.append((region_of_tgl(node["name"]), tri, np.arange(len(tri)).reshape(-1, 3), index))
     if parts and any(region in (0, 1) for region, *_ in parts):
         # Low-poly MCO limbs come out as 1-2 px twigs; stock legs are 5-8 px plates of a 40x48 cell. Widen each thin
         # limb part about its own centre to a share of the figure height (legs ~6 px, arms ~5 px).
+        # Round parts (shoulder discs, pods, hips) are never widened: that would stretch a circle sideways. Feet become flat
+        # sole plates on the ground line.
         allp = np.concatenate([p for _, p, *_ in parts])
-        tall = float(allp[:, 1].max() - allp[:, 1].min())
+        tall, ground = float(allp[:, 1].max() - allp[:, 1].min()), float(allp[:, 1].min())
         for k, (region, p, tris, index) in enumerate(parts):
             want = {0: LIMB_MIN["leg"], 1: LIMB_MIN["leg"], 2: LIMB_MIN["arm"], 3: LIMB_MIN["arm"]}.get(region, 0) * tall
             c, width = (p.min(0) + p.max(0)) / 2, float(p[:, 0].max() - p[:, 0].min())
-            if want and width < want:
+            high = float(p[:, 1].max() - p[:, 1].min())
+            if _is_foot(node_names.get(index, "")) and region in (0, 1):
+                f = max(1.0, min(SOLE_MIN * tall / max(width, 1e-6), 4.0))
+                q = (p - c) * [f, 1, 1] + c
+                q[q[:, 1] < p[:, 1].min() + 0.5 * max(high, SOLE_THICK * tall), 1] = ground    # flat bottom on the ground
+                q[:, 1] = np.maximum(q[:, 1], ground)
+                top = q[:, 1].max()
+                if top - ground < SOLE_THICK * tall:
+                    q[q[:, 1] == top, 1] = ground + SOLE_THICK * tall
+                parts[k] = (region, q, tris, index)
+            elif want and width < want and high >= ELONGATED * width:
                 f = min(want / max(width, 1e-6), 4.0)
                 parts[k] = (region, (p - c) * [f, 1, min(f, 2.0)] + c, tris, index)
     if not any(region in (0, 1) for region, *_ in parts):            # no legs: a vehicle, drawn from above, nose up
@@ -194,7 +217,7 @@ MIN_PLATE = 24                           # parts smaller than this many cell pix
 MIRROR_REGION = np.array([1, 0, 3, 2, 5, 4, 6, 7])
 
 
-def _hud_render(parts, w, h, rear: bool):
+def _hud_render(parts, w, h, rear: bool, face: bool = False):
     """Stock-style HUD cell (measured on stock atlas/catapult/bushwacker/jenner at 40x48).
 
     Stock cells are opaque black with the mech as plated panels: a 1 px black gap between panels
@@ -222,7 +245,8 @@ def _hud_render(parts, w, h, rear: bool):
     panel = ids[np.argmax(np.stack([count(pb, i) for i in ids]), 0)]
     # Bolts, vents and other parts smaller than a few cell pixels read as surface detail, not plates.
     sizes = {int(i): int((solid & (panel == i)).sum()) for i in ids}
-    panel = np.where(np.vectorize(lambda i: sizes.get(int(i), 0) >= MIN_PLATE)(panel), panel, -1 - region)
+    heads = {pt[3] if len(pt) == 4 else i for i, pt in enumerate(parts) if pt[0] == 7} if face else set()   # the head is its own plate
+    panel = np.where(np.vectorize(lambda i: int(i) in heads or sizes.get(int(i), 0) >= MIN_PLATE)(panel), panel, -1 - region)
     # Interpenetrating parts flicker between owners pixel to pixel: each pixel takes its 3x3 majority owner.
     pp = np.pad(np.where(solid, panel, -99), 1, constant_values=-99)
     for y, x in zip(*np.nonzero(solid)):
@@ -275,9 +299,40 @@ def _hud_render(parts, w, h, rear: bool):
     nb = np.stack([sp[:-2, 1:-1], sp[2:, 1:-1], sp[1:-1, :-2], sp[1:-1, 2:]])
     lone = body & (nb[0] >= 0) & (nb == nb[0]).all(0) & (nb[0] != shade)
     shade = np.where(lone, nb[0], shade)
+    if face and not rear:
+        shade = _face(body, region, shade)
     for y, x in zip(*np.nonzero(body)):
         img[y, x, :3] = region_color(int(region[y, x]), int(shade[y, x]))
     return img
+
+
+def _face(body, region, shade):
+    """The mech's face as stock draws it: head/canopy in the lightest tone with a dark visor slot.
+    No head part: the cockpit window at the top centre of the torso."""
+    shade = shade.copy()
+    head = body & (region == 7)
+    if head.any():
+        ys, xs = np.nonzero(head)
+        shade[head] = 0
+        if ys.max() - ys.min() >= 3 and xs.max() - xs.min() >= 4:
+            row = ys.min() + int(round(0.6 * (ys.max() - ys.min())))
+            slot = head.copy()
+            slot[:row], slot[row + 1:] = False, False
+            slot[:, [xs.min(), xs.max()]] = False
+            shade[slot] = 2
+        return shade
+    torso = body & (region == 6)
+    if not torso.any():
+        return shade
+    ys, xs = np.nonzero(torso)
+    mid, top = (xs.min() + xs.max()) / 2, ys.min()
+    win = np.zeros_like(body)
+    half = max(2, int(round(0.12 * body.shape[1])))
+    win[top + 1:top + 4, int(mid - half + 0.5):int(mid + half + 0.5)] = True
+    win &= torso
+    shade[win] = 0
+    shade[top + 3, :][win[top + 3]] = 2
+    return shade
 
 
 def _raster(parts, w, h, rear: bool):
@@ -288,12 +343,20 @@ def _raster(parts, w, h, rear: bool):
     sx = -1.0 if not rear else 1.0
     m = SS // 2                                          # half a cell pixel of margin; the figure stands ~h-1 tall like stock
     scale_y = (h - 2 * m) / max(hi[1] - lo[1], 1e-6)
-    scale = min(scale_y, (w - 2 * m) / max(hi[0] - lo[0], 1e-6))
-    if not any(pt[0] in (0, 1) for pt in parts):
-        scale_y = scale
-    elif scale < 0.75 * scale_y:                         # a wide mech is narrowed a little to keep stock's full height
-        scale_y = scale / 0.75
+    legs = any(pt[0] in (0, 1) for pt in parts)
+    tgl = _is_tgl(parts)
     cx, cy = (hi[0] + lo[0]) / 2, (hi[1] + lo[1]) / 2
+    if tgl and legs:                                     # .tgl mechs: centre line x=0, one uniform scale (circles stay round), feet on the bottom
+        half = max(abs(hi[0]), abs(lo[0]))
+        scale = min(scale_y, (w - 2 * m) / max(2 * half, 1e-6))
+        scale_y, cx = scale, 0.0
+        cy = lo[1] + (h - 2 * m) / 2 / scale_y
+    else:
+        scale = min(scale_y, (w - 2 * m) / max(hi[0] - lo[0], 1e-6))
+        if not legs:
+            scale_y = scale
+        elif scale < 0.75 * scale_y:                     # a wide mech is narrowed a little to keep stock's full height
+            scale_y = scale / 0.75
     zbuf = np.full((h, w), -np.inf)
     lam = np.zeros((h, w))
     reg = np.full((h, w), -1, dtype=int)
@@ -397,9 +460,11 @@ def render(parts, w, h, rear: bool, mode: str):
     return img
 
 
-def hud_strip(parts, w, h):
-    front = render(parts, w, h, rear=False, mode="hud")
-    back = render(parts, w, h, rear=True, mode="hud")
+def hud_strip(parts, w, h, face=None):
+    """face None: on for .tgl mechs (MCO cook), off for the accepted GLB (BT2018) path."""
+    face = _is_tgl(parts) if face is None else face
+    front = _hud_render(parts, w, h, False, face)
+    back = _hud_render(parts, w, h, True, face)
     return np.concatenate([front, back], axis=0)
 
 
