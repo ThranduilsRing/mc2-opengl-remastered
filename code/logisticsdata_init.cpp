@@ -6,6 +6,7 @@
 #include "logisticsdata_internal.h"
 #include "mc2fmt.h"
 #include "content_error.h"
+#include "logistics_csv.h"
 #include "../GameOS/gameos/diagnostic_trace.h"
 #include "package_chassis.h"
 #include "unit_display_name.h"
@@ -363,36 +364,35 @@ mc2::prewarm::Sequence LogisticsData::loadPilots()
 	BYTE pilotFileName[256];
 
 	int id = 1;
+	int skipped = 0;
 
-	while( true )
+	while( !pilotFile.eof() )
 	{
-		int bytesRead = pilotFile.readLine( pilotFileName, 256 );
-		
-		if ( bytesRead < 2 )
-			break;
+		pilotFile.readLine( pilotFileName, 255 );
+		char* name = logistics_csv::pilotFileName(reinterpret_cast<char*>(pilotFileName));
+		if ( !*name )
+		{
+			++skipped;
+			continue;
+		}
 
 		LogisticsPilot tmpPilot;
 		pilots.push_back( std::move(tmpPilot) );
 		LogisticsPilot& pilot = pilots.back();
 		pilot.id = id;
 
-		if ( !pilot.init( reinterpret_cast<char*>(pilotFileName) ) )
+		if ( !pilot.init( name ) )
+		{
 			pilots.pop_back();
+			++skipped;
+		}
 
 		id++;
 		co_yield 0;
 
 	}
 
-	// PILOTS-ROSTER diagnostic (MC2_LOG_PILOTS=1): how many pilots loaded + the
-	// roster path. Stock ~52; an MC2X/MCO compat roster (mc2x-compat/mco-compat
-	// data/objects/pilots.csv, VFS-overlaid) should report ~100+. Confirms whether
-	// the campaign/compat roster won over base stock.
-	if ( false )
-	{
-		mc2::fmt::print_out("[PILOTS] loaded={:d} roster={}\n", mc2::fmt::as_i32(static_cast<int>(std::ssize(pilots))), mc2::fmt::safe(pilotPath));
-		fflush(stdout);
-	}
+	mc2::fmt::print_out("[PILOTS] loaded={:d} skipped={:d} roster={}\n", mc2::fmt::as_i32(static_cast<int>(std::ssize(pilots))), mc2::fmt::as_i32(skipped), mc2::fmt::safe(pilotPath));
 }
 
 // Reads the "File Name" cell; false (row to skip) when it is >= 256 chars, since copyString then leaves the buffer unterminated.
