@@ -84,3 +84,23 @@ TEST_CASE("loading pump: MAIN_STALL watch reports one begin and one end per stal
     CHECK(w.step(20) == E::None);
     CHECK(w.step(5000) == E::Begin);   // a later stall is a new begin
 }
+
+#include "present_thread_wait.h"
+TEST_CASE("loading pump: GPU and present wait service prevents false MAIN_STALL") {
+    using E = mc2::loadpump::StallEdge;
+    mc2::loadpump::StallWatch watch;
+    uint64_t now = 0, last = 0;
+    bool dispatched = false;
+    auto pump = [&] { dispatched = true; };
+    auto stamp = [&] { CHECK(dispatched); last = now; dispatched = false; };
+    for (now = 50; now <= 10000; now += 50) {
+        mc2vk::present_thread::detail::serviceWindow(true, pump, stamp);
+        CHECK(watch.step(now - last) == E::None);
+    }
+    now = last + 4000;
+    mc2vk::present_thread::detail::serviceWindow(false, pump, stamp);
+    CHECK_FALSE(dispatched);
+    CHECK(watch.step(now - last) == E::Begin);
+    mc2vk::present_thread::detail::serviceWindow(true, pump, stamp);
+    CHECK(watch.step(now - last) == E::End);
+}

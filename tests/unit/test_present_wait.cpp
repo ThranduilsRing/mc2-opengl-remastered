@@ -240,3 +240,16 @@ TEST_CASE("present pacing: a late frame never earns a short interval for the nex
     // Uncapped: next start is now.
     CHECK(d::presentNotBefore(t, t + 3ms, 0) == t + 3ms);
 }
+
+TEST_CASE("present acquire: bounded timeout and cumulative drop reports survive repeated occlusion") {
+    CHECK(d::acquireTimeoutNs == 250000000);
+    uint64_t dropped = 0;
+    int reports = 0;
+    for (uint64_t i = 1; i <= 65; ++i) {
+        const bool report = d::noteAcquireDrop(dropped);
+        CHECK(dropped == i);
+        CHECK(report == (i == 1 || i % 16 == 0));
+        if (report) ++reports;
+    }
+    CHECK(reports == 5);
+}

@@ -984,7 +984,7 @@ mc2_height_slice(terrain_gesture_status mclib/bdactor.cpp "\t// Check if object 
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/terrain_gesture_status.inc" CONTENT "${terrain_gesture_status}")
 set_source_files_properties(test_terrain_dirty_queue.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 # Header-only economy rule helpers (code/economy_rules.h); before the selected-tier snapshot below so `--only` can select it.
-target_sources(mc2_tests PRIVATE test_economy_rules.cpp)
+target_sources(mc2_tests PRIVATE test_economy_rules.cpp test_screen_layer_order.cpp)
 
 # Keep all production objects in the full tier; scoped links extract only needed
 # objects from the same archive. Stubs (including allocation overrides) are
