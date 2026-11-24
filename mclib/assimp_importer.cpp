@@ -905,7 +905,9 @@ struct ImportedAnimEntry {
     std::vector<unsigned char> perVertexBone;   // per type-vertex bone index (0..N-1)
     std::vector<aiMatrix4x4>   invMWrest;        // (A2·S·R_i)^-1 per bone (A2 = VBO axis)
     aiMatrix4x4                AS1;              // A1·S (Z-up clip-side axis · scale)
-    std::vector<aiVector3D>    boneLowest;       // per-bone lowest rest VBO vertex (model space)
+    // Per-bone extreme rest VBO vertices along 26 directions (model space): the lowest
+    // point of a rigid part under any rotation, for grounding fallen poses.
+    std::vector<std::vector<aiVector3D>> boneSupport;
     float                      restLift = 0.0f;  // static ground lift from REST pose (steady torso)
     mc2ground::Rig              grounding;
     // Per-frame state: GPU = one ActorAnimState per actor instance; CPU = one shared.
@@ -1016,6 +1018,18 @@ std::optional<float> clipDurationSec(const aiScene* scene, std::string_view clip
 
 // 1C/P9: per-frame clip choice lives in mclib/mech_clip_state.h (mc2clip::select): gesture
 // state + measured speed -> clip, one-shot vs loop, stride-matched locomotion.
+
+// Lift that puts the lowest point of the posed mech on the ground (model space, up = y).
+float groundLift(const ImportedAnimEntry& e, const std::vector<mc2skel::GpuBone>& globals) {
+    float lowestY = 1e30f;
+    const size_t n = std::min({globals.size(), e.invMWrest.size(), e.boneSupport.size()});
+    for (size_t i = 0; i < n; ++i) {
+        if (e.boneSupport[i].empty()) continue;
+        const aiMatrix4x4 D = (e.AS1 * rowMajorToAi(globals[i].m)) * e.invMWrest[i];
+        for (const aiVector3D& v : e.boneSupport[i]) lowestY = std::min(lowestY, (D * v).y);
+    }
+    return lowestY < 1e29f ? -lowestY : 0.0f;
+}
 
 // P9: planted-foot speed of each locomotion clip, measured once at import. A clip plays in
 // place, so while a foot is planted it slides backwards under the root at exactly the ground
@@ -1270,32 +1284,37 @@ void RegisterImportedAnim(mc2::czstring path, TG_TypeMultiShape* out, const Skel
             for (unsigned v = 0; v < pr.vCount && static_cast<int>((pr.vOff + v)) < nv; ++v)
                 e.perVertexBone[pr.vOff + v] = static_cast<unsigned char>((bi & 0xFF));
         }
-        // Per-frame foot grounding: cache each bone's lowest rest VBO vertex (model
-        // space, world-up = Stuff.y). Each frame the tick transforms these by the bone
-        // model delta and lifts the placed mech so the lowest one sits on the terrain
-        // — so the walk stride's planted foot never buries (rest-only lift would).
+        // Ground support: each bone's extreme rest VBO vertices (model space,
+        // world-up = Stuff.y) along 26 directions, so the lowest point of any rotated
+        // rigid part is one of them.
         {
-            e.boneLowest.assign(bake.rest.size(), aiVector3D(0, 1e30f, 0));
+            std::vector<aiVector3D> dirs;
+            for (float x = -1; x <= 1; ++x)
+                for (float y = -1; y <= 1; ++y)
+                    for (float z = -1; z <= 1; ++z)
+                        if (x != 0 || y != 0 || z != 0) dirs.emplace_back(x, y, z);
+            std::vector<std::vector<float>> best(bake.rest.size(), std::vector<float>(dirs.size(), -1e30f));
+            e.boneSupport.assign(bake.rest.size(), std::vector<aiVector3D>(dirs.size()));
             const TG_TypeVertex* tv = e.shape->GetTypeVertices();
             const int ntv = e.shape->GetNumTypeVertices();
             for (int vi = 0; vi < ntv && vi < static_cast<int>(e.perVertexBone.size()); ++vi) {
-                const int b = e.perVertexBone[vi];
-                if (b >= 0 && b < static_cast<int>(e.boneLowest.size()) && tv[vi].position.y < e.boneLowest[b].y)
-                    e.boneLowest[b] = aiVector3D(tv[vi].position.x, tv[vi].position.y, tv[vi].position.z);
+                const size_t b = e.perVertexBone[vi];
+                if (b >= e.boneSupport.size()) continue;
+                const aiVector3D p(tv[vi].position.x, tv[vi].position.y, tv[vi].position.z);
+                for (size_t d = 0; d < dirs.size(); ++d) {
+                    const float reach = p * dirs[d];
+                    if (reach <= best[b][d]) continue;
+                    best[b][d] = reach;
+                    e.boneSupport[b][d] = p;  // the extreme vertex itself, not just its reach
+                }
             }
+            for (size_t b = 0; b < best.size(); ++b)
+                if (best[b][0] < -1e29f) e.boneSupport[b].clear();  // bone owns no vertices
             // Static ground lift from the REST pose. Using the rest lift every frame
             // (instead of recomputing the lowest animated vertex) keeps the torso
             // vertically steady — the per-frame lowest oscillates as legs articulate,
             // which caused a per-step "jack-in-a-box" bob. See buildGpuModelDelta.
-            float lowestY = 1e30f;
-            for (size_t i = 0; i < bake.rest.size() && i < e.invMWrest.size(); ++i) {
-                aiMatrix4x4 D = (e.AS1 * rowMajorToAi(bake.rest[i].m)) * e.invMWrest[i];
-                if (i < e.boneLowest.size()) {
-                    const aiVector3D p = D * e.boneLowest[i];
-                    lowestY = std::min(lowestY, p.y);
-                }
-            }
-            e.restLift = (lowestY < 1e29f) ? -lowestY : 0.0f;
+            e.restLift = groundLift(e, bake.rest);
         }
         measureClipStrides(e);
         MECH_SKEL_TRACE("file='%s' 1B-GPU registered joints=%zu verts=%d axis=%d (bbox y[%.2f..%.2f])",
@@ -1677,19 +1696,17 @@ void buildGpuModelDelta(const ImportedAnimEntry& e, ActorAnimState& s,
                         const std::vector<mc2skel::GpuBone>& globals) {
     mc2mechanim::sizeModelDelta(s.modelDelta, e.invMWrest.size());
     const size_t n = (globals.size() < e.invMWrest.size()) ? globals.size() : e.invMWrest.size();
-    // Default: static rest lift (steady torso). MC2_MECH_IMPORT_DYNAMIC_LIFT=1 restores
-    // the old per-frame lowest-vertex lift (follows ground but bobs each step).
-    const bool dynamicLift = false;
-    float lowestY = 1e30f;
     for (size_t i = 0; i < n; ++i) {
         aiMatrix4x4 D = (e.AS1 * rowMajorToAi(globals[i].m)) * e.invMWrest[i];
         aiToRowMajor(D, &s.modelDelta[i * 16]);
-        if (dynamicLift && i < e.boneLowest.size()) {
-            const aiVector3D p = D * e.boneLowest[i];
-            lowestY = std::min(lowestY, p.y);
-        }
     }
-    s.gpuLift = dynamicLift ? ((lowestY < 1e29f) ? -lowestY : 0.0f) : e.restLift;
+    // Upright clips keep the static rest lift (a per-frame lowest point bobs each step).
+    // Falls are played rotation-only, which drops their pelvis descent, so they are
+    // grounded per frame instead: BT lowers the pelvis at runtime with GrounderIK too.
+    const std::string_view clip = s.activeClip;
+    const bool fallen = clip.starts_with("atlas_death") || clip.starts_with("atlas_downed") ||
+                        clip == "atlas_hitReactKnockdownInpl";
+    s.gpuLift = fallen ? groundLift(e, globals) : e.restLift;
 }
 } // namespace
 

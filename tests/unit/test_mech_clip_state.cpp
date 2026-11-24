@@ -172,6 +172,38 @@ TEST_CASE("imported grounding: soles contact, reverse knees and torso motion sur
     }
 }
 
+TEST_CASE("imported grounding: a toe-down swing foot keeps its sole height and knee side") {
+    mc2ground::Rig rig;
+    std::vector<glm::mat4> pose(6, glm::mat4(1));
+    const glm::vec3 knees[2] = {{-0.3f, 1, -0.6f}, {0.3f, 1.2f, -0.7f}};
+    const glm::vec3 ankles[2] = {{-0.3f, 0.2f, 0}, {0.3f, 0.9f, 0.3f}};
+    for (int side = 0; side < 2; ++side) {
+        auto& leg = rig.legs[side];
+        leg.thigh = side * 3; leg.calf = side * 3 + 1; leg.foot = side * 3 + 2;
+        pose[leg.thigh][3] = glm::vec4(side ? 0.3f : -0.3f, 2, 0, 1);
+        pose[leg.calf][3] = glm::vec4(knees[side], 1);
+        if (side) pose[leg.foot] = mc2ground::columnRotation(glm::angleAxis(1.2f, glm::vec3(1, 0, 0)));
+        pose[leg.foot][3] = glm::vec4(ankles[side], 1);
+        for (float px : {-0.15f, 0.15f})
+            for (float pz : {-0.3f, 0.3f}) leg.sole.push_back({leg.foot, {px, -0.1f, pz}});
+    }
+    auto sole = [&](const auto& leg, const std::vector<glm::mat4>& p) {
+        float y = 100;
+        for (const auto& s : leg.sole) y = std::min(y, (p[s.bone] * glm::vec4(s.local, 1)).y);
+        return y;
+    };
+    auto plane = [](const std::vector<glm::mat4>& p, const mc2ground::Leg& leg) {
+        const glm::vec3 h(p[leg.thigh][3]), k(p[leg.calf][3]), a(p[leg.foot][3]);
+        return glm::cross(k - h, a - k);
+    };
+    const auto original = pose;
+    const float authoredSwing = sole(rig.legs[1], original) - sole(rig.legs[0], original);
+    mc2ground::solve(rig, pose);
+    CHECK(sole(rig.legs[0], pose) == doctest::Approx(0).epsilon(1e-4));
+    CHECK(sole(rig.legs[1], pose) == doctest::Approx(authoredSwing).epsilon(1e-4));
+    for (const auto& leg : rig.legs) CHECK(glm::dot(plane(original, leg), plane(pose, leg)) > 0);
+}
+
 TEST_CASE("imported grounding: a stock rig without imported soles stays byte-identical") {
     std::vector<glm::mat4> pose{glm::mat4(2)};
     const auto original = pose;
