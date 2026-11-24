@@ -340,7 +340,7 @@ bool apply(aObject& widget, const aObject& source, long index, const Subject& su
         if ((icon = byChassis(base)) || (icon = byChassis(query.name))) pick.hud = icon;
     }
     if (!icon) {
-        if (const auto [position, inserted] = warned.insert("no-icon:" + query.stem); inserted)
+        if (const auto [position, inserted] = warned.insert("no-icon:" + query.stem); inserted && mc2_diag::tagRequested("ICON_REGISTRY"))
             mc2::fmt::print_err("[ICON_REGISTRY] no art for chassis {} index={} (class fallback)\n", query.stem, index);
         // No source has art for this chassis: a stock silhouette of its class (copter, tank or weight class), never the
         // missing-texture checkerboard and never a mech standing in for a vehicle.
