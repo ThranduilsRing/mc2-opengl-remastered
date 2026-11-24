@@ -23,6 +23,7 @@
 #include "mission_environment_gpu.h"
 #include "vk_water_planar.h"
 #include "water_planar_terrain.h"
+#include "gos_vegetation.h"
 
 
 // ===========================================================================
@@ -309,6 +310,7 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     std::memcpy(u.tintSnow,     feed.tintSnow,     sizeof(u.tintSnow));
     u.tintStrengthScale    = feed.tintStrengthScale;
     u.snowBrightnessDampen = feed.snowBrightnessDampen;
+    u.groundMottleOn = GosVegetation::isEnabled() && GosVegetation::instanceCount() != 0 ? 1 : 0;
     u.edgeFeatherStrength  = feed.edgeFeatherStrength;
     u.shorelineOn           = feed.shorelineOn ? 1 : 0;
     u.shorelineHasMask      = s->shoreMaskReady ? 1 : 0;
