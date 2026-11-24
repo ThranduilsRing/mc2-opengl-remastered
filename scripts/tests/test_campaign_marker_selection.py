@@ -72,7 +72,7 @@ struct LogisticsScreen {
     // The actual defs page dispatches handleMessage; this base handler is inert.
     virtual int handleMessage(unsigned long, unsigned long) { return 0; }
     Button* getButton(unsigned long) { return &buttons[0]; }
-    void setDefsElementText(const char*, const char*) {}
+    void setDefsElementText(const std::string&, const std::string&) {}
     void update() {
         for (int i = 0; i < buttonCount; ++i)
             if (input.clicked && buttons[i].pointInside(input.x,input.y) && buttons[i].enabled) {
@@ -91,6 +91,7 @@ struct Data {
 } data;
 Data* Data::instance = &data;
 using LogisticsData = Data;
+static std::string operationPageKey() { return "game.mcl_cm_op1_2"; }
 struct Sound { void playDigitalMusic(int) {} } sound, *soundSystem = &sound;
 struct Movie { void stop() {} void update() {} void restart() {} void pause(int) {} };
 struct List { void update() {} };
