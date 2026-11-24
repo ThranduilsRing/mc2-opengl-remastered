@@ -189,7 +189,8 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None, attachments=(), 
     rigid_world = {}
     for i in range(len(nodes)):
         rigid_world[i] = rigid(full_world(i))
-    for i, n in enumerate(nodes):
+    scaled = any(abs(s - 1) > 1e-4 for n in nodes for s in n.get("scale", [1, 1, 1]))
+    for i, n in enumerate(nodes if scaled else []):   # unit-scale skeletons stay byte-identical
         local = (np.linalg.inv(rigid_world[parent[i]]) if i in parent else np.eye(4)) @ rigid_world[i]
         n["translation"] = [float(v) for v in local[:3, 3]]
     glob = {}
