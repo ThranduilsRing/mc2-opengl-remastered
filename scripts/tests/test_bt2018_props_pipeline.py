@@ -60,6 +60,10 @@ def test_stock_category():
     assert pc.stock_category("junkpile") == "debris"
     assert pc.stock_category("tc1_2") == pc.EXCLUDED
     assert pc.stock_category("maple2dead") == pc.EXCLUDED
+    assert pc.stock_category("extractionmarker") == pc.EXCLUDED
+    for name in ("dropshipliao", "crashnose", "straightpipe2", "l_palacecore", "hpg_office"):
+        assert pc.stock_category(name) in pc.UNMATCHED_STOCK, name
+    assert pc.stock_category("pipetank") == "industrial"
     assert pc.stock_category("mysteryshed", (30, 8, 30)) == "building"
 
 
@@ -125,7 +129,8 @@ def test_matcher_reports_no_candidate():
 
 
 def test_fragments_are_not_props():
-    for n in ("smallBuildingA_cell_007", "cityBuildingF_fract", "smallCivilianBldgF_glass", "tankDetail74975", "pipes23"):
+    for n in ("smallBuildingA_cell_007", "cityBuildingF_fract", "smallCivilianBldgF_glass", "tankDetail74975", "pipes23",
+              "abstractBldg", "industrialLowRampA", "civilian_roof_D04", "spawnTankDoor"):
         assert pc.is_fragment(n), n
     for n in ("smallBldgE", "industrialTankA", "lookoutTowerA"):
         assert not pc.is_fragment(n), n

@@ -5,7 +5,8 @@
 
 stock_props.json: {"<appearance>": {"size_wu": [x, y_up, z], "uses": N, "volume_wu3", "solidity", "silhouette": [288 bits] | null}}
 Cost = category compatibility + log size ratios (height, both footprint axes, solid volume) + silhouette
-Hamming distance + a flat penalty for assets without resolved materials. Rejected outright: fragments
+Hamming distance + a flat penalty for assets without resolved materials - a bonus when the names share a
+shape type (NAME_HINTS: dome, tank, silo, hangar, tower, ...). Rejected outright: fragments
 (a destruction shell, or a building-like asset whose column-filled solid is under SOLID_MIN of its bbox)
 and candidates whose solid volume is outside VOLUME_RATIO of the stock prop's (an antenna for a tower).
 Vegetation stock keys are skipped.
@@ -40,6 +41,28 @@ COMPAT = {
 SOLID_MIN = 0.22                 # column-filled volume / bbox volume below this is a partial shell
 VOLUME_RATIO = (0.3, 3.5)        # allowed candidate / stock solid volume
 _SOLID_CATS = ("building", "military", "industrial")
+
+
+# Shape-type words: a stock name containing a left word prefers candidates whose family has a right word.
+NAME_HINTS = (
+    (("dome",), ("dome",)),
+    (("tank", "fuel", "liquid", "water"), ("tank", "silo", "gas")),
+    (("grain", "silo"), ("silo", "tank")),
+    (("quonset", "hangar"), ("hangar", "quonset", "bldgr", "bldgk")),
+    (("military", "barracks", "bunker", "hq"), ("military", "barracks", "bunker")),
+    (("tower", "relay", "sensor"), ("tower", "antenna", "radar")),
+    (("crate", "munition"), ("crate", "container")),
+    (("factory", "plant", "industrial", "processing"), ("industrial", "factory", "refinery", "mining")),
+    (("city", "office", "lobby", "hotel"), ("apartment", "city", "office", "civilianlarge", "largebldg")),
+    (("crane", "gantry"), ("crane", "gantry")),
+    (("shack", "shanty", "hut"), ("shack", "smallbldg", "garage")),
+)
+HINT_BONUS = 0.45
+
+
+def _hint(stock_name, family):
+    s, f = stock_name.lower(), family.lower()
+    return any(any(w in s for w in sw) and any(w in f for w in fw) for sw, fw in NAME_HINTS)
 
 
 def _lr(a, b):
@@ -78,6 +101,8 @@ def match(stock_props, assets, top=4):
         ranked = []
         for cand in assets:
             c = cost(info, cand, cat)
+            if c is not None and _hint(name, cand.get("family", "")):
+                c -= HINT_BONUS
             if c is not None:
                 ranked.append((c, cand["id"]))
         ranked.sort()

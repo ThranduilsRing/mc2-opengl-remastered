@@ -114,7 +114,16 @@ def classify(family, size_m=None):
     return EXCLUDED
 
 
+# Stock types the BT2018 library has no counterpart for. They are categories with no compatible candidate,
+# so the matcher reports "no good match" and the key keeps stock.
+UNMATCHED_STOCK = ("aircraft", "pipeline", "landmark")
+
 _STOCK_RULES = (
+    ("aircraft", ("dropship", "shuttle", "jet", "slayer", "shilone", "crash", "lifeboat")),
+    ("pipeline", ("straightpipe", "cornerpipe", "threewaypipe", "fourwaypipe", "endpipe", "fuelpipe")),
+    ("landmark", ("l_palace", "l_residence", "l_guardhouse", "sensorcontrol", "s_main", "hpg", "hub", "terminal", "trafcon",
+                  "orbitalturret")),
+    ("bridge", ("bridge",)),
     ("wall_fence", ("fence", "barricade", "sandbag", "wall", "netting", "razor")),
     ("tower", ("tower", "antenna", "mast")),
     ("debris", ("junk", "mechpiece", "crash", "lifeboat", "crate", "dumpster", "locker", "pile", "wreck", "rubble", "dfield")),
@@ -128,10 +137,12 @@ _STOCK_RULES = (
 
 
 def stock_category(appearance, size_m=None):
-    """Category for a stock MC2 appearance name (lowercase); vegetation maps to EXCLUDED."""
+    """Category for a stock MC2 appearance name (lowercase); vegetation and gameplay markers map to EXCLUDED."""
     low = appearance.lower()
     if re.match(r"^(tc\d|palm|maple|oak|pine|elm|birch|bush|tree|cactus|shrub|fern|grass|dead_tree|sapling)", low):
         return EXCLUDED
+    if any(w in low for w in ("marker", "alarm", "flag", "lamp", "light", "sign")) or re.match(r"^nav\d", low):
+        return EXCLUDED  # gameplay markers and small signal props keep their stock look
     for cat, words in _STOCK_RULES:
         if any(w in low for w in words):
             return cat
@@ -159,9 +170,10 @@ def short_id(family, taken=()):
     return cand
 
 
-_FRAGMENT = re.compile(r"(_cell(_\d+)?$|_fract|_glass|ruin|detail|^pipes?\d+$|^ppipe|_bioDome\w*_cell)", re.I)
+_FRAGMENT = re.compile(r"(_cell(_\d+)?$|_fract|_glass|ruin|detail|^pipes?\d+$|^ppipe|_bioDome\w*_cell|^abstract|ramp|slope|_roof_|door|_wall_\d+$|wallprop)", re.I)
 
 
 def is_fragment(family):
-    """Destruction cells, glass-only meshes and loose pipe/detail pieces are not standalone props."""
+    """Destruction cells, glass-only meshes, loose pipe/detail pieces and level-kit parts (abstract blocks,
+    ramps, slopes, roof tiles, doors, wall panels) are not standalone props."""
     return bool(_FRAGMENT.search(family))
