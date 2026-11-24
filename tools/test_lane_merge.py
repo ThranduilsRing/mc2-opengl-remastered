@@ -456,23 +456,28 @@ class _R:
         self.returncode, self.stdout = rc, out
 
 
-def test_verify_runs_build_then_doctest_and_stops_at_the_first_failure(tmp_path):
+def test_verify_overlaps_build_and_scoped_python(tmp_path):
     lm = _load_module()
     (tmp_path / "scripts").mkdir()
-    for n in ("ninja_build.py", "run-unit-tests.sh"):
+    for n in ("ninja_build.py", "run_scripts_tests.py", "run_tools_tests.py"):
         (tmp_path / "scripts" / n).write_text("")
     calls = []
+    import threading
+    barrier = threading.Barrier(3)
 
     def runner(root, cmd, env=None):
         assert env["MC2_NINJA_TREE"] == "build64-ninja"
         calls.append(os.path.basename(cmd[1]))
+        if not cmd[1].endswith("ninja_build.py"):
+            assert cmd[-2:] == ["--base", "HEAD^"]
+        barrier.wait(timeout=10)
         return _R(1 if cmd[1].endswith("ninja_build.py") else 0, "boom")
 
     verdict, res = lm.verify_merged(str(tmp_path), "build", runner)
-    assert verdict == "FAIL" and calls == ["ninja_build.py"] and res[0][0] == "build" and "boom" in res[0][2]
+    assert verdict == "FAIL" and len(calls) == 3 and res[0][0] == "build" and "boom" in res[0][2]
     calls.clear()
     verdict, res = lm.verify_merged(str(tmp_path), "build", lambda root, cmd, env=None: (calls.append(os.path.basename(cmd[1])), _R(0))[1])
-    assert verdict == "OK" and calls == ["ninja_build.py", "run-unit-tests.sh"]
+    assert verdict == "OK" and set(calls) == {"ninja_build.py", "run_scripts_tests.py", "run_tools_tests.py"}
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows Git Bash discovery must reject WSL launchers")

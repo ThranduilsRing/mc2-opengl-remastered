@@ -2303,7 +2303,7 @@ def main(argv=None):
         for n, c, _ in steps:
             if n == "compare-captures-classic":
                 c[c.index("--compare-only") + 1] = str(classic_before)
-    if window and window_reusable(window, git("rev-parse", "HEAD^{tree}")):
+    if window and window.get("native_unit") == "PASS" and window_reusable(window, git("rev-parse", "HEAD^{tree}")):
         reused = []
         for name, command, overrides in steps:
             if name == "harnesses" and "--unit" in command:

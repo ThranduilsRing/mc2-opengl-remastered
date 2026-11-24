@@ -637,8 +637,8 @@ def git_bash(which=shutil.which, exists=os.path.exists, environ=None) -> str:
 
 
 VERIFY_STEPS = {
-    "build": [("build", ["scripts/ninja_build.py"]), ("doctest", ["scripts/run-unit-tests.sh"])],
-    "full": [("build", ["scripts/ninja_build.py"]), ("doctest", ["scripts/run-unit-tests.sh"]), ("board", ["scripts/check-contracts.sh"])],
+    "build": [("build", ["scripts/ninja_build.py"]), ("scripts_tests", ["scripts/run_scripts_tests.py"]), ("tools_tests", ["scripts/run_tools_tests.py"])],
+    "full": [("build", ["scripts/ninja_build.py"]), ("scripts_tests", ["scripts/run_scripts_tests.py"]), ("tools_tests", ["scripts/run_tools_tests.py"]), ("board", ["scripts/check-contracts.sh"])],
 }
 
 
@@ -707,14 +707,21 @@ def verify_env(root: str) -> dict:
 
 
 def verify_merged(root: str, mode: str, runner=None) -> tuple[str, list[tuple[str, int, str]]]:
-    """Build and test the merged tree. -> ("OK"|"FAIL"|"SKIPPED", [(step, rc, tail)]). Stops at the first failing step."""
+    """Build beside scoped Python suites; the gate owns the single native test run."""
     if mode == "none":
         return "SKIPPED", []
-    results = []
-    for label, (script, *rest) in VERIFY_STEPS[mode]:
+    from concurrent.futures import ThreadPoolExecutor
+    try:
+        base = json.loads(Path(root, "build64-ninja/merge-window.json").read_text())["base"]
+    except (OSError, ValueError, KeyError):
+        base = "HEAD^"
+    def check(step):
+        label, (script, *rest) = step
         path = os.path.join(root, script)
         if not os.path.exists(path):
-            return ("SKIPPED" if not results else "OK"), results
+            return None
+        if label in ("scripts_tests", "tools_tests"):
+            rest += ["--base", base]
         cmd = [git_bash(), path] + rest if script.endswith(".sh") else [sys.executable, path] + rest
         log_path = os.path.join(root, "build64-ninja", "lane-merge-verify-" + label + ".log")
         print(f"lane_merge: {label} log: {log_path}", flush=True)
@@ -729,10 +736,16 @@ def verify_merged(root: str, mode: str, runner=None) -> tuple[str, list[tuple[st
                 log.write(r.stdout)
             print(r.stdout, end="", flush=True)
         tail = failure_summary(r.stdout)
-        results.append((label, r.returncode, tail))
-        if r.returncode != 0:
-            return "FAIL", results
-    return "OK", results
+        return label, r.returncode, tail
+    steps = VERIFY_STEPS[mode]
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        results = [r for r in pool.map(check, [s for s in steps if s[0] != "board"]) if r]
+    if not results:
+        return "SKIPPED", []
+    if mode == "full" and all(r[1] in (0, 3) if r[0] == "tools_tests" else r[1] == 0 for r in results):
+        if result := check(steps[-1]):
+            results.append(result)
+    return ("FAIL" if any(rc != 0 and not (label == "tools_tests" and rc == 3) for label, rc, _ in results) else "OK"), results
 
 
 def exe_matches_head(root: str, tree: str = "build64-ninja") -> bool | None:
