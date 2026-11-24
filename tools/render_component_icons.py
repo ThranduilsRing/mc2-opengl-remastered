@@ -90,7 +90,7 @@ for index, (name, row) in enumerate(sorted(icons.items())):
     rendered = Image.open(scene.render.filepath).convert('RGBA')
     bbox = rendered.getbbox(); assert 0 < bbox[0] < bbox[2] < rendered.width and 0 < bbox[1] < bbox[3] < rendered.height, name
     framed = stock_frame(w, h, rgb, rendered.getchannel('A')); framed.alpha_composite(rendered)
-    canvas = Image.new('RGBA',(old.width*4,old.height*4)); canvas.paste(framed,(0,0)); canvas.transpose(Image.Transpose.FLIP_TOP_BOTTOM).save(out/name.replace('mcl_mc_', 'mc2_component_', 1), compression='tga_rle')
+    canvas = Image.new('RGBA',(old.width*4,old.height*4)); canvas.paste(framed,(0,0)); canvas.save(out/name.replace('mcl_mc_', 'mc2_component_', 1), compression='tga_rle')  # bottom-origin header + bottom-first rows; Image.cpp decodes the header, so the canvas is stored un-flipped
     assert canvas.getchannel('A').getextrema()[1] == 255
     x, y = (index%8)*480, (index//8)*420
     draw.text((x+12,y+8),row[2],font=font,fill='white'); draw.text((x+12,y+34),f'{w}x{h} cells | old / new',font=font,fill='#91a9bb')
