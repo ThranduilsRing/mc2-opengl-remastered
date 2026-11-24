@@ -4,6 +4,8 @@
 #include "net/runtime.h"
 #include "saved_objects_check.h"
 #include "save_sections.h"
+#include "save_identity.h"
+#include "../GuiRuntime/PlayerFrontEnd.h"
 #include <optional>
 #include <span>
 #include "combat_clock_archive.h"
@@ -583,6 +585,19 @@ static bool savedCampaignLoads(PacketFile& loadFile, int packet) {
 	return ok;
 }
 
+// A packet's text, empty when it cannot be read.
+static std::string savedPacketText(PacketFile& loadFile, int packet) {
+	if (packet < 0 || loadFile.seekPacket(packet) != NO_ERR)
+		return {};
+	const auto size = loadFile.getPacketSize();
+	if (size <= 0 || size > static_cast<int>(mc2::save::maxFileBytes))
+		return {};
+	std::string text(static_cast<size_t>(size), '\0');
+	if (loadFile.readPacket(packet, reinterpret_cast<MemoryPtr>(text.data())) != size)
+		return {};
+	return text;
+}
+
 // Open the save packet file and reject a missing file or a wrong version stamp.
 bool Mission::openSaveFile(MissionLoadFrame& f) {
 	auto& loadFileName = f.loadFileName; auto& loadFile = f.loadFile; auto& result = f.result;
@@ -639,6 +654,17 @@ bool Mission::openSaveFile(MissionLoadFrame& f) {
 			return true;
 		}
 		f.sectionsPacket = static_cast<DWORD>(last);
+	}
+	{
+		// The running mission is the only one a quickload can resume in place: refuse another mission's (or mod's) save before teardown.
+		const std::string campaignText = f.saveV2 ? savedPacketText(loadFile, static_cast<int>(f.sectionsPacket) - 3) : std::string{};
+		const std::string modNow = PlayerFrontEnd::saveModField(PlayerFrontEnd::activeModId());
+		if (!mc2::save::savedIdentityMatches(savedPacketText(loadFile, 2), missionFileName, campaignText, modNow)) {
+			mc2::fmt::print_err("[SAVE v2] event=reject reason=other_mission running={} file={}\n", mc2::fmt::safe(missionFileName), mc2::fmt::safe(loadFileName));
+			f.incompatibleSave = true;
+			f.otherMissionRefused = true;
+			return true;
+		}
 	}
 	currentPacket = 2;
 
@@ -1054,6 +1080,8 @@ void Mission::load (mc2::czstring loadFileName)
 			char title[256]{};
 			if (f.campaignRefused)
 				mc2::fmt::to_buf(message, "This saved game could not be loaded: its campaign file is missing or damaged.");
+			else if (f.otherMissionRefused)
+				mc2::fmt::to_buf(message, "Quick Load only resumes the mission it was saved in. This quick save is from a different mission or mod; load it from the Load Game menu.");
 			else
 				cLoadString(IDS_QUICKSAVE_VERSION_WRONG, message, sizeof(message) - 1);
 			cLoadString(IDS_GAME_ERROR, title, sizeof(title) - 1);

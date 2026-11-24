@@ -653,6 +653,7 @@ target_sources(mc2_tests PRIVATE
     test_abl_archive.cpp
     test_abl_module_archive.cpp
     test_abl_environment_archive.cpp
+    test_save_identity.cpp
     test_warrior_archive.cpp
     test_object_value_codec.cpp
     ${MC2_WORKTREE_ROOT}/code/save_sections.cpp
