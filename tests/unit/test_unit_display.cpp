@@ -20,7 +20,7 @@ namespace {
 
 std::string fixture(const char* name)
 {
-    const auto path = std::filesystem::path(__FILE__).parent_path() / "fixtures" / "unit_display" / name;
+    const auto path = std::filesystem::path(MC2_TEST_FIXTURE_DIR) / "unit_display" / name;
     std::ifstream input(path);
     return std::string(std::istreambuf_iterator<char>(input), {});
 }
@@ -326,7 +326,7 @@ TEST_CASE("unit icons: reassigning a cell's icon never moves the cell") {
 }
 
 TEST_CASE("unit display: the master list's NameID cell reads as a slot or as free text through the real CSVFile") {
-    const auto path = std::filesystem::path(__FILE__).parent_path() / "fixtures" / "unit_display" / "buildings.csv";
+    const auto path = std::filesystem::path(MC2_TEST_FIXTURE_DIR) / "unit_display" / "buildings.csv";
     CSVFile master;
     REQUIRE(master.open(path.string().c_str()) == NO_ERR);
     // Row 1 is the header, rows 2..4 the mechs: the file's last row is its last mech, and the loader stops one
