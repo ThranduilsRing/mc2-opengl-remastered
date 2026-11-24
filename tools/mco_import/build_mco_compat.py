@@ -755,6 +755,21 @@ def main():
     if atlas_painted:
         print("  atlas: %s" % atlas_out)
 
+    # MCO chassis with no stock art (Ranger, Assault Copter...) get HUD/logistics strips cooked from their own model.
+    print("[6.8/6] data/art/<stem>_hud_<W>x<H>.tga (stock-style icons for chassis without stock art)")
+    if args.skip_tgl:
+        print("  SKIPPED (--skip-tgl: no models to render)")
+    else:
+        try:
+            sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+            from pathlib import Path
+            from tools.bt2018_mechs import mod_icons
+            rows = [r for r in mod_icons.classify(Path(out).parent.parent, cook=True, only=os.path.basename(out)) if r[0] == os.path.basename(out)]
+            print("  cooked %d, stock art %d, still on the class fallback %d"
+                  % tuple(sum(r[2] == s for r in rows) for s in ("cooked", "stock", "fallback")))
+        except ImportError as e:
+            print("  WARN: icon cook unavailable (%s)" % e)
+
     mod_json = os.path.join(out, "mod.json")
     if not os.path.isfile(mod_json):
         with open(mod_json, "w") as f:

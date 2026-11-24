@@ -228,8 +228,9 @@ void init(std::string first = {}, int cw = 25, int ch = 30) {
         mc2cache::writeEntry(cacheDir, iconDecodeKind, decodeKey, encodeIcons(registry, rawRanks, decodeKey));
       }
     }
-    // Package chassis (BT2018) ship the recooked HUD strips <stem>_hud_<W>x<H>.tga (tools/bt2018_mechs/render_icons.py): row 0 is the
-    // front view in the stock tone mix. They are the logistics icon for the tier whose HUD cell has that size.
+    // Package chassis (BT2018) and mod chassis without their own art ship HUD strips <stem>_hud_<W>x<H>.tga cooked from their model
+    // (tools/bt2018_mechs/render_icons.py) in stock's own palette: row 0 is the front view, the logistics icon for the tier whose
+    // HUD cell has that size.
     { std::set<std::string> strips;
       for (std::filesystem::directory_iterator it("data/art", ec), end; !ec && it != end; it.increment(ec))
           if (it->is_regular_file()) collectStrip(it->path().generic_string().c_str(), &strips);
@@ -242,22 +243,7 @@ void init(std::string first = {}, int cw = 25, int ch = 30) {
             if (std::format("{}x{}", hud.width, hud.height) != size) continue;
             auto src = load(path, true);
             if (src.data.empty() || src.h < 2) continue;
-            src.data.resize(static_cast<size_t>(src.w) * (src.h / 2));   // row 0 = front view
-            // Stock's logistics art is ~47% dark, 28% mid and 25% light blue with a black ring; the strip is light-heavy with a grey
-            // ring. Keep each pixel's order (light first, then top-left first) and deal the stock mix over it.
-            std::vector<std::pair<int, size_t>> order;
-            for (size_t i = 0; i < src.data.size(); ++i) {
-                const uint32_t p = src.data[i];
-                if (!(p >> 24)) continue;
-                if ((p & 0xffffff) == 0x505050) { src.data[i] = 0xff000000u; continue; }
-                const int shade = ((p >> 8) & 255) > 200 ? 2 : ((p >> 8) & 255) > 120 ? 1 : 0;
-                order.emplace_back(static_cast<int>(i % src.w + i / src.w) - shade * 4096, i);
-            }
-            std::ranges::sort(order);
-            for (size_t n = 0; n < order.size(); ++n) {
-                const auto& [rank, at] = order[n];
-                src.data[at] = n * 100 < order.size() * 25 ? 0xffc2e5ffu : n * 100 < order.size() * 53 ? 0xff5c96c2u : 0xff005392u;
-            }
+            src.data.resize(static_cast<size_t>(src.w) * (src.h / 2));   // row 0 = front view, already in stock's palette
             const std::string key = std::format("hud/{}/front/{}", std::filesystem::path(hud.sheet).stem().string(), stem);
             const int priority = LookupModPriority(path.c_str());
             if (registry.add(key, src.w, src.h / 2, src.data)) namedPriority[key] = priority;
@@ -349,10 +335,9 @@ bool apply(aObject& widget, const aObject& source, long index, const Subject& su
     };
     if (!icon) {
         const std::string base = query.stem.starts_with("bt2018_") ? query.stem.substr(7) : query.stem;
+        // A mod chassis without its own art (MCO Ranger, Assault Copter...) finds the strip cooked from its model
+        // (tools/bt2018_mechs/mod_icons.py); its sheet index numbers the mod's sheet, never a stock HUD cell.
         if ((icon = byChassis(base)) || (icon = byChassis(query.name))) pick.hud = icon;
-        // A chassis whose CSV a compat mod owns (MCO Ranger, Argus, Timberwolf...) keeps the stock HUD sheet cell its index names.
-        if (!icon)
-            if ((icon = registry.find(legacyKey(hudIconSource(Environment.drawableWidth, Environment.screenWidth, subject.vehicle).sheet, index)))) pick.hud = icon;
     }
     if (!icon) {
         if (const auto [position, inserted] = warned.insert("no-icon:" + query.stem); inserted)
