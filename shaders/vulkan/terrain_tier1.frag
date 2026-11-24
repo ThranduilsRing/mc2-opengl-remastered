@@ -385,6 +385,9 @@ void main() {
         if (cliffBlend > 0.01) {
             float luma = dot(baseColor, vec3(0.299, 0.587, 0.114));
             vec3  cliffColor = mix(vec3(luma), vec3(uT.tintRockR, uT.tintRockG, uT.tintRockB), 0.6) * 0.8;
+            // RAVINE-WEATHER-1: horizontal strata on the wall faces (banded by world height, gently warped in plan).
+            float sz = v_worldPos.z + 7.0 * sin(v_worldPos.x * 0.009 + 1.3) + 5.0 * sin(v_worldPos.y * 0.012 + v_worldPos.x * 0.004);
+            cliffColor *= 1.0 + 0.18 * (0.55 * sin(sz * 0.17) + 0.3 * sin(sz * 0.43 + 1.7) + 0.15 * sin(sz * 1.07 + 0.4));
             baseColor = mix(baseColor, cliffColor, cliffBlend * 0.7 * (1.0 - F3pc));
         }
         // World-space two-octave break-up noise (non-snow, non-concrete).
