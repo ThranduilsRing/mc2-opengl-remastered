@@ -208,18 +208,23 @@ void Mission::loadMissionScript(MissionLoadFrame& f) {
 
 #ifdef USE_ABL_LOAD
 	ABLi_loadEnvironment(&ablFile, true, f.sections.find(mc2::save::tagAblEnvironment) != nullptr);
-	if (ABLi_environmentLoadFailed())
-		mc2::fmt::print_err("[SAVE v2] event=abl_load_failed file={}\n", mc2::fmt::safe(f.loadFileName));   // script state stays at its compiled defaults
+	if (ABLi_environmentLoadFailed()) {
+		// Restore may have partially applied values; this mission cannot resume.
+		mc2::fmt::print_err("[SAVE v2] event=abl_load_failed file={}\n", mc2::fmt::safe(f.loadFileName));
+		f.incompatibleSave = true;
+	}
 #endif
 		
 	ablFile.close();
 	removeSaveScratchFile(dmpName);
+	if (f.incompatibleSave) return;
 
 #ifdef USE_ABL_LOAD
 	missionBrain = ABLi_getModule(missionScriptHandle);
 	if (!missionBrain) {
 		if (missionScriptHandle != -1)
 			mc2::fmt::print_err("[ABL_LOAD_BAD] missing mission brain handle={}\n", missionScriptHandle);
+		f.incompatibleSave = true;
 		missionBrainParams = nullptr;
 		missionBrainCallback = nullptr;
 		return;

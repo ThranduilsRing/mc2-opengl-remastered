@@ -13,6 +13,8 @@
 #include "tgl_load_guard.h"
 #include "packet.h"
 #include "save_sections.h"
+#include "abl_environment_archive.h"
+#include "abl_module_archive.h"
 
 #include <cstdlib>
 #include <algorithm>
@@ -40,6 +42,7 @@ namespace {
 struct CompileFixture {
     std::map<std::string, std::string> sources;
     int openFiles = 0;
+    std::string fatalMessage;
     long (*previousRemaining)(void*) = ABLFile::remainingCB;
     struct Reader { std::string text; size_t offset = 0; };
     static CompileFixture* current;
@@ -71,12 +74,13 @@ struct CompileFixture {
         const auto& reader = *static_cast<Reader*>(file);
         return static_cast<long>(reader.text.size() - reader.offset);
     }
-    CompileFixture() {
+    explicit CompileFixture(bool returningFatal = false) {
         current = this;
         ABLi_init(65536, 20480, 20, 100, nullptr, open, close, eof,
             read, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
             nullptr, [](long, const char* message) { throw std::runtime_error(message); });
         ABLFile::remainingCB = remaining;
+        if (returningFatal) ABLFatalCallback = [](long, const char* message) { current->fatalMessage = message; };
         extern char* codeBuffer;
         std::memset(codeBuffer, 0xa5, 20480);
     }
@@ -607,6 +611,72 @@ TEST_CASE("ABLSave/tagged restore applies initialization and name to an existing
     CHECK(countsOf(*module).flags == expected.flags);
     file.close();
     delete module;
+}
+
+TEST_CASE("ABLSave/corrupt value records stop with a returning fatal callback") {
+    using namespace mc2::save;
+    CompileFixture fixture(true);
+    fixture.sources["resume.abl"] = kResumeModule;
+    const int handle = ABLi_preProcess("resume.abl");
+    REQUIRE(handle >= 0);
+    auto module = std::make_unique<ABLModule>();
+    REQUIRE(module->init(handle) == ABL_NO_ERR);
+    module->setName("kept");
+    const auto image = saveEnvironment("valid.sav", true);
+    const auto frame = [](auto record, uint32_t tag) {
+        auto bytes = encodeTaggedRecord(record, tag);
+        Archive framed;
+        auto size = static_cast<uint32_t>(bytes.size());
+        framed(size);
+        framed.raw(bytes);
+        return std::string(reinterpret_cast<const char*>(framed.bytes().data()), framed.bytes().size());
+    };
+    const auto fails = [&](const std::string& bytes) {
+        fixture.sources["bad.sav"] = bytes;
+        ABLFile file;
+        REQUIRE(file.open("bad.sav") == 0);
+        fixture.fatalMessage.clear();
+        CHECK_NOTHROW(ABLi_loadEnvironment(&file, false, true));
+        CHECK(ABLi_environmentLoadFailed());
+        CHECK_FALSE(fixture.fatalMessage.empty());
+        file.close();
+    };
+    // All truncations cross environment, module and variable record boundaries.
+    for (size_t n = 0; n < image.size(); ++n) fails(image.substr(0, n));
+    AblEnvironmentRecord env{0, 1, 0, {"resume.abl"}};
+    const auto prefix = frame(env, tagAblEnvironment);
+    for (auto bad : {AblEnvironmentRecord{0, 101, 0, {"resume.abl"}},
+                     AblEnvironmentRecord{101, 101, 0, std::vector<std::string>(101, "resume.abl")},
+                     AblEnvironmentRecord{0, 1, 0, std::vector<std::string>(101, "resume.abl")},
+                     AblEnvironmentRecord{0, 1, 1, {"resume.abl"}}})
+        fails(frame(bad, tagAblEnvironment));
+    // A libraries > files record cannot be encoded: corrupt the count on the wire.
+    auto badCounts = prefix;
+    badCounts[12] = 2; // frame size, tag, version, then libraries
+    fails(badCounts);
+    AblModuleRecord saved{"kept", handle, {}, {}, false, 2, {0}};
+    for (const char* shape : {"handle", "statics", "state", "orders"}) {
+        auto bad = saved;
+        if (std::string(shape) == "handle") bad.handle = handle + 1;
+        if (std::string(shape) == "statics") bad.statics = 3;
+        if (std::string(shape) == "state") bad.state = "missing";
+        if (std::string(shape) == "orders") bad.orderFlags = {0, 0};
+        auto bytes = prefix + frame(bad, tagAblModule);
+        if (std::string(shape) == "orders") {
+            // Supply the valid static records before the order-count check.
+            const auto validModule = frame(saved, tagAblModule);
+            bytes += image.substr(prefix.size() + validModule.size());
+        }
+        fails(bytes);
+        CHECK(fixture.fatalMessage.find(shape == std::string("orders") ? "order count" : shape == std::string("state") ? "saved state" : shape == std::string("statics") ? "static count" : "module handle") != std::string::npos);
+    }
+    fails(image + "trailing");
+    fixture.sources["valid.sav"] = image;
+    ABLFile file;
+    REQUIRE(file.open("valid.sav") == 0);
+    ABLi_loadEnvironment(&file, false, true);
+    CHECK_FALSE(ABLi_environmentLoadFailed()); // a new load clears the sticky failure
+    file.close();
 }
 
 TEST_CASE("LogisticsTeardown/the tutorial brain is freed before ABL closes (BUGS row 76)") {

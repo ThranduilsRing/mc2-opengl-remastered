@@ -42,9 +42,11 @@ inline bool sameIdentity(std::string_view a, std::string_view b) {
 
 // True when the save can resume in place. A save that records no mission or no mod is an older file: allowed.
 inline bool savedIdentityMatches(std::string_view missionFitText, std::string_view runningMission,
-                                 std::string_view campaignFitText, std::string_view runningMod) {
+                                 std::string_view campaignFitText, std::string_view runningMod,
+                                 std::string_view runningDeps) {
     if (const auto saved = fitStringValue(missionFitText, "MissionName"); saved && !sameIdentity(*saved, runningMission)) return false;
     if (const auto saved = fitStringValue(campaignFitText, "ActiveMod"); saved && !sameIdentity(*saved, runningMod)) return false;
+    if (const auto saved = fitStringValue(campaignFitText, "ModDeps"); saved && !sameIdentity(*saved, runningDeps)) return false;
     return true;
 }
 
