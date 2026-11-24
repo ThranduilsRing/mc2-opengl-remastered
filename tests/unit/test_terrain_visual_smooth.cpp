@@ -38,7 +38,7 @@ TEST_CASE("ravine weathering: only blocked cells move, passable cell centres kee
     std::vector<float> e(static_cast<size_t>(N) * N);
     for (int y = 0; y < N; ++y)
         for (int x = 0; x < N; ++x)   // diagonal staircase wall, 300 wu high
-            e[static_cast<size_t>(x) + static_cast<size_t>(y) * N] = (x + y / 2 > 20) ? 300.0f : 0.0f;
+            e[static_cast<size_t>(x) + static_cast<size_t>(y) * N] = 100.0f * static_cast<float>(std::clamp(x + y / 2 - 19, 0, 3));
     std::vector<unsigned char> blocked(static_cast<size_t>(C) * C, 0);
     for (int r = 0; r < C; ++r)
         for (int c = 0; c < C; ++c) {
