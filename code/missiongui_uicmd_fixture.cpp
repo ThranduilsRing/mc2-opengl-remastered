@@ -465,6 +465,9 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 		} else if (!strcmp(what, "armoff")) {
 			if (!strcmp(arg, "left")) obj->getAppearance()->blowLeftArm(); else obj->getAppearance()->blowRightArm();
 			c.result = "ok";
+		} else if (obj->getObjectClass() == BATTLEMECH && !strcmp(what, "destroy")) {
+			static_cast<BattleMech*>(obj)->destroyBodyLocation(MECH_BODY_LOCATION_CTORSO);   // the production kill path
+			c.result = "ok";
 		} else if (obj->getObjectClass() == GROUNDVEHICLE && !strcmp(what, "destroy")) {
 			obj->getObjectType()->handleDestruction(obj, nullptr);
 			c.result = obj->isDestroyed() ? "ok" : "blocked";

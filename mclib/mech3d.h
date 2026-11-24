@@ -995,6 +995,8 @@ class Mech3DAppearance: public ObjectAppearance
 		// sim-true in every pass (they unlift the draw transform, see PoseView::lift), so this lifts exactly once.
 		glm::vec3 snapAnchor (glm::vec3 nodePos) const;
 		float visualDelta_ = 0.0f;   // visual-height delta sampled once per updateGeometry; body, box and effects share it
+		// FOOT-GROUNDING-1: extra draw lift a node-animated pose needs beyond the root's (render only; sim-true node getters).
+		float poseGroundLift (float rootDelta);
 
 		virtual glm::vec3 getHitNodeLeft (void);
 		virtual glm::vec3 getHitNodeRight (void);
