@@ -2648,6 +2648,11 @@ void MechLabScreen::drawLocationView(float tbSx, float tbSy, float tbOx, float t
 	std::vector<LogisticsComponent*> comps;
 	gatherPlaced(pVariant,placed,comps);
 	const auto mountOf = pc ? mc2pkg::assignMounts(*pc,placed) : std::vector<int>{};
+	// Layout-warning cause: the first item whose placement check fails, and why (also tinted and explained on hover below).
+	const auto layoutRecord = pVariant->locationRecord();
+	const auto& why = layoutRecord.grandfatherReason;
+	const bool layoutWarn = layoutRecord.grandfathered && why.item >= 0 && why.item < static_cast<int>(comps.size());
+	const std::string whyText = layoutWarn ? std::string(comps[why.item]->getName())+" - "+mc2pkg::verdictText(why.verdict)+" ("+mc2pkg::locationShortName(why.location)+")" : std::string();
 	for (int p=0; p<8; ++p) {
 		const auto r = ml::panelRect(p);
 		fill(r,0xe8101820);
@@ -2695,6 +2700,11 @@ void MechLabScreen::drawLocationView(float tbSx, float tbSy, float tbOx, float t
 			fill(rr,0xff20303c);
 			if (!item.comp) { text({rr.x+2,rr.y,rr.w-4,rr.h},item.label,0xff808890); continue; }
 			if (ml::isSelectedInstance(item.x,item.y,selI,selJ) && pSelectedComponent) fill(rr,0x802d6a8f);
+			const bool culprit = layoutWarn && item.comp == comps[why.item] && item.x == placed[why.item].x && item.y == placed[why.item].y;
+			if (culprit) {
+				fill(rr,0x60a21600);
+				if (rr.contains(static_cast<float>(userInput->getMouseX()),static_cast<float>(userInput->getMouseY()))) showDropRefusal("Layout warning: "+whyText);
+			}
 			std::uint32_t stripe = 0xff5a6a78;
 			switch (item.comp->getType()) {
 				case COMPONENT_FORM_WEAPON_ENERGY: case COMPONENT_FORM_WEAPON: stripe=0xffb07020; break;
@@ -2718,7 +2728,14 @@ void MechLabScreen::drawLocationView(float tbSx, float tbSy, float tbOx, float t
 	const bool touched = ml::showLayoutArmorWarnings(pVariant->locationRecord().edited,pVariant->hasExplicitArmor());
 	const std::string warning = touched && !pVariant->getChassis()->armorEditable ? "ARMOR DISPLAY-ONLY" : ml::overweight(pc != nullptr,mc2pkg::massUsed(placed),pc ? pc->payload : 0.f) ? "OVERWEIGHT" :
 		pVariant->getHeat()>pVariant->getMaxHeat() ? "TOO HOT" : touched && pVariant->isLayoutGrandfathered() ? "LAYOUT WARNING" : touched && unallocated ? "UNALLOCATED ARMOR" : "READY";
-	text({r.x+3,r.y+57,r.w-6,12},warning,warning=="READY" ? 0xffc8e100 : 0xffa21600,8);
+	if (warning == "LAYOUT WARNING") {
+		// The cause and the save consequence, in the 3 free rows (the box is one 8pt line wide).
+		const bool saveBlocked = !mc2pkg::canSaveLocationVariant(layoutRecord);
+		const std::string cause = layoutWarn ? std::string(comps[why.item]->getName())+": "+mc2pkg::verdictText(why.verdict)+" ("+mc2pkg::locationShortName(why.location)+")" : "item count mismatch";
+		text({r.x+3,r.y+46,r.w-6,10},warning,0xffa21600,8);
+		text({r.x+3,r.y+55,r.w-6,9},cause,0xffff6a50,6.5f);
+		if (saveBlocked) text({r.x+3,r.y+63,r.w-6,9},"Cannot save this layout",0xffff6a50,6.5f);
+	} else text({r.x+3,r.y+57,r.w-6,12},warning,warning=="READY" ? 0xffc8e100 : 0xffa21600,8);
 	const auto strip = ml::panelRect(ml::kDoll); fill(strip,0xe8101820);
 	int special = 0; for (const auto& item : placed) if (item.x<0 || item.y<0) ++special;
 	// Package chassis: PAYLOAD = placed components (incl. armor plating) vs tonnage minus empty mass.
