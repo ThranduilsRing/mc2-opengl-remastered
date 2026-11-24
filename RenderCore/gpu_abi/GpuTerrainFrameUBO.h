@@ -166,7 +166,8 @@ struct TerrainFrameUBO {
     // CONCRETE-ROAD-PBR-DETAIL: binding 18 detail array (normal xy, roughness, AO) ready + strength scale; 0 = base game look.
     int32_t concreteDetail;
     float   concreteDetailStrength;
-    int32_t _pad[40];  // @cpp_only slot tail padding to the 1024B stride
+    int32_t groundMottleOn;        // vegetation palette only while a population is resident
+    int32_t _pad[39];  // @cpp_only slot tail padding to the 1024B stride
 };
 
 #include "GpuTerrainFrameUBO.layout.gen.h"

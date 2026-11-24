@@ -406,7 +406,7 @@ void main() {
     // (5-30 m) on natural ground, straw toward the coast, never on concrete/roads/runway, rock, cliffs, snow or
     // the beach band. The field is shared with the vegetation shaders (include/world_patch_noise.glsl).
     float gmFootprint = wpnFootprint(v_worldPos.xy);   // derivatives outside the branches below
-    {
+    if (uT.groundMottleOn != 0) {
         float natural = materialW.y + materialW.z;   // grass + dirt: the natural-ground weight
         float slopeClean = smoothstep(0.80, 0.92, abs(baseNormal.z));   // steep ground keeps the cliff/rock look
         // uT.reserved776 carries the vegetation switch (see vulkan_terrain_island_run.cpp): the mottle is vegetation, off with it.
