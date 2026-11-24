@@ -134,12 +134,11 @@ void LogisticsMechDisplay::setMech( LogisticsMech* pMech, bool bFromLB )
 			pCurMech = pMech;
 			if ( pCurMech )
 			{
-				// chassis name is a string-table ID; variant name is text.
-				textObjects[0].setText( pCurMech->getChassisName() );
-				textObjects[1].setText( pCurMech->getName() );
-				char chassisBuf[128];
-				cLoadString( pCurMech->getChassisName(), chassisBuf, sizeof( chassisBuf ) - 1 );
-				setDefsElementText( "game.mcl_mechinfo.text.mech_info_name_header_above_mech_animation", chassisBuf );
+			// Both names are text: the chassis name through the shared resolver, the variant from the file.
+			const std::string chassisName = pCurMech->getChassisDisplayName();
+			textObjects[0].setText( chassisName.c_str() );
+			textObjects[1].setText( pCurMech->getName() );
+			setDefsElementText( "game.mcl_mechinfo.text.mech_info_name_header_above_mech_animation", chassisName.c_str() );
 				setDefsElementText( "game.mcl_mechinfo.text.variant_name_header_above_weapon_rect", pCurMech->getName().c_str() );
 
 				char text[64];

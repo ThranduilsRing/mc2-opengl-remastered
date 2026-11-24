@@ -19,6 +19,7 @@ LogisticsComponent.cpp			: Implementation of the LogisticsComponent component.
 #include <string>
 #include <cctype>
 #include "component_rules.h"
+#include "unit_display_name.h"
 
 
 extern const char* ComponentFormString[];
@@ -132,11 +133,12 @@ std::expected<int, int> LogisticsComponent::init( char* dataLine )
 	if ( i == NUM_COMPONENT_FORMS )
 		return std::unexpected(-1);
 
-	// name, probably aren't going to use this, they should be in the RC.
-	extractString( pLine, pBuffer, 1024 );
+	// The author's name: the display name when the row's string-table slot is a placeholder (mod rows).
+	char authoredName[1025] = "";
+	extractString( pLine, authoredName, sizeof( authoredName ) );
 
-	// name, probably aren't going to use this, they should be in the RC.
-	extractString( pLine, pBuffer, 1024 ); // ignore critical hits
+	// ignore critical hits
+	extractString( pLine, pBuffer, 1024 );
 
 	recycleTime = extractFloat( pLine );
 	heat = extractFloat( pLine );
@@ -204,9 +206,10 @@ std::expected<int, int> LogisticsComponent::init( char* dataLine )
 	char nameBuffer[256];
 	cLoadString( stringID, nameBuffer, 256 );
 
-	name = std::make_unique_for_overwrite<char[]>(strlen( nameBuffer ) + 1);
+	const std::string displayName = mc2::names::resolve( nameBuffer, authoredName, "", "" );
+	name = std::make_unique_for_overwrite<char[]>(displayName.length() + 1);
 	flavorText = name.get();		//Lets not forget the NULL!!!
-	strcpy( name.get(), nameBuffer );
+	strcpy( name.get(), displayName.c_str() );
 
 	if ( ID == -1 )
 		return std::unexpected(-1);

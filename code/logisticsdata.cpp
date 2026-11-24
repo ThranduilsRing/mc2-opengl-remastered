@@ -330,11 +330,9 @@ int		LogisticsData::getVehicles( const LogisticsVehicle** pChassis, int& count )
 
 std::optional<std::reference_wrapper<LogisticsVehicle>> LogisticsData::getVehicle( mc2::czstring pName )
 {
-	char tmpStr[256];
 	for (auto & vehicle : vehicles)
 	{
-		cLoadString( vehicle->getNameID(), tmpStr, 255 );
-		if ( S_stricmp( tmpStr, pName ) == 0 )
+		if ( S_stricmp( vehicle->getDisplayName().c_str(), pName ) == 0 )
 		{
 			return *vehicle;
 		}

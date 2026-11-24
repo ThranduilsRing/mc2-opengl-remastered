@@ -350,7 +350,7 @@ private:
 	bool m_phaseAComplete = false;
 	bool m_phaseBComplete = false;
 
-	void addVehicle( long fitID, PacketFile& objectFile, float scale, long nameID = 0, std::string_view csvName = {} );
+	void addVehicle( long fitID, PacketFile& objectFile, float scale, long nameID = 0, std::string_view csvName = {}, std::string_view freeName = {} );
 	bool openLooseChassisFit( FitIniFile& file, std::string_view csvName ) const;
 	std::expected<void, int> addBuilding( long fitID, PacketFile& objectFile, float scale, std::string_view csvName = {} );
 	void removeDeadWeight();

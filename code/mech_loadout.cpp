@@ -6,6 +6,7 @@
 #include "mc2fmt.h"
 #include "package_chassis.h"
 #include "component_rules.h"
+#include "unit_display_name.h"
 #include <optional>
 #include <tracy/Tracy.hpp>
 #include "armor_alloc.h"
@@ -137,7 +138,10 @@ long BattleMech::init (DWORD variantNum)
 
 	mechFile.readInt(5,2,descID);
 
-	cLoadString( descID, thisMechName, 127 );
+	// The string table first, then the MechName above it: a mod row's slot can be a stock placeholder.
+	const std::string mechName = mc2::names::resolve( mc2::names::resource( descID ), name, "", "" );
+	strncpy( thisMechName, mechName.c_str(), 127 );
+	thisMechName[127] = '\0';
 
 	char tmp[256];
 	cLoadString( IDS_MFDMCH_PRINTSTRING, tmp, 256 );

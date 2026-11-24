@@ -130,9 +130,10 @@ void LogisticsMechIcon::setMech( LogisticsMech* pNewMech )
 
 	if ( pMech )
 	{
-        hudArt = unit_icons::apply(icon, s_pTemplateIcon->icon, pMech->getIconIndex(), pMech->getFileName().c_str());
+        hudArt = unit_icons::apply(icon, s_pTemplateIcon->icon, pMech->getIconIndex(),
+                                   { pMech->getFileName(), pMech->getVariant()->getChassis()->getAuthoredName() });
 
-		chassisName.setText( pMech->getChassisName() );
+		chassisName.setText( pMech->getChassisDisplayName().c_str() );
 
 		iconConnector.showGUIWindow( true );
 

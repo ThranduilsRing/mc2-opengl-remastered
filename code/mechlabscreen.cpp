@@ -423,7 +423,7 @@ void MechLabScreen::begin()
 			if ( cxl ) cxl->setEngineProfile( clanW[cls], clanH[cls], heatByCls[cls] );
 		}
 
-		textObjects[3].setText( pVariant->getChassisName() );
+		textObjects[3].setText( pVariant->getChassisDisplayName().c_str() );
 		originalCost = pVariant->getCost();
 
 

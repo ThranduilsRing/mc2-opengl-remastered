@@ -176,11 +176,10 @@ void MechBayScreen::setMech( LogisticsMech* pMech,  bool bCommandFromLB )
 		setDefsElementText( "game.mcl_mb_layout.text.mech_info_jump_dist", str );
 		attributeMeters[2].setValue( jumpRange * 25 / MAX_JUMP_RANGE );
 
-		// chassis name is a string-table ID; variant name is an EString.
-		textObjects[11].setText( pCurMech->getChassisName() );
-		char chassisBuf[128];
-		cLoadString( pCurMech->getChassisName(), chassisBuf, sizeof( chassisBuf ) - 1 );
-		setDefsElementText( "game.mcl_mb_layout.text.mech_name_header", chassisBuf );
+		// Both names are text: the chassis name through the shared resolver, the variant from the file.
+		const std::string chassisName = pCurMech->getChassisDisplayName();
+		textObjects[11].setText( chassisName.c_str() );
+		setDefsElementText( "game.mcl_mb_layout.text.mech_name_header", chassisName.c_str() );
 		textObjects[12].setText( pCurMech->getName() );
 		setDefsElementText( "game.mcl_mb_layout.text.variant_name_header", pCurMech->getName().c_str() );
 	}

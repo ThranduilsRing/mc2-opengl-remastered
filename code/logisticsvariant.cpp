@@ -11,6 +11,7 @@ LogisticsVariant.cpp			: Implementation of the LogisticsVariant component.
 #include "mc2fmt.h"
 #include "mc2str.h"
 #include "package_chassis.h"
+#include "unit_display_name.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 #include <filesystem>
 
@@ -51,6 +52,11 @@ int LogisticsChassis::init( CSVFile* file, int chassisID )
 	char buffer[256];
 	
 	fileName = mc2::str::ascii_lower(mc2::str::from_c(file->getFilename()));
+
+	// The author's own name for the chassis (free text); it serves when its string-table slot is a placeholder.
+	buffer[0] = '\0';
+	if ( file->readString( 3, 2, buffer, sizeof( buffer ) ) == NO_ERR && mc2::names::usable( buffer ) )
+		authoredName = buffer;
 
 	// BT2018-FIRST-CLASS P7: package chassis carry their region/mount/mass record.
 	package = packageChassisByStem( std::filesystem::path( fileName ).stem().string() );
@@ -202,6 +208,13 @@ int LogisticsChassis::init( CSVFile* file, int chassisID )
 	return 0;
 
 
+}
+
+std::string LogisticsChassis::getDisplayName( const LogisticsVariant* variant ) const
+{
+	const std::string stem = fileName.empty() ? std::string() : std::filesystem::path( fileName ).stem().string();
+	const std::string_view variantName = variant ? std::string_view( variant->getName() ) : std::string_view{};
+	return mc2::names::resolve( mc2::names::resource( getNameID() ), authoredName, variantName, stem );
 }
 
 int LogisticsChassis::getArmorClass() const
