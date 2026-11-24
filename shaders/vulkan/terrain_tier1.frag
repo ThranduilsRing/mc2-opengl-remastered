@@ -81,7 +81,9 @@ layout(set = 0, binding = 14) uniform sampler2D u_shorelineMask;
 // Profile class controls preserve each texture's authored relative density.
 // Flat reference: dirt/snow 768 wu; slope reference: triplanar rock 320 wu;
 // cement reference: pad detail 48 wu. Legacy top-down rock remains 2.4x slope.
-#define MATV_NORMAL_BOOST (vec4(0.9, 0.5, 1.1, CD_CONCRETE_RELIEF_STRENGTH) * vec4(uT.normalSlopeStrength, uT.normalFlatStrength, uT.normalFlatStrength, uT.normalCementStrength))
+// TERRAIN-NORMAL-UNIFORM: grass 0.5 and dirt 0.6: the cooked turf and sand sources have the same fine relief (rms slope
+// ~0.27), so flat ground carries ~0.13 slope like the rock band (rock 0.9/3 x 0.3 x crNavigable 0.4/0.3). Dirt was 1.1 on a near-flat source.
+#define MATV_NORMAL_BOOST (vec4(0.9, 0.5, 0.6, CD_CONCRETE_RELIEF_STRENGTH) * vec4(uT.normalSlopeStrength, uT.normalFlatStrength, uT.normalFlatStrength, uT.normalCementStrength))
 #define MATV_TILING vec4(3.0 * 320.0 / uT.normalSlopePeriod, 2.0 * 768.0 / uT.normalFlatPeriod, 768.0 / uT.normalFlatPeriod, 6.0 * 48.0 / uT.normalCementPeriod)
 #define MATV_TILING_SNOW (768.0 / uT.normalFlatPeriod)
 const float GM_STRENGTH       = 0.9;   // ground mottle (world_patch_noise.glsl) blend on full natural ground
@@ -516,6 +518,7 @@ void main() {
         else if (kCsmDebugMode == 8) { fragColor = vec4(N * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }   // surface normal (GL ...=normal)
         else if (kCsmDebugMode == 9) { fragColor = vec4(dbgBaseN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
         else if (kCsmDebugMode == 10) { fragColor = vec4(dbgDN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
+        else if (kCsmDebugMode == 13) { vec2 rel = N.xy / max(N.z, 0.2) - dbgBaseN.xy / max(dbgBaseN.z, 0.2); fragColor = vec4(vec3(clamp(length(rel) * 4.0, 0.0, 1.0)), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }   // total detail relief (all classes + rock) over the macro slope, x4
         else if (kCsmDebugMode == 12) { fragColor = vec4(prelitBase, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; } // raw prelit before material/lighting
         // Material weights false colour: rock grey, grass green, dirt red, concrete blue, snow white.
         else if (kCsmDebugMode == 11) { fragColor = vec4(materialW.x * vec3(0.35) + materialW.y * vec3(0.1, 0.9, 0.1) + materialW.z * vec3(0.9, 0.2, 0.1) +

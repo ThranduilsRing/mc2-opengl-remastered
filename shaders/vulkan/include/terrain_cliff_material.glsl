@@ -140,7 +140,10 @@ void crNavigable(vec3 macroN, vec3 dx, vec3 dy, float weight, inout vec3 N, inou
         h += a.a * w[i]; used += w[i];
     }
     h /= max(used, 1e-4); tilt /= max(used, 1e-4);
-    color *= mix(1.0, (0.78 + 0.44 * h) * (0.9 + 0.2 * wpn_value(wp.xy / 900.0)), weight);   // macro variation + cliff-like contrast
+    // TERRAIN-NORMAL-UNIFORM: colour classes that merely failed the grass/dirt thresholds (sand hue drift) land here on FLAT ground; there the
+    // cliff-like contrast halves so the rock class does not stand out against sand. Slopes keep the full contrast.
+    float contrast = mix(0.5, 1.0, smoothstep(0.95, 0.75, abs(macroN.z)));
+    color *= mix(1.0, mix(1.0, (0.78 + 0.44 * h) * (0.9 + 0.2 * wpn_value(wp.xy / 900.0)), contrast), weight);   // macro variation + cliff-like contrast
     N = normalize(mix(N, normalize(macroN + tilt * 0.4 * uT.normalSlopeStrength), weight * 0.8));
 }
 void crApply(vec3 macroN, vec3 wpDx, vec3 wpDy, vec3 planeLod, float blocked, inout vec3 N, inout vec3 baseColor) {

@@ -91,6 +91,17 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz, vec2
             dN.xy += w.z * MATV_NORMAL_BOOST.z * 0.8 * fwFine * dfDirtFine * (kFineBack * g);
         }
     }
+    // TERRAIN-NORMAL-UNIFORM: a large-scale rotated tap of the sand (0.31x, ~53 deg) so its own lattice never repeats at mid zoom,
+    // the way the turf has its macro tap. Own texel-footprint and fwidth fades.
+    float dfDirtMac = mv_detailFade(mv_detailTexelGM * MATV_TILING.z * 0.31);
+    if (w.z > 0.01 && dfDirtMac > 0.0) {
+        const mat2 kDirtMacroUnit = mat2(0.6, 0.8, -0.8, 0.6);
+        const mat2 kDirtMacroRot = kDirtMacroUnit * 0.31;
+        float fwDirtMacro = clamp(1.0 - (length(uvWidth * MATV_TILING.z * 0.31) - 0.5) * 2.0, 0.0, 1.0);
+        vec2 dm = mv_detailDecode(textureGrad(u_matNormalArray, vec3(kDirtMacroRot * uvDirt, float(MAT_LAYER_DIRT)),
+                                  kDirtMacroRot * (uvDx * MATV_TILING.z), kDirtMacroRot * (uvDy * MATV_TILING.z)).rgb).xy;
+        dN.xy += w.z * MATV_NORMAL_BOOST.z * 0.6 * fwDirtMacro * dfDirtMac * (transpose(kDirtMacroUnit) * dm);
+    }
     if (w.z > 0.01 && fwDirt != 0.0 && dfDirt > 0.0) {
         vec4 s = (atsDirt > 0.01 && fwDirt > 0.4)
                ? mv_sampleAntiTileArr(MAT_LAYER_DIRT, uvDirt, atsDirt, uvDx * MATV_TILING.z, uvDy * MATV_TILING.z, fwDirt)

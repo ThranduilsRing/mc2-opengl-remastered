@@ -32,7 +32,7 @@ TEST_CASE("TerrainNormalLoad/displacement files never gate normals or change CPU
 TEST_CASE("TerrainNormalLoad/grass slot takes the turf normal unless modded or rejected") {
     static constexpr int kTurf = 100;
     const auto run = [](bool turfPresent, bool modded, bool acceptTurf, std::array<int, 6>& out, std::vector<std::pair<int, bool>>& loads) {
-        return mc2::terrain::loadCookedNormals(std::span<int>(out), modded,
+        return mc2::terrain::loadCookedNormals(std::span<int>(out), modded, true,
             [&](int mat, bool turf) -> std::optional<int> {
                 loads.emplace_back(mat, turf);
                 if (turf) return turfPresent ? std::optional<int>(kTurf) : std::nullopt;
@@ -61,7 +61,23 @@ TEST_CASE("TerrainNormalLoad/grass slot takes the turf normal unless modded or r
     CHECK(out[1] == 1);
     CHECK(loads.back() == std::pair<int, bool>{1, false});
 
-    CHECK_FALSE(mc2::terrain::loadCookedNormals(std::span<int>(out), false,
+    CHECK_FALSE(mc2::terrain::loadCookedNormals(std::span<int>(out), false, true,
         [](int mat, bool) -> std::optional<int> { return mat == 3 ? std::nullopt : std::optional<int>(mat); },
         [](std::span<const int>) { return true; }));    // a missing layer fails the cooked array
+}
+
+TEST_CASE("TerrainNormalLoad/dirt slot takes the sand normal unless modded or rejected") {
+    static constexpr int kSand = 200;
+    const auto run = [](bool dirtModded, bool acceptSand, std::array<int, 6>& out) {
+        return mc2::terrain::loadCookedNormals(std::span<int>(out), false, dirtModded,
+            [&](int mat, bool alt) -> std::optional<int> { return alt && mat == 2 ? std::optional<int>(kSand) : alt ? std::optional<int>(100) : std::optional<int>(mat); },
+            [&](std::span<const int> layers) { return acceptSand || layers[2] != kSand; });
+    };
+    std::array<int, 6> out{};
+    REQUIRE(run(false, true, out));
+    CHECK(out == std::array<int, 6>{0, 100, kSand, 3, 4, 5});
+    REQUIRE(run(true, true, out));                     // a mod's mat2_normal wins
+    CHECK(out[2] == 2);
+    REQUIRE(run(false, false, out));                   // the array rejects the sand: both replaced slots reload their own layers
+    CHECK(out == std::array<int, 6>{0, 1, 2, 3, 4, 5});
 }
