@@ -54,6 +54,8 @@ def test_mc2x_recipe_logistics_tables():
     import mc2x_import as converter
     entries = {e["t"]: e for e in converter.load_recipe()["mods"]["mc2x-compat"]}
     for target, source in {"data/art/buildings.csv": "data/art/mc2x_inv.csv",
+                           "data/art/mcl_gn_availablemechentry.fit": "data/art/mc2x_availablemechentry.fit",
+                           "data/art/mcl_gn_deploymentteams.fit": "data/art/mc2x_deploymentteams.fit",
                            "data/objects/pilots.csv": "data/objects/mc2xpilots.csv",
                            "data/objects/compbas.csv": "data/objects/mc2xcomp.csv"}.items():
         assert entries[target]["s"] == source
