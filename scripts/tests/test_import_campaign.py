@@ -50,6 +50,49 @@ def sample(tmp_path):
     return source, deploy
 
 
+def test_mc2x_recipe_logistics_tables():
+    import mc2x_import as converter
+    entries = {e["t"]: e for e in converter.load_recipe()["mods"]["mc2x-compat"]}
+    for target, source in {"data/art/buildings.csv": "data/art/mc2x_inv.csv",
+                           "data/objects/pilots.csv": "data/objects/mc2xpilots.csv",
+                           "data/objects/compbas.csv": "data/objects/mc2xcomp.csv"}.items():
+        assert entries[target]["s"] == source
+    assert "data/objects/emergencyvehicle.csv" in entries
+    assert "data/objects/humvee.csv" in entries
+
+
+def test_mc2x_dll_strings_include_legacy_ids_and_escape(tmp_path, monkeypatch):
+    import mc2x_import as converter
+    import strings
+    monkeypatch.setattr(strings, "extract_strings", lambda _: {12: 'A "pilot"\\path\r\nNext', 99: " "})
+    assert converter.write_mc2x_strings(str(tmp_path), str(tmp_path)) == 1
+    text = (tmp_path / "mods/mc2x-compat" / converter.STRINGS_REL).read_text()
+    assert 'key = "cveg.dll.12"' in text
+    assert 'text = "A \'pilot\'\\\\path\\nNext"' in text
+    assert 'legacyId = 12' in text and 'source = "cveg_dll"' in text
+    assert 'cveg.dll.99' not in text
+
+
+def test_mc2x_cveg_roster_adds_player_pilots_once(tmp_path):
+    import mc2x_import as converter
+    roster = tmp_path / "mods/mc2x-compat/data/objects/pilots.csv"
+    roster.parent.mkdir(parents=True)
+    roster.write_text("pmwace\nPMP_EXISTING\n")
+    warriors = tmp_path / "mods/cveg/data/missions/warriors"
+    warriors.mkdir(parents=True)
+    for name in ("pmp_existing.fit", "pmp_new.fit", "pmwace.fit", "pmp_script.abl"):
+        (warriors / name).touch()
+    profiles = warriors.parent / "profiles"
+    profiles.mkdir()
+    (profiles / "pmp_new.fit").write_bytes(b"custom pilot")
+    (warriors / "pmp_new.fit").unlink()
+    for _ in range(2):
+        assert converter.write_cveg_roster(str(tmp_path)) == 2
+        assert (tmp_path / "mods/cveg/data/objects/pilots.csv").read_text().splitlines() == [
+            "pmwace", "PMP_EXISTING", "pmp_new"]
+        assert (warriors / "pmp_new.fit").read_bytes() == b"custom pilot"
+
+
 def test_omnitech_logistics_portrait_icon_and_kitfox_name(tmp_path, sample):
     from PIL import Image
     original, deploy = sample

@@ -228,8 +228,36 @@ def _is_campaign_unique_asset(sub):
 # MC2X renamed compbas.csv to mc2xcomp.csv; our engine still opens compbas.csv.
 # Keep the campaign's weapon/ammo definitions with its object loadouts.
 MISC_ROSTER = {"data/objects/pilots.csv": "data/objects/pilots.csv",
+               "data/objects/mc2xpilots.csv": "data/objects/pilots.csv",
                "data/objects/compbas.csv": "data/objects/compbas.csv",
                "data/objects/mc2xcomp.csv": "data/objects/compbas.csv"}
+
+
+def write_player_roster(mod_root, fallback_roster):
+    """Player profiles use purchase-file names, and must also be reachable as warriors."""
+    root = Path(mod_root)
+    roster = root / "data/objects/pilots.csv"
+    base = roster if roster.is_file() else Path(fallback_roster)
+    names = base.read_text(encoding="latin-1").splitlines() if base.is_file() else []
+    seen = {n.strip().lower() for n in names}
+    warriors = root / "data/missions/warriors"
+    player = {}
+    for folder in (warriors, root / "data/missions/profiles"):
+        for path in sorted(folder.glob("*")):
+            if path.name.lower().startswith("pmp_") and path.suffix.lower() == ".fit":
+                player[path.stem.lower()] = path
+    for name, path in sorted(player.items()):
+        warriors.mkdir(parents=True, exist_ok=True)
+        target = warriors / (name + ".fit")
+        if path.parent != warriors and not target.exists():
+            target.write_bytes(path.read_bytes())
+        if name not in seen:
+            names.append(name)
+            seen.add(name)
+    if player:
+        roster.parent.mkdir(parents=True, exist_ok=True)
+        roster.write_bytes(("\r\n".join(names) + "\r\n").encode("latin-1"))
+    return len(player)
 
 
 def campaign_roster(entries):
@@ -451,6 +479,9 @@ def main():
             destination.write_bytes(own)
     print("  loose campaign delta: %d files%s"
           % (n_loose, " (--drop-upscale)" if args.drop_upscale else ""))
+    fallback = next((Path(ref) / "objects/pilots.csv" for ref in args.refs
+                     if (Path(ref) / "objects/pilots.csv").is_file()), Path(args.out) / "data/objects/pilots.csv")
+    write_player_roster(args.out, fallback)
     _write_marker(args.out, src, total_fst, n_loose, args.drop_upscale, missing=missing_fsts)
     if missing_fsts:
         print("  NOTE: %d requested FST input(s) absent: %s"

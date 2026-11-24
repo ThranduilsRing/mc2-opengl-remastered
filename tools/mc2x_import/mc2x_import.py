@@ -161,18 +161,9 @@ def write_mc2x_strings(source, deploy):
 def write_cveg_roster(deploy):
     """CVE-G campaigns buy player pilots by their pmp_ names, but MC2X's roster file lists only the pmw
     warriors, so the bay had no pilots. cveg's roster is the compat roster plus every pmp_ pilot it ships."""
-    compat = os.path.join(deploy, "mods", "mc2x-compat", "data", "objects", "pilots.csv")
-    warriors = os.path.join(deploy, "mods", "cveg", "data", "missions", "warriors")
-    if not os.path.isfile(compat) or not os.path.isdir(warriors):
-        return 0
-    with open(compat, encoding="latin-1") as f:
-        names = [line.strip() for line in f if line.strip()]
-    seen = {n.lower() for n in names}
-    player = sorted(fn[:-4].lower() for fn in os.listdir(warriors)
-                    if fn.lower().startswith("pmp_") and fn.lower().endswith(".fit"))
-    names += [n for n in player if n not in seen]
-    _write(os.path.join(deploy, "mods", "cveg"), "data/objects/pilots.csv", ("\r\n".join(names) + "\r\n").encode("latin-1"))
-    return len(player)
+    from transfer_mc2x_campaign import write_player_roster
+    return write_player_roster(os.path.join(deploy, "mods", "cveg"),
+                              os.path.join(deploy, "mods", "mc2x-compat", "data/objects/pilots.csv"))
 
 
 def _is_generated(deploy, mod_id):
