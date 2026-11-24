@@ -29,7 +29,8 @@ vec4 hexTileGrad(sampler2DArray tex, float layer, vec2 uv, vec2 dx, vec2 dy, flo
         vec3 tuv = vec3(R * (uv - cen) + cen + hexHash(v[i]), layer);
         vec4 c = textureGrad(tex, tuv, R * dx, R * dy);
         if (lowLod >= 0.0) c.a = clamp(c.a - textureLod(tex, tuv, lowLod).a + mean.a, 0.0, 1.0);
-        if (isNormal) c.rg = (transpose(R) * (c.rg * 2.0 - 1.0)) * 0.5 + 0.5;
+        // Rotate in row-down UV space, then restore the authored NormalGL basis.
+        if (isNormal) c.rg = (vec2(1.0, -1.0) * (transpose(R) * ((c.rg * 2.0 - 1.0) * vec2(1.0, -1.0)))) * 0.5 + 0.5;
         acc += w[i] * c;
     }
     return clamp(mean + (acc - mean) / sqrt(dot(w, w)), 0.0, 1.0);

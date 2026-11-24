@@ -9,6 +9,11 @@ float mv_detailTexelGM = 0.0;
 float mv_detailFade(float texelsPerPixel) {
     return 1.0 - smoothstep(DF_L0, DF_L1, log2(max(texelsPerPixel, 1e-6)));
 }
+vec3 mv_detailDecode(vec3 texel) {
+    // Top-row-first NormalGL: green points UP the image, while uv.y/world Y
+    // increases DOWN its rows. Convert before undoing any UV rotation.
+    return texel * vec3(2.0, -2.0, 2.0) + vec3(-1.0, 1.0, -1.0);
+}
 vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz, vec2 uvDx, vec2 uvDy) {
     vec2 uv = worldXY * (uT.detailTiling / MATV_WU_PER_TILE);
     vec2 uvRock     = uv * (MATV_TILING.x / 3.0);
@@ -43,14 +48,14 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz, vec2
         vec4 s = (atsRock > 0.01 && fwRock > 0.4)
                ? mv_sampleAntiTileArr(MAT_LAYER_ROCK, uvRock, atsRock, uvDx * (MATV_TILING.x / 3.0), uvDy * (MATV_TILING.x / 3.0), fwRock)
                : textureGrad(u_matNormalArray, vec3(uvRock, float(MAT_LAYER_ROCK)), uvDx * (MATV_TILING.x / 3.0), uvDy * (MATV_TILING.x / 3.0));
-        dN += w.x * (MATV_NORMAL_BOOST.x / 3.0) * fwRock * dfRock * (s.rgb * 2.0 - 1.0);
+        dN += w.x * (MATV_NORMAL_BOOST.x / 3.0) * fwRock * dfRock * mv_detailDecode(s.rgb);
     }
     if (w.y > 0.01 && fwGrass != 0.0) {
         if (dfGrass > 0.0) {
             vec4 s = (atsGrass > 0.01 && fwGrass > 0.4)
                    ? mv_sampleAntiTileArr(MAT_LAYER_GRASS, uvGrass, atsGrass, uvDx * MATV_TILING.y, uvDy * MATV_TILING.y, fwGrass)
                    : textureGrad(u_matNormalArray, vec3(uvGrass, float(MAT_LAYER_GRASS)), uvDx * MATV_TILING.y, uvDy * MATV_TILING.y);
-            dN += w.y * MATV_NORMAL_BOOST.y * fwGrass * dfGrass * (s.rgb * 2.0 - 1.0);
+            dN += w.y * MATV_NORMAL_BOOST.y * fwGrass * dfGrass * mv_detailDecode(s.rgb);
         }
         // GRASS-GROUND-NORMAL: a second, larger-scale tap of the turf (0.29x, rotated ~37 deg) so the
         // tuft/dirt-gap clumps vary over ~1300 wu and the 384 wu tile does not repeat. Its own fade.
@@ -58,7 +63,7 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz, vec2
             const mat2 kGrassMacroRot = mat2(0.8, 0.6, -0.6, 0.8) * 0.29;
             vec2 gmDx = kGrassMacroRot * (uvDx * MATV_TILING.y), gmDy = kGrassMacroRot * (uvDy * MATV_TILING.y);
             float fwGrassMacro = clamp(1.0 - (length(uvWidth * MATV_TILING.y * 0.29) - 0.5) * 2.0, 0.0, 1.0);
-            vec2 gm = textureGrad(u_matNormalArray, vec3(kGrassMacroRot * uvGrass, float(MAT_LAYER_GRASS)), gmDx, gmDy).rg * 2.0 - 1.0;
+            vec2 gm = mv_detailDecode(textureGrad(u_matNormalArray, vec3(kGrassMacroRot * uvGrass, float(MAT_LAYER_GRASS)), gmDx, gmDy).rgb).xy;
             // Rotate the sampled slope back into terrain space.
             dN.xy += w.y * MATV_NORMAL_BOOST.y * 0.6 * fwGrassMacro * dfGrassMac * (transpose(mat2(0.8, 0.6, -0.6, 0.8)) * gm);
         }
@@ -75,14 +80,14 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz, vec2
         float dfDirtFine  = mv_detailFade(mv_detailTexelGM * MATV_TILING.z * kFine);
         if (w.y > 0.01 && dfGrassFine > 0.0) {
             float fwFine = clamp(1.0 - (length(uvWidth * MATV_TILING.y * kFine) - 0.5) * 2.0, 0.0, 1.0);
-            vec2 g = textureGrad(u_matNormalArray, vec3(kFineRot * uvGrass, float(MAT_LAYER_GRASS)),
-                                 kFineRot * (uvDx * MATV_TILING.y), kFineRot * (uvDy * MATV_TILING.y)).rg * 2.0 - 1.0;
+            vec2 g = mv_detailDecode(textureGrad(u_matNormalArray, vec3(kFineRot * uvGrass, float(MAT_LAYER_GRASS)),
+                                 kFineRot * (uvDx * MATV_TILING.y), kFineRot * (uvDy * MATV_TILING.y)).rgb).xy;
             dN.xy += w.y * MATV_NORMAL_BOOST.y * 0.8 * fwFine * dfGrassFine * (kFineBack * g);
         }
         if (w.z > 0.01 && dfDirtFine > 0.0) {
             float fwFine = clamp(1.0 - (length(uvWidth * MATV_TILING.z * kFine) - 0.5) * 2.0, 0.0, 1.0);
-            vec2 g = textureGrad(u_matNormalArray, vec3(kFineRot * uvDirt, float(MAT_LAYER_DIRT)),
-                                 kFineRot * (uvDx * MATV_TILING.z), kFineRot * (uvDy * MATV_TILING.z)).rg * 2.0 - 1.0;
+            vec2 g = mv_detailDecode(textureGrad(u_matNormalArray, vec3(kFineRot * uvDirt, float(MAT_LAYER_DIRT)),
+                                 kFineRot * (uvDx * MATV_TILING.z), kFineRot * (uvDy * MATV_TILING.z)).rgb).xy;
             dN.xy += w.z * MATV_NORMAL_BOOST.z * 0.8 * fwFine * dfDirtFine * (kFineBack * g);
         }
     }
@@ -90,18 +95,18 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz, vec2
         vec4 s = (atsDirt > 0.01 && fwDirt > 0.4)
                ? mv_sampleAntiTileArr(MAT_LAYER_DIRT, uvDirt, atsDirt, uvDx * MATV_TILING.z, uvDy * MATV_TILING.z, fwDirt)
                : textureGrad(u_matNormalArray, vec3(uvDirt, float(MAT_LAYER_DIRT)), uvDx * MATV_TILING.z, uvDy * MATV_TILING.z);
-        dN += w.z * MATV_NORMAL_BOOST.z * fwDirt * dfDirt * (s.rgb * 2.0 - 1.0);
+        dN += w.z * MATV_NORMAL_BOOST.z * fwDirt * dfDirt * mv_detailDecode(s.rgb);
     }
     if (w.w > 0.01 && fwConcrete != 0.0 && dfConcrete > 0.0) {
         vec4 s = (atsConc > 0.01 && fwConcrete > 0.4)
                ? mv_sampleAntiTileArr(MAT_LAYER_CONCRETE, uvConcrete, atsConc, uvDx * MATV_TILING.w, uvDy * MATV_TILING.w, fwConcrete)
                : textureGrad(u_matNormalArray, vec3(uvConcrete, float(MAT_LAYER_CONCRETE)), uvDx * MATV_TILING.w, uvDy * MATV_TILING.w);
-        dN += w.w * MATV_NORMAL_BOOST.w * fwConcrete * dfConcrete * (s.rgb * 2.0 - 1.0);
+        dN += w.w * MATV_NORMAL_BOOST.w * fwConcrete * dfConcrete * mv_detailDecode(s.rgb);
     }
     if (snowWeight > 0.01 && fwSnow != 0.0 && dfSnow > 0.0) {
         dN += snowWeight * 0.9 * uT.normalFlatStrength * fwSnow * dfSnow *
-              (textureGrad(u_matNormalArray, vec3(uvSnow, float(MAT_LAYER_SNOW)),
-                           uvDx * MATV_TILING_SNOW, uvDy * MATV_TILING_SNOW).rgb * 2.0 - 1.0);
+              mv_detailDecode(textureGrad(u_matNormalArray, vec3(uvSnow, float(MAT_LAYER_SNOW)),
+                           uvDx * MATV_TILING_SNOW, uvDy * MATV_TILING_SNOW).rgb);
     }
     return dN;
 }

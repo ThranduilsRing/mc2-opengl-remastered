@@ -203,7 +203,7 @@ vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod) {
     if (snow > amount) { layer = MAT_LAYER_SNOW; scale = MATV_TILING_SNOW; amount = snow; }
     if (amount <= 0.0) return macroN;
     vec2 detailUV = wp.xy * (uT.detailTiling / MATV_WU_PER_TILE) * scale;
-    vec2 dN = amount * (textureLod(u_matNormalArray, vec3(detailUV, float(layer)), lod + log2(scale)).xy * 2.0 - 1.0);
+    vec2 dN = amount * mv_detailDecode(textureLod(u_matNormalArray, vec3(detailUV, float(layer)), lod + log2(scale)).rgb).xy;
     return normalize(vec3(macroN.xy / max(macroN.z, 0.2) + dN * uT.detailStrength, 1.0));
 }
 
