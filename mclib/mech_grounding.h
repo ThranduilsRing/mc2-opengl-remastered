@@ -46,14 +46,22 @@ inline glm::mat4 moveBone(const glm::mat4& old, glm::vec3 pos, glm::quat rotatio
 inline void solve(const Rig& rig, std::vector<glm::mat4>& pose) {
     if (rig.legs[0].sole.empty() || rig.legs[1].sole.empty()) return;
     const auto original = pose;
-    const float lowAnkle = std::min(original[rig.legs[0].foot][3].y,
-                                    original[rig.legs[1].foot][3].y);
-    for (const Leg& leg : rig.legs) {
+    // Swing height is measured at the authored sole, not the ankle: a toe-down
+    // (pushed-off) foot has a high ankle but a low toe, and lifting the ankle by
+    // its own height and then the sole again folded the rear leg to hip height.
+    std::array<float, 2> authoredSole{1e30f, 1e30f};
+    for (int side = 0; side < 2; ++side)
+        for (const Point& p : rig.legs[side].sole)
+            authoredSole[side] = std::min(authoredSole[side],
+                                          (original[p.bone] * glm::vec4(p.local, 1.0f)).y);
+    const float lowSole = std::min(authoredSole[0], authoredSole[1]);
+    for (int side = 0; side < 2; ++side) {
+        const Leg& leg = rig.legs[side];
         const glm::mat4& foot = original[leg.foot];
         const glm::vec3 hip(original[leg.thigh][3]), knee(original[leg.calf][3]), ankle(foot[3]);
         const float upper = glm::length(knee - hip), lower = glm::length(ankle - knee);
         if (upper < 1e-6f || lower < 1e-6f) continue;
-        const float swing = std::max(0.0f, ankle.y - lowAnkle);
+        const float swing = std::max(0.0f, authoredSole[side] - lowSole);
         // Preserve heading and the rig's foot axes; ground contact removes only tilt.
         const glm::mat4 delta = foot * glm::inverse(leg.restFoot);
         const float yaw = std::atan2(delta[2].x, delta[2].z);
@@ -83,8 +91,13 @@ inline void solve(const Rig& rig, std::vector<glm::mat4>& pose) {
         const float distance = glm::length(ray);
         if (distance < 1e-6f || distance > upper + lower) continue;
         const glm::vec3 direction = ray / distance;
-        glm::vec3 bend = knee - hip - direction * glm::dot(knee - hip, direction);
-        if (glm::dot(bend, bend) < 1e-12f) continue;
+        // Bend inside the authored leg plane on the authored side; the knee's offset
+        // from the NEW hip-ankle line changes sign when the target moves far, which
+        // flipped a reverse knee forward.
+        const glm::vec3 plane = glm::cross(knee - hip, ankle - knee);
+        glm::vec3 bend = glm::cross(plane, direction);
+        if (glm::dot(glm::cross(plane, ankle - hip), knee - hip) < 0.0f) bend = -bend;
+        if (glm::dot(plane, plane) < 1e-12f || glm::dot(bend, bend) < 1e-12f) continue;
         bend = glm::normalize(bend);
         const float along = (upper * upper - lower * lower + distance * distance) / (2 * distance);
         const glm::vec3 newKnee = hip + direction * along +
