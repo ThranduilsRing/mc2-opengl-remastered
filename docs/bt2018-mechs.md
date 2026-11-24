@@ -19,8 +19,12 @@ the owner's files, with tools and recipes kept apart from the extracted assets.
 
 Build the pack into an install (never into stock data):
 
-    py -3 tools/bt2018_mechs/build_pack.py --install <install> --texture-source <dev install>/data/tgl
-    py -3 tools/bt2018_mechs/build_pack.py --install <install> --check     # reproducibility
+    py -3 tools/bt2018_mechs/build_pack.py --install <install> --bundles <BT assetbundles directory> --texture-source <dev install>/data/tgl
+    py -3 tools/bt2018_mechs/build_pack.py --install <install> --bundles <BT assetbundles directory> --check     # reproducibility
+
+`--bundles` is required: it points to the owner's BattleTech Unity assetbundles
+used to bake each chassis' native animation clips. Install the pinned UnityPy
+dependency from `tools/bt2018_import/requirements.txt` before building.
 
 Mount it as an add-on: `MC2_MOD_DEPS=bt2018_mechs` (stock campaign + pack).
 
