@@ -751,6 +751,7 @@
   "GameOS/gameos/terrain_surface_cook.cpp": {},
   "GameOS/gameos/terrain_surface_cook.h": {},
   "GameOS/gameos/terrain_vertex_pack.h": {},
+  "GameOS/gameos/terrain_visual_smooth.h": {},
   "GameOS/gameos/text_fit.h": {},
   "GameOS/gameos/texture_decode.cpp": {
    "LG06": 5,
@@ -2301,6 +2302,7 @@
   "code/ui_profile_registry.h": {},
   "code/unit_action.h": {},
   "code/unit_definition.h": {},
+  "code/unit_display_name.h": {},
   "code/unit_profile_findings_text.h": {},
   "code/unit_profile_validator.h": {
    "LG14": 1
@@ -3482,7 +3484,7 @@
    "LG20": 1
   }
  },
- "head": "2325c87f0",
+ "head": "4aa05690a",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
