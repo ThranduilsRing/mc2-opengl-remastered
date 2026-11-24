@@ -347,6 +347,21 @@ std::vector<std::string> modelOverrideMountOrder(std::string_view activeMod, std
     return out;
 }
 
+std::vector<std::string> modelOverrideProviderDirs(bool bundledArt, const std::vector<std::string>& mountOrder) {
+    static constexpr const char* kKits[] = {"mods/mc2-industrial-kit", "mods/mc2-vehicle-kit"};
+    std::vector<std::string> out;
+    // Dense bundled geometry stalls 24-EU/shared-DDR4 presets, so the kits merge at lowest priority
+    // only with bundled art on; a mod that declares a kit as a dependency still gets it below itself.
+    if (bundledArt)
+        for (const char* kit : kKits) out.push_back(std::string(kit) + "/data/model_overrides");
+    out.push_back("data/model_overrides");
+    for (const auto& root : mountOrder) {
+        const std::string dir = root + "/data/model_overrides";
+        if (std::find(out.begin(), out.end(), dir) == out.end()) out.push_back(dir);
+    }
+    return out;
+}
+
 static std::vector<std::string> activeModJsonDeps(std::string_view activeMod) {
     std::vector<std::string> deps;
     if (activeMod.empty()) return deps;
@@ -366,34 +381,29 @@ ModelOverrideRegistry& ModelOverrideRegistry::instance() {
     static ModelOverrideRegistry g;
     static std::once_flag once;
     std::call_once(once, [] {
-        // Dense bundled geometry stalls 24-EU/shared-DDR4 presets; retain stock buildings.
-        // Install-local manifests and mounted mods still take priority.
+        // Every provider (kits, install, each mounted mod; content packs ride MC2_MOD_DEPS beside any
+        // campaign mod) merges its own models.json in VFS priority order, so the highest-priority
+        // provider wins a duplicate key and every other key survives. Source paths are relative to
+        // that provider's model_overrides directory: Assimp opens files directly, so the per-record
+        // manifestDir is what routes a GLB to its provider.
         const bool bundledArt = mc2::options::current().remasteredBuildings && !mc2::options::lowCost();
-        if (bundledArt)
-            g.loadFromFile("mods/mc2-industrial-kit/data/model_overrides/models.json",
-                           "mods/mc2-industrial-kit/data/model_overrides");
-        if (bundledArt)
-            g.mergeFromFile("mods/mc2-vehicle-kit/data/model_overrides/models.json",
-                            "mods/mc2-vehicle-kit/data/model_overrides");
-        const int base = g.mergeFromFile("data/model_overrides/models.json", "data/model_overrides");
-        g.mergeConditionsFromFile("data/model_overrides/conditions.json");
-        mc2::fmt::print_err("[MODOVERRIDE] install registry: {:d} override(s)\n", mc2::fmt::as_i32(base));
-        // Every mounted mod (content packs ride MC2_MOD_DEPS beside any campaign mod) merges in VFS
-        // priority order, so the highest-priority provider wins a duplicate key. Source paths are
-        // relative to that mod's model_overrides directory: Assimp opens files directly, so the
-        // per-record manifestDir is what routes a GLB to its provider.
         std::string active = mc2::gate::str<"MC2_ACTIVE_MOD">();
         if (!bundledArt && (active == "mc2-industrial-kit" || active == "mc2-vehicle-kit")) active.clear();
-        for (const auto& root : modelOverrideMountOrder(active, mc2::gate::str<"MC2_MOD_DEPS">(), activeModJsonDeps(active))) {
-            if (root == "mods/mc2-industrial-kit") continue; // Already merged at lowest priority.
-            if (root == "mods/mc2-vehicle-kit") continue;
-            const std::string dir = (std::filesystem::path(root) / "data/model_overrides").generic_string();
+        const auto mounts = modelOverrideMountOrder(active, mc2::gate::str<"MC2_MOD_DEPS">(), activeModJsonDeps(active));
+        for (const auto& dir : modelOverrideProviderDirs(bundledArt, mounts)) {
             const int n = g.mergeFromFile(dir + "/models.json", dir);
             const int c = g.mergeConditionsFromFile(dir + "/conditions.json");
-            if (n || c)
+            if (n || c || dir == "data/model_overrides")
                 mc2::fmt::print_err("[MODOVERRIDE] {}: {:d} override(s), {:d} condition pick(s) merged (total {:d})\n",
-                                    root.c_str(), mc2::fmt::as_i32(n), mc2::fmt::as_i32(c), mc2::fmt::as_i32(g.count()));
+                                    dir.c_str(), mc2::fmt::as_i32(n), mc2::fmt::as_i32(c), mc2::fmt::as_i32(g.count()));
         }
+        std::string kept;
+        for (const auto& dir : modelOverrideProviderDirs(bundledArt, mounts)) {
+            int k = 0;
+            for (const auto& r : g.records_) k += r.manifestDir == dir;
+            if (k) kept += " " + dir + "=" + std::to_string(k);
+        }
+        mc2::fmt::print_err("[MODOVERRIDE] providers kept:{}\n", kept.c_str());
         fflush(stderr);
     });
     return g;

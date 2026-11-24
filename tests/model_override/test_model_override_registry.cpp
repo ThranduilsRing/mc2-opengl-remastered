@@ -184,6 +184,44 @@ int main(int argc, char** argv) {
         CHECK(stockAddons.size() == 1 && stockAddons[0] == "mods/content_pack");
         CHECK(modelOverrideMountOrder("", "", {}).empty());
     }
+    {   // Two mounted mods both ship data/model_overrides/models.json: each provider's own file merges
+        // (the VFS would resolve only the winner), every key survives, the higher-priority mod wins a
+        // duplicate, and a kit declared as a dependency merges even with bundled art off.
+        namespace fs = std::filesystem;
+        const fs::path root = fs::temp_directory_path() / "mc2-two-mod-models-fixture";
+        auto write = [&](const char* mod, const char* body) {
+            const fs::path d = root / "mods" / mod / "data/model_overrides";
+            fs::create_directories(d);
+            std::ofstream(d / "models.json") << body;
+        };
+        write("mc2-vehicle-kit", R"({"overrides":[
+            {"type":"model","class":"vehicle","replaces":"vehicle:lrmc","source":"lrmc/lod0.glb","fallback":"stock","renderOnly":true,"scale":1.0},
+            {"type":"model","class":"vehicle","replaces":"vehicle:harasser","source":"harasser/lod0.glb","fallback":"stock","renderOnly":true,"scale":1.0},
+            {"type":"model","replaces":"staticprop:quonset","source":"kit_quonset.glb","fallback":"stock","renderOnly":true,"scale":1.0}]})");
+        write("bt2018-props", R"({"overrides":[
+            {"type":"model","replaces":"staticprop:quonset","source":"bt_quonset/lod0.glb","fallback":"stock","renderOnly":true,"scale":1.0},
+            {"type":"model","replaces":"staticprop:lookouttower","source":"bt_tower/lod0.glb","fallback":"stock","renderOnly":true,"scale":1.0}]})");
+        const auto dirs = modelOverrideProviderDirs(false, modelOverrideMountOrder("bt2018-props", "mc2-vehicle-kit", {}));
+        CHECK(dirs.size() == 3);
+        if (dirs.size() == 3) {
+            CHECK(dirs[0] == "data/model_overrides");
+            CHECK(dirs[1] == "mods/mc2-vehicle-kit/data/model_overrides");
+            CHECK(dirs[2] == "mods/bt2018-props/data/model_overrides");
+        }
+        ModelOverrideRegistry r;
+        for (const auto& d : dirs) r.mergeFromFile((root / d / "models.json").string(), d);
+        CHECK(r.count() == 4);
+        const auto* lrmc = r.resolve("vehicle", "lrmc");
+        CHECK(lrmc && lrmc->manifestDir == "mods/mc2-vehicle-kit/data/model_overrides");
+        CHECK(r.resolve("vehicle", "harasser"));
+        CHECK(r.resolve("staticProp", "lookouttower"));
+        const auto* q = r.resolve("staticProp", "quonset");
+        CHECK(q && q->manifestDir == "mods/bt2018-props/data/model_overrides" && q->sourceRelPath == "bt_quonset/lod0.glb");
+        // Bundled art on: kits first, no duplicate provider entry when a kit is also mounted.
+        const auto on = modelOverrideProviderDirs(true, modelOverrideMountOrder("bt2018-props", "mc2-vehicle-kit", {}));
+        CHECK(on.size() == 4 && on[1] == "mods/mc2-vehicle-kit/data/model_overrides" && on[3] == "mods/bt2018-props/data/model_overrides");
+        fs::remove_all(root);
+    }
     printf(failures ? "TESTS FAILED (%d)\n" : "ALL TESTS PASSED\n", failures);
     return failures ? 1 : 0;
 }

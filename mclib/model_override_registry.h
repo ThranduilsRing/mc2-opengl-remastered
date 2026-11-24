@@ -104,3 +104,10 @@ private:
 // dependencies below the active mod. modJsonDeps is the active mod's declared dependency list.
 std::vector<std::string> modelOverrideMountOrder(std::string_view activeMod, std::string_view envDeps,
                                                  const std::vector<std::string>& modJsonDeps);
+
+// Every model_overrides directory whose models.json merges, lowest priority first: the bundled
+// kits (only when bundled art is on), the install's data/model_overrides, then each mounted mod in
+// mount order. Each provider is read from its own directory, never through the VFS-resolved
+// data/model_overrides/models.json (one winner would shadow the others). A kit mounted as an
+// explicit dependency still merges when bundled art is off.
+std::vector<std::string> modelOverrideProviderDirs(bool bundledArt, const std::vector<std::string>& mountOrder);
