@@ -59,7 +59,7 @@ TEST_CASE("TerrainNormalLoad/grass slot takes the turf normal unless modded or r
     loads.clear();
     REQUIRE(run(true, false, false, out, loads));      // the array rejects the turf: slot 1 reloads its own layer
     CHECK(out[1] == 1);
-    CHECK(loads.back() == std::pair<int, bool>{1, false});
+    CHECK(loads[loads.size() - 2] == std::pair<int, bool>{1, false});   // then slot 2 reloads too
 
     CHECK_FALSE(mc2::terrain::loadCookedNormals(std::span<int>(out), false, true,
         [](int mat, bool) -> std::optional<int> { return mat == 3 ? std::nullopt : std::optional<int>(mat); },
