@@ -388,8 +388,10 @@ TEST_CASE("unit display: the master list's NameID cell reads as a slot or as fre
 
 TEST_CASE("unit display: a NameID cell is a slot only when the whole cell is one integer") {
     struct Ram : CSVFile {                                                  // a master list held in memory
-        long load(const std::string& text) {
-            const auto result = File::open(text.data(), static_cast<int>(text.size()));
+        std::string held;                                                   // File::open borrows the buffer: it must outlive the reads
+        long load(std::string text) {
+            held = std::move(text);
+            const auto result = File::open(held.data(), static_cast<int>(held.size()));
             return result == NO_ERR ? afterOpen() : result;
         }
     } master;

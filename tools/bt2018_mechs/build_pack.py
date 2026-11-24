@@ -103,6 +103,11 @@ def install_legacy_string_ids(install: Path):
     return ids
 
 
+def package_ktx2(pkg):
+    """The cooked textures a package.json names; the pack carries them next to the package."""
+    return [k for slot in ("albedo", "ao", "normal") if (k := pkg.get("materials", {}).get(slot, {}).get("ktx2"))]
+
+
 def build(args, out: Path):
     wm, bp = C.load_tables()
     from tools.bt2018_mechs import roster
@@ -115,7 +120,8 @@ def build(args, out: Path):
 
     install = Path(args.install)
     conv = Path(args.conversions)
-    tex_src = Path(args.texture_source) if args.texture_source else None
+    tex_src = Path(args.texture_source) if args.texture_source else install / "data" / "tgl"
+    missing_ktx2 = []
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)
@@ -211,20 +217,23 @@ def build(args, out: Path):
             dst = out / "data" / "tgl" / Path(t).name
             shutil.copyfile(conv / t, dst)
             assets[str(dst.relative_to(out)).replace("\\", "/")] = sha256(dst)
-        if tex_src:
-            pkg = C.load_json(conv / model["package_json"])
-            for slot in ("albedo", "ao", "normal"):
-                k = pkg.get("materials", {}).get(slot, {}).get("ktx2")
-                if k and (tex_src / k).is_file():
-                    dst = out / "data" / "tgl" / k
-                    shutil.copyfile(tex_src / k, dst)
-                    assets[str(dst.relative_to(out)).replace("\\", "/")] = sha256(dst)
+        for k in package_ktx2(C.load_json(conv / model["package_json"])):
+            if not (tex_src / k).is_file():
+                missing_ktx2.append(k)
+                continue
+            dst = out / "data" / "tgl" / k
+            shutil.copyfile(tex_src / k, dst)
+            assets[str(dst.relative_to(out)).replace("\\", "/")] = sha256(dst)
         # P6: icons rendered offline from the same model (generated, so hashed with the generated files).
         if not args.no_icons:
             from tools.bt2018_mechs import render_icons
             for name in render_icons.build_icons(conv / model["source_glb"], p["stem"], out / "data" / "art"):
                 dst = out / "data" / "art" / name
                 assets[f"data/art/{name}"] = sha256(dst)
+
+    if missing_ktx2:      # a pack without its cooked textures draws untextured mechs: stop instead of shipping it
+        sys.exit(f"{len(missing_ktx2)} cooked texture(s) not found in {tex_src} (pass --texture-source <install>/data/tgl): "
+                 + ", ".join(sorted(set(missing_ktx2))[:5]) + " ...")
 
     mod = {
         "schema": MOD_SCHEMA,
@@ -265,7 +274,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--install", required=True)
     ap.add_argument("--conversions", default="A:/Games/mc2-opengl/MC2Conversions")
-    ap.add_argument("--texture-source", default="")
+    ap.add_argument("--texture-source", default="", help="cooked .ktx2 directory (default <install>/data/tgl)")
     ap.add_argument("--mod-id", default="bt2018_mechs")
     ap.add_argument("--out", default="")
     ap.add_argument("--only", default="")

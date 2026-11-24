@@ -735,7 +735,7 @@ def test_hud_icons_have_stock_tone_mix_and_no_outline_ring():
         v = rng.normal(size=(300, 3)) * 0.35 + [cx, cy, 0]       # jittered "high-poly" blob: noisy normals
         parts.append((region, v, np.array([[i, i + 1, i + 2] for i in range(0, 297, 3)])))
     img = R.hud_strip(parts, 25, 30)[:30]
-    solid = img[:, :, 3] > 0
+    solid = img[:, :, :3].any(2)                 # the cell is opaque black: the mech is its non-black pixels
     assert R.palette_ok(img) == [] and not (img[solid][:, :3] == R.OUTLINE).all(1).any()
     green = img[solid][:, 1]
     assert (green == 229).mean() < 0.35 and (green == 83).mean() > 0.4     # dark-dominated like stock
@@ -1040,3 +1040,12 @@ def test_every_converted_chassis_ready_pose_matches_its_bt2018_bind(tmp_path):
         if r is not None and not (r["converged"] and r["error_after"] <= 1.0):
             bad.append((os.path.basename(f), round(r["error_after"], 2), r["worst"]))
     assert not bad, f"chassis whose ready pose does not match BT2018 bind: {bad}"
+
+
+def test_pack_builder_names_every_cooked_texture_a_package_uses():
+    """Trigger: tools/bt2018_mechs/build_pack.py (a pack built without its .ktx2 files drew untextured mechs)."""
+    from tools.bt2018_mechs import build_pack as B
+    pkg = {"materials": {"albedo": {"ktx2": "a.ktx2"}, "ao": {"ktx2": "b.ktx2"}, "normal": {"ktx2": "c.ktx2"},
+                         "emissive": {"ktx2": "ignored.ktx2"}, "other": {}}}
+    assert B.package_ktx2(pkg) == ["a.ktx2", "b.ktx2", "c.ktx2"]
+    assert B.package_ktx2({"materials": {"albedo": {}}}) == [] and B.package_ktx2({}) == []
