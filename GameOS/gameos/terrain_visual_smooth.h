@@ -16,7 +16,101 @@
 
 namespace mc2terrain {
 
-inline std::optional<std::vector<float>> buildSmoothedVisualHeight(const float* elev, int mapSide, float waterElev)
+// Deterministic value noise (fixed seed), 0..1, lattice spacing 1.
+inline float ravineNoise(float x, float y, unsigned seed)
+{
+    auto hs = [seed](int i, int j) {
+        unsigned h = static_cast<unsigned>(i) * 374761393u + static_cast<unsigned>(j) * 668265263u + seed * 2246822519u;
+        h = (h ^ (h >> 13)) * 1274126177u;
+        return static_cast<float>((h ^ (h >> 16)) & 0xffffu) / 65535.0f;
+    };
+    const int i = static_cast<int>(std::floor(x)), j = static_cast<int>(std::floor(y));
+    float u = x - i, v = y - j;
+    u = u * u * (3 - 2 * u); v = v * v * (3 - 2 * v);
+    return (hs(i, j) * (1 - u) + hs(i + 1, j) * u) * (1 - v) + (hs(i, j + 1) * (1 - u) + hs(i + 1, j + 1) * u) * v;
+}
+
+// RAVINE-WEATHER-1: horizontal weathering of cliff walls, only inside cells the pathing map already blocks.
+// A disk median (curvature flow) turns the 128 wu staircase into a flowing course while keeping wall height and
+// steepness; a gradient-aligned domain warp (fbm rim wander, downslope-stretched gully notches), a talus fillet and a
+// slump factor that varies along the wall make it read as an eroded ravine. Fine vertices within 1.5 fine steps of a
+// passable cell are not moved, so walkable ground keeps its height. blocked: cellsSide^2 bytes, row-major, 1 = impassable.
+inline void carveRavines(std::vector<float>& h, int V, const std::vector<unsigned char>& blocked, int cellsSide, float waterElev)
+{
+    const size_t n = static_cast<size_t>(V) * V;
+    std::vector<float> d(n), toImp(n);
+    for (int y = 0; y < V; ++y)
+        for (int x = 0; x < V; ++x) {
+            const int r = std::min(y * 3 / 4, cellsSide - 1), c = std::min(x * 3 / 4, cellsSide - 1);
+            const bool imp = blocked[static_cast<size_t>(r) * cellsSide + c] != 0;
+            d[static_cast<size_t>(x) + static_cast<size_t>(y) * V] = imp ? 1e9f : 0.0f;
+            toImp[static_cast<size_t>(x) + static_cast<size_t>(y) * V] = imp ? 0.0f : 1e9f;
+        }
+    auto chamfer = [V](std::vector<float>& f) {   // two-pass chamfer distance in fine steps
+        for (int pass = 0; pass < 2; ++pass)
+            for (int k = 0; k < V * V; ++k) {
+                const int i = pass ? V * V - 1 - k : k, x = i % V, y = i / V, s = pass ? 1 : -1;
+                if (x + s >= 0 && x + s < V) f[i] = std::min(f[i], f[i + s] + 1.0f);
+                if (y + s >= 0 && y + s < V) {
+                    f[i] = std::min(f[i], f[i + s * V] + 1.0f);
+                    if (x - 1 >= 0) f[i] = std::min(f[i], f[i + s * V - 1] + 1.4142f);
+                    if (x + 1 < V) f[i] = std::min(f[i], f[i + s * V + 1] + 1.4142f);
+                }
+            }
+    };
+    chamfer(d); chamfer(toImp);
+    constexpr int R = 9;   // median radius in fine steps (288 wu): wider than the staircase period
+    std::vector<float> med = h, lo = h, hi = h, samp;
+    for (int y = 0; y < V; ++y)
+        for (int x = 0; x < V; ++x) {
+            const size_t i = static_cast<size_t>(x) + static_cast<size_t>(y) * V;
+            if (toImp[i] > 7.0f) continue;   // only the band the warp can sample
+            samp.clear();
+            for (int dy = -R; dy <= R; ++dy)
+                for (int dx = -R; dx <= R; ++dx)
+                    if (dx * dx + dy * dy <= R * R)
+                        samp.push_back(h[static_cast<size_t>(std::clamp(x + dx, 0, V - 1)) + static_cast<size_t>(std::clamp(y + dy, 0, V - 1)) * V]);
+            std::nth_element(samp.begin(), samp.begin() + samp.size() / 2, samp.end());
+            med[i] = samp[samp.size() / 2];
+            const auto [mn, mx] = std::minmax_element(samp.begin(), samp.end());
+            lo[i] = *mn; hi[i] = *mx;
+        }
+    auto at = [&](const std::vector<float>& f, float x, float y) {
+        x = std::clamp(x, 0.0f, V - 1.001f); y = std::clamp(y, 0.0f, V - 1.001f);
+        const int ix = static_cast<int>(x), iy = static_cast<int>(y);
+        const float u = x - ix, v = y - iy;
+        const size_t i = static_cast<size_t>(ix) + static_cast<size_t>(iy) * V;
+        return (f[i] * (1 - u) + f[i + 1] * u) * (1 - v) + (f[i + V] * (1 - u) + f[i + V + 1] * u) * v;
+    };
+    const std::vector<float> h0 = h;
+    for (int y = 1; y < V - 1; ++y)
+        for (int x = 1; x < V - 1; ++x) {
+            const size_t i = static_cast<size_t>(x) + static_cast<size_t>(y) * V;
+            const float t0 = std::clamp((d[i] - 1.5f) / 3.0f, 0.0f, 1.0f), wgt = t0 * t0 * (3 - 2 * t0);
+            if (wgt <= 0.0f) continue;
+            const float gx = med[i + 1] - med[i - 1], gy = med[i + V] - med[i - V], gl = std::sqrt(gx * gx + gy * gy) + 1e-3f;
+            const float ux = gx / gl, uy = gy / gl, face = std::clamp(gl / 40.0f, 0.0f, 1.0f);
+            const float fx = static_cast<float>(x), fy = static_cast<float>(y);
+            // rim wander: 3 octaves at 128/64/32 wu
+            const float wander = 2.6f * (ravineNoise(fx / 4, fy / 4, 1) - 0.5f) + 1.4f * (ravineNoise(fx / 2, fy / 2, 2) - 0.5f) + 0.8f * (ravineNoise(fx, fy, 3) - 0.5f);
+            // gullies: noise stretched along the downslope direction -> narrow notches running down the wall, in patches
+            const float along = (-uy * fx + ux * fy) / 2.2f, down = (ux * fx + uy * fy) / 14.0f;
+            const float gully = std::pow(std::max(0.0f, 1.0f - 4.0f * std::fabs(ravineNoise(along, down, 4) - 0.5f)), 3.0f) * (ravineNoise(fx / 24, fy / 24, 5) > 0.35f ? 1.0f : 0.0f);
+            const float shift = (wander - 3.5f * gully) * face;
+            float hw = at(med, fx + ux * shift, fy + uy * shift);
+            const float L = lo[i], H = hi[i];
+            if (H - L > 24.0f) {   // profile: slumped (concave talus) vs steep rocky stretches, varying along the wall
+                const float t = std::clamp((hw - L) / (H - L), 0.0f, 1.0f), slump = ravineNoise(fx / 20, fy / 20, 6);
+                hw = L + (H - L) * std::pow(t, 1.0f + 0.9f * slump) + 28.0f * (1.0f - t) * t * (ravineNoise(fx * 0.9f, fy * 0.9f, 7) - 0.5f);   // scree roughness on the apron
+            }
+            float out = h0[i] + wgt * (hw - h0[i]);
+            out = h0[i] > waterElev ? std::max(out, waterElev + 1.0f) : std::min(out, waterElev - 1.0f);
+            h[i] = out;
+        }
+}
+
+inline std::optional<std::vector<float>> buildSmoothedVisualHeight(const float* elev, int mapSide, float waterElev,
+                                                                   const std::vector<unsigned char>* blocked = nullptr, int cellsSide = 0)
 {
     constexpr int F = 4;                  // visual factor, matches visual_height_4x.r32
     constexpr float kCell = 128.0f;       // world units per coarse cell
@@ -113,6 +207,7 @@ inline std::optional<std::vector<float>> buildSmoothedVisualHeight(const float* 
         if (base[i] > waterElev) h[i] = std::max(h[i], waterElev + 1.0f);   // never cross the water plane: shores and islands stay put
         else h[i] = std::min(h[i], waterElev - 1.0f);
     }
+    if (blocked && cellsSide > 0 && blocked->size() == static_cast<size_t>(cellsSide) * cellsSide) carveRavines(h, V, *blocked, cellsSide, waterElev);
     return h;
 }
 

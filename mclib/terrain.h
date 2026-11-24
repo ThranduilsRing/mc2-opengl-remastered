@@ -452,6 +452,8 @@ class Terrain
 		void getColorMapName (FitIniFile *file);
 		void setColorMapName (char *mapName);
 		void saveColorMapName (FitIniFile *file);
+		// Rebuilds the synthesized visual height once the pathing grid is loaded (ravine weathering).
+		void reloadVisualHeightWithPassability (class MissionMap* gm);
 
 	// Terrain::init phases (terrain_init.cpp); callers use init().
 	private:
