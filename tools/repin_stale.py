@@ -24,7 +24,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 DET_DIR = os.path.join(ROOT, "tests", "smoke", "sim_determinism")
 SAVE_DIR = os.path.join(ROOT, "tests", "saveload", "baselines")
-GATE_INSTALL = "E:/mc2-installs/merge-gate"
+GATE_INSTALL = os.environ.get("MC2_GATE_INSTALL", "E:/mc2-installs/merge-gate")
 
 
 def git(*args: str) -> str:
