@@ -118,6 +118,7 @@ add_executable(mc2_tests
     test_torso_twist.cpp
     ${MC2_WORKTREE_ROOT}/mclib/mech_skel_import.cpp
     test_height_sig.cpp  # gameplay_height.sig hash equals the Python writer's test vector (header-only)
+    test_terrain_visual_smooth.cpp  # load-time visual height smoothing (header-only)
     test_render_snap.cpp  # UNIT-VISUAL-SNAP-2 render-only effect-anchor and selection-box lift (header-only)
     test_shadow_bake_math.cpp  # the static shadow bake's mask layout, reach, footprint and caster-window math (header-only, no Vulkan)
     test_terrain_fine_height_bake.cpp  # terrain_tier1.frag fine-normal fetch: the baked filtered height field equals per-tap cliffVisualHeight (header-only)
