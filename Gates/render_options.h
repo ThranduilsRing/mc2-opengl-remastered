@@ -68,6 +68,8 @@ struct RenderOptions {
     bool mechLabLocations = true;
     // Draw distance (fog profile): 0 Stock (9000->18000 wu haze), 1 Balanced, 2 Performance, 3 RT-headroom.
     int drawDistance = 0;
+    // Ground ambient occlusion: terrain-shape AO (baked once per mission from the heightfield) and the ground material cavity; ambient only. A player setting; ships ON.
+    bool groundAo = true;
     bool operator==(const RenderOptions&) const = default;
 };
 
@@ -118,6 +120,7 @@ inline constexpr Option kOptions[] = {
     detail::longOpt ("TextureQuality",                &RenderOptions::textureQuality, -1, 3),
     detail::boolOpt ("MechLabLocations",              &RenderOptions::mechLabLocations),
     detail::longOpt ("DrawDistance",                  &RenderOptions::drawDistance, 0, 3),
+    detail::boolOpt ("GroundAo",                      &RenderOptions::groundAo),
 };
 
 inline constexpr std::size_t kOptionCount = sizeof(kOptions) / sizeof(kOptions[0]);

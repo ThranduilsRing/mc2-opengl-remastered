@@ -30,6 +30,8 @@ struct SurfaceAsset {
 struct SurfaceGradients {
     uint32_t side = 0;
     std::vector<std::array<float, 2>> texels;
+    // Terrain-shape ambient occlusion on the same padded lattice: 1 = open sky, lower = hollows, gullies and slope feet.
+    std::vector<float> ao;
 };
 
 uint64_t surfaceHash(std::span<const uint8_t> bytes, uint64_t seed = 14695981039346656037ull);

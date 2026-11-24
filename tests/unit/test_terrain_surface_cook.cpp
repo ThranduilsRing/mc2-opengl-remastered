@@ -600,3 +600,24 @@ TEST_CASE("surface cook cache: roundtrip, stale key, corrupt and truncated files
     CHECK_FALSE(mc2terrain::loadCachedSurfaceAsset("", key));
     fs::remove_all(dir);
 }
+
+TEST_CASE("terrain shape AO: flat and uniform slope stay open, a bowl darkens its centre, bounds hold") {
+    constexpr uint32_t side = 41;
+    const auto at = [&](const mc2terrain::SurfaceGradients& g, uint32_t x, uint32_t y) { return g.ao[size_t(y + 1) * g.side + x + 1]; };
+    std::vector<float> flat(side * side, 100.0f), slope(side * side), bowl(side * side);
+    for (uint32_t y = 0; y < side; ++y) for (uint32_t x = 0; x < side; ++x) {
+        slope[y * side + x] = 40.0f * float(x);   // 40 wu rise per 128 wu cell
+        const float dx = float(x) - 20.0f, dy = float(y) - 20.0f;
+        bowl[y * side + x] = 30.0f * (dx * dx + dy * dy);   // a pit: centre low, rim high
+    }
+    const auto f = mc2terrain::cookSurfaceGradients(flat, side), s = mc2terrain::cookSurfaceGradients(slope, side),
+               b = mc2terrain::cookSurfaceGradients(bowl, side);
+    REQUIRE((f && s && b));
+    REQUIRE(f->ao.size() == f->texels.size());
+    for (float v : f->ao) CHECK(v == doctest::Approx(1.0f));
+    CHECK(at(*s, 20, 20) == doctest::Approx(1.0f).epsilon(0.02));   // an unbroken slope is not occluded
+    CHECK(at(*b, 20, 20) < 0.6f);                                   // the pit floor is darkest
+    CHECK(at(*b, 20, 20) < at(*b, 12, 20));
+    for (float v : b->ao) { CHECK(v >= 0.0f); CHECK(v <= 1.0f); }
+    CHECK(mc2terrain::cookSurfaceGradients(bowl, side, false)->ao.empty());   // a height patch keeps the mission's earlier bake
+}

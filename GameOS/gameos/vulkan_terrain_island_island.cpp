@@ -537,8 +537,8 @@ bool init_island(TerrainIsland* s, int w, int h) {
     visibilitySampler.maxLod = VK_LOD_CLAMP_NONE;
     visibilitySampler.addressModeU = visibilitySampler.addressModeV = visibilitySampler.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     if (!mc2vk::create(s->staticVisibilitySampler,s->device,[&](auto* h){return vkCreateSampler(s->device,&visibilitySampler,nullptr,h);})) return false;
-    const float flatGradient[2] = {0, 0};
-    if (!upload_sampled_image(s, s->macroGradientTexture, VK_FORMAT_R32G32_SFLOAT, 1, 1, flatGradient, sizeof(flatGradient))) {
+    const float flatGradient[4] = {0, 0, 1, 1};   // zero slope, no terrain-shape occlusion
+    if (!upload_sampled_image(s, s->macroGradientTexture, VK_FORMAT_R32G32B32A32_SFLOAT, 1, 1, flatGradient, sizeof(flatGradient))) {
         setFallback("macro_gradient_dummy_failed"); return false;
     }
     // CEMENT: dummy cement atlas (binding 3) + dummy cement-word SSBO (binding 4) so both

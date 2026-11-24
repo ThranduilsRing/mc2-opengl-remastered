@@ -11,6 +11,8 @@
 vec3 composeGroundLighting(vec3 baseColor, vec3 ambient, vec3 direct, float shadow, vec3 localLight) {
     return baseColor * ambient + baseColor * direct * shadow + localLight;
 }
+// Ground AO: the ambient-share occlusion (1 = none) the caller resolves before shadeGround; scales the prelit body, never the pool lights.
+float g_groundAoMul = 1.0;
 vec3 shadeGround(vec3 baseColor, vec3 N, float normalLight, float shadow,
                  float flatLitShare, vec3 worldPos, vec3 macroNormal, bool resolveNormal, float normalLod) {
         vec3 lit = composeGroundLighting(baseColor, vec3(0), vec3(normalLight), shadow, vec3(0));
@@ -19,6 +21,7 @@ vec3 shadeGround(vec3 baseColor, vec3 N, float normalLight, float shadow,
         // Cached burnins need the mission profile; live-lit cement already
         // received it through missionFlatLight. Applying it twice blacks pads.
         lit *= mix(uEnv.sceneLight.x * uEnv.sceneLight.yzw, vec3(1.0), flatLitShare);   // .yzw: the sun keys' live/authored flat-light ratio (1 without keys)
+        lit *= g_groundAoMul;
 
         // VK-PARITY-TERRAIN-2: NIGHT-LIGHT-POOLS-1..4 / LIGHT-CLUSTER-PERF-1 /
         // MOVER-CONTACT-SHADOW-1 — the SAME shared body GL runs (terrain_lod_chunk.frag

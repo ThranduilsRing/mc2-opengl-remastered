@@ -31,7 +31,10 @@ float evaluateSurfaceBreakup(float worldX, float worldY);
 // Non-divisible footprints stay fine so a coarse capture cannot truncate coverage.
 std::array<float, 6> terrainPatchHeightErrors(std::span<const float> heights, uint32_t side,
     uint32_t originX, uint32_t originY, uint32_t quadsX, uint32_t quadsY);
-std::optional<SurfaceGradients> cookSurfaceGradients(std::span<const float> heights, uint32_t side);
+// Padded (side + 2) lattice, same indexing as SurfaceGradients::texels; 1 = open, lower = occluded.
+std::vector<float> cookTerrainShapeAo(std::span<const float> heights, uint32_t side, float cellWorld);
+// bakeAo = false leaves SurfaceGradients::ao empty (a height patch keeps the mission's earlier bake).
+std::optional<SurfaceGradients> cookSurfaceGradients(std::span<const float> heights, uint32_t side, bool bakeAo = true);
 std::optional<SurfaceAsset> cookSurface(const SurfaceCookInput& input);
 // RGBA8 = grass, dirt, snow, concrete; rock is the remaining weight. Terrain
 // material indices and authored control weights override the legacy color import.
