@@ -1081,15 +1081,19 @@ def test_pre_gate_runs_the_early_rows(env, monkeypatch, capsys):
     monkeypatch.setattr(lm, "regenerate_all", lambda root, dry_run=False: [])
     monkeypatch.setattr(lm, "exe_matches_head", lambda root, tree="build64-ninja": None)
 
+    monkeypatch.setattr(lm, "data_fingerprint_check", lambda root: ("OK", ""))
+    monkeypatch.setattr(lm, "cooked_outputs_check", lambda root: ("OK", ""))
+
     def runner(root, cmd, env=None):
         cmds.append(cmd)
-        return subprocess.CompletedProcess(cmd, int(any("log_tag_census" in str(c) for c in cmd)), "tag census red")
+        return subprocess.CompletedProcess(cmd, int(any("check-background-launch" in str(c) for c in cmd)), "launch red")
     monkeypatch.setattr(lm, "run", runner)
     assert lm.pre_gate(str(repo), exe=str(repo / "no.exe")) == 1
     out = capsys.readouterr().out
-    assert "pre-gate: sim_include_firewall: OK" in out
-    assert "pre-gate: log_tag_census: FAIL" in out
-    assert "PRE-GATE FAIL: log_tag_census" in out
+    # The gate's path-scoped contracts own the board rows; pre-gate keeps only deploy inputs.
+    assert "pre-gate: sim_include_firewall" not in out
+    assert "pre-gate: background-launch: FAIL" in out
+    assert "PRE-GATE FAIL: background-launch" in out
 
 
 def test_pre_gate_fails_on_a_stale_exe_fingerprint(env, monkeypatch, capsys):
