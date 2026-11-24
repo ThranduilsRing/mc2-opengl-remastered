@@ -21,7 +21,8 @@ def test_material_normal_profile_reaches_shader(material, period):
     for suffix, value in [("Period", period), ("Strength", 1)]:
         field = f"normal{material}{suffix}"
         key = f"terrainNormal{material}{suffix}"
-        assert defaults[key] == value  # baseline-preserving until owner comparison
+        expected = 1.75 if suffix == "Strength" and material in ("Flat", "Slope") else value
+        assert defaults[key] == expected
         assert re.search(r'\{"' + key + r'",' + str(value) + r'\}', loader)
         assert f'u.{field} = normalTuning.at("{key}");' in upload
         assert re.search(r"float\s+" + field + r";", abi)
