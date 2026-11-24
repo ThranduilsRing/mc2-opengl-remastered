@@ -679,6 +679,37 @@ TEST_CASE("ABLSave/corrupt value records stop with a returning fatal callback") 
     file.close();
 }
 
+TEST_CASE("ABLSave/corrupt module records free the partially read fresh module on a malloc load") {
+    using namespace mc2::save;
+    std::string image;
+    {
+        CompileFixture fixture;
+        fixture.sources["resume.abl"] = kResumeModule;
+        const int handle = ABLi_preProcess("resume.abl");
+        REQUIRE(handle >= 0);
+        auto module = std::make_unique<ABLModule>();
+        REQUIRE(module->init(handle) == ABL_NO_ERR);
+        image = saveEnvironment("valid.sav", true);
+    }
+    const auto envBytes = encodeTaggedRecord(AblEnvironmentRecord{0, 1, 0, {"resume.abl"}}, tagAblEnvironment);
+    const size_t prefix = sizeof(uint32_t) + envBytes.size(); // size word + environment record
+    REQUIRE(image.size() > prefix);
+    // Every cut inside the module section leaves a fresh, partly read module owned only by the loader.
+    for (size_t n = prefix; n < image.size(); ++n) {
+        CompileFixture fixture(true);
+        fixture.sources["resume.abl"] = kResumeModule;
+        fixture.sources["bad.sav"] = image.substr(0, n);
+        ABLFile file;
+        REQUIRE(file.open("bad.sav") == 0);
+        CHECK_NOTHROW(ABLi_loadEnvironment(&file, true, true));
+        CHECK(ABLi_environmentLoadFailed());
+        CHECK_FALSE(fixture.fatalMessage.empty());
+        CHECK(ABLi_getNumModuleInstances() == 0); // the failed module never joined the live registry
+        file.close();
+        CHECK(fixture.openFiles == 0);
+    }
+}
+
 TEST_CASE("LogisticsTeardown/the tutorial brain is freed before ABL closes (BUGS row 76)") {
     {
         // The hazard: a module with static data freed after the environment closed reaches the closed-arena fatal.

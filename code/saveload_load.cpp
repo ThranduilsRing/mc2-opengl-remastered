@@ -222,9 +222,11 @@ void Mission::loadMissionScript(MissionLoadFrame& f) {
 #ifdef USE_ABL_LOAD
 	missionBrain = ABLi_getModule(missionScriptHandle);
 	if (!missionBrain) {
-		if (missionScriptHandle != -1)
+		// A mission without a brain saves handle -1; only a valid handle with no module is incompatible.
+		if (missionScriptHandle != -1) {
 			mc2::fmt::print_err("[ABL_LOAD_BAD] missing mission brain handle={}\n", missionScriptHandle);
-		f.incompatibleSave = true;
+			f.incompatibleSave = true;
+		}
 		missionBrainParams = nullptr;
 		missionBrainCallback = nullptr;
 		return;
