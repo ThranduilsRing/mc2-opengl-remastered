@@ -355,6 +355,7 @@ private:
 	std::expected<void, int> addBuilding( long fitID, PacketFile& objectFile, float scale, std::string_view csvName = {} );
 	void removeDeadWeight();
 	void clearVariants();
+	void resetCampaignRoster();   // inventory, pilots, player variants, deploy snapshot and layout notes back to the cold-start set
 
 
 
