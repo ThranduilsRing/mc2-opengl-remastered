@@ -362,7 +362,7 @@ def _tier0(planned):
 
 @pytest.mark.parametrize('paths,want,single', [
     (['code/mission_update.cpp'], {'determinism-mc2_24', 'saveload-mc2_01'}, False),
-    (['code/logisticsdata.cpp'], {'player-path'}, True),
+    (['code/logisticsdata.cpp'], set(), True),   # pare-down: only front-end, campaign, video and save paths promote player-path
     # W137: logistics saves are sim/save-sensitive (forward plan P1) and still a front-end path.
     (['code/logisticsdata_save.cpp'], {'determinism-mc2_24', 'saveload-mc2_01', 'player-path'}, False),
     (['code/mc2movie.cpp'], {'player-path'}, True),
