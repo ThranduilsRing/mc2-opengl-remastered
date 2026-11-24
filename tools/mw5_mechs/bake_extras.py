@@ -23,12 +23,12 @@ from sockets import load_glb  # noqa: E402
 SIZE = 2048
 
 
-def body_triangles(glb):
+def body_triangles(glb, weapons=False):
     """(pos, normal, uv, tris) of every hull part that samples the atlas 1:1 (not weapons, not the glass tile)."""
     doc, buf = load_glb(glb)
     out = []
     for m in doc["meshes"]:
-        if m["name"].startswith("wp") or m["name"] == "cockpit_glass":
+        if m["name"].startswith("wp") != weapons or m["name"] == "cockpit_glass":
             continue
         for pr in m["primitives"]:
             a = pr["attributes"]
@@ -194,12 +194,38 @@ DECALS = [
 ]
 
 
+def seat(fields, d, min_hits=1500):
+    """Re-seat a decal that bounding-box scaling left off the surface: centre it on the outermost matching surface near its place."""
+    pos, nrm, cov, _ = fields
+    axis = np.asarray(d["axis"], np.float32)
+    right = np.cross([0, 1, 0], axis)
+    right = right / np.linalg.norm(right)
+    rel = pos - np.asarray(d["at"], np.float32)
+    facing = cov & ((nrm * axis).sum(-1) < -.55)
+    across, up = (rel * right).sum(-1), rel[..., 1]
+    if (facing & (np.abs((rel * axis).sum(-1)) < d["depth"]) & (np.abs(across) < d["size"][0] / 2) & (np.abs(up) < d["size"][1] / 2)).sum() >= min_hits:
+        return d
+    near = facing & (np.abs(across) < d["size"][0] * 1.6) & (np.abs(up) < d["size"][1] * 2.5)
+    if not near.any():
+        return d
+    p = pos[near]
+    along = (p * axis).sum(-1)
+    outer = p[along < along.min() + .35]
+    if len(outer) < 40:
+        return d
+    at = np.asarray(d["at"], np.float32)
+    c = np.median(outer, axis=0)
+    at = at + axis * float(((c - at) * axis).sum()) + right * float(((c - at) * right).sum()) + np.array([0, 1, 0], np.float32) * float(c[1] - at[1])
+    return {**d, "at": tuple(float(v) for v in at), "depth": max(d["depth"], .6)}
+
+
 def decals(fields, alb, orm, atlas, placements=DECALS):
     pos, nrm, cov, down = fields
     atlas = np.asarray(Image.open(atlas).convert("RGBA"), np.float32) / 255
     alb, orm = alb.astype(np.float32) / 255, orm.astype(np.float32) / 255
     srgb_to_lin = lambda c: np.where(c <= .04045, c / 12.92, ((c + .055) / 1.055) ** 2.4)  # noqa: E731
     for d in placements:
+        d = seat(fields, d)
         x0, y0, x1, y1 = d["cell"]
         cell = atlas[y0:y1, x0:x1]
         ys, xs = np.nonzero(cell[..., 3] > .05)

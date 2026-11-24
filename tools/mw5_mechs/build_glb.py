@@ -171,6 +171,27 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None, attachments=(), 
     for i, n in enumerate(nodes):
         for c in n.get("children", []):
             parent[c] = i
+    # The pack's skeleton is rigid (no scale): fold a bone's scale (Zeus left hip is 1.069) into the pivot positions below it.
+    full = {}
+
+    def full_world(i):
+        if i not in full:
+            m = trs_mat(nodes[i])
+            m[:3, :3] = m[:3, :3] @ np.diag(nodes[i].get("scale", [1, 1, 1]))
+            full[i] = (full_world(parent[i]) @ m) if i in parent else m
+        return full[i]
+
+    def rigid(m):
+        r = m.copy()
+        r[:3, :3] = m[:3, :3] / np.maximum(np.linalg.norm(m[:3, :3], axis=0), 1e-12)
+        return r
+
+    rigid_world = {}
+    for i in range(len(nodes)):
+        rigid_world[i] = rigid(full_world(i))
+    for i, n in enumerate(nodes):
+        local = (np.linalg.inv(rigid_world[parent[i]]) if i in parent else np.eye(4)) @ rigid_world[i]
+        n["translation"] = [float(v) for v in local[:3, 3]]
     glob = {}
 
     def gmat(i):
@@ -305,10 +326,10 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None, attachments=(), 
         jb = part_joints.get(b, b)
         jn = joint_nodes[jb]
         ibm = np.linalg.inv(gmat(jn))
-        orig = read_accessor(g, buf, skin["inverseBindMatrices"])[jb].reshape(4, 4).T
+        orig = np.linalg.inv(rigid(np.linalg.inv(read_accessor(g, buf, skin["inverseBindMatrices"])[jb].reshape(4, 4).T)))
         drift = max(drift, float(np.abs(ibm - orig).max()))
         if not np.isfinite(drift) or drift >= 1e-4:
-            raise ValueError(f"ibm_drift {drift:.9g} >= 1e-4")
+            raise ValueError(f"ibm_drift {drift:.9g} >= 1e-4 at joint {jb} ({g['nodes'][jn].get('name')})")
         p = [np.concatenate([q[k] for q in plist]) for k in range(3)]
         base, material_indices = 0, {}
         for q in plist:

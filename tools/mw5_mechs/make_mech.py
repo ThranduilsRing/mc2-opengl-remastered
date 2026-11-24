@@ -152,6 +152,11 @@ def hull_glb(recipe, work):
     prone_pose.rewrite(trimmed, work / "final.glb", recipe.get("prone_pitch", 85.0))
 
 
+CAMO_PAINT = {"PaintColorPrimary": [0.130352, 0.119264, 0.052842], "PaintColorSecondary": [0.096266, 0.067725, 0.044553],
+              "PaintColorTertiary": [0.227137, 0.151058, 0.096266], "PaintColorMultiplier": [1, 1, 1],
+              "MetalColorMultiplier": [0.630208, 0.618193, 0.57475]}   # the approved Mad Cat camo
+PAINT = "camo"                # "camo" = every mech wears the Mad Cat palette; "mw5" = the chassis' own default colours
+GUNMETAL = (40, 42, 46)       # weapon islands the body paint mask leaves bare would read as white boxes
 DIRT_STRENGTH = 1.5           # the approved Mad Cat look: MW5's 0.75 doubled
 MADCAT_BOX = np.array([[-4.11, -0.09, -5.92], [4.66, 15.58, 5.92]])   # body bounds the DECALS were placed on
 
@@ -183,6 +188,8 @@ def bake(recipe, work):
     else:   # no authored wear map on this chassis: shared macro variation drives a light dirt layer
         wear[..., 1] = bake_material.load(leaf("macro"), channels="L")[..., 0] * 0.5
     glb = work / "final.glb"
+    if PAINT == "camo":
+        params["paint"] = dict(CAMO_PAINT)
     params["scalars"]["DirtStrength"] = recipe.get("dirt_strength", DIRT_STRENGTH)
     wear[..., 0] = np.maximum(wear[..., 0], bake_extras.edge_wear(glb))   # paint chips on convex edges
     detail = None
@@ -195,6 +202,10 @@ def bake(recipe, work):
     body = bake_extras.body_triangles(glb)
     fields = bake_extras.rasterize(body)
     a, o = bake_extras.weather(fields, np.asarray(alb), np.asarray(orm), leaf("rust"), leaf("macro"))
+    w_pos, _, w_cov, _ = bake_extras.rasterize(bake_extras.body_triangles(glb, weapons=True))
+    bare = w_cov & (bake_material.load(leaf("mask"))[..., :3].sum(-1) < .15)
+    a[bare, :3] = GUNMETAL
+    o[bare, 1], o[bare, 2] = int(.45 * 255), int(.8 * 255)
     if "decals" in ex["textures"]:
         a, o = bake_extras.decals(fields, a, o, leaf("decals"),
                                   scale_decals(bake_extras.DECALS, np.concatenate([p for p, _, _, _ in body])))
@@ -228,7 +239,10 @@ def main():
     ap.add_argument("--install", type=Path, required=True)
     ap.add_argument("--steps", default="extract,glb,bake,pack")
     ap.add_argument("--mod-id")
+    ap.add_argument("--paint", choices=("camo", "mw5"), default="camo")
     a = ap.parse_args()
+    global PAINT
+    PAINT = a.paint
     recipe = build_glb.load_recipe(a.recipe)
     a.work.mkdir(parents=True, exist_ok=True)
     steps = a.steps.split(",")
