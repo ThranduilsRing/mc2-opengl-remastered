@@ -178,13 +178,13 @@ def build(args, out: Path):
     for rel, text in files.items():
         write_text(out / rel, text)
 
-    # The override controller supplies every Atlas state from this chassis's own clips.
-    # Only a chassis with no own clips uses the model-space Atlas retarget.
+    # Own override states win; missing states keep the existing Atlas retarget.
     sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
     from bt2018_retarget_clips import pose_table, retarget_file
     from tools.bt2018_import import bake_clips as BK
     pose_rows = []
     sources = {}
+    clip_manifest = {}
     assets = {}
     for p, recipe in zip(profiles, recipes_loaded):
         model = recipe["mc2"]["model"]
@@ -194,6 +194,11 @@ def build(args, out: Path):
         native = BK.chassis_clips(args.bundles, fam)
         sources[fam] = len(native)
         retarget_file(str(conv / model["source_glb"]), str(conv / "atlas.glb"), str(dst), own_clips=native)
+        from pygltflib import GLTF2
+        fallback = sorted(a.name for a in GLTF2().load(str(dst)).animations
+                          if a.name.startswith("atlas_") and a.name not in native)
+        clip_manifest[fam] = {"own": sorted(native), "fallback": fallback}
+        print(f"[bt2018] {fam}: own={len(native)} fallback={fallback}")
         r = retarget_file.last_report
         if r:
             pose_rows.append((model['pack_path'], r['error_before'], r['error_after'], r['iterations'], r['converged'], r['blend']))
@@ -241,6 +246,7 @@ def build(args, out: Path):
         "assets": dict(sorted(assets.items())),
         "stock_references_unmodified": stock_refs,
         "native_clip_counts": sources,
+        "clip_manifest": clip_manifest,
         "balance_profile": bp["id"],
         "weapon_map_version": wm["version"],
         "profiles": {p["chassis_id"]: {"variants": [v["name"] for v in p["variants"]], "report": p["report"]} for p in profiles},
@@ -265,7 +271,7 @@ def main():
     ap.add_argument("--out", default="")
     ap.add_argument("--only", default="")
     ap.add_argument("--no-icons", action="store_true", help="skip the offline icon render (P6)")
-    ap.add_argument("--bundles", default="A:/Games/BATTLETECH/BattleTech_Data/StreamingAssets/data/assetbundles",
+    ap.add_argument("--bundles", required=True,
                     help="owner's BT assetbundles directory (UnityPy pinned in tools/bt2018_import/requirements.txt)")
     ap.add_argument("--check", action="store_true", help="rebuild into a temp dir and compare with the existing mod")
     args = ap.parse_args()

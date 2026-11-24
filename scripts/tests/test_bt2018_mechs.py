@@ -415,6 +415,31 @@ def test_native_clip_baker_decodes_streamed_dense_and_constant_curves():
     assert vals.tolist() == [[1.0, 0.0, 7.0], [2.0, 5.0, 7.0], [5.0, 10.0, 7.0]]
 
 
+def test_partial_own_clips_preserve_the_existing_retarget_per_missing_state(tmp_path):
+    from pygltflib import GLTF2
+    import numpy as np
+    from bt2018_retarget_clips import retarget_file, accessor_view
+    atlas, raw, baseline, out = [tmp_path / f"{n}.glb" for n in ("atlas", "raw", "baseline", "own")]
+    s = 2 ** -0.5
+    for p, bind in ((atlas, (0, 0, 0, 1)), (raw, (s, 0, 0, s))):
+        _tiny_glb(p, bind, [(0, 0, 0, 1), (0, 0, s, s)])
+        g = GLTF2().load(str(p))
+        fire = copy.deepcopy(g.animations[0])
+        fire.name = "atlas_attackFirePelvisBack"
+        g.animations.append(fire)
+        g.save(str(p))
+    retarget_file(str(raw), str(atlas), str(baseline))
+    own = np.array([[0, s, 0, s], [0, s, 0, s]])
+    retarget_file(str(raw), str(atlas), str(out), {"atlas_moveCoreIdle": (1, {"j_Hip": own})})
+    before, after = GLTF2().load(str(baseline)), GLTF2().load(str(out))
+    def keys(g, name):
+        a = next(a for a in g.animations if a.name == name)
+        return accessor_view(g, g.binary_blob(), a.samplers[0].output)[0]
+    assert {a.name for a in after.animations} == {a.name for a in before.animations}
+    np.testing.assert_array_equal(keys(after, "atlas_attackFirePelvisBack"), keys(before, "atlas_attackFirePelvisBack"))
+    np.testing.assert_allclose(keys(after, "atlas_moveCoreIdle"), own)
+
+
 def test_baked_clip_buffer_views_stay_inside_the_binary_chunk(tmp_path):
     """Trigger: bake_clips.add_to_glb. f8 keys once sized views at 2x the f4 bytes written: Assimp rejected 50/51 GLBs (3 mechs drew placeholders)."""
     pygltflib = pytest.importorskip("pygltflib")
@@ -464,6 +489,7 @@ def test_native_controller_keeps_aliases_instead_of_guessing_suffixes(monkeypatc
     entries = [NS(m_OriginalClip=NS(deref=lambda n=n: NS(peek_name=lambda: n)),
                   m_OverrideClip=NS(path_id=7, deref=lambda: clip))
                for n in ("atlas_attackMeleePush", "atlas_attackMeleePunch")]
+    entries.append(NS(m_OverrideClip=NS(path_id=0)))  # No own clip: leave this state to Atlas.
     controller = NS(type=NS(name="AnimatorOverrideController"),
                     peek_name=lambda: "charoverctrl_catapultBase-001",
                     read=lambda: NS(m_Clips=entries))

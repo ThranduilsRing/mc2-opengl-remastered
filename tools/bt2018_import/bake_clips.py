@@ -93,8 +93,10 @@ def native_clips(bundle, family):
     clips = {}
     if controllers:
         for entry in controllers[0].read().m_Clips:
+            if not entry.m_OverrideClip.path_id:
+                continue  # An unoverridden state belongs to the Atlas fallback.
             original = entry.m_OriginalClip.deref()
-            override = entry.m_OverrideClip.deref() if entry.m_OverrideClip.path_id else original
+            override = entry.m_OverrideClip.deref()
             clips[original.peek_name()] = override
     elif family == 'atlas':
         clips = {o.peek_name(): o for o in env.objects if o.type.name == 'AnimationClip'
@@ -111,7 +113,7 @@ def native_clips(bundle, family):
 
 
 def chassis_clips(bundles, family):
-    """Search the base and DLC bundles; absence alone permits Atlas retarget fallback."""
+    """Search the base and DLC bundles for the chassis's own override states."""
     raw = Path(bundles)
     for name in (f'chrprfmech_{family}base-001', 'flashpoint', 'heavymetal', 'urbanwarfare', 'shadowhawkdlc'):
         bundle = raw / name
@@ -131,9 +133,6 @@ def add_to_glb(src, dst, clips):
     for name, (_, rots) in clips.items():
         if not (rots.keys() & node.keys()):
             raise ValueError(f'{name}: no Avatar joints match the GLB')
-    expected = {a.name for a in g.animations if a.name.startswith('atlas_')}
-    if clips and expected - clips.keys():
-        raise ValueError(f'Incomplete own clips: {sorted(expected - clips.keys())}')
     g.animations = [a for a in g.animations if a.name not in clips]
     def put(arr, kind, minmax=False):
         while len(blob) % 4: blob.append(0)

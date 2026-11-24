@@ -186,8 +186,13 @@ def retarget_file(target_path, atlas_path, out_path, own_clips=None):
     Write out_path; return (rotation channels, rotation keys)."""
     if own_clips:
         from tools.bt2018_import.bake_clips import add_to_glb
+        expected = {a.name for a in GLTF2().load(target_path).animations if a.name.startswith('atlas_')}
+        source = target_path
+        if expected - own_clips.keys():
+            retarget_file(target_path, atlas_path, out_path)
+            source = out_path
         retarget_file.last_report = None
-        add_to_glb(target_path, out_path, own_clips)
+        add_to_glb(source, out_path, own_clips)
         return (sum(len(rots) for _, rots in own_clips.values()),
                 sum(len(q) for _, rots in own_clips.values() for q in rots.values()))
     tgt = GLTF2().load(target_path)
