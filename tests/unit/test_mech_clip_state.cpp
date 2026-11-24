@@ -329,6 +329,29 @@ TEST_CASE("clip state: one-shots fit stock gesture time with safe bounds") {
     CHECK(onceRate("atlas_moveJumpDownLand", 4, 0, 0) == 2);
 }
 
+TEST_CASE("clip state: one-shot hits power-on and get-up release to idle") {
+    // Owner 11-16: stayed leaning back after a hit. CI replacement for the external-only
+    // test_one_shot_clips_end_on_the_idle_pose: a completed sim gesture must release the
+    // held hit pose, even when its imported clip clock has not finished yet.
+    for (int gesture : {kGestureHitFront, kGestureHitBack, kGestureHitLeft, kGestureHitRight,
+                        kGestureParkToStand, kGestureGetUp, kGestureRollover}) {
+        for (bool finished : {false, true}) {
+            Phase phase;
+            const auto shot = pick(gesture, phase);
+            REQUIRE(shot.mode == Mode::Once);
+            CHECK(advanceClipTime(0.5f, 10.0f, 1.0f, 1.0f, shot.mode) == 1.0f);
+            const auto idle = pick(2, phase, 0.0f, false, finished, shot.clip);
+            CHECK(std::string(idle.clip) == "atlas_moveCoreIdle");
+            CHECK(idle.mode == Mode::Loop);
+            CHECK_FALSE(idle.locomotion);
+            const auto walk = pick(kGestureWalk, phase, 5.0f, false, finished, shot.clip);
+            CHECK(std::string(walk.clip) == "atlas_moveCoreWalkFwd");
+            CHECK(walk.mode == Mode::Loop);
+            CHECK(walk.locomotion);
+        }
+    }
+}
+
 TEST_CASE("clip state: fades use longer prone transitions and advance outgoing clips") {
     CHECK(fadeDuration("walk", "run") == 0.15f);
     for (auto prone : {"atlas_downedIdle", "atlas_downedGetup", "atlas_deathIdle", "atlas_deathKnockdown", "atlas_hitReactKnockdownInpl"}) {
