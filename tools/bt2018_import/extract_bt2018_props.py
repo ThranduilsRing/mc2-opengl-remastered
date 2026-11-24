@@ -34,7 +34,11 @@ from PIL import Image
 import UnityPy
 from UnityPy.helpers.MeshHelper import MeshHandler
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import bake_materials  # noqa: E402
+
 WU_PER_M = 4.0
+BAKE_PX = (2048, 1024, 512)  # baked texture set per LOD
 DEFAULT_INSTALL = "A:/Games/BATTLETECH/BattleTech_Data"
 LICENSE = "personal use: extracted from the owner's own BATTLETECH install; not redistributable"
 SCHEMA = "bt2018-prop-package/1"
@@ -105,36 +109,6 @@ def renderer_materials(inst, file, mesh_name):
     return None
 
 
-def pack_maps(inst, spec, alpha_mask):
-    """spec: {alb, nrm, amb?, mtl?} texture names -> (rgba albedo, rgb normal, rgba orm)."""
-    alb = np.asarray(inst.texture(spec["alb"]))
-    size = alb.shape[:2]
-
-    def fit(name):
-        im = inst.texture(name)
-        return np.asarray(im if im.size == (size[1], size[0]) else im.resize((size[1], size[0]), Image.LANCZOS))
-    if not alpha_mask:
-        alb = alb.copy()
-        alb[..., 3] = 255
-    if not spec.get("nrm"):  # material without a normal map: flat tangent-space normal
-        nrm = np.zeros((*size, 4), np.float32)
-        nrm[..., :2] = 127.5
-    else:
-        nrm = fit(spec["nrm"]).astype(np.float32)
-    dxt5 = nrm[..., 0].mean() > 240  # DXT5nm: x in A, y in G
-    x = (nrm[..., 3] if dxt5 else nrm[..., 0]) / 127.5 - 1
-    y = nrm[..., 1] / 127.5 - 1
-    z = np.sqrt(np.clip(1 - x * x - y * y, 0, 1))
-    normal = np.stack([(x + 1) * 127.5, (y + 1) * 127.5, (z + 1) * 127.5], -1).round().astype(np.uint8)
-    orm = np.full((*size, 4), 255, np.uint8)
-    if spec.get("amb"):
-        orm[..., 0] = fit(spec["amb"])[..., 0]
-    smooth = fit(spec["mtl"])[..., 3] if spec.get("mtl") else np.full(size, 255 * (1 - spec.get("roughness", 0.8)), np.uint8)
-    orm[..., 1] = (255 - smooth * float(spec.get("smoothness_scale", 1.0))).clip(0, 255).astype(np.uint8)
-    orm[..., 2] = 0
-    return alb, normal, orm
-
-
 def png(arr):
     b = io.BytesIO()
     Image.fromarray(arr).save(b, "PNG")
@@ -196,6 +170,8 @@ def mesh_prims(mesh):
     nrm = np.asarray(h.m_Normals, np.float32).reshape(-1, 3).copy()
     uv = np.asarray(h.m_UV0, np.float32).reshape(-1, 2).copy()
     tan = np.asarray(h.m_Tangents, np.float32).reshape(-1, 4).copy() if h.m_Tangents is not None and len(h.m_Tangents) else None
+    col = h.m_Colors
+    col = np.asarray(col, np.float32).reshape(-1, 4)[:, 0] / 255.0 if col is not None and len(col) else None
     pos[:, 0] *= -1  # Unity left handed -> glTF right handed
     nrm[:, 0] *= -1
     uv[:, 1] = 1 - uv[:, 1]
@@ -206,58 +182,59 @@ def mesh_prims(mesh):
     for tris in h.get_triangles():
         t = np.asarray(tris, np.uint32).reshape(-1, 3)[:, ::-1].reshape(-1)  # flip winding
         subs.append(t)
-    return pos, nrm, uv, tan, subs
+    return pos, nrm, uv, tan, subs, col
 
 
-def build_prop(inst, prop, out):
+def spec_material(spec):
+    """props_catalog.json texture spec {alb, nrm, amb?, mtl?} -> a decoded single-layer material."""
+    maps = {slot: (spec[k], (1.0, 1.0), (0.0, 0.0)) for k, slot in
+            (("alb", "_MainTex"), ("nrm", "_BumpMap"), ("amb", "_OcclusionMap"), ("mtl", "_MetallicGlossMap")) if spec.get(k)}
+    return {"maps": maps, "color": (1.0, 1.0, 1.0), "floats": {"_BumpScale": float(spec.get("bump_scale", 1.0))}}
+
+
+def build_prop(inst, prop, out, matidx, texcache):
+    """One prop package: per LOD one GLB with one baked texture set (albedo, normal, ORM) over all submeshes."""
     pid = prop["id"]
     pdir = out / pid
     pdir.mkdir(parents=True, exist_ok=True)
-    lods, materials_doc, texture_log, bounds = [], [], [], None
-    images, gl_materials, slot_of = [], [], {}
+    lods, materials_doc, bounds = [], [], None
     for lod_i, lod in enumerate(prop["lods"]):
-        mesh = find_mesh(inst, prop["file"], lod["mesh"])
-        pos, nrm, uv, tan, subs = mesh_prims(mesh)
+        pos, nrm, uv, _tan, subs, col = mesh_prims(find_mesh(inst, prop["file"], lod["mesh"]))
         pos = pos * np.asarray(prop.get("placement_scale", (1.0, 1.0, 1.0)), np.float32)
         auto = renderer_materials(inst, prop["file"], lod["mesh"])
+        names = [m["material"] for m in auto] if auto else list(prop.get("material_names") or [])
         specs = prop.get("materials") or []
-        prims = []
-        for si, idx in enumerate(subs):
-            spec = dict(specs[min(si, len(specs) - 1)]) if specs else {}
-            if not spec and auto:
-                m = auto[min(si, len(auto) - 1)]
-                stem = m["maps"]["_MainTex"].rsplit("_", 1)[0]
-                spec = {"alb": m["maps"]["_MainTex"], "nrm": m["maps"]["_BumpMap"], "amb": m["maps"].get("_OcclusionMap"),
-                        "mtl": m["maps"].get("_MetallicGlossMap"), "cutoff": m["cutoff"], "bump_scale": m["bump_scale"]}
-            if not spec:
-                raise ValueError(f"{pid} {lod['mesh']}: no material (renderer unresolved and no catalog materials)")
-            spec.setdefault("class", prop["class"])
-            key = (spec["alb"], spec["class"])
-            if key not in slot_of:
-                mask = prop.get("alpha") == "MASK"
-                alb, nrm_img, orm = pack_maps(inst, spec, mask)
-                base = len(images)
-                images += [png(alb), png(nrm_img), png(orm)]
-                gl = {"name": f"{pid}_{len(slot_of)}", "doubleSided": mask,
-                      "pbrMetallicRoughness": {"baseColorTexture": {"index": base}, "metallicFactor": 0.0, "roughnessFactor": 1.0,
-                                               "metallicRoughnessTexture": {"index": base + 2}},
-                      "normalTexture": {"index": base + 1, "scale": float(spec.get("bump_scale", 1.0))},
-                      "occlusionTexture": {"index": base + 2, "strength": float(spec.get("ao_strength", 1.0))},
-                      "extras": {"mc2_material_class": spec["class"]}}
-                if mask:
-                    gl["alphaMode"], gl["alphaCutoff"] = "MASK", float(spec.get("cutoff", 0.5))
-                gl_materials.append(gl)
-                slot_of[key] = len(slot_of)
-                materials_doc.append({"slot": slot_of[key], "class": spec["class"], "alphaMode": gl.get("alphaMode", "OPAQUE"),
-                                      "maps": {k: spec.get(k) for k in ("alb", "nrm", "amb", "mtl")},
-                                      "sha256": {"albedo": sha(images[base]), "normal": sha(images[base + 1]), "orm": sha(images[base + 2])}})
-            prims.append((pos, nrm, uv, tan, idx, slot_of[key]))
+        mats, missing = [], set()
+        for si in range(len(subs)):
+            if names:
+                n = names[min(si, len(names) - 1)]
+                mats.append(matidx.decode(n))
+                if mats[-1] is None:
+                    missing.add(n)
+            else:
+                mats.append(spec_material(specs[min(si, len(specs) - 1)]) if specs else None)
+        if not names and not specs:
+            raise ValueError(f"{pid} {lod['mesh']}: no material (renderer unresolved and no catalog materials)")
+        size = BAKE_PX[min(lod_i, len(BAKE_PX) - 1)]
+        unity_uv = np.stack([uv[:, 0], 1.0 - uv[:, 1]], -1)  # mesh_prims already flipped v for glTF
+        alb, nimg, orm, new_uvs = bake_materials.bake(unity_uv, col, [s.reshape(-1, 3) for s in subs], mats, texcache, size)
+        images = [png(alb), png(nimg), png(orm)]
+        gl = {"name": f"{pid}_0", "doubleSided": False,
+              "pbrMetallicRoughness": {"baseColorTexture": {"index": 0}, "metallicFactor": 0.0, "roughnessFactor": 1.0,
+                                       "metallicRoughnessTexture": {"index": 2}},
+              "normalTexture": {"index": 1, "scale": 1.0}, "occlusionTexture": {"index": 2, "strength": 1.0},
+              "extras": {"mc2_material_class": prop["class"]}}
         if lod_i == 0:
+            materials_doc.append({"slot": 0, "class": prop["class"], "alphaMode": "OPAQUE", "baked": True,
+                                  "source_materials": names or [s.get("alb") for s in specs], "unresolved": sorted(missing),
+                                  "bake_px": size,
+                                  "sha256": {"albedo": sha(images[0]), "normal": sha(images[1]), "orm": sha(images[2])}})
             lo, hi = pos.min(0), pos.max(0)
             bounds = {"min_m": lo.round(3).tolist(), "max_m": hi.round(3).tolist(),
                       "size_wu": ((hi - lo) * WU_PER_M).round(2).tolist()}
+        prims = [(pos, nrm, new_uvs[si], None, idx, 0) for si, idx in enumerate(subs) if len(idx)]
         glb = pdir / f"lod{lod_i}.glb"
-        digest = write_glb(glb, f"{pid}_lod{lod_i}", prims, images, gl_materials)
+        digest = write_glb(glb, f"{pid}_lod{lod_i}", prims, images, [gl])
         lods.append({"glb": glb.name, "mesh": lod["mesh"], "distance_wu": lod.get("distance_wu", 0),
                      "vertices": int(len(pos)), "triangles": int(sum(len(p[4]) for p in prims) // 3), "sha256": digest})
     lo, hi = np.array(bounds["min_m"]), np.array(bounds["max_m"])
@@ -299,25 +276,30 @@ def main(argv=None):
     ap.add_argument("--catalog", type=Path, default=Path(__file__).with_name("props_catalog.json"))
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--only", help="comma separated prop ids")
-    ap.add_argument("--mapping", type=Path, help="match_stock_props.py output; with --library and --bindings replaces --catalog")
+    ap.add_argument("--mapping", type=Path, help="match_stock_props.py output; with --library replaces --catalog")
     ap.add_argument("--library", type=Path)
-    ap.add_argument("--bindings", type=Path)
+    ap.add_argument("--bindings", type=Path, help="optional scan_bindings.py output (material names come from the library)")
+    ap.add_argument("--material-index", type=Path, help="material name index cache (built on first use)")
     args = ap.parse_args(argv)
     from match_stock_props import mapping_props, check_ids
     if args.mapping:
+        bind = json.loads(args.bindings.read_text(encoding="utf-8")) if args.bindings else None
         catalog = {"props": mapping_props(json.loads(args.mapping.read_text(encoding="utf-8"))["map"],
-                                          json.loads(args.library.read_text(encoding="utf-8")),
-                                          json.loads(args.bindings.read_text(encoding="utf-8")))}
+                                          json.loads(args.library.read_text(encoding="utf-8")), bind)}
     else:
         catalog = json.loads(args.catalog.read_text(encoding="utf-8"))
     check_ids(catalog["props"])
     inst = Install(args.install)
+    matidx = bake_materials.MaterialIndex(inst, args.material_index or args.out / "material_index.json")
+    texcache = bake_materials.TexCache(inst)
     wanted = set(args.only.split(",")) if args.only else None
     manifests = []
+    args.out.mkdir(parents=True, exist_ok=True)
     for prop in catalog["props"]:
         if wanted and prop["id"] not in wanted:
             continue
-        manifests.append(build_prop(inst, prop, args.out))
+        manifests.append(build_prop(inst, prop, args.out, matidx, texcache))
+        texcache.full.clear()
         print("prop", prop["id"], manifests[-1]["bounds"]["size_wu"], [l["triangles"] for l in manifests[-1]["lods"]])
     (args.out / "recipe.json").write_text(json.dumps(build_recipe(manifests, args.out, catalog), indent=2) + "\n", encoding="utf-8")
     return 0

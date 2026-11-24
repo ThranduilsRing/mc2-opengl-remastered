@@ -128,7 +128,7 @@ def mapping_props(mapping, library, bindings):
     for pid, keys in sorted(by_pick.items()):
         a = assets[pid]
         specs = []
-        for name in a.get("materials") or []:
+        for name in (a.get("materials") or []) if bindings else []:
             mat = bindings["materials"].get(name, {})
             mp = mat.get("maps", {})
             if not mp.get("_MainTex"):
@@ -138,7 +138,7 @@ def mapping_props(mapping, library, bindings):
         props.append({"id": pid, "category": a["category"], "class": "dielectric", "file": a["file"],
                       "placement_scale": a.get("placement_scale", [1.0, 1.0, 1.0]),
                       "lods": [{"mesh": n, "distance_wu": 600 * i} for i, n in enumerate(a["lod_meshes"])],
-                      "materials": specs, "replaces": keys})
+                      "materials": specs, "material_names": a.get("materials") or [], "replaces": keys})
     return props
 
 

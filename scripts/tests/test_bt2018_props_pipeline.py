@@ -181,3 +181,92 @@ def test_check_ids_rejects_long_or_duplicate_ids():
         mp.check_ids([{"id": "bt_" + "x" * 14}])
     with pytest.raises(SystemExit):
         mp.check_ids([{"id": "bt_a"}, {"id": "bt_a"}])
+
+
+class _FakeInstall:
+    """Top-down RGBA images by name, as UnityPy returns them."""
+
+    def __init__(self, images):
+        self.images = images
+
+    def texture(self, name):
+        from PIL import Image
+        return Image.fromarray(self.images[name])
+
+
+def _wall_bake(colors):
+    """A 1 x 1 wall quad whose Unity v rises with height; clean texture red in its top rows (image row 0 = Unity v 1)."""
+    import bake_materials as bm
+    clean = np.zeros((64, 64, 4), np.uint8)
+    clean[..., 3] = 255
+    clean[:8, :, 0] = 255           # top rows red
+    clean[8:, :, 2] = 255           # rest blue
+    rough = np.full((64, 64, 4), (0, 255, 0, 255), np.uint8)
+    tc = bm.TexCache(_FakeInstall({"clean": clean, "rough": rough}))
+    uv = np.array([[0, 0], [1, 0], [1, 1], [0, 1]], np.float32)     # Unity uv: v up the wall
+    tris = [np.array([[0, 1, 2], [0, 2, 3]])]
+    mat = {"maps": {"_MainTex": ("clean", (1.0, 1.0), (0.0, 0.0)), "_BlendMainTex": ("rough", (1.0, 1.0), (0.0, 0.0))},
+           "color": (1.0, 1.0, 1.0), "floats": {}}
+    return bm.bake(uv, colors, tris, [mat], tc, size=128)
+
+
+def test_bake_keeps_unity_uv_orientation_top_of_wall_is_top_of_texture():
+    alb, nrm, orm, uvs = _wall_bake(np.ones(4, np.float32))
+    top = uvs[0][3]                  # vertex (0, 1): top-left of the wall, glTF uv
+    bottom = uvs[0][0]
+    assert top[1] < bottom[1]        # glTF v runs down: the top of the wall sits higher in the image
+    row = lambda v: int(v[1] * 128)  # noqa: E731
+    col = int((top[0] + uvs[0][1][0]) / 2 * 128)
+    assert alb[row(top) + 2, col, 0] > 200 and alb[row(top) + 2, col, 2] < 50       # red band at the top
+    assert alb[row(bottom) - 3, col, 2] > 200 and alb[row(bottom) - 3, col, 0] < 50  # blue below
+    assert (nrm[row(top) + 2, col] == [128, 128, 255]).all()                         # flat normal kept
+
+
+def test_bake_vertex_colour_zero_selects_weathered_layer():
+    alb, *_ , uvs = _wall_bake(np.zeros(4, np.float32))
+    centre = ((uvs[0][0] + uvs[0][2]) / 2 * 128).astype(int)
+    assert alb[centre[1], centre[0], 1] > 200 and alb[centre[1], centre[0], 0] < 50
+
+
+def test_pack_regions_do_not_overlap():
+    import bake_materials as bm
+    exts = [(0.8, 0.4), (0.2, 0.9), (0.5, 0.5), (0.05, 0.05)]
+    s, origins = bm.pack_regions(exts, 1024)
+    boxes = [(x, y, x + w * s, y + h * s) for (x, y), (w, h) in zip(origins, exts)]
+    assert all(0 <= b[0] and b[2] <= 1024 and 0 <= b[1] and b[3] <= 1024 for b in boxes)
+    for i, a in enumerate(boxes):
+        for b in boxes[i + 1:]:
+            assert a[2] <= b[0] or b[2] <= a[0] or a[3] <= b[1] or b[3] <= a[1]
+
+
+def _bt_install():
+    import os
+    import pytest
+    root = Path(os.environ.get("BT2018_INSTALL", "A:/Games/BATTLETECH/BattleTech_Data"))
+    if not (root / "sharedassets21.assets").is_file():
+        pytest.skip("BATTLETECH install not present (owner machine only)")
+    pytest.importorskip("UnityPy")
+    return root
+
+
+def test_real_prop_window_rows_run_horizontally_on_walls():
+    """civilianLargeBldgA (window rows, panel lines): on wall triangles the texture's v axis must follow world up
+    after the extractor's frame conversion, i.e. the mapping is not sideways."""
+    root = _bt_install()
+    import extract_bt2018_props as ex
+    inst = ex.Install(root)
+    pos, nrm, uv, _t, subs, _c = ex.mesh_prims(ex.find_mesh(inst, "sharedassets21.assets", "civilianLargeBldgA_LOD0"))
+    up_v = total = 0
+    for t in subs:
+        for a, b, c in t.reshape(-1, 3):
+            n = np.cross(pos[b] - pos[a], pos[c] - pos[a])
+            if np.linalg.norm(n) < 1e-6 or abs(n[1]) / np.linalg.norm(n) > 0.3:
+                continue                                    # walls only
+            duv = np.stack([uv[b] - uv[a], uv[c] - uv[a]], 1)
+            if abs(np.linalg.det(duv)) < 1e-9:
+                continue
+            j = np.stack([pos[b] - pos[a], pos[c] - pos[a]], 1) @ np.linalg.inv(duv)   # d(pos)/d(u, v)
+            total += 1
+            up_v += abs(j[1, 1]) / (np.linalg.norm(j[:, 1]) + 1e-9) > abs(j[1, 0]) / (np.linalg.norm(j[:, 0]) + 1e-9)
+    assert total > 50
+    assert up_v / total > 0.8, f"v follows world up on only {up_v}/{total} wall triangles"
