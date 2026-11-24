@@ -1919,6 +1919,24 @@ def check_capture_commit(name, command, head):
     print(f"[merge_gate] {name} provenance PASS src_commit={commit} HEAD={head}", flush=True)
 
 
+def post_deploy_data_status(name, command, status):
+    """Check the selected install after deployment, including reused deploys."""
+    if name != 'deploy' or not stage_passed(status) or '--allow-new-target' not in command:
+        return status
+    from lane_merge import data_fingerprint_check
+    target = command[command.index('--allow-new-target') - 1]
+    try:
+        verdict, detail = data_fingerprint_check(str(ROOT), install=target)
+    except (OSError, ValueError) as exc:
+        verdict, detail = 'FAIL', str(exc)
+    print(f'[merge_gate] post-deploy data_fingerprint: {verdict} {detail}', flush=True)
+    if verdict == 'FAIL':
+        return (f'FAIL: post-deploy data_fingerprint: {detail}; fix: '
+                + subprocess.list2cmdline([sys.executable, 'scripts/deploy_payload.py', target,
+                                          '--ninja', '--allow-new-target', '--full-verify']))
+    return status
+
+
 def execute(steps, head, dry_run=False, runner=run_child, completed=None, device=None, hold_after_failed_deploy=False):
     """Run every stage and return nonzero if any stage failed. device: MC2_VK_DEVICE for this chain's game rows (None = gate GPU)."""
     if not steps:
@@ -1956,6 +1974,8 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
                 status += f" receipt={ACTIVE_STATE.path} input={row['signature']} previous={row['seconds']:.1f}s"
             row = ACTIVE_STATE.data['stages'][name]
             print(f"REUSED {name} sig={row['signature']} from {row['artefact_dir']}", flush=True)
+            status = post_deploy_data_status(name, command, status)
+            failed |= not stage_passed(status)
             ACTIVE_STATE.reused.append(name)
             completed[name] = status
             results.append((name, status, 0.0))
@@ -1970,6 +1990,8 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
                 reuse_note = "REUSED: gate-reuse deployed payload already matches HEAD"
         if reuse_note:
             print(f"[merge_gate] {name}: {reuse_note}", flush=True)
+            reuse_note = post_deploy_data_status(name, command, reuse_note)
+            failed |= not stage_passed(reuse_note)
             if ACTIVE_STATE:
                 ACTIVE_STATE.reused.append(name)
             completed[name] = reuse_note
@@ -2114,6 +2136,7 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
             status = advisory_status(name, status, int(overrides.get("MC2_GATE_TIER", "1")))
             if status.startswith(ADVISORY_PREFIX):
                 print(f"[merge_gate] ADVISORY {name} (non-blocking by owner ruling 2026-11-08): {status[len(ADVISORY_PREFIX):]}", flush=True)
+            status = post_deploy_data_status(name, command, status)
             failed |= not stage_passed(status) and name not in NON_BLOCKING_STAGES
             if name == 'deploy' and status == "PASS" and '--allow-new-target' in command:
                 cache_started = time.monotonic()

@@ -12,6 +12,36 @@ import exe_fingerprint
 import mod_smoke as mods
 
 
+@pytest.mark.parametrize('reuse', [False, True])
+def test_post_deploy_data_mismatch_fails_gate(tmp_path, monkeypatch, capsys, reuse):
+    import subprocess
+    import sim_determinism as sim
+    monkeypatch.setattr(gate, 'ROOT', tmp_path)
+    monkeypatch.setattr(gate, 'ACTIVE_STATE', None)
+    monkeypatch.setattr(gate, 'git', lambda *a: 'head')
+    monkeypatch.setattr(gate, 'log_lease_holders', lambda: None)
+    monkeypatch.setattr(gate.gate_reuse, 'install_current', lambda *a: reuse)
+    monkeypatch.setattr(gate.gate_reuse, 'save_deployed', lambda *a: pytest.fail('cached a bad deploy'))
+    install = tmp_path / 'install'
+    install.mkdir()
+    stock = install / 'mission.fst'
+    stock.write_bytes(b'pinned stock')
+    baseline = tmp_path / 'tests/smoke/sim_determinism/mc2_01.json'
+    baseline.parent.mkdir(parents=True)
+    baseline.write_text(json.dumps({'data_fingerprint': sim.data_fingerprint(
+        str(install), {'overlay': {}, 'stock_digest': ''})}))
+    command = ['deploy', str(install), '--allow-new-target']
+    def runner(*a, **kw):
+        stock.write_bytes(b'wrong stock after deploy')
+        return subprocess.CompletedProcess(command, 0, '')
+    if reuse:
+        stock.write_bytes(b'wrong stock in reused deploy')
+    assert gate.execute([('deploy', command, {})], 'head', runner=runner) == 1
+    out = capsys.readouterr().out
+    assert 'post-deploy data_fingerprint: FAIL' in out
+    assert 'fix:' in out and 'scripts/deploy_payload.py' in out and str(install) in out
+
+
 @pytest.mark.parametrize('window,counts,new', [
     (92, {'ammo': 7}, {}), (92, {'shape': 1}, {'shape': 1}),
     (92, {'ammo': 8}, {'ammo': 8}), (200, {'ammo': 7}, {}),

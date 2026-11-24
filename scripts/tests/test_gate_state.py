@@ -361,10 +361,17 @@ def test_cleanup_lock_does_not_rewrite_journal_metadata(journal):
 @pytest.mark.parametrize('change', ['none', 'candidate', 'tampered'])
 def test_cached_deploy_requires_actual_candidate_identity(journal, monkeypatch, change):
     import deploy_payload
+    import sim_determinism as sim
     root = journal[0].parent
+    monkeypatch.setattr(gate, 'ROOT', root)
+    monkeypatch.setattr(gate.gate_reuse, 'save_deployed', lambda *a: None)
     first, second = root / 'candidate-a', root / 'candidate-b'
     first.mkdir()
     second.mkdir()
+    baseline = root / 'tests/smoke/sim_determinism/mc2_01.json'
+    baseline.parent.mkdir(parents=True)
+    baseline.write_text(json.dumps({'data_fingerprint': sim.data_fingerprint(
+        str(first), {'overlay': {}, 'stock_digest': ''})}))
     planned = [('deploy', ['scripts/deploy_payload.py', '--target', 'game'], {})]
     def steps(target):
         return [('deploy', planned[0][1] + [str(target), '--allow-new-target'], {})]
