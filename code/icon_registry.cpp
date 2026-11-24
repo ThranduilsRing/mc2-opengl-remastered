@@ -243,6 +243,21 @@ void init(std::string first = {}, int cw = 25, int ch = 30) {
             auto src = load(path, true);
             if (src.data.empty() || src.h < 2) continue;
             src.data.resize(static_cast<size_t>(src.w) * (src.h / 2));   // row 0 = front view
+            // Stock's logistics art is ~47% dark, 28% mid and 25% light blue with a black ring; the strip is light-heavy with a grey
+            // ring. Keep each pixel's order (light first, then top-left first) and deal the stock mix over it.
+            std::vector<std::pair<int, size_t>> order;
+            for (size_t i = 0; i < src.data.size(); ++i) {
+                const uint32_t p = src.data[i];
+                if (!(p >> 24)) continue;
+                if ((p & 0xffffff) == 0x505050) { src.data[i] = 0xff000000u; continue; }
+                const int shade = ((p >> 8) & 255) > 200 ? 2 : ((p >> 8) & 255) > 120 ? 1 : 0;
+                order.emplace_back(static_cast<int>(i % src.w + i / src.w) - shade * 4096, i);
+            }
+            std::ranges::sort(order);
+            for (size_t n = 0; n < order.size(); ++n) {
+                const auto& [rank, at] = order[n];
+                src.data[at] = n * 100 < order.size() * 25 ? 0xffc2e5ffu : n * 100 < order.size() * 53 ? 0xff5c96c2u : 0xff005392u;
+            }
             const std::string key = std::format("hud/{}/front/{}", std::filesystem::path(hud.sheet).stem().string(), stem);
             const int priority = LookupModPriority(path.c_str());
             if (registry.add(key, src.w, src.h / 2, src.data)) namedPriority[key] = priority;
@@ -335,13 +350,13 @@ bool apply(aObject& widget, const aObject& source, long index, const Subject& su
     if (!icon) {
         const std::string base = query.stem.starts_with("bt2018_") ? query.stem.substr(7) : query.stem;
         if ((icon = byChassis(base)) || (icon = byChassis(query.name))) pick.hud = icon;
+        // A chassis whose CSV a compat mod owns (MCO Ranger, Argus, Timberwolf...) keeps the stock HUD sheet cell its index names.
+        if (!icon)
+            if ((icon = registry.find(legacyKey(hudIconSource(Environment.drawableWidth, Environment.screenWidth, subject.vehicle).sheet, index)))) pick.hud = icon;
     }
     if (!icon) {
-        if (mc2_diag::tagRequested("ICON_REGISTRY")) {
-            const auto [position, inserted] = warned.insert("no-icon:" + query.stem);
-            if (inserted)
-                mc2::fmt::print_err("[ICON_REGISTRY] no art for chassis {} (class fallback)\n", query.stem);
-        }
+        if (const auto [position, inserted] = warned.insert("no-icon:" + query.stem); inserted)
+            mc2::fmt::print_err("[ICON_REGISTRY] no art for chassis {} index={} (class fallback)\n", query.stem, index);
         // No source has art for this chassis: a stock silhouette of its class (copter, tank or weight class), never the
         // missing-texture checkerboard and never a mech standing in for a vehicle.
         std::string cls = "bushwacker";
