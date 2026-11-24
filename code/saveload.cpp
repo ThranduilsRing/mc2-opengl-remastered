@@ -28,6 +28,8 @@
 #include "mc2fmt.h"
 #include "mission_load_frame.h"
 #include "mc2_dialog.h"
+#include "logistics.h"
+#include "missionbegin.h"
 #include "../GameAdapters/MechRenderAdapter.h"
 #include "../GameOS/gameos/gpu_memory_report.h"
 extern float MaxExtractUnitDistance;
@@ -659,7 +661,8 @@ bool Mission::openSaveFile(MissionLoadFrame& f) {
 		// The running mission is the only one a quickload can resume in place: refuse another mission's (or mod's) save before teardown.
 		const std::string campaignText = f.saveV2 ? savedPacketText(loadFile, static_cast<int>(f.sectionsPacket) - 3) : std::string{};
 		const std::string modNow = PlayerFrontEnd::saveModField(PlayerFrontEnd::activeModId());
-		if (!mc2::save::savedIdentityMatches(savedPacketText(loadFile, 2), missionFileName, campaignText, modNow)) {
+		if (!mc2::save::savedIdentityMatches(savedPacketText(loadFile, 2), missionFileName, campaignText, modNow,
+			PlayerFrontEnd::saveModField(PlayerFrontEnd::activeModDeps()))) {
 			mc2::fmt::print_err("[SAVE v2] event=reject reason=other_mission running={} file={}\n", mc2::fmt::safe(missionFileName), mc2::fmt::safe(loadFileName));
 			f.incompatibleSave = true;
 			f.otherMissionRefused = true;
@@ -1073,8 +1076,7 @@ void Mission::load (mc2::czstring loadFileName)
 	f.loadFileName = loadFileName;
 	loadPrologue(f);
 
-	if (openSaveFile(f)) {
-		loadRestoreInput(f);
+	auto showIncompatibleSave = [&] {
 		if (f.incompatibleSave) {
 			char message[1024]{};
 			char title[256]{};
@@ -1089,6 +1091,10 @@ void Mission::load (mc2::czstring loadFileName)
 			// Time spent in the dialog must not reach scenarioTime on the next update.
 			LastTimeGetTime = timeGetTime();
 		}
+	};
+	if (openSaveFile(f)) {
+		loadRestoreInput(f);
+		showIncompatibleSave();
 		return;
 	}
 
@@ -1102,6 +1108,16 @@ void Mission::load (mc2::czstring loadFileName)
 	loadTerrain(f);
 	loadMovement(f);
 	loadMissionScript(f);
+	if (f.incompatibleSave) {
+		extern bool g_resaveAfterQuickload;
+		g_resaveAfterQuickload = false;
+		loadRestoreInput(f);
+		showIncompatibleSave();
+		destroy();
+		logistics->start(log_SPLASH);
+		logistics->getMissionBegin()->beginSplash();
+		return;
+	}
 	loadWarriorsAndPartsHeader(f);
 	loadParts(f);
 	loadTeamsAndObjects(f);
