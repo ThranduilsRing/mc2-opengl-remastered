@@ -90,8 +90,8 @@ def classify(install: Path, cook: bool = False, only: str = ""):
         for stem, name in chassis_csvs(mod).items():
             key = name.lower().replace(" ", "")
             base = stem[len("bt2018_"):] if stem.startswith("bt2018_") else stem
-            target = ALIASES.get(base) or ALIASES.get(key) or (base if base in stock else None)
-            if stem in stock or key in stock:
+            target = ALIASES.get(base) or ALIASES.get(key) or next((n for n in (base, key) if n in stock), None)
+            if stem in stock:                     # the engine finds the stock art by the CSV stem itself
                 rows.append((mod.name, stem, "stock", "own stock art"))
             elif target in stock:
                 if writes:
