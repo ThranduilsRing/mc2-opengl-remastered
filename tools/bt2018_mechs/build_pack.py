@@ -195,8 +195,7 @@ def build(args, out: Path):
         sources[fam] = len(native)
         retarget_file(str(conv / model["source_glb"]), str(conv / "atlas.glb"), str(dst), own_clips=native)
         from pygltflib import GLTF2
-        fallback = sorted(a.name for a in GLTF2().load(str(dst)).animations
-                          if a.name.startswith("atlas_") and a.name not in native)
+        fallback = sorted(a.name for a in GLTF2().load(str(dst)).animations if a.name not in native)
         clip_manifest[fam] = {"own": sorted(native), "fallback": fallback}
         print(f"[bt2018] {fam}: own={len(native)} fallback={fallback}")
         r = retarget_file.last_report

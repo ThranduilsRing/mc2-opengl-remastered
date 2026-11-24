@@ -103,12 +103,18 @@ def native_clips(bundle, family):
                  and o.peek_name().startswith('atlas_')}
     decoded = {}
     for name, obj in clips.items():
-        if not name.startswith('atlas_'):
+        if not name.startswith(('atlas_', f'{family}_')):
             raise ValueError(f'{family}: unexpected state {name}')
         key = obj.path_id
         if key not in decoded:
             decoded[key] = decode_clip(obj.read_typetree(), paths)
         clips[name] = decoded[key]
+    # Some controllers override chassis-named originals as well as Atlas states.
+    # Keep those originals and expose compatibility names without replacing an
+    # explicit Atlas mapping (aliases must follow the controller's original).
+    for name in list(clips):
+        if name.startswith(f'{family}_'):
+            clips.setdefault('atlas_' + name.split('_', 1)[1], clips[name])
     return clips
 
 

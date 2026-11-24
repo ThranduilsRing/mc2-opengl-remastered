@@ -488,7 +488,7 @@ def test_native_controller_keeps_aliases_instead_of_guessing_suffixes(monkeypatc
     clip = NS(path_id=7, read_typetree=lambda: {"m_Name": "catapult_attackMeleePush"})
     entries = [NS(m_OriginalClip=NS(deref=lambda n=n: NS(peek_name=lambda: n)),
                   m_OverrideClip=NS(path_id=7, deref=lambda: clip))
-               for n in ("atlas_attackMeleePush", "atlas_attackMeleePunch")]
+               for n in ("atlas_attackMeleePush", "atlas_attackMeleePunch", "catapult_moveCoreIdle")]
     entries.append(NS(m_OverrideClip=NS(path_id=0)))  # No own clip: leave this state to Atlas.
     controller = NS(type=NS(name="AnimatorOverrideController"),
                     peek_name=lambda: "charoverctrl_catapultBase-001",
@@ -499,7 +499,9 @@ def test_native_controller_keeps_aliases_instead_of_guessing_suffixes(monkeypatc
     seen = []
     monkeypatch.setattr(B, "decode_clip", lambda tt, paths: seen.append((tt, paths)) or (1, {}))
     clips = B.native_clips("read-only-bundle", "catapult")
-    assert set(clips) == {"atlas_attackMeleePush", "atlas_attackMeleePunch"}
+    assert set(clips) == {"atlas_attackMeleePush", "atlas_attackMeleePunch",
+                          "catapult_moveCoreIdle", "atlas_moveCoreIdle"}
+    assert clips["catapult_moveCoreIdle"] is clips["atlas_moveCoreIdle"]
     assert len(seen) == 1 and seen[0][1] == {42: "j_Arm"}
 
 
