@@ -333,14 +333,14 @@ std::vector<float> cookTerrainShapeAo(std::span<const float> heights, uint32_t s
                            (height(ix, iy + 1) * (1 - tx) + height(ix + 1, iy + 1) * tx) * ty;
                 };
                 const float tangent = (at(1.0f) - at(-1.0f)) / (2.0f * cellWorld);
-                float horizon = -1e9f;
+                float over = 0.0f;
+                const float tangentAngle = std::atan(tangent);
                 for (int step : kSteps) {
                     const float d = static_cast<float>(step);
                     const float rise = (at(d) - h0) / (d * cellWorld);
                     const float fall = 1.0f - (d / kRadius) * (d / kRadius) * 0.5f;   // far occluders count for less
-                    horizon = std::max(horizon, rise * fall);
+                    over = std::max(over, (std::atan(rise) - tangentAngle) * fall);
                 }
-                const float over = std::atan(horizon) - std::atan(tangent);
                 occlusion += std::sin(std::clamp(over, 0.0f, 1.5707963f));
             }
             ao[static_cast<size_t>(y + 1) * out + static_cast<size_t>(x + 1)] = 1.0f - occlusion / static_cast<float>(kDirs);
