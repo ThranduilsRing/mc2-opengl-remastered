@@ -308,6 +308,36 @@ TEST_CASE("unit icons: a dependency's chassis keeps its authored-name icon under
     CHECK(dep.registry.select(dep.priority, query).own);
 }
 
+TEST_CASE("unit icons: a card authored for a larger box lands inside the page's slot") {
+    using unit_icons::cardScale;
+    using unit_icons::scaleCardChild;
+    CHECK(cardScale(75, 64, 75, 64) == std::array<float, 2>{1.f, 1.f});    // stock card: nothing moves
+    CHECK(cardScale(0, 64, 90, 80) == std::array<float, 2>{1.f, 1.f});
+    // MCO's 90 x 80 box into the stock 75 x 64 slot: every child inside the slot, the art in proportion.
+    const auto k = cardScale(75, 64, 90, 80);
+    FakeWidget icon{3, 31, 40, 48}, pilot{51, 30, 33, 46}, link{1, 27, 84, 52}, name{4, 4, 220, 24};
+    scaleCardChild(icon, 3, 31, k, true);
+    scaleCardChild(pilot, 51, 30, k, true);
+    scaleCardChild(link, 1, 27, k, true);
+    scaleCardChild(name, 4, 4, k, false);
+    CHECK(icon.w == 33);
+    CHECK(icon.h == 38);
+    CHECK(pilot.w == 28);
+    CHECK(pilot.h == 37);
+    CHECK(icon.x + icon.w <= 75);
+    CHECK(pilot.x + pilot.w <= 75);
+    CHECK(pilot.y + pilot.h <= 64);
+    CHECK(link.x + link.w <= 75);
+    CHECK(link.y + link.h <= 64);
+    CHECK(name.w == 220);                                                    // text keeps its own size
+    CHECK(name.x == doctest::Approx(4 * 75.f / 90));
+    const FakeWidget same = [&] { FakeWidget w{3, 31, 25, 30}; scaleCardChild(w, 3, 31, cardScale(75, 64, 75, 64), true); return w; }();
+    CHECK(same.x == 3);
+    CHECK(same.y == 31);
+    CHECK(same.w == 25);
+    CHECK(same.h == 30);
+}
+
 TEST_CASE("unit icons: reassigning a cell's icon never moves the cell") {
     using unit_icons::fitCell;
     using unit_icons::fitWidget;

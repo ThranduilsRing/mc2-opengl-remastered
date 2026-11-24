@@ -76,12 +76,15 @@ void PilotReadyScreen::init(FitIniFile* file)
 		gosASSERT( "couldn't open the MCL_GN_DevploymentTeams file" );
 		return;
 	}
-	LogisticsMechIcon::init(iconFile);
+	// PilotReadyStatic43..54 ("dep team combo item N") are the page's twelve deployment slots: the cards sit in them.
+	std::array<std::array<long,4>,12> slots{};
+	const bool onGrid = getDefsDeploymentSlots( "game.mcl_pr_layout", slots );
+	LogisticsMechIcon::init(iconFile, onGrid ? slots[0].data() : nullptr);
 	pIcons = std::make_unique_for_overwrite<LogisticsMechIcon[]>(ICON_COUNT);
 
 	int count = 0;
 
-	
+
 	long x = 0;
 	long y = 0;
 
@@ -90,6 +93,11 @@ void PilotReadyScreen::init(FitIniFile* file)
         int i = 0;
 		for (; i < ICON_COUNT_X; i++ )
 		{
+			if ( onGrid )
+			{
+				x = slots[count][0] - slots[0][0];
+				y = slots[count][1] - slots[0][1];
+			}
 			pIcons[count].setHelpID( IDS_HELP_DEPLOYTEAMMW );
 			pIcons[count].setMech( nullptr );
 			pIcons[count].move( x, y );

@@ -1,6 +1,7 @@
 #pragma once
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <limits>
 #include <map>
@@ -137,6 +138,19 @@ inline void fitWidget(Widget& widget, int cw, int ch, int iw, int ih) {
     widget.move(static_cast<float>(fit[0]), static_cast<float>(fit[1]));
 }
 
+// A deployment card authored for a box of another size (MCO ships 90 x 80, the page's slots are 75 x 64) lands in
+// the page's slot: the card keeps its origin and each child at card-local (x, y) scales by slot / box, art in size too.
+inline std::array<float, 2> cardScale(int slotW, int slotH, int boxW, int boxH) {
+    if (slotW <= 0 || slotH <= 0 || boxW <= 0 || boxH <= 0) return {1.f, 1.f};
+    return {static_cast<float>(slotW) / boxW, static_cast<float>(slotH) / boxH};
+}
+template <class Widget>
+inline void scaleCardChild(Widget& widget, float x, float y, const std::array<float, 2>& k, bool art) {
+    const float w = widget.width(), h = widget.height();
+    widget.move(x * (k[0] - 1.f), y * (k[1] - 1.f));
+    if (art) widget.resize(std::clamp(std::lround(w * k[0]), 1l, 65535l), std::clamp(std::lround(h * k[1]), 1l, 65535l));
+}
+
 // LookupModPriority ranks: a mod's load-order slot (the active mod 0, its dependencies 1..), else one of the
 // install's own (loose 999998, kit 999999, stock 1000000). Only a mod's rank names a source of its own.
 inline constexpr int kBaseRank = 999998;
@@ -150,7 +164,7 @@ inline bool sheetServes(int sheetRank, int dataRank) { return !modOwned(dataRank
 
 // What the resolver knows about the unit it finds art for: the chassis CSV path (its stem is the first
 // own-art name) and the name the author wrote in that file (the second; MCO ships "mechicons/Storm crow.tga").
-struct Subject { std::string file; std::string name; };
+struct Subject { std::string file; std::string name; float tons = 0; bool vehicle = false; };
 
 // One chassis' art question, with everything apply() knows about where its files come from.
 struct Query {

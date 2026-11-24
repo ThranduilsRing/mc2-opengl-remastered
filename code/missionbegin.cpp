@@ -1229,6 +1229,25 @@ void MissionBegin::updateSoakAutoPurchase() {
 							Candidate tmp = cands[i]; cands[i] = cands[j]; cands[j] = tmp;
 						}
 
+						// MECH_PREVIEW_CHASSIS=a,b: those chassis (substring of the variant name) lead the lance.
+						if ( const std::string_view want = std::getenv( "MECH_PREVIEW_CHASSIS" ) ? std::getenv( "MECH_PREVIEW_CHASSIS" ) : ""; !want.empty() )
+						{
+							const std::string list = "," + std::string( want ) + ",";
+							int front = 0;
+							for ( int i = 0; i < nCands; ++i )
+							{
+								std::string name = cands[i].variant->getName().c_str();
+								for ( char& c : name ) c = static_cast<char>( std::tolower( static_cast<unsigned char>( c ) ) );
+								bool hit = false;
+								for ( size_t at = 1, end; at < list.size() && !hit; at = end + 1 )
+								{
+									end = list.find( ',', at );
+									hit = end > at && name.find( list.substr( at, end - at ) ) != std::string::npos;
+								}
+								if ( hit ) std::swap( cands[i], cands[front++] );
+							}
+						}
+
 						// -- deploy down shuffled list --------------------------------------
 						int deployed    = 0;
 						int fromSalvage = 0;
@@ -1667,7 +1686,11 @@ void MissionBegin::updateSoakScreenWalk(LogisticsScreen* pCurScreen, bool& soakF
 				{
 					stopX = 2; stopY = (curScreenY == 1) ? 1 : 2;
 				}
-				if ( s_soakStopAtBay && curScreenX == stopX && curScreenY == stopY )
+				// A shot target other than the held cell (MC2_BOOT_TO_SCREEN=bay + MC2_SHOT_SCREEN=pilots) walks on after the bay purchase.
+				mc2::screen_settle::Spec shotSpec;
+				const bool shotElsewhere = mc2::screen_settle::parseSpec(mc2::gate::str<"MC2_SHOT_SCREEN">(), shotSpec) && shotSpec.cell &&
+					shotSpec.cell->x >= 0 && ( shotSpec.cell->x != stopX || shotSpec.cell->y != stopY ) && !mc2::gate::str<"MC2_BOOT_TO_SCREEN">().empty();
+				if ( s_soakStopAtBay && !shotElsewhere && curScreenX == stopX && curScreenY == stopY )
 				{
 					s_soakLastAdvX = curScreenX;
 					s_soakLastAdvY = curScreenY;

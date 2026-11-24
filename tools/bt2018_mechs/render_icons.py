@@ -3,8 +3,8 @@
 
 Products per chassis (written into the pack's data/art/):
   <stem>_hud_<w>x<h>.tga   HUD force-group strip, one cell wide, two rows: row 0 = front view,
-                           row 1 = rear view. Every pixel is either 0 (transparent), the
-                           outline grey 0xff505050, or an EXACT region palette value: one of
+                           row 1 = rear view. Opaque like stock: every pixel is black (background
+                           and panel gaps) or an EXACT region palette value: one of
                            ForceGroupIcon::damageColors[0][shade] with the body-region index
                            added to the red channel (code/mechicon.cpp). The HUD recolours by
                            exact value, so no filtering, blending or antialiasing is allowed.
@@ -122,78 +122,252 @@ def load_parts(glb: Path):
     return parts
 
 
+def _is_foot(name: str):
+    n = name.lower().split("_", 1)[-1]
+    return len(n) > 1 and n[:1] in "lr" and ("foot" in n[1:] or "toe" in n[1:])
+
+
+def _is_tgl(parts):
+    return bool(parts) and all(len(pt) == 4 for pt in parts)
+
+
+def region_of_tgl(node: str):
+    """MC2/MCO shape node (ra_luarm, ra_llleg, ra_lfoot, joint_lbtoe, ra_torso2, ra_hip...) -> HUD region."""
+    n = node.lower().split("_", 1)[-1]
+    side = n[:1] if n[:1] in "lr" and len(n) > 1 else ""
+    if any(k in n for k in ("head", "cockpit")):
+        return 7
+    if side and any(k in n[1:] for k in ("arm", "shoulder", "hand", "gun", "weapon")):
+        return 2 if side == "l" else 3
+    if side and any(k in n[1:] for k in ("leg", "foot", "toe", "thigh", "calf", "ankle", "knee", "shin")):
+        return 0 if side == "l" else 1
+    if side and "torso" in n[1:]:
+        return 5 if side == "l" else 4
+    return 6
+
+
+SOLE_MIN, SOLE_THICK, ELONGATED = 0.15, 0.05, 1.6   # foot plate width / thickness (share of figure height); limb = taller than 1.6x its width
+LIMB_MIN = {"leg": 0.13, "arm": 0.10}   # minimum limb part width as a share of figure height (.tgl mechs only)
+
+
+def load_parts_tgl(tgl: Path):
+    """[(region, positions, triangles, part)] of a legacy MC2/MCO .tgl shape, turned to face +Z like the GLBs."""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    from tools.assets.common import parse_tgl
+    mesh = parse_tgl(Path(tgl).read_bytes())
+    parts, rotors, at, node_names = [], set(), 0, {}
+    for index, node in enumerate(mesh.nodes):
+        if not node["triangles"] or node["helper"]:
+            continue
+        tri = mesh.vertices[at:at + 3 * node["triangles"]].astype(np.float64) * [-1, 1, -1]   # MC2 shapes face -Z
+        at += 3 * node["triangles"]
+        if any(k in node["name"].lower() for k in ("rotor", "blade", "prop")):
+            rotors.add(index)
+        node_names[index] = node["name"]
+        parts.append((region_of_tgl(node["name"]), tri, np.arange(len(tri)).reshape(-1, 3), index))
+    if parts and any(region in (0, 1) for region, *_ in parts):
+        # Low-poly MCO limbs come out as 1-2 px twigs; stock legs are 5-8 px plates of a 40x48 cell. Widen each thin
+        # limb part about its own centre to a share of the figure height (legs ~6 px, arms ~5 px).
+        # Round parts (shoulder discs, pods, hips) are never widened: that would stretch a circle sideways. Feet become flat
+        # sole plates on the ground line.
+        allp = np.concatenate([p for _, p, *_ in parts])
+        tall, ground = float(allp[:, 1].max() - allp[:, 1].min()), float(allp[:, 1].min())
+        for k, (region, p, tris, index) in enumerate(parts):
+            want = {0: LIMB_MIN["leg"], 1: LIMB_MIN["leg"], 2: LIMB_MIN["arm"], 3: LIMB_MIN["arm"]}.get(region, 0) * tall
+            c, width = (p.min(0) + p.max(0)) / 2, float(p[:, 0].max() - p[:, 0].min())
+            high = float(p[:, 1].max() - p[:, 1].min())
+            if _is_foot(node_names.get(index, "")) and region in (0, 1):
+                f = max(1.0, min(SOLE_MIN * tall / max(width, 1e-6), 4.0))
+                q = (p - c) * [f, 1, 1] + c
+                q[q[:, 1] < p[:, 1].min() + 0.5 * max(high, SOLE_THICK * tall), 1] = ground    # flat bottom on the ground
+                q[:, 1] = np.maximum(q[:, 1], ground)
+                top = q[:, 1].max()
+                if top - ground < SOLE_THICK * tall:
+                    q[q[:, 1] == top, 1] = ground + SOLE_THICK * tall
+                parts[k] = (region, q, tris, index)
+            elif want and width < want and high >= ELONGATED * width:
+                f = min(want / max(width, 1e-6), 4.0)
+                parts[k] = (region, (p - c) * [f, 1, min(f, 2.0)] + c, tris, index)
+    if not any(region in (0, 1) for region, *_ in parts):            # no legs: a vehicle, drawn from above, nose up
+        parts = [(region, p[:, [0, 2, 1]] * [1, 1, -1], tris, index) for region, p, tris, index in parts]
+        # Stock copters draw the rotor as an X of two thin full-length blades, not the spinning disc the model carries.
+        for k, (region, p, tris, index) in enumerate(parts):
+            if index not in rotors:
+                continue
+            c = (p.min(0) + p.max(0)) / 2
+            r = float(np.linalg.norm(p[:, :2] - c[:2], axis=1).max())
+            top, half = float(np.concatenate([q[1] for q in parts])[:, 2].max()) + 0.01 * r, 0.055 * r   # above the fuselage
+            quads = []
+            for ux, uy in ((0.7071, 0.7071), (0.7071, -0.7071)):
+                along, across = np.array([ux, uy]) * r, np.array([-uy, ux]) * half
+                for sa, sc in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
+                    quads.append([*(c[:2] + sa * along + sc * across), top])
+            blades = np.array(quads)
+            parts[k] = (region, blades, np.array([[0, 1, 2], [0, 2, 3], [4, 5, 6], [4, 6, 7]]), index)
+    return parts
+
+
 # ----------------------------------------------------------------------------- raster
 
 
-SS = 4                                   # HUD supersample: averages the per-face shading of high-poly parts
-LIGHT_FRAC, MID_FRAC = 0.36, 0.28        # stock icon tone mix inside the silhouette (rest is the dark shade)
+SS = 8                                   # render large, then reduce each SSxSS block to one cell pixel
+LIGHT_FRAC, MID_FRAC = 0.25, 0.30        # stock tone mix (atlas/catapult/bushwacker/jenner): 25% light, 30% mid, 45% dark
+DEPTH_STEP = 0.25                        # a jump of this share of the figure's depth inside one panel is a gap too
+MIN_PLATE = 24                           # parts smaller than this many cell pixels are detail on a plate, not plates
+MIRROR_REGION = np.array([1, 0, 3, 2, 5, 4, 6, 7])
 
 
-def _hud_render(parts, w, h, rear: bool):
-    """Stock-style HUD cell: dark body, a light highlight on lit faces, dark lines between regions.
+def _hud_render(parts, w, h, rear: bool, face: bool = False):
+    """Stock-style HUD cell (measured on stock atlas/catapult/bushwacker/jenner at 40x48).
 
-    Shading is the mean lit value of SSxSS subsamples (high-poly noise averages out), banded by
-    quantile so every chassis gets the stock tone mix. No grey outline ring: region seams and the
-    silhouette's lower/right edge take the dark shade instead."""
-    lam, reg = _raster(parts, w * SS, h * SS, rear)
-    cov = (reg >= 0).reshape(h, SS, w, SS).sum((1, 3)) / float(SS * SS)
-    lsum = np.where(reg >= 0, lam, 0.0).reshape(h, SS, w, SS).sum((1, 3))
-    lm = lsum / np.maximum(cov * SS * SS, 1)
-    votes = np.zeros((8, h, w))
-    for r in range(8):
-        votes[r] = (reg == r).reshape(h, SS, w, SS).sum((1, 3))
-    region = votes.argmax(0)
-    solid = cov >= 0.5
+    Stock cells are opaque black with the mech as plated panels: a 1 px black gap between panels
+    (armour zones, and any separate part or depth step inside one), light on each panel's
+    top-left, dark on its bottom-right, about 25/30/45 light/mid/dark, the figure ~47 px of 48."""
+    legs = any(pt[0] in (0, 1) for pt in parts)
+    lam, reg, part, z = _raster(parts, w * SS, h * SS, rear)
+    blocks = lambda a: a.reshape(h, SS, w, SS).transpose(0, 2, 1, 3).reshape(h, w, SS * SS)
+    rb, pb, lb, zb = blocks(reg), blocks(part), blocks(lam), blocks(z)
+    filled = rb >= 0
+    solid = filled.sum(2) >= SS * SS // 2
+    sp = np.pad(solid, 1)                                # pinholes in a plate are fill, not gaps
+    solid |= (filled.sum(2) > 0) & sp[:-2, 1:-1] & sp[2:, 1:-1] & sp[1:-1, :-2] & sp[1:-1, 2:]
+    # Smooth silhouette: fill one-pixel notches, drop one-pixel spurs.
+    sp = np.pad(solid, 1).astype(int)
+    n4 = sp[:-2, 1:-1] + sp[2:, 1:-1] + sp[1:-1, :-2] + sp[1:-1, 2:]
+    solid = (solid & (n4 >= 2)) | (~solid & (n4 >= 3) & (filled.sum(2) > 0))
     img = np.zeros((h, w, 4), dtype=np.uint8)
+    img[:, :, 3] = 255
     if not solid.any():
         return img
-    vals = lm[solid]
-    hi_cut = np.quantile(vals, 1 - LIGHT_FRAC)
-    mid_cut = np.quantile(vals, 1 - LIGHT_FRAC - MID_FRAC)
-    shade = np.where(lm >= hi_cut, 0, np.where(lm >= mid_cut, 1, 2))
-    for dy, dx in ((1, 0), (0, 1)):                      # seam: next pixel down/right is another region or empty
-        nb_solid = np.roll(solid, (-dy, -dx), axis=(0, 1))
-        nb_reg = np.roll(region, (-dy, -dx), axis=(0, 1))
-        seam = solid & (~nb_solid | (nb_reg != region))
-        if dy:
-            seam[-1, :] = True
-        if dx:
-            seam[:, -1] = True
-        shade = np.where(seam, 2, shade)
-    # 1px black gap: where a lower-ranked part (leg < arm < head < torso) touches a higher one, drop its pixel
-    rank = np.array([0, 0, 1, 1, 3, 3, 3, 2])[region]
+    count = lambda a, k: (a == k).sum(2)
+    region = np.argmax(np.stack([count(rb, r) for r in range(8)]), 0)
+    ids = np.unique(pb[pb >= 0])
+    panel = ids[np.argmax(np.stack([count(pb, i) for i in ids]), 0)]
+    # Bolts, vents and other parts smaller than a few cell pixels read as surface detail, not plates.
+    sizes = {int(i): int((solid & (panel == i)).sum()) for i in ids}
+    heads = {pt[3] if len(pt) == 4 else i for i, pt in enumerate(parts) if pt[0] == 7} if face else set()   # the head is its own plate
+    panel = np.where(np.vectorize(lambda i: int(i) in heads or sizes.get(int(i), 0) >= MIN_PLATE)(panel), panel, -1 - region)
+    # Interpenetrating parts flicker between owners pixel to pixel: each pixel takes its 3x3 majority owner.
+    pp = np.pad(np.where(solid, panel, -99), 1, constant_values=-99)
+    for y, x in zip(*np.nonzero(solid)):
+        vals, counts = np.unique(pp[y:y + 3, x:x + 3], return_counts=True)
+        counts[vals == -99] = 0
+        panel[y, x] = vals[np.argmax(counts)]
+    # High-poly faces shade noisily: each pixel takes the mean light of its 3x3 within its own panel.
+    raw = np.where(filled, lb, 0).sum(2) / np.maximum(filled.sum(2), 1)
+    rp, pq = np.pad(raw, 1), np.pad(np.where(solid, panel, -99), 1, constant_values=-99)
+    smooth = raw.copy()
+    for y, x in zip(*np.nonzero(solid)):
+        same = pq[y:y + 3, x:x + 3] == panel[y, x]
+        smooth[y, x] = rp[y:y + 3, x:x + 3][same].mean()
+    lit = smooth
+    depth = np.where(filled, zb, 0).sum(2) / np.maximum(filled.sum(2), 1)
+    step = DEPTH_STEP * max(float(z[reg >= 0].max() - z[reg >= 0].min()), 1e-6)
+    # Gap: where two panels (or a depth step) meet, the farther pixel turns black.
     gap = np.zeros_like(solid)
-    for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-        nb_solid = np.roll(solid, (dy, dx), axis=(0, 1))
-        nb_reg = np.roll(region, (dy, dx), axis=(0, 1))
-        gap |= solid & nb_solid & (nb_reg != region) & (rank < np.array([0, 0, 1, 1, 3, 3, 3, 2])[nb_reg])
+    for dy, dx in ((1, 0), (0, 1)):
+        a = (slice(0, h - dy), slice(0, w - dx))
+        b = (slice(dy, h), slice(dx, w))
+        meet = solid[a] & solid[b] & ((panel[a] != panel[b]) | (region[a] != region[b]) | (abs(depth[a] - depth[b]) > step))
+        far_a = depth[a] < depth[b]
+        gap[a] |= meet & far_a
+        gap[b] |= meet & ~far_a
     for r in range(8):                                   # never erase a region entirely
         if (solid & (region == r)).any() and not (solid & ~gap & (region == r)).any():
             gap[region == r] = False
-    solid = solid & ~gap
-    for y, x in zip(*np.nonzero(solid)):
-        img[y, x] = (*region_color(int(region[y, x]), int(shade[y, x])), 255)
+    body = solid & ~gap
+    if legs:
+        # Stock mechs stand symmetric: mirror the fuller half (left/right regions swap) over the other.
+        xs = np.arange(w)
+        left = xs < w // 2
+        keep_left = body[:, left].sum() >= body[:, ~left].sum()
+        src = np.where(left == keep_left, xs, w - 1 - xs)
+        body, lit = body[:, src], lit[:, src]
+        region = np.where((left == keep_left)[None, :], region, MIRROR_REGION[region[:, src]])
+        pad = np.pad(body, 1).astype(int)
+        body &= (pad[:-2, 1:-1] + pad[2:, 1:-1] + pad[1:-1, :-2] + pad[1:-1, 2:]) >= 1   # no lone specks
+    # Bevel: a panel's top/left edge catches the light, its bottom/right edge falls into shadow.
+    pad = np.pad(body, 1)
+    above, left, below, right = pad[:-2, 1:-1], pad[1:-1, :-2], pad[2:, 1:-1], pad[1:-1, 2:]
+    score = lit + 0.6 * ((~above).astype(float) + (~left)) - 0.6 * ((~below).astype(float) + (~right))
+    vals = score[body]
+    hi_cut = np.quantile(vals, 1 - LIGHT_FRAC)
+    mid_cut = np.quantile(vals, 1 - LIGHT_FRAC - MID_FRAC)
+    shade = np.where(score >= hi_cut, 0, np.where(score >= mid_cut, 1, 2))
+    # Ordered, not noisy: a lone pixel whose four body neighbours agree takes their shade.
+    sp = np.pad(np.where(body, shade, -1), 1, constant_values=-1)
+    nb = np.stack([sp[:-2, 1:-1], sp[2:, 1:-1], sp[1:-1, :-2], sp[1:-1, 2:]])
+    lone = body & (nb[0] >= 0) & (nb == nb[0]).all(0) & (nb[0] != shade)
+    shade = np.where(lone, nb[0], shade)
+    if face and not rear:
+        shade = _face(body, region, shade)
+    for y, x in zip(*np.nonzero(body)):
+        img[y, x, :3] = region_color(int(region[y, x]), int(shade[y, x]))
     return img
 
 
+def _face(body, region, shade):
+    """The mech's face as stock draws it: head/canopy in the lightest tone with a dark visor slot.
+    No head part: the cockpit window at the top centre of the torso."""
+    shade = shade.copy()
+    head = body & (region == 7)
+    if head.any():
+        ys, xs = np.nonzero(head)
+        shade[head] = 0
+        if ys.max() - ys.min() >= 3 and xs.max() - xs.min() >= 4:
+            row = ys.min() + int(round(0.6 * (ys.max() - ys.min())))
+            slot = head.copy()
+            slot[:row], slot[row + 1:] = False, False
+            slot[:, [xs.min(), xs.max()]] = False
+            shade[slot] = 2
+        return shade
+    torso = body & (region == 6)
+    if not torso.any():
+        return shade
+    ys, xs = np.nonzero(torso)
+    mid, top = (xs.min() + xs.max()) / 2, ys.min()
+    win = np.zeros_like(body)
+    half = max(2, int(round(0.12 * body.shape[1])))
+    win[top + 1:top + 4, int(mid - half + 0.5):int(mid + half + 0.5)] = True
+    win &= torso
+    shade[win] = 0
+    shade[top + 3, :][win[top + 3]] = 2
+    return shade
+
+
 def _raster(parts, w, h, rear: bool):
-    """Per-subsample lit value (signed n.L on the camera-facing normal) and region (-1 empty)."""
-    allp = np.concatenate([p for _, p, _ in parts])
+    """Per-subsample lit value (n.L, light from the top-left), region and part (-1 empty), depth."""
+    shown = [(i, part) for i, part in enumerate(parts) if not (rear and part[0] not in REAR_REGIONS)] or list(enumerate(parts))
+    allp = np.concatenate([p for _, p, *_ in parts])     # front and rear rows share one framing
     lo, hi = allp.min(0), allp.max(0)
     sx = -1.0 if not rear else 1.0
-    scale = min((w - 2 * SS) / max(hi[0] - lo[0], 1e-6), (h - 2 * SS) / max(hi[1] - lo[1], 1e-6))
+    m = SS // 2                                          # half a cell pixel of margin; the figure stands ~h-1 tall like stock
+    scale_y = (h - 2 * m) / max(hi[1] - lo[1], 1e-6)
+    legs = any(pt[0] in (0, 1) for pt in parts)
+    tgl = _is_tgl(parts)
     cx, cy = (hi[0] + lo[0]) / 2, (hi[1] + lo[1]) / 2
+    if tgl and legs:                                     # .tgl mechs: centre line x=0, one uniform scale (circles stay round), feet on the bottom
+        half = max(abs(hi[0]), abs(lo[0]))
+        scale = min(scale_y, (w - 2 * m) / max(2 * half, 1e-6))
+        scale_y, cx = scale, 0.0
+        cy = lo[1] + (h - 2 * m) / 2 / scale_y
+    else:
+        scale = min(scale_y, (w - 2 * m) / max(hi[0] - lo[0], 1e-6))
+        if not legs:
+            scale_y = scale
+        elif scale < 0.75 * scale_y:                     # a wide mech is narrowed a little to keep stock's full height
+            scale_y = scale / 0.75
     zbuf = np.full((h, w), -np.inf)
     lam = np.zeros((h, w))
     reg = np.full((h, w), -1, dtype=int)
+    pid = np.full((h, w), -1, dtype=int)
     view = np.array([0, 0, -1.0 if rear else 1.0])
-    light = np.array([-0.45 * sx, 0.55, 0.7 * view[2]])
+    light = np.array([-0.5 * sx, 0.6, 0.6 * view[2]])
     light /= np.linalg.norm(light)
-    for region, p, tris in parts:
-        if rear and region not in REAR_REGIONS:
-            continue
+    for index, (region, p, tris, *ident) in shown:
+        part_id = ident[0] if ident else index
         X = (p[:, 0] - cx) * sx * scale + w / 2
-        Y = h / 2 - (p[:, 1] - cy) * scale
+        Y = h / 2 - (p[:, 1] - cy) * scale_y
         Z = p[:, 2] if not rear else -p[:, 2]
         for a, b, c in tris:
             n = np.cross(p[b] - p[a], p[c] - p[a])
@@ -223,7 +397,9 @@ def _raster(parts, w, h, rear: bool):
             zbuf[y0:y1 + 1, x0:x1 + 1][win] = z[win]
             lam[y0:y1 + 1, x0:x1 + 1][win] = val
             reg[y0:y1 + 1, x0:x1 + 1][win] = region
-    return lam, reg
+            pid[y0:y1 + 1, x0:x1 + 1][win] = part_id
+    zbuf[reg < 0] = 0
+    return lam, reg, pid, zbuf
 
 
 def render(parts, w, h, rear: bool, mode: str):
@@ -284,15 +460,17 @@ def render(parts, w, h, rear: bool, mode: str):
     return img
 
 
-def hud_strip(parts, w, h):
-    front = render(parts, w, h, rear=False, mode="hud")
-    back = render(parts, w, h, rear=True, mode="hud")
+def hud_strip(parts, w, h, face=None):
+    """face None: on for .tgl mechs (MCO cook), off for the accepted GLB (BT2018) path."""
+    face = _is_tgl(parts) if face is None else face
+    front = _hud_render(parts, w, h, False, face)
+    back = _hud_render(parts, w, h, True, face)
     return np.concatenate([front, back], axis=0)
 
 
 def palette_ok(img: np.ndarray, rear_row_from: int | None = None) -> list[str]:
-    """Every opaque pixel must be the outline or an exact region palette value."""
-    allowed = {OUTLINE}
+    """Every opaque pixel must be black, the legacy outline or an exact region palette value."""
+    allowed = {OUTLINE, (0, 0, 0)}
     for r in range(8):
         for s in range(3):
             allowed.add(region_color(r, s))
@@ -302,7 +480,7 @@ def palette_ok(img: np.ndarray, rear_row_from: int | None = None) -> list[str]:
         c = tuple(int(v) for v in img[y, x, :3])
         if c not in allowed:
             bad.append(f"{x},{y}={c}")
-        elif rear_row_from is not None and y >= rear_row_from and c != OUTLINE:
+        elif rear_row_from is not None and y >= rear_row_from and c not in (OUTLINE, (0, 0, 0)):
             region = c[0] - DAMAGE0[[d[1] for d in DAMAGE0].index(c[1])][0]
             if region not in REAR_REGIONS:
                 bad.append(f"rear {x},{y} region {region}")
@@ -314,8 +492,8 @@ def save_tga(img: np.ndarray, path: Path):
     Image.fromarray(img, "RGBA").save(path)
 
 
-def build_icons(glb: Path, stem: str, out_art: Path, bay_size=(128, 128)):
-    parts = load_parts(glb)
+def build_icons(glb: Path, stem: str, out_art: Path, bay_size=(128, 128), hud_only=False):
+    parts = load_parts_tgl(glb) if Path(glb).suffix.lower() == ".tgl" else load_parts(glb)
     if not parts:
         raise SystemExit(f"{glb}: no intact parts mapped to regions")
     written = {}
@@ -327,6 +505,8 @@ def build_icons(glb: Path, stem: str, out_art: Path, bay_size=(128, 128)):
         p = out_art / f"{stem}_hud_{w}x{h}.tga"
         save_tga(strip, p)
         written[p.name] = strip
+    if hud_only:
+        return written
     bay = render(parts, *bay_size, rear=False, mode="lit")
     p = out_art / f"{stem}_bay.tga"
     save_tga(bay, p)
@@ -336,6 +516,7 @@ def build_icons(glb: Path, stem: str, out_art: Path, bay_size=(128, 128)):
     for green, value in ((229, 255), (150, 160), (83, 96), (80, 32)):
         mask = (small[:, :, 1] == green) & (small[:, :, 3] != 0)
         small[mask, :3] = value
+    small[(small[:, :, :3] == 0).all(2), 3] = 0                 # the stock cell's black ground is the card's own
     p = out_art / "mechicons" / f"{stem}.png"
     p.parent.mkdir(parents=True, exist_ok=True)
     Image.fromarray(small, "RGBA").save(p)

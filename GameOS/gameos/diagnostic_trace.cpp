@@ -79,6 +79,7 @@ const std::unordered_set<std::string>& knownTags() {
         "HUD_SYNC_FALLBACK", // Synchronous atlas upload during gameplay. Opt-in.
         "VK_SHUTDOWN", // VK shutdown-order trace: one line per island retire and per image-owner destroy ([VK_ENGINE_CONTEXT] / [VK_IMAGE_RESOURCE]). Opt-in.
         "COMMANDER_TEAM", // [COMMANDER_TEAM v1]: a commander the logistics table cannot place takes the team its parts declare (code/mission_init.cpp). Opt-in.
+        "ICON_REGISTRY", // [ICON_REGISTRY] no art for chassis: a chassis on the class-fallback silhouette (code/icon_registry.cpp). Opt-in.
         "RNG",      // DETERMINISTIC-RNG-1: per gos_rand() result (compile-gated by MC2_RNG_TRACE). Opt-in.
         "VFX_COMBAT", // VFX combat-event trace the VFX oracle (Sol G3) reads to line effects up with weapon fire. Opt-in.
     }).release();

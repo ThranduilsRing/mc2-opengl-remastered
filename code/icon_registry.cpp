@@ -118,6 +118,12 @@ void collect(mc2::czstring key, void* data) {
         static_cast<std::set<std::string>*>(data)->insert(std::move(path));
 }
 
+void collectStrip(mc2::czstring key, void* data) {
+    const auto path = canonical(key);
+    if (path.starts_with("data/art/") && path.ends_with(".tga") && path.find('/', 9) == std::string::npos && path.find("_hud_") != std::string::npos)
+        static_cast<std::set<std::string>*>(data)->insert(path);
+}
+
 // LookupModPriority falls back to _access() for a path no mod owns: once per portrait per frame was a disk probe each.
 // The rank of a legacy sheet is cached until the VFS index changes (mod reload / rebuild) or the registry shuts down.
 int cachedSheetRank(std::string_view sheet) {
@@ -222,6 +228,28 @@ void init(std::string first = {}, int cw = 25, int ch = 30) {
         mc2cache::writeEntry(cacheDir, iconDecodeKind, decodeKey, encodeIcons(registry, rawRanks, decodeKey));
       }
     }
+    // Package chassis (BT2018) and mod chassis without their own art ship HUD strips <stem>_hud_<W>x<H>.tga cooked from their model
+    // (tools/bt2018_mechs/render_icons.py) in stock's own palette: row 0 is the front view, the logistics icon for the tier whose
+    // HUD cell has that size.
+    { std::set<std::string> strips;
+      for (std::filesystem::directory_iterator it("data/art", ec), end; !ec && it != end; it.increment(ec))
+          if (it->is_regular_file()) collectStrip(it->path().generic_string().c_str(), &strips);
+      EnumerateModFiles("data/art/", collectStrip, &strips);
+      for (const auto& path : strips) {
+        const auto sizeAt = path.rfind("_hud_");
+        const std::string stem = path.substr(9, sizeAt - 9), size = path.substr(sizeAt + 5, path.size() - sizeAt - 9);
+        for (int width : {640, 800, 1024}) {
+            const auto hud = hudIconSource(width, width);
+            if (std::format("{}x{}", hud.width, hud.height) != size) continue;
+            auto src = load(path, true);
+            if (src.data.empty() || src.h < 2) continue;
+            src.data.resize(static_cast<size_t>(src.w) * (src.h / 2));   // row 0 = front view, already in stock's palette
+            const std::string key = std::format("hud/{}/front/{}", std::filesystem::path(hud.sheet).stem().string(), stem);
+            const int priority = LookupModPriority(path.c_str());
+            if (registry.add(key, src.w, src.h / 2, src.data)) namedPriority[key] = priority;
+        }
+      }
+    }
     mc2::fmt::print_out("[ICON_DECODE_CACHE] {} key={:016x} sources={}\n", cacheHit ? "hit" : "miss", decodeKey, loose.size());
     damageIcons.resize(kDamageSlots);
     for (int i = 0; i < kDamageSlots; ++i) {
@@ -290,20 +318,41 @@ bool apply(aObject& widget, const aObject& source, long index, const Subject& su
     query.index = index;
     query.dataRank = LookupModPriority(dataKey(subject.file).c_str());
     query.sheetRank = LookupModPriority(sheet.c_str());
-    const auto tiered = [&](bool vehicle) {
+    const auto tiered = [&](std::string_view stem, bool vehicle) {
         const auto hud = hudIconSource(Environment.drawableWidth, Environment.screenWidth, vehicle);
-        return std::format("hud/{}/front/{}", std::filesystem::path(hud.sheet).stem().string(), query.stem);
+        return std::format("hud/{}/front/{}", std::filesystem::path(hud.sheet).stem().string(), stem);
     };
-    query.hud = {"hud/front/" + query.stem, tiered(false), tiered(true)};
-    const auto pick = registry.select(namedPriority, query);
+    query.hud = {"hud/front/" + query.stem, tiered(query.stem, false), tiered(query.stem, true)};
+    auto pick = registry.select(namedPriority, query);
     const Icon* icon = pick.icon;
+    // A chassis is one chassis whichever source owns its CSV: an MCO Atlas uses stock's Atlas art, an MCO Crab the bt2018 Crab.
+    // Match by chassis name across sources, never by VFS rank, before any generic fallback.
+    const auto byChassis = [&](std::string_view base) -> const Icon* {
+        const std::string chassis(base);
+        for (const auto& key : {"hud/front/" + chassis, tiered(base, false), tiered(base, true), tiered("bt2018_" + chassis, false), tiered("bt2018_" + chassis, true)})
+            if (const Icon* found = registry.find(key)) return found;
+        return nullptr;
+    };
     if (!icon) {
-        if (mc2_diag::tagRequested("ICON_REGISTRY")) {
-            const auto [position, inserted] = warned.insert("no-icon:" + query.stem);
-            if (inserted)
-                mc2::fmt::print_err("[ICON_REGISTRY] no art for chassis {} (placeholder)\n", query.stem);
-        }
-        icon = registry.find("missing");
+        const std::string base = query.stem.starts_with("bt2018_") ? query.stem.substr(7) : query.stem;
+        // A mod chassis without its own art (MCO Ranger, Assault Copter...) finds the strip cooked from its model
+        // (tools/bt2018_mechs/mod_icons.py); its sheet index numbers the mod's sheet, never a stock HUD cell.
+        if ((icon = byChassis(base)) || (icon = byChassis(query.name))) pick.hud = icon;
+    }
+    if (!icon) {
+        if (const auto [position, inserted] = warned.insert("no-icon:" + query.stem); inserted && mc2_diag::tagRequested("ICON_REGISTRY"))
+            mc2::fmt::print_err("[ICON_REGISTRY] no art for chassis {} index={} (class fallback)\n", query.stem, index);
+        // No source has art for this chassis: a stock silhouette of its class (copter, tank or weight class), never the
+        // missing-texture checkerboard and never a mech standing in for a vehicle.
+        std::string cls = "bushwacker";
+        if (subject.vehicle)
+            cls = query.name.find("copter") != std::string::npos || query.name.find("vtol") != std::string::npos ? "mediumcopter"
+                : query.name.find("trooper") != std::string::npos || query.name.find("armor") != std::string::npos || query.name.find("elemental") != std::string::npos ? "infantry" : "bulldog";
+        else
+            cls = subject.tons < 40 ? "jenner" : subject.tons < 60 ? "bushwacker" : subject.tons < 80 ? "catapult" : "atlas";
+        const Icon* generic = registry.find("hud/front/" + cls);
+        if (generic) { icon = generic; pick.hud = generic; }
+        else icon = registry.find("missing");
     }
     if (widget.getTextureHandle() != texture) widget.setTexture(mc2::textures::retain(texture));
     widget.setFileWidth(static_cast<float>(registry.edge)); widget.setFileHeight(static_cast<float>(registry.edge));
