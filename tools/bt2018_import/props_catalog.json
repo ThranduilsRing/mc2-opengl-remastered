@@ -1,0 +1,42 @@
+{
+ "schema": "bt2018-prop-catalog/1",
+ "install": "A:/Games/BATTLETECH/BattleTech_Data",
+ "props": [
+  {"id": "bt_tree_pine", "category": "tree", "class": "wood", "alpha": "MASK", "file": "sharedassets10.assets",
+   "lods": [{"mesh": "envMdlTree_tallPine_highland_spring_shapeA_destruct_LOD0", "distance_wu": 0}, {"mesh": "envMdlTree_tallPine_highland_spring_shapeA_destruct_LOD1", "distance_wu": 600}, {"mesh": "envMdlTree_tallPine_highland_spring_shapeA_destruct_LOD2", "distance_wu": 1200}],
+   "impostor": {"kind": "crossed_cards", "from_lod": 2}, "replaces": ["tree:tc1_1", "tree:tc1_2"]},
+  {"id": "bt_tree_elm", "category": "tree", "class": "wood", "alpha": "MASK", "file": "sharedassets8.assets",
+   "lods": [{"mesh": "envMdlTree_tallElm_lowland_spring_shapeA_destruct_LOD0", "distance_wu": 0}, {"mesh": "envMdlTree_tallElm_lowland_spring_shapeA_destruct_LOD1", "distance_wu": 600}, {"mesh": "envMdlTree_tallElm_lowland_spring_shapeA_destruct_LOD2", "distance_wu": 1200}],
+   "impostor": {"kind": "crossed_cards", "from_lod": 2}, "replaces": ["tree:tc1_3"]},
+  {"id": "bt_tree_snow", "category": "tree", "class": "wood", "alpha": "MASK", "file": "sharedassets46.assets",
+   "lods": [{"mesh": "envMdlTree_snowPine_tundra_frozen_shapeA_destruct_LOD0", "distance_wu": 0}, {"mesh": "envMdlTree_snowPine_tundra_frozen_shapeA_destruct_LOD1", "distance_wu": 600}, {"mesh": "envMdlTree_snowPine_tundra_frozen_shapeA_destruct_LOD2", "distance_wu": 1200}],
+   "impostor": {"kind": "crossed_cards", "from_lod": 2}, "replaces": ["tree:tc1_4"]},
+  {"id": "bt_rock_boulder", "category": "rock", "class": "dielectric", "file": "sharedassets74.assets",
+   "lods": [{"mesh": "envMdlRock_boulderA_badlands_static_obstruct_LOD0", "distance_wu": 0}, {"mesh": "envMdlRock_boulderA_badlands_static_obstruct_LOD1", "distance_wu": 600}, {"mesh": "envMdlRock_boulderA_badlands_static_obstruct_LOD2", "distance_wu": 1200}],
+   "materials": [{"alb": "envTxr_rock_badlands_baseSet_alb", "nrm": "envTxr_rock_badlands_baseSet_nrm", "amb": "envTxr_rock_badlands_baseSet_amb", "mtl": "envTxr_rock_badlands_baseSet_spc"}],
+   "replaces": ["staticprop:rock_clump01", "staticprop:rock_clump02", "staticprop:rock_clump03"]},
+  {"id": "bt_rock_cliff", "category": "cliff", "class": "dielectric", "file": "sharedassets14.assets",
+   "lods": [{"mesh": "baseCliffA_LOD0.001", "distance_wu": 0}, {"mesh": "baseCliffA_LOD1.001", "distance_wu": 600}],
+   "materials": [{"alb": "envTxrRock_cliffA_tiled_highland_alb", "nrm": "envTxrRock_cliffA_tiled_highland_nrm", "amb": "envTxrRock_cliffA_tiled_highland_amb", "mtl": "envTxrRock_cliffA_tiled_highland_spc"}],
+   "replaces": ["staticprop:rock_formation01", "staticprop:rock_formation02"]},
+  {"id": "bt_rock_spire", "category": "rock", "class": "dielectric", "file": "sharedassets35.assets",
+   "lods": [{"mesh": "env_rockSpire_highlands_LOD0", "distance_wu": 0}, {"mesh": "env_rockSpire_highlands_LOD1", "distance_wu": 600}],
+   "replaces": ["staticprop:rock_spire01", "staticprop:rock_spire02"]},
+  {"id": "bt_debris_rubble", "category": "debris", "class": "concrete", "file": "sharedassets25.assets",
+   "lods": [{"mesh": "rubblePileA_LOD0", "distance_wu": 0}, {"mesh": "rubblePileA_LOD1", "distance_wu": 600}, {"mesh": "rubblePileA_LOD2", "distance_wu": 1200}],
+   "replaces": ["staticprop:rock_dfield1"]},
+  {"id": "bt_ind_tank", "category": "industrial", "class": "painted_metal", "file": "sharedassets20.assets",
+   "lods": [{"mesh": "industrialTankA_LOD0", "distance_wu": 0}, {"mesh": "industrialTankA_LOD1", "distance_wu": 600}, {"mesh": "industrialTankA_LOD2", "distance_wu": 1200}],
+   "materials": [
+    {"alb": "envTxrStct_conrete_generic_alb", "nrm": "envTxrStct_conrete_generic_nrm", "mtl": "envTxrStct_conrete_generic_spc", "class": "concrete"},
+    {"alb": "envTxrStct_darkMetal_generic_alb", "nrm": "envTxrStct_darkMetal_generic_nrm", "mtl": "envTxrStct_darkMetal_generic_spc", "class": "painted_metal"}],
+   "replaces": ["staticprop:largefueltank"]},
+  {"id": "bt_ind_gastanks", "category": "industrial", "class": "painted_metal", "file": "sharedassets44.assets",
+   "lods": [{"mesh": "gasTanks_LOD0", "distance_wu": 0}, {"mesh": "gasTanks_LOD1", "distance_wu": 600}, {"mesh": "gasTanks_LOD2", "distance_wu": 1200}],
+   "materials": [
+    {"alb": "envTxrStct_darkMetal_mission02_alb", "nrm": "envTxrStct_darkMetal_mission02_nrm", "amb": "envTxrStct_darkMetal_mission02_amb", "mtl": "envTxrStct_darkMetal_mission02_mtl", "class": "painted_metal"},
+    {"alb": "envTxrStct_concrete_mission02_alb", "nrm": "envTxrStct_concrete_mission02_nrm", "amb": "envTxrStct_concrete_mission02_amb", "mtl": "envTxrStct_concrete_mission02_mtl", "class": "concrete"},
+    {"alb": "envTxrStct_paintedMetal_mission02_alb", "nrm": "envTxrStct_paintedMetal_mission02_nrm", "amb": "envTxrStct_paintedMetal_mission02_amb", "mtl": "envTxrStct_paintedMetal_mission02_mtl", "class": "painted_metal"}],
+   "replaces": ["staticprop:smallfueltank", "staticprop:pipetank"]}
+ ]
+}
