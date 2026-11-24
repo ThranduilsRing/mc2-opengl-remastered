@@ -33,6 +33,10 @@ and atomically saves each blob as `<store>/<sha256>`. Missing inputs are listed 
 multiple seed installs can contribute; a deployment requires every declaration to resolve.
 The default store is `E:/mc2-asset-store`; `--asset-store <dir>` or `MC2_ASSET_STORE`
 selects another store. Keep the store when deleting lane installs.
+Retain blobs referenced by any kept candidate or rollback commit; prune only
+unreferenced blobs after those commits and installs are retired. Hash receipts
+are disposable caches, not retention records. Preflight reads `MC2_ASSET_STORE`
+with the same default and verifies declarations without writing receipts.
 
 Normal deployment resolves every declaration from matching checkout, store or installed
 bytes before copying payload files. Missing or stale target files are replaced and

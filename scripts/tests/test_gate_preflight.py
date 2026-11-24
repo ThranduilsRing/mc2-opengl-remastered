@@ -1,5 +1,6 @@
 """Offline input failures must precede expensive merge-window stages."""
 import json
+import hashlib
 from pathlib import Path
 import sys
 
@@ -39,7 +40,7 @@ def test_committed_save_references_use_current_policy():
 
 @pytest.mark.parametrize('broken', [None, 'game', 'viewer', 'camera', 'duplicate', 'equivalent', 'policy', 'seed_identity', 'candidate_identity',
                                     'missing_install', 'intentional', 'fingerprint', 'fingerprint_problem'])
-@pytest.mark.parametrize('scheduled_deploy', [False, True])
+@pytest.mark.parametrize('scheduled_deploy', [False, True, 'skipped'])
 def test_preflight_inputs(tmp_path, monkeypatch, capsys, broken, scheduled_deploy):
     monkeypatch.setattr(gate, 'ROOT', tmp_path)
     import asset_parity
@@ -47,15 +48,12 @@ def test_preflight_inputs(tmp_path, monkeypatch, capsys, broken, scheduled_deplo
     ref = tmp_path / 'reference'
     ref.mkdir()
     (ref / 'declared.bin').write_bytes(b'published')
-    monkeypatch.setattr(asset_parity, 'default_ref', lambda: ref)
-    monkeypatch.setattr(asset_parity, 'intentional_changes', lambda *a: {
-        'declared.bin': 'bad' if broken == 'intentional' else asset_parity._sha(ref / 'declared.bin')})
-    fingerprints = []
-    def data_fingerprint(install, manifest):
-        fingerprints.append(install)
-        return dict(digest='other' if broken == 'fingerprint' else 'pinned',
-                    problems=['dirty overlay'] if broken == 'fingerprint_problem' else [])
-    monkeypatch.setattr(sim_determinism, 'data_fingerprint', data_fingerprint)
+    import deploy_payload
+    monkeypatch.setenv('MC2_ASSET_STORE', str(ref))
+    sha = hashlib.sha256(b'published').hexdigest()
+    (ref / sha).write_bytes(b'published')
+    monkeypatch.setattr(deploy_payload, 'declared_assets', lambda root: {
+        'declared.bin': 'b' * 64 if broken == 'intentional' else sha})
     monkeypatch.setattr(gate, 'run_child', lambda *a, **kw: pytest.fail('preflight launched a build/process'))
     def fingerprint(path):
         assert path in (tmp_path / 'build64-ninja/mc2.exe',
@@ -87,6 +85,9 @@ def test_preflight_inputs(tmp_path, monkeypatch, capsys, broken, scheduled_deplo
             if broken == 'equivalent':
                 other = dict(pose, name='renamed', pos=[1.0, 2.0, 3.0], rot=370.0)
             (bookmarks / 'day.json').write_text(json.dumps(dict(mission='m', bookmarks=[pose, other])))
+    pinned = sim_determinism.data_fingerprint(str(tmp_path / 'candidate'), {'overlay': {}, 'stock_digest': ''})
+    if broken == 'fingerprint':
+        (tmp_path / 'candidate/mission.fst').write_bytes(b'old published data')
     baseline = tmp_path / 'tests/saveload/baselines'
     baseline.mkdir(parents=True)
     (tmp_path / 'mask.json').write_text('{"across_builds": true}')
@@ -94,28 +95,31 @@ def test_preflight_inputs(tmp_path, monkeypatch, capsys, broken, scheduled_deplo
     monkeypatch.setattr(saveload_roundtrip, 'mask_policy', lambda path: {'mode': 'current'})
     (baseline / 'm.json').write_text(json.dumps(dict(comparison={'mode': 'old' if broken == 'policy' else 'current'},
         judged='first-save-only', overall='digest', runs=[{}], packets=1, save_at=1, load_at=2,
-        data_fingerprint={'digest': 'pinned'})))
+        data_fingerprint=pinned)))
     determinism = tmp_path / 'tests/smoke/sim_determinism'
     determinism.mkdir(parents=True)
-    (determinism / 'm.json').write_text('{"data_fingerprint": {"digest": "pinned"}}')
+    (determinism / 'm.json').write_text(json.dumps({'data_fingerprint': pinned}))
+    (determinism / 'data_overlay.json').write_text(json.dumps({'overlay':
+        {'missing.fit': '0' * 64} if broken == 'fingerprint_problem' else {}, 'stock_digest': ''}))
     steps = [('capture-after', ['capture', '--bookmarks', 'day'], {}),
              ('saveload-m', ['save', '--mission', 'm', '--mask', 'mask.json'], {}),
              ('determinism-m', ['sim', 'check', 'm'], {})]
     if scheduled_deploy:
-        steps.append(('deploy', ['deploy'], {}))
+        steps.append(('deploy', ['deploy'], {'MC2_GATE_SKIP_REASON': 'reuse'} if scheduled_deploy == 'skipped' else {}))
     assert gate.preflight('a' * 40, tmp_path / 'candidate', 92,
-                          steps, seed=tmp_path / 'seed') == int(broken is not None)
+                          steps, seed=tmp_path / 'seed') == int(broken is not None and not (
+                              scheduled_deploy is True and broken in ('fingerprint', 'fingerprint_problem')))
     output = capsys.readouterr().out
     assert checked == ([] if broken == 'missing_install' else ['candidate', 'seed'])
-    assert len(fingerprints) == (0 if broken == 'missing_install' else 1)
-    assert 'fix:' in output if broken else 'preflight PASS' in output
+    failed = broken is not None and not (scheduled_deploy is True and broken in ('fingerprint', 'fingerprint_problem'))
+    assert 'fix:' in output if failed else 'preflight PASS' in output
     if broken == 'missing_install':
         assert f'scripts/make-isolated-deploy.py --from "{(tmp_path / "seed").as_posix()}" --to "{(tmp_path / "candidate").as_posix()}"' in output
     elif broken == 'intentional':
-        assert f'scripts/deploy_payload.py "{ref.as_posix()}" --ninja' in output
-    elif broken in ('fingerprint', 'fingerprint_problem'):
+        assert 'intentional assets unresolved' in output and 'v0.4' not in output
+    elif broken in ('fingerprint', 'fingerprint_problem') and scheduled_deploy is not True:
         assert 'determinism-m install data fingerprint' in output and 'saveload-m install data fingerprint' in output
-        assert f'scripts/asset_parity.py "{(tmp_path / "candidate").as_posix()}" --sync --ref "{ref.as_posix()}"' in output
+        assert 'deploy the declared payload' in output
 
 
 def test_deploy_bytes_verified_before_runtime(tmp_path, monkeypatch):

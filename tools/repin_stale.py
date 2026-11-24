@@ -18,10 +18,13 @@ import os
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
 DET_DIR = os.path.join(ROOT, "tests", "smoke", "sim_determinism")
 SAVE_DIR = os.path.join(ROOT, "tests", "saveload", "baselines")
+GATE_INSTALL = os.environ.get("MC2_GATE_INSTALL", "E:/mc2-installs/merge-gate")
 
 
 def git(*args: str) -> str:
@@ -131,20 +134,63 @@ def repin_command(row: dict, install: str, det_duration: int, tmp: str) -> list[
             py + [sd, "write-baseline", "@LOG@", "--frames", str(row["data"].get("frames", 0)), "--mission", m, "--install", install] + env]
 
 
+def verified_install(install: str) -> str:
+    import sim_determinism as sd
+    from exe_fingerprint import extract, sha_agrees
+    install = sd.resolve_install(install)
+    if not Path(install).is_dir() or not Path(GATE_INSTALL).is_dir():
+        raise ValueError("re-pin and gate installs must exist")
+    fp = extract(Path(install) / "mc2.exe")
+    if not fp.get("present") or fp.get("dirty") or not sha_agrees(fp.get("sha"), git("rev-parse", "HEAD")):
+        raise ValueError("install exe must match clean HEAD")
+    manifest = sd.load_overlay_manifest(os.path.join(ROOT, "tests/smoke/sim_determinism/data_overlay.json"))
+    actual, gate = (sd.data_fingerprint(path, manifest) for path in (install, GATE_INSTALL))
+    if actual.get("problems") or gate.get("problems") or actual["digest"] != gate["digest"]:
+        raise ValueError("install data fingerprint must match the gate install")
+    return install
+
+
+def gate_check(row: dict, install: str, tmp: str, phase: str) -> int:
+    import merge_gate
+    name = row["kind"] + "-" + row["mission"]
+    steps = [s for s in merge_gate.plan(1, os.path.join(tmp, phase)) if s[0] == name]
+    if not steps:
+        raise ValueError(f"the merge gate has no row {name}")
+    _, cmd, env = merge_gate.install_plan(steps, Path(install))[0]
+    return subprocess.call(cmd, cwd=ROOT, env=dict(os.environ, **env))  # background-launch: allow gate's baseline check harness
+
+
 def repin(row: dict, install: str, det_duration: int, tmp: str) -> bool:
     fresh_out_dir(run_dir(tmp, row))
-    for cmd in repin_command(row, install, det_duration, tmp):
-        if "@LOG@" in cmd:
-            logs = glob.glob(os.path.join(run_dir(tmp, row), "**", row["mission"] + ".log"), recursive=True)
-            if not logs:
-                print(f"  no run log for {row['mission']}; not re-pinned")
+    try:
+        install = verified_install(install)
+    except (OSError, ValueError) as exc:
+        print(f"  refusing re-pin: {exc}")
+        return False
+    if gate_check(row, install, tmp, "before") == 0:
+        print("  stale by distance, still valid")
+        return True
+    path = Path(row["path"])
+    original = path.read_bytes()
+    accepted = False
+    try:
+        for cmd in repin_command(row, install, det_duration, tmp):
+            if "@LOG@" in cmd:
+                logs = glob.glob(os.path.join(run_dir(tmp, row), "**", row["mission"] + ".log"), recursive=True)
+                if not logs:
+                    print(f"  no run log for {row['mission']}; not re-pinned")
+                    return False
+                cmd = [logs[0] if c == "@LOG@" else c for c in cmd]
+            print("  " + " ".join(cmd[2:]))
+            if subprocess.call(cmd, cwd=ROOT) != 0:  # background-launch: allow runs the repo baseline tools (saveload_roundtrip/run_smoke) printed above
                 return False
-            cmd = [logs[0] if c == "@LOG@" else c for c in cmd]
-        print("  " + " ".join(cmd[2:]))
-        if subprocess.call(cmd, cwd=ROOT) != 0:  # background-launch: allow runs the repo baseline tools (saveload_roundtrip/run_smoke) printed above
-            return False
-    keep_unknown_keys(row)
-    return True
+        keep_unknown_keys(row)
+        accepted = gate_check(row, install, tmp, "after") == 0
+        return accepted
+    finally:
+        if not accepted:
+            path.write_bytes(original)
+            print("  restored original baseline after failed re-pin")
 
 
 def keep_unknown_keys(row: dict) -> None:

@@ -524,7 +524,7 @@ def test_verify_builds_editor_for_shared_gate_inputs(tmp_path, monkeypatch, chan
         return _R(1 if "EditRel" in cmd else 0, "editor link failed")
     verdict, results = lm.verify_merged(str(tmp_path), "build", runner, base=base)
     editor = "editor" in merge_gate.promoted_stages([changed])
-    assert seen == [["mc2", "EditRel"] if editor else []]
+    assert seen == [["mc2", "mc2_asset_viewer", "EditRel"] if editor else []]
     assert verdict == ("FAIL" if editor else "OK")
     assert results[0][1] == int(editor)
 

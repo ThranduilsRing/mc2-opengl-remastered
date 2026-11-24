@@ -371,9 +371,8 @@ def clean_failed_outputs(state, proof):
 def preflight(head, install, window, steps, seed=Path(EROOT + "/mc2-installs/_lean-seed")):
     """Offline, fail before any lease, copy, build or deployment."""
     from exe_fingerprint import extract, build_current, sha_agrees
-    from deploy_payload import verify_published_identity, staleness_report
+    from deploy_payload import verify_published_identity, staleness_report, intentional_payload
     import saveload_roundtrip as saves
-    import asset_parity
     import sim_determinism as sim
 
     started = time.monotonic()
@@ -384,18 +383,15 @@ def preflight(head, install, window, steps, seed=Path(EROOT + "/mc2-installs/_le
         print(f'[merge_gate] preflight FAIL: gate install missing: {install}; fix: '
               f'py -3 scripts/make-isolated-deploy.py --from "{Path(seed).as_posix()}" --to "{install.as_posix()}"', flush=True)
         return 1
-    ref = asset_parity.default_ref()
     try:
-        for rel, expected in asset_parity.intentional_changes(head, ROOT).items():
-            source = ref / rel
-            if not source.is_file() or asset_parity._sha(source) != expected:
-                errors.append(f'intentional asset reference hash mismatch: {source}; fix: '
-                              f'py -3 scripts/deploy_payload.py "{ref.as_posix()}" --ninja')
-    except (OSError, ValueError) as exc:
-        errors.append(f'intentional assets: {exc}; fix: git restore --source={head} -- intentional-asset-changes.json')
+        intentional_payload(ROOT, install, os.environ.get('MC2_ASSET_STORE', 'E:/mc2-asset-store'), dry_run=True)
+    except (OSError, ValueError, SystemExit) as exc:
+        errors.append(f'intentional assets unresolved: {exc}; fix: restore the declared sha256 bytes in the checkout, '
+                      'MC2_ASSET_STORE, or selected install')
     fingerprint = None
+    scheduled_deploy = any(n == 'deploy' and not e.get('MC2_GATE_SKIP_REASON') for n, _, e in steps)
     for name, command, env in steps:
-        if env.get('MC2_GATE_SKIP_REASON') or not name.startswith(('determinism-', 'saveload-')):
+        if scheduled_deploy or env.get('MC2_GATE_SKIP_REASON') or not name.startswith(('determinism-', 'saveload-')):
             continue
         mission = command[command.index('--mission') + 1] if '--mission' in command else name.split('-', 1)[1]
         baseline = (ROOT / ('tests/saveload/baselines' if name.startswith('saveload-') else 'tests/smoke/sim_determinism')
@@ -410,7 +406,7 @@ def preflight(head, install, window, steps, seed=Path(EROOT + "/mc2-installs/_le
             if fingerprint.get('problems') or fingerprint['digest'] != pinned['digest']:
                 errors.append(f'{name} install data fingerprint differs from {baseline}: '
                               f'{fingerprint["digest"]} != {pinned["digest"]}; fix: '
-                              f'py -3 scripts/asset_parity.py "{install.as_posix()}" --sync --ref "{ref.as_posix()}"')
+                              'deploy the declared payload to the selected install before checking pinned data')
         except (OSError, ValueError, KeyError) as exc:
             errors.append(f'{name} pinned data: {exc}; fix: git restore --source={head} -- "{baseline.relative_to(ROOT).as_posix()}"')
     for name in ("mc2.exe", "out/tools/asset_viewer/mc2_asset_viewer.exe"):
@@ -427,7 +423,7 @@ def preflight(head, install, window, steps, seed=Path(EROOT + "/mc2-installs/_le
             bookmarks.update(command[command.index('--bookmarks') + 1].split(','))
     for target in dict.fromkeys((Path(install), Path(seed))):
         try:
-            if any(n == 'deploy' and not e.get('MC2_GATE_SKIP_REASON') for n, _, e in steps):
+            if scheduled_deploy:
                 # Before captures use the published build; the candidate is
                 # checked against HEAD after deployment, before runtime proofs.
                 report = staleness_report(str(target), full=True)  # provenance: every byte re-hashed, no stamp trust

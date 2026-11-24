@@ -120,6 +120,7 @@ def test_enumerate_payload_needs_only_game(tmp_path):
 
 
 def test_deploy_no_example_mods_payload_and_manifest(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(dp, "declared_assets", lambda root: {})  # this layout fixture contains dummy payload bytes
     # Trigger paths: scripts/deploy_payload.py, examples/mods/.
     build = str(_ninja_tree(tmp_path))
     default = dp.enumerate_payload(str(ROOT), build, "mc2.exe", "mc2.pdb")

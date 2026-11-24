@@ -61,6 +61,7 @@ import shutil, subprocess, sys, time, tempfile  # noqa: E401
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(HERE, "..", "scripts"))
 import console_child  # noqa: E402  (windowless console children without a conhost each)
+from configure_ninja import DEFAULT_TARGETS  # noqa: E402
 sys.path.insert(0, HERE)
 import _git_util, lane_merge_baseline, lane_merge_conflicts, lane_merge_trust  # noqa: E402  (shared git helpers; the trusted-copy hand-off)
 from lint_slots import LintSlots, cpu_masks, pin_cpus, scratch_dir, sweep_stale_scratch  # noqa: E402
@@ -727,7 +728,7 @@ def verify_merged(root: str, mode: str, runner=None, base=None) -> tuple[str, li
         if label in ("scripts_tests", "tools_tests"):
             rest += ["--base", base]
         if label == "build" and editor:
-            rest += ["mc2", "EditRel"]
+            rest += [*DEFAULT_TARGETS, "EditRel"]
         cmd = [git_bash(), path] + rest if script.endswith(".sh") else [sys.executable, path] + rest
         log_path = os.path.join(root, "build64-ninja", "lane-merge-verify-" + label + ".log")
         print(f"lane_merge: {label} log: {log_path}", flush=True)
@@ -1326,14 +1327,14 @@ def recorded_data_fingerprint(root: str) -> dict | None:
     return next(iter(seen.values())) if len(seen) == 1 else None
 
 
-def candidate_data_fingerprint(root: str) -> tuple[dict | None, str]:
-    """The data fingerprint the gate would compute for this tree: the stock reference install (the gate's deploy target,
-    sim_determinism.INSTALL_DIR) read with the candidate tree's declared overlay manifest (its tests/smoke/sim_determinism/
+def candidate_data_fingerprint(root: str, install: str | None = None) -> tuple[dict | None, str]:
+    """The data fingerprint for the selected install (default E:/mc2-installs/merge-gate)
+    read with the candidate tree's declared overlay manifest (its tests/smoke/sim_determinism/
     data_overlay.json). -> (fingerprint, skip_reason): fingerprint is None, with a one-line reason, when there is no stock
     install to read. Read-only: it walks and hashes the install but never writes to it. The stock parts are gitignored and
     absent from a source tree, so the source tree itself can never be fingerprinted -- only the install the gate deploys to."""
     import sim_determinism as sd
-    install = sd.INSTALL_DIR
+    install = install or "E:/mc2-installs/merge-gate"
     if not os.path.isdir(install):
         return None, f"no stock reference install at {install} to fingerprint"
     manifest = sd.load_overlay_manifest(os.path.join(root, "tests", "smoke", "sim_determinism", "data_overlay.json"))
@@ -1352,12 +1353,12 @@ def differing_stock_parts(fp: dict, base: dict) -> str:
     return "; ".join(parts) or "the data fingerprint digest differs"
 
 
-def data_fingerprint_check(root: str, fingerprint=None, baseline=None) -> tuple[str, str]:
+def data_fingerprint_check(root: str, fingerprint=None, baseline=None, install=None) -> tuple[str, str]:
     """The gate's sim data fingerprint (stock reference install + the candidate tree's declared overlay) vs the recorded
     baseline the determinism/saveload rows pin. -> (verdict, detail): 'OK' when it matches, 'FAIL' when it does not (the
     gate would go red), 'SKIPPED' when there is no recorded baseline or no stock install to read. W138h: this red only
     showed on the laptop gate, costing two extra runs (52 min)."""
-    fp, skip = (fingerprint or candidate_data_fingerprint)(root)
+    fp, skip = fingerprint(root) if fingerprint else candidate_data_fingerprint(root, install)
     if fp is None:
         return "SKIPPED", skip
     base = (baseline or recorded_data_fingerprint)(root)
@@ -1461,7 +1462,7 @@ def pre_gate_regen(root: str) -> tuple[list[str], str | None]:
     return changed, None
 
 
-def pre_gate(root: str, exe: str | None = None, nightly_proofs: str | None = None) -> int:
+def pre_gate(root: str, exe: str | None = None, nightly_proofs: str | None = None, install=None) -> int:
     """Everything that used to fail only after the gate started (W79: three reruns), run in order at the merged HEAD.
     Every step runs; one verdict line at the end. Exit 0 = clean (regenerated files are listed, not a failure). Nightly freshness is a WARN line only (it used to surface
     at promote, lane_merge_stage.untriaged_nightly_fail); the owner does not gate on it here."""
@@ -1496,7 +1497,7 @@ def pre_gate(root: str, exe: str | None = None, nightly_proofs: str | None = Non
         if rc:
             print(out, flush=True)
             failed.append(label)
-    verdict, detail = data_fingerprint_check(root)
+    verdict, detail = data_fingerprint_check(root, **({"install": install} if install else {}))
     print(f"pre-gate: data_fingerprint: {verdict}", flush=True)
     if detail:   # the FAIL's differing parts, or the one-line SKIPPED reason
         print(detail, flush=True)
@@ -1542,6 +1543,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--no-link", action="store_true", help="with --precheck: skip the link even when the tip changes compiled inputs")
     ap.add_argument("--no-sim-rows", action="store_true", help="compatibility no-op; precheck never runs games")
     ap.add_argument("--sim-install", help="compatibility no-op; precheck never runs games")
+    ap.add_argument("--install", help="with --pre-gate: read-only install to fingerprint (default E:/mc2-installs/merge-gate)")
     ap.add_argument("--pre-gate", action="store_true",
                     help="at the merged HEAD run the real regenerate-all (lists the changed files; commit them once), "
                          "check-background-launch, gate_gen --check and cxx17; all run, one PRE-GATE PASS/FAIL line; --root picks the tree")
@@ -1680,7 +1682,7 @@ def main(argv: list[str] | None = None) -> int:
                         not args.no_sim_rows, args.sim_install,
                         **({"base": args.base or "HEAD"} if args.base or args.batch else {}))
     if args.pre_gate:
-        return pre_gate(args.root, args.exe)
+        return pre_gate(args.root, args.exe, install=args.install)
     try:
         if args.promote:
             return promote(args.root, args.promote, args.verdict)

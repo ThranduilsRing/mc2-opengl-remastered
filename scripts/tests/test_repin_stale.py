@@ -38,27 +38,73 @@ def test_repin_commands(tmp_path):
     assert "--baseline" not in run
 
 
-@pytest.mark.parametrize("pair_rc", [0, 1, 2])
-def test_repin_writes_baseline_only_after_pair_success(tmp_path, monkeypatch, pair_rc):
-    row = {"kind": "determinism", "mission": "mc2_03", "data": {"frames": 5}}
-    calls, kept = [], []
-    log = Path(rs.run_dir(str(tmp_path), row)) / "a" / "mc2_03.log"
+@pytest.fixture
+def repin_install(tmp_path, monkeypatch):
+    monkeypatch.setattr(rs, "ROOT", str(tmp_path))
+    monkeypatch.setattr(rs, "git", lambda *args: "a" * 40)
+    install, gate = tmp_path / "install", tmp_path / "gate"
+    for folder in (install, gate):
+        folder.mkdir()
+        (folder / "mission.fst").write_bytes(b"stock")
+    (install / "mc2.exe").write_bytes(b"MC2FP1|" + b"a" * 40 + b"|0|test|2026-11-24T00:00:00|A:/src|FP1END")
+    monkeypatch.setattr(rs, "GATE_INSTALL", str(gate))
+    return str(install)
 
-    def fake_call(cmd, cwd):
-        calls.append(cmd)
+
+@pytest.mark.parametrize("before,pair,after", [(0, 0, 0), (1, 1, 0), (1, 0, 1), (1, 0, 0)])
+def test_repin_checks_current_and_restores_failed_pin(tmp_path, monkeypatch, capsys, repin_install, before, pair, after):
+    path = tmp_path / "mc2_03.json"
+    original = b'{"mission": "mc2_03", "sha": "old", "frames": 5}\n'
+    path.write_bytes(original)
+    row = {"kind": "determinism", "mission": "mc2_03", "path": str(path), "data": {"frames": 5}}
+    calls = []
+    def fake_call(cmd, cwd, **kwargs):
         assert cwd == rs.ROOT
+        if "check" in cmd:
+            assert cmd[1:4] == ["tools/sim_determinism.py", "check", "mc2_03"]
+            assert Path(cmd[cmd.index("--install") + 1]) == Path(repin_install)
+            assert "--headless-both" in cmd and "--single" in cmd
+            assert "--out" in cmd and "env" in kwargs
+            calls.append("check")
+            return before if calls.count("check") == 1 else after
         if "run" in cmd:
+            calls.append("pair")
+            log = Path(rs.run_dir(str(tmp_path), row)) / "a/mc2_03.log"
             log.parent.mkdir(parents=True)
             log.write_text("pair log")
-            return pair_rc
-        assert "write-baseline" in cmd and str(log) in cmd
+            return pair
+        assert "write-baseline" in cmd
+        calls.append("write")
+        path.write_text('{"sha": "new"}')
         return 0
-
     monkeypatch.setattr(rs.subprocess, "call", fake_call)
-    monkeypatch.setattr(rs, "keep_unknown_keys", kept.append)
-    assert rs.repin(row, "inst", 30, str(tmp_path)) == (pair_rc == 0)
-    assert len(calls) == (2 if pair_rc == 0 else 1)
-    assert kept == ([row] if pair_rc == 0 else [])
+    assert rs.repin(row, repin_install, 30, str(tmp_path)) == (before == 0 or pair == after == 0)
+    assert calls == (["check"] if before == 0 else ["check", "pair"] if pair else ["check", "pair", "write", "check"])
+    if before == 0 or pair or after:
+        assert path.read_bytes() == original
+    else:
+        assert json.loads(path.read_text())["sha"] == "new"
+    if before == 0:
+        assert "stale by distance, still valid" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("broken", ["exe", "dirty", "data", "overlay", "missing_gate"])
+def test_repin_refuses_wrong_install(tmp_path, monkeypatch, repin_install, broken):
+    install = Path(repin_install)
+    if broken in ("exe", "dirty"):
+        exe = install / "mc2.exe"
+        exe.write_bytes(exe.read_bytes().replace(b"a" * 40, b"b" * 40) if broken == "exe" else exe.read_bytes().replace(b"|0|", b"|1|"))
+    elif broken == "data":
+        (install / "mission.fst").write_bytes(b"different stock")
+    elif broken == "overlay":
+        manifest = tmp_path / "tests/smoke/sim_determinism/data_overlay.json"
+        manifest.parent.mkdir(parents=True)
+        manifest.write_text('{"overlay": {"missing.fit": "0000"}}')
+    else:
+        monkeypatch.setattr(rs, "GATE_INSTALL", str(tmp_path / "absent"))
+    monkeypatch.setattr(rs.subprocess, "call", lambda *a, **kw: pytest.fail("refused install launched a process"))
+    row = {"kind": "determinism", "mission": "mc2_03", "data": {"frames": 5}}
+    assert not rs.repin(row, repin_install, 30, str(tmp_path))
 
 
 def _gate_steps():
@@ -127,23 +173,7 @@ def test_existing_out_dir_fails_loudly(tmp_path):
     assert rs.fresh_out_dir(str(tmp_path / "fresh")) == str(tmp_path / "fresh")
 
 
-def test_two_kinds_for_one_mission_get_distinct_run_dirs(tmp_path, monkeypatch):
-    seen = []
-
-    def fake_call(cmd, cwd=None):
-        out = cmd[cmd.index("--out") + 1] if "--out" in cmd else None
-        if out:
-            os.makedirs(out, exist_ok=True)
-            Path(out, "mc2_03.log").write_text("x")
-            seen.append(out)
-        return 0
-
-    monkeypatch.setattr(rs.subprocess, "call", fake_call)
-    monkeypatch.setattr(rs, "keep_unknown_keys", lambda row: None)
-    for kind in ("determinism", "saveload"):
-        row = {"kind": kind, "mission": "mc2_03", "data": {"frames": 5}}
-        rs.repin(row, "inst", 30, str(tmp_path))  # second kind must not abort on the first's dir
-    assert len(seen) == 2 and seen[0] != seen[1]
+def test_two_kinds_for_one_mission_get_distinct_run_dirs():
     assert rs.run_dir("t", {"kind": "determinism", "mission": "m"}) != rs.run_dir("t", {"kind": "saveload", "mission": "m"})
 
 
