@@ -141,7 +141,8 @@ def hull_glb(recipe, work):
     base = work / "base.glb"
     build_glb.build(work / "hull.gltf", None, base, f"{stem}_alb.png", attachments=weapon_attachments(recipe, work), recipe=recipe)
     cockpit = ex["cockpit"]
-    glass = work / "ex" / (cockpit["glass"].lstrip("/") + ".gltf") if cockpit.get("glass") else None
+    keep_glass = cockpit.get("glass") and not recipe["cockpit"].get("drop_glass")   # a glass cage can read as black wire
+    glass = work / "ex" / (cockpit["glass"].lstrip("/") + ".gltf") if keep_glass else None
     hull = [(uv, tri) for _, _, uv, tri in add_cockpit.static_primitives(work / "ex" / (cockpit["hull"].lstrip("/") + ".gltf"))]
     recipe["cockpit"]["glass"]["tile"] = free_tile(base, hull)
     out = work / "cockpit.glb"
@@ -149,6 +150,22 @@ def hull_glb(recipe, work):
     trimmed = work / "trim.glb"
     print("glass pieces dropped:", add_cockpit.trim_proud_glass(out, trimmed))
     prone_pose.rewrite(trimmed, work / "final.glb", recipe.get("prone_pitch", 85.0))
+
+
+DIRT_STRENGTH = 1.5           # the approved Mad Cat look: MW5's 0.75 doubled
+MADCAT_BOX = np.array([[-4.11, -0.09, -5.92], [4.66, 15.58, 5.92]])   # body bounds the DECALS were placed on
+
+
+def scale_decals(placements, points):
+    """Re-seat the Mad Cat decal placements on another chassis by its body bounds (x along the body, y height, z half-width)."""
+    lo, hi = points.min(0), points.max(0)
+    (rl, rh), height = MADCAT_BOX, (points[:, 1].max() - points[:, 1].min()) / (MADCAT_BOX[1, 1] - MADCAT_BOX[0, 1])
+    out = []
+    for d in placements:
+        at = np.asarray(d["at"], float)
+        t = (at - rl) / (rh - rl)
+        out.append({**d, "at": tuple(lo + t * (hi - lo)), "size": tuple(s * height for s in d["size"]), "depth": d["depth"] * max(height, .6)})
+    return out
 
 
 def bake(recipe, work):
@@ -165,13 +182,22 @@ def bake(recipe, work):
         metal_id, wear = bake_material.load(leaf("metal_id")), bake_material.load(leaf("wear"))
     else:   # no authored wear map on this chassis: shared macro variation drives a light dirt layer
         wear[..., 1] = bake_material.load(leaf("macro"), channels="L")[..., 0] * 0.5
+    glb = work / "final.glb"
+    params["scalars"]["DirtStrength"] = recipe.get("dirt_strength", DIRT_STRENGTH)
+    wear[..., 0] = np.maximum(wear[..., 0], bake_extras.edge_wear(glb))   # paint chips on convex edges
+    detail = None
+    if "castmetal_nrm" in files and "microvariaton_nrm" in files:
+        detail = tuple(bake_material.load(files[k], channels="RGB") for k in ("castmetal_nrm", "microvariaton_nrm"))
     alb, orm, nrm = bake_material.bake(bake_material.load(leaf("mask")), metal_id, wear,
-                                       bake_material.load(leaf("normal"), channels="RGB"), params)
+                                       bake_material.load(leaf("normal"), channels="RGB"), params, detail)
     out = work / "bake"
     out.mkdir(exist_ok=True)
-    glb = work / "final.glb"
-    fields = bake_extras.rasterize(bake_extras.body_triangles(glb))
+    body = bake_extras.body_triangles(glb)
+    fields = bake_extras.rasterize(body)
     a, o = bake_extras.weather(fields, np.asarray(alb), np.asarray(orm), leaf("rust"), leaf("macro"))
+    if "decals" in ex["textures"]:
+        a, o = bake_extras.decals(fields, a, o, leaf("decals"),
+                                  scale_decals(bake_extras.DECALS, np.concatenate([p for p, _, _, _ in body])))
     Image.fromarray(a).save(out / "alb.png")
     Image.fromarray(o).save(out / "orm.png")
     nrm.save(out / "nrm.png")

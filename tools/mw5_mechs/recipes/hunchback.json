@@ -26,6 +26,7 @@
       "mask": "/Game/Objects/Mechs/Hunchback/Model/Body/Materials/Textures/Hunchback_Body_Default_MSK.Hunchback_Body_Default_MSK",
       "normal": "/Game/Objects/Mechs/Hunchback/Model/Body/Materials/Textures/Hunchback_Body_NRM.Hunchback_Body_NRM",
       "macro": "/Game/Objects/_common/Materials/Textures/MacroVariation_CLR.MacroVariation_CLR",
+      "decals": "/Game/Objects/Mechs/_common/Material/Textures/MechDecals_ACL.MechDecals_ACL",
       "rust": "/Game/Objects/Dropships/Leopard/Models/Materials/BaseMaterials/Textures/Rusted_CLR.Rusted_CLR"
     },
     "cockpit": {
@@ -155,6 +156,7 @@
   },
   "cockpit": {
     "bone": "j_COCKPIT",
+    "drop_glass": false,
     "glass": {
       "tile": "auto",
       "albedo_linear": [

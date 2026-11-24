@@ -27,6 +27,7 @@
       "mask": "/Game/Objects/Mechs/Catapult/Model/Body/Materials/Textures/Catapult_Body_Default_MSK.Catapult_Body_Default_MSK",
       "normal": "/Game/Objects/Mechs/Catapult/Model/Body/Materials/Textures/Catapult_Body_NRM.Catapult_Body_NRM",
       "macro": "/Game/Objects/_common/Materials/Textures/MacroVariation_CLR.MacroVariation_CLR",
+      "decals": "/Game/Objects/Mechs/_common/Material/Textures/MechDecals_ACL.MechDecals_ACL",
       "rust": "/Game/Objects/Dropships/Leopard/Models/Materials/BaseMaterials/Textures/Rusted_CLR.Rusted_CLR"
     },
     "cockpit": {
@@ -159,6 +160,7 @@
   },
   "cockpit": {
     "bone": "j_COCKPIT",
+    "drop_glass": true,
     "glass": {
       "tile": "auto",
       "albedo_linear": [

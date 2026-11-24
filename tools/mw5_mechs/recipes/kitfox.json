@@ -27,6 +27,7 @@
       "mask": "/Game/DLC7/Objects/Mechs/CLANS/KitFox/Model/Body/Textures/KitFox_Body_Default_MSK.KitFox_Body_Default_MSK",
       "normal": "/Game/DLC7/Objects/Mechs/CLANS/KitFox/Model/Body/Textures/KitFox_Body_NRM.KitFox_Body_NRM",
       "macro": "/Game/Objects/_common/Materials/Textures/MacroVariation_CLR.MacroVariation_CLR",
+      "decals": "/Game/Objects/Mechs/_common/Material/Textures/MechDecals_ACL.MechDecals_ACL",
       "rust": "/Game/Objects/Dropships/Leopard/Models/Materials/BaseMaterials/Textures/Rusted_CLR.Rusted_CLR",
       "metal_id": "/Game/DLC7/Objects/Mechs/CLANS/KitFox/Model/Body/Textures/KitFox_body_metalID.KitFox_body_metalID",
       "wear": "/Game/DLC7/Objects/Mechs/CLANS/KitFox/Model/Body/Textures/KitFox_Body_Wear_MSK.KitFox_Body_Wear_MSK"
@@ -159,6 +160,7 @@
   },
   "cockpit": {
     "bone": "j_COCKPIT",
+    "drop_glass": true,
     "glass": {
       "tile": "auto",
       "albedo_linear": [
