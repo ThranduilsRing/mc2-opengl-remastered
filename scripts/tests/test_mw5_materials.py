@@ -187,3 +187,90 @@ def test_pack_texture_references_resolve():
             assert head[:12] == b"\xabKTX 20\xbb\r\n\x1a\n"
             vk_format, _, width, height = np.frombuffer(head[12:28], "<u4")
             assert (vk_format, width, height) == (145, 2048, 2048)    # BC7 UNORM; the cook is linear-tagged for data maps
+
+
+def _stm(path, tris):
+    """Static mesh with one primitive per entry of tris (a triangle count each), UV0 spread over the atlas."""
+    blob, views, accs, prims = bytearray(), [], [], []
+
+    def add(arr, ctype, typ):
+        views.append({"buffer": 0, "byteOffset": len(blob), "byteLength": arr.nbytes})
+        blob.extend(arr.tobytes())
+        accs.append({"bufferView": len(views) - 1, "componentType": ctype, "count": len(arr), "type": typ})
+        return len(accs) - 1
+    for n in tris:
+        pos = np.random.default_rng(n).random((n * 3, 3)).astype(np.float32)
+        prims.append({"attributes": {"POSITION": add(pos, 5126, "VEC3"), "NORMAL": add(np.tile(np.float32([0, 1, 0]), (n * 3, 1)), 5126, "VEC3"),
+                                     "TEXCOORD_0": add(pos[:, :2].copy(), 5126, "VEC2")},
+                      "indices": add(np.arange(n * 3, dtype=np.uint32), 5125, "SCALAR")})
+    (path.with_suffix(".bin")).write_bytes(bytes(blob))
+    path.write_text(json.dumps({"buffers": [{"uri": path.with_suffix(".bin").name, "byteLength": len(blob)}], "bufferViews": views,
+                                "accessors": accs, "meshes": [{"primitives": prims}]}))
+
+
+def test_cockpit_hull_and_glass_added(tmp_path):
+    from tools.mw5_mechs import add_cockpit as K
+    from tools.mw5_mechs.sockets import load_glb
+    recipe = B.load_recipe()
+    doc = {"asset": {"version": "2.0"}, "scene": 0, "scenes": [{"nodes": [0]}], "nodes": [{"name": recipe["cockpit"]["bone"]}],
+           "meshes": [], "skins": [], "materials": [{"name": "mw5_body"}], "accessors": [], "bufferViews": [], "buffers": [{"byteLength": 0}]}
+    js = json.dumps(doc).encode()
+    js += b" " * (-len(js) % 4)
+    import struct
+    (tmp_path / "in.glb").write_bytes(struct.pack("<4sII", b"glTF", 2, 28 + len(js)) + struct.pack("<I4s", len(js), b"JSON") + js + struct.pack("<I4s", 0, b"BIN\0"))
+    _stm(tmp_path / "hull.gltf", [3, 8])
+    _stm(tmp_path / "glass.gltf", [5])
+    K.add_cockpit(tmp_path / "in.glb", tmp_path / "out.glb", tmp_path / "hull.gltf", tmp_path / "glass.gltf", recipe)
+    g, buf = load_glb(tmp_path / "out.glb")
+    by = {m["name"]: m for m in g["meshes"]}
+    assert len(by["cockpit_hull"]["primitives"]) == 1
+    assert g["accessors"][by["cockpit_hull"]["primitives"][0]["indices"]]["count"] == 24  # biggest primitive is the nose
+    assert g["accessors"][by["cockpit_glass"]["primitives"][0]["indices"]]["count"] == 24  # 3 window + 5 pane triangles
+    glass_mat = g["materials"][by["cockpit_glass"]["primitives"][0]["material"]]
+    assert glass_mat["name"] == "mw5_glass" and glass_mat["pbrMetallicRoughness"]["roughnessFactor"] < .1
+    uv = B.read_accessor(g, buf, by["cockpit_glass"]["primitives"][0]["attributes"]["TEXCOORD_0"])
+    x, y, size = recipe["cockpit"]["glass"]["tile"]
+    assert ((uv * K.ATLAS >= [x, y]) & (uv * K.ATLAS <= [x + size, y + size])).all()
+    assert by["cockpit_hull"]["primitives"][0]["material"] == 0
+    assert all(len(s["joints"]) == 1 for s in g["skins"])
+
+
+def test_glass_stamp_fills_only_the_tile(tmp_path):
+    from tools.mw5_mechs import add_cockpit as K
+    recipe = B.load_recipe()
+    for tag in ("alb", "nrm", "orm"):
+        Image.new("RGB", (K.ATLAS, K.ATLAS), (200, 200, 200)).save(tmp_path / f"{tag}.png")
+    K.stamp(tmp_path, recipe)
+    x, y, size = recipe["cockpit"]["glass"]["tile"]
+    for tag in ("alb", "nrm", "orm"):
+        a = np.asarray(Image.open(tmp_path / f"{tag}.png").convert("RGB"))
+        inside = a[y:y + size, x:x + size]
+        assert (inside == inside[0, 0]).all() and not (inside[0, 0] == 200).all()
+        assert (a.sum() - inside.sum()) == 200 * 3 * (K.ATLAS ** 2 - size * size)
+    orm = np.asarray(Image.open(tmp_path / "orm.png").convert("RGB"))[y, x]
+    assert orm[1] < 30 and orm[2] > 150  # glossy and reflective
+
+
+READY_GLB = Path("E:/mc2-installs/mods-fix-ready/mw5-madcat/mods/mw5_mechs/data/tgl/mw5_madcat.glb")
+
+
+@pytest.mark.skipif(not READY_GLB.is_file(), reason="owner pack not built here")
+def test_ready_pack_has_cockpit_and_glass_uvs_clear_of_other_parts():
+    from tools.mw5_mechs import add_cockpit as K
+    from tools.mw5_mechs.sockets import load_glb
+    g, buf = load_glb(READY_GLB)
+    x, y, size = B.load_recipe()["cockpit"]["glass"]["tile"]
+    names = {m["name"] for m in g["meshes"]}
+    assert {"cockpit_hull", "cockpit_glass"} <= names
+    for m in g["meshes"]:
+        for pr in m["primitives"]:
+            assert "material" in pr
+            if m["name"] == "cockpit_glass" or m["name"].startswith("wp"):
+                continue  # weapon parts tile their own out-of-range UVs
+            uv = B.read_accessor(g, buf, pr["attributes"]["TEXCOORD_0"])[B.read_accessor(g, buf, pr["indices"]).ravel()] * K.ATLAS
+            a_, b_, c_ = uv.reshape(-1, 3, 2).transpose(1, 0, 2)
+            den = (b_[:, 1] - c_[:, 1]) * (a_[:, 0] - c_[:, 0]) + (c_[:, 0] - b_[:, 0]) * (a_[:, 1] - c_[:, 1])
+            for px, py in ((x, y), (x + size, y), (x, y + size), (x + size, y + size), (x + size / 2, y + size / 2)):
+                u = ((b_[:, 1] - c_[:, 1]) * (px - c_[:, 0]) + (c_[:, 0] - b_[:, 0]) * (py - c_[:, 1])) / np.where(den == 0, 1, den)
+                v = ((c_[:, 1] - a_[:, 1]) * (px - c_[:, 0]) + (a_[:, 0] - c_[:, 0]) * (py - c_[:, 1])) / np.where(den == 0, 1, den)
+                assert not ((den != 0) & (u >= 0) & (v >= 0) & (u + v <= 1)).any(), f"{m['name']} UVs cover the glass tile"

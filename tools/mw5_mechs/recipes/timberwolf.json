@@ -135,6 +135,10 @@
       "normal_source": "dump:Texture2D/Timberwolf_Body_NRM.png"
     }
   },
+  "cockpit": {
+    "bone": "j_COCKPIT",
+    "glass": {"tile": [1596, 1161, 24], "albedo_linear": [0.006, 0.012, 0.016], "roughness": 0.05, "metallic": 0.7}
+  },
   "mod": {
     "id": "mw5_mechs",
     "name": "MechWarrior 5 Mad Cat (personal use)",
