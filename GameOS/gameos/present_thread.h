@@ -7,6 +7,12 @@
 
 namespace mc2vk::present_thread {
 namespace detail {
+inline constexpr uint64_t acquireTimeoutNs = 250ull * 1000 * 1000;
+// Keep cumulative loss visible during long occlusions without flooding the log.
+inline bool noteAcquireDrop(uint64_t& dropped) {
+    ++dropped;
+    return dropped == 1 || dropped % 16 == 0;
+}
 // The continuation owns only captured WSI handles; Render bookkeeping must finish before it can block.
 template<class Finish, class Seal, class Tail>
 bool afterRenderTail(Finish&& finish, Seal&& seal, Tail&& tail) {
