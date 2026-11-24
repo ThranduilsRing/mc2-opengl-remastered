@@ -475,6 +475,14 @@ def main(argv=None):
     os.environ.setdefault("_MSPDBSRV_ENDPOINT_", f"sol-s4b2-contracts-{os.getpid()}")
     if args.only:
         args.only = expand_file_selection(args.only)
+        # The production seam's sources are not part of the standalone unit tier.
+        seam = re.search(r'add_executable\(mc2_authored_order_seam\b(.*?)\)',
+                         (REPO_ROOT / "CMakeLists.txt").read_text(encoding="utf-8"), re.S)
+        seam_sources = set(re.findall(r'tests/unit/\w+\.cpp', seam.group(1))) if seam else set()
+        if seam_sources.intersection(case_owner(args.only)):
+            ap.error("selection belongs to mc2_authored_order_seam, not the standalone unit tier; "
+                     "build with: ninja -C build64-ninja mc2_authored_order_seam "
+                     "(or py -3 scripts/ninja_build.py mc2_authored_order_seam)")
         unknown = unknown_selection(args.only)
         if unknown:
             ap.error("no registered contract or doctest case matches: " + ", ".join(sorted(unknown))
