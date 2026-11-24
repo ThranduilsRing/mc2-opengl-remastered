@@ -896,13 +896,28 @@ def test_arm_lift_fix_lowers_a_raised_idle_hand_to_the_cap(tmp_path):
     import numpy as np
     from bt2018_retarget_clips import arm_lift_fix, quat_mul, quat_mat, elevation
     N = pygltflib.Node
-    g = pygltflib.GLTF2(nodes=[N(name="j_LUpperArm", children=[1]), N(name="j_LHand", translation=[1.0, 0, 0])])
+    g = pygltflib.GLTF2(nodes=[N(name="j_LUpperArm", children=[1]), N(name="j_LHand", translation=[1.0, 0, 0.8])])
     ident = np.array([0.0, 0.0, 0.0, 1.0])
     h = np.radians(45) / 2
     raised = np.array([0.0, 0.0, np.sin(h), np.cos(h)])                  # hand 45 deg above the shoulder
     idle = [raised, raised]
     ua, fix = arm_lift_fix(g, {1: 0}, [ident, ident], idle, "L")
     assert ua == 0
-    hand = quat_mat(quat_mul(fix, raised)) @ [1.0, 0, 0]
+    hand = quat_mat(quat_mul(fix, raised)) @ [1.0, 0, 0.8]
     assert abs(elevation(hand) - (-10.0)) < 0.01                          # cap = bind 0 + 10, clamped to -10
     assert arm_lift_fix(g, {1: 0}, [ident, ident], [quat_mul(fix, raised)] * 2, "L") is None   # already low: untouched
+
+
+def test_arm_lift_fix_leaves_sideways_shoulder_pods_alone():
+    """Trigger: scripts/bt2018_retarget_clips.py. Owner 11-23: Catapult missile pods must stay level."""
+    pygltflib = pytest.importorskip("pygltflib")
+    import numpy as np
+    from bt2018_retarget_clips import arm_lift_fix, pod_arm
+    N = pygltflib.Node
+    ident = np.array([0.0, 0.0, 0.0, 1.0])
+    h = np.radians(45) / 2
+    raised = np.array([0.0, 0.0, np.sin(h), np.cos(h)])
+    for hand_t, fixed in (([1.0, 0, 0.1], False), ([0.1, 0, 1.0], True)):      # sideways pod vs forward arm
+        g = pygltflib.GLTF2(nodes=[N(name="j_LUpperArm", children=[1]), N(name="j_LHand", translation=hand_t)])
+        assert (arm_lift_fix(g, {1: 0}, [ident, ident], [raised, raised], "L") is not None) == fixed
+        assert (pod_arm(g, {1: 0}, [ident, ident], "L") is None) == fixed          # pods are held at bind

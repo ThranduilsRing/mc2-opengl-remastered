@@ -52,6 +52,7 @@ def accessor_view(gltf, blob, acc_idx):
 
 
 ARM_CAP_LO, ARM_CAP_HI, ARM_CAP_MARGIN = -50.0, -10.0, 10.0
+POD_LATERAL_RATIO, POD_MAX_ELEV = 1.5, 30.0
 
 
 def quat_mat(q):
@@ -65,6 +66,35 @@ def elevation(v):
     return np.degrees(np.arctan2(v[1], np.hypot(v[0], v[2])))
 
 
+def _positions(tgt, parent, wq):
+    cache = {}
+    def m(i):
+        if i not in cache:
+            n = tgt.nodes[i]
+            loc = quat_mul(quat_conj(wq[parent[i]]), wq[i]) if i in parent else wq[i]
+            t = np.eye(4)
+            t[:3, :3] = quat_mat(loc) * np.array(n.scale or [1, 1, 1])
+            t[:3, 3] = n.translation or [0, 0, 0]
+            cache[i] = (m(parent[i]) if i in parent else np.eye(4)) @ t
+        return cache[i]
+    return lambda i: m(i)[:3, 3]
+
+
+def pod_arm(tgt, parent, bind_world, side):
+    """Upper-arm node index when the 'arm' is a shoulder-mounted pod or launcher (Catapult): its bind
+    hand points out sideways at a level bind. The BT2018 ready pose holds it upright beside the torso
+    (owner 11-23 ref), so every Atlas clip leaves that subtree at bind. Else None."""
+    names = name_to_index(tgt)
+    ua, hand = names.get(f"j_{side}UpperArm"), names.get(f"j_{side}Hand")
+    if ua is None or hand is None:
+        return None
+    pb = _positions(tgt, parent, bind_world)
+    v = pb(hand) - pb(ua)
+    if abs(v[0]) > POD_LATERAL_RATIO * abs(v[2]) and abs(elevation(v)) < POD_MAX_ELEV:
+        return ua
+    return None
+
+
 def arm_lift_fix(tgt, parent, bind_world, idle_world, side):
     """World rotation about the shoulder that stops the Atlas ready-idle lifting a hand above a
     natural ready pose. The Atlas delta raises forearms ~55 deg, so chassis whose bind arms are
@@ -74,22 +104,9 @@ def arm_lift_fix(tgt, parent, bind_world, idle_world, side):
     bind_world/idle_world are per-node world quaternions. Returns (upper_idx, quat) or None."""
     names = name_to_index(tgt)
     ua, hand = names.get(f"j_{side}UpperArm"), names.get(f"j_{side}Hand")
-    if ua is None or hand is None:
+    if ua is None or hand is None or pod_arm(tgt, parent, bind_world, side) is not None:
         return None
-
-    def positions(wq):
-        cache = {}
-        def m(i):
-            if i not in cache:
-                n = tgt.nodes[i]
-                loc = quat_mul(quat_conj(wq[parent[i]]), wq[i]) if i in parent else wq[i]
-                t = np.eye(4)
-                t[:3, :3] = quat_mat(loc) * np.array(n.scale or [1, 1, 1])
-                t[:3, 3] = n.translation or [0, 0, 0]
-                cache[i] = (m(parent[i]) if i in parent else np.eye(4)) @ t
-            return cache[i]
-        return lambda i: m(i)[:3, 3]
-    pb, pi = positions(bind_world), positions(idle_world)
+    pb, pi = _positions(tgt, parent, bind_world), _positions(tgt, parent, idle_world)
     v_bind, v = pb(hand) - pb(ua), pi(hand) - pi(ua)
     hz = np.array([v[0], 0.0, v[2]])
     if np.linalg.norm(hz) < 1e-9:
@@ -137,6 +154,13 @@ def retarget_file(target_path, atlas_path, out_path):
             out += children_of(c)
         return out
 
+    hold = set()                      # pod subtrees stay at bind in every Atlas clip
+    for side in "LR":
+        ua = pod_arm(tgt, parent, target_world, side)
+        if ua is not None:
+            clav = parent.get(ua)         # the shoulder mount moves with its pod
+            hold.update(children_of(clav if clav is not None and "Clavicle" in tgt.nodes[clav].name else ua))
+
     def make_pose(source_world, fix):
         posed = {}
         def target_pose(i):
@@ -147,7 +171,7 @@ def retarget_file(target_path, atlas_path, out_path):
                 bone = tgt.nodes[i].name
                 inherited = target_pose(parent[i]) if i in parent else np.array([0., 0., 0., 1.])
                 posed[i] = (quat_mul(quat_mul(source_world[atl_names[bone]], quat_conj(atlas_world[atl_names[bone]])), target_world[i])
-                    if bone in atl_names else quat_mul(inherited, target_bind[i]))
+                    if bone in atl_names and i not in hold else quat_mul(inherited, target_bind[i]))
                 if i in fix:
                     posed[i] = quat_mul(fix[i], posed[i])
             return posed[i]
@@ -194,6 +218,14 @@ def retarget_file(target_path, atlas_path, out_path):
             local[ch.target.node] = q / np.linalg.norm(q, axis=-1, keepdims=True)
         target_pose = make_pose(globals_for(atl, local), arm_fix)
         for ch in anim.channels:
+            if ch.target.path == "translation" and ch.target.node in hold:
+                # the clip's translation keys are Atlas-sized; a held pod keeps its own bind offset
+                tacc = tgt.accessors[anim.samplers[ch.sampler].output]
+                tbase = (tgt.bufferViews[tacc.bufferView].byteOffset or 0) + (tacc.byteOffset or 0)
+                tcount = tacc.count
+                raw = np.tile(np.array(tgt.nodes[ch.target.node].translation or [0, 0, 0], "<f4"), (tcount, 1)).tobytes()
+                blob[tbase:tbase + len(raw)] = raw
+                continue
             if ch.target.path != "rotation":
                 continue
             node_idx = ch.target.node
