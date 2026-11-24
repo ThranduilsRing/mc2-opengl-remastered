@@ -200,9 +200,10 @@ inline bool proneClip(std::string_view clip) {
 }
 
 // Package roles override the legacy BT clip convention, including explicit exclusions.
-inline std::string_view groundingRole(const std::map<std::string, std::string>& roles, const std::string& clip) {
-    const auto found = roles.find(clip);
-    if (!roles.empty()) return found == roles.end() ? "none" : std::string_view(found->second);
+inline std::string_view groundingRole(const std::map<std::string, std::string>& roles, std::string_view clip) {
+    for (const auto& [name, role] : roles)
+        if (name == clip) return role;
+    if (!roles.empty()) return "none";
     return proneClip(clip) ? "body" : clip.starts_with("atlas_moveCore") ? "feet" : "none";
 }
 

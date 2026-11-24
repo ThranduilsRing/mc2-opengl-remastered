@@ -1145,7 +1145,7 @@ void LoadMechPackage(mc2::czstring glbPath, std::map<std::string, std::string>& 
         }
     }
     // Both package maps contain flat string pairs.
-    auto readMap = [&](const char* key, std::map<std::string, std::string>& values) {
+    auto readMap = [&](std::string_view key, std::map<std::string, std::string>& values) {
     size_t b = buf.find(key);
     if (b != std::string::npos) {
         b = buf.find('{', b);
