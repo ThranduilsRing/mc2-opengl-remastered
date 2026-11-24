@@ -61,6 +61,7 @@ import shutil, subprocess, sys, time, tempfile  # noqa: E401
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(HERE, "..", "scripts"))
 import console_child  # noqa: E402  (windowless console children without a conhost each)
+from configure_ninja import DEFAULT_TARGETS  # noqa: E402
 sys.path.insert(0, HERE)
 import _git_util, lane_merge_baseline, lane_merge_conflicts, lane_merge_trust  # noqa: E402  (shared git helpers; the trusted-copy hand-off)
 from lint_slots import LintSlots, cpu_masks, pin_cpus, scratch_dir, sweep_stale_scratch  # noqa: E402
@@ -727,7 +728,7 @@ def verify_merged(root: str, mode: str, runner=None, base=None) -> tuple[str, li
         if label in ("scripts_tests", "tools_tests"):
             rest += ["--base", base]
         if label == "build" and editor:
-            rest += ["mc2", "EditRel"]
+            rest += [*DEFAULT_TARGETS, "EditRel"]
         cmd = [git_bash(), path] + rest if script.endswith(".sh") else [sys.executable, path] + rest
         log_path = os.path.join(root, "build64-ninja", "lane-merge-verify-" + label + ".log")
         print(f"lane_merge: {label} log: {log_path}", flush=True)
