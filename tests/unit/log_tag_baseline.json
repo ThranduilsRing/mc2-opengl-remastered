@@ -7891,6 +7891,7 @@
    "stream": "stdout",
    "keys": [
     "loaded",
+    "skipped",
     "roster"
    ],
    "count": 1

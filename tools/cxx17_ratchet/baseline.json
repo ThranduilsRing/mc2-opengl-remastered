@@ -187,7 +187,7 @@
   "mclib": {
    "LG01": 0,
    "LG02": 0,
-   "LG03": 307,
+   "LG03": 306,
    "LG04": 12,
    "LG05": 102,
    "LG06": 51,
@@ -2208,6 +2208,7 @@
   "code/saveload_load.cpp": {
    "LG03": 7
   },
+  "code/screen_layer_order.h": {},
   "code/screen_settle_capture.h": {
    "LG06": 2
   },
@@ -2404,7 +2405,7 @@
   "mclib/abldbug_print.cpp": {},
   "mclib/abldecl.cpp": {},
   "mclib/ablenv.cpp": {
-   "LG03": 6,
+   "LG03": 5,
    "LG17": 4
   },
   "mclib/ablenv.h": {
@@ -3485,7 +3486,7 @@
    "LG20": 1
   }
  },
- "head": "7a4d6abf6",
+ "head": "b8815fde5",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

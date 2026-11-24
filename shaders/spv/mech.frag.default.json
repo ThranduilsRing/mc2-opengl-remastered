@@ -6,8 +6,8 @@
   "specializationParams": [],
   "artifact": "mech.frag.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "3dc8fd4b9b2c9855cc30050eb0fd3d4399f7f43004ba09424e6752f8f9232339",
-  "spirv_sha256": "b5227343db17126790c2b0d4de4b4c8b36a90f71887513aa667094532d5310e2",
+  "source_sha256": "14feb624b6979d776697169ef3851f64a214dd56f5d60638c2c28531dbacb473",
+  "spirv_sha256": "10f13b9ec622338b15f5d7cfc55556c589d4417c5a66f1755ed9933676578fca",
   "bindings": {
     "ubos": [
       {
@@ -706,7 +706,7 @@
           "offset": 772
         },
         {
-          "name": "reserved776",
+          "name": "vegetationEnabled",
           "type": "int",
           "offset": 776
         },
