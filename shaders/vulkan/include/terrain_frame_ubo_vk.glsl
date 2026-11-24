@@ -101,7 +101,7 @@ layout(set = TERRAIN_RESOURCE_SET, binding = 0, std140) uniform TerrainFrameUBO 
     float tintStrengthScale;  // off 764
     float snowBrightnessDampen;  // off 768
     float edgeFeatherStrength;  // off 772
-    int   reserved776;  // off 776
+    int   vegetationEnabled;  // off 776
     int   shorelineOn;  // off 780
     int   shorelineHasMask;  // off 784
     float shorelineWaterElev;  // off 788
