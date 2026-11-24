@@ -36,8 +36,11 @@ inline std::string_view packageObject(std::string_view text, std::string_view ke
     int depth = 0;
     bool quoted = false;
     for (auto i = begin; i < text.size(); ++i) {
-        if (text[i] == '\\' && quoted) { ++i; continue; }
-        if (text[i] == '"') quoted = !quoted;
+        switch (text[i]) {
+        case '\\': if (quoted) { ++i; continue; } break;
+        case '"': quoted = !quoted; break;
+        default: break;
+        }
         if (quoted) continue;
         if (text[i] == '{') ++depth;
         if (text[i] == '}' && --depth == 0) return text.substr(begin, i - begin + 1);
