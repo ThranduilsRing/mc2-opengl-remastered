@@ -70,7 +70,7 @@ LogisticsMechIcon::~LogisticsMechIcon()
 
 
 
-int LogisticsMechIcon::init( FitIniFile& file )
+int LogisticsMechIcon::init( FitIniFile& file, const long* slot )
 {
 	if ( !s_pTemplateIcon )
 	{
@@ -101,6 +101,19 @@ int LogisticsMechIcon::init( FitIniFile& file )
 			mc2::fmt::to_buf(blockName, "Animation{:d}", mc2::fmt::as_i32(i));
 			s_pTemplateIcon->animations[i].init( &file, blockName );
 		}
+
+		if ( slot )
+		{
+			// The page's slots are the grid; a card box of another size (MCO: 90 x 80 at x 75) is scaled into slot 1.
+			LogisticsMechIcon& t = *s_pTemplateIcon;
+			const auto k = unit_icons::cardScale( static_cast<int>(slot[2]), static_cast<int>(slot[3]), static_cast<int>(t.outline.width()), static_cast<int>(t.outline.height()) );
+			for ( aObject* o : { &t.iconConnector, &t.icon, &t.pilotIcon } )
+				unit_icons::scaleCardChild( *o, static_cast<float>(o->globalX()), static_cast<float>(o->globalY()), k, true );
+			for ( aObject* o : { static_cast<aObject*>(&t.pilotName), static_cast<aObject*>(&t.chassisName) } )
+				unit_icons::scaleCardChild( *o, static_cast<float>(o->globalX()), static_cast<float>(o->globalY()), k, false );
+			t.outline.move( static_cast<float>(slot[0] - t.outline.globalX()), static_cast<float>(slot[1] - t.outline.globalY()) );
+			t.outline.resize( slot[2], slot[3] );
+		}
 	}
 	
 
@@ -130,9 +143,11 @@ void LogisticsMechIcon::setMech( LogisticsMech* pNewMech )
 
 	if ( pMech )
 	{
-        hudArt = unit_icons::apply(icon, s_pTemplateIcon->icon, pMech->getIconIndex(), pMech->getFileName().c_str());
+        hudArt = unit_icons::apply(icon, s_pTemplateIcon->icon, pMech->getIconIndex(),
+                                   { pMech->getFileName(), pMech->getVariant()->getChassis()->getAuthoredName(),
+                                     pMech->getVariant()->getMaxWeight(), pMech->getVariant()->getChassis()->isVehicle() });
 
-		chassisName.setText( pMech->getChassisName() );
+		chassisName.setText( pMech->getChassisDisplayName().c_str() );
 
 		iconConnector.showGUIWindow( true );
 

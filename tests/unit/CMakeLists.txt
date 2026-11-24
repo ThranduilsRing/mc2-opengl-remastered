@@ -64,6 +64,7 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_curve.cpp
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_mesh_data.cpp
     test_component_rules.cpp
+    test_unit_display.cpp
     test_support_craft.cpp
     test_jump_target.cpp
     test_path_work.cpp
@@ -118,6 +119,7 @@ add_executable(mc2_tests
     test_torso_twist.cpp
     ${MC2_WORKTREE_ROOT}/mclib/mech_skel_import.cpp
     test_height_sig.cpp  # gameplay_height.sig hash equals the Python writer's test vector (header-only)
+    test_terrain_visual_smooth.cpp  # load-time visual height smoothing (header-only)
     test_render_snap.cpp  # UNIT-VISUAL-SNAP-2 render-only effect-anchor and selection-box lift (header-only)
     test_shadow_bake_math.cpp  # the static shadow bake's mask layout, reach, footprint and caster-window math (header-only, no Vulkan)
     test_terrain_fine_height_bake.cpp  # terrain_tier1.frag fine-normal fetch: the baked filtered height field equals per-tap cliffVisualHeight (header-only)
@@ -651,6 +653,7 @@ target_sources(mc2_tests PRIVATE
     test_abl_archive.cpp
     test_abl_module_archive.cpp
     test_abl_environment_archive.cpp
+    test_save_identity.cpp
     test_warrior_archive.cpp
     test_object_value_codec.cpp
     ${MC2_WORKTREE_ROOT}/code/save_sections.cpp
@@ -981,7 +984,7 @@ mc2_height_slice(terrain_gesture_status mclib/bdactor.cpp "\t// Check if object 
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/terrain_gesture_status.inc" CONTENT "${terrain_gesture_status}")
 set_source_files_properties(test_terrain_dirty_queue.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 # Header-only economy rule helpers (code/economy_rules.h); before the selected-tier snapshot below so `--only` can select it.
-target_sources(mc2_tests PRIVATE test_economy_rules.cpp)
+target_sources(mc2_tests PRIVATE test_economy_rules.cpp test_screen_layer_order.cpp)
 
 # Keep all production objects in the full tier; scoped links extract only needed
 # objects from the same archive. Stubs (including allocation overrides) are

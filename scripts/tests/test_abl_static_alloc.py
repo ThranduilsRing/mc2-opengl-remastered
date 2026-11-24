@@ -27,6 +27,7 @@ union StackItem { char* address; long integer; };
 using StackItemPtr = StackItem*;
 enum class ABLPool { Stack };
 static int operation, failAt, fatals, reads;
+static bool g_ablValueReadFailed = false;
 static void* ABL_alloc(ABLPool, size_t bytes) {
     return ++operation == failAt ? nullptr : std::calloc(1, bytes);
 }

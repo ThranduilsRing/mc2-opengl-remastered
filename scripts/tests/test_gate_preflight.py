@@ -1,5 +1,6 @@
 """Offline input failures must precede expensive merge-window stages."""
 import json
+import hashlib
 from pathlib import Path
 import sys
 
@@ -9,6 +10,36 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import merge_gate as gate
 import exe_fingerprint
 import mod_smoke as mods
+
+
+@pytest.mark.parametrize('reuse', [False, True])
+def test_post_deploy_data_mismatch_fails_gate(tmp_path, monkeypatch, capsys, reuse):
+    import subprocess
+    import sim_determinism as sim
+    monkeypatch.setattr(gate, 'ROOT', tmp_path)
+    monkeypatch.setattr(gate, 'ACTIVE_STATE', None)
+    monkeypatch.setattr(gate, 'git', lambda *a: 'head')
+    monkeypatch.setattr(gate, 'log_lease_holders', lambda: None)
+    monkeypatch.setattr(gate.gate_reuse, 'install_current', lambda *a: reuse)
+    monkeypatch.setattr(gate.gate_reuse, 'save_deployed', lambda *a: pytest.fail('cached a bad deploy'))
+    install = tmp_path / 'install'
+    install.mkdir()
+    stock = install / 'mission.fst'
+    stock.write_bytes(b'pinned stock')
+    baseline = tmp_path / 'tests/smoke/sim_determinism/mc2_01.json'
+    baseline.parent.mkdir(parents=True)
+    baseline.write_text(json.dumps({'data_fingerprint': sim.data_fingerprint(
+        str(install), {'overlay': {}, 'stock_digest': ''})}))
+    command = ['deploy', str(install), '--allow-new-target']
+    def runner(*a, **kw):
+        stock.write_bytes(b'wrong stock after deploy')
+        return subprocess.CompletedProcess(command, 0, '')
+    if reuse:
+        stock.write_bytes(b'wrong stock in reused deploy')
+    assert gate.execute([('deploy', command, {})], 'head', runner=runner) == 1
+    out = capsys.readouterr().out
+    assert 'post-deploy data_fingerprint: FAIL' in out
+    assert 'fix:' in out and 'scripts/deploy_payload.py' in out and str(install) in out
 
 
 @pytest.mark.parametrize('window,counts,new', [
@@ -37,10 +68,23 @@ def test_committed_save_references_use_current_policy():
         assert json.dumps(json.loads(path.read_text())['comparison'], sort_keys=True) == json.dumps(policy, sort_keys=True)
 
 
-@pytest.mark.parametrize('broken', [None, 'game', 'viewer', 'camera', 'duplicate', 'equivalent', 'policy', 'seed_identity', 'candidate_identity'])
-@pytest.mark.parametrize('scheduled_deploy', [False, True])
+@pytest.mark.parametrize('broken', [None, 'game', 'viewer', 'camera', 'duplicate', 'equivalent', 'policy', 'seed_identity', 'candidate_identity',
+                                    'missing_install', 'intentional', 'fingerprint', 'fingerprint_problem'])
+@pytest.mark.parametrize('scheduled_deploy', [False, True, 'skipped'])
 def test_preflight_inputs(tmp_path, monkeypatch, capsys, broken, scheduled_deploy):
     monkeypatch.setattr(gate, 'ROOT', tmp_path)
+    import asset_parity
+    import sim_determinism
+    ref = tmp_path / 'reference'
+    ref.mkdir()
+    (ref / 'declared.bin').write_bytes(b'published')
+    import deploy_payload
+    monkeypatch.setenv('MC2_ASSET_STORE', str(ref))
+    sha = hashlib.sha256(b'published').hexdigest()
+    (ref / sha).write_bytes(b'published')
+    monkeypatch.setattr(deploy_payload, 'declared_assets', lambda root: {
+        'declared.bin': 'b' * 64 if broken == 'intentional' else sha})
+    monkeypatch.setattr(gate, 'run_child', lambda *a, **kw: pytest.fail('preflight launched a build/process'))
     def fingerprint(path):
         assert path in (tmp_path / 'build64-ninja/mc2.exe',
                         tmp_path / 'build64-ninja/out/tools/asset_viewer/mc2_asset_viewer.exe')
@@ -61,6 +105,8 @@ def test_preflight_inputs(tmp_path, monkeypatch, capsys, broken, scheduled_deplo
                     stale=['mc2.exe'] if broken == Path(target).name + '_identity' else [])
     monkeypatch.setattr(deploy_payload, 'staleness_report', published_bytes)
     for folder in ('candidate', 'seed'):
+        if broken == 'missing_install' and folder == 'candidate':
+            continue
         bookmarks = tmp_path / folder / 'saved_bookmarks'
         bookmarks.mkdir(parents=True)
         if broken != 'camera' or folder != 'seed':
@@ -69,22 +115,41 @@ def test_preflight_inputs(tmp_path, monkeypatch, capsys, broken, scheduled_deplo
             if broken == 'equivalent':
                 other = dict(pose, name='renamed', pos=[1.0, 2.0, 3.0], rot=370.0)
             (bookmarks / 'day.json').write_text(json.dumps(dict(mission='m', bookmarks=[pose, other])))
+    pinned = sim_determinism.data_fingerprint(str(tmp_path / 'candidate'), {'overlay': {}, 'stock_digest': ''})
+    if broken == 'fingerprint':
+        (tmp_path / 'candidate/mission.fst').write_bytes(b'old published data')
     baseline = tmp_path / 'tests/saveload/baselines'
     baseline.mkdir(parents=True)
     (tmp_path / 'mask.json').write_text('{"across_builds": true}')
     import saveload_roundtrip
     monkeypatch.setattr(saveload_roundtrip, 'mask_policy', lambda path: {'mode': 'current'})
     (baseline / 'm.json').write_text(json.dumps(dict(comparison={'mode': 'old' if broken == 'policy' else 'current'},
-        judged='first-save-only', overall='digest', runs=[{}], packets=1, save_at=1, load_at=2)))
+        judged='first-save-only', overall='digest', runs=[{}], packets=1, save_at=1, load_at=2,
+        data_fingerprint=pinned)))
+    determinism = tmp_path / 'tests/smoke/sim_determinism'
+    determinism.mkdir(parents=True)
+    (determinism / 'm.json').write_text(json.dumps({'data_fingerprint': pinned}))
+    (determinism / 'data_overlay.json').write_text(json.dumps({'overlay':
+        {'missing.fit': '0' * 64} if broken == 'fingerprint_problem' else {}, 'stock_digest': ''}))
     steps = [('capture-after', ['capture', '--bookmarks', 'day'], {}),
-             ('saveload-m', ['save', '--mission', 'm', '--mask', 'mask.json'], {})]
+             ('saveload-m', ['save', '--mission', 'm', '--mask', 'mask.json'], {}),
+             ('determinism-m', ['sim', 'check', 'm'], {})]
     if scheduled_deploy:
-        steps.append(('deploy', ['deploy'], {}))
+        steps.append(('deploy', ['deploy'], {'MC2_GATE_SKIP_REASON': 'reuse'} if scheduled_deploy == 'skipped' else {}))
     assert gate.preflight('a' * 40, tmp_path / 'candidate', 92,
-                          steps, seed=tmp_path / 'seed') == int(broken is not None)
+                          steps, seed=tmp_path / 'seed') == int(broken is not None and not (
+                              scheduled_deploy is True and broken in ('fingerprint', 'fingerprint_problem')))
     output = capsys.readouterr().out
-    assert checked == ['candidate', 'seed']
-    assert 'fix:' in output if broken else 'preflight PASS' in output
+    assert checked == ([] if broken == 'missing_install' else ['candidate', 'seed'])
+    failed = broken is not None and not (scheduled_deploy is True and broken in ('fingerprint', 'fingerprint_problem'))
+    assert 'fix:' in output if failed else 'preflight PASS' in output
+    if broken == 'missing_install':
+        assert f'scripts/make-isolated-deploy.py --from "{(tmp_path / "seed").as_posix()}" --to "{(tmp_path / "candidate").as_posix()}"' in output
+    elif broken == 'intentional':
+        assert 'intentional assets unresolved' in output and 'v0.4' not in output
+    elif broken in ('fingerprint', 'fingerprint_problem') and scheduled_deploy is not True:
+        assert 'determinism-m install data fingerprint' in output and 'saveload-m install data fingerprint' in output
+        assert 'deploy the declared payload' in output
 
 
 def test_deploy_bytes_verified_before_runtime(tmp_path, monkeypatch):

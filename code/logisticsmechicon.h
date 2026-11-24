@@ -26,7 +26,8 @@ public:
 	LogisticsMechIcon();
 	~LogisticsMechIcon();
 
-	static int init( FitIniFile& file );
+	// slot: the page's first deployment slot; the template card is fitted to its rect (a mod's card may be authored larger).
+	static int init( FitIniFile& file, const long* slot = nullptr ); // slot = x,y,w,h
 
 	void update();
 	void render( long offsetX, long offsetY );

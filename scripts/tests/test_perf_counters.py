@@ -27,6 +27,27 @@ def test_parse_takes_numeric_fields_and_skips_labels():
     assert "first_vk_wait_site" not in got and got["first_vk_wait_ms_into_frame"] == 1.5
 
 
+def test_shipped_props_ceilings_cover_pipeline_list_counts():
+    for stem in ("mc2_01", "mc2_10"):
+        sample = parse_log((ROOT / f"scripts/tests/fixtures/{stem}-props-sample.log").read_text())
+        cfg = GateConfig(duration_s=30, stem=stem, vegetation_expected=False,
+                         perf_ceilings=load_perf_ceilings(), window_ceilings=load_window_ceilings())
+        measured = (sample.perf_counters["draws.props"], sample.perf_window["draws.props"])
+        limits = (cfg.perf_ceilings[stem]["draws.props"], cfg.window_ceilings["stems"][stem]["draws.props"])
+        for count, limit in zip(measured, limits):
+            assert 1.04 < limit / count < 1.06, (stem, count, limit)
+        s = _ready()
+        for scale, warn in ((1.0, False), (1.1, True)):
+            s.perf_counters = {"draws.props": measured[0] * scale}
+            s.perf_window = dict(sample.perf_window, **{"draws.props": measured[1] * scale})
+            verdict = evaluate(s, cfg, exit_code=0, walltime_s=31)
+            warnings = verdict.warnings + verdict.details
+            props = [w for w in warnings if "draws.props" in w]
+            assert bool(props) == warn, (stem, scale, warnings)
+            if warn:
+                assert len(props) == 2  # cumulative and fixed-window ceilings both enforce the limit
+
+
 def test_parse_log_keeps_last_line():
     s = parse_log(LINE + "\n" + LINE.replace("frames=300", "frames=600") + "\n")
     assert s.perf_counters["frames"] == 600

@@ -12,6 +12,9 @@
 #include "mech_skel_import.h"
 #include "save_archive.h"
 #include <assimp/scene.h>
+#include <assimp/Importer.hpp>
+#include <cstdlib>
+#include <cstdio>
 #include <string>
 
 using namespace mc2clip;
@@ -169,6 +172,38 @@ TEST_CASE("imported grounding: soles contact, reverse knees and torso motion sur
     }
 }
 
+TEST_CASE("imported grounding: a toe-down swing foot keeps its sole height and knee side") {
+    mc2ground::Rig rig;
+    std::vector<glm::mat4> pose(6, glm::mat4(1));
+    const glm::vec3 knees[2] = {{-0.3f, 1, -0.6f}, {0.3f, 1.2f, -0.7f}};
+    const glm::vec3 ankles[2] = {{-0.3f, 0.2f, 0}, {0.3f, 0.9f, 0.3f}};
+    for (int side = 0; side < 2; ++side) {
+        auto& leg = rig.legs[side];
+        leg.thigh = side * 3; leg.calf = side * 3 + 1; leg.foot = side * 3 + 2;
+        pose[leg.thigh][3] = glm::vec4(side ? 0.3f : -0.3f, 2, 0, 1);
+        pose[leg.calf][3] = glm::vec4(knees[side], 1);
+        if (side) pose[leg.foot] = mc2ground::columnRotation(glm::angleAxis(1.2f, glm::vec3(1, 0, 0)));
+        pose[leg.foot][3] = glm::vec4(ankles[side], 1);
+        for (float px : {-0.15f, 0.15f})
+            for (float pz : {-0.3f, 0.3f}) leg.sole.push_back({leg.foot, {px, -0.1f, pz}});
+    }
+    auto sole = [&](const auto& leg, const std::vector<glm::mat4>& p) {
+        float y = 100;
+        for (const auto& s : leg.sole) y = std::min(y, (p[s.bone] * glm::vec4(s.local, 1)).y);
+        return y;
+    };
+    auto plane = [](const std::vector<glm::mat4>& p, const mc2ground::Leg& leg) {
+        const glm::vec3 h(p[leg.thigh][3]), k(p[leg.calf][3]), a(p[leg.foot][3]);
+        return glm::cross(k - h, a - k);
+    };
+    const auto original = pose;
+    const float authoredSwing = sole(rig.legs[1], original) - sole(rig.legs[0], original);
+    mc2ground::solve(rig, pose);
+    CHECK(sole(rig.legs[0], pose) == doctest::Approx(0).epsilon(1e-4));
+    CHECK(sole(rig.legs[1], pose) == doctest::Approx(authoredSwing).epsilon(1e-4));
+    for (const auto& leg : rig.legs) CHECK(glm::dot(plane(original, leg), plane(pose, leg)) > 0);
+}
+
 TEST_CASE("imported grounding: a stock rig without imported soles stays byte-identical") {
     std::vector<glm::mat4> pose{glm::mat4(2)};
     const auto original = pose;
@@ -294,6 +329,27 @@ TEST_CASE("clip state: one-shots fit stock gesture time with safe bounds") {
     CHECK(onceRate("atlas_moveJumpDownLand", 4, 0, 0) == 2);
 }
 
+TEST_CASE("clip state: sim gesture change replaces a one-shot with idle or walk") {
+    // Dispatch coverage only: select ignores activeClipFinished. This does not prove
+    // imported clips end on the idle pose, including pelvis roll and translation.
+    // That owner 11-16 data regression needs external animation assets; the checked-in
+    // BT2018 fixtures contain chassis/socket data, not sampled animation channels.
+    for (int gesture : {kGestureHitFront, kGestureHitBack, kGestureHitLeft, kGestureHitRight,
+                        kGestureParkToStand, kGestureGetUp, kGestureRollover}) {
+        Phase phase;
+        const auto shot = pick(gesture, phase);
+        REQUIRE(shot.mode == Mode::Once);
+        const auto idle = pick(2, phase, 0.0f, false, false, shot.clip);
+        CHECK(std::string(idle.clip) == "atlas_moveCoreIdle");
+        CHECK(idle.mode == Mode::Loop);
+        CHECK_FALSE(idle.locomotion);
+        const auto walk = pick(kGestureWalk, phase, 5.0f, false, false, shot.clip);
+        CHECK(std::string(walk.clip) == "atlas_moveCoreWalkFwd");
+        CHECK(walk.mode == Mode::Loop);
+        CHECK(walk.locomotion);
+    }
+}
+
 TEST_CASE("clip state: fades use longer prone transitions and advance outgoing clips") {
     CHECK(fadeDuration("walk", "run") == 0.15f);
     for (auto prone : {"atlas_downedIdle", "atlas_downedGetup", "atlas_deathIdle", "atlas_deathKnockdown", "atlas_hitReactKnockdownInpl"}) {
@@ -303,4 +359,79 @@ TEST_CASE("clip state: fades use longer prone transitions and advance outgoing c
     CHECK(advanceClipTime(0.5f, 0.1f, 2, 1, Mode::Loop) == doctest::Approx(0.7f));
     CHECK(advanceClipTime(0.9f, 0.1f, 2, 1, Mode::Loop) == doctest::Approx(0.1f));
     CHECK(advanceClipTime(0.9f, 0.1f, 2, 1, Mode::Once) == 1);
+}
+
+TEST_CASE("clip state: BT2018 planted stride bone oracle") {
+    // Optional external art, supplied by the lane's installed mod; never substituted by synthetic bones.
+    const char* root = std::getenv("BT2018_TEST_TGL");
+    if (!root) { WARN("BT2018 art unavailable: set BT2018_TEST_TGL to run the bone oracle"); return; }
+    for (const auto& asset : {std::pair{"hunchback", 0.089690f}, std::pair{"centurion", 0.089382f}}) {
+        Assimp::Importer importer;
+        const auto* scene = importer.ReadFile(std::string(root) + "/" + asset.first + ".glb", 0);
+        REQUIRE(scene != nullptr);
+        const aiAnimation* clip = nullptr;
+        for (unsigned i = 0; i < scene->mNumAnimations; ++i)
+            if (scene->mAnimations[i]->mName == aiString("atlas_moveCoreWalkFwd")) clip = scene->mAnimations[i];
+        REQUIRE(clip != nullptr);
+        const float duration = static_cast<float>(clip->mDuration / (clip->mTicksPerSecond ? clip->mTicksPerSecond : 1000));
+        const auto plan = mc2skel::BuildPlan(scene, {"j_LFoot", "j_RFoot"});
+        std::vector<aiVector3D> feet[2];
+        std::vector<mc2skel::GpuBone> bones;
+        for (int f = 0; f <= static_cast<int>(duration * 30); ++f) {
+            REQUIRE(mc2skel::EvaluateClipGpuBones(*plan, "atlas_moveCoreWalkFwd", static_cast<float>(f), bones));
+            for (int k = 0; k < 2; ++k) feet[k].push_back({bones[k].m[3], bones[k].m[7], bones[k].m[11]});
+        }
+        const auto stride = measureStride(feet, duration);
+        std::printf("Stride oracle: %s planted=%.6f estimate=%.6f selected=%.6f local u/s\n",
+            asset.first, stride.planted, stride.estimate, stride.speed());
+        CHECK(stride.planted == doctest::Approx(asset.second).epsilon(0.001).scale(0));
+        CHECK(stride.speed() == stride.planted);
+        CHECK(stride.estimate > stride.planted);
+    }
+}
+
+TEST_CASE("clip state: digitigrade contact-joint stride guard") {
+    // The lower j_Foot moves much faster than 2R/T: it is not the planted contact joint.
+    std::vector<aiVector3D> feet[2] = {{{0, 0, 0}, {0, 0, -1}, {0, 0, -2}},
+                                     {{0, 1, -2}, {0, 1, -1}, {0, 1, 0}}};
+    const auto stride = measureStride(feet, 1);
+    CHECK(stride.planted == doctest::Approx(30));
+    CHECK(stride.estimate == doctest::Approx(4));
+    CHECK(stride.speed() == stride.estimate);
+    CHECK(StrideMeasurement{1, 0.49f}.speed() == 1);
+    CHECK(StrideMeasurement{1, 0.5f}.speed() == 0.5f);
+    CHECK(StrideMeasurement{1, 1.1f}.speed() == 1.1f);
+}
+
+TEST_CASE("clip state: presentation clocks follow root alpha without changing simulation") {
+    mc2::sim::ImportedAnimState previous;
+    previous.activeClip = "walk"; previous.durationSec = 1; previous.playRate = 2;
+    previous.clipTimeSec = 0.98f;
+    const float dt = 1.0f / 30;
+    auto current = previous;
+    current.clipTimeSec = advanceClipTime(previous.clipTimeSec, dt, current.playRate, 1, Mode::Loop);
+    for (float alpha : {0.0f, 0.25f, 0.5f, 1.0f}) {
+        auto draw = current;
+        mc2::sim::presentImportedAnimation(previous, draw, alpha);
+        CHECK(draw.clipTimeSec == doctest::Approx(advanceClipTime(previous.clipTimeSec, alpha * dt, 2, 1, Mode::Loop)));
+    }
+    CHECK(previous.clipTimeSec == 0.98f);
+    auto draw = current;
+    previous = current; // paused: identical published clocks stay frozen
+    mc2::sim::presentImportedAnimation(previous, draw, 0.5f);
+    CHECK(draw.clipTimeSec == current.clipTimeSec);
+    previous.mode = current.mode = Mode::Once;
+    previous.clipTimeSec = 0.99f; current.clipTimeSec = 1;
+    previous.previousClip = current.previousClip = "outgoing";
+    previous.previousClipTimeSec = 0.1f; current.previousClipTimeSec = 0.2f;
+    previous.fadeTimeSec = 0.02f; current.fadeTimeSec = 0.04f;
+    draw = current;
+    mc2::sim::presentImportedAnimation(previous, draw, 0.5f);
+    CHECK(draw.clipTimeSec == doctest::Approx(0.995f));
+    CHECK(draw.previousClipTimeSec == doctest::Approx(0.15f));
+    CHECK(draw.fadeTimeSec == doctest::Approx(0.03f));
+    current.activeClip = "land"; current.clipTimeSec = 0;
+    draw = current;
+    mc2::sim::presentImportedAnimation(previous, draw, 0.5f);
+    CHECK(draw.clipTimeSec == 0);
 }

@@ -272,7 +272,7 @@ def _run_deploy_harness(tmp_path, monkeypatch, *, skip_kit, reuse, previous):
     monkeypatch.setattr(dp.subprocess, "run", lambda *a, **k: types.SimpleNamespace(stdout="", returncode=0))
     import asset_parity
     monkeypatch.setattr(asset_parity, "enforce", lambda *a, **k: None)
-    monkeypatch.setattr(asset_parity, "intentional_changes", lambda *a, **k: set())
+    monkeypatch.setattr(asset_parity, "intentional_changes", lambda *a, **k: {})
     from smoke_lib import render_options_pin
     monkeypatch.setattr(render_options_pin, "record", lambda *a: {"values": {"RemasteredBuildings": False}})
     seen = {}

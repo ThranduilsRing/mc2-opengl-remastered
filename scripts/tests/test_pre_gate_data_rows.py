@@ -17,31 +17,19 @@ def _r(rc, out=""):
     return types.SimpleNamespace(returncode=rc, stdout=out)
 
 
-def test_pre_gate_runs_stock_mission_data_with_contracts_args(monkeypatch, tmp_path, capsys):
-    seen = []
-    monkeypatch.setattr(lm, "run", lambda r, cmd, env=None: seen.append(cmd) or _r(0))
-    monkeypatch.setattr(lm, "data_fingerprint_check", lambda r: ("OK", ""))
-    rc = lm.pre_gate(str(tmp_path))
-    assert rc == 0
-    stock = [c for c in seen if any("check-stock-mission-data.py" in a for a in c)]
-    assert len(stock) == 1
-    assert stock[0][-2:] == ["--no-data", "--quiet"]   # the contracts board's own args
-    out = capsys.readouterr().out
-    assert "pre-gate: stock_mission_data: OK" in out
-    assert "pre-gate: data_fingerprint: OK" in out
-    assert "PRE-GATE PASS" in out
-
-
-def test_pre_gate_stock_mission_data_red_fails_the_gate(monkeypatch, tmp_path, capsys):
-    def fake_run(r, cmd, env=None):
-        return _r(2, "STOCK-DATA-TRUTH-1 FAIL: a hard-coded mission dir") if any("check-stock-mission-data.py" in a for a in cmd) else _r(0)
-    monkeypatch.setattr(lm, "run", fake_run)
-    monkeypatch.setattr(lm, "data_fingerprint_check", lambda r: ("OK", ""))
-    rc = lm.pre_gate(str(tmp_path))
-    assert rc == 1
-    out = capsys.readouterr().out
-    assert "pre-gate: stock_mission_data: FAIL" in out
-    assert "PRE-GATE FAIL: stock_mission_data" in out
+@pytest.mark.parametrize("changed", [False, True])
+def test_pre_gate_checks_selected_install(tmp_path, monkeypatch, capsys, changed):
+    install = _stock_install(tmp_path)
+    tree = tmp_path / "tree"
+    tree.mkdir()
+    baseline = sd.data_fingerprint(str(install), {"overlay": {}, "stock_digest": ""})
+    monkeypatch.setattr(lm, "recorded_data_fingerprint", lambda root: baseline)
+    monkeypatch.setattr(lm, "run", lambda *args, **kwargs: _r(0))
+    if changed:
+        (install / "mission.fst").write_bytes(b"changed stock")
+    args = lm.build_parser().parse_args(["--pre-gate", "--install", str(install)])
+    assert lm.pre_gate(str(tree), install=args.install) == int(changed)
+    assert "pre-gate: data_fingerprint: " + ("FAIL" if changed else "OK") in capsys.readouterr().out
 
 
 def test_pre_gate_data_fingerprint_fail_fails_the_gate(monkeypatch, tmp_path, capsys):
@@ -78,16 +66,25 @@ def _stock_install(tmp_path, name="install", parts=("mission.fst",)):
 def test_candidate_fingerprint_reads_the_install_not_the_tree(tmp_path, monkeypatch):
     install = _stock_install(tmp_path, parts=("mission.fst", "tgl.fst"))
     tree = tmp_path / "tree"; tree.mkdir()   # a source worktree: the stock parts are gitignored and absent
-    monkeypatch.setattr(sd, "INSTALL_DIR", str(install))
-    fp, reason = lm.candidate_data_fingerprint(str(tree))
+    fp, reason = lm.candidate_data_fingerprint(str(tree), str(install))
     assert reason == "" and fp is not None
     assert "mission.fst" in fp["inputs"] and "tgl.fst" in fp["inputs"]   # read from the install, not the empty tree
 
 
 def test_candidate_fingerprint_no_stock_install_skips(tmp_path, monkeypatch):
-    monkeypatch.setattr(sd, "INSTALL_DIR", str(tmp_path / "absent-install"))
-    fp, reason = lm.candidate_data_fingerprint(str(tmp_path))
+    install = str(tmp_path / "absent-install")
+    fp, reason = lm.candidate_data_fingerprint(str(tmp_path), install)
     assert fp is None and "no stock reference install" in reason
+
+
+def test_missing_default_install_warns_loudly(tmp_path, monkeypatch, capsys):
+    isdir = lm.os.path.isdir
+    monkeypatch.setattr(lm.os.path, 'isdir', lambda path: False if path == 'E:/mc2-installs/merge-gate' else isdir(path))
+    verdict, reason = lm.data_fingerprint_check(str(tmp_path))
+    assert verdict == 'SKIPPED' and 'no stock reference install' in reason
+    out = capsys.readouterr().out
+    assert 'WARN: default pre-gate install missing: E:/mc2-installs/merge-gate' in out
+    assert 'data fingerprint unchecked' in out and '--install' in out
 
 
 def test_candidate_fingerprint_uses_the_tree_overlay_manifest(tmp_path, monkeypatch):
@@ -103,44 +100,40 @@ def test_candidate_fingerprint_uses_the_tree_overlay_manifest(tmp_path, monkeypa
     manifest = {"overlay": {"data/missions/fx.fit": sd._sha256(overlay_file)}, "stock_digest": ""}
     with open(os.path.join(tree, "tests", "smoke", "sim_determinism", "data_overlay.json"), "w", encoding="utf-8") as fh:
         json.dump(manifest, fh)
-    monkeypatch.setattr(sd, "INSTALL_DIR", str(install))
-    fp, _ = lm.candidate_data_fingerprint(str(tree))
+    fp, _ = lm.candidate_data_fingerprint(str(tree), str(install))
     assert set(fp["overlay"]) == {"data/missions/fx.fit"} and not fp["problems"]
 
 
 def test_data_fingerprint_check_ok_when_install_matches_baseline(tmp_path, monkeypatch):
     install = _stock_install(tmp_path)
     tree = tmp_path / "tree"; tree.mkdir()   # no .fst in the tree: it must compare against the install, never a false FAIL
-    monkeypatch.setattr(sd, "INSTALL_DIR", str(install))
-    fp, _ = lm.candidate_data_fingerprint(str(tree))
+    fp, _ = lm.candidate_data_fingerprint(str(tree), str(install))
     monkeypatch.setattr(lm, "recorded_data_fingerprint", lambda root: fp)
-    assert lm.data_fingerprint_check(str(tree)) == ("OK", "")
+    assert lm.data_fingerprint_check(str(tree), install=str(install)) == ("OK", "")
 
 
 def test_data_fingerprint_check_skips_without_baseline(tmp_path, monkeypatch):
     install = _stock_install(tmp_path)
     tree = tmp_path / "tree"; tree.mkdir()
-    monkeypatch.setattr(sd, "INSTALL_DIR", str(install))
     monkeypatch.setattr(lm, "recorded_data_fingerprint", lambda root: None)
-    assert lm.data_fingerprint_check(str(tree)) == ("SKIPPED", "no recorded baseline data fingerprint")
+    assert lm.data_fingerprint_check(str(tree), install=str(install)) == ("SKIPPED", "no recorded baseline data fingerprint")
 
 
 def test_data_fingerprint_check_skips_without_stock_install(tmp_path, monkeypatch):
-    monkeypatch.setattr(sd, "INSTALL_DIR", str(tmp_path / "absent-install"))
+    install = str(tmp_path / "absent-install")
     monkeypatch.setattr(lm, "recorded_data_fingerprint", lambda root: {"digest": "d", "inputs": [], "stock_digest": "s"})
-    assert lm.data_fingerprint_check(str(tmp_path)) == (
+    assert lm.data_fingerprint_check(str(tmp_path), install=install) == (
         "SKIPPED", "no stock reference install at " + str(tmp_path / "absent-install") + " to fingerprint")
 
 
 def test_data_fingerprint_check_fails_on_real_stock_part_change(tmp_path, monkeypatch):
     install = _stock_install(tmp_path)
     tree = tmp_path / "tree"; tree.mkdir()
-    monkeypatch.setattr(sd, "INSTALL_DIR", str(install))
-    fp_before, _ = lm.candidate_data_fingerprint(str(tree))
+    fp_before, _ = lm.candidate_data_fingerprint(str(tree), str(install))
     monkeypatch.setattr(lm, "recorded_data_fingerprint", lambda root: fp_before)
-    assert lm.data_fingerprint_check(str(tree)) == ("OK", "")
+    assert lm.data_fingerprint_check(str(tree), install=str(install)) == ("OK", "")
     (install / "mission.fst").write_bytes(b"stock-v2-changed")   # a real stock-part change in the install
-    verdict, detail = lm.data_fingerprint_check(str(tree))
+    verdict, detail = lm.data_fingerprint_check(str(tree), install=str(install))
     assert verdict == "FAIL" and "stock_digest" in detail
 
 

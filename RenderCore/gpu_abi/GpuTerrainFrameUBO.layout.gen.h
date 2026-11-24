@@ -88,7 +88,7 @@ static_assert(offsetof(TerrainFrameUBO, tintSnow) == 752, "tintSnow offset");
 static_assert(offsetof(TerrainFrameUBO, tintStrengthScale) == 764, "tintStrengthScale offset");
 static_assert(offsetof(TerrainFrameUBO, snowBrightnessDampen) == 768, "snowBrightnessDampen offset");
 static_assert(offsetof(TerrainFrameUBO, edgeFeatherStrength) == 772, "edgeFeatherStrength offset");
-static_assert(offsetof(TerrainFrameUBO, reserved776) == 776, "reserved776 offset");
+static_assert(offsetof(TerrainFrameUBO, vegetationEnabled) == 776, "vegetationEnabled offset");
 static_assert(offsetof(TerrainFrameUBO, shorelineOn) == 780, "shorelineOn offset");
 static_assert(offsetof(TerrainFrameUBO, shorelineHasMask) == 784, "shorelineHasMask offset");
 static_assert(offsetof(TerrainFrameUBO, shorelineWaterElev) == 788, "shorelineWaterElev offset");
@@ -110,4 +110,5 @@ static_assert(offsetof(TerrainFrameUBO, shoreFieldBoundsW) == 848, "shoreFieldBo
 static_assert(offsetof(TerrainFrameUBO, shoreFieldBoundsH) == 852, "shoreFieldBoundsH offset");
 static_assert(offsetof(TerrainFrameUBO, concreteDetail) == 856, "concreteDetail offset");
 static_assert(offsetof(TerrainFrameUBO, concreteDetailStrength) == 860, "concreteDetailStrength offset");
-static_assert(offsetof(TerrainFrameUBO, _pad) == 864, "_pad offset");
+static_assert(offsetof(TerrainFrameUBO, groundMottleOn) == 864, "groundMottleOn offset");
+static_assert(offsetof(TerrainFrameUBO, _pad) == 868, "_pad offset");

@@ -314,6 +314,7 @@ static void PrintRenderer(SDL_RendererInfo * info);
 // hooks must not apply the standalone SDL window policy to the editor shell.
 void set_native_cursor(SDL_Cursor*, bool) {}
 void pump_loading_events() {}
+void note_window_pumped() {}   // the editor has no MAIN_STALL watchdog; MFC owns the message pump
 void loading_work(const std::function<void()>& work) { work(); }
 
 

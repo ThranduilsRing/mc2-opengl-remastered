@@ -2,6 +2,7 @@
 #include "utilities.h"
 #include "gameos_resource.hpp"
 #include "utils/mc2log.h"
+#include "../code/unit_display_name.h"
 
 #include <cstring>
 
@@ -72,4 +73,10 @@ std::string cLoadString(unsigned int id, int capacity)
     const int length = cLoadString(id, value.data(), capacity);
     value.resize(static_cast<size_t>(length));
     return value;
+}
+
+std::string mc2::names::resource(long id)
+{
+    const std::string text = cLoadString(static_cast<unsigned int>(id), 1024);
+    return mc2::names::usable(text) ? text : std::string();
 }

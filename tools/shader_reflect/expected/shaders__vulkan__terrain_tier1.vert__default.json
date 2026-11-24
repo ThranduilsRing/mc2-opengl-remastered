@@ -689,7 +689,7 @@
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "reserved776",
+          "name": "vegetationEnabled",
           "offset": 776,
           "type": "int"
         },
@@ -839,6 +839,13 @@
           "name": "concreteDetailStrength",
           "offset": 860,
           "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "groundMottleOn",
+          "offset": 864,
+          "type": "int"
         }
       ],
       "name": "TerrainFrameUBO"

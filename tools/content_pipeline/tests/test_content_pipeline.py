@@ -111,6 +111,36 @@ def test_ir_round_trip_preserves_transforms_normals_alpha(tmp_path):
         assert np.allclose(np.abs(prim.tangents[:, 3]), 1)
 
 
+@pytest.mark.parametrize("coord", [0, 1])
+def test_texture_transform_bakes_before_v_flip(tmp_path, coord):
+    src, doc, *_ = make_gltf(tmp_path)
+    doc["extensionsRequired"] = ["KHR_texture_transform"]
+    info = doc["materials"][0]["pbrMetallicRoughness"]["baseColorTexture"]
+    info["texCoord"] = 1 - coord
+    info["extensions"] = {"KHR_texture_transform": {"scale": [2, 3], "offset": [0.25, -0.5], "texCoord": coord}}
+    attrs = doc["meshes"][0]["primitives"][0]["attributes"]
+    attrs[f"TEXCOORD_{coord}"] = attrs.pop("TEXCOORD_0")
+    src.write_text(json.dumps(doc))
+    scene, mats, _ = gltf_io.read_gltf(src)
+    expected = [[0.25, 1.5], [2.25, 1.5], [0.25, -1.5], [2.25, -1.5]]
+    assert scene.meshes[0].primitives[0].uv0 == pytest.approx(np.array(expected))
+    out = tmp_path / "baked.glb"
+    out.write_bytes(gltf_io.write_runtime_glb(scene, mats, {0: "albedo.png"}))
+    back, _, _ = gltf_io.read_gltf(out, frame="mc2_runtime")
+    assert back.meshes[0].primitives[0].uv0 == pytest.approx(np.array(expected))
+
+
+@pytest.mark.parametrize("change", [{"rotation": 0.5}, {"scale": [-1, 1]}, {"offset": [float("nan"), 0]},
+                                   {"texCoord": 2}, {"offset": [0, 0.2]}])
+def test_texture_transform_rejects_unbakeable_maps(tmp_path, change):
+    src, doc, *_ = make_gltf(tmp_path)
+    m = doc["materials"][0]
+    m["normalTexture"] = {"index": 0, "extensions": {"KHR_texture_transform": change}}
+    src.write_text(json.dumps(doc))
+    with pytest.raises(ValueError, match="texture transform|incompatible texture mappings"):
+        gltf_io.read_gltf(src)
+
+
 def test_animated_material_splits_share_pivot_and_parent(tmp_path):
     src, doc, *_ = make_gltf(tmp_path)
     doc["nodes"] = [{"name": "Coil", "mesh": 0, "translation": [0, 6.9, 0],

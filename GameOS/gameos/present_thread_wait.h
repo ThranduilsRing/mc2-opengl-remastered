@@ -14,6 +14,14 @@
 namespace mc2vk::present_thread::detail {
 using Clock = std::chrono::steady_clock;
 
+// Only service on the window owner, and credit progress after dispatch returns.
+template<class Pump, class Stamp>
+void serviceWindow(bool owner, Pump&& pump, Stamp&& stamp) {
+    if (!owner) return;
+    pump();
+    stamp();
+}
+
 // Keep the window thread responsive while a synchronous driver/decoder call runs.
 // get() joins before the caller's captured inputs or output storage can expire.
 template<class Work, class Pump>

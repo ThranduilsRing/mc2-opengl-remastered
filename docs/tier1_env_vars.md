@@ -1,6 +1,6 @@
 # Tier-1 instrumentation env vars
 
-Dev preview capture: `MECH_PREVIEW_CHASSIS=<name substring>` selects the purchased chassis in mechbay/loadout harness runs; it does not replace its model or recipe. `MECH_PREVIEW_CAPTURE=<chassis tgl stem>` selects the preview model, pauses rotation at 30 degrees and advances it at 1/60 s per update. With `MC2_SHOT_SCREEN`, `MECH_PREVIEW_FRAMES=N` (1..120, default 1) saves N frames spaced 15 updates (0.25 s) apart; subsequent paths append `.1.tga`, `.2.tga`, etc. Launch through `scripts/run_visual_capture.py --screen mechbay@60` or `--screen loadout@60`. These are capture controls, not feature gates.
+Dev preview capture: `MECH_PREVIEW_CHASSIS=<name substring>` selects the purchased chassis in mechbay/loadout harness runs; it does not replace its model or recipe. It is read once on first use and shared with the comma-separated chassis selection for the lance harness; set it before launch. `MECH_PREVIEW_CAPTURE=<chassis tgl stem>` selects the preview model, pauses rotation at 30 degrees and advances it at 1/60 s per update. With `MC2_SHOT_SCREEN`, `MECH_PREVIEW_FRAMES=N` (1..120, default 1) saves N frames spaced 15 updates (0.25 s) apart; subsequent paths append `.1.tga`, `.2.tga`, etc. Launch through `scripts/run_visual_capture.py --screen mechbay@60` or `--screen loadout@60`. These are capture controls, not feature gates.
 
 > s68/P9: Retired GL sources are cited with Git object syntax (`8064c6930:path`) so the historical implementation remains inspectable.
 

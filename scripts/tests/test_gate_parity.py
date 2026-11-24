@@ -49,16 +49,16 @@ def _r(rc, out=""):
 
 # 1) gate_gen --rebuild ---------------------------------------------------------------------------------------------------------
 
-def test_pre_gate_gate_gen_runs_the_laptop_contracts_form(monkeypatch, tmp_path, capsys):
+def test_pre_gate_leaves_gate_gen_to_the_contracts_row_which_runs_the_rebuild_form(monkeypatch, tmp_path):
+    # 0be94a609 (perf: trim per-merge gate scheduling) deliberately drops PRE_GATE_CONTRACT_ROWS from pre_gate: the gate's
+    # path-scoped contracts stage owns gate_gen, so the laptop row itself must still be the --rebuild form.
     seen = []
     monkeypatch.setattr(lm, "run", lambda r, cmd, env=None: seen.append(cmd) or _r(0))
     monkeypatch.setattr(lm, "data_fingerprint_check", lambda r: ("OK", ""))
     assert lm.pre_gate(str(tmp_path)) == 0
-    gg = [c for c in seen if any(a.endswith("gate_gen.py") for a in c)]
-    assert len(gg) == 1 and gg[0][-2:] == ["--check", "--rebuild"]
+    assert not [c for c in seen if any(a.endswith("gate_gen.py") for a in c)]
     row = lm.contracts_row_command(str(ROOT), "gate_gen_check")
     assert row and "--rebuild" in row
-    assert lm.command_parity(str(tmp_path), gg[0], row).startswith("PARTIAL")   # the row also runs a pytest after it
 
 
 def test_gate_gen_without_rebuild_is_reported_as_differing():

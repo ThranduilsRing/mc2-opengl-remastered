@@ -141,7 +141,7 @@ struct TerrainFrameUBO {
     float   tintStrengthScale;
     float   snowBrightnessDampen;
     float   edgeFeatherStrength;   // TERRAIN-EDGE-FEATHER-1: map-edge haze amount (0 = off)
-    int32_t reserved776;           // was the cement atlas seam-fix flag; the cement texture array has no cell borders to inset
+    int32_t vegetationEnabled;     // vegetation switch, including the natural-ground mottle
     // TERRAIN-SHORELINE-V3/V4 (LOCKSTEP with terrain_tier1.frag); producer gos_TerrainShorelineKnobs().
     int32_t shorelineOn;           // MC2_TERRAIN_SHORELINE: wet / foam elevation bands drawn
     int32_t shorelineHasMask;      // the mask sidecar (binding 14) is real, not the dummy
@@ -166,7 +166,8 @@ struct TerrainFrameUBO {
     // CONCRETE-ROAD-PBR-DETAIL: binding 18 detail array (normal xy, roughness, AO) ready + strength scale; 0 = base game look.
     int32_t concreteDetail;
     float   concreteDetailStrength;
-    int32_t _pad[40];  // @cpp_only slot tail padding to the 1024B stride
+    int32_t groundMottleOn;        // vegetation palette only while a population is resident
+    int32_t _pad[39];  // @cpp_only slot tail padding to the 1024B stride
 };
 
 #include "GpuTerrainFrameUBO.layout.gen.h"

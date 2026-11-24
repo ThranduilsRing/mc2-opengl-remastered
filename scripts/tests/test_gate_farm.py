@@ -363,9 +363,15 @@ def _tier0(planned):
 @pytest.mark.parametrize('paths,want,single', [
     (['code/mission_update.cpp'], {'determinism-mc2_24', 'saveload-mc2_01'}, False),
     (['code/logisticsdata.cpp'], {'player-path'}, True),
+    (['code/mechlabscreen.cpp', 'code/mechbayscreen_update.cpp', 'code/pilotreadyscreen.cpp'], {'player-path'}, True),
     # W137: logistics saves are sim/save-sensitive (forward plan P1) and still a front-end path.
     (['code/logisticsdata_save.cpp'], {'determinism-mc2_24', 'saveload-mc2_01', 'player-path'}, False),
     (['code/mc2movie.cpp'], {'player-path'}, True),
+    (['editor/EditorTexture.h'], {'editor'}, True),   # P1-2: editor build inputs promote the nightly editor row
+    (['mclib/vfs.h'], {'editor'}, True),
+    (['GameOS/gameos/gameos_graphics.cpp'], {'editor'}, True),
+    (['CMakeLists.txt'], {'editor'}, True),
+    (['mclib/vfs.cpp'], set(), True),
     (['data/missions/mc2_16.fit'], set(), True),   # data/ is mod content
     (['RenderCore/vk_sync.cpp'], set(), True),
 ])

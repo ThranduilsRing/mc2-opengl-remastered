@@ -36,7 +36,7 @@ from PIL import Image
 from pygltflib import GLTF2
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "scripts"))
-from bt2018_retarget_clips import retarget_file  # noqa: E402
+from bt2018_retarget_clips import pose_table, retarget_file  # noqa: E402
 import os as _os, sys as _sys  # noqa: E401
 _sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
 import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
@@ -84,6 +84,9 @@ def raw_glb_path(out_dir, btname):
     return os.path.join(out_dir, "_raw", f"{btname}.glb")
 
 
+POSE_ROWS = []   # ready-pose self-check rows, one per chassis (printed and written at the end)
+
+
 def convert_one(fbx, btname, args):
     out_dir = args.out
     glb = os.path.join(out_dir, f"{btname}.glb")
@@ -106,6 +109,9 @@ def convert_one(fbx, btname, args):
     #    correction on every repeat run. Atlas itself = identity no-op.
     try:
         retarget_file(raw, args.atlas_ref, glb)
+        r = retarget_file.last_report
+        if r:
+            POSE_ROWS.append((btname, r['error_before'], r['error_after'], r['iterations'], r['converged'], r['blend']))
     except Exception as e:
         print(f"[FAIL] {btname}: retarget error: {e}")
         return None

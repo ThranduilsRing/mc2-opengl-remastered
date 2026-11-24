@@ -61,7 +61,7 @@
           "matrix_stride": null,
           "name": "poolLights",
           "offset": 0,
-          "type": "_1679"
+          "type": "_1705"
         }
       ],
       "name": "TerrainLightPoolVK"
@@ -752,7 +752,7 @@
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "reserved776",
+          "name": "vegetationEnabled",
           "offset": 776,
           "type": "int"
         },
@@ -902,6 +902,13 @@
           "name": "concreteDetailStrength",
           "offset": 860,
           "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "groundMottleOn",
+          "offset": 864,
+          "type": "int"
         }
       ],
       "name": "TerrainFrameUBO"

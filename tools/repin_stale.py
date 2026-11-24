@@ -18,10 +18,13 @@ import os
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
 DET_DIR = os.path.join(ROOT, "tests", "smoke", "sim_determinism")
 SAVE_DIR = os.path.join(ROOT, "tests", "saveload", "baselines")
+GATE_INSTALL = os.environ.get("MC2_GATE_INSTALL", "E:/mc2-installs/merge-gate")
 
 
 def git(*args: str) -> str:
@@ -127,24 +130,79 @@ def repin_command(row: dict, install: str, det_duration: int, tmp: str) -> list[
         if type(frames) is not int or frames <= 0:
             raise SystemExit(f"repin_stale: {m} needs a positive recorded frame count for --ticks")
         form += ["--ticks", str(frames)]  # run does not infer ticks from the baseline, unlike check
-    return [py + [sd, "run", m, "--duration", str(det_duration), "--install", install, "--out", out, "--baseline"] + form + env,
+    return [py + [sd, "run", m, "--duration", str(det_duration), "--install", install, "--out", out] + form + env,
             py + [sd, "write-baseline", "@LOG@", "--frames", str(row["data"].get("frames", 0)), "--mission", m, "--install", install] + env]
+
+
+def verified_install(install: str) -> str:
+    import sim_determinism as sd
+    from exe_fingerprint import extract, sha_agrees
+    install = sd.resolve_install(install)
+    if not Path(install).is_dir() or not Path(GATE_INSTALL).is_dir():
+        raise ValueError("re-pin and gate installs must exist")
+    fp = extract(Path(install) / "mc2.exe")
+    if not fp.get("present") or fp.get("dirty") or not sha_agrees(fp.get("sha"), git("rev-parse", "HEAD")):
+        raise ValueError("install exe must match clean HEAD")
+    manifest = sd.load_overlay_manifest(os.path.join(ROOT, "tests/smoke/sim_determinism/data_overlay.json"))
+    actual, gate = (sd.data_fingerprint(path, manifest) for path in (install, GATE_INSTALL))
+    if actual.get("problems") or gate.get("problems") or actual["digest"] != gate["digest"]:
+        raise ValueError("install data fingerprint must match the gate install")
+    return install
+
+
+def gate_check(row: dict, install: str, tmp: str, phase: str) -> int:
+    import merge_gate
+    name = row["kind"] + "-" + row["mission"]
+    steps = [s for s in merge_gate.plan(1, os.path.join(tmp, phase)) if s[0] == name]
+    if not steps:
+        raise ValueError(f"the merge gate has no row {name}")
+    _, cmd, env = merge_gate.install_plan(steps, Path(install))[0]
+    try:
+        return subprocess.call(cmd, cwd=ROOT, env=dict(os.environ, **env), timeout=600)  # background-launch: allow gate's baseline check harness
+    except subprocess.TimeoutExpired:
+        print(f"  {name}: gate check timed out after 600s")
+        return 124
 
 
 def repin(row: dict, install: str, det_duration: int, tmp: str) -> bool:
     fresh_out_dir(run_dir(tmp, row))
-    for cmd in repin_command(row, install, det_duration, tmp):
-        if "@LOG@" in cmd:
-            logs = glob.glob(os.path.join(run_dir(tmp, row), "**", row["mission"] + ".log"), recursive=True)
-            if not logs:
-                print(f"  no run log for {row['mission']}; not re-pinned")
+    try:
+        install = verified_install(install)
+    except (OSError, ValueError) as exc:
+        print(f"  refusing re-pin: {exc}")
+        return False
+    if gate_check(row, install, tmp, "before") == 0:
+        print("  stale by distance, still valid")
+        return True
+    path = Path(row["path"])
+    original = path.read_bytes()
+    accepted = False
+    try:
+        for cmd in repin_command(row, install, det_duration, tmp):
+            if "@LOG@" in cmd:
+                logs = glob.glob(os.path.join(run_dir(tmp, row), "**", row["mission"] + ".log"), recursive=True)
+                if not logs:
+                    print(f"  no run log for {row['mission']}; not re-pinned")
+                    return False
+                cmd = [logs[0] if c == "@LOG@" else c for c in cmd]
+            print("  " + " ".join(cmd[2:]))
+            if subprocess.call(cmd, cwd=ROOT) != 0:  # background-launch: allow runs the repo baseline tools (saveload_roundtrip/run_smoke) printed above
                 return False
-            cmd = [logs[0] if c == "@LOG@" else c for c in cmd]
-        print("  " + " ".join(cmd[2:]))
-        if subprocess.call(cmd, cwd=ROOT) != 0:  # background-launch: allow runs the repo baseline tools (saveload_roundtrip/run_smoke) printed above
-            return False
-    keep_unknown_keys(row)
-    return True
+        keep_unknown_keys(row)
+        accepted = gate_check(row, install, tmp, "after") == 0
+        return accepted
+    finally:
+        if not accepted:
+            temporary = None
+            try:
+                with tempfile.NamedTemporaryFile(dir=path.parent, prefix=path.name + ".", delete=False) as fh:
+                    temporary = Path(fh.name)
+                    fh.write(original)
+                os.replace(temporary, path)
+            finally:
+                if temporary is not None:
+                    temporary.unlink(missing_ok=True)
+            print("  restored original baseline after failed re-pin")
 
 
 def keep_unknown_keys(row: dict) -> None:
@@ -165,9 +223,11 @@ def keep_unknown_keys(row: dict) -> None:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--max-behind", type=int, default=50, help="stale when the recorded exe is more than N commits behind HEAD (default 50)")
-    ap.add_argument("--repin", action="store_true", help="re-record the stale baselines now (needs --install: an install deployed from HEAD)")
+    mode = ap.add_mutually_exclusive_group()
+    mode.add_argument("--repin", action="store_true", help="re-record the stale baselines now (needs --install: an install deployed from HEAD)")
+    mode.add_argument("--check-valid", action="store_true", help="check every stale row with the gate harness without rewriting baselines (needs --install)")
     ap.add_argument("--only", help="comma-separated missions to restrict the listing / re-pin to")
-    ap.add_argument("--install", help="install name or dir for --repin")
+    ap.add_argument("--install", help="install name or dir for --repin / --check-valid")
     ap.add_argument("--det-duration", type=int, default=30, help="seconds per determinism re-pin run (default 30)")
     ap.add_argument("--out-root", help="parent of the re-pin run dirs (default: a fresh dir under $MC2_LANE_SCRATCH, else a tempdir)")
     args = ap.parse_args(argv)
@@ -181,12 +241,22 @@ def main(argv: list[str] | None = None) -> int:
         behind = "unknown sha" if r["behind"] is None else f"{r['behind']} commits behind"
         print(f"{mark:5} {r['kind']:11} {r['mission']:8} {r['sha'] or '-':14} {behind}")
     print(f"repin_stale: {len(bad)} stale of {len(rows)} (limit {args.max_behind})")
-    if not (args.repin and bad):
+    if not ((args.repin or args.check_valid) and bad):
         return 1 if bad else 0
     if not args.install:
-        print("repin_stale: --repin needs --install")
+        print("repin_stale: --repin / --check-valid needs --install")
         return 2
     root = scratch_root(args.out_root)
+    if args.check_valid:
+        import sim_determinism as sd
+        install = sd.resolve_install(args.install)
+        failed = []
+        for row in bad:
+            rc = gate_check(row, install, root, "valid")
+            print(f"{'INVALID' if rc else 'VALID'} {row['kind']}:{row['mission']} (gate rc={rc})")
+            if rc:
+                failed.append(row)
+        return 1 if failed else 0
     failed = [r for r in bad if not (print(f"re-pin {r['kind']} {r['mission']}") or repin(r, args.install, args.det_duration, root))]
     print("repin_stale: " + ("FAILED " + ", ".join(f"{r['kind']}:{r['mission']}" for r in failed) if failed else "re-pinned all"))
     return 1 if failed else 0

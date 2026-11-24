@@ -195,6 +195,12 @@ void main() {
     }
     vTree.z = forestSky;
     vTree.w = forestSun;
+    // Root plate and flare (non-leaf geometry in the lowest ~5% of the tree) take the terrain colour so the base does not read as a pale
+    // slab on the ground. The weight rides in vTree.y (1 = plain tree .. 0.6 = full base blend); the tree test stays y > 0.5.
+    if (tree && (inst.flags & 4u) == 0u) {
+        float treeHeight = abs(canopy.x) + 0.7 * abs(canopy.z);
+        vTree.y = 1.0 - 0.4 * (1.0 - smoothstep(0.015, 0.06, abs(a_position.y) / max(treeHeight, 1.0)));
+    }
     vec3 localNormal = a_normal;
     vec3 backNormal = -a_normal;
     if (tree && (inst.flags & 4u) != 0u) {

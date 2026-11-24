@@ -27,7 +27,7 @@ WIDTH = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4, "MAT2": 4, "MAT3": 9, "MA
 #   gltf        : standard glTF (+Y up, right-handed); scaled by wu_per_unit.
 #   mc2_runtime : already in the engine importer frame (inverse axis0, wu).
 TG_FROM_RUNTIME = np.diag([-1.0, -1.0, 1.0, 1.0])
-SUPPORTED_EXTENSIONS = {"KHR_materials_emissive_strength", "KHR_materials_specular", "KHR_materials_ior"}
+SUPPORTED_EXTENSIONS = {"KHR_materials_emissive_strength", "KHR_materials_specular", "KHR_materials_ior", "KHR_texture_transform"}
 
 
 def split_glb(raw: bytes):
@@ -271,11 +271,37 @@ def read_materials(doc, buffers, base_dir, extract_dir=None, class_of=None, text
     return out, default_slot
 
 
+def _material_uv_mappings(doc):
+    """Bake-compatible mappings: IR shares one UV set across material textures."""
+    mappings = []
+    for m in doc.get("materials", []):
+        pbr = m.get("pbrMetallicRoughness", {})
+        infos = [v for v in (pbr.get("baseColorTexture"), pbr.get("metallicRoughnessTexture"),
+                            m.get("normalTexture"), m.get("occlusionTexture"), m.get("emissiveTexture")) if v is not None]
+        specs = []
+        for info in infos:
+            t = info.get("extensions", {}).get("KHR_texture_transform", {})
+            coord = t.get("texCoord", info.get("texCoord", 0))
+            scale, offset = tuple(t.get("scale", (1, 1))), tuple(t.get("offset", (0, 0)))
+            if t.get("rotation", 0) or coord not in (0, 1) or len(scale) != 2 or len(offset) != 2 \
+                    or not np.isfinite([*scale, *offset]).all() or min(scale) <= 0:
+                raise ValueError(f"{m.get('name')}: unsupported texture transform (rotation, reflection or UV set)")
+            specs.append((coord, scale, offset))
+        if specs and any(s != specs[0] for s in specs):
+            raise ValueError(f"{m.get('name')}: incompatible texture mappings; IR requires shared UVs")
+        mappings.append(specs[0] if specs else (0, (1, 1), (0, 0)))
+        for info in infos:
+            info.pop("texCoord", None)
+            info.get("extensions", {}).pop("KHR_texture_transform", None)
+    return mappings
+
+
 def read_gltf(path, *, frame="gltf", wu_per_unit=1.0, yaw_degrees=0.0, extract_dir=None,
               allow_skin=False, class_of=None, texture_roots=(), unclassified="error"):
     """Read a glTF/GLB into a Scene in TG space. Returns (scene, materials, info)."""
     doc, buffers, base_dir = load_document(path)
-    required = set(doc.get("extensionsRequired", []))
+    uv_mappings = _material_uv_mappings(doc)
+    required = set(doc.get("extensionsRequired", [])) - {"KHR_texture_transform"}
     if required:
         raise ValueError(f"unsupported required extensions: {sorted(required)}")
     if (doc.get("skins") or doc.get("animations")) and not allow_skin:
@@ -311,7 +337,6 @@ def read_gltf(path, *, frame="gltf", wu_per_unit=1.0, yaw_degrees=0.0, extract_d
                 if a.shape[1] == 3 and width == 4:
                     a = np.concatenate([a, np.ones((n, 1))], axis=1)
                 return a.astype(np.float64)
-            uv = opt("TEXCOORD_0", 2)
             normals = opt("NORMAL", 3)
             if normals is not None:
                 lens = np.linalg.norm(normals, axis=1, keepdims=True)
@@ -321,8 +346,12 @@ def read_gltf(path, *, frame="gltf", wu_per_unit=1.0, yaw_degrees=0.0, extract_d
             mat = p.get("material", default_slot)
             if not 0 <= mat < len(materials):
                 raise ValueError(f"{mesh.name}: material {mat} missing")
+            coord, scale, offset = uv_mappings[mat] if mat < len(uv_mappings) else (0, (1, 1), (0, 0))
+            uv = opt(f"TEXCOORD_{coord}", 2)
+            if uv is not None:
+                uv = uv * scale + offset  # Authored glTF UVs, before the TG V flip.
             if uv is None and materials[mat].base_color is not None:
-                raise ValueError(f"{mesh.name}: textured primitive has no TEXCOORD_0")
+                raise ValueError(f"{mesh.name}: textured primitive has no TEXCOORD_{coord}")
             mesh.primitives.append(Primitive(
                 positions=pos.astype(np.float64), indices=idx.reshape(-1, 3).astype(np.int64), material=mat,
                 normals=normals, tangents=opt("TANGENT", 4),

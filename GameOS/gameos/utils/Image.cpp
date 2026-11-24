@@ -667,7 +667,8 @@ bool Image::loadCompressedTGA(const TGAHeader* header, const unsigned char* mem,
 		}
 	}
 
-	if (header->attrib & 0x20) flip();
+	// RLE packets are decoded in file order; normalize bottom-origin files to top-down.
+	if (!(header->attrib & 0x20)) flip();
 
 	return true;
 }

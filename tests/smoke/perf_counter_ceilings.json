@@ -1,7 +1,7 @@
 {
  "mc2_01": {
   "draws.legacy": 0.8,
-  "draws.props": 201.7656,
+  "draws.props": 12.8,
   "draws.shadow": 70.512,
   "draws.sky": 2.8,
   "draws.terrain": 47.008,
@@ -13,7 +13,7 @@
  "mc2_10": {
   "walk.update": 64.0,
   "draws.legacy": 2.048,
-  "draws.props": 334.4328,
+  "draws.props": 12.5,
   "draws.shadow": 229.968,
   "draws.sky": 2.8,
   "draws.terrain": 67.024,
@@ -25,14 +25,18 @@
  "mc2_24": {
   "walk.update": 64.0
  },
+ "_props_note": "draws.props counts non-empty pipeline lists per pass, not prop instances. E:/mc2-archive-2026-10/proofs/tree-lod-props-perf-1/: cumulative maxima run-base-3/mc2_01.log:908 = 12.1333 and run-tip-2/mc2_10.log:1351 = 11.8658; ceilings 12.8/12.5 give about 5% headroom. Exact samples copied to scripts/tests/fixtures/mc2_*-props-sample.log.",
  "_window": {
   "ticks": "30..120",
-  "_note": "mc2_10 draws.props 4.3 -> 5.0 (1120a): the last 5 merge-gate tier1 logs (E:/mc2-archive-2026-10/proofs/merge-gate/{20261120-055901,20261120-035809,merge-1119f,20261119-222440,merge-1119e}/gate.log) read 4.766, 4.748, 4.76, 4.76, 4.748 (max 4.766); ceiling = max + ~5%",
+  "_note": "Same archive: window maxima run-tip-2/mc2_10.log:1133 = 10.9771 and run-base-3/mc2_01.log:882 = 11.6260. Per-stem ceilings 11.5/12.2 give about 5% headroom over these measured windows.",
   "stems": {
+   "mc2_01": {
+    "draws.props": 12.2
+   },
    "mc2_10": {
     "draws.mech_depth": 0.05,
     "draws.mech_color": 0.05,
-    "draws.props": 5.0,
+    "draws.props": 11.5,
     "draws.terrain": 46.0,
     "draws.water": 2.0,
     "draws.legacy": 2.0,

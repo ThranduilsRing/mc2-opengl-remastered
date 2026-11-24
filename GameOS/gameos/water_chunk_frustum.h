@@ -4,6 +4,7 @@
 // triangle can cross the viewport with every vertex outside it).
 #include <cmath>
 #include <cstdint>
+#include <span>
 
 namespace mc2::waterfrustum {
 
@@ -30,6 +31,17 @@ template <class Chunks>
 bool anyChunkInView(const float* m, const Chunks& chunks, float elevation, float amplitude) {
     for (const auto& c : chunks)
         if (!c.recipes.empty() && !boxOutside(m, c.minX, c.minY, c.maxX, c.maxY, elevation, amplitude)) return true;
+    return false;
+}
+
+// True when any map vertex is under water (MapData::calcWater bit 0: elevation < [Water] Elevation). A map whose
+// water level lies below all its terrain is dry: the original game drew no water on it, so the shallow band up to
+// waterElevation (+ShallowDepth) must not admit submerged-sand or visual-wet water either (DarkRain torrin: water
+// -1, terrain 0..850, water sheet over 29% of the map).
+template <class Vertices>
+bool anyWaterVertex(const Vertices& blocks) {
+    for (const auto& vertex : blocks)
+        if (vertex.water & 1) return true;
     return false;
 }
 

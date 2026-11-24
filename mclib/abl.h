@@ -105,6 +105,7 @@ DebuggerPtr ABLi_getDebugger (void);
 void ABLi_saveEnvironment (ABLFile* ablFile, bool values = false);
 
 void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc, bool values = false);
+bool ABLi_environmentLoadFailed (void);   // the last ABLi_loadEnvironment hit a damaged or short value stream
 
 void ABLi_close (void);
 

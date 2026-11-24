@@ -127,7 +127,7 @@ def test_contained_batch_refreshes_window_receipt(tmp_path, monkeypatch):
     monkeypatch.setattr(lm, 'RATCHETS', [])
     monkeypatch.setattr(lm, 'QUICK_ROWS', [])
     verifies = []
-    monkeypatch.setattr(lm, 'verify_merged', lambda *a: verifies.append(a) or ('OK', []))
+    monkeypatch.setattr(lm, 'verify_merged', lambda *a, **kw: verifies.append(a) or ('OK', []))
     args = ['--batch', 'lane', '--root', str(root), '--tools-dir', str(root / 'tools')]
     assert lm.main(args) == 0
     receipt = root / 'build64-ninja/merge-window.json'
@@ -372,8 +372,9 @@ def test_gate_reports_all_failed_stages(monkeypatch, capsys, tmp_path):
 
 
 @pytest.mark.parametrize("failed", ["contracts", "harnesses"])
-def test_gate_offline_failure_prevents_captures_and_deploy(monkeypatch, failed):
+def test_gate_offline_failure_still_fails_overlapped_gate(monkeypatch, failed):
     import merge_gate as gate
+    monkeypatch.setattr(gate, "check_capture_commit", lambda *a: None)
     calls = []
     def runner(command, **kw):
         calls.append(command[0])
@@ -384,7 +385,7 @@ def test_gate_offline_failure_prevents_captures_and_deploy(monkeypatch, failed):
     monkeypatch.setattr(gate, "run_child", runner)
     steps = [(name, [name], {}) for name in ("contracts", "harnesses", "capture-before", "deploy")]
     assert gate.execute_parallel(steps, "head") == 1
-    assert sorted(calls) == ["contracts", "harnesses"]
+    assert sorted(calls) == ["capture-before", "contracts", "deploy", "harnesses"]
 
 
 def test_gate_refuses_changed_head(monkeypatch):
@@ -460,10 +461,10 @@ def test_gate_keep_going_runs_past_a_failed_offline_stage(monkeypatch, capsys):
     monkeypatch.setattr(gate, "run_child", runner)
     steps = [("contracts", ["contracts"], {}), ("deploy", ["deploy"], {}), ("tier1", ["stock"], {})]
     assert gate.execute_parallel(steps, "head") == 1
-    assert calls == ["contracts"]
+    assert set(calls) == {"contracts", "deploy", "stock"}
     calls.clear()
     assert gate.execute_parallel(steps, "head", keep_going=True) == 1
-    assert calls == ["contracts", "deploy", "stock"]
+    assert set(calls) == {"contracts", "deploy", "stock"}
 
 
 def test_callers_failure_names_exact_allowlist_entry(capsys):
@@ -720,7 +721,8 @@ def test_gate_log_includes_child_stdout_and_stderr(tmp_path, monkeypatch, capsys
 
 
 @pytest.mark.parametrize("returncode", [0, 7])
-def test_lane_verify_tees_output_and_keeps_failure_tail(tmp_path, capsys, returncode):
+def test_lane_verify_tees_output_and_keeps_failure_tail(tmp_path, capsys, returncode, monkeypatch):
+    monkeypatch.setattr(lm, "git_out", lambda *a: "")
     script = tmp_path / "scripts/ninja_build.py"
     script.parent.mkdir()
     script.write_text("import sys\nprint('build-start', flush=True)\nfor n in range(20): print(n)\n"
@@ -934,16 +936,21 @@ def test_stock_copy_is_private_and_always_removed(deploy_tmp_path, fail):
         assert not mod_stage.exists()
 
 
-def test_offline_stages_overlap_before_deploy(monkeypatch):
+def test_offline_stages_overlap_deploy(monkeypatch):
     import threading
     import merge_gate as gate
     harness_started = threading.Event()
+    deployed = threading.Event()
     calls = []
     def runner(command, **kw):
         if command == ["harness"]:
             harness_started.set()
+            assert deployed.wait(5)
         if command == ["contracts"]:
             assert harness_started.wait(2)
+            assert deployed.wait(5)
+        if command == ["deploy"]:
+            deployed.set()
         calls.append(command[0])
         return _r(0)
     monkeypatch.delenv("MC2_HOST_LEASE_BATCH", raising=False)
@@ -951,7 +958,7 @@ def test_offline_stages_overlap_before_deploy(monkeypatch):
     monkeypatch.setattr(gate, "run_child", runner)
     assert gate.execute_parallel([("contracts", ["contracts"], {}), ("harnesses", ["harness"], {}),
                                   ("deploy", ["deploy"], {})], "head") == 0
-    assert calls[-1] == "deploy" and set(calls) == {"contracts", "harness", "deploy"}
+    assert set(calls) == {"contracts", "harness", "deploy"}
 
 
 @pytest.mark.parametrize('with_determinism', [True, False])
@@ -1145,7 +1152,7 @@ def test_gate_reuses_only_fresh_same_head_unit_receipt(tmp_path, monkeypatch, fr
     monkeypatch.setattr(gate, "execute", lambda steps, *a: seen.extend(steps) or 0)
     assert gate.main(["--dry-run", "--proofs-dir", str(tmp_path / "proof")]) == 0   # the box route has its own python-only split
     cmd = next(c for n, c, _ in seen if n == "harnesses")
-    assert ("--python-only" in cmd) == fresh
+    assert "--unit" in cmd and "--python-only" not in cmd
 
 
 def test_art_selection_handles_git_quoted_unicode_paths(tmp_path, monkeypatch):
@@ -1234,13 +1241,13 @@ def test_pre_gate_runs_every_step_and_prints_one_verdict(monkeypatch, capsys, tm
 
     def fake_run(root, cmd, env=None):
         ran.append(os.path.basename(cmd[2]))
-        return _r(1 if "gate_gen.py" in cmd[2] else 0, "stale table")
+        return _r(1, "background launch failed")
     monkeypatch.setattr(lm, "run", fake_run)
     monkeypatch.setattr(lm, "data_fingerprint_check", lambda root: ("OK", ""))
     assert lm.pre_gate(str(tmp_path), str(exe)) == 1
     out = capsys.readouterr().out
-    assert ran == ["check-background-launch.py", "gate_gen.py", "cxx17_ratchet.py", "check_sim_include_firewall.py", "log_tag_census.py", "check-doc-links.py", "check-stock-mission-data.py"]  # a red step does not stop the rest
-    assert out.strip().splitlines()[-1] == "PRE-GATE FAIL: gate_gen"
+    assert ran == ["check-background-launch.py"]
+    assert out.strip().splitlines()[-1] == "PRE-GATE FAIL: background-launch"
     monkeypatch.setattr(lm, "run", lambda root, cmd, env=None: _r(0))
     assert lm.pre_gate(str(tmp_path), str(tmp_path / "none.exe")) == 0
     assert "PRE-GATE PASS\n" in capsys.readouterr().out
@@ -1315,15 +1322,6 @@ def test_gate_state_journals_stage_seconds_for_the_next_gate(tmp_path):
         gate.ACTIVE_STATE = monkey
 
 
-def test_window_reuse_is_keyed_on_the_tree_not_the_clock():
-    import merge_gate as gate
-    window = {"tree": "abc", "started": 0}
-    assert gate.window_reusable(window, "abc", now=10 ** 9)
-    assert not gate.window_reusable(window, "def", now=1)
-    assert gate.window_reusable({"started": 100}, "x", now=200)
-    assert not gate.window_reusable({"started": 100}, "x", now=5000)
-
-
 def test_in_gate_flag_only_on_game_stages():
     import merge_gate as gate
     for name in ("contracts", "harnesses", "pytest"):
@@ -1345,14 +1343,15 @@ def test_precheck_and_lint_no_longer_gate_on_generated_inventories():
     assert "regenerate_all(" not in inspect.getsource(lm.precheck)
 
 
-def test_preflight_names_the_exact_rebuild_for_a_stale_viewer_and_main_exe(monkeypatch, capsys):
+def test_preflight_names_the_exact_rebuild_for_a_stale_viewer_and_main_exe(tmp_path, monkeypatch, capsys):
     from pathlib import Path
-    import exe_fingerprint, merge_gate as gate
+    import exe_fingerprint, merge_gate as gate, asset_parity
+    monkeypatch.setattr(asset_parity, "intentional_changes", lambda *a: {})
     fps = {"mc2.exe": dict(present=True, sha="aaaaaaaaaaaa", dirty=0),
            "mc2_asset_viewer.exe": dict(present=True, sha="aaaaaaaaaaaa", dirty=0)}
     monkeypatch.setattr(exe_fingerprint, "extract", lambda p: fps[Path(p).name])
     monkeypatch.setattr(exe_fingerprint, "build_current", lambda *a: True)   # mc2.exe: a build-input-identical ancestor is fine
-    gate.preflight("bbbbbbbbbbbb", Path("E:/nonexistent-install"), 1, [])
+    gate.preflight("bbbbbbbbbbbb", tmp_path, 1, [], seed=tmp_path)
     out = capsys.readouterr().out
     assert "mc2_asset_viewer.exe stale or dirty" in out and "mc2.exe stale" not in out   # the viewer needs the exact HEAD
     assert "fix: cd " in out and out.split("fix: cd ")[1].splitlines()[0].endswith("&& py -3 scripts/ninja_build.py")

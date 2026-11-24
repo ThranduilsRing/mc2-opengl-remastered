@@ -61,6 +61,7 @@ import shutil, subprocess, sys, time, tempfile  # noqa: E401
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(HERE, "..", "scripts"))
 import console_child  # noqa: E402  (windowless console children without a conhost each)
+from configure_ninja import DEFAULT_TARGETS  # noqa: E402
 sys.path.insert(0, HERE)
 import _git_util, lane_merge_baseline, lane_merge_conflicts, lane_merge_trust  # noqa: E402  (shared git helpers; the trusted-copy hand-off)
 from lint_slots import LintSlots, cpu_masks, pin_cpus, scratch_dir, sweep_stale_scratch  # noqa: E402
@@ -637,8 +638,8 @@ def git_bash(which=shutil.which, exists=os.path.exists, environ=None) -> str:
 
 
 VERIFY_STEPS = {
-    "build": [("build", ["scripts/ninja_build.py"]), ("doctest", ["scripts/run-unit-tests.sh"])],
-    "full": [("build", ["scripts/ninja_build.py"]), ("doctest", ["scripts/run-unit-tests.sh"]), ("board", ["scripts/check-contracts.sh"])],
+    "build": [("build", ["scripts/ninja_build.py"]), ("scripts_tests", ["scripts/run_scripts_tests.py"]), ("tools_tests", ["scripts/run_tools_tests.py"])],
+    "full": [("build", ["scripts/ninja_build.py"]), ("scripts_tests", ["scripts/run_scripts_tests.py"]), ("tools_tests", ["scripts/run_tools_tests.py"]), ("board", ["scripts/check-contracts.sh"])],
 }
 
 
@@ -706,15 +707,28 @@ def verify_env(root: str) -> dict:
     return dict(os.environ, MC2_BUILD_JOBS=build_pool_jobs(), CONTRACTS_JOBS=host_jobs(), MC2_NINJA_TREE="build64-ninja", MC2_UNIT_BUILD_DIR=os.path.join(root, "build-cc-tests"))
 
 
-def verify_merged(root: str, mode: str, runner=None) -> tuple[str, list[tuple[str, int, str]]]:
-    """Build and test the merged tree. -> ("OK"|"FAIL"|"SKIPPED", [(step, rc, tail)]). Stops at the first failing step."""
+def verify_merged(root: str, mode: str, runner=None, base=None) -> tuple[str, list[tuple[str, int, str]]]:
+    """Build beside scoped Python suites; the gate owns the single native test run."""
     if mode == "none":
         return "SKIPPED", []
-    results = []
-    for label, (script, *rest) in VERIFY_STEPS[mode]:
+    from concurrent.futures import ThreadPoolExecutor
+    if base is None:
+        try:
+            base = json.loads(Path(root, "build64-ninja/merge-window.json").read_text())["base"]
+        except (OSError, ValueError, KeyError):
+            base = "HEAD^"
+    from merge_gate import editor_build_required
+    editor = (Path(root, "scripts/ninja_build.py").is_file()
+              and editor_build_required(lines(git_out(root, "diff", "--name-only", base, "HEAD"))))
+    def check(step):
+        label, (script, *rest) = step
         path = os.path.join(root, script)
         if not os.path.exists(path):
-            return ("SKIPPED" if not results else "OK"), results
+            return None
+        if label in ("scripts_tests", "tools_tests"):
+            rest += ["--base", base]
+        if label == "build" and editor:
+            rest += [*DEFAULT_TARGETS, "EditRel"]
         cmd = [git_bash(), path] + rest if script.endswith(".sh") else [sys.executable, path] + rest
         log_path = os.path.join(root, "build64-ninja", "lane-merge-verify-" + label + ".log")
         print(f"lane_merge: {label} log: {log_path}", flush=True)
@@ -729,10 +743,16 @@ def verify_merged(root: str, mode: str, runner=None) -> tuple[str, list[tuple[st
                 log.write(r.stdout)
             print(r.stdout, end="", flush=True)
         tail = failure_summary(r.stdout)
-        results.append((label, r.returncode, tail))
-        if r.returncode != 0:
-            return "FAIL", results
-    return "OK", results
+        return label, r.returncode, tail
+    steps = VERIFY_STEPS[mode]
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        results = [r for r in pool.map(check, [s for s in steps if s[0] != "board"]) if r]
+    if not results:
+        return "SKIPPED", []
+    if mode == "full" and all(r[1] in (0, 3) if r[0] == "tools_tests" else r[1] == 0 for r in results):
+        if result := check(steps[-1]):
+            results.append(result)
+    return ("FAIL" if any(rc != 0 and not (label == "tools_tests" and rc == 3) for label, rc, _ in results) else "OK"), results
 
 
 def exe_matches_head(root: str, tree: str = "build64-ninja") -> bool | None:
@@ -866,7 +886,7 @@ def require_clean_generator_inputs(root):
     """Artifacts must describe committed HEAD, including inputs outside ARTIFACTS."""
     # Throwaway merge-test repos without generators do not regenerate anything.
     if os.path.exists(os.path.join(root, GENERATORS[0][1])):
-        dirty = [(status, path) for status, path in status_entries(root) if status != "??"]
+        dirty = [(status, path) for status, path in status_entries(root) if status != "??" and path != "README.md"]   # README.md carries owner edits by rule
         if dirty:
             raise Stop(6, "regenerate-all requires a clean tree; commit or remove generator input edits first:\n  "
                        + "\n  ".join(path for _, path in dirty))
@@ -1307,15 +1327,19 @@ def recorded_data_fingerprint(root: str) -> dict | None:
     return next(iter(seen.values())) if len(seen) == 1 else None
 
 
-def candidate_data_fingerprint(root: str) -> tuple[dict | None, str]:
-    """The data fingerprint the gate would compute for this tree: the stock reference install (the gate's deploy target,
-    sim_determinism.INSTALL_DIR) read with the candidate tree's declared overlay manifest (its tests/smoke/sim_determinism/
+def candidate_data_fingerprint(root: str, install: str | None = None) -> tuple[dict | None, str]:
+    """The data fingerprint for the selected install (default E:/mc2-installs/merge-gate)
+    read with the candidate tree's declared overlay manifest (its tests/smoke/sim_determinism/
     data_overlay.json). -> (fingerprint, skip_reason): fingerprint is None, with a one-line reason, when there is no stock
     install to read. Read-only: it walks and hashes the install but never writes to it. The stock parts are gitignored and
     absent from a source tree, so the source tree itself can never be fingerprinted -- only the install the gate deploys to."""
     import sim_determinism as sd
-    install = sd.INSTALL_DIR
+    default_install = not install
+    install = install or "E:/mc2-installs/merge-gate"
     if not os.path.isdir(install):
+        if default_install:
+            print(f"WARN: default pre-gate install missing: {install}; data fingerprint unchecked. "
+                  "Pass --install <lane-owned install> to --pre-gate.", flush=True)
         return None, f"no stock reference install at {install} to fingerprint"
     manifest = sd.load_overlay_manifest(os.path.join(root, "tests", "smoke", "sim_determinism", "data_overlay.json"))
     return sd.data_fingerprint(install, manifest), ""
@@ -1333,12 +1357,12 @@ def differing_stock_parts(fp: dict, base: dict) -> str:
     return "; ".join(parts) or "the data fingerprint digest differs"
 
 
-def data_fingerprint_check(root: str, fingerprint=None, baseline=None) -> tuple[str, str]:
+def data_fingerprint_check(root: str, fingerprint=None, baseline=None, install=None) -> tuple[str, str]:
     """The gate's sim data fingerprint (stock reference install + the candidate tree's declared overlay) vs the recorded
     baseline the determinism/saveload rows pin. -> (verdict, detail): 'OK' when it matches, 'FAIL' when it does not (the
     gate would go red), 'SKIPPED' when there is no recorded baseline or no stock install to read. W138h: this red only
     showed on the laptop gate, costing two extra runs (52 min)."""
-    fp, skip = (fingerprint or candidate_data_fingerprint)(root)
+    fp, skip = fingerprint(root) if fingerprint else candidate_data_fingerprint(root, install)
     if fp is None:
         return "SKIPPED", skip
     base = (baseline or recorded_data_fingerprint)(root)
@@ -1442,7 +1466,7 @@ def pre_gate_regen(root: str) -> tuple[list[str], str | None]:
     return changed, None
 
 
-def pre_gate(root: str, exe: str | None = None, nightly_proofs: str | None = None) -> int:
+def pre_gate(root: str, exe: str | None = None, nightly_proofs: str | None = None, install=None) -> int:
     """Everything that used to fail only after the gate started (W79: three reruns), run in order at the merged HEAD.
     Every step runs; one verdict line at the end. Exit 0 = clean (regenerated files are listed, not a failure). Nightly freshness is a WARN line only (it used to surface
     at promote, lane_merge_stage.untriaged_nightly_fail); the owner does not gate on it here."""
@@ -1464,6 +1488,8 @@ def pre_gate(root: str, exe: str | None = None, nightly_proofs: str | None = Non
     steps += [(label, py + [os.path.join(root, script), *args]) for label, script, args in EARLY_ROWS]
     # W138h: the stock-data contract went red only on the laptop; the contracts board's own args (--no-data --quiet).
     steps += [("stock_mission_data", py + [os.path.join(root, "scripts", "check-stock-mission-data.py"), "--no-data", "--quiet"])]
+    # The gate's path-scoped contracts own these rows; pre-gate checks only deploy inputs.
+    steps = [(label, cmd) for label, cmd in steps if label not in PRE_GATE_CONTRACT_ROWS]
     exe = exe or os.path.join(root, "build64-ninja", "mc2.exe")
     if os.path.isfile(exe) and exe_matches_head(root, os.path.relpath(os.path.dirname(exe), root)) is False:
         print("pre-gate: exe-fingerprint: FAIL\nthe built exe embeds a different sha than HEAD; rebuild (scripts/ninja_build.py) before the gate", flush=True)
@@ -1475,7 +1501,7 @@ def pre_gate(root: str, exe: str | None = None, nightly_proofs: str | None = Non
         if rc:
             print(out, flush=True)
             failed.append(label)
-    verdict, detail = data_fingerprint_check(root)
+    verdict, detail = data_fingerprint_check(root, **({"install": install} if install else {}))
     print(f"pre-gate: data_fingerprint: {verdict}", flush=True)
     if detail:   # the FAIL's differing parts, or the one-line SKIPPED reason
         print(detail, flush=True)
@@ -1521,6 +1547,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--no-link", action="store_true", help="with --precheck: skip the link even when the tip changes compiled inputs")
     ap.add_argument("--no-sim-rows", action="store_true", help="compatibility no-op; precheck never runs games")
     ap.add_argument("--sim-install", help="compatibility no-op; precheck never runs games")
+    ap.add_argument("--install", help="with --pre-gate: read-only install to fingerprint (default E:/mc2-installs/merge-gate)")
     ap.add_argument("--pre-gate", action="store_true",
                     help="at the merged HEAD run the real regenerate-all (lists the changed files; commit them once), "
                          "check-background-launch, gate_gen --check and cxx17; all run, one PRE-GATE PASS/FAIL line; --root picks the tree")
@@ -1659,7 +1686,7 @@ def main(argv: list[str] | None = None) -> int:
                         not args.no_sim_rows, args.sim_install,
                         **({"base": args.base or "HEAD"} if args.base or args.batch else {}))
     if args.pre_gate:
-        return pre_gate(args.root, args.exe)
+        return pre_gate(args.root, args.exe, install=args.install)
     try:
         if args.promote:
             return promote(args.root, args.promote, args.verdict)
@@ -1805,7 +1832,7 @@ def main(argv: list[str] | None = None) -> int:
         if stopped:
             verdict, vresults = "SKIPPED(ratchet-failure)", []
         else:
-            verdict, vresults = verify_merged(root, mode)
+            verdict, vresults = verify_merged(root, mode, base=window_base)
             if batch and verdict == "OK" and mode != "none":   # --no-verify staging builds nothing on the PC (laptop_gate builds)
                 fresh, why = rebuild_if_head_moved(root)
                 if not fresh:

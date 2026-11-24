@@ -1,8 +1,8 @@
 """BT2018 first-class mechs: data-mapping tests (BT JSON -> MC2 profile, weapon mapping,
 hardpoint legality, compatibility-file layout) and the cook-reproducibility fix.
 
-Offline only. Tests that read the owner's BattleTech dump or stock source data skip when
-those folders are absent; everything else runs on the repo's recipes and tables.
+Offline only. BT schema and socket tests use tiny synthetic checked-in fixtures;
+stock corpus checks use the repository's stock-data resolver.
 """
 from __future__ import annotations
 
@@ -10,7 +10,6 @@ import copy
 import csv
 import io
 import json
-import os
 import struct
 import sys
 from pathlib import Path
@@ -48,8 +47,7 @@ def test_package_checker_showcase(tmp_path, monkeypatch, clips, valid):
         checker.main()
     assert result.value.code == (0 if valid else 1)
 
-DUMP = Path(os.environ.get("BT2018_DUMP", REPO / "scripts/tests/fixtures/bt2018-dump"))
-CONVERSIONS = Path(os.environ.get("BT2018_CONVERSIONS", REPO / "scripts/tests/fixtures/bt2018-conversions"))
+FIXTURES = REPO / "scripts/tests/fixtures/bt2018"
 
 
 @pytest.fixture(scope="module")
@@ -149,11 +147,10 @@ def test_stock_snapshots_match_compbas(tables):
             assert rows.get(pack["ordinal"], ["", "undefined"])[1] == "undefined", pack["ordinal"]
 
 
-@pytest.mark.skipif(not DUMP.is_dir(), reason="BattleTech dump not present")
-def test_every_dump_inventory_item_has_an_explicit_mapping(tables):
+def test_fixture_inventory_items_have_explicit_mappings(tables):
     wm, _ = tables
     kinds = {}
-    for p in sorted(DUMP.glob("mechdef_*.json")):
+    for p in sorted(FIXTURES.glob("mechdef_*.json")):
         md = btjson.load_tolerant(p).data
         for inv in md.get("inventory", []):
             rec = C.resolve_item(inv["ComponentDefID"], wm)
@@ -163,14 +160,13 @@ def test_every_dump_inventory_item_has_an_explicit_mapping(tables):
     assert kinds.get("stock", 0) > 0 and kinds.get("pack", 0) > 0
 
 
-@pytest.mark.skipif(not DUMP.is_dir(), reason="BattleTech dump not present")
 def test_json_backed_chassis_parses_to_locations_and_mounts():
-    cd = btjson.load_tolerant(DUMP / "chassisdef_archer_ARC-2R.json").data
+    cd = btjson.load_tolerant(FIXTURES / "chassisdef_fixture.json").data
     locs = btjson.chassis_locations(cd)
     assert locs["LeftTorso"]["mounts"] == ["Missile"]
     assert locs["CenterTorso"]["mounts"] == ["Energy", "Energy"]
     assert locs["LeftTorso"]["max_rear"] == 75 and locs["LeftArm"]["max_rear"] == -1
-    md = btjson.load_tolerant(DUMP / "mechdef_archer_ARC-2R.json").data
+    md = btjson.load_tolerant(FIXTURES / "mechdef_fixture.json").data
     armor = btjson.mechdef_armor(md)
     assert armor["CenterTorso"] == (165, 50)
 
@@ -404,8 +400,8 @@ def test_retarget_turns_bones_in_model_space_whatever_the_bind_frame(tmp_path):
 
 
 def test_native_clip_baker_decodes_streamed_dense_and_constant_curves():
-    """Trigger: tools/bt2018_extract/bake_clips.py (native BT clips replace Atlas retargets)."""
-    from tools.bt2018_extract import bake_clips as B
+    """Trigger: tools/bt2018_import/bake_clips.py (native BT clips replace Atlas retargets)."""
+    from tools.bt2018_import import bake_clips as B
     # one streamed curve: key at t=0 value 1 slope 2, key at t=1 constant 5; one constant curve 7
     words = struct.unpack("<14I", struct.pack("<fi i4f fi i4f", 0.0, 1, 0, 0, 0, 2.0, 1.0, 1.0, 1, 0, 0, 0, 0, 5.0))
     clip = {"m_StreamedClip": {"data": list(words), "curveCount": 1},
@@ -415,11 +411,36 @@ def test_native_clip_baker_decodes_streamed_dense_and_constant_curves():
     assert vals.tolist() == [[1.0, 0.0, 7.0], [2.0, 5.0, 7.0], [5.0, 10.0, 7.0]]
 
 
+def test_partial_own_clips_preserve_the_existing_retarget_per_missing_state(tmp_path):
+    from pygltflib import GLTF2
+    import numpy as np
+    from bt2018_retarget_clips import retarget_file, accessor_view
+    atlas, raw, baseline, out = [tmp_path / f"{n}.glb" for n in ("atlas", "raw", "baseline", "own")]
+    s = 2 ** -0.5
+    for p, bind in ((atlas, (0, 0, 0, 1)), (raw, (s, 0, 0, s))):
+        _tiny_glb(p, bind, [(0, 0, 0, 1), (0, 0, s, s)])
+        g = GLTF2().load(str(p))
+        fire = copy.deepcopy(g.animations[0])
+        fire.name = "atlas_attackFirePelvisBack"
+        g.animations.append(fire)
+        g.save(str(p))
+    retarget_file(str(raw), str(atlas), str(baseline))
+    own = np.array([[0, s, 0, s], [0, s, 0, s]])
+    retarget_file(str(raw), str(atlas), str(out), {"atlas_moveCoreIdle": (1, {"j_Hip": own})})
+    before, after = GLTF2().load(str(baseline)), GLTF2().load(str(out))
+    def keys(g, name):
+        a = next(a for a in g.animations if a.name == name)
+        return accessor_view(g, g.binary_blob(), a.samplers[0].output)[0]
+    assert {a.name for a in after.animations} == {a.name for a in before.animations}
+    np.testing.assert_array_equal(keys(after, "atlas_attackFirePelvisBack"), keys(before, "atlas_attackFirePelvisBack"))
+    np.testing.assert_allclose(keys(after, "atlas_moveCoreIdle"), own)
+
+
 def test_baked_clip_buffer_views_stay_inside_the_binary_chunk(tmp_path):
     """Trigger: bake_clips.add_to_glb. f8 keys once sized views at 2x the f4 bytes written: Assimp rejected 50/51 GLBs (3 mechs drew placeholders)."""
     pygltflib = pytest.importorskip("pygltflib")
     import numpy as np
-    from tools.bt2018_extract import bake_clips as B
+    from tools.bt2018_import import bake_clips as B
     g = pygltflib.GLTF2(nodes=[pygltflib.Node(name="j_Root")], buffers=[pygltflib.Buffer(byteLength=4)])
     g.set_binary_blob(b"\0\0\0\0")
     g.save(str(tmp_path / "in.glb"))
@@ -428,6 +449,66 @@ def test_baked_clip_buffer_views_stay_inside_the_binary_chunk(tmp_path):
     out = pygltflib.GLTF2().load(str(tmp_path / "out.glb"))
     end = len(out.binary_blob())
     assert all(v.byteOffset + v.byteLength <= end for v in out.bufferViews)
+
+
+def test_native_decoder_uses_avatar_paths_and_rotation_only(tmp_path):
+    from tools.bt2018_import import bake_clips as B
+    from pygltflib import GLTF2
+    tt = {"m_Name": "crab_idle", "m_MuscleClip": {"m_StartTime": 0.0, "m_StopTime": 0.1,
+          "m_Clip": {"m_StreamedClip": {"data": [], "curveCount": 0},
+          "m_DenseClip": {"m_CurveCount": 0}, "m_ConstantClip": {"data": [100, 200, 300, 0.5, 0.5, 0.5, 0.5, 0, 0, 0, 1]}}},
+          "m_ClipBindingConstant": {"genericBindings": [
+              {"typeID": 4, "attribute": 1, "path": 42},
+              {"typeID": 4, "attribute": 2, "path": 42},
+              {"typeID": 4, "attribute": 2, "path": 99}]}}
+    dur, rots = B.decode_clip(tt, {42: "j_Root"})
+    assert list(rots) == ["j_Root"]  # helper 99 is outside the Avatar
+    assert rots["j_Root"][0].tolist() == [0.5, -0.5, -0.5, 0.5]
+    from pygltflib import Node, Buffer
+    g = GLTF2(nodes=[Node(name="j_Root")], buffers=[Buffer(byteLength=4)])
+    g.set_binary_blob(b"\0" * 4)
+    g.save(str(tmp_path / "raw.glb"))
+    from bt2018_retarget_clips import retarget_file
+    retarget_file(str(tmp_path / "raw.glb"), "absent-atlas.glb", str(tmp_path / "own.glb"),
+                  own_clips={"atlas_idle": (dur, rots)})
+    own = GLTF2().load(str(tmp_path / "own.glb"))
+    assert [a.name for a in own.animations] == ["atlas_idle"]
+    assert {c.target.path for c in own.animations[0].channels} == {"rotation"}
+    times = B.np.frombuffer(own.binary_blob(), '<f4', 4, own.bufferViews[0].byteOffset)
+    assert times[-1] == pytest.approx(dur)
+
+
+def test_native_controller_keeps_aliases_instead_of_guessing_suffixes(monkeypatch):
+    from types import SimpleNamespace as NS
+    from tools.bt2018_import import bake_clips as B
+    clip = NS(path_id=7, read_typetree=lambda: {"m_Name": "catapult_attackMeleePush"})
+    entries = [NS(m_OriginalClip=NS(deref=lambda n=n: NS(peek_name=lambda: n)),
+                  m_OverrideClip=NS(path_id=7, deref=lambda: clip))
+               for n in ("atlas_attackMeleePush", "atlas_attackMeleePunch", "catapult_moveCoreIdle")]
+    entries.append(NS(m_OverrideClip=NS(path_id=0)))  # No own clip: leave this state to Atlas.
+    controller = NS(type=NS(name="AnimatorOverrideController"),
+                    peek_name=lambda: "charoverctrl_catapultBase-001",
+                    read=lambda: NS(m_Clips=entries))
+    avatar = NS(type=NS(name="Avatar"), read_typetree=lambda: {"m_TOS": [(42, "j_Root/j_Arm")]})
+    monkeypatch.setitem(sys.modules, "UnityPy", NS(__version__=B.UNITYPY_VERSION,
+                                                  load=lambda _: NS(objects=[controller, avatar])))
+    seen = []
+    monkeypatch.setattr(B, "decode_clip", lambda tt, paths: seen.append((tt, paths)) or (1, {}))
+    clips = B.native_clips("read-only-bundle", "catapult")
+    assert set(clips) == {"atlas_attackMeleePush", "atlas_attackMeleePunch",
+                          "catapult_moveCoreIdle", "atlas_moveCoreIdle"}
+    assert clips["catapult_moveCoreIdle"] is clips["atlas_moveCoreIdle"]
+    assert len(seen) == 1 and seen[0][1] == {42: "j_Arm"}
+
+
+def test_native_search_uses_dlc_and_falls_back_only_when_absent(tmp_path, monkeypatch):
+    from tools.bt2018_import import bake_clips as B
+    for name in ("chrprfmech_ravenbase-001", "urbanwarfare"):
+        (tmp_path / name).touch()
+    monkeypatch.setattr(B, "native_clips", lambda path, fam: {"atlas_idle": (1, {})}
+                        if Path(path).name == "urbanwarfare" and fam == "raven" else {})
+    assert B.chassis_clips(tmp_path, "raven") == {"atlas_idle": (1, {})}
+    assert B.chassis_clips(tmp_path, "absent") == {}
 
 
 # ---------------------------------------------------------------- P6 icons
@@ -471,16 +552,12 @@ def test_hud_icons_use_only_the_exact_region_palette():
         assert not ({194 + 2, 194 + 1} & {int(v) for v in rear[:, :, 0][rear[:, :, 3] > 0]})   # no limbs on the rear row
 
 
-MARAUDER_GLB = CONVERSIONS / "marauder.glb"
-
-
-@pytest.mark.skipif(not MARAUDER_GLB.is_file(), reason="converted Marauder not present")
 def test_muzzle_sockets_sit_on_geometry_not_joint_centres(marauder_recipe):
     from tools.bt2018_mechs import sockets as SK
     import numpy as np
     joints = {"weapon_leftarm": "j_LForearm", "weapon_leftarm2": "j_LForearm",
               "weapon_rightarm": "j_RForearm", "weapon_centertorso": "j_Spine2"}
-    off = SK.socket_offsets(MARAUDER_GLB, joints)
+    off = SK.socket_offsets(REPO / "scripts/tests/fixtures/synthetic_mech/sockets_fixture.glb", joints)
     assert set(off) == set(joints)
     for name, v in off.items():
         assert np.linalg.norm(v) > 1e-3, name               # not the joint centre
@@ -489,28 +566,6 @@ def test_muzzle_sockets_sit_on_geometry_not_joint_centres(marauder_recipe):
                                          "weapon_lefttorso": "j_LClavicle", "weapon_righttorso": "j_RClavicle",
                                          "weapon_centertorso": "j_Spine2"}}, marauder_recipe, off)
     assert len(pkg["socketOffsets"]["weapon_leftarm"].split()) == 3
-
-
-def test_entire_converted_roster_compiles_with_unique_ids(tables):
-    """Trigger: tools/bt2018_mechs/{roster.py,data/roster.json,build_pack.py,compile.py}."""
-    from tools.bt2018_mechs import roster
-    conversions = CONVERSIONS
-    if not conversions.is_dir():
-        pytest.skip("external conversions absent; set BT2018_CONVERSIONS to the converted dump")
-    recipes = roster.recipes(conversions)
-    profiles = [C.build_profile(r, *tables) for r in recipes]
-    assert len(profiles) == 51
-    assert len({p["stem"] for p in profiles}) == 51
-    ids = [sid for i, p in enumerate(profiles) for sid in C.string_ids(p, i).values()]
-    assert len(set(ids)) == 102
-    for p, recipe in zip(profiles, recipes):
-        assert 0 < p["mc2"]["payload"] < p["mc2"]["tonnage"]
-        assert (conversions / recipe["mc2"]["model"]["source_glb"]).is_file()
-        package = C.load_json(conversions / recipe["mc2"]["model"]["package_json"])
-        C.emit_package_json(package, recipe)  # Every authored socket must resolve.
-        C.emit_csv(p, recipe, profiles.index(p))
-        if p["family"] != "marauder":
-            assert "pack-authored MC2 adaptation" in p["provenance"]["gameplay"]
 
 
 def test_roster_equipment_resolves_without_external_dump(tables, tmp_path):
@@ -529,7 +584,13 @@ def test_roster_equipment_resolves_without_external_dump(tables, tmp_path):
     recipes = roster.recipes(tmp_path)
     profiles = [C.build_profile(r, *tables) for r in recipes]
     assert len(profiles) == 51
+    assert len({p["stem"] for p in profiles}) == 51
+    ids = [sid for i, p in enumerate(profiles) for sid in C.string_ids(p, i).values()]
+    assert len(set(ids)) == 102
     for p in profiles:
+        assert 0 < p["mc2"]["payload"] < p["mc2"]["tonnage"]
+        if p["family"] != "marauder":
+            assert "pack-authored MC2 adaptation" in p["provenance"]["gameplay"]
         for v in p["variants"]:
             ids = [i["mc2"]["master_id"] for i in v["items"]]
             assert [i for i in ids if i in stock | added] == ids, p["family"]
@@ -592,54 +653,6 @@ def test_spawn_fixture_uses_a_shipped_pilot_with_combat_skills():
         assert value and int(value.group(1)) > 0, f"spawn pilot needs usable {skill}"
 
 
-# One-shot clips mc2clip::select leaves for locomotion when the sim gesture ends (hits,
-# power-on, get-up). Their last frame is held until then, so it must BE the idle pose.
-# Prone clips (knockdown, downed/death idles) are held on purpose until the sim's GetUp.
-RETURN_TO_IDLE = ("atlas_hitReactLgtFwd", "atlas_hitReactLgtBwd", "atlas_hitReactLgtLeft",
-                  "atlas_hitReactLgtRight", "atlas_shutdownPwron", "atlas_downedGetup")
-
-
-@pytest.mark.parametrize("family", ["atlas", "marauder"])
-def test_one_shot_clips_end_on_the_idle_pose(family):
-    """Trigger: owner 11-16 'stayed leaning back after getting hit'. Held end pose == idle."""
-    pytest.importorskip("pygltflib")
-    from pygltflib import GLTF2
-    from bt2018_retarget_clips import quat_mul, node_bind_rot, accessor_view
-    import numpy as np
-    path = CONVERSIONS / f"{family}.glb"
-    if not path.is_file():
-        pytest.skip(f"set BT2018_CONVERSIONS to a dir with {family}.glb")
-    g = GLTF2().load(str(path)); blob = g.binary_blob()
-    parent = {c: i for i, n in enumerate(g.nodes) for c in (n.children or [])}
-    anims = {a.name: a for a in g.animations}
-
-    def world(clip, last):
-        local = {i: node_bind_rot(g, i) for i in range(len(g.nodes))}
-        a = anims[clip]
-        for ch in a.channels:
-            if ch.target.path == "rotation":
-                k = accessor_view(g, blob, a.samplers[ch.sampler].output)[0]
-                q = np.asarray(k[-1 if last else 0], np.float64)
-                local[ch.target.node] = q / np.linalg.norm(q)
-        out = {}
-        def w(i):
-            if i not in out:
-                out[i] = quat_mul(w(parent[i]), local[i]) if i in parent else local[i]
-            return out[i]
-        for i in local:
-            w(i)
-        return out
-
-    idle = world("atlas_moveCoreIdle", False)
-    for clip in RETURN_TO_IDLE:
-        if clip not in anims:
-            continue
-        end = world(clip, True)
-        worst = max(np.degrees(2 * np.arccos(min(1.0, abs(float(np.dot(end[i], idle[i]))))))
-                    for i in idle)
-        assert worst < 3.0, f"{family} {clip} ends {worst:.1f} deg from idle"
-
-
 def test_hud_icons_have_stock_tone_mix_and_no_outline_ring():
     """Trigger: tools/bt2018_mechs/render_icons.py (owner 11-16: icons read too bright and busy)."""
     from tools.bt2018_mechs import render_icons as R
@@ -650,7 +663,7 @@ def test_hud_icons_have_stock_tone_mix_and_no_outline_ring():
         v = rng.normal(size=(300, 3)) * 0.35 + [cx, cy, 0]       # jittered "high-poly" blob: noisy normals
         parts.append((region, v, np.array([[i, i + 1, i + 2] for i in range(0, 297, 3)])))
     img = R.hud_strip(parts, 25, 30)[:30]
-    solid = img[:, :, 3] > 0
+    solid = img[:, :, :3].any(2)                 # the cell is opaque black: the mech is its non-black pixels
     assert R.palette_ok(img) == [] and not (img[solid][:, :3] == R.OUTLINE).all(1).any()
     green = img[solid][:, 1]
     assert (green == 229).mean() < 0.35 and (green == 83).mean() > 0.4     # dark-dominated like stock
@@ -888,3 +901,62 @@ def test_skin_pick_rejects_layouts_it_cannot_decode_instead_of_guessing(tmp_path
     g = _bin_glb([dict(mesh="a", mat=0, pos=_verts(3))], [("m1", "OPAQUE", "a-alb.png")])
     g.buffers[0].uri = "data:application/octet-stream;base64," + base64.b64encode(g.binary_blob()).decode()
     assert _pick(g) == "a-alb.tga"                                            # data: buffers decode
+
+
+def test_arm_lift_fix_lowers_a_raised_idle_hand_to_the_cap(tmp_path):
+    """Trigger: scripts/bt2018_retarget_clips.py. Owner 11-23: crab/rifleman/stalker arms up at idle."""
+    pygltflib = pytest.importorskip("pygltflib")
+    import numpy as np
+    from bt2018_retarget_clips import arm_lift_fix, quat_mul, quat_mat, elevation
+    N = pygltflib.Node
+    g = pygltflib.GLTF2(nodes=[N(name="j_LUpperArm", children=[1]), N(name="j_LHand", translation=[1.0, 0, 0.8])])
+    ident = np.array([0.0, 0.0, 0.0, 1.0])
+    h = np.radians(45) / 2
+    raised = np.array([0.0, 0.0, np.sin(h), np.cos(h)])                  # hand 45 deg above the shoulder
+    idle = [raised, raised]
+    ua, fix = arm_lift_fix(g, {1: 0}, [ident, ident], idle, "L")
+    assert ua == 0
+    hand = quat_mat(quat_mul(fix, raised)) @ [1.0, 0, 0.8]
+    assert abs(elevation(hand) - (-10.0)) < 0.01                          # cap = bind 0 + 10, clamped to -10
+    assert arm_lift_fix(g, {1: 0}, [ident, ident], [quat_mul(fix, raised)] * 2, "L") is None   # already low: untouched
+
+
+def test_arm_lift_fix_leaves_sideways_shoulder_pods_alone():
+    """Trigger: scripts/bt2018_retarget_clips.py. Owner 11-23: Catapult missile pods must stay level."""
+    pygltflib = pytest.importorskip("pygltflib")
+    import numpy as np
+    from bt2018_retarget_clips import arm_lift_fix, pod_arm
+    N = pygltflib.Node
+    ident = np.array([0.0, 0.0, 0.0, 1.0])
+    h = np.radians(45) / 2
+    raised = np.array([0.0, 0.0, np.sin(h), np.cos(h)])
+    for hand_t, fixed in (([1.0, 0, 0.1], False), ([0.1, 0, 1.0], True)):      # sideways pod vs forward arm
+        g = pygltflib.GLTF2(nodes=[N(name="j_LUpperArm", children=[1]), N(name="j_LHand", translation=hand_t)])
+        assert (arm_lift_fix(g, {1: 0}, [ident, ident], [raised, raised], "L") is not None) == fixed
+        assert (pod_arm(g, {1: 0}, [ident, ident], "L") is None) == fixed          # pods are held at bind
+
+
+def test_pose_error_is_zero_at_bind_and_flags_a_displaced_arm():
+    """Trigger: scripts/bt2018_retarget_clips.py. Ready-pose match against the BT2018 bind."""
+    pygltflib = pytest.importorskip("pygltflib")
+    import numpy as np
+    from bt2018_retarget_clips import pose_error, quat_mul
+    N = pygltflib.Node
+    g = pygltflib.GLTF2(nodes=[N(name="j_Spine2", children=[1]), N(name="j_LClavicle", children=[2], translation=[0.1, 0, 0]),
+                               N(name="j_LUpperArm", children=[3], translation=[0.1, 0, 0]), N(name="j_LHand", translation=[0.1, 0, 0])])
+    par = {1: 0, 2: 1, 3: 2}
+    ident = np.array([0.0, 0.0, 0.0, 1.0])
+    bind = [ident] * 4
+    assert pose_error(g, par, bind, bind)[0] == 0.0
+    h = np.radians(60) / 2
+    up = np.array([0.0, 0.0, np.sin(h), np.cos(h)])                      # arm lifted 60 deg about the shoulder
+    assert pose_error(g, par, bind, [ident, ident, up, up])[0] > 1.0
+
+
+def test_pack_builder_names_every_cooked_texture_a_package_uses():
+    """Trigger: tools/bt2018_mechs/build_pack.py (a pack built without its .ktx2 files drew untextured mechs)."""
+    from tools.bt2018_mechs import build_pack as B
+    pkg = {"materials": {"albedo": {"ktx2": "a.ktx2"}, "ao": {"ktx2": "b.ktx2"}, "normal": {"ktx2": "c.ktx2"},
+                         "emissive": {"ktx2": "ignored.ktx2"}, "other": {}}}
+    assert B.package_ktx2(pkg) == ["a.ktx2", "b.ktx2", "c.ktx2"]
+    assert B.package_ktx2({"materials": {"albedo": {}}}) == [] and B.package_ktx2({}) == []

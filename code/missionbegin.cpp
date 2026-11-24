@@ -31,6 +31,7 @@ MissionBegin.cpp			: Implementation of the MissionBegin component.
 #include"mission.h"
 #include"gamesound.h"
 #include"loadscreen.h"
+#include"screen_layer_order.h"
 #include"mpprefs.h"
 #include"chatwindow.h"
 #include"logisticsmechicon.h"
@@ -68,6 +69,15 @@ bool	MissionBegin::FirstTimeMechLab = true;
 // DEV-SHELL-1 ui_reload: the front-end instance the shell command targets.
 // Set on construction, cleared on destruction — a plain lifetime mirror.
 static MissionBegin* s_devShellMissionBegin = nullptr;
+
+static const std::string& previewChassis()
+{
+	static const std::string value = [] {
+		const char* env = std::getenv("MECH_PREVIEW_CHASSIS");
+		return std::string(env ? env : "");
+	}();
+	return value;
+}
 
 MissionBegin::MissionBegin()
 {
@@ -1229,6 +1239,25 @@ void MissionBegin::updateSoakAutoPurchase() {
 							Candidate tmp = cands[i]; cands[i] = cands[j]; cands[j] = tmp;
 						}
 
+						// MECH_PREVIEW_CHASSIS=a,b: those chassis (substring of the variant name) lead the lance.
+						if ( const std::string_view want = previewChassis(); !want.empty() )
+						{
+							const std::string list = "," + std::string( want ) + ",";
+							int front = 0;
+							for ( int i = 0; i < nCands; ++i )
+							{
+								std::string name = cands[i].variant->getName().c_str();
+								for ( char& c : name ) c = static_cast<char>( std::tolower( static_cast<unsigned char>( c ) ) );
+								bool hit = false;
+								for ( size_t at = 1, end; at < list.size() && !hit; at = end + 1 )
+								{
+									end = list.find( ',', at );
+									hit = end > at && name.find( list.substr( at, end - at ) ) != std::string::npos;
+								}
+								if ( hit ) std::swap( cands[i], cands[front++] );
+							}
+						}
+
 						// -- deploy down shuffled list --------------------------------------
 						int deployed    = 0;
 						int fromSalvage = 0;
@@ -1356,7 +1385,7 @@ void MissionBegin::updateSoakAutoPurchase() {
 						}
 						// MECH_PREVIEW_CHASSIS=<text>: harness choice of the bought mech (case-insensitive substring of
 						// the variant name or the package chassis stem), so a capture opens the lab on that chassis.
-						if ( const char* want = std::getenv( "MECH_PREVIEW_CHASSIS" ); want && *want )
+						if ( const char* want = previewChassis().c_str(); *want )
 						{
 							auto lower = []( std::string s ) { for ( char& c : s ) c = static_cast<char>( std::tolower( static_cast<unsigned char>( c ) ) ); return s; };
 							const std::string needle = lower( want );
@@ -1667,7 +1696,11 @@ void MissionBegin::updateSoakScreenWalk(LogisticsScreen* pCurScreen, bool& soakF
 				{
 					stopX = 2; stopY = (curScreenY == 1) ? 1 : 2;
 				}
-				if ( s_soakStopAtBay && curScreenX == stopX && curScreenY == stopY )
+				// A shot target other than the held cell (MC2_BOOT_TO_SCREEN=bay + MC2_SHOT_SCREEN=pilots) walks on after the bay purchase.
+				mc2::screen_settle::Spec shotSpec;
+				const bool shotElsewhere = mc2::screen_settle::parseSpec(mc2::gate::str<"MC2_SHOT_SCREEN">(), shotSpec) && shotSpec.cell &&
+					shotSpec.cell->x >= 0 && ( shotSpec.cell->x != stopX || shotSpec.cell->y != stopY ) && !mc2::gate::str<"MC2_BOOT_TO_SCREEN">().empty();
+				if ( s_soakStopAtBay && !shotElsewhere && curScreenX == stopX && curScreenY == stopY )
 				{
 					s_soakLastAdvX = curScreenX;
 					s_soakLastAdvY = curScreenY;
@@ -2036,7 +2069,9 @@ void MissionBegin::render()
 
 		if ( curScreenX == 4 ) // don't scroll last screen
 		{
-			if ( pOtherScreen )
+			// The loading doors are a legacy-layer screen; an ImGui-layer predecessor would draw over them.
+			if ( pOtherScreen && mc2::ui::predecessorMayDrawBehind(
+					pCurScreen->rendersDefsPageOverlay(), pOtherScreen->rendersDefsPageOverlay() ) )
 				pOtherScreen->render( 0, 0 );
 			pCurScreen->render( 0, 0 );
 		}

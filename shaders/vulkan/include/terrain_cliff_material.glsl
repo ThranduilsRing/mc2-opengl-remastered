@@ -121,28 +121,33 @@ float crTerrainCliff(vec2 xy) {
     return mix(mix(crBlockedTile(p), crBlockedTile(p + ivec2(1,0)), f.x),
                mix(crBlockedTile(p + ivec2(0,1)), crBlockedTile(p + ivec2(1,1)), f.x), f.y);
 }
-// Separate ground-rock asset (mat0), with two incommensurate world-space scales.
+const float CN_TS = 320.0;   // world units per ground-rock repeat (same density as the cliff scan)
+// Separate ground-rock asset (mat0).
 // Low-contrast height colour preserves the authored palette rather than stamping the cliff scan.
 void crNavigable(vec3 macroN, vec3 dx, vec3 dy, float weight, inout vec3 N, inout vec3 color) {
     if (weight <= 0.01) return;
-    vec2 uv = v_worldPos.xy / 768.0;
-    float lod = max(0.0, log2(max(max(length(dx.xy), length(dy.xy)), 1e-6)
-                      * float(textureSize(u_matNormalArray, 0).x) / 768.0));
-    const mat2 rot = mat2(0.8, 0.6, -0.6, 0.8);
-    vec4 a = textureLod(u_matNormalArray, vec3(uv, float(MAT_LAYER_ROCK)), lod);
-    vec4 b = textureLod(u_matNormalArray, vec3(rot * uv * 0.371 + vec2(0.31,0.73), float(MAT_LAYER_ROCK)), max(0.0, lod - 1.43));
-    float blend = wpn_value(v_worldPos.xy / 1100.0);
-    float h = mix(a.a, b.a, blend);
-    vec2 tilt = mix(a.rg * 2.0 - 1.0, transpose(rot) * (b.rg * 2.0 - 1.0), blend);
-    color *= mix(1.0, 0.91 + 0.18 * h, weight);
-    N = normalize(mix(N, normalize(macroN + vec3(tilt * 0.22, 0.0)), weight * 0.45));
+    // Triplanar (steep ground rock no longer smears down the slope), hex-tiled, at the cliff scan's texel density.
+    vec3 wp = v_worldPos;
+    vec3 w = abs(macroN); w *= w; w *= w; w /= (w.x + w.y + w.z + 1e-5);
+    float h = 0.0, used = 0.0; vec3 tilt = vec3(0.0);
+    for (int i = 0; i < 3; ++i) {
+        if (w[i] < 0.05) continue;
+        vec2 uv = (i == 0 ? vec2(wp.y, -wp.z) : i == 1 ? vec2(wp.x, -wp.z) : wp.xy) / CN_TS;
+        vec2 du = (i == 0 ? dx.yz : i == 1 ? dx.xz : dx.xy) / CN_TS, dv = (i == 0 ? dy.yz : i == 1 ? dy.xz : dy.xy) / CN_TS;
+        vec4 a = hexTileGrad(u_matNormalArray, float(MAT_LAYER_ROCK), uv, du, dv, 1.0, true, vec4(0.5));
+        vec2 t = a.rg * 2.0 - 1.0;
+        tilt += (i == 0 ? vec3(0.0, t.x, t.y) : i == 1 ? vec3(t.x, 0.0, t.y) : vec3(t.x, t.y, 0.0)) * w[i];
+        h += a.a * w[i]; used += w[i];
+    }
+    h /= max(used, 1e-4); tilt /= max(used, 1e-4);
+    color *= mix(1.0, (0.78 + 0.44 * h) * (0.9 + 0.2 * wpn_value(wp.xy / 900.0)), weight);   // macro variation + cliff-like contrast
+    N = normalize(mix(N, normalize(macroN + tilt * 0.4), weight * 0.8));
 }
 void crApply(vec3 macroN, vec3 wpDx, vec3 wpDy, vec3 planeLod, float blocked, inout vec3 N, inout vec3 baseColor) {
     float cb = cliffRockWeight(abs(macroN.z));
     if (cb * blocked <= 0.01) return;
     vec3 wp = v_worldPos;
     vec3 w = abs(macroN); w *= w; w *= w; w /= (w.x + w.y + w.z + 1e-5);
-    float texN = float(textureSize(u_concreteDetail, 0).x);
     vec3 ah = vec3(0.0); float h = 0.0; vec3 tilt = vec3(0.0); float ao = 0.0;
     for (int i = 0; i < 3; ++i) {
         float wi = w[i];
@@ -151,9 +156,8 @@ void crApply(vec3 macroN, vec3 wpDx, vec3 wpDy, vec3 planeLod, float blocked, in
         vec2 uv  = (i == 0 ? vec2(wp.y, -wp.z) : i == 1 ? vec2(wp.x, -wp.z) : vec2(wp.x, -wp.y)) / CR_TS;
         vec2 du  = (i == 0 ? wpDx.yz : i == 1 ? wpDx.xz : wpDx.xy) / CR_TS;
         vec2 dv  = (i == 0 ? wpDy.yz : i == 1 ? wpDy.xz : wpDy.xy) / CR_TS;
-        float lod = max(0.0, 0.5 * log2(max(max(dot(du, du), dot(dv, dv)), 1e-12)) + log2(texN));
-        vec4 a = textureLod(u_concreteDetail, vec3(uv, 2.0), lod);
-        vec4 b = textureLod(u_concreteDetail, vec3(uv, 3.0), lod);
+        vec4 a = hexTileGrad(u_concreteDetail, 2.0, uv, du, dv, HEX_ROT_CLIFF, false, vec4(0.5));
+        vec4 b = hexTileGrad(u_concreteDetail, 3.0, uv, du, dv, HEX_ROT_CLIFF, true, vec4(0.5, 0.5, 0.5, 0.85));
         vec2 t = vec2(b.x * 2.0 - 1.0, b.y * 2.0 - 1.0);   // GL normal: +y = image up = world up (or north on the Z plane)
         tilt += (i == 0 ? vec3(0.0, t.x, t.y) : i == 1 ? vec3(t.x, 0.0, t.y) : vec3(t.x, t.y, 0.0)) * wi;
         ah += a.rgb * wi; h += a.a * wi; ao += b.w * wi;

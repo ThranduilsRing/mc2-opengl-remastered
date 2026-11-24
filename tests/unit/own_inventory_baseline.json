@@ -48,15 +48,12 @@
      "delete": 1,
      "new": 1
     },
-    "mclib/ablenv.cpp": {
-     "new": 1
-    },
     "mclib/ablrtn.cpp": {
      "delete": 1,
      "new": 1
     }
    },
-   "new": 5,
+   "new": 4,
    "new_array": 0,
    "owners": [
     "",

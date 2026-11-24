@@ -67,23 +67,44 @@ template<class T> static void writeAblRecord(ABLFile* file, T value, uint32_t ta
 		ABL_Fatal(0, "ABL: unable to write value record");
 }
 
+// A damaged or short save stream: report once, remember it, and let every later value read return at once. ABL_Fatal's callback
+// returns in the shipped game, so a size that failed its check must never reach an allocation.
+static bool g_ablValueReadFailed = false;
+
+static void failAblValueRead(mc2::czstring why) {
+	g_ablValueReadFailed = true;
+	ABL_Fatal(0, why);
+}
+
+bool ABLi_environmentLoadFailed (void) {
+	return g_ablValueReadFailed;
+}
+
 template<class T> static T readAblRecord(ABLFile* file, uint32_t tag) {
 
-	const auto size = file->readInt();
-	if (size < 8 || size > mc2::save::maxFileBytes || (file->remaining() >= 0 && size > file->remaining()))
-		ABL_Fatal(0, "ABL: invalid value record size");
-	mc2::save::Bytes bytes(static_cast<size_t>(size));
 	T value;
+	if (g_ablValueReadFailed)
+		return value;
+	const auto size = file->readInt();
+	if (!mc2::save::ablRecordSizeValid(size, file->remaining())) {
+		failAblValueRead("ABL: invalid value record size");
+		return value;
+	}
+	mc2::save::Bytes bytes(static_cast<size_t>(size));
 	if (file->read(bytes.data(), size) != size || !mc2::save::decodeTaggedRecord(bytes, value, tag))
-		ABL_Fatal(0, "ABL: invalid value record");
+		failAblValueRead("ABL: invalid value record");
 	return value;
 }
 
 static void readAblVariable(ABLFile* file, StackItem& slot, long size) {
 
+	if (g_ablValueReadFailed)
+		return;
 	const auto value = readAblRecord<mc2::save::AblVariableRecord>(file, mc2::save::tagAblVariable);
+	if (g_ablValueReadFailed)
+		return;
 	if (size < 0 || !mc2::save::restoreAblVariable(value, slot, static_cast<size_t>(size)))
-		ABL_Fatal(0, "ABL: variable size differs from compiled declaration");
+		failAblValueRead("ABL: variable size differs from compiled declaration");
 }
 
 //---------------------------------------------------------------------------
@@ -700,13 +721,20 @@ void ABLModule::write (ABLFile* moduleFile, bool values) {
 
 void ABLModule::read (ABLFile* moduleFile, bool values) {
 
+	if (values && g_ablValueReadFailed)
+		return;
+
 	// Existing modules retain their allocations while their saved data is restored.
 	bool fresh = (id == -1);
 	mc2::save::AblModuleRecord record;
 	if (values) {
 		record = readAblRecord<mc2::save::AblModuleRecord>(moduleFile, mc2::save::tagAblModule);
-		if (record.handle >= NumModulesRegistered || (!fresh && record.handle != handle))
-			ABL_Fatal(0, "ABL: module handle differs from compiled registry");
+		if (g_ablValueReadFailed)
+			return;
+		if (record.handle >= NumModulesRegistered || (!fresh && record.handle != handle)) {
+			failAblValueRead("ABL: module handle differs from compiled registry");
+			return;
+		}
 		std::memcpy(name, record.name.c_str(), record.name.size() + 1);
 		if (fresh) {
 			id = NumModules++;
@@ -715,8 +743,10 @@ void ABLModule::read (ABLFile* moduleFile, bool values) {
 		}
 		prevState = record.previousState.empty() ? nullptr : findState(record.previousState.c_str());
 		state = record.state.empty() ? nullptr : findState(record.state.c_str());
-		if ((!record.previousState.empty() && !prevState) || (!record.state.empty() && !state))
-			ABL_Fatal(0, "ABL: saved state missing from compiled module");
+		if ((!record.previousState.empty() && !prevState) || (!record.state.empty() && !state)) {
+			failAblValueRead("ABL: saved state missing from compiled module");
+			return;
+		}
 	}
 	else if (fresh) {
 		id = NumModules++;
@@ -753,8 +783,10 @@ void ABLModule::read (ABLFile* moduleFile, bool values) {
 	bool savedInitCalled = values ? record.initCalled : (moduleFile->readInt() == 1);
 
 	long numStatics = ModuleRegistry[handle].numStaticVars;
-	if (values && record.statics != numStatics)
-		ABL_Fatal(0, "ABL: static count differs from compiled module");
+	if (values && record.statics != numStatics) {
+		failAblValueRead("ABL: static count differs from compiled module");
+		return;
+	}
 	if (numStatics) {
 		if (fresh) {		
 			staticData = static_cast<StackItemPtr>(ABL_alloc(ABLPool::Stack, sizeof(StackItem) * numStatics));
@@ -780,6 +812,7 @@ void ABLModule::read (ABLFile* moduleFile, bool values) {
 				}
 				if (values) {
 					readAblVariable(moduleFile, staticData[i], sizeList[i]);
+					if (g_ablValueReadFailed) return;
 					continue;
 				}
 				long result = moduleFile->read(reinterpret_cast<unsigned char*>(staticData[i].address), sizeList[i]);
@@ -792,6 +825,7 @@ void ABLModule::read (ABLFile* moduleFile, bool values) {
 			else {
 				if (values) {
 					readAblVariable(moduleFile, staticData[i], 0);
+					if (g_ablValueReadFailed) return;
 					continue;
 				}
 				staticData[i].integer = 0;
@@ -820,8 +854,10 @@ void ABLModule::read (ABLFile* moduleFile, bool values) {
 	
 	if (values) {
 		initCalled = savedInitCalled; // Libraries already exist after recompilation.
-		if (record.orderFlags.size() != orderFlagWords(this))
-			ABL_Fatal(0, "ABL: order count differs from compiled module");
+		if (record.orderFlags.size() != orderFlagWords(this)) {
+			failAblValueRead("ABL: order count differs from compiled module");
+			return;
+		}
 		for (size_t w = 0; w < record.orderFlags.size(); ++w)
 			orderCallFlags[w] = record.orderFlags[w];
 	}
@@ -1579,11 +1615,16 @@ void ABLi_saveEnvironment (ABLFile* ablFile, bool values) {
 void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc, bool values) {
 
 	mc2::save::AblEnvironmentRecord record;
+	g_ablValueReadFailed = false;
 	if (values) {
 		record = readAblRecord<mc2::save::AblEnvironmentRecord>(ablFile, mc2::save::tagAblEnvironment);
+		if (g_ablValueReadFailed)
+			return;
 		if (record.libraries > static_cast<uint32_t>(MaxLibraries) ||
-			record.files.size() > static_cast<size_t>(MaxModules) || record.modules > static_cast<uint32_t>(MaxModules))
-			ABL_Fatal(0, "ABL: environment exceeds registry capacity");
+			record.files.size() > static_cast<size_t>(MaxModules) || record.modules > static_cast<uint32_t>(MaxModules)) {
+			failAblValueRead("ABL: environment exceeds registry capacity");
+			return;
+		}
 	}
 	long numLibs = values ? static_cast<long>(record.libraries) : ablFile->readInt();
 	long numModsRegistered = values ? static_cast<long>(record.files.size()) : ablFile->readInt();
@@ -1598,7 +1639,8 @@ void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc, bool values) {
 		if (!result) {
 			char err[255];
 			mc2::fmt::to_buf(err, "ABLi_loadEnvironment: Unable to read filename [Module {:d}]", mc2::fmt::as_i32(i));
-			ABL_Fatal(0, err);
+			failAblValueRead(err);
+			return;
 		}
 		if (malloc) {
 			long numErrors, numLinesProcessed;
@@ -1606,7 +1648,8 @@ void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc, bool values) {
 			if (!library) {
 				char err[255];
 				mc2::fmt::to_buf(err, "ABLi_loadEnvironment: Unable to load library [Module {:d}]", mc2::fmt::as_i32(i));
-				ABL_Fatal(0, err);
+				failAblValueRead(err);
+				return;
 			}
 		}
 	}
@@ -1621,7 +1664,8 @@ void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc, bool values) {
 		if (!result) {
 			char err[255];
 			mc2::fmt::to_buf(err, "ABLi_loadEnvironment: Unable to read filename [Module {:d}]", mc2::fmt::as_i32(i));
-			ABL_Fatal(0, err);
+			failAblValueRead(err);
+			return;
 		}
 		long numErrors, numLinesProcessed;
 		if (malloc) {
@@ -1629,13 +1673,16 @@ void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc, bool values) {
 			if (handle < 0) {
 				char err[255];
 				mc2::fmt::to_buf(err, "ABLi_loadEnvironment: Unable to preprocess [Module {:d}]", mc2::fmt::as_i32(i));
-				ABL_Fatal(0, err);
+				failAblValueRead(err);
+				return;
 			}
 		}
 	}
 
-	if (values && record.eternals != eternalOffset)
-		ABL_Fatal(0, "ABL: eternal count differs from compiled declarations");
+	if (values && record.eternals != eternalOffset) {
+		failAblValueRead("ABL: eternal count differs from compiled declarations");
+		return;
+	}
 	int mark = values ? ABL_ENV_MARK : ablFile->readInt();
     if(mark != ABL_ENV_MARK) {
         char err[255];
@@ -1654,25 +1701,32 @@ void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc, bool values) {
 			ablFile->read(reinterpret_cast<unsigned char*>(dataPtr), sizeof(StackItem));
 			clearScalarSlotPointerArm(dataPtr);
 		}
+		if (g_ablValueReadFailed) return;
 	}
 	std::vector<ABLModulePtr> readOrder;
 	for (int i = 0; i < numLibs; i++) {
 		ABLModulePtr library = LibraryInstanceRegistry[i];
 		library->read(ablFile, values);
+		if (g_ablValueReadFailed) return;
 		readOrder.push_back(library);
 	}
 
 	for (int i = 0; i < (numMods - numLibs); i++) {
 		ABLModulePtr module = nullptr;
-		if (malloc)
-			module = new ABLModule;
+		std::unique_ptr<ABLModule> ownedModule;
+		if (malloc) {
+			ownedModule = std::make_unique<ABLModule>();
+			module = ownedModule.get();
+		}
 		else
 			module = ModuleInstanceRegistry[numLibs + i];
 		module->read(ablFile, values);
+		if (g_ablValueReadFailed) return;
+		ownedModule.release(); // A successful read registered the instance with the environment.
 		readOrder.push_back(module);
 	}
 	if (values) {
-		if (ablFile->remaining() != 0) ABL_Fatal(0, "ABL: trailing value records");
+		if (ablFile->remaining() != 0) failAblValueRead("ABL: trailing value records");
 		return;
 	}
 

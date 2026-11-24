@@ -106,6 +106,12 @@ int main(int argc, char** argv) {
     {   ModelOverrideRegistry r;
         CHECK(r.loadFromFile(fx("non_object_entry.json"), dir) == 1);
         CHECK(r.resolve("tree", "ok") != nullptr);
+        CHECK(r.resolveBuilding("OK") == r.resolve("tree", "ok"));   // a building that reuses a tree shape name
+        CHECK(r.resolveBuilding("missing") == nullptr);
+    }
+    {   ModelOverrideRegistry r;
+        CHECK(r.loadFromFile(fx("valid.json"), dir) == 1);
+        CHECK(r.resolveBuilding("example_name") == r.resolve("staticProp", "example_name"));   // a staticProp record wins
     }
     {   ModelOverrideRegistry r; CHECK(r.loadFromFile(fx("malformed.json"), dir) == 0); }
     {   ModelOverrideRegistry r; CHECK(r.loadFromFile(fx("does_not_exist.json"), dir) == 0); }

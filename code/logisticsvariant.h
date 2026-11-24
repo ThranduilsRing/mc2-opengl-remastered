@@ -34,6 +34,7 @@ enum LOGISTICS_COMPONENT_LOCATION
 
 
 namespace mc2pkg { struct PackageChassis; }
+class LogisticsVariant;
 
 class LogisticsChassis
 {
@@ -47,6 +48,10 @@ public:
 	int				getNameID() const { return static_cast<int>(( uiNameIDOverride != -1 ? uiNameIDOverride : chassisNameID )); }
 	int				getEncyclopediaID() const { return static_cast<int>(( uiEncyclopediaIDOverride != -1 ? uiEncyclopediaIDOverride : encyclopediaID )); }
 	const std::string& getFileName() const { return fileName; }
+	// The name lists, titles and headers show: string table, then the authored free-text name, then the variant, then the file stem.
+	std::string		getDisplayName( const LogisticsVariant* variant = nullptr ) const;
+	void			setAuthoredName( std::string name ) { authoredName = std::move( name ); }
+	const std::string&	getAuthoredName() const { return authoredName; }
 	int				getHouseID() const{ return houseID; }
 	float			getMaxWeight() const{ return maxWeight; }
 	const std::string&	getMechClass() const  { return mechClass; }
@@ -90,6 +95,7 @@ protected:
 	long				iconPictureIndex;
 	long				ID;
 	std::string			fileName;
+	std::string			authoredName;	// the MechName cell, or free text in the buildings.csv NameID cell
 	std::string			mechClass;
 	std::string			iconFileNames[3];
 
@@ -168,6 +174,7 @@ protected:
 		unsigned long	getID() const { return ID; }
 		float			getMaxWeight() const { return chassis->maxWeight; }
 		long			getChassisName() const { return chassis->chassisNameID; }
+		std::string		getChassisDisplayName() const { return chassis->getDisplayName( this ); }
 		const std::string&	getName() const { return variantName; }
 		long			getEncyclopediaID() const { return chassis->getEncyclopediaID(); }  // UI-PROFILE-1: via override-aware chassis accessor
 		long			getHelpID() const { return chassis->helpID; }

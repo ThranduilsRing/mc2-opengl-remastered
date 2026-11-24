@@ -16,6 +16,7 @@ Never writes under <deploy>/data/. Python 3 stdlib only. No emoji.
 """
 from __future__ import annotations
 import argparse, json, os, shutil, sys, tempfile
+from struct import error as struct_error
 
 # FROZEN-AWARE: when PyInstaller-frozen, bundled python modules + DATA (recipe, shims/)
 # live under sys._MEIPASS. Dev: they live next to this file.
@@ -129,6 +130,56 @@ def copy_shims(deploy, mod_id):
             n += 1
     return n
 
+STRINGS_REL = "data/defs/text/en_us/y_mc2x_strings.fit"
+
+
+def _fit_text(text):
+    return text.replace("\\", "\\\\").replace('"', "'").replace("\r", "").replace("\n", "\\n")
+
+
+def write_mc2x_strings(source, deploy):
+    """MC2X names its units, pilots and weapons with mc2xres.dll string ids. The cveg aliases point at
+    "cveg.dll.<id>" keys and ids past the stock table read "Unassigned"/"undefined" without these records,
+    so every dll string becomes a String record (non-mc2res source, so it wins over the stock text)."""
+    import strings as mc2x_strings
+    try:
+        table = mc2x_strings.extract_strings(os.path.join(source, "mc2xres.dll"))
+    except (OSError, struct_error, IndexError, TypeError):
+        table = {}
+    if not table:
+        print("WARNING: mc2xres.dll has no readable string table; MC2X names stay unresolved", file=sys.stderr)
+        return 0
+    body = ["FITini", "", "// MC2X strings from the user's mc2xres.dll (written by mc2x_import)."]
+    for sid, text in sorted(table.items()):
+        if text.strip():
+            body += ["", "String {", f'    key = "cveg.dll.{sid}"', f'    text = "{_fit_text(text)}"',
+                     f"    legacyId = {sid}", '    source = "cveg_dll"', "}"]
+    _write(os.path.join(deploy, "mods", "mc2x-compat"), STRINGS_REL, ("\n".join(body) + "\n").encode("utf-8"))
+    return sum(1 for t in table.values() if t.strip())
+
+
+def write_mc2x_roster(deploy):
+    """MC2X purchase files use pmp_ aliases for the shared pmw pilot profiles."""
+    from pathlib import Path
+    root = Path(deploy) / "mods/mc2x-compat"
+    warriors = root / "data/missions/warriors"
+    warriors.mkdir(parents=True, exist_ok=True)
+    for profile in sorted(warriors.glob("pmw*.fit")) + sorted((root / "data/missions/profiles").glob("pmw*.fit")):
+        target = warriors / ("pmp_" + profile.stem[3:].lower() + ".fit")
+        if not target.exists():
+            target.write_bytes(profile.read_bytes())
+    from transfer_mc2x_campaign import write_player_roster
+    return write_player_roster(root, root / "data/objects/pilots.csv")
+
+
+def write_cveg_roster(deploy):
+    """CVE-G campaigns buy player pilots by their pmp_ names, but MC2X's roster file lists only the pmw
+    warriors, so the bay had no pilots. cveg's roster is the compat roster plus every pmp_ pilot it ships."""
+    from transfer_mc2x_campaign import write_player_roster
+    return write_player_roster(os.path.join(deploy, "mods", "cveg"),
+                              os.path.join(deploy, "mods", "mc2x-compat", "data/objects/pilots.csv"))
+
+
 def _is_generated(deploy, mod_id):
     p = os.path.join(deploy, "mods", mod_id, "mc2x_import_report.json")
     try:
@@ -201,6 +252,9 @@ def main(argv=None):
                 print(f"  {m}: extracted {len(w)} + {sh} shims, {len(miss)} missing-from-install")
                 for name in miss:
                     print(f"WARNING: {m}: missing recipe file: {name}", file=sys.stderr)
+            print(f"  mc2x-compat: {write_mc2x_strings(args.source, staged.deploy)} mc2xres.dll strings")
+            print(f"  mc2x-compat: {write_mc2x_roster(staged.deploy)} shared player pilot aliases")
+            print(f"  cveg: {write_cveg_roster(staged.deploy)} player pilots in the roster")
             if not os.path.isfile(os.path.join(staged.deploy, "mods", "mc2x-compat", "data/objects/object2.pak")):
                 print("ERROR: no data/objects/object2.pak produced for mc2x-compat", file=sys.stderr)
                 return 2

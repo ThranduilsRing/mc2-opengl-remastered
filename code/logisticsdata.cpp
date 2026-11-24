@@ -131,10 +131,8 @@ bool				LogisticsData::startNewCampaign( mc2::czstring fileName )
 	}
 #endif
 
-	clearInventory();
+	resetCampaignRoster();
 	resourcePoints = 0;
-	clearPilots();
-	initPilots();
 
 	if ( !missionInfo->init( file ) )
 	{
@@ -162,13 +160,8 @@ bool				LogisticsData::startNewCampaign( mc2::czstring fileName )
 
 void LogisticsData::startMultiPlayer()
 {
-	clearInventory();
+	resetCampaignRoster();
 	resourcePoints = 0;
-	clearPilots();
-	initPilots();
-
-	// kill all old designer mechs
-	clearVariants();
 
 	// need to initialize multiplayer variants here...
 	// Variants come from the merged VFS index (mods + loose + FST), on every platform (the old
@@ -330,11 +323,9 @@ int		LogisticsData::getVehicles( const LogisticsVehicle** pChassis, int& count )
 
 std::optional<std::reference_wrapper<LogisticsVehicle>> LogisticsData::getVehicle( mc2::czstring pName )
 {
-	char tmpStr[256];
 	for (auto & vehicle : vehicles)
 	{
-		cLoadString( vehicle->getNameID(), tmpStr, 255 );
-		if ( S_stricmp( tmpStr, pName ) == 0 )
+		if ( S_stricmp( vehicle->getDisplayName().c_str(), pName ) == 0 )
 		{
 			return *vehicle;
 		}
@@ -515,9 +506,7 @@ void	LogisticsData::setSingleMission( mc2::czstring pName )
 {
 	missionInfo->setSingleMission( pName );
 	missionInfo->setRules( prefs.gameRules );	// after clear(): solo remembers the last-used rules (options.cfg)
-	clearVariants();
-	clearInventory();
-	initPilots(); // reset pilotsb
+	resetCampaignRoster();
 	updateAvailability();
 }
 

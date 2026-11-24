@@ -291,7 +291,9 @@ void main() {
                        (uT.atlasTopLeftY-vWorldPos.y)*uT.atlasOneOverWorldUnits);
         vec3 macro = textureLod(u_colormap,uv,0.0).rgb;
         vec3 tint = macro / max(dot(macro,vec3(0.299,0.587,0.114)),0.01);
-        vec3 albedo = propDecodeColor(materialAlbedo * mix(vec3(1),tint,0.25));
+        float baseBlend = clamp((1.0 - vTree.y) * 2.5, 0.0, 1.0);   // root plate / flare: see color_prop_tier1.vert
+        vec3 treeAlbedo = mix(materialAlbedo, macro * 0.85, 0.85 * baseBlend);
+        vec3 albedo = propDecodeColor(treeAlbedo * mix(vec3(1),tint,0.25));
         vec3 sh[9]; for (int k=0;k<9;++k) sh[k]=uEnv.shDiffuse[k].xyz;
         // The environment carries the unrotated probe. Evaluate it in the sun's
         // frame so its strong directional sky fill agrees with the shadow map.

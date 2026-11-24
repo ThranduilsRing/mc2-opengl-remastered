@@ -21,9 +21,52 @@
 
 #include <algorithm>
 #include <cstring>
+#include <cmath>
 #include <string_view>
+#include <vector>
 
 namespace mc2clip {
+
+struct StrideMeasurement {
+    float estimate = 0, planted = 0;
+    float speed() const {
+        return planted >= 0.5f * estimate && planted <= 1.1f * estimate ? planted : estimate;
+    }
+};
+
+// Samples are unscaled Y-up joint globals at 30 Hz, before the GPU axis conversion.
+template<class Point>
+StrideMeasurement measureStride(const std::vector<Point> (&feet)[2], float duration) {
+    StrideMeasurement result;
+    if (duration <= 0 || feet[0].size() < 3 || feet[0].size() != feet[1].size()) return result;
+    float ranges[2] = {};
+    for (const auto& foot : feet) {
+        float lo[2] = {foot[0].x, foot[0].z}, hi[2] = {lo[0], lo[1]};
+        for (const auto& p : foot) {
+            lo[0] = std::min(lo[0], p.x); hi[0] = std::max(hi[0], p.x);
+            lo[1] = std::min(lo[1], p.z); hi[1] = std::max(hi[1], p.z);
+        }
+        result.estimate += std::max(hi[0] - lo[0], hi[1] - lo[1]) / duration;
+        for (int axis = 0; axis < 2; ++axis) ranges[axis] += hi[axis] - lo[axis];
+    }
+    float displacement[2] = {};
+    int samples[2] = {};
+    for (size_t f = 1; f < feet[0].size(); ++f) {
+        for (int k = 0; k < 2; ++k) {
+            if (feet[k][f - 1].y >= feet[1 - k][f - 1].y || feet[k][f].y >= feet[1 - k][f].y) continue;
+            const float delta = ranges[0] > ranges[1] ? feet[k][f].x - feet[k][f - 1].x
+                                                     : feet[k][f].z - feet[k][f - 1].z;
+            const int direction = delta < 0 ? 0 : 1;
+            if (delta == 0) continue;
+            displacement[direction] += std::abs(delta);
+            ++samples[direction];
+        }
+    }
+    // The dominant stance direction is backwards (also handles reverse clips).
+    const int backward = displacement[0] >= displacement[1] ? 0 : 1;
+    if (samples[backward]) result.planted = displacement[backward] * 30.0f / samples[backward];
+    return result;
+}
 
 enum class Mode : int { Loop = 0, Once = 1 };
 

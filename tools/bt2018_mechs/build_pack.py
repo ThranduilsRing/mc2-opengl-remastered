@@ -103,6 +103,11 @@ def install_legacy_string_ids(install: Path):
     return ids
 
 
+def package_ktx2(pkg):
+    """The cooked textures a package.json names; the pack carries them next to the package."""
+    return [k for slot in ("albedo", "ao", "normal") if (k := pkg.get("materials", {}).get(slot, {}).get("ktx2"))]
+
+
 def build(args, out: Path):
     wm, bp = C.load_tables()
     from tools.bt2018_mechs import roster
@@ -115,7 +120,8 @@ def build(args, out: Path):
 
     install = Path(args.install)
     conv = Path(args.conversions)
-    tex_src = Path(args.texture_source) if args.texture_source else None
+    tex_src = Path(args.texture_source) if args.texture_source else install / "data" / "tgl"
+    missing_ktx2 = []
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)
@@ -178,51 +184,56 @@ def build(args, out: Path):
     for rel, text in files.items():
         write_text(out / rel, text)
 
-    # Assets: copied from the owner's converted files. With --bundles each state plays the
-    # family's own BT clip, baked from the player's bundle under the Atlas state name (BT's
-    # override controller maps <family>_X onto atlas_X); a state without one keeps the
-    # model-space Atlas retarget.
+    # Own override states win; missing states keep the existing Atlas retarget.
     sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
-    from bt2018_retarget_clips import retarget_file
+    from bt2018_retarget_clips import pose_table, retarget_file
+    from tools.bt2018_import import bake_clips as BK
+    pose_rows = []
     sources = {}
+    clip_manifest = {}
     assets = {}
     for p, recipe in zip(profiles, recipes_loaded):
         model = recipe["mc2"]["model"]
         dst = out / "data" / "tgl" / f"{model['pack_path']}.glb"
         dst.parent.mkdir(parents=True, exist_ok=True)
-        retarget_file(str(conv / model["source_glb"]), str(conv / "atlas.glb"), str(dst))
+        fam = recipe["family"].lower()
+        native = BK.chassis_clips(args.bundles, fam)
+        sources[fam] = len(native)
+        retarget_file(str(conv / model["source_glb"]), str(conv / "atlas.glb"), str(dst), own_clips=native)
+        from pygltflib import GLTF2
+        fallback = sorted(a.name for a in GLTF2().load(str(dst)).animations if a.name not in native)
+        clip_manifest[fam] = {"own": sorted(native), "fallback": fallback}
+        print(f"[bt2018] {fam}: own={len(native)} fallback={fallback}")
+        r = retarget_file.last_report
+        if r:
+            pose_rows.append((model['pack_path'], r['error_before'], r['error_after'], r['iterations'], r['converged'], r['blend']))
         from tools.bt2018_mechs import glb_guard
         for name, n in glb_guard.dedupe_node_names(dst).items():
             print(f"[bt2018] {dst.name}: renamed {n} duplicate node(s) '{name}' (Assimp rejects repeats)")
         for name in glb_guard.opaque_mech_materials(dst):
             print(f"[bt2018] {dst.name}: material '{name}' set OPAQUE (BLEND/MASK makes the importer look for an a_ texture)")
-        fam = recipe["family"].lower()
-        if args.bundles and fam != "atlas":
-            from tools.bt2018_extract import bake_clips as BK
-            raw = Path(args.bundles)
-            cand = [raw / f"chrprfmech_{fam}base-001"] + [raw / b for b in ("heavymetal", "flashpoint", "urbanwarfare")]
-            native = next((n for n in (BK.native_clips(str(b), fam) for b in cand if b.is_file()) if n), {})
-            BK.add_to_glb(str(dst), str(dst), {"atlas_" + k.split("_", 1)[1]: v for k, v in native.items()})
-            sources[fam] = len(native)
         assets[str(dst.relative_to(out)).replace("\\", "/")] = sha256(dst)
         for t in model["textures"]:
             dst = out / "data" / "tgl" / Path(t).name
             shutil.copyfile(conv / t, dst)
             assets[str(dst.relative_to(out)).replace("\\", "/")] = sha256(dst)
-        if tex_src:
-            pkg = C.load_json(conv / model["package_json"])
-            for slot in ("albedo", "ao", "normal"):
-                k = pkg.get("materials", {}).get(slot, {}).get("ktx2")
-                if k and (tex_src / k).is_file():
-                    dst = out / "data" / "tgl" / k
-                    shutil.copyfile(tex_src / k, dst)
-                    assets[str(dst.relative_to(out)).replace("\\", "/")] = sha256(dst)
+        for k in package_ktx2(C.load_json(conv / model["package_json"])):
+            if not (tex_src / k).is_file():
+                missing_ktx2.append(k)
+                continue
+            dst = out / "data" / "tgl" / k
+            shutil.copyfile(tex_src / k, dst)
+            assets[str(dst.relative_to(out)).replace("\\", "/")] = sha256(dst)
         # P6: icons rendered offline from the same model (generated, so hashed with the generated files).
         if not args.no_icons:
             from tools.bt2018_mechs import render_icons
             for name in render_icons.build_icons(conv / model["source_glb"], p["stem"], out / "data" / "art"):
                 dst = out / "data" / "art" / name
                 assets[f"data/art/{name}"] = sha256(dst)
+
+    if missing_ktx2:      # a pack without its cooked textures draws untextured mechs: stop instead of shipping it
+        sys.exit(f"{len(missing_ktx2)} cooked texture(s) not found in {tex_src} (pass --texture-source <install>/data/tgl): "
+                 + ", ".join(sorted(set(missing_ktx2))[:5]) + " ...")
 
     mod = {
         "schema": MOD_SCHEMA,
@@ -243,11 +254,15 @@ def build(args, out: Path):
         "assets": dict(sorted(assets.items())),
         "stock_references_unmodified": stock_refs,
         "native_clip_counts": sources,
+        "clip_manifest": clip_manifest,
         "balance_profile": bp["id"],
         "weapon_map_version": wm["version"],
         "profiles": {p["chassis_id"]: {"variants": [v["name"] for v in p["variants"]], "report": p["report"]} for p in profiles},
     }
     write_text(out / "content" / "report.json", json.dumps(report, indent=2) + "\n")
+    if pose_rows:                      # ready-pose self-check against each chassis' BT2018 bind
+        write_text(out / "content" / "pose_table.txt", pose_table(pose_rows) + "\n")
+        print(pose_table(pose_rows))
     from tools.bt2018_mechs import glb_guard
     broken = glb_guard.validate_pack_glbs(out)
     if broken:
@@ -259,12 +274,13 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--install", required=True)
     ap.add_argument("--conversions", default="A:/Games/mc2-opengl/MC2Conversions")
-    ap.add_argument("--texture-source", default="")
+    ap.add_argument("--texture-source", default="", help="cooked .ktx2 directory (default <install>/data/tgl)")
     ap.add_argument("--mod-id", default="bt2018_mechs")
     ap.add_argument("--out", default="")
     ap.add_argument("--only", default="")
     ap.add_argument("--no-icons", action="store_true", help="skip the offline icon render (P6)")
-    ap.add_argument("--bundles", default="", help="BT assetbundles dir: bake native clips (py -3.12, UnityPy 1.25.0)")
+    ap.add_argument("--bundles", required=True,
+                    help="owner's BT assetbundles directory (UnityPy pinned in tools/bt2018_import/requirements.txt)")
     ap.add_argument("--check", action="store_true", help="rebuild into a temp dir and compare with the existing mod")
     args = ap.parse_args()
     out = Path(args.out) if args.out else Path(args.install) / "mods" / args.mod_id

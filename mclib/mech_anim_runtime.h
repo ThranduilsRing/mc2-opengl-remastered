@@ -87,7 +87,8 @@ int ImportedGpuLiftAxis();
 void UnregisterImportedActor(const void* actorKey);
 // Drop the imported-anim entry (and its scene) of a type being freed.
 void UnregisterImportedType(const void* multi);
-void CopyImportedActorPose(const void* source, const void* destination);
+void CopyImportedActorPose(const void* source, const void* destination,
+                           const mc2::sim::ImportedAnimState& presentation, float torsoYawDeg);
 
 // AO-1: imported mech's AO texture name (materials.ao.tga from the package), or nullptr
 // if not imported / no AO declared. Caller loads it + binds on texture unit 6.

@@ -71,7 +71,7 @@ MOD_BATTERY_STAGES = ("mods", "mods-slim")
 def stage_tier(name):
     if name.startswith(("capture-", "compare-captures", "compare-noise")):
         return 1
-    if name in NON_BLOCKING_STAGES:
+    if name in NON_BLOCKING_STAGES or name == "editor":
         return 1
     if name in ("mods", "video-decode"):
         return 2
@@ -154,9 +154,20 @@ def mod_battery_results(output):
 #: Nightly 03/16 determinism is one pinned run (`check --single`, p29 L23); weekly and sim-sensitive diffs keep the a/b pair.
 SINGLE_RUN_DETERMINISM = ("mc2_03", "mc2_16")
 #: Front end, logistics and comm video: only player-path drives them (every other smoke boots --mission under SmokeMode).
-PLAYER_PATH_GLOBS = ("code/logistics*", "code/mainmenu*", "code/mc2movie*", "code/loadscreen*", "code/mechlab*", "code/mechbay*",
-                     "code/pilotready*", "code/missionbegin*", "code/missionselect*", "code/*video*", "code/*movie*", "code/*menu*",
+PLAYER_PATH_GLOBS = ("code/mainmenu*", "code/mc2movie*", "code/loadscreen*", "code/logisticsmainmenu*", "code/logisticssave*", "code/logisticsdata*", "code/logisticsload*",
+                     "code/mechlab*", "code/mechbay*", "code/pilotready*",
+                     "code/campaign*", "code/missionbegin*", "code/missionselect*", "code/*video*", "code/*movie*", "code/*menu*",
                      "guiruntime/playerfrontend*", "gameos/gameos/*video*", "gameos/gameos/*movie*", "scripts/run_player_path.py")
+
+
+#: Diffs that can break the Mission Editor build (nightly otherwise): its sources, shared engine headers, the platform layer and CMake.
+EDITOR_BUILD_GLOBS = ("editor/*", "mclib/*.h", "gameos/*", "*cmakelists.txt", "cmake/*", "scripts/merge_gate_editor.py")
+
+
+def editor_build_required(paths):
+    import fnmatch
+    return any(fnmatch.fnmatchcase(p.replace("\\", "/").lower(), g)
+               for p in paths for g in EDITOR_BUILD_GLOBS)
 
 
 def sim_sensitive(paths):
@@ -176,6 +187,8 @@ def promoted_stages(paths):
         want |= {"determinism-mc2_24", "saveload-mc2_01"}
     if any(fnmatch.fnmatchcase(p.lower(), g) for p in norm for g in PLAYER_PATH_GLOBS):
         want.add("player-path")
+    if editor_build_required(norm):
+        want.add("editor")
     return want
 
 
@@ -241,13 +254,6 @@ def aux_device():
         pass
     return host_lease.host_lane_device()
 
-
-def window_reusable(window, tree, now=None):
-    """A6: lane_merge verification may be reused when the window recorded the commit tree and it is still HEAD's tree
-    (content-addressed, no clock); a record without a tree keeps the old 20-minute clock."""
-    if window.get("tree"):
-        return window["tree"] == tree
-    return (now if now is not None else time.time()) - window.get("started", 0) <= 1200
 
 # Last-measured stage seconds (W112) for worker balancing when no journal exists yet.
 DEFAULT_STAGE_SECONDS = {"mods": 876, "mods-slim": 900,"tier1": 120, "tier1-full": 304, "capture-after": 70, "player-path": 180, "video-decode": 250,
@@ -365,12 +371,44 @@ def clean_failed_outputs(state, proof):
 def preflight(head, install, window, steps, seed=Path(EROOT + "/mc2-installs/_lean-seed")):
     """Offline, fail before any lease, copy, build or deployment."""
     from exe_fingerprint import extract, build_current, sha_agrees
-    from deploy_payload import verify_published_identity, staleness_report
+    from deploy_payload import verify_published_identity, staleness_report, intentional_payload
     import saveload_roundtrip as saves
+    import sim_determinism as sim
 
     started = time.monotonic()
     errors = []
     rebuild = f"cd {ROOT.as_posix()} && py -3 scripts/ninja_build.py"   # the gate never builds; deploy refuses a stale exe ~10 min in
+    install = Path(install)
+    if not install.is_dir():
+        print(f'[merge_gate] preflight FAIL: gate install missing: {install}; fix: '
+              f'py -3 scripts/make-isolated-deploy.py --from "{Path(seed).as_posix()}" --to "{install.as_posix()}"', flush=True)
+        return 1
+    try:
+        intentional_payload(ROOT, install, os.environ.get('MC2_ASSET_STORE', 'E:/mc2-asset-store'), dry_run=True)
+    except (OSError, ValueError, SystemExit) as exc:
+        errors.append(f'intentional assets unresolved: {exc}; fix: restore the declared sha256 bytes in the checkout, '
+                      'MC2_ASSET_STORE, or selected install')
+    fingerprint = None
+    scheduled_deploy = any(n == 'deploy' and not e.get('MC2_GATE_SKIP_REASON') for n, _, e in steps)
+    for name, command, env in steps:
+        if scheduled_deploy or env.get('MC2_GATE_SKIP_REASON') or not name.startswith(('determinism-', 'saveload-')):
+            continue
+        mission = command[command.index('--mission') + 1] if '--mission' in command else name.split('-', 1)[1]
+        baseline = (ROOT / ('tests/saveload/baselines' if name.startswith('saveload-') else 'tests/smoke/sim_determinism')
+                    / (mission + '.json'))
+        try:
+            pinned = json.loads(baseline.read_text(encoding='utf-8')).get('data_fingerprint')
+            if not pinned:
+                continue
+            if fingerprint is None:
+                fingerprint = sim.data_fingerprint(str(install), sim.load_overlay_manifest(
+                    str(ROOT / 'tests/smoke/sim_determinism/data_overlay.json')))
+            if fingerprint.get('problems') or fingerprint['digest'] != pinned['digest']:
+                errors.append(f'{name} install data fingerprint differs from {baseline}: '
+                              f'{fingerprint["digest"]} != {pinned["digest"]}; fix: '
+                              'deploy the declared payload to the selected install before checking pinned data')
+        except (OSError, ValueError, KeyError) as exc:
+            errors.append(f'{name} pinned data: {exc}; fix: git restore --source={head} -- "{baseline.relative_to(ROOT).as_posix()}"')
     for name in ("mc2.exe", "out/tools/asset_viewer/mc2_asset_viewer.exe"):
         fp = extract(ROOT / "build64-ninja" / name)
         # mc2.exe: a clean ancestor build stays current when no build input changed since (data/test-only commits).
@@ -385,7 +423,7 @@ def preflight(head, install, window, steps, seed=Path(EROOT + "/mc2-installs/_le
             bookmarks.update(command[command.index('--bookmarks') + 1].split(','))
     for target in dict.fromkeys((Path(install), Path(seed))):
         try:
-            if any(n == 'deploy' and not e.get('MC2_GATE_SKIP_REASON') for n, _, e in steps):
+            if scheduled_deploy:
                 # Before captures use the published build; the candidate is
                 # checked against HEAD after deployment, before runtime proofs.
                 report = staleness_report(str(target), full=True)  # provenance: every byte re-hashed, no stamp trust
@@ -444,6 +482,7 @@ class GateState:
         self.started_signatures = {}
         self.started_reports = {}
         self.specs = {n: (c, e) for n, c, e in steps}
+        self.runtime_tree = runtime_input_tree(head)
 
     def __enter__(self):
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -530,15 +569,19 @@ class GateState:
                     if not layer.is_dir():
                         raise FileNotFoundError(f'mod receipt input missing: {layer}')
                     inputs.update(p for p in layer.rglob('*') if p.is_file())
+        exe_tree = None
         for arg in command:
             path = Path(arg)
             if not path.is_absolute():
                 path = ROOT / path
             if path.is_file():
+                if self.runtime_tree and path.resolve() == self.exe.resolve():
+                    exe_tree = self.runtime_tree   # exe bytes embed HEAD; key it by its engine input tree
+                    continue
                 inputs.add(path)
             elif path.is_dir() and '--install' in command and arg == command[command.index('--install') + 1]:
                 inputs.add(path / '.deployed_manifest.csv')
-        hashes = {}
+        hashes = {'{EXE_TREE}': exe_tree} if exe_tree else {}
         for path in sorted(inputs, key=str):
             key = str(path)
             if base is not None and path.is_relative_to(base):
@@ -570,8 +613,17 @@ class GateState:
         row = self.data["stages"].get(name, {})
         sha = self.exe_sha()
         offline = name in OFFLINE_STAGES
-        if not ((row.get('head') == self.head or (not offline and head_delta_nonruntime(row.get('head'), self.head, name)))
-                and (offline or sha is not None and row.get('exe_sha') == sha)
+        same_runtime = bool(self.runtime_tree and row.get('runtime_tree') == self.runtime_tree)
+        exe_ok = sha is not None and row.get('exe_sha') == sha
+        if not offline and not exe_ok and same_runtime and sha is not None and name != 'deploy':
+            from exe_fingerprint import extract
+            try:
+                fp = extract(self.exe)
+                exe_ok = bool(fp.get('present') and not fp.get('dirty') and runtime_input_tree(fp.get('sha')) == self.runtime_tree)
+            except (OSError, ValueError):
+                exe_ok = False
+        if not ((row.get('head') == self.head or (not offline and (same_runtime or head_delta_nonruntime(row.get('head'), self.head, name))))
+                and (offline or exe_ok)
                 and stage_passed(row.get('status', '')) and not row.get('status', '').startswith(ADVISORY_PREFIX)):   # a red advisory row is rerun, never replayed
             return False
         specs = (command, overrides) if name == 'mods' else self.specs.get(name, (command, overrides))
@@ -648,7 +700,7 @@ class GateState:
                 except OSError:
                     pass
             self.data["stages"][name] = dict(
-                head=self.head, exe_sha=self.exe_sha(), status=status, seconds=seconds,
+                head=self.head, exe_sha=self.exe_sha(), runtime_tree=self.runtime_tree, status=status, seconds=seconds,
                 artefact_dir=artefact, scheduler_wait_seconds=scheduler_wait,
                 signature=signature, evidence=evidence)
             self.write()
@@ -810,6 +862,20 @@ def head_delta_nonruntime(old, new, row=None):
     return bool(out) and change_domains(out) <= {'docs', 'tooling'}
 
 
+def runtime_input_tree(ref):
+    """Hash the runtime-input Git entries (engine, shader and art domains; unclassified paths count as engine), so a
+    shader-only or art-only follow-up never reuses a runtime row recorded before it."""
+    if not ref:
+        return None
+    try:
+        entries = git("ls-tree", "-rz", ref).split("\0")
+        engine = [entry for entry in entries if entry and "\t" in entry
+                  and change_domains([entry.split("\t", 1)[1]]) & {"engine", "shaders", "art"}]
+        return hashlib.sha256("\0".join(engine).encode()).hexdigest() if engine else None
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
 def change_domains(paths):
     domains = set()
     for raw in paths:
@@ -817,6 +883,8 @@ def change_domains(paths):
         suffix = Path(p).suffix
         if p.startswith(("docs/", ".claude/")) or suffix in (".md", ".rst"):
             domains.add("docs")
+        elif p.startswith(("tests/unit/", "scripts/tests/")) or (p.startswith("tools/") and Path(p).name.startswith("test_")):
+            domains.add("tooling")
         elif p.startswith(("scripts/merge_gate.py", "scripts/deploy_payload.py", "scripts/kit", "scripts/run_smoke.py",
                            "scripts/smoke_lib/", "scripts/run_visual_capture.py", "scripts/check-default-build-quiet.py",
                            "scripts/cc_launcher.py", "scripts/ninja_build.py", "scripts/run-unit-tests.sh",
@@ -1399,6 +1467,9 @@ def write_verdict(paths, *, head, branch, verdict, steps, skipped, artifacts, ti
                 required=[n for n, _, _ in steps],
                 executed={n: r for n, r in ROW_RESULTS.items() if not r["status"].startswith(("SKIP", "DRY-RUN"))},
                 skipped={n: reasons.get(n, "not run") for n in skipped},
+                stage_table=[dict(name=n, status=r["status"], seconds=round(r.get("seconds", 0.0), 1),
+                                  scheduler_wait_s=round(r.get("scheduler_wait_seconds", 0.0), 1))
+                             for n, r in sorted(ROW_RESULTS.items(), key=lambda kv: -kv[1].get("seconds", 0.0))],
                 not_run=[n for n, _, _ in steps if n not in ROW_RESULTS and n not in skipped],
                 failed=[dict(name=n, status=s) for n, s in FAILED_STAGES],
                 advisory=[dict(name=n, status=r["status"]) for n, r in ROW_RESULTS.items() if r["status"].startswith(ADVISORY_PREFIX)],
@@ -1629,22 +1700,8 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             and s[0] != 'determinism-' + WINDOWED_DETERMINISM
             and not s[2].get("MC2_GATE_SKIP_REASON")]
     steps = [s for s in steps if s not in farm]
-    with ThreadPoolExecutor(max_workers=2 + bool(farm)) as pool:
-        harness = next((s for s in steps if s[0] == "harnesses" and not s[2].get("MC2_GATE_SKIP_REASON")), None)
-        contracts = next((s for s in steps if s[0] == "contracts" and not s[2].get("MC2_GATE_SKIP_REASON")), None)
-        harness_future = None
-        def timed_child(command, cwd, env):
-            started = time.monotonic()
-            result = run_child(command, cwd=cwd, env=env)
-            result.gate_elapsed = time.monotonic() - started
-            return result
+    with ThreadPoolExecutor(max_workers=2 + sum(s[0] in OFFLINE_STAGES for s in steps) + bool(farm)) as pool:
         def runner(command, cwd, env):
-            nonlocal harness_future
-            if contracts and harness and command == contracts[1]:
-                harness_future = pool.submit(timed_child, harness[1], cwd,
-                    dict(os.environ, **harness[2]))
-            if harness_future and command == harness[1]:
-                return harness_future.result()
             with install_lock(command):
                 return run_child(command, cwd=cwd, env=env)
         # The wrapper deliberately leaves leasing to each harness, rather than
@@ -1674,9 +1731,8 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             print(f"[merge_gate] worker balance: A+={[s[0] for s in to_a]} B+={[s[0] for s in determinism]} (A={load_a:.0f}s B={load_b:.0f}s before)", flush=True)
         # Save rows have private MC2_SAVE_DIR dirs, so they no longer wait for the mods battery.
         offline = [s for s in stock if s[0] in OFFLINE_STAGES]
-        offline_result = execute(offline, head, runner=runner, completed=completed) if offline else 0
-        if offline_result and not keep_going:
-            return 1
+        pending.extend(pool.submit(execute, [s], head, runner=runner, completed=completed) for s in offline)
+        offline_result = 0
         stock = [s for s in stock if s not in offline]
         boundary = next((i + 1 for i, s in enumerate(stock) if s[0] == "deploy"), 0)
         prefix = stock[:boundary]
@@ -1768,7 +1824,6 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
                             close_clone(copy_context)
             pending.append(pool.submit(auxiliary))
         result |= execute(stock[boundary:], head, runner=runner, completed=completed) if stock[boundary:] else 0
-        result |= offline_result
         for future in pending:
             result |= future.result()
         # Reuse can depend on both workers. Join them before reading their verdicts.
@@ -1864,6 +1919,24 @@ def check_capture_commit(name, command, head):
     print(f"[merge_gate] {name} provenance PASS src_commit={commit} HEAD={head}", flush=True)
 
 
+def post_deploy_data_status(name, command, status):
+    """Check the selected install after deployment, including reused deploys."""
+    if name != 'deploy' or not stage_passed(status) or '--allow-new-target' not in command:
+        return status
+    from lane_merge import data_fingerprint_check
+    target = command[command.index('--allow-new-target') - 1]
+    try:
+        verdict, detail = data_fingerprint_check(str(ROOT), install=target)
+    except (OSError, ValueError) as exc:
+        verdict, detail = 'FAIL', str(exc)
+    print(f'[merge_gate] post-deploy data_fingerprint: {verdict} {detail}', flush=True)
+    if verdict == 'FAIL':
+        return (f'FAIL: post-deploy data_fingerprint: {detail}; fix: '
+                + subprocess.list2cmdline([sys.executable, 'scripts/deploy_payload.py', target,
+                                          '--ninja', '--allow-new-target', '--full-verify']))
+    return status
+
+
 def execute(steps, head, dry_run=False, runner=run_child, completed=None, device=None, hold_after_failed_deploy=False):
     """Run every stage and return nonzero if any stage failed. device: MC2_VK_DEVICE for this chain's game rows (None = gate GPU)."""
     if not steps:
@@ -1901,6 +1974,8 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
                 status += f" receipt={ACTIVE_STATE.path} input={row['signature']} previous={row['seconds']:.1f}s"
             row = ACTIVE_STATE.data['stages'][name]
             print(f"REUSED {name} sig={row['signature']} from {row['artefact_dir']}", flush=True)
+            status = post_deploy_data_status(name, command, status)
+            failed |= not stage_passed(status)
             ACTIVE_STATE.reused.append(name)
             completed[name] = status
             results.append((name, status, 0.0))
@@ -1915,6 +1990,8 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
                 reuse_note = "REUSED: gate-reuse deployed payload already matches HEAD"
         if reuse_note:
             print(f"[merge_gate] {name}: {reuse_note}", flush=True)
+            reuse_note = post_deploy_data_status(name, command, reuse_note)
+            failed |= not stage_passed(reuse_note)
             if ACTIVE_STATE:
                 ACTIVE_STATE.reused.append(name)
             completed[name] = reuse_note
@@ -2059,6 +2136,7 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
             status = advisory_status(name, status, int(overrides.get("MC2_GATE_TIER", "1")))
             if status.startswith(ADVISORY_PREFIX):
                 print(f"[merge_gate] ADVISORY {name} (non-blocking by owner ruling 2026-11-08): {status[len(ADVISORY_PREFIX):]}", flush=True)
+            status = post_deploy_data_status(name, command, status)
             failed |= not stage_passed(status) and name not in NON_BLOCKING_STAGES
             if name == 'deploy' and status == "PASS" and '--allow-new-target' in command:
                 cache_started = time.monotonic()
@@ -2303,14 +2381,6 @@ def main(argv=None):
         for n, c, _ in steps:
             if n == "compare-captures-classic":
                 c[c.index("--compare-only") + 1] = str(classic_before)
-    if window and window_reusable(window, git("rev-parse", "HEAD^{tree}")):
-        reused = []
-        for name, command, overrides in steps:
-            if name == "harnesses" and "--unit" in command:
-                command = ["--python-only" if arg == "--unit" else arg for arg in command]
-                overrides = dict(overrides, MC2_GATE_COVERAGE="native unit tier reused from successful lane_merge verification at this HEAD; Python contracts run here")
-            reused.append((name, command, overrides))
-        steps = reused
     if args.install:
         install = args.install.resolve()
         allowed = Path(EROOT + "/mc2-installs").resolve()

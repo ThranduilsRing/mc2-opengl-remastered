@@ -4892,6 +4892,15 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [
+    "index"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ICON_REGISTRY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
     "key"
    ],
    "count": 1
@@ -4901,7 +4910,7 @@
    "ver": -1,
    "stream": "stdout",
    "keys": [],
-   "count": 2
+   "count": 3
   },
   {
    "tag": "ICON_REGISTRY",
@@ -6132,7 +6141,9 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [
-    "speed"
+    "planted",
+    "estimate",
+    "selected"
    ],
    "count": 1
   },
@@ -7880,6 +7891,7 @@
    "stream": "stdout",
    "keys": [
     "loaded",
+    "skipped",
     "roster"
    ],
    "count": 1
@@ -9058,10 +9070,32 @@
    "stream": "stderr",
    "keys": [
     "event",
+    "file"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SAVE",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [
+    "event",
     "reason",
     "file"
    ],
    "count": 3
+  },
+  {
+   "tag": "SAVE",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "reason",
+    "running",
+    "file"
+   ],
+   "count": 1
   },
   {
    "tag": "SAVELOAD",
@@ -13913,6 +13947,17 @@
     "reason"
    ],
    "count": 2
+  },
+  {
+   "tag": "WATER_STREAM",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "reason",
+    "waterElevation"
+   ],
+   "count": 1
   },
   {
    "tag": "WATER_STREAM",

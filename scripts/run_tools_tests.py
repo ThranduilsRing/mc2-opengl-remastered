@@ -93,11 +93,12 @@ def is_art_test(path):
 def scoped_modules(mods, paths):
     """Directory-local tests follow their tool; flat tests follow the named source or row's existing input list.
 
-    Unknown changed paths select the full suite. The module itself always triggers its test.
+    Unmapped paths are reported for nightly coverage. The module itself always triggers its test.
     """
     import contracts_cache as cc
     from fnmatch import fnmatchcase
     paths = [p for p in paths if p]
+    row_inputs = ("tests/unit/", "tests/saveload/baselines/", "tests/smoke/sim_determinism/")
     declarations = cc.load_decls(ROOT)
     selected, covered = [], set()
     # A path mapped to the other aggregate is still mapped, so a scripts-only
@@ -114,6 +115,11 @@ def scoped_modules(mods, paths):
         if "/tests" in parent and parent != "scripts/tests":
             prefixes += [parent.split("/tests")[0] + "/"]
         globs = [f"{d}/{s}*" for d in ("scripts", "tools") for s in (stem, stem.replace("_", "-"))]
+        if stem == "merge_speedups":
+            globs += ["scripts/deploy_payload.py"]
+        # Flat helper tests sometimes carry a prefix/suffix around the tool name.
+        globs += [p for p in paths if p.startswith(("scripts/", "tools/")) and p.endswith(".py")
+                  and Path(p).stem in stem]
         if stem.startswith(("lane_merge", "laptop_gate", "merge_gate")):
             globs += ["tools/lane_*", "tools/laptop_gate.py", "scripts/merge_gate.py"]
         specs = [s for s in declarations.get(stem, []) if s != "." and not s.startswith(("!", "+"))]
@@ -125,8 +131,12 @@ def scoped_modules(mods, paths):
                 selected.append(mod)
     if not selected and mods and all(is_art_test(m) for m in mods) and any(p.startswith(ART_PREFIXES) for p in paths):
         return mods
-    if any(p not in covered and not p.startswith(("docs/", ".claude/")) and not p.endswith((".md", ".rst")) for p in paths):
-        return mods
+    owned = [p for p in paths if p.startswith(row_inputs) or "allowlist" in p]
+    if owned:
+        print("ROW INPUTS (native/baseline/allowlist): " + ", ".join(owned))
+    unmapped = [p for p in paths if p not in covered and p not in owned and not p.startswith(("docs/", ".claude/")) and not p.endswith((".md", ".rst"))]
+    if unmapped:
+        print("UNMAPPED (nightly): " + ", ".join(unmapped))
     return selected
 
 

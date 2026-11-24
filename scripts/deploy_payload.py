@@ -341,10 +341,9 @@ GAME_DATA_PAYLOAD = [
     "data/visual_tuning.json",
     # ImGui UI fonts (GuiRuntime resolves exe/data/fonts/ui first); without them every defs UI text falls back
     # to the ImGui bitmap default font (blocky, low-res at 4K).
-    "data/fonts/ui/Agency-Regular.ttf",
     "data/fonts/ui/Roboto-Medium.ttf",
     "data/fonts/ui/Cousine-Regular.ttf",
-    "data/fonts/ui/Impact.ttf",
+    "data/fonts/ui/LiberationSansNarrow-Bold.ttf",
     "data/fonts/ui/LiberationSans-Regular.ttf",
     "data/fonts/ui/LiberationSansNarrow-Regular.ttf",
     # Native vegetation packs these tracked cards into its 4x2 atlas at load.
@@ -1641,19 +1640,6 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
             fail(f"game data payload missing in source: {p}")
         items.append((p, rel, "support"))
 
-    # Intentional mip overrides must travel with their committed declarations.
-    import asset_parity
-    for rel, expected in asset_parity.intentional_changes(git_head(src_root), Path(src_root)).items():
-        if re.fullmatch(r"data/tgl/[0-9]+/[^/]+\.tga", rel):
-            p = os.path.join(src_root, rel)
-            # Historical declarations can live only in the published install;
-            # asset_parity still verifies those installed bytes after sync.
-            if not os.path.isfile(p):
-                continue
-            if require_build and sha256_file(p) != expected:
-                fail(f"declared mip asset missing or hash mismatch: {p}")
-            items.append((p, rel, "support"))
-
     for path in sorted((Path(src_root) / "data/art").glob("mc2_component_*.tga")):
         items.append((str(path), path.relative_to(src_root).as_posix(), "support"))
     # MENU-PLANET-MODERN-1: main-menu backdrop (hi-res tiles + the fit that places them).
@@ -1920,9 +1906,14 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
     copy_seconds = 0.0
     verify_started = time.perf_counter()
 
-    for src, rel, kind in items:
+    for item in items:
+        src, rel, kind = item
+        expected = getattr(item, "declared_sha", None)
+        normalize = kind != "intentional" and rel.endswith(".mcasset.json")
         dst = os.path.join(target_dir, rel)
-        if verified and rel in verified:
+        if kind == "intentional" and expected is None:
+            fail(f"intentional asset missing declared sha256: {rel}")
+        if verified and rel in verified and (expected is None or verified[rel] == expected):
             # Lane seed: source hash and the verified seed file identity plus
             # NTFS ChangeTime match. No write, no second read of unchanged bytes.
             stamp = source_stamp(src)
@@ -1930,12 +1921,14 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
             src_hashes[rel] = (verified[rel], dst_st.st_size, stamp[1] if stamp else None, dst_st.st_mtime_ns)
             skipped += 1
             continue
-        if kind == "kit":
+        if kind in ("kit", "intentional"):
             dst = str(contained_path(kit_root, rel, parents=kit_parents))
         if kind == "pdb" and not os.path.isfile(src):
             pdb_problem = f"source PDB missing: {src}"
             continue
         if rel.replace(os.sep, "/") in preserve and os.path.isfile(dst):
+            if kind == "intentional" and receipts.digest(dst, force=full_verify, hasher=sha256_file) != expected:
+                fail(f"REFUSING preserved intentional asset differs from declaration: {rel}")
             if kind == "exe" and sha256_file(src) != sha256_file(dst):
                 fail(f"REFUSING preserved executable differs from source: {dst}")
             # user-owned file at target (e.g. hand-edited run-with-log.bat):
@@ -1946,15 +1939,17 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
             log(f"preserved {rel} (existing target copy kept)")
             continue
         def source_hash(path):
-            if rel.endswith(".mcasset.json"):
+            if normalize:
                 return hashlib.sha256(Path(path).read_bytes().replace(b"\r\n", b"\n")).hexdigest()
             return sha256_file(path)
 
         s_hash = receipts.digest(src, force=full_verify or kind == "exe", hasher=source_hash,
-                                 variant='lf' if rel.endswith('.mcasset.json') else '')
-        if not full_verify and os.path.isfile(dst):
+                                 variant='lf' if normalize else '')
+        if expected is not None and s_hash != expected:
+            fail(f"intentional asset source differs from declaration: {rel}")
+        if (not full_verify or kind == "intentional") and os.path.isfile(dst):
             d_hash, d_size, d_stamp = hash_with_stamp(
-                dst, lambda path: receipts.digest(path, force=kind == "exe", hasher=sha256_file))
+                dst, lambda path: receipts.digest(path, force=full_verify or kind == "exe", hasher=sha256_file))
             if s_hash == d_hash:
                 stamp = source_stamp(src)
                 src_hashes[rel] = (d_hash, d_size, stamp[1], d_stamp)
@@ -1968,13 +1963,15 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
             try:
                 with tempfile.NamedTemporaryFile(dir=os.path.dirname(dst), delete=False) as out:
                     temporary = out.name
-                    if rel.endswith(".mcasset.json"):
+                    if normalize:
                         # Normalize checkout line endings before publishing the sidecar.
                         out.write(Path(src).read_bytes().replace(b"\r\n", b"\n"))
-                if not rel.endswith(".mcasset.json"):
+                if not normalize:
                     shutil.copyfile(src, temporary)
                 if kind == "exe" and os.name != "nt":
                     shutil.copymode(src, temporary)
+                if expected is not None and sha256_file(temporary) != expected:
+                    fail(f"intentional asset copied bytes differ from declaration: {rel}")
                 replace_file(temporary, dst)
             finally:
                 if temporary and os.path.exists(temporary):
@@ -1986,6 +1983,8 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
                  "this script never taskkills.", 2)
         d_hash, d_size, d_stamp = hash_with_stamp(
             dst, lambda path: receipts.digest(path, force=True, hasher=sha256_file))
+        if expected is not None and d_hash != expected:
+            fail(f"intentional asset deployed bytes differ from declaration: {rel}")
         stamp = source_stamp(src)
         src_hashes[rel] = (d_hash, d_size,
                            stamp[1] if stamp is not None else None, d_stamp)
@@ -2194,13 +2193,16 @@ def hash_present_payload(items, target_dir):
     """
     hashes = {}
     present, absent = 0, 0
-    for src, rel, kind in items:
+    for item in items:
+        src, rel, kind = item
         dst = os.path.join(target_dir, rel)
         if os.path.isfile(dst):
             # No mtime_ns: this path cannot prove the deployed bytes came from
             # the current source (another deploy path copied them), so the row
             # must never authorize a future skip. A real deploy fills it in.
             digest, size, stamp = hash_with_stamp(dst, sha256_file)
+            if getattr(item, "declared_sha", digest) != digest:
+                fail(f"manifest-only intentional asset differs from declaration: {rel}")
             hashes[rel] = (digest, size, None, stamp)
             present += 1
         else:
@@ -2224,6 +2226,10 @@ def write_manifest_only(src_root, build_dir, exe_name, pdb_name, target_dir,
     items = enumerate_payload(src_root, build_dir, exe_name, pdb_name,
                               require_build=False, build64_root=build64_root,
                               no_example_mods=no_example_mods)
+    declared = declared_assets(src_root)
+    from kit_payload import contained_path
+    items = [item for item in items if item[1] not in declared]
+    items += [IntentionalItem(contained_path(target_dir, rel), rel, sha) for rel, sha in declared.items()]
     hashes = hash_present_payload(items, target_dir)
 
     # Merge: keep prior rows for payload files we did not just re-hash but
@@ -2768,6 +2774,84 @@ def _target_preset(value):
     return value
 
 
+def declared_assets(src_root):
+    import asset_parity
+    return asset_parity.intentional_changes(git_head(src_root), Path(src_root))
+
+
+def seed_asset_store(src_root, install, store):
+    """Archive only bytes matching HEAD's declarations; inputs are read-only."""
+    from kit_payload import contained_path
+    store = Path(store)
+    store.mkdir(parents=True, exist_ok=True)
+    seeded = 0
+    for rel, expected in declared_assets(src_root).items():
+        blob = contained_path(store, expected)
+        if blob.is_file() and sha256_file(blob) == expected:
+            continue
+        source = next((p for root in (install, src_root)
+                       if (p := contained_path(root, rel)).is_file()
+                       and sha256_file(p) == expected), None)
+        if source is None:
+            log(f"asset store unavailable in seed: {rel} sha256={expected}")
+            continue
+        pending = None
+        try:
+            with tempfile.NamedTemporaryFile(dir=store, delete=False) as stream:
+                pending = Path(stream.name)
+                with source.open("rb") as incoming:
+                    shutil.copyfileobj(incoming, stream)
+            if sha256_file(pending) != expected:
+                fail(f"asset store seed changed during copy: {rel}")
+            os.replace(pending, blob)
+        finally:
+            if pending is not None:
+                pending.unlink(missing_ok=True)
+        seeded += 1
+    log(f"asset store: seeded {seeded} blobs from {install}")
+
+
+class IntentionalItem(tuple):
+    """Keep the three-field payload interface with its declared hash attached."""
+    def __new__(cls, source, rel, sha):
+        item = super().__new__(cls, (str(source), rel, "intentional"))
+        item.declared_sha = sha
+        return item
+
+
+def intentional_payload(src_root, target, store, dry_run=False):
+    """Resolve all declarations before copying; never trust a blob's filename."""
+    from kit_payload import HashReceipts, contained_path
+    receipts = HashReceipts(Path(target) / ".deploy-receipts.json")
+    def digest(path):
+        return receipts.digest(path, force=dry_run, hasher=sha256_file)
+    items, errors = [], []
+    missing = mismatched = 0
+    for rel, expected in declared_assets(src_root).items():
+        dst = contained_path(target, rel)
+        exists = dst.is_file()
+        current = exists and digest(dst) == expected
+        if not current:
+            missing += not exists
+            mismatched += exists
+            log(f"intentional asset {'MISMATCH' if exists else 'MISSING'}: {rel} sha256={expected}")
+        source = contained_path(src_root, rel)
+        blob = contained_path(store, expected)
+        resolved = next((p for p in (source, blob, dst) if p.is_file()
+                         and digest(p) == expected), None)
+        if resolved is None:
+            errors.append(f"{rel} sha256={expected} (store miss or corrupt blob: {blob})")
+        else:
+            items.append(IntentionalItem(resolved, rel, expected))
+    log(f"intentional assets: {len(items)} resolved, {missing} missing, {mismatched} mismatched, {len(errors)} unresolved"
+        + (" (dry-run; no writes)" if dry_run else ""))
+    if errors:
+        fail("intentional asset resolution FAILED before payload copy:\n  " + "\n  ".join(errors))
+    if not dry_run:
+        receipts.save()
+    return items
+
+
 def main():
     ap = argparse.ArgumentParser(
         description=__doc__.splitlines()[0],
@@ -2868,6 +2952,13 @@ def main():
     ap.add_argument("--quiet", action="store_true",
                     help="print only verdicts, failures/warnings, artifact paths and the DEPLOY_FINGERPRINT lines; "
                          "the full output goes to a log (path on the last line)")
+    ap.add_argument("--asset-store", default=os.environ.get("MC2_ASSET_STORE", "E:/mc2-asset-store"),
+                    help="sha256-addressed intentional asset store (or MC2_ASSET_STORE)")
+    asset_mode = ap.add_mutually_exclusive_group()
+    asset_mode.add_argument("--from-install", metavar="INSTALL",
+                           help="seed declared assets into the store from a read-only install and source; no deploy")
+    asset_mode.add_argument("--dry-run", action="store_true",
+                           help="audit intentional assets only; resolve missing/stale declarations without writes or build")
     args = ap.parse_args()
     preset_target = TARGET_PRESETS.get(args.target, {}).get("target_dir")
     refuse_golden_target(args.target_dir or preset_target)
@@ -2876,6 +2967,10 @@ def main():
         quiet_output.install_quiet(name="deploy_payload")
     global ALLOW_STOCK_TREES
     ALLOW_STOCK_TREES = bool(args.allow_stock_trees)
+
+    if args.from_install:
+        seed_asset_store(args.source_root, args.from_install, args.asset_store)
+        return
 
     if args.seed_owner_test:
         preset = TARGET_PRESETS.get(args.target) if args.target else None
@@ -2911,6 +3006,9 @@ def main():
         sys.exit(verify_only(target, args.strict))
 
     src_root = os.path.abspath(args.source_root)
+    if args.dry_run:
+        intentional_payload(src_root, target, args.asset_store, dry_run=True)
+        return
     refusal = implicit_target_refusal(src_root, args.target_dir)
     if refusal:
         fail(refusal)
@@ -3559,6 +3657,10 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
                 kit_tool = kit_payload.build_importer(src_root)
         except (OSError, ValueError, KeyError) as exc:
             fail(f"RemasteredBuildings requires the pinned kit: {exc}; use --classic-assets for Classic")
+    declared_items = intentional_payload(src_root, target, getattr(args, "asset_store", None)
+                                         or os.environ.get("MC2_ASSET_STORE", "E:/mc2-asset-store"))
+    declared_paths = {rel for _, rel, _ in declared_items}
+    items = [item for item in items if item[1] not in declared_paths] + declared_items
     kit_prepare_seconds = time.perf_counter() - kit_prepare_started
     log(f"payload: {len(items)} files "
         f"({sum(1 for *_x, k in items if k == 'shader')} shaders, "

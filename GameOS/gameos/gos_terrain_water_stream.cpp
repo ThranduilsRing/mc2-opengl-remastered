@@ -18,6 +18,7 @@
 #include "../../mclib/terrain_material.h"  // single-sourced terrain type -> material
 extern int gos_WaterShoreMode();
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
+#include "diagnostic_trace.h"
 
 #include "gos_profiler.h"
 #include "gpu_driven_common.h"
@@ -277,6 +278,12 @@ void Build() {
     }
 
     const long mapSide  = Terrain::realVerticesMapSide;
+    if (!mc2::waterfrustum::anyWaterVertex(std::span{blocks, static_cast<size_t>(mapSide) * static_cast<size_t>(mapSide)})) {
+        if (mc2_diag::tagRequested("WATER_STREAM"))
+            mc2::fmt::print_err("[WATER_STREAM v1] event=build_skipped reason=dry_map waterElevation={:.3f}\n", static_cast<double>(Terrain::waterElevation));
+        g_ready = true;  // built: no water on this map
+        return;
+    }
     const long halfSide = Terrain::halfVerticesMapSide;
     const float wupv    = Terrain::worldUnitsPerVertex;
     const bool has_terrainTextures2 = (Terrain::terrainTextures2 != nullptr);

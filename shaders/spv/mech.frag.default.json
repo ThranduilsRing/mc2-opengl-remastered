@@ -6,14 +6,14 @@
   "specializationParams": [],
   "artifact": "mech.frag.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "c6a8a4d7105bfbbf61a402085a525ae9e17784c2780631373d823292aaca6f4f",
-  "spirv_sha256": "2d7c49062516795f249b6f1988b4cd0c55273515bce67ba4e9a52b0a9d334da6",
+  "source_sha256": "14feb624b6979d776697169ef3851f64a214dd56f5d60638c2c28531dbacb473",
+  "spirv_sha256": "10f13b9ec622338b15f5d7cfc55556c589d4417c5a66f1755ed9933676578fca",
   "bindings": {
     "ubos": [
       {
         "type": "_782",
         "name": "TerrainFrameUBO",
-        "block_size": 864,
+        "block_size": 868,
         "set": 1,
         "binding": 0
       },
@@ -706,7 +706,7 @@
           "offset": 772
         },
         {
-          "name": "reserved776",
+          "name": "vegetationEnabled",
           "type": "int",
           "offset": 776
         },
@@ -814,6 +814,11 @@
           "name": "concreteDetailStrength",
           "type": "float",
           "offset": 860
+        },
+        {
+          "name": "groundMottleOn",
+          "type": "int",
+          "offset": 864
         }
       ]
     },

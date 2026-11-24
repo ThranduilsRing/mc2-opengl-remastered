@@ -22,6 +22,7 @@
 #include "../../code/model_credit.h"
 #include "../../code/purchase_catalog.h"
 #include "../../code/objective_text.h"
+#include "../../code/logistics_csv.h"
 
 #include <cstdio>
 #include <cstring>
@@ -66,6 +67,26 @@ const char kFitInMemText[] =
 
 TEST_SUITE("FileStack")
 {
+TEST_CASE("pilots/blank CSV rows do not terminate the roster")
+{
+    char csv[] = "\r\n \t\r\n alpha,\r\nb\r\n,\r\ncharlie";
+    File file;
+    REQUIRE(file.open(csv, sizeof(csv) - 1) == NO_ERR);
+    unsigned char row[256] = {};
+    std::string names;
+    int loaded = 0, skipped = 0;
+    while (!file.eof()) {
+        file.readLine(row, 255);
+        const char* name = logistics_csv::pilotFileName(reinterpret_cast<char*>(row));
+        if (!*name) { ++skipped; continue; }
+        names += std::string(name) + ";";
+        ++loaded;
+    }
+    CHECK(names == "alpha;b;charlie;");
+    CHECK(loaded == 3);
+    CHECK(skipped == 3);
+}
+
 TEST_CASE("carbon_mclib/RAM seek is relative to each file after reads")
 {
     char a[] = "abcdef", b[] = "uvwxyz";

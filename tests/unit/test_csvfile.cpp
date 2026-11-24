@@ -290,6 +290,45 @@ TEST_CASE("CSVFile cached reopen matches legacy disk rows and cells")
 	}
 }
 
+TEST_CASE("CSVFile counts its last row with and without a final line break, and no row after it")
+{
+	// countRows() tested eof() after each readLine(). The last row ends at EOF with or without a line
+	// break, so it was never counted and seekRowCol() refused it: every CSV lost its last record (the
+	// stock buildings.csv, its artilleryPiece). A row is one readLine() call, as seekRowCol() counts
+	// them; the empty stretch after a final line break is not one.
+	struct Rows : CSVFile {
+		long load(const std::string& text) { auto r = File::open(text.data(), static_cast<int>(text.size())); return r == NO_ERR ? afterOpen() : r; }
+		long count() const { return static_cast<long>(totalRows); }
+	};
+	Rows disk;
+	REQUIRE(disk.open(fixturePath("buildings_smoke.csv").c_str()) == NO_ERR);
+	CHECK(disk.count() == 6);		// from disk: the header, four records and the trailing comment row
+	for (const std::string& br : { std::string("\n"), std::string("\r\n") }) {
+		struct Case { std::string text; long rows; const char* last; };
+		const Case files[] = {
+			{"head,row" + br + "last,row" + br, 2, "last"}, {"head,row" + br + "last,row", 2, "last"},
+			{"head,row" + br, 1, "head"}, {"head,row", 1, "head"}, {br, 1, ""}, {br + br, 2, ""},
+		};
+		for (const auto& file : files) {
+			CAPTURE(br.size()); CAPTURE(file.text.size());
+			Rows ram;
+			REQUIRE(ram.load(file.text) == NO_ERR);
+			CHECK(ram.count() == file.rows);
+			const auto lastRow = static_cast<DWORD>(file.rows);
+			char first[16] = "x";
+			if (file.last[0]) {
+				CHECK(ram.readString(lastRow, 1, first, sizeof(first)) == 0);		// the last row is addressable
+				CHECK(std::strcmp(first, file.last) == 0);
+			} else {
+				CHECK(ram.readString(lastRow, 1, first, sizeof(first)) == 1);		// an empty line: a row without words
+			}
+			std::strcpy(first, "x");
+			CHECK(ram.readString(lastRow + 1, 1, first, sizeof(first)) == 1);		// and no row follows it
+			CHECK(std::strcmp(first, "x") == 0);
+		}
+	}
+}
+
 TEST_CASE("File RAM lines and parent CSV chunk boundaries match disk")
 {
 	struct Temp {
