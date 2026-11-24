@@ -120,3 +120,10 @@ def test_matcher_reports_no_candidate():
     m = mp.match({"lookouttower": {"size_wu": [20, 200, 20]}}, [{"id": "bt_x", "category": "debris", "footprint_wu": [1, 1],
                                                               "height_wu": 1, "materials_resolved": True}])
     assert m["lookouttower"]["pick"] is None
+
+
+def test_fragments_are_not_props():
+    for n in ("smallBuildingA_cell_007", "cityBuildingF_fract", "smallCivilianBldgF_glass", "tankDetail74975", "pipes23"):
+        assert pc.is_fragment(n), n
+    for n in ("smallBldgE", "industrialTankA", "lookoutTowerA"):
+        assert not pc.is_fragment(n), n

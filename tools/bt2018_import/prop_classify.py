@@ -157,3 +157,11 @@ def short_id(family, taken=()):
         n += 1
         cand = base[:15] + str(n % 10)
     return cand
+
+
+_FRAGMENT = re.compile(r"(_cell(_\d+)?$|_fract|_glass|ruin|detail|^pipes?\d+$|^ppipe|_bioDome\w*_cell)", re.I)
+
+
+def is_fragment(family):
+    """Destruction cells, glass-only meshes and loose pipe/detail pieces are not standalone props."""
+    return bool(_FRAGMENT.search(family))

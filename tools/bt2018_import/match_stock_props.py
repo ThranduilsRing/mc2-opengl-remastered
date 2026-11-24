@@ -79,7 +79,7 @@ def main(argv=None):
     ap.add_argument("--stock", type=Path, required=True)
     ap.add_argument("--out", type=Path, required=True)
     args = ap.parse_args(argv)
-    assets = json.loads(args.library.read_text(encoding="utf-8"))["assets"]
+    assets = [a for a in json.loads(args.library.read_text(encoding="utf-8"))["assets"] if not pc.is_fragment(a["family"])]
     stock = json.loads(args.stock.read_text(encoding="utf-8"))
     m = match(stock, assets)
     args.out.write_text(json.dumps({"schema": "bt2018-prop-mapping/1", "map": m}, indent=1), encoding="utf-8")
