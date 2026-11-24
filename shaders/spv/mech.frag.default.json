@@ -6,14 +6,14 @@
   "specializationParams": [],
   "artifact": "mech.frag.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "14feb624b6979d776697169ef3851f64a214dd56f5d60638c2c28531dbacb473",
-  "spirv_sha256": "10f13b9ec622338b15f5d7cfc55556c589d4417c5a66f1755ed9933676578fca",
+  "source_sha256": "1abe44567623f7b1af3a1d7bac62323552f271f9248914b221b210604e1bb083",
+  "spirv_sha256": "fba78c1742c2a30784f96d58f9429a379718609beefa2a1709c473ba308f0abb",
   "bindings": {
     "ubos": [
       {
         "type": "_782",
         "name": "TerrainFrameUBO",
-        "block_size": 868,
+        "block_size": 900,
         "set": 1,
         "binding": 0
       },
@@ -819,6 +819,46 @@
           "name": "groundMottleOn",
           "type": "int",
           "offset": 864
+        },
+        {
+          "name": "normalFlatPeriod",
+          "type": "float",
+          "offset": 868
+        },
+        {
+          "name": "normalFlatStrength",
+          "type": "float",
+          "offset": 872
+        },
+        {
+          "name": "normalSlopePeriod",
+          "type": "float",
+          "offset": 876
+        },
+        {
+          "name": "normalSlopeStrength",
+          "type": "float",
+          "offset": 880
+        },
+        {
+          "name": "normalCliffPeriod",
+          "type": "float",
+          "offset": 884
+        },
+        {
+          "name": "normalCliffStrength",
+          "type": "float",
+          "offset": 888
+        },
+        {
+          "name": "normalCementPeriod",
+          "type": "float",
+          "offset": 892
+        },
+        {
+          "name": "normalCementStrength",
+          "type": "float",
+          "offset": 896
         }
       ]
     },

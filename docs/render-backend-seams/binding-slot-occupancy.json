@@ -947,7 +947,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 96,
+        "line": 97,
         "role": "TerrainVisualHeightBuf",
         "std": "std430",
         "type": "buffer",
