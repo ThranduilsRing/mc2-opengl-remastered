@@ -55,7 +55,7 @@
    "campaign_uses": 67,
    "mw5": "zeus",
    "mw5_object": "/Game/Objects/Mechs/Zeus/Model/Body/Zeus_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "shayu",
@@ -95,7 +95,7 @@
    "campaign_uses": 44,
    "mw5": "raven",
    "mw5_object": "/Game/Objects/Mechs/Raven/Model/Body/Raven_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "flea",
@@ -103,7 +103,7 @@
    "campaign_uses": 42,
    "mw5": "flea",
    "mw5_object": "/Game/Objects/Mechs/Flea/Model/Body/Flea_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "menshen",
@@ -119,7 +119,7 @@
    "campaign_uses": 37,
    "mw5": "highlander",
    "mw5_object": "/Game/Objects/Mechs/Highlander/Model/Body/Highlander_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "enfield",
