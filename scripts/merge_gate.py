@@ -389,8 +389,9 @@ def preflight(head, install, window, steps, seed=Path(EROOT + "/mc2-installs/_le
         errors.append(f'intentional assets unresolved: {exc}; fix: restore the declared sha256 bytes in the checkout, '
                       'MC2_ASSET_STORE, or selected install')
     fingerprint = None
+    scheduled_deploy = any(n == 'deploy' and not e.get('MC2_GATE_SKIP_REASON') for n, _, e in steps)
     for name, command, env in steps:
-        if env.get('MC2_GATE_SKIP_REASON') or not name.startswith(('determinism-', 'saveload-')):
+        if scheduled_deploy or env.get('MC2_GATE_SKIP_REASON') or not name.startswith(('determinism-', 'saveload-')):
             continue
         mission = command[command.index('--mission') + 1] if '--mission' in command else name.split('-', 1)[1]
         baseline = (ROOT / ('tests/saveload/baselines' if name.startswith('saveload-') else 'tests/smoke/sim_determinism')
@@ -422,7 +423,7 @@ def preflight(head, install, window, steps, seed=Path(EROOT + "/mc2-installs/_le
             bookmarks.update(command[command.index('--bookmarks') + 1].split(','))
     for target in dict.fromkeys((Path(install), Path(seed))):
         try:
-            if any(n == 'deploy' and not e.get('MC2_GATE_SKIP_REASON') for n, _, e in steps):
+            if scheduled_deploy:
                 # Before captures use the published build; the candidate is
                 # checked against HEAD after deployment, before runtime proofs.
                 report = staleness_report(str(target), full=True)  # provenance: every byte re-hashed, no stamp trust
