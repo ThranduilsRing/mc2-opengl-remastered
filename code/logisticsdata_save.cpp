@@ -183,6 +183,20 @@ long	LogisticsData::save( FitIniFile& file )
 	return 0;
 }
 
+// WHAT: returns the roster to what a cold start has (stock pilots, designer variants, nothing owned). WHY: a campaign start, a save load and a
+// single mission each rebuilt only part of it, so a player variant, a deployed-mech snapshot (raw pointers into the variants erased here) or a layout note
+// of the previous session reached the next one. The mod layers are fixed per process (a mod switch relaunches), so pilots.csv and buildings.csv re-read the same set.
+void LogisticsData::resetCampaignRoster()
+{
+	clearInventory();
+	deployedMechSnapshot.clear();
+	layoutNotes.clear();
+	clearPilots();
+	initPilots();
+	clearVariants();
+	MC2_LOG(Io, Info, "logistics: roster reset pilots={} variants={} inventory={}", std::ssize( pilots ), std::ssize( variants ), std::ssize( inventory ));
+}
+
 void LogisticsData::clearVariants()
 {
 	// Newest first: the player-made variants are deleted from the back of the list forward.
@@ -210,12 +224,8 @@ std::expected<void, long> LogisticsData::load( FitIniFile& file )
 	}
 
 	ensureMechBayDataLoaded("save-load");
-	clearInventory();
+	resetCampaignRoster();
 	resourcePoints = 0;
-	clearPilots();
-	initPilots();
-	clearVariants();
-	layoutNotes.clear();
 
 	if ( !missionInfo )
 		missionInfo = std::make_unique_for_overwrite<LogisticsMissionInfo>();
