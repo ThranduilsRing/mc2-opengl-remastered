@@ -9,6 +9,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import deploy_payload as dp
+import console_child
 
 
 @pytest.fixture
@@ -22,7 +23,8 @@ def assets(tmp_path, monkeypatch):
     for args in (("init",), ("add", "intentional-asset-changes.json"),
                  ("-c", "user.name=Test", "-c", "user.email=test@example.invalid",
                   "-c", "core.hooksPath=NUL", "commit", "-m", "declare")):
-        subprocess.run(["git", "-C", str(source), *args], check=True, capture_output=True)
+        subprocess.run(["git", "-C", str(source), *args], check=True, capture_output=True,
+                       **console_child.child_kwargs(redirected=True))
     monkeypatch.setattr(dp, "ensure_terrain_materials", lambda _: {})
     monkeypatch.setattr(dp, "ensure_engine_normal_cooks", lambda _: None)
     return source, target, store, declared
@@ -70,7 +72,7 @@ def test_seed_and_no_write_cli_audit(assets, tmp_path):
     before = {p: (p.stat().st_mtime_ns, p.read_bytes()) for p in tmp_path.rglob("*") if p.is_file()}
     proc = subprocess.run([sys.executable, "-B", dp.__file__, str(target), "--target", "game",
                            "--source-root", str(source), "--asset-store", str(store), "--dry-run"],
-                          capture_output=True, text=True)
+                          capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "2 missing, 0 mismatched, 0 unresolved" in proc.stdout
     assert list(target.iterdir()) == []
