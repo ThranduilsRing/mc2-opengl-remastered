@@ -444,6 +444,7 @@ class GateState:
         self.started_signatures = {}
         self.started_reports = {}
         self.specs = {n: (c, e) for n, c, e in steps}
+        self.runtime_tree = runtime_input_tree(head)
 
     def __enter__(self):
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -535,6 +536,9 @@ class GateState:
             if not path.is_absolute():
                 path = ROOT / path
             if path.is_file():
+                if path.resolve() == self.exe.resolve() and self.runtime_tree:
+                    hashes[key] = self.runtime_tree
+                    continue
                 inputs.add(path)
             elif path.is_dir() and '--install' in command and arg == command[command.index('--install') + 1]:
                 inputs.add(path / '.deployed_manifest.csv')
@@ -570,8 +574,17 @@ class GateState:
         row = self.data["stages"].get(name, {})
         sha = self.exe_sha()
         offline = name in OFFLINE_STAGES
-        if not ((row.get('head') == self.head or (not offline and head_delta_nonruntime(row.get('head'), self.head, name)))
-                and (offline or sha is not None and row.get('exe_sha') == sha)
+        same_runtime = bool(self.runtime_tree and row.get('runtime_tree') == self.runtime_tree)
+        exe_ok = sha is not None and row.get('exe_sha') == sha
+        if not offline and not exe_ok and same_runtime and sha is not None and name != 'deploy':
+            from exe_fingerprint import extract
+            try:
+                fp = extract(self.exe)
+                exe_ok = bool(fp.get('present') and not fp.get('dirty') and runtime_input_tree(fp.get('sha')) == self.runtime_tree)
+            except (OSError, ValueError):
+                exe_ok = False
+        if not ((row.get('head') == self.head or (not offline and (same_runtime or head_delta_nonruntime(row.get('head'), self.head, name))))
+                and (offline or exe_ok)
                 and stage_passed(row.get('status', '')) and not row.get('status', '').startswith(ADVISORY_PREFIX)):   # a red advisory row is rerun, never replayed
             return False
         specs = (command, overrides) if name == 'mods' else self.specs.get(name, (command, overrides))
@@ -648,7 +661,7 @@ class GateState:
                 except OSError:
                     pass
             self.data["stages"][name] = dict(
-                head=self.head, exe_sha=self.exe_sha(), status=status, seconds=seconds,
+                head=self.head, exe_sha=self.exe_sha(), runtime_tree=self.runtime_tree, status=status, seconds=seconds,
                 artefact_dir=artefact, scheduler_wait_seconds=scheduler_wait,
                 signature=signature, evidence=evidence)
             self.write()
@@ -810,6 +823,19 @@ def head_delta_nonruntime(old, new, row=None):
     return bool(out) and change_domains(out) <= {'docs', 'tooling'}
 
 
+def runtime_input_tree(ref):
+    """Hash engine-domain Git entries; unclassified paths remain engine inputs."""
+    if not ref:
+        return None
+    try:
+        entries = git("ls-tree", "-rz", ref).split("\0")
+        engine = [entry for entry in entries if entry and "\t" in entry
+                  and "engine" in change_domains([entry.split("\t", 1)[1]])]
+        return hashlib.sha256("\0".join(engine).encode()).hexdigest() if engine else None
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
 def change_domains(paths):
     domains = set()
     for raw in paths:
@@ -817,6 +843,8 @@ def change_domains(paths):
         suffix = Path(p).suffix
         if p.startswith(("docs/", ".claude/")) or suffix in (".md", ".rst"):
             domains.add("docs")
+        elif p.startswith(("tests/unit/", "scripts/tests/")) or (p.startswith("tools/") and Path(p).name.startswith("test_")):
+            domains.add("tooling")
         elif p.startswith(("scripts/merge_gate.py", "scripts/deploy_payload.py", "scripts/kit", "scripts/run_smoke.py",
                            "scripts/smoke_lib/", "scripts/run_visual_capture.py", "scripts/check-default-build-quiet.py",
                            "scripts/cc_launcher.py", "scripts/ninja_build.py", "scripts/run-unit-tests.sh",
