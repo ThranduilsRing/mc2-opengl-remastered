@@ -134,7 +134,7 @@ void crNavigable(vec3 macroN, vec3 dx, vec3 dy, float weight, inout vec3 N, inou
         if (w[i] < 0.05) continue;
         vec2 uv = (i == 0 ? vec2(wp.y, -wp.z) : i == 1 ? vec2(wp.x, -wp.z) : wp.xy) / CN_TS;
         vec2 du = (i == 0 ? dx.yz : i == 1 ? dx.xz : dx.xy) / CN_TS, dv = (i == 0 ? dy.yz : i == 1 ? dy.xz : dy.xy) / CN_TS;
-        vec4 a = hexTileGrad(u_matNormalArray, float(MAT_LAYER_ROCK), uv, du, dv, 1.0, true, vec4(0.5));
+        vec4 a = hexTileGrad(u_matNormalArray, float(MAT_LAYER_ROCK), uv, du, dv, 1.0, true, vec4(0.5, 0.5, 0.5, 0.31), 5.0);   // 0.31 = the scan's mean height; mip 5 low-pass removed so no hex cell is tonally different
         vec2 t = a.rg * 2.0 - 1.0;
         tilt += (i == 0 ? vec3(0.0, t.x, t.y) : i == 1 ? vec3(t.x, 0.0, t.y) : vec3(t.x, t.y, 0.0)) * w[i];
         h += a.a * w[i]; used += w[i];

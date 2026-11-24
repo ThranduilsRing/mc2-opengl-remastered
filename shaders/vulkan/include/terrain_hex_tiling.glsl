@@ -12,7 +12,10 @@ mat2 hexRot(vec2 v, float strength) {
     a = (a > 3.14159265 ? a - 6.2831853 : a) * strength;
     return mat2(cos(a), sin(a), -sin(a), cos(a));
 }
-vec4 hexTileGrad(sampler2DArray tex, float layer, vec2 uv, vec2 dx, vec2 dy, float rotStrength, bool isNormal, vec4 mean) {
+// lowLod >= 0: the alpha (height) keeps only detail finer than that mip. A scan's low-frequency alpha differs between the random per-cell
+// offsets, which painted a visible cell lattice onto flat ground wherever alpha scales the albedo (crNavigable); `mean.a` is the alpha
+// level the high-passed result is centred on.
+vec4 hexTileGrad(sampler2DArray tex, float layer, vec2 uv, vec2 dx, vec2 dy, float rotStrength, bool isNormal, vec4 mean, float lowLod) {
     vec2 sk = uv * HEX_K; sk.y = -0.57735027 * sk.x + 1.15470054 * sk.y;
     vec2 base = floor(sk);
     vec3 t = vec3(fract(sk), 0.0); t.z = 1.0 - t.x - t.y;
@@ -23,10 +26,15 @@ vec4 hexTileGrad(sampler2DArray tex, float layer, vec2 uv, vec2 dx, vec2 dy, flo
     vec4 acc = vec4(0.0);
     for (int i = 0; i < 3; ++i) {
         vec2 cen = hexCen(v[i]); mat2 R = hexRot(v[i], rotStrength);
-        vec4 c = textureGrad(tex, vec3(R * (uv - cen) + cen + hexHash(v[i]), layer), R * dx, R * dy);
+        vec3 tuv = vec3(R * (uv - cen) + cen + hexHash(v[i]), layer);
+        vec4 c = textureGrad(tex, tuv, R * dx, R * dy);
+        if (lowLod >= 0.0) c.a = clamp(c.a - textureLod(tex, tuv, lowLod).a + mean.a, 0.0, 1.0);
         if (isNormal) c.rg = (transpose(R) * (c.rg * 2.0 - 1.0)) * 0.5 + 0.5;
         acc += w[i] * c;
     }
     return clamp(mean + (acc - mean) / sqrt(dot(w, w)), 0.0, 1.0);
+}
+vec4 hexTileGrad(sampler2DArray tex, float layer, vec2 uv, vec2 dx, vec2 dy, float rotStrength, bool isNormal, vec4 mean) {
+    return hexTileGrad(tex, layer, uv, dx, dy, rotStrength, isNormal, mean, -1.0);
 }
 const float HEX_ROT_CLIFF = 0.0;   // offset-only on cliffs: rotating the scan turned its horizontal strata diagonal (proof 1, owner bar: cliff look unchanged)
