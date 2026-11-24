@@ -58,6 +58,14 @@ def test_repin_checks_current_and_restores_failed_pin(tmp_path, monkeypatch, cap
     path.write_bytes(original)
     row = {"kind": "determinism", "mission": "mc2_03", "path": str(path), "data": {"frames": 5}}
     calls = []
+    replace = rs.os.replace
+    restored = []
+    def atomic_replace(source, destination):
+        assert Path(source).parent == path.parent and Path(source) != path
+        assert Path(source).read_bytes() == original
+        restored.append(Path(source))
+        replace(source, destination)
+    monkeypatch.setattr(rs.os, "replace", atomic_replace)
     def fake_call(cmd, cwd, **kwargs):
         assert cwd == rs.ROOT
         if "check" in cmd:
@@ -84,6 +92,8 @@ def test_repin_checks_current_and_restores_failed_pin(tmp_path, monkeypatch, cap
         assert path.read_bytes() == original
     else:
         assert json.loads(path.read_text())["sha"] == "new"
+    assert bool(restored) == (before != 0 and (pair != 0 or after != 0))
+    assert all(not p.exists() for p in restored)
     if before == 0:
         assert "stale by distance, still valid" in capsys.readouterr().out
 
@@ -105,6 +115,39 @@ def test_repin_refuses_wrong_install(tmp_path, monkeypatch, repin_install, broke
     monkeypatch.setattr(rs.subprocess, "call", lambda *a, **kw: pytest.fail("refused install launched a process"))
     row = {"kind": "determinism", "mission": "mc2_03", "data": {"frames": 5}}
     assert not rs.repin(row, repin_install, 30, str(tmp_path))
+
+
+def test_gate_check_timeout_is_reported(tmp_path, monkeypatch, capsys):
+    def timeout(cmd, **kwargs):
+        assert kwargs['timeout'] == 600
+        raise rs.subprocess.TimeoutExpired(cmd, kwargs['timeout'])
+    monkeypatch.setattr(rs.subprocess, 'call', timeout)
+    assert rs.gate_check({'kind': 'determinism', 'mission': 'mc2_03'}, 'inst', str(tmp_path), 'before') == 124
+    assert 'timed out' in capsys.readouterr().out
+
+
+@pytest.mark.parametrize('invalid', [False, True])
+def test_check_valid_checks_each_stale_row_without_repin(tmp_path, monkeypatch, capsys, invalid):
+    rows = []
+    for mission, behind in [('mc2_01', 100), ('mc2_03', 101), ('mc2_10', 1)]:
+        path = tmp_path / (mission + '.json')
+        path.write_bytes(b'original baseline\n')
+        rows.append(dict(kind='determinism', mission=mission, path=str(path), behind=behind, sha='old'))
+    monkeypatch.setattr(rs, 'scan', lambda: rows)
+    monkeypatch.setattr(rs, 'repin', lambda *a: pytest.fail('read-only check tried to re-pin'))
+    calls = []
+    def check(cmd, **kwargs):
+        assert 'check' in cmd and 'write-baseline' not in cmd and 'run' not in cmd
+        assert Path(cmd[cmd.index('--install') + 1]) == tmp_path
+        calls.append(cmd[3])
+        return int(invalid and cmd[3] == 'mc2_01')
+    monkeypatch.setattr(rs.subprocess, 'call', check)
+    assert rs.main(['--check-valid', '--install', str(tmp_path), '--out-root', str(tmp_path / 'proof')]) == int(invalid)
+    assert calls == ['mc2_01', 'mc2_03']
+    assert all(Path(row['path']).read_bytes() == b'original baseline\n' for row in rows)
+    out = capsys.readouterr().out
+    assert ('INVALID' if invalid else 'VALID') + ' determinism:mc2_01' in out
+    assert 'VALID determinism:mc2_03' in out
 
 
 def _gate_steps():

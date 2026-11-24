@@ -329,26 +329,24 @@ TEST_CASE("clip state: one-shots fit stock gesture time with safe bounds") {
     CHECK(onceRate("atlas_moveJumpDownLand", 4, 0, 0) == 2);
 }
 
-TEST_CASE("clip state: one-shot hits power-on and get-up release to idle") {
-    // Owner 11-16: stayed leaning back after a hit. CI replacement for the external-only
-    // test_one_shot_clips_end_on_the_idle_pose: a completed sim gesture must release the
-    // held hit pose, even when its imported clip clock has not finished yet.
+TEST_CASE("clip state: sim gesture change replaces a one-shot with idle or walk") {
+    // Dispatch coverage only: select ignores activeClipFinished. This does not prove
+    // imported clips end on the idle pose, including pelvis roll and translation.
+    // That owner 11-16 data regression needs external animation assets; the checked-in
+    // BT2018 fixtures contain chassis/socket data, not sampled animation channels.
     for (int gesture : {kGestureHitFront, kGestureHitBack, kGestureHitLeft, kGestureHitRight,
                         kGestureParkToStand, kGestureGetUp, kGestureRollover}) {
-        for (bool finished : {false, true}) {
-            Phase phase;
-            const auto shot = pick(gesture, phase);
-            REQUIRE(shot.mode == Mode::Once);
-            CHECK(advanceClipTime(0.5f, 10.0f, 1.0f, 1.0f, shot.mode) == 1.0f);
-            const auto idle = pick(2, phase, 0.0f, false, finished, shot.clip);
-            CHECK(std::string(idle.clip) == "atlas_moveCoreIdle");
-            CHECK(idle.mode == Mode::Loop);
-            CHECK_FALSE(idle.locomotion);
-            const auto walk = pick(kGestureWalk, phase, 5.0f, false, finished, shot.clip);
-            CHECK(std::string(walk.clip) == "atlas_moveCoreWalkFwd");
-            CHECK(walk.mode == Mode::Loop);
-            CHECK(walk.locomotion);
-        }
+        Phase phase;
+        const auto shot = pick(gesture, phase);
+        REQUIRE(shot.mode == Mode::Once);
+        const auto idle = pick(2, phase, 0.0f, false, false, shot.clip);
+        CHECK(std::string(idle.clip) == "atlas_moveCoreIdle");
+        CHECK(idle.mode == Mode::Loop);
+        CHECK_FALSE(idle.locomotion);
+        const auto walk = pick(kGestureWalk, phase, 5.0f, false, false, shot.clip);
+        CHECK(std::string(walk.clip) == "atlas_moveCoreWalkFwd");
+        CHECK(walk.mode == Mode::Loop);
+        CHECK(walk.locomotion);
     }
 }
 

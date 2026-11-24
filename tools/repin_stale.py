@@ -157,7 +157,11 @@ def gate_check(row: dict, install: str, tmp: str, phase: str) -> int:
     if not steps:
         raise ValueError(f"the merge gate has no row {name}")
     _, cmd, env = merge_gate.install_plan(steps, Path(install))[0]
-    return subprocess.call(cmd, cwd=ROOT, env=dict(os.environ, **env))  # background-launch: allow gate's baseline check harness
+    try:
+        return subprocess.call(cmd, cwd=ROOT, env=dict(os.environ, **env), timeout=600)  # background-launch: allow gate's baseline check harness
+    except subprocess.TimeoutExpired:
+        print(f"  {name}: gate check timed out after 600s")
+        return 124
 
 
 def repin(row: dict, install: str, det_duration: int, tmp: str) -> bool:
@@ -189,7 +193,15 @@ def repin(row: dict, install: str, det_duration: int, tmp: str) -> bool:
         return accepted
     finally:
         if not accepted:
-            path.write_bytes(original)
+            temporary = None
+            try:
+                with tempfile.NamedTemporaryFile(dir=path.parent, prefix=path.name + ".", delete=False) as fh:
+                    temporary = Path(fh.name)
+                    fh.write(original)
+                os.replace(temporary, path)
+            finally:
+                if temporary is not None:
+                    temporary.unlink(missing_ok=True)
             print("  restored original baseline after failed re-pin")
 
 
@@ -211,9 +223,11 @@ def keep_unknown_keys(row: dict) -> None:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--max-behind", type=int, default=50, help="stale when the recorded exe is more than N commits behind HEAD (default 50)")
-    ap.add_argument("--repin", action="store_true", help="re-record the stale baselines now (needs --install: an install deployed from HEAD)")
+    mode = ap.add_mutually_exclusive_group()
+    mode.add_argument("--repin", action="store_true", help="re-record the stale baselines now (needs --install: an install deployed from HEAD)")
+    mode.add_argument("--check-valid", action="store_true", help="check every stale row with the gate harness without rewriting baselines (needs --install)")
     ap.add_argument("--only", help="comma-separated missions to restrict the listing / re-pin to")
-    ap.add_argument("--install", help="install name or dir for --repin")
+    ap.add_argument("--install", help="install name or dir for --repin / --check-valid")
     ap.add_argument("--det-duration", type=int, default=30, help="seconds per determinism re-pin run (default 30)")
     ap.add_argument("--out-root", help="parent of the re-pin run dirs (default: a fresh dir under $MC2_LANE_SCRATCH, else a tempdir)")
     args = ap.parse_args(argv)
@@ -227,12 +241,22 @@ def main(argv: list[str] | None = None) -> int:
         behind = "unknown sha" if r["behind"] is None else f"{r['behind']} commits behind"
         print(f"{mark:5} {r['kind']:11} {r['mission']:8} {r['sha'] or '-':14} {behind}")
     print(f"repin_stale: {len(bad)} stale of {len(rows)} (limit {args.max_behind})")
-    if not (args.repin and bad):
+    if not ((args.repin or args.check_valid) and bad):
         return 1 if bad else 0
     if not args.install:
-        print("repin_stale: --repin needs --install")
+        print("repin_stale: --repin / --check-valid needs --install")
         return 2
     root = scratch_root(args.out_root)
+    if args.check_valid:
+        import sim_determinism as sd
+        install = sd.resolve_install(args.install)
+        failed = []
+        for row in bad:
+            rc = gate_check(row, install, root, "valid")
+            print(f"{'INVALID' if rc else 'VALID'} {row['kind']}:{row['mission']} (gate rc={rc})")
+            if rc:
+                failed.append(row)
+        return 1 if failed else 0
     failed = [r for r in bad if not (print(f"re-pin {r['kind']} {r['mission']}") or repin(r, args.install, args.det_duration, root))]
     print("repin_stale: " + ("FAILED " + ", ".join(f"{r['kind']}:{r['mission']}" for r in failed) if failed else "re-pinned all"))
     return 1 if failed else 0
