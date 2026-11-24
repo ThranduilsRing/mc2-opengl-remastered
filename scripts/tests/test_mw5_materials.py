@@ -274,3 +274,50 @@ def test_ready_pack_has_cockpit_and_glass_uvs_clear_of_other_parts():
                 u = ((b_[:, 1] - c_[:, 1]) * (px - c_[:, 0]) + (c_[:, 0] - b_[:, 0]) * (py - c_[:, 1])) / np.where(den == 0, 1, den)
                 v = ((c_[:, 1] - a_[:, 1]) * (px - c_[:, 0]) + (a_[:, 0] - c_[:, 0]) * (py - c_[:, 1])) / np.where(den == 0, 1, den)
                 assert not ((den != 0) & (u >= 0) & (v >= 0) & (u + v <= 1)).any(), f"{m['name']} UVs cover the glass tile"
+
+
+def test_extras_streaks_flow_down_and_decal_lands(tmp_path):
+    from tools.mw5_mechs import bake_extras as E
+    # one vertical wall facing +Z: world up (Y) maps to image up (-row), so downhill in UV is +row
+    pos = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], np.float64)
+    uv = np.array([[.1, .9], [.9, .9], [.9, .1], [.1, .1]])
+    n = np.tile([0, 0, 1.0], (4, 1))
+    part = (pos, n, uv, np.array([[0, 1, 2], [0, 2, 3]]))
+    p, nr, cov, down = E.rasterize([part], size=256)
+    assert cov[128, 128] and (down[128, 128, 1] > .9) and abs(down[128, 128, 0]) < .1
+    seeds_ledge = nr.copy(); seeds_ledge[..., 1] = .9    # pretend the wall is a ledge so streaks seed
+    s = E.streaks(seeds_ledge, cov, down, 1, steps=40, density=.05)
+    assert s.sum() > 0 and s[:128].sum() < s[128:].sum() * 5   # nothing above the seed band flows up
+    atlas = tmp_path / "atlas.png"
+    a = np.zeros((64, 64, 4), np.uint8); a[8:56, 8:56] = 255
+    Image.fromarray(a).save(atlas)
+    alb = np.full((256, 256, 4), 20, np.uint8)
+    orm = np.full((256, 256, 4), 200, np.uint8)
+    d = [{"name": "t", "cell": (0, 0, 64, 64), "axis": (0, 0, -1), "at": (.5, .5, 0), "size": (.5, .5), "depth": .5}]
+    alb2, orm2 = E.decals((p, nr, cov, down), alb, orm, atlas, d)
+    assert alb2[128, 128, 0] > 200 and alb2[5, 5, 0] == 20
+
+
+def test_trim_proud_glass_drops_only_the_piece_above_the_hull(tmp_path):
+    from tools.mw5_mechs import add_cockpit as K
+    from tools.mw5_mechs.sockets import load_glb
+    import struct
+    pos = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0],            # hull, top y=1
+                    [0, 0, 0], [1, 0, 0], [0, .5, 0],           # glass piece inside
+                    [2, 0, 0], [3, 0, 0], [2, 2, 0]], np.float32)   # glass piece proud
+    blob = pos.tobytes() + np.array([0, 1, 2, 0, 1, 2, 3, 4, 5], np.uint32).tobytes()
+    doc = {"asset": {"version": "2.0"}, "buffers": [{"byteLength": len(blob)}],
+           "bufferViews": [{"buffer": 0, "byteOffset": 0, "byteLength": 108}, {"buffer": 0, "byteOffset": 108, "byteLength": 36}],
+           "accessors": [{"bufferView": 0, "byteOffset": 0, "componentType": 5126, "count": 3, "type": "VEC3"},
+                         {"bufferView": 0, "byteOffset": 36, "componentType": 5126, "count": 6, "type": "VEC3"},
+                         {"bufferView": 1, "byteOffset": 0, "componentType": 5125, "count": 3, "type": "SCALAR"},
+                         {"bufferView": 1, "byteOffset": 12, "componentType": 5125, "count": 6, "type": "SCALAR"}],
+           "meshes": [{"name": "cockpit_hull", "primitives": [{"attributes": {"POSITION": 0}, "indices": 2}]},
+                      {"name": "cockpit_glass", "primitives": [{"attributes": {"POSITION": 1}, "indices": 3}]}]}
+    js = json.dumps(doc).encode()
+    js += b" " * (-len(js) % 4)
+    (tmp_path / "in.glb").write_bytes(struct.pack("<4sII", b"glTF", 2, 28 + len(js) + len(blob)) + struct.pack("<I4s", len(js), b"JSON")
+                                      + js + struct.pack("<I4s", len(blob), b"BIN\0") + blob)
+    assert K.trim_proud_glass(tmp_path / "in.glb", tmp_path / "out.glb") == 1
+    g, buf = load_glb(tmp_path / "out.glb")
+    assert B.read_accessor(g, buf, g["meshes"][1]["primitives"][0]["indices"]).tolist() == [0, 1, 2]

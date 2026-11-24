@@ -104,6 +104,47 @@ def add_cockpit(glb_in, glb_out, hull, glass, recipe=None):
                               + js + struct.pack("<I4s", len(blob), b"BIN\0") + bytes(blob))
 
 
+def trim_proud_glass(glb_in, glb_out, margin=0.0):
+    """Drop connected canopy-glass pieces whose top pokes above the nose hull (they showed as a black teardrop)."""
+    doc, buf = load_glb(glb_in)
+    by = {m["name"]: m["primitives"][0] for m in doc["meshes"] if m["name"] in ("cockpit_hull", "cockpit_glass")}
+    hull_top = read_accessor(doc, buf, by["cockpit_hull"]["attributes"]["POSITION"])[:, 1].max()
+    gp = by["cockpit_glass"]
+    pos = read_accessor(doc, buf, gp["attributes"]["POSITION"])
+    tris = read_accessor(doc, buf, gp["indices"]).astype(np.uint32).reshape(-1, 3)
+    parent = list(range(len(pos)))
+
+    def find(a):
+        while parent[a] != a:
+            parent[a] = parent[parent[a]]
+            a = parent[a]
+        return a
+    for t in tris:
+        parent[find(t[1])] = find(t[0])
+        parent[find(t[2])] = find(t[0])
+    root = np.array([find(t[0]) for t in tris])
+    keep = np.ones(len(tris), bool)
+    for r in np.unique(root):
+        sel = root == r
+        if pos[np.unique(tris[sel])][:, 1].max() > hull_top + margin:
+            keep[sel] = False
+    blob = bytearray(buf)
+    while len(blob) % 4:
+        blob.append(0)
+    new = np.ascontiguousarray(tris[keep].ravel().astype(np.uint32))
+    doc["bufferViews"].append({"buffer": 0, "byteOffset": len(blob), "byteLength": new.nbytes, "target": 34963})
+    blob.extend(new.tobytes())
+    acc = doc["accessors"][gp["indices"]]
+    acc.update(bufferView=len(doc["bufferViews"]) - 1, byteOffset=0, count=int(new.size), componentType=5125)
+    doc["buffers"][0]["byteLength"] = len(blob)
+    js = json.dumps(doc, separators=(",", ":")).encode()
+    js += b" " * (-len(js) % 4)
+    blob.extend(b"\0" * (-len(blob) % 4))
+    Path(glb_out).write_bytes(struct.pack("<4sII", b"glTF", 2, 28 + len(js) + len(blob)) + struct.pack("<I4s", len(js), b"JSON")
+                              + js + struct.pack("<I4s", len(blob), b"BIN\0") + bytes(blob))
+    return int((~keep).sum())
+
+
 def srgb_to_byte(c):
     c = np.asarray(c, np.float64)
     return np.uint8(np.clip(np.where(c <= 0.0031308, c * 12.92, 1.055 * c ** (1 / 2.4) - 0.055) * 255 + 0.5, 0, 255))
@@ -132,7 +173,10 @@ if __name__ == "__main__":
     ap.add_argument("--hull")
     ap.add_argument("--glass")
     ap.add_argument("--stamp-dir")
+    ap.add_argument("--trim-glb", help="drop canopy glass pieces poking through the hull: --trim-glb in.glb --out out.glb")
     a = ap.parse_args()
+    if a.trim_glb:
+        print("dropped triangles:", trim_proud_glass(a.trim_glb, a.out))
     if a.stamp_dir:
         stamp(a.stamp_dir)
     if a.glb:
