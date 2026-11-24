@@ -99,7 +99,7 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz, vec2
         dN += w.w * MATV_NORMAL_BOOST.w * fwConcrete * dfConcrete * (s.rgb * 2.0 - 1.0);
     }
     if (snowWeight > 0.01 && fwSnow != 0.0 && dfSnow > 0.0) {
-        dN += snowWeight * 0.9 * fwSnow * dfSnow *
+        dN += snowWeight * 0.9 * uT.normalFlatStrength * fwSnow * dfSnow *
               (textureGrad(u_matNormalArray, vec3(uvSnow, float(MAT_LAYER_SNOW)),
                            uvDx * MATV_TILING_SNOW, uvDy * MATV_TILING_SNOW).rgb * 2.0 - 1.0);
     }

@@ -167,7 +167,16 @@ struct TerrainFrameUBO {
     int32_t concreteDetail;
     float   concreteDetailStrength;
     int32_t groundMottleOn;        // vegetation palette only while a population is resident
-    int32_t _pad[39];  // @cpp_only slot tail padding to the 1024B stride
+    // Material-normal class periods in world units and gains over authored normals.
+    float normalFlatPeriod;
+    float normalFlatStrength;
+    float normalSlopePeriod;
+    float normalSlopeStrength;
+    float normalCliffPeriod;
+    float normalCliffStrength;
+    float normalCementPeriod;
+    float normalCementStrength;
+    int32_t _pad[31];  // @cpp_only slot tail padding to the 1024B stride
 };
 
 #include "GpuTerrainFrameUBO.layout.gen.h"

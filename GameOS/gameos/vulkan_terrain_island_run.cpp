@@ -238,6 +238,18 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     u.concreteDetailStrength = 0.15f;   // normal gain over the cooked 2K sets; tuned in a viewed RTS-zoom montage
     u.detailTiling   = feed.detailTiling;
     u.detailStrength = feed.detailStrength;
+    // Same resolved profile (defaults, mission, session) as the CPU environment.
+    static const auto normalDefaults = visualTuning_resolve("", {}).legacyTuning;
+    const auto& resolved = visualTuning_environment().legacyTuning;
+    const auto& normalTuning = resolved.empty() ? normalDefaults : resolved;
+    u.normalFlatPeriod = normalTuning.at("terrainNormalFlatPeriod");
+    u.normalFlatStrength = normalTuning.at("terrainNormalFlatStrength");
+    u.normalSlopePeriod = normalTuning.at("terrainNormalSlopePeriod");
+    u.normalSlopeStrength = normalTuning.at("terrainNormalSlopeStrength");
+    u.normalCliffPeriod = normalTuning.at("terrainNormalCliffPeriod");
+    u.normalCliffStrength = normalTuning.at("terrainNormalCliffStrength");
+    u.normalCementPeriod = normalTuning.at("terrainNormalCementPeriod");
+    u.normalCementStrength = normalTuning.at("terrainNormalCementStrength");
     // VK-TERRAIN-LODFADE: camera pos + gate, precondition-chained on detail
     // being enabled (fading an already-off detail term is a no-op).
     u.cameraPosMC2[0] = feed.cameraPosMC2[0];
