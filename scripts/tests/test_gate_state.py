@@ -370,6 +370,7 @@ def test_cached_deploy_requires_actual_candidate_identity(journal, monkeypatch, 
     second.mkdir()
     baseline = root / 'tests/smoke/sim_determinism/mc2_01.json'
     baseline.parent.mkdir(parents=True)
+    monkeypatch.setattr(sim, 'baseline_path', lambda mission: str(baseline.parent / (mission + '.json')))
     baseline.write_text(json.dumps({'data_fingerprint': sim.data_fingerprint(
         str(first), {'overlay': {}, 'stock_digest': ''})}))
     planned = [('deploy', ['scripts/deploy_payload.py', '--target', 'game'], {})]
