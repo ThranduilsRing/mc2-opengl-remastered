@@ -32,6 +32,21 @@
     "Stand_Turn_Right": "atlas_moveCoreTurnRightIdle",
     "Jumpjetting_Neutral": "atlas_moveJumpUpIdle"
   },
+  "grounding": {
+    "atlas_moveCoreIdle": "feet",
+    "atlas_moveCoreWalkFwd": "feet",
+    "atlas_moveCoreRunFwd": "feet",
+    "atlas_moveCoreWalkBwd": "feet",
+    "atlas_moveCoreWalkLimpFwdLeft": "feet",
+    "atlas_moveCoreWalkLimpFwdRight": "feet",
+    "atlas_moveCoreTurnLeftIdle": "feet",
+    "atlas_moveCoreTurnRightIdle": "feet",
+    "atlas_hitReactKnockdownInpl": "body",
+    "atlas_downedIdle": "body",
+    "atlas_deathKnockdown": "body",
+    "atlas_deathIdle": "body",
+    "atlas_downedGetup": "body"
+  },
   "hold_clips": {
     "atlas_hitReactKnockdownInpl": [
       "Falling",

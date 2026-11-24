@@ -24,6 +24,8 @@
 #include <cmath>
 #include <string_view>
 #include <vector>
+#include <map>
+#include <string>
 
 namespace mc2clip {
 
@@ -195,6 +197,13 @@ inline float onceRate(std::string_view clip, float duration, float gestureFrames
 inline bool proneClip(std::string_view clip) {
     return clip.starts_with("atlas_downed") || clip.starts_with("atlas_death") ||
            clip == "atlas_hitReactKnockdownInpl";
+}
+
+// Package roles override the legacy BT clip convention, including explicit exclusions.
+inline std::string_view groundingRole(const std::map<std::string, std::string>& roles, const std::string& clip) {
+    const auto found = roles.find(clip);
+    if (!roles.empty()) return found == roles.end() ? "none" : std::string_view(found->second);
+    return proneClip(clip) ? "body" : clip.starts_with("atlas_moveCore") ? "feet" : "none";
 }
 
 inline float fadeDuration(std::string_view previous, std::string_view next) {

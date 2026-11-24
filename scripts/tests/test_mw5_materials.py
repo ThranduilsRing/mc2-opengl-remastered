@@ -40,6 +40,30 @@ def test_rg_normal_flip_and_reconstruction(tmp_path):
     assert np.all(xyz[:, 2] >= 0)
 
 
+def test_pack_rest_sole_includes_toes_and_bind_transform(fixture, tmp_path):
+    # Give the synthetic mesh a zero sole. Joint translations/rotations are nontrivial.
+    skm = fixture[0]
+    doc = json.loads(skm.read_text())
+    binary = skm.with_suffix('.bin')
+    buf = bytearray(binary.read_bytes())
+    positions = B.read_accessor(doc, buf, doc['meshes'][0]['primitives'][0]['attributes']['POSITION'])
+    positions[:, 1] -= 1
+    binary.write_bytes(buf)
+    glb = tmp_path / 'rest.glb'
+    B.build(skm, tmp_path, glb, 'mw5_madcat_alb.png')
+    g, data = P.load_glb(glb)
+    assert abs(P.rest_sole_height(g, data)) <= .1
+    # A descendant toe below the main foot must participate in the measurement.
+    joint = g['skins'][0]['joints'][0]
+    g['nodes'][joint]['name'] = 'toe'
+    parent = next(n for n in g['nodes'] if joint in n.get('children', []))
+    parent['children'] = [len(g['nodes']) if i == joint else i for i in parent['children']]
+    g['nodes'].append({'name': 'j_LFoot', 'children': [joint]})
+    assert abs(P.rest_sole_height(g, data)) <= .1
+    g['nodes'][0]['translation'][1] += .3
+    assert P.rest_sole_height(g, data) > .1
+
+
 @pytest.mark.parametrize("orm", [False, True])
 def test_cook_and_ktx_only_pack(tmp_path, monkeypatch, fixture, orm):
     alb, nrm = tmp_path / "alb.png", tmp_path / "nrm.png"

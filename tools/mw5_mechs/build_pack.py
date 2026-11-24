@@ -13,12 +13,38 @@ import json
 import shutil
 import sys
 from pathlib import Path
+import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from sockets import load_glb, package_nodes  # noqa: E402
-from build_glb import DEFAULT_RECIPE, build, load_recipe  # noqa: E402
+from build_glb import DEFAULT_RECIPE, build, load_recipe, read_accessor, trs_mat  # noqa: E402
 
 KEEP = ("Gestures", "Bounds", "SmokeNode0", "JumpJetNode0", "FootNode0", "FootNode1", "FootPrint")
+
+
+def rest_sole_height(doc, buf):
+    """Lowest articulated foot vertex in metres, including the skin's bind transform."""
+    parents = {c: i for i, n in enumerate(doc['nodes']) for c in n.get('children', [])}
+    def world(i):
+        return (world(parents[i]) if i in parents else np.eye(4)) @ trs_mat(doc['nodes'][i])
+    def foot(i):
+        return doc['nodes'][i]['name'] in ('j_LFoot', 'j_RFoot') or (i in parents and foot(parents[i]))
+    lows = []
+    for node in doc['nodes']:
+        if 'mesh' not in node or 'skin' not in node:
+            continue
+        skin = doc['skins'][node['skin']]
+        joint = skin['joints'][0]  # MW5 rigid split: one joint per mesh
+        if not foot(joint):
+            continue
+        bind = read_accessor(doc, buf, skin['inverseBindMatrices'])[0].reshape(4, 4).T
+        transform = world(joint) @ bind
+        for pr in doc['meshes'][node['mesh']]['primitives']:
+            vertices = read_accessor(doc, buf, pr['attributes']['POSITION'])
+            lows.append(float((np.c_[vertices, np.ones(len(vertices))] @ transform.T)[:, 1].min()))
+    if not lows:
+        raise ValueError('no articulated foot geometry')
+    return min(lows)
 
 
 def blocks(text):
@@ -84,7 +110,7 @@ def main():
         attachments = [f"{a.recipe.resolve().parent / row['source']}={row['bone']}" for row in model["attachments"]]
         build(source("source_skm"), source("anim_dir"), glb, f"{stem}_alb.png",
               attachments=attachments, recipe=recipe)
-    doc, _ = load_glb(glb)
+    doc, buf = load_glb(glb)
     clips = {clip["name"] for clip in doc.get("animations", []) if clip["channels"]}
     expected = set(recipe["clips"].values()) | set(recipe["hold_clips"]) if not a.glb else set()
     if not clips or expected - clips:
@@ -116,8 +142,9 @@ def main():
             if src.is_file():
                 shutil.copyfile(src, tgl / uri)
     pkg = {"schema": "bt2018-mech-package/2", "chassisId": recipe["chassis_id"], "sourceGlb": f"{stem}.glb", "nodes": nodes,
-           "socketOffsets": offsets, "trueHeightM": height,
-           "materials": materials, "featureBits": ["HAS_NORMAL"]}
+           "socketOffsets": offsets, "trueHeightM": height, "restSoleHeightM": rest_sole_height(doc, buf),
+           "materials": materials, "featureBits": ["HAS_NORMAL"],
+           "grounding": {clip: role for clip, role in recipe.get("grounding", {}).items() if clip in clips}}
     (tgl / f"{stem}.package.json").write_text(json.dumps(pkg, indent=2) + "\n")
     (out / "mod.json").write_text(json.dumps({
         "schema": "mc2-mod/1", "id": a.mod_id, "name": recipe["mod"]["name"], "version": "0.1.0",
