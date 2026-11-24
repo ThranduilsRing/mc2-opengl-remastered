@@ -1,5 +1,6 @@
 """Offline input failures must precede expensive merge-window stages."""
 import json
+import hashlib
 from pathlib import Path
 import sys
 
@@ -47,9 +48,12 @@ def test_preflight_inputs(tmp_path, monkeypatch, capsys, broken, scheduled_deplo
     ref = tmp_path / 'reference'
     ref.mkdir()
     (ref / 'declared.bin').write_bytes(b'published')
-    monkeypatch.setattr(asset_parity, 'default_ref', lambda: ref)
-    monkeypatch.setattr(asset_parity, 'intentional_changes', lambda *a: {
-        'declared.bin': 'bad' if broken == 'intentional' else asset_parity._sha(ref / 'declared.bin')})
+    import deploy_payload
+    monkeypatch.setenv('MC2_ASSET_STORE', str(ref))
+    sha = hashlib.sha256(b'published').hexdigest()
+    (ref / sha).write_bytes(b'published')
+    monkeypatch.setattr(deploy_payload, 'declared_assets', lambda root: {
+        'declared.bin': 'b' * 64 if broken == 'intentional' else sha})
     fingerprints = []
     def data_fingerprint(install, manifest):
         fingerprints.append(install)
@@ -112,10 +116,10 @@ def test_preflight_inputs(tmp_path, monkeypatch, capsys, broken, scheduled_deplo
     if broken == 'missing_install':
         assert f'scripts/make-isolated-deploy.py --from "{(tmp_path / "seed").as_posix()}" --to "{(tmp_path / "candidate").as_posix()}"' in output
     elif broken == 'intentional':
-        assert f'scripts/deploy_payload.py "{ref.as_posix()}" --ninja' in output
+        assert 'intentional assets unresolved' in output and 'v0.4' not in output
     elif broken in ('fingerprint', 'fingerprint_problem'):
         assert 'determinism-m install data fingerprint' in output and 'saveload-m install data fingerprint' in output
-        assert f'scripts/asset_parity.py "{(tmp_path / "candidate").as_posix()}" --sync --ref "{ref.as_posix()}"' in output
+        assert 'deploy the declared payload' in output
 
 
 def test_deploy_bytes_verified_before_runtime(tmp_path, monkeypatch):
