@@ -1334,8 +1334,12 @@ def candidate_data_fingerprint(root: str, install: str | None = None) -> tuple[d
     install to read. Read-only: it walks and hashes the install but never writes to it. The stock parts are gitignored and
     absent from a source tree, so the source tree itself can never be fingerprinted -- only the install the gate deploys to."""
     import sim_determinism as sd
+    default_install = not install
     install = install or "E:/mc2-installs/merge-gate"
     if not os.path.isdir(install):
+        if default_install:
+            print(f"WARN: default pre-gate install missing: {install}; data fingerprint unchecked. "
+                  "Pass --install <lane-owned install> to --pre-gate.", flush=True)
         return None, f"no stock reference install at {install} to fingerprint"
     manifest = sd.load_overlay_manifest(os.path.join(root, "tests", "smoke", "sim_determinism", "data_overlay.json"))
     return sd.data_fingerprint(install, manifest), ""

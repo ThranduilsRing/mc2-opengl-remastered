@@ -77,6 +77,16 @@ def test_candidate_fingerprint_no_stock_install_skips(tmp_path, monkeypatch):
     assert fp is None and "no stock reference install" in reason
 
 
+def test_missing_default_install_warns_loudly(tmp_path, monkeypatch, capsys):
+    isdir = lm.os.path.isdir
+    monkeypatch.setattr(lm.os.path, 'isdir', lambda path: False if path == 'E:/mc2-installs/merge-gate' else isdir(path))
+    verdict, reason = lm.data_fingerprint_check(str(tmp_path))
+    assert verdict == 'SKIPPED' and 'no stock reference install' in reason
+    out = capsys.readouterr().out
+    assert 'WARN: default pre-gate install missing: E:/mc2-installs/merge-gate' in out
+    assert 'data fingerprint unchecked' in out and '--install' in out
+
+
 def test_candidate_fingerprint_uses_the_tree_overlay_manifest(tmp_path, monkeypatch):
     """The overlay comes from the candidate tree's data_overlay.json, not the module's checkout (whose declared fixtures
     are absent from the stand-in install and would all read 'missing')."""
