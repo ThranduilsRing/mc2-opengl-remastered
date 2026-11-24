@@ -531,18 +531,19 @@ class GateState:
                     if not layer.is_dir():
                         raise FileNotFoundError(f'mod receipt input missing: {layer}')
                     inputs.update(p for p in layer.rglob('*') if p.is_file())
+        exe_tree = None
         for arg in command:
             path = Path(arg)
             if not path.is_absolute():
                 path = ROOT / path
             if path.is_file():
-                if path.resolve() == self.exe.resolve() and self.runtime_tree:
-                    hashes[key] = self.runtime_tree
+                if self.runtime_tree and path.resolve() == self.exe.resolve():
+                    exe_tree = self.runtime_tree   # exe bytes embed HEAD; key it by its engine input tree
                     continue
                 inputs.add(path)
             elif path.is_dir() and '--install' in command and arg == command[command.index('--install') + 1]:
                 inputs.add(path / '.deployed_manifest.csv')
-        hashes = {}
+        hashes = {'{EXE_TREE}': exe_tree} if exe_tree else {}
         for path in sorted(inputs, key=str):
             key = str(path)
             if base is not None and path.is_relative_to(base):
@@ -1427,6 +1428,9 @@ def write_verdict(paths, *, head, branch, verdict, steps, skipped, artifacts, ti
                 required=[n for n, _, _ in steps],
                 executed={n: r for n, r in ROW_RESULTS.items() if not r["status"].startswith(("SKIP", "DRY-RUN"))},
                 skipped={n: reasons.get(n, "not run") for n in skipped},
+                stage_table=[dict(name=n, status=r["status"], seconds=round(r.get("seconds", 0.0), 1),
+                                  scheduler_wait_s=round(r.get("scheduler_wait_seconds", 0.0), 1))
+                             for n, r in sorted(ROW_RESULTS.items(), key=lambda kv: -kv[1].get("seconds", 0.0))],
                 not_run=[n for n, _, _ in steps if n not in ROW_RESULTS and n not in skipped],
                 failed=[dict(name=n, status=s) for n, s in FAILED_STAGES],
                 advisory=[dict(name=n, status=r["status"]) for n, r in ROW_RESULTS.items() if r["status"].startswith(ADVISORY_PREFIX)],

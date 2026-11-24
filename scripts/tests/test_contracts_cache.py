@@ -62,8 +62,9 @@ def test_unmapped_change_is_reported_and_art_is_local(capsys):
 def test_1122m_selection_is_small_and_includes_campaign_marker():
     import run_tools_tests as rtt
     import run_scripts_tests as rst
-    paths = subprocess.check_output(["git", "diff", "--name-only", "8fc8afe78", "7fb0d52f7"],
-                                    cwd=rtt.ROOT, text=True).splitlines()
+    paths = subprocess.run(["git", "diff", "--name-only", "8fc8afe78", "7fb0d52f7"], cwd=rtt.ROOT, text=True,
+                           check=True, stdout=subprocess.PIPE,
+                           **console_child.child_kwargs(redirected=True)).stdout.splitlines()
     modules = rtt.discover() + rst.discover()
     selected = rtt.scoped_modules(modules, paths)
     assert len(modules) == 422

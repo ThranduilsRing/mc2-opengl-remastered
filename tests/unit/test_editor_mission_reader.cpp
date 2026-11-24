@@ -13,7 +13,7 @@ namespace
 {
 std::filesystem::path readerScratch()
 {
-    const auto root = std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
+    const auto root = std::filesystem::path(MC2_REPO_ROOT);
     const auto path = root / "scratch/editor-reader-tests";
     std::filesystem::create_directories(path);
     return path;

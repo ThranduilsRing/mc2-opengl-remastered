@@ -879,7 +879,7 @@ def require_clean_generator_inputs(root):
     """Artifacts must describe committed HEAD, including inputs outside ARTIFACTS."""
     # Throwaway merge-test repos without generators do not regenerate anything.
     if os.path.exists(os.path.join(root, GENERATORS[0][1])):
-        dirty = [(status, path) for status, path in status_entries(root) if status != "??"]
+        dirty = [(status, path) for status, path in status_entries(root) if status != "??" and path != "README.md"]   # README.md carries owner edits by rule
         if dirty:
             raise Stop(6, "regenerate-all requires a clean tree; commit or remove generator input edits first:\n  "
                        + "\n  ".join(path for _, path in dirty))
