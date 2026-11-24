@@ -9,7 +9,7 @@
 // Cliff faces: triplanar parallax-occlusion march of ONE world plane (GL terrain_lod_chunk.frag cliffParallaxPlane). viewPlane is the view
 // vector projected on the plane's 2D basis; depth is a world-unit height relative to the cliff tiling. The layer-5 alpha is the cliff
 // displacement (1 = peak). textureLod only: the march sits in a non-uniform branch.
-const float MATV_CLIFF_TS          = 256.0;   // world units per cliff repeat
+#define MATV_CLIFF_TS (uT.normalCliffPeriod * 0.8) // marble's authored density relative to the cliff scan
 const float MATV_CLIFF_POM_DEPTH   = 12.0;
 const float MATV_CLIFF_POM_STEPS   = 24.0;
 const float MATV_CLIFF_HEIGHT_NORMAL_STRENGTH = 2.0;
@@ -48,7 +48,7 @@ vec2 mv_cliffParallaxPlane(vec2 uv, vec2 viewPlane, float depth, float steps, fl
 void mv_cliffMaterial(vec3 macroN, vec3 planeLod, float blocked, inout vec3 N, inout vec3 baseColor) {
     float cb = cliffRockWeight(abs(macroN.z)) * blocked;
     if (cb <= 0.01) return;
-    const float ts = MATV_CLIFF_TS;
+    float ts = MATV_CLIFF_TS;
     vec3 wp = v_worldPos;
     vec3 wn = abs(macroN); wn /= (wn.x + wn.y + wn.z + 1e-5);
     vec2 uvX = wp.yz / ts;   // YZ plane
@@ -91,7 +91,7 @@ void mv_cliffMaterial(vec3 macroN, vec3 planeLod, float blocked, inout vec3 N, i
     float hMix = clamp(MATV_CLIFF_HEIGHT_NORMAL_STRENGTH * 0.5, 0.0, 1.0);
     triTilt = mix(triTilt, htTilt, hMix);
 
-    vec3 triN = normalize(macroN + triTilt * relief);
+    vec3 triN = normalize(macroN + triTilt * relief * uT.normalCliffStrength);
     N = normalize(mix(N, triN, cb));
     }
 
@@ -103,7 +103,7 @@ void mv_cliffMaterial(vec3 macroN, vec3 planeLod, float blocked, inout vec3 N, i
 // tools/mc2texcook/cook_cliff_rock.py) on steep macro faces. The colormap smears vertically there, so the face colour becomes a
 // palette tone (colormap taps around the face, pulled toward the mission's rock tint) times the scan's albedo ratio: MC2's colours,
 // real rock structure. Height-blended into the slope transition. `wpDx`/`wpDy` = screen derivatives of the world position (uniform flow).
-const float CR_TS = 320.0;   // world units per rock repeat
+#define CR_TS uT.normalCliffPeriod
 // Terrain-only MOVE rule (EditorData_save.cpp); object footprints never select rock.
 float crBlockedTile(ivec2 p) {
     p = clamp(p, ivec2(0), ivec2(uT.mapSide - 2));
@@ -121,7 +121,7 @@ float crTerrainCliff(vec2 xy) {
     return mix(mix(crBlockedTile(p), crBlockedTile(p + ivec2(1,0)), f.x),
                mix(crBlockedTile(p + ivec2(0,1)), crBlockedTile(p + ivec2(1,1)), f.x), f.y);
 }
-const float CN_TS = 320.0;   // world units per ground-rock repeat (same density as the cliff scan)
+#define CN_TS uT.normalSlopePeriod
 // Separate ground-rock asset (mat0).
 // Low-contrast height colour preserves the authored palette rather than stamping the cliff scan.
 void crNavigable(vec3 macroN, vec3 dx, vec3 dy, float weight, inout vec3 N, inout vec3 color) {
@@ -141,7 +141,7 @@ void crNavigable(vec3 macroN, vec3 dx, vec3 dy, float weight, inout vec3 N, inou
     }
     h /= max(used, 1e-4); tilt /= max(used, 1e-4);
     color *= mix(1.0, (0.78 + 0.44 * h) * (0.9 + 0.2 * wpn_value(wp.xy / 900.0)), weight);   // macro variation + cliff-like contrast
-    N = normalize(mix(N, normalize(macroN + tilt * 0.4), weight * 0.8));
+    N = normalize(mix(N, normalize(macroN + tilt * 0.4 * uT.normalSlopeStrength), weight * 0.8));
 }
 void crApply(vec3 macroN, vec3 wpDx, vec3 wpDy, vec3 planeLod, float blocked, inout vec3 N, inout vec3 baseColor) {
     float cb = cliffRockWeight(abs(macroN.z));
@@ -184,5 +184,5 @@ void crApply(vec3 macroN, vec3 wpDx, vec3 wpDy, vec3 planeLod, float blocked, in
     tone = mix(mix(vec3(tl), tone, 0.6), vec3(uT.tintRockR, uT.tintRockG, uT.tintRockB) * (tl / max(dot(vec3(uT.tintRockR, uT.tintRockG, uT.tintRockB), vec3(0.299, 0.587, 0.114)), 0.05)), 0.3) * 0.85;
     vec3 rock = tone * (ah * 2.0) * mix(1.0, ao, 0.8);
     baseColor = mix(baseColor, rock, m);
-    N = normalize(mix(N, normalize(macroN + tilt), m));
+    N = normalize(mix(N, normalize(macroN + tilt * uT.normalCliffStrength), m));
 }

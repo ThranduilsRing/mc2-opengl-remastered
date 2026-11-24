@@ -14,7 +14,15 @@
     "atmoDensity": 1.0,
     "atmoHeightFalloff": 0.0008,
     "atmoSunScatter": 0.35,
-    "atmoAnisotropy": 0.55
+    "atmoAnisotropy": 0.55,
+    "terrainNormalFlatPeriod": 768.0,
+    "terrainNormalFlatStrength": 1.75,
+    "terrainNormalSlopePeriod": 320.0,
+    "terrainNormalSlopeStrength": 1.75,
+    "terrainNormalCliffPeriod": 320.0,
+    "terrainNormalCliffStrength": 1.0,
+    "terrainNormalCementPeriod": 48.0,
+    "terrainNormalCementStrength": 1.0
   },
   "missions": {
     "mc2_01": {

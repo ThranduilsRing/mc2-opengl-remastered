@@ -78,11 +78,12 @@ layout(set = 0, binding = 14) uniform sampler2D u_shorelineMask;
 #define MAT_LAYER_SNOW     4
 #define MAT_LAYER_MARBLE_CLIFF 5   // mat5_normal.tga: RGB = marble microsurface normal, A = the cooked cliff displacement
 
-// GL default tuning (terrain_lod_chunk.frag uniforms; ImGui-driven, values are the
-// gameos_graphics.cpp member defaults). Baked const for the parity oracle.
-const vec4  MATV_NORMAL_BOOST = vec4(0.9, 0.5, 1.1, CD_CONCRETE_RELIEF_STRENGTH);  // rock,grass,dirt,conc
-const vec4  MATV_TILING       = vec4(3.0, 2.0, 1.0, 6.0);  // rock,grass,dirt,conc
-const float MATV_TILING_SNOW  = 1.0;
+// Profile class controls preserve each texture's authored relative density.
+// Flat reference: dirt/snow 768 wu; slope reference: triplanar rock 320 wu;
+// cement reference: pad detail 48 wu. Legacy top-down rock remains 2.4x slope.
+#define MATV_NORMAL_BOOST (vec4(0.9, 0.5, 1.1, CD_CONCRETE_RELIEF_STRENGTH) * vec4(uT.normalSlopeStrength, uT.normalFlatStrength, uT.normalFlatStrength, uT.normalCementStrength))
+#define MATV_TILING vec4(3.0 * 320.0 / uT.normalSlopePeriod, 2.0 * 768.0 / uT.normalFlatPeriod, 768.0 / uT.normalFlatPeriod, 6.0 * 48.0 / uT.normalCementPeriod)
+#define MATV_TILING_SNOW (768.0 / uT.normalFlatPeriod)
 const float GM_STRENGTH       = 0.9;   // ground mottle (world_patch_noise.glsl) blend on full natural ground
 const float GM_LUMA_KEEP      = 0.25;   // share of the colormap brightness the mottle keeps (dark soil keeps all of it)
 const float GM_BEACH_WU       = 40.0;   // horizontal run above the waterline that stays clean beach (~10 m)
@@ -187,7 +188,7 @@ vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod) {
     vec4 w = vec4(max(1.0 - m.x - m.y - m.w, 0.0), m.x, m.y, m.w);
     // Keep the lamp consumer small: one XY-only tap with explicit isotropic
     // LOD, no sun/POM/anti-tile call graph inside the light loop.
-    const vec4 tiling = vec4(MATV_TILING.x / 3.0, MATV_TILING.yzw);
+    vec4 tiling = vec4(MATV_TILING.x / 3.0, MATV_TILING.yzw);
     vec4 fade = vec4(mv_detailFade(mv_detailTexelGM * tiling.x), mv_detailFade(mv_detailTexelGM * tiling.y),
                      mv_detailFade(mv_detailTexelGM * tiling.z), mv_detailFade(mv_detailTexelGM * tiling.w));
     vec4 strength = w * MATV_NORMAL_BOOST * vec4(1.0 / 3.0, 1, 1, 1) * fade;
@@ -198,7 +199,7 @@ vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod) {
     if (strength.w > strength[layer]) layer = 3;
     float scale = tiling[layer];
     float amount = strength[layer];
-    float snow = m.z * 0.9 * mv_detailFade(mv_detailTexelGM * MATV_TILING_SNOW);
+    float snow = m.z * 0.9 * uT.normalFlatStrength * mv_detailFade(mv_detailTexelGM * MATV_TILING_SNOW);
     if (snow > amount) { layer = MAT_LAYER_SNOW; scale = MATV_TILING_SNOW; amount = snow; }
     if (amount <= 0.0) return macroN;
     vec2 detailUV = wp.xy * (uT.detailTiling / MATV_WU_PER_TILE) * scale;
