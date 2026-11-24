@@ -127,7 +127,7 @@ def test_contained_batch_refreshes_window_receipt(tmp_path, monkeypatch):
     monkeypatch.setattr(lm, 'RATCHETS', [])
     monkeypatch.setattr(lm, 'QUICK_ROWS', [])
     verifies = []
-    monkeypatch.setattr(lm, 'verify_merged', lambda *a: verifies.append(a) or ('OK', []))
+    monkeypatch.setattr(lm, 'verify_merged', lambda *a, **kw: verifies.append(a) or ('OK', []))
     args = ['--batch', 'lane', '--root', str(root), '--tools-dir', str(root / 'tools')]
     assert lm.main(args) == 0
     receipt = root / 'build64-ninja/merge-window.json'
@@ -721,7 +721,8 @@ def test_gate_log_includes_child_stdout_and_stderr(tmp_path, monkeypatch, capsys
 
 
 @pytest.mark.parametrize("returncode", [0, 7])
-def test_lane_verify_tees_output_and_keeps_failure_tail(tmp_path, capsys, returncode):
+def test_lane_verify_tees_output_and_keeps_failure_tail(tmp_path, capsys, returncode, monkeypatch):
+    monkeypatch.setattr(lm, "git_out", lambda *a: "")
     script = tmp_path / "scripts/ninja_build.py"
     script.parent.mkdir()
     script.write_text("import sys\nprint('build-start', flush=True)\nfor n in range(20): print(n)\n"
@@ -1342,14 +1343,15 @@ def test_precheck_and_lint_no_longer_gate_on_generated_inventories():
     assert "regenerate_all(" not in inspect.getsource(lm.precheck)
 
 
-def test_preflight_names_the_exact_rebuild_for_a_stale_viewer_and_main_exe(monkeypatch, capsys):
+def test_preflight_names_the_exact_rebuild_for_a_stale_viewer_and_main_exe(tmp_path, monkeypatch, capsys):
     from pathlib import Path
-    import exe_fingerprint, merge_gate as gate
+    import exe_fingerprint, merge_gate as gate, asset_parity
+    monkeypatch.setattr(asset_parity, "intentional_changes", lambda *a: {})
     fps = {"mc2.exe": dict(present=True, sha="aaaaaaaaaaaa", dirty=0),
            "mc2_asset_viewer.exe": dict(present=True, sha="aaaaaaaaaaaa", dirty=0)}
     monkeypatch.setattr(exe_fingerprint, "extract", lambda p: fps[Path(p).name])
     monkeypatch.setattr(exe_fingerprint, "build_current", lambda *a: True)   # mc2.exe: a build-input-identical ancestor is fine
-    gate.preflight("bbbbbbbbbbbb", Path("E:/nonexistent-install"), 1, [])
+    gate.preflight("bbbbbbbbbbbb", tmp_path, 1, [], seed=tmp_path)
     out = capsys.readouterr().out
     assert "mc2_asset_viewer.exe stale or dirty" in out and "mc2.exe stale" not in out   # the viewer needs the exact HEAD
     assert "fix: cd " in out and out.split("fix: cd ")[1].splitlines()[0].endswith("&& py -3 scripts/ninja_build.py")

@@ -706,15 +706,19 @@ def verify_env(root: str) -> dict:
     return dict(os.environ, MC2_BUILD_JOBS=build_pool_jobs(), CONTRACTS_JOBS=host_jobs(), MC2_NINJA_TREE="build64-ninja", MC2_UNIT_BUILD_DIR=os.path.join(root, "build-cc-tests"))
 
 
-def verify_merged(root: str, mode: str, runner=None) -> tuple[str, list[tuple[str, int, str]]]:
+def verify_merged(root: str, mode: str, runner=None, base=None) -> tuple[str, list[tuple[str, int, str]]]:
     """Build beside scoped Python suites; the gate owns the single native test run."""
     if mode == "none":
         return "SKIPPED", []
     from concurrent.futures import ThreadPoolExecutor
-    try:
-        base = json.loads(Path(root, "build64-ninja/merge-window.json").read_text())["base"]
-    except (OSError, ValueError, KeyError):
-        base = "HEAD^"
+    if base is None:
+        try:
+            base = json.loads(Path(root, "build64-ninja/merge-window.json").read_text())["base"]
+        except (OSError, ValueError, KeyError):
+            base = "HEAD^"
+    from merge_gate import editor_build_required
+    editor = (Path(root, "scripts/ninja_build.py").is_file()
+              and editor_build_required(lines(git_out(root, "diff", "--name-only", base, "HEAD"))))
     def check(step):
         label, (script, *rest) = step
         path = os.path.join(root, script)
@@ -722,6 +726,8 @@ def verify_merged(root: str, mode: str, runner=None) -> tuple[str, list[tuple[st
             return None
         if label in ("scripts_tests", "tools_tests"):
             rest += ["--base", base]
+        if label == "build" and editor:
+            rest += ["mc2", "EditRel"]
         cmd = [git_bash(), path] + rest if script.endswith(".sh") else [sys.executable, path] + rest
         log_path = os.path.join(root, "build64-ninja", "lane-merge-verify-" + label + ".log")
         print(f"lane_merge: {label} log: {log_path}", flush=True)
@@ -1820,7 +1826,7 @@ def main(argv: list[str] | None = None) -> int:
         if stopped:
             verdict, vresults = "SKIPPED(ratchet-failure)", []
         else:
-            verdict, vresults = verify_merged(root, mode)
+            verdict, vresults = verify_merged(root, mode, base=window_base)
             if batch and verdict == "OK" and mode != "none":   # --no-verify staging builds nothing on the PC (laptop_gate builds)
                 fresh, why = rebuild_if_head_moved(root)
                 if not fresh:

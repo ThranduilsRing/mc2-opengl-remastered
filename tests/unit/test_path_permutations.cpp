@@ -45,6 +45,8 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include <filesystem>
+#include <random>
 
 #ifdef _WIN32
 #include <direct.h>   // _mkdir / _rmdir
@@ -147,7 +149,9 @@ void authorFst (const std::string& fstPath, const char* entryName,
 }
 
 // ---- mod layer (test_paths_mod.cpp pattern) --------------------------------
-const char* kModsRoot = "mvh_perm_mods";
+const std::string modsRoot = (std::filesystem::temp_directory_path() /
+    ("mvh_perm_mods_" + std::to_string(std::random_device{}()))).string();
+const char* kModsRoot = modsRoot.c_str();
 const char* kModId    = "permmod";
 
 void buildModTree (const std::string& payload)
