@@ -142,15 +142,31 @@ def load_parts_tgl(tgl: Path):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
     from tools.assets.common import parse_tgl
     mesh = parse_tgl(Path(tgl).read_bytes())
-    parts, at = [], 0
+    parts, rotors, at = [], set(), 0
     for index, node in enumerate(mesh.nodes):
         if not node["triangles"] or node["helper"]:
             continue
         tri = mesh.vertices[at:at + 3 * node["triangles"]].astype(np.float64) * [-1, 1, -1]   # MC2 shapes face -Z
         at += 3 * node["triangles"]
+        if any(k in node["name"].lower() for k in ("rotor", "blade", "prop")):
+            rotors.add(index)
         parts.append((region_of_tgl(node["name"]), tri, np.arange(len(tri)).reshape(-1, 3), index))
     if not any(region in (0, 1) for region, *_ in parts):            # no legs: a vehicle, drawn from above, nose up
         parts = [(region, p[:, [0, 2, 1]] * [1, 1, -1], tris, index) for region, p, tris, index in parts]
+        # Stock copters draw the rotor as an X of two thin full-length blades, not the spinning disc the model carries.
+        for k, (region, p, tris, index) in enumerate(parts):
+            if index not in rotors:
+                continue
+            c = (p.min(0) + p.max(0)) / 2
+            r = float(np.linalg.norm(p[:, :2] - c[:2], axis=1).max())
+            top, half = float(np.concatenate([q[1] for q in parts])[:, 2].max()) + 0.01 * r, 0.055 * r   # above the fuselage
+            quads = []
+            for ux, uy in ((0.7071, 0.7071), (0.7071, -0.7071)):
+                along, across = np.array([ux, uy]) * r, np.array([-uy, ux]) * half
+                for sa, sc in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
+                    quads.append([*(c[:2] + sa * along + sc * across), top])
+            blades = np.array(quads)
+            parts[k] = (region, blades, np.array([[0, 1, 2], [0, 2, 3], [4, 5, 6], [4, 6, 7]]), index)
     return parts
 
 
@@ -159,7 +175,9 @@ def load_parts_tgl(tgl: Path):
 
 SS = 8                                   # render large, then reduce each SSxSS block to one cell pixel
 LIGHT_FRAC, MID_FRAC = 0.25, 0.30        # stock tone mix (atlas/catapult/bushwacker/jenner): 25% light, 30% mid, 45% dark
-DEPTH_STEP = 0.15                        # a jump of this share of the figure's depth inside one panel is a gap too
+DEPTH_STEP = 0.25                        # a jump of this share of the figure's depth inside one panel is a gap too
+MIN_PLATE = 24                           # parts smaller than this many cell pixels are detail on a plate, not plates
+MIRROR_REGION = np.array([1, 0, 3, 2, 5, 4, 6, 7])
 
 
 def _hud_render(parts, w, h, rear: bool):
@@ -168,6 +186,7 @@ def _hud_render(parts, w, h, rear: bool):
     Stock cells are opaque black with the mech as plated panels: a 1 px black gap between panels
     (armour zones, and any separate part or depth step inside one), light on each panel's
     top-left, dark on its bottom-right, about 25/30/45 light/mid/dark, the figure ~47 px of 48."""
+    legs = any(pt[0] in (0, 1) for pt in parts)
     lam, reg, part, z = _raster(parts, w * SS, h * SS, rear)
     blocks = lambda a: a.reshape(h, SS, w, SS).transpose(0, 2, 1, 3).reshape(h, w, SS * SS)
     rb, pb, lb, zb = blocks(reg), blocks(part), blocks(lam), blocks(z)
@@ -175,6 +194,10 @@ def _hud_render(parts, w, h, rear: bool):
     solid = filled.sum(2) >= SS * SS // 2
     sp = np.pad(solid, 1)                                # pinholes in a plate are fill, not gaps
     solid |= (filled.sum(2) > 0) & sp[:-2, 1:-1] & sp[2:, 1:-1] & sp[1:-1, :-2] & sp[1:-1, 2:]
+    # Smooth silhouette: fill one-pixel notches, drop one-pixel spurs.
+    sp = np.pad(solid, 1).astype(int)
+    n4 = sp[:-2, 1:-1] + sp[2:, 1:-1] + sp[1:-1, :-2] + sp[1:-1, 2:]
+    solid = (solid & (n4 >= 2)) | (~solid & (n4 >= 3) & (filled.sum(2) > 0))
     img = np.zeros((h, w, 4), dtype=np.uint8)
     img[:, :, 3] = 255
     if not solid.any():
@@ -185,7 +208,7 @@ def _hud_render(parts, w, h, rear: bool):
     panel = ids[np.argmax(np.stack([count(pb, i) for i in ids]), 0)]
     # Bolts, vents and other parts smaller than a few cell pixels read as surface detail, not plates.
     sizes = {int(i): int((solid & (panel == i)).sum()) for i in ids}
-    panel = np.where(np.vectorize(lambda i: sizes.get(int(i), 0) >= 10)(panel), panel, -1 - region)
+    panel = np.where(np.vectorize(lambda i: sizes.get(int(i), 0) >= MIN_PLATE)(panel), panel, -1 - region)
     # Interpenetrating parts flicker between owners pixel to pixel: each pixel takes its 3x3 majority owner.
     pp = np.pad(np.where(solid, panel, -99), 1, constant_values=-99)
     for y, x in zip(*np.nonzero(solid)):
@@ -215,6 +238,16 @@ def _hud_render(parts, w, h, rear: bool):
         if (solid & (region == r)).any() and not (solid & ~gap & (region == r)).any():
             gap[region == r] = False
     body = solid & ~gap
+    if legs:
+        # Stock mechs stand symmetric: mirror the fuller half (left/right regions swap) over the other.
+        xs = np.arange(w)
+        left = xs < w // 2
+        keep_left = body[:, left].sum() >= body[:, ~left].sum()
+        src = np.where(left == keep_left, xs, w - 1 - xs)
+        body, lit = body[:, src], lit[:, src]
+        region = np.where((left == keep_left)[None, :], region, MIRROR_REGION[region[:, src]])
+        pad = np.pad(body, 1).astype(int)
+        body &= (pad[:-2, 1:-1] + pad[2:, 1:-1] + pad[1:-1, :-2] + pad[1:-1, 2:]) >= 1   # no lone specks
     # Bevel: a panel's top/left edge catches the light, its bottom/right edge falls into shadow.
     pad = np.pad(body, 1)
     above, left, below, right = pad[:-2, 1:-1], pad[1:-1, :-2], pad[2:, 1:-1], pad[1:-1, 2:]
@@ -236,11 +269,16 @@ def _hud_render(parts, w, h, rear: bool):
 def _raster(parts, w, h, rear: bool):
     """Per-subsample lit value (n.L, light from the top-left), region and part (-1 empty), depth."""
     shown = [(i, part) for i, part in enumerate(parts) if not (rear and part[0] not in REAR_REGIONS)] or list(enumerate(parts))
-    allp = np.concatenate([p for _, (_, p, *_) in shown])
+    allp = np.concatenate([p for _, p, *_ in parts])     # front and rear rows share one framing
     lo, hi = allp.min(0), allp.max(0)
     sx = -1.0 if not rear else 1.0
     m = SS // 2                                          # half a cell pixel of margin; the figure stands ~h-1 tall like stock
-    scale = min((w - 2 * m) / max(hi[0] - lo[0], 1e-6), (h - 2 * m) / max(hi[1] - lo[1], 1e-6))
+    scale_y = (h - 2 * m) / max(hi[1] - lo[1], 1e-6)
+    scale = min(scale_y, (w - 2 * m) / max(hi[0] - lo[0], 1e-6))
+    if not any(pt[0] in (0, 1) for pt in parts):
+        scale_y = scale
+    elif scale < 0.75 * scale_y:                         # a wide mech is narrowed a little to keep stock's full height
+        scale_y = scale / 0.75
     cx, cy = (hi[0] + lo[0]) / 2, (hi[1] + lo[1]) / 2
     zbuf = np.full((h, w), -np.inf)
     lam = np.zeros((h, w))
@@ -252,7 +290,7 @@ def _raster(parts, w, h, rear: bool):
     for index, (region, p, tris, *ident) in shown:
         part_id = ident[0] if ident else index
         X = (p[:, 0] - cx) * sx * scale + w / 2
-        Y = h / 2 - (p[:, 1] - cy) * scale
+        Y = h / 2 - (p[:, 1] - cy) * scale_y
         Z = p[:, 2] if not rear else -p[:, 2]
         for a, b, c in tris:
             n = np.cross(p[b] - p[a], p[c] - p[a])

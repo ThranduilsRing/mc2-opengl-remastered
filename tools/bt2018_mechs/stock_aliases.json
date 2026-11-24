@@ -1,0 +1,21 @@
+{
+  "_doc": "Mod/BT2018 chassis that ARE a stock MC2 chassis under another (Clan/IS or spelling) name -> stock icon stem (data/art/mechicons/hud/front/<stem>.png). A chassis whose own name (bt2018_ prefix dropped) is a stock stem needs no entry. Read by tools/bt2018_mechs/mod_icons.py.",
+  "timberwolf": "madcat",
+  "summoner": "thor",
+  "maddog": "vulture",
+  "vulture1": "vulture",
+  "hellbringer": "loki",
+  "adder": "puma",
+  "stormcrow": "ryoken",
+  "kitfox": "uller",
+  "ebonjaguar": "cauldron",
+  "cauldronborn": "cauldron",
+  "masakari": "warhawk",
+  "manowar": "gargoyle",
+  "gladiator": "executioner",
+  "cougar1": "cougar",
+  "jagermech": "jaegermech",
+  "jaegermech3": "jaegermech",
+  "jaegermechiii": "jaegermech",
+  "hunchback2c": "hunchbackiic"
+}

@@ -12,9 +12,12 @@ the stock-style renderer (render_icons.py) into the mod's data/art, at mod-build
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
+
+from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.bt2018_mechs import render_icons as R  # noqa: E402
@@ -56,31 +59,61 @@ def model_of(mod: Path, stem: str):
     return _ci(tgl, name + ".tgl") if tgl else None
 
 
+ALIASES = {k: v for k, v in json.loads((Path(__file__).with_name("stock_aliases.json")).read_text()).items() if not k.startswith("_")}
+COOKED = ".cooked_icons.txt"   # stems this tool cooked into a mod's data/art (re-cooked on every --cook)
+
+
+def stock_strip(install: Path, target: str, stem: str, art: Path):
+    """Write <stem>_hud_<W>x<H>.tga from the stock front/back art of `target` (an alias is the stock chassis)."""
+    hud = install / "data" / "art" / "mechicons" / "hud"
+    for w, h in R.HUD_SIZES:
+        front, back = (Image.open(hud / side / f"{target}@{w}x{h}.png").convert("RGBA") for side in ("front", "back"))
+        strip = Image.new("RGBA", (w, 2 * h))
+        strip.paste(front, (0, 0))
+        strip.paste(back, (0, h))
+        art.mkdir(parents=True, exist_ok=True)
+        strip.save(art / f"{stem}_hud_{w}x{h}.tga")
+
+
 def classify(install: Path, cook: bool = False, only: str = ""):
-    """[(mod, stem, status, detail)] for every chassis a mod adds; status stock|own|cooked|fallback."""
+    """[(mod, stem, status, detail)] for every chassis a mod adds; status stock|alias|own|cooked|fallback."""
     stock_art = install / "data" / "art" / "mechicons" / "hud" / "front"
     stock = {p.stem.split("@")[0].lower() for p in stock_art.glob("*.png")}
     mods = sorted(p for p in (install / "mods").iterdir() if p.is_dir()) if (install / "mods").is_dir() else []
-    strips = {p.name.lower() for m in mods for p in ((_ci(m / "data", "art") or Path("-")).glob("*_hud_40x48.tga"))}
+    cooked = {m.name: set((m / "data" / "art" / COOKED).read_text().split()) if (m / "data" / "art" / COOKED).is_file() else set() for m in mods}
+    strips = {p.name.lower() for m in mods for p in ((_ci(m / "data", "art") or Path("-")).glob("*_hud_40x48.tga"))
+              if p.name.lower()[: -len("_hud_40x48.tga")] not in cooked[m.name]}
     rows = []
     for mod in mods:
+        art = mod / "data" / "art"
+        writes = cook and not (only and mod.name != only)
         for stem, name in chassis_csvs(mod).items():
             key = name.lower().replace(" ", "")
+            base = stem[len("bt2018_"):] if stem.startswith("bt2018_") else stem
+            target = ALIASES.get(base) or ALIASES.get(key) or (base if base in stock else None)
             if stem in stock or key in stock:
                 rows.append((mod.name, stem, "stock", "own stock art"))
+            elif target in stock:
+                if writes:
+                    stock_strip(install, target, stem, art)
+                    cooked[mod.name].discard(stem)
+                rows.append((mod.name, stem, "alias", f"stock art: {target}"))
             elif {f"{stem}_hud_40x48.tga", f"bt2018_{stem}_hud_40x48.tga"} & strips:
                 rows.append((mod.name, stem, "own", "strip in a mod"))
-            elif not cook or (only and mod.name != only):
-                rows.append((mod.name, stem, "fallback", "no art yet (run --cook)"))
+            elif not writes:
+                rows.append((mod.name, stem, "cooked" if stem in cooked[mod.name] else "fallback",
+                             "cooked earlier" if stem in cooked[mod.name] else "no art yet (run --cook)"))
             elif (model := model_of(mod, stem)) is None:
                 rows.append((mod.name, stem, "fallback", "no .tgl model in the mod"))
             else:
                 try:
-                    R.build_icons(model, stem, mod / "data" / "art", hud_only=True)
-                    strips.add(f"{stem}_hud_40x48.tga")
+                    R.build_icons(model, stem, art, hud_only=True)
+                    cooked[mod.name].add(stem)
                     rows.append((mod.name, stem, "cooked", model.name))
                 except (ValueError, SystemExit, OSError) as e:
                     rows.append((mod.name, stem, "fallback", f"{model.name}: {e}"))
+        if writes and art.is_dir():
+            (art / COOKED).write_text("\n".join(sorted(cooked[mod.name])) + "\n")
     return rows
 
 
@@ -92,7 +125,7 @@ def main():
     rows = classify(Path(a.install), a.cook)
     for row in rows:
         print("%-16s %-20s %-8s %s" % row)
-    counts = {s: sum(r[2] == s for r in rows) for s in ("stock", "own", "cooked", "fallback")}
+    counts = {s: sum(r[2] == s for r in rows) for s in ("stock", "alias", "own", "cooked", "fallback")}
     print("summary " + " ".join(f"{k}={v}" for k, v in counts.items()))
     return 0
 
