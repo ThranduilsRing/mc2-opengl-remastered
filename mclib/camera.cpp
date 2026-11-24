@@ -106,7 +106,7 @@ struct CameraPresetRow { float fov, altScale, pitchDelta; };
 constexpr CameraPresetRow kCameraPresets[Camera::kPresetCount] = {
 	{40.0f, 1.0f, 0.0f},    // stock
 	{55.0f, 0.62f, -3.0f},  // closer-wider
-	{65.0f, 0.50f, -8.0f},  // BT-like: wide lens, lower and closer
+	{65.0f, 0.50f, -5.0f},  // BT-like: wide lens, lower and closer; keep the horizon covered
 };
 constexpr float kStockAltitudeDefault = 1200.0f;
 int clampPreset(int p) { return p < 0 ? 0 : (p >= Camera::kPresetCount ? Camera::kPresetCount - 1 : p); }
@@ -610,7 +610,7 @@ long Camera::init (FitIniFilePtr cameraFile )
 	//-------------------------------------------
 	// To get it working again.
 	usePerspective = true;
-	applyPreset(kDefaultPreset);
+	applyPreset(mc2::options::current().cameraView);
 	camera_fov = DefaultFov;
 	cosHalfFOV = cos(camera_fov * 0.7071f * DEGREES_TO_RADS);				//Cosine of half the FOV for view cone.
 	

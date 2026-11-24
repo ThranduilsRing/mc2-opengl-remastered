@@ -35,6 +35,7 @@
 #include "../shaders/include/fog_policy.hglsl"
 #include <string>
 #include "Gates/gate.h"
+#include "Gates/render_options.h"
 #include "spotlight_diag.h"
 namespace mc2_cpu_proj_cost {
     extern bool g_cpuProjEnabled;
@@ -393,7 +394,7 @@ class Camera
 		// Coupled FOV / altitude / pitch looks (fid-1): 0 stock, 1 closer-wider, 2 BT-like. Altitude and pitch scale with the FOV
 		// so the subject keeps a similar size; the owner's pick becomes kDefaultPreset.
 		static constexpr int    kPresetCount = 3;
-		static constexpr int    kDefaultPreset = 0;
+		static constexpr int    kDefaultPreset = mc2::options::RenderOptions{}.cameraView;
 		static float            DefaultFov;				//horizontal degrees
 		static float            DefaultPitchDelta;
 		static void				applyPreset (int preset);

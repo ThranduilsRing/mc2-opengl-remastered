@@ -1507,7 +1507,7 @@ TEST_CASE("render option keys are unique and findable") {
     CHECK(mo::find("NotAnOption") == nullptr);
     CHECK(mo::find("cpuphongretire") == mo::find("CpuPhongRetire"));   // keys are case-insensitive like options.cfg
     CHECK(mo::find("PostCAS") != mo::find("PostCASSharpness"));
-    CHECK(mo::kOptionCount == 30);   // AtmosphereQuality, includes HdrOutput/HdrPaperWhiteNits/HdrPeakNits, reflection quality, water detail and MechLabLocations
+    CHECK(mo::kOptionCount == 31);   // includes CameraView and AtmosphereQuality
 }
 
 TEST_CASE("render option values outside their bounds, NaN and garbage are rejected and change nothing") {
@@ -2173,6 +2173,24 @@ TEST_CASE("overlap audit retains numeric fence and jitter levels") {
     }
     CHECK_FALSE(gate::lookupName("MC2_OVERLAP_DEBUG").has_value());
     CHECK_FALSE(gate::lookupName("MC2_SIM_OVERLAP_JITTER").has_value());
+}
+
+TEST_CASE("camera view defaults to Wide and all presets round-trip through options.cfg") {
+    namespace mo = mc2::options;
+    CHECK(mo::RenderOptions{}.cameraView == 2);
+    CHECK(mo::RenderOptions{}.atmosphereQuality == 2);
+    const auto* option = mo::find("CameraView");
+    REQUIRE(option);
+    for (int preset = 0; preset <= 2; ++preset) {
+        const std::string cfg = mo::cfg::set("[MechCommander2]\nFITend\n", *option, std::to_string(preset));
+        mo::RenderOptions loaded;
+        CHECK(mo::cfg::loadFromText(loaded, cfg) == 1);
+        CHECK(loaded.cameraView == preset);
+    }
+    mo::RenderOptions loaded;
+    CHECK(mo::setFromText(loaded, *option, "3") == mo::Verdict::OutOfRange);
+    CHECK(mo::setFromText(loaded, *option, "-1") == mo::Verdict::OutOfRange);
+    CHECK(loaded.cameraView == 2);
 }
 
 TEST_CASE("spatial AA defaults on and all five modes round-trip through options.cfg") {
