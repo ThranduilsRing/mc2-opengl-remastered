@@ -27,7 +27,7 @@ import prop_classify as pc  # noqa: E402
 import raster  # noqa: E402
 import scan_bindings  # noqa: E402
 
-DEFAULT_INSTALL = "A:/Games/BATTLETECH/BattleTech_Data"
+DEFAULT_INSTALL = "A:/Games/BATTLETECH/BattleTech_Data"  # drive-path: ok owner PC read-only source; --install overrides
 WU_PER_M = 4.0
 FILES = ["resources.assets"] + [f"sharedassets{i}.assets" for i in range(94)]
 VIEW = {"yaw": 35.0, "pitch": 35.0}  # gameplay camera: about 35 degrees down, 3/4 view

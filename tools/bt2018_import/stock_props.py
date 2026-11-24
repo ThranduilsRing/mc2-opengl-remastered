@@ -62,7 +62,7 @@ def main(argv=None):
     src = ap.add_mutually_exclusive_group(required=True)
     src.add_argument("--corpus", type=Path)
     src.add_argument("--table", type=Path, help="previous stock_props.json: reuse its keys and use counts")
-    ap.add_argument("--srcdata", type=Path, default=Path("A:/Games/mc2-srcdata/tgl"))
+    ap.add_argument("--srcdata", type=Path, default=Path("A:/Games/mc2-srcdata/tgl"))  # drive-path: ok owner PC stock source; --srcdata overrides
     ap.add_argument("--out", type=Path, required=True)
     args = ap.parse_args(argv)
     table = {}

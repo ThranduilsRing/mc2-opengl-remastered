@@ -16,7 +16,7 @@ from pathlib import Path
 
 import UnityPy
 
-DEFAULT_INSTALL = "A:/Games/BATTLETECH/BattleTech_Data"
+DEFAULT_INSTALL = "A:/Games/BATTLETECH/BattleTech_Data"  # drive-path: ok owner PC read-only source; --install overrides
 MAP_KEYS = ("_MainTex", "_BumpMap", "_MetallicGlossMap", "_OcclusionMap", "_EmissionMap")
 
 

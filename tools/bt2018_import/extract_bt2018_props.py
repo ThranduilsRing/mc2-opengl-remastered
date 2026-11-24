@@ -39,7 +39,7 @@ import bake_materials  # noqa: E402
 
 WU_PER_M = 4.0
 BAKE_PX = (2048, 1024, 512)  # baked texture set per LOD
-DEFAULT_INSTALL = "A:/Games/BATTLETECH/BattleTech_Data"
+DEFAULT_INSTALL = "A:/Games/BATTLETECH/BattleTech_Data"  # drive-path: ok owner PC read-only source; --install overrides
 LICENSE = "personal use: extracted from the owner's own BATTLETECH install; not redistributable"
 SCHEMA = "bt2018-prop-package/1"
 
