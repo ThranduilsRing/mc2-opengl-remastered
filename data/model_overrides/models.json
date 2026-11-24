@@ -347,6 +347,284 @@
      "distance": 1620.0
     }
    ]
+  },
+  {
+   "type": "model",
+   "replaces": "tree:pine1",
+   "renderOnly": true,
+   "fallback": "stock",
+   "scale": 1.0,
+   "source": "conifer_pine1/pristine_intact_lod0.glb",
+   "materials": {
+    "version": 2,
+    "slots": [
+     {
+      "slot": 0,
+      "reviewed": true,
+      "class": "wood",
+      "alphaMode": "OPAQUE",
+      "normalStrength": 1.0,
+      "aoStrength": 1.0,
+      "roughness": 0.8,
+      "metallic": 0.0,
+      "uvScale": [
+       1.0,
+       1.0
+      ],
+      "normal": "fir_sapling_medium/0_normal.ktx2",
+      "orm": "fir_sapling_medium/0_orm.ktx2",
+      "doubleSided": true
+     },
+     {
+      "slot": 1,
+      "reviewed": true,
+      "class": "wood",
+      "alphaMode": "MASK",
+      "normalStrength": 1.0,
+      "aoStrength": 1.0,
+      "roughness": 0.8,
+      "metallic": 0.0,
+      "uvScale": [
+       1.0,
+       1.0
+      ],
+      "alphaCutoff": 0.5,
+      "normal": "fir_sapling_medium/1_normal.ktx2",
+      "orm": "fir_sapling_medium/1_orm.ktx2",
+      "doubleSided": true
+     }
+    ]
+   },
+   "lods": [
+    {
+     "lod": 1,
+     "source": "conifer_pine1/pristine_intact_lod1.glb",
+     "distance": 67.2
+    },
+    {
+     "lod": 2,
+     "source": "conifer_pine1/pristine_intact_lod2.glb",
+     "distance": 100.8
+    },
+    {
+     "lod": 3,
+     "source": "conifer_pine1/pristine_intact_lod3.glb",
+     "distance": 144.0
+    },
+    {
+     "lod": 4,
+     "source": "conifer_pine1/pristine_intact_far.glb",
+     "distance": 756.0
+    }
+   ]
+  },
+  {
+   "type": "model",
+   "replaces": "tree:pine2",
+   "renderOnly": true,
+   "fallback": "stock",
+   "scale": 1.0,
+   "source": "conifer_pine2/pristine_intact_lod0.glb",
+   "materials": {
+    "version": 2,
+    "slots": [
+     {
+      "slot": 0,
+      "reviewed": true,
+      "class": "wood",
+      "alphaMode": "OPAQUE",
+      "normalStrength": 1.0,
+      "aoStrength": 1.0,
+      "roughness": 0.8,
+      "metallic": 0.0,
+      "uvScale": [
+       1.0,
+       1.0
+      ],
+      "normal": "fir_tree_01/0_normal.ktx2",
+      "orm": "fir_tree_01/0_orm.ktx2",
+      "doubleSided": true
+     },
+     {
+      "slot": 1,
+      "reviewed": true,
+      "class": "wood",
+      "alphaMode": "OPAQUE",
+      "normalStrength": 1.0,
+      "aoStrength": 1.0,
+      "roughness": 0.8,
+      "metallic": 0.0,
+      "uvScale": [
+       1.0,
+       1.0
+      ],
+      "normal": "fir_tree_01/1_normal.ktx2",
+      "orm": "fir_tree_01/1_orm.ktx2",
+      "doubleSided": true
+     },
+     {
+      "slot": 2,
+      "reviewed": true,
+      "class": "wood",
+      "alphaMode": "MASK",
+      "normalStrength": 1.0,
+      "aoStrength": 1.0,
+      "roughness": 0.8,
+      "metallic": 0.0,
+      "uvScale": [
+       1.0,
+       1.0
+      ],
+      "alphaCutoff": 0.5,
+      "normal": "fir_tree_01/2_normal.ktx2",
+      "orm": "fir_tree_01/2_orm.ktx2",
+      "doubleSided": true
+     },
+     {
+      "slot": 3,
+      "reviewed": true,
+      "class": "wood",
+      "alphaMode": "OPAQUE",
+      "normalStrength": 1.0,
+      "aoStrength": 1.0,
+      "roughness": 0.8,
+      "metallic": 0.0,
+      "uvScale": [
+       1.0,
+       1.0
+      ],
+      "normal": "fir_tree_01/3_normal.ktx2",
+      "orm": "fir_tree_01/3_orm.ktx2",
+      "doubleSided": true
+     }
+    ]
+   },
+   "lods": [
+    {
+     "lod": 1,
+     "source": "conifer_pine2/pristine_intact_lod1.glb",
+     "distance": 108.0
+    },
+    {
+     "lod": 2,
+     "source": "conifer_pine2/pristine_intact_lod2.glb",
+     "distance": 162.0
+    },
+    {
+     "lod": 3,
+     "source": "conifer_pine2/pristine_intact_lod3.glb",
+     "distance": 231.5
+    },
+    {
+     "lod": 4,
+     "source": "conifer_pine2/pristine_intact_far.glb",
+     "distance": 1215.0
+    }
+   ]
+  },
+  {
+   "type": "model",
+   "replaces": "tree:pine3",
+   "renderOnly": true,
+   "fallback": "stock",
+   "scale": 1.0,
+   "source": "conifer_pine3/pristine_intact_lod0.glb",
+   "materials": {
+    "version": 2,
+    "slots": [
+     {
+      "slot": 0,
+      "reviewed": true,
+      "class": "wood",
+      "alphaMode": "OPAQUE",
+      "normalStrength": 1.0,
+      "aoStrength": 1.0,
+      "roughness": 0.8,
+      "metallic": 0.0,
+      "uvScale": [
+       1.0,
+       1.0
+      ],
+      "normal": "fir_tree_01/0_normal.ktx2",
+      "orm": "fir_tree_01/0_orm.ktx2",
+      "doubleSided": true
+     },
+     {
+      "slot": 1,
+      "reviewed": true,
+      "class": "wood",
+      "alphaMode": "OPAQUE",
+      "normalStrength": 1.0,
+      "aoStrength": 1.0,
+      "roughness": 0.8,
+      "metallic": 0.0,
+      "uvScale": [
+       1.0,
+       1.0
+      ],
+      "normal": "fir_tree_01/1_normal.ktx2",
+      "orm": "fir_tree_01/1_orm.ktx2",
+      "doubleSided": true
+     },
+     {
+      "slot": 2,
+      "reviewed": true,
+      "class": "wood",
+      "alphaMode": "MASK",
+      "normalStrength": 1.0,
+      "aoStrength": 1.0,
+      "roughness": 0.8,
+      "metallic": 0.0,
+      "uvScale": [
+       1.0,
+       1.0
+      ],
+      "alphaCutoff": 0.5,
+      "normal": "fir_tree_01/2_normal.ktx2",
+      "orm": "fir_tree_01/2_orm.ktx2",
+      "doubleSided": true
+     },
+     {
+      "slot": 3,
+      "reviewed": true,
+      "class": "wood",
+      "alphaMode": "OPAQUE",
+      "normalStrength": 1.0,
+      "aoStrength": 1.0,
+      "roughness": 0.8,
+      "metallic": 0.0,
+      "uvScale": [
+       1.0,
+       1.0
+      ],
+      "normal": "fir_tree_01/3_normal.ktx2",
+      "orm": "fir_tree_01/3_orm.ktx2",
+      "doubleSided": true
+     }
+    ]
+   },
+   "lods": [
+    {
+     "lod": 1,
+     "source": "conifer_pine3/pristine_intact_lod1.glb",
+     "distance": 134.4
+    },
+    {
+     "lod": 2,
+     "source": "conifer_pine3/pristine_intact_lod2.glb",
+     "distance": 201.6
+    },
+    {
+     "lod": 3,
+     "source": "conifer_pine3/pristine_intact_lod3.glb",
+     "distance": 288.0
+    },
+    {
+     "lod": 4,
+     "source": "conifer_pine3/pristine_intact_far.glb",
+     "distance": 1512.0
+    }
+   ]
   }
  ]
 }
