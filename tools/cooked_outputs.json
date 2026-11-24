@@ -21,6 +21,7 @@
  "unpinned": [
   {"out": "data/terrain_layers/grass_turf_normal.ktx2", "cook": "tools/mc2texcook/cook_grass_turf.py", "sha256": "2d169a738e57cd0caf00eeb1ef274cec8ce87aea1554941a85a4b9321cff1fc1", "required": true, "provision": "worktree"},
   {"out": "data/terrain_layers/dirt_sand_normal.ktx2", "cook": "tools/mc2texcook/cook_dirt_sand.py", "sha256": "e87cf7c2440582c92be908da9825d5349f580b84f5baddb2eb09c1d1a269e382", "required": true, "provision": "worktree"},
+  {"out": "data/terrain_layers/forest_floor_normal.ktx2", "cook": "tools/mc2texcook/cook_forest_floor.py", "sha256": "b59baa68b6d64f800d0213f7e90032be52decb32e014a92690c4f8a14646305f", "required": true, "provision": "worktree"},
   {"out": "data/terrain_layers/concrete_detail_pad.ktx2", "cook": "tools/mc2texcook/cook_concrete_detail.py", "required": true, "provision": "published"},
   {"out": "data/terrain_layers/concrete_detail_road.ktx2", "cook": "tools/mc2texcook/cook_concrete_detail.py", "required": true, "provision": "published"},
   {"out": "data/terrain_layers/cliff_rock_ah.ktx2", "cook": "tools/mc2texcook/cook_cliff_rock.py", "required": true, "provision": "published"},

@@ -81,3 +81,26 @@ TEST_CASE("TerrainNormalLoad/dirt slot takes the sand normal unless modded or re
     REQUIRE(run(false, false, out));                   // the array rejects the sand: both replaced slots reload their own layers
     CHECK(out == std::array<int, 6>{0, 1, 2, 3, 4, 5});
 }
+
+TEST_CASE("TerrainNormalLoad/forest floor is an optional seventh layer") {
+    static constexpr int kForest = 200;
+    const auto run = [](bool forestPresent, bool acceptSeven, std::array<int, 7>& out, std::vector<size_t>& accepted) {
+        return mc2::terrain::loadCookedNormals(std::span<int>(out), true, true,
+            [&](int mat, bool alt) -> std::optional<int> {
+                if (mat == 6) return alt && forestPresent ? std::optional<int>(kForest) : std::nullopt;
+                return mat;
+            },
+            [&](std::span<const int> layers) { accepted.push_back(layers.size()); return acceptSeven || layers.size() == 6; });
+    };
+    std::array<int, 7> out{};
+    std::vector<size_t> accepted;
+    REQUIRE(run(true, true, out, accepted));
+    CHECK(accepted == std::vector<size_t>{7});
+    CHECK(out[6] == kForest);
+    accepted.clear();
+    REQUIRE(run(false, true, out, accepted));          // no forest sidecar: six layers
+    CHECK(accepted == std::vector<size_t>{6});
+    accepted.clear();
+    REQUIRE(run(true, false, out, accepted));          // the array rejects seven: six layers
+    CHECK(accepted == std::vector<size_t>{7, 6});
+}

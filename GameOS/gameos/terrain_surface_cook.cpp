@@ -382,6 +382,11 @@ std::vector<uint8_t> cookSurfaceMaterials(const SurfaceAsset& surface,
         // Color is an import fallback for older maps, never fragment work.
         float grass = smooth(-0.02f, 0.06f, c[1] - c[0]) * smooth(0.22f, 0.40f, c[1]);
         float dirt = smooth(-0.02f, 0.06f, c[0] - c[1]) * smooth(0.22f, 0.45f, c[0]);
+        // TERRAIN-NORMAL-UNIFORM: soft classes for dark ground. Green hue at any brightness is grass (the bright-only gate above
+        // sent dark greens to rock); dark brown is a grass/dirt mix; grey and desaturated pixels stay rock. Only ever raises the weights.
+        const float darkBrown = smooth(0.0f, 0.06f, c[0] - c[1]) * smooth(0.05f, 0.12f, bright) * (1.0f - smooth(0.16f, 0.34f, bright));
+        grass = std::max({grass, smooth(0.0f, 0.05f, c[1] - c[0]) * smooth(0.04f, 0.14f, c[1]), 0.5f * darkBrown});
+        dirt = std::max(dirt, 0.5f * darkBrown);
         float rock = 1.0f - std::max(grass, dirt);
         const float water = smooth(0.0f, 0.08f, std::min(c[1], c[2]) - c[0]);
         rock += water; grass *= 1.0f - water; dirt *= 1.0f - water;

@@ -74,6 +74,23 @@ TEST_CASE("surface materials: muted sand follows semantic dirt, not hue") {
     CHECK(edited[0] == 255); CHECK(edited[1] == 0);
 }
 
+TEST_CASE("surface materials: dark greens and browns carry grass, grey stays rock, bright sand stays dirt") {
+    const auto weights = [](std::array<float, 3> rgb) {
+        mc2terrain::SurfaceAsset surface;
+        surface.width = surface.height = 1; surface.sourceHash = 1;
+        surface.macroColor = {{rgb[0], rgb[1], rgb[2], 0.5f}};
+        return mc2terrain::cookSurfaceMaterials(surface, {}, 0, {}, 0, 1, 1);
+    };
+    const auto darkGreen = weights({0.05f, 0.10f, 0.04f});
+    CHECK(darkGreen[0] > 150);                       // grass (the old classifier gave rock)
+    const auto darkBrown = weights({0.20f, 0.15f, 0.10f});
+    CHECK(darkBrown[0] > 40); CHECK(darkBrown[1] > 40);   // grass and dirt mix
+    const auto grey = weights({0.30f, 0.30f, 0.30f});
+    CHECK(grey[0] < 20); CHECK(grey[1] < 20);        // rock
+    const auto sand = weights({0.70f, 0.62f, 0.45f});
+    CHECK(sand[1] > 200); CHECK(sand[0] == 0);       // bright sand: dirt as before
+}
+
 TEST_CASE("surface materials: snow and unknown mod ground retain import fallback") {
     mc2terrain::SurfaceAsset surface;
     surface.width = surface.height = 1; surface.sourceHash = 1;

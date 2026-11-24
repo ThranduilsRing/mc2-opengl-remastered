@@ -391,6 +391,7 @@ TERRAIN_LAYER_PAYLOAD = [
     "data/terrain_layers/cliff_rock_nra.ktx2",
     "data/terrain_layers/grass_turf_normal.ktx2",      # GRASS-GROUND-NORMAL (cook_grass_turf.py), detail-normal layer 1
     "data/terrain_layers/dirt_sand_normal.ktx2",       # TERRAIN-NORMAL-UNIFORM (cook_dirt_sand.py), detail-normal layer 2
+    "data/terrain_layers/forest_floor_normal.ktx2",    # TERRAIN-NORMAL-UNIFORM (cook_forest_floor.py), optional detail-normal layer 6
 ]
 
 # The two concrete/road detail KTX2s are generated, not tracked (about 1.4 MB each): cooked on demand at deploy time when absent.
@@ -608,6 +609,15 @@ DIRT_SAND_REL = "data/terrain_layers/dirt_sand_normal.ktx2"
 
 def ensure_dirt_sand(src_root, cooker=subprocess.run):
     _ensure_cooked_normal(src_root, DIRT_SAND_COOK, DIRT_SAND_REL, "dirt sand normal", cooker)
+
+
+# Under-forest ground (detail-normal array layer 6) from CC0 Poly Haven forest_ground_04.
+FOREST_FLOOR_COOK = "tools/mc2texcook/cook_forest_floor.py"
+FOREST_FLOOR_REL = "data/terrain_layers/forest_floor_normal.ktx2"
+
+
+def ensure_forest_floor(src_root, cooker=subprocess.run):
+    _ensure_cooked_normal(src_root, FOREST_FLOOR_COOK, FOREST_FLOOR_REL, "forest floor normal", cooker)
 
 # EXAMPLE-MODS-1: worked example checkbox mods, source-tracked under
 # examples/mods/. Ship to <target>/mods/<id>/ so the launcher enumerates them
@@ -1717,6 +1727,7 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
             items.append((p, rel, "support"))
     ensure_grass_turf(src_root)
     ensure_dirt_sand(src_root)
+    ensure_forest_floor(src_root)
     for rel in TERRAIN_LAYER_PAYLOAD:
         p = os.path.join(src_root, rel)
         if not os.path.isfile(p):

@@ -76,6 +76,7 @@ layout(set = 0, binding = 14) uniform sampler2D u_shorelineMask;
 #define MAT_LAYER_DIRT     2
 #define MAT_LAYER_CONCRETE 3
 #define MAT_LAYER_SNOW     4
+#define MAT_LAYER_FOREST   6   // optional 7th layer: under-forest ground (forest_floor_normal.ktx2); absent -> array depth 6
 #define MAT_LAYER_MARBLE_CLIFF 5   // mat5_normal.tga: RGB = marble microsurface normal, A = the cooked cliff displacement
 
 // Profile class controls preserve each texture's authored relative density.
@@ -462,6 +463,9 @@ void main() {
             vec3 dN    = vec3(0.0);
             if ((kPlanarReflection == 0 || kReflectCutDetail == 0) && TS_detailReady != 0 && uT.detailStrength != 0.0) {
                 if (mv_needDetail(baseN, lightDir, materialW, materialSnow, v_worldPos, normalLightFloor)) {
+                    // Under-forest ground: dark green macro colour reads as forest canopy shade. Needs the 7th array layer.
+                    mv_forestMix = textureSize(u_matNormalArray, 0).z > MAT_LAYER_FOREST
+                        ? smoothstep(0.30, 0.12, dot(base, vec3(0.299, 0.587, 0.114))) * smoothstep(-0.01, 0.03, base.g - base.r) : 0.0;
                     dN = mv_detailNormal(materialW, materialSnow, v_worldPos.xy, baseN.z, detailUvDx, detailUvDy);
                 } else {
                     resolveLampNormal = true;
