@@ -31,6 +31,7 @@ MissionBegin.cpp			: Implementation of the MissionBegin component.
 #include"mission.h"
 #include"gamesound.h"
 #include"loadscreen.h"
+#include"screen_layer_order.h"
 #include"mpprefs.h"
 #include"chatwindow.h"
 #include"logisticsmechicon.h"
@@ -2059,7 +2060,9 @@ void MissionBegin::render()
 
 		if ( curScreenX == 4 ) // don't scroll last screen
 		{
-			if ( pOtherScreen )
+			// The loading doors are a legacy-layer screen; an ImGui-layer predecessor would draw over them.
+			if ( pOtherScreen && mc2::ui::predecessorMayDrawBehind(
+					pCurScreen->rendersDefsPageOverlay(), pOtherScreen->rendersDefsPageOverlay() ) )
 				pOtherScreen->render( 0, 0 );
 			pCurScreen->render( 0, 0 );
 		}
