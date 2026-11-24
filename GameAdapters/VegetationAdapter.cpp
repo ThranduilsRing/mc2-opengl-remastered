@@ -64,6 +64,7 @@ using mc2::vegetation::macroZone;
 // World-unit spacing between sample points.
 // ~5x area density vs 32: (32/14)^2 ≈ 5.2x more grid cells per area.
 constexpr float kGridStep = 14.0f;
+constexpr float kFieldSlopeFadeDeg = 28.0f, kFieldSlopeCutDeg = 46.0f;   // meadow density 1 -> 0 over this slope range (46 deg = the passability cliff angle)
 
 // ---------------------------------------------------------------------------
 // Placement accept/reject helpers
@@ -75,6 +76,12 @@ constexpr float kGridStep = 14.0f;
 // kSparse = transitional surfaces: dirt, ash, mountain, slimy
 // kFull   = vegetated surfaces: grass, moss, forest floor, mud, tundra
 enum class VegDensity : int { kHard = -1, kNone = 0, kSparse = 1, kFull = 2 };
+
+// The meadow field is excluded outright only where there is no ground to grow on. A cliff TILE code covers a whole 128 WU
+// square whatever the ground does inside it, so it is judged by the slope fade instead.
+[[nodiscard]] bool fieldHardTile(int terrainCode) noexcept {
+    return terrainCode == MC_BLUEWATER_TYPE || terrainCode == MC_GREEN_WATER_TYPE || terrainCode == MC_NONE_TYPE;
+}
 
 // Classify a terrain cell by its actual material type code from getTerrain().
 // This is the authoritative classification — it uses what the engine actually
@@ -421,36 +428,64 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 land->worldToTileCell(pos,tr,tc,sr,sc);
                 if (tr<0 || tc<0 || tr>=mapSide || tc>=mapSide) continue;
                 const int code = land->getTerrain(tr,tc);
+                // Every cell gets a slope (also the excluded ones): blades interpolate it, so the steep-ground
+                // fade does not follow cell or tile edges.
+                {   // visible (smoothed) ground: the gameplay quad's face angle is constant over 128 WU and would end the meadow in quad-sized steps
+                    const float h = gridStep*0.5f;
+                    const float gx = TerrainRuntime::sampleVisibleGroundHeight(pos+glm::vec3(h,0,0)) - TerrainRuntime::sampleVisibleGroundHeight(pos-glm::vec3(h,0,0));
+                    const float gy = TerrainRuntime::sampleVisibleGroundHeight(pos+glm::vec3(0,h,0)) - TerrainRuntime::sampleVisibleGroundHeight(pos-glm::vec3(0,h,0));
+                    fieldSlopes[static_cast<size_t>(row)*side+col] = glm::degrees(std::atan(std::sqrt(gx*gx+gy*gy)/(2.0f*h)));
+                }
                 // Stock tile codes do not separate meadow from sand or rock (mc2_01 reads
                 // "sparse" everywhere); the fragment stage drops blades whose root colour
                 // is not vegetation. Snow keeps its clumps only.
-                if (classifyTerrainType(code) == VegDensity::kHard || code == MC_TUNDRA_TYPE) continue;
+                if (fieldHardTile(code) || code == MC_TUNDRA_TYPE) continue;
                 if (TerrainRuntime::sampleVisibleGroundHeight(pos) <= Terrain::waterElevation+kBeachMarginWU) continue;
                 fieldCells.emplace_back(col,row);
-                glm::vec3 normal;
-                fieldSlopes[static_cast<size_t>(row)*side+col] = land->getTerrainAngle(pos,&normal);
             }
         }
         candidateCells=fieldCells.size();
         const long budget = static_cast<long>(maxInst) - static_cast<long>(instances.size());
         fieldSide = fieldBladeSide(gridStep, fieldRecipe->spacing, budget, static_cast<long>(fieldCells.size()));
+        // Terrain-only MOVE rule (shader crBlockedTile): a 128 WU tile whose gameplay rise exceeds 45 degrees.
+        const auto terrainBlocked = [&](int r, int c) {
+            if (r<0 || c<0 || r+1>=mapSide || c+1>=mapSide) return false;
+            const float a=land->getTerrainElevation(r,c), b=land->getTerrainElevation(r+1,c), cc=land->getTerrainElevation(r+1,c+1), d=land->getTerrainElevation(r,c+1);
+            const float rise = ((r+c)&1)==0 ? std::max({std::abs(a-cc),std::abs(a-b),std::abs(a-d)})
+                                            : std::max({std::abs(a-b),std::abs(a-d),std::abs(b-cc),std::abs(b-d)});
+            return rise > 90.509668f;
+        };
+        // Static blockers (props, gates, roads, map edge) exclude the meadow; plain steep ground does not: it is
+        // already thinned by the slope fade, and its impassable cells are quad-aligned squares.
+        const auto fieldOccupied = [&](const glm::vec3& p) {
+            int cr=0,cc=0; land->worldToCell(p,cr,cc);
+            if (!gameMap->inBounds(cr,cc)) return true;
+            auto m = gameMap->cellAt(cr,cc);
+            if (m.getOffMap() || m.getWall() || m.getGate() || m.getRoad()) return true;
+            if (m.getPassable()) return false;
+            int tr=0,tc=0,sr=0,sc=0; land->worldToTileCell(p,tr,tc,sr,sc);
+            return !terrainBlocked(tr,tc);
+        };
+        // Ground slope in degrees, bilinear between the cell-centre samples (x right, y down from the map corner).
+        const auto slopeAt = [&](float x, float y) {
+            const float gx=x/gridStep-0.5f, gy=y/gridStep-0.5f;
+            const int c0=std::clamp(static_cast<int>(std::floor(gx)),0,side-2), r0=std::clamp(static_cast<int>(std::floor(gy)),0,side-2);
+            const float u=std::clamp(gx-static_cast<float>(c0),0.0f,1.0f), v=std::clamp(gy-static_cast<float>(r0),0.0f,1.0f);
+            const auto at=[&](int r,int c){ return fieldSlopes[static_cast<size_t>(r)*side+c]; };
+            return (at(r0,c0)*(1-u)+at(r0,c0+1)*u)*(1-v)+(at(r0+1,c0)*(1-u)+at(r0+1,c0+1)*u)*v;
+        };
         // Include the old whole-cell cut in the mask: its straight seams need
         // the same broken fringe as the road, shore and terrain-type cuts.
         const FieldEdge edge(mapSpan, [&](float x, float y) {
             const int col=static_cast<int>(x/gridStep), row=static_cast<int>(y/gridStep);
-            if (col<0 || row<0 || col>=side || row>=side ||
-                fieldSlopes[static_cast<size_t>(row)*side+col]>=50.0f) return true;
+            if (col<0 || row<0 || col>=side || row>=side || slopeAt(x,y)>=kFieldSlopeCutDeg) return true;
             const glm::vec3 pos(originX+x,originY-y,0);
             int tr=0,tc=0,sr=0,sc=0;
             land->worldToTileCell(pos,tr,tc,sr,sc);
             if (tr<0 || tc<0 || tr>=mapSide || tc>=mapSide ||
-                classifyTerrainType(land->getTerrain(tr,tc))==VegDensity::kHard) return true;
+                fieldHardTile(land->getTerrain(tr,tc))) return true;
             if (TerrainRuntime::sampleVisibleGroundHeight(pos)<=Terrain::waterElevation+kBeachMarginWU) return true;
-            if (gameMap) {
-                int cr=0,cc=0;
-                land->worldToCell(pos,cr,cc);
-                if (!gameMap->inBounds(cr,cc) || clumpStaticOccupied(gameMap->cellAt(cr,cc),true)) return true;
-            }
+            if (gameMap && fieldOccupied(pos)) return true;
             return gos_terrain_indirect_HardSurfaceCoverage(pos.x,pos.y)>=kHardFalloffLo;
         });
         // Finish lazy coverage updates before workers read terrain and static masks.
@@ -466,7 +501,6 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
         batch.instances.reserve(static_cast<size_t>(end-begin)*fieldSide*fieldSide);
         for (int cell = begin; cell < end; ++cell) {
             const auto [col,row] = fieldCells[static_cast<size_t>(cell)];
-            const float slope = fieldSlopes[static_cast<size_t>(row)*side+col];
             for (int j = 0; j < fieldSide*fieldSide; ++j) {
                 const auto blade = fieldBlade(col,row,seed,j,fieldSide,gridStep,*fieldRecipe);
                 const float bx = originX+static_cast<float>(col)*gridStep+blade.x;
@@ -482,16 +516,14 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                                     blade.seed < 0.4f;
                 int ir=0,ic=0,isr=0,isc=0;
                 land->worldToTileCell(bpos,ir,ic,isr,isc);
-                if (ir<0 || ic<0 || ir>=mapSide || ic>=mapSide ||
-                    classifyTerrainType(land->getTerrain(ir,ic)) == VegDensity::kHard) continue;
+                if (ir<0 || ic<0 || ir>=mapSide || ic>=mapSide || fieldHardTile(land->getTerrain(ir,ic))) continue;
+                // Density falls off with this blade's own slope and reaches zero where the impassable-cell cut starts, so the
+                // cut (cell and tile aligned squares) lies in bare ground instead of ending the meadow in a hard step.
+                const float slope = slopeAt(bx-originX, originY-by);
+                if (hashf(bx*1.37f+53.0f,by*0.91f-17.0f) >= 1.0f - smoothstep01(kFieldSlopeFadeDeg,kFieldSlopeCutDeg,slope)) continue;
                 const float elevation = TerrainRuntime::sampleVisibleGroundHeight(bpos);
                 if (!TerrainRuntime::visibleGroundSupports(bpos, blade.scale*2.0f)) continue;
-                bool occupied = false;
-                if (gameMap) {
-                    int cr=0,cc=0;
-                    land->worldToCell(bpos,cr,cc);
-                    occupied = !gameMap->inBounds(cr,cc) || clumpStaticOccupied(gameMap->cellAt(cr,cc), true);
-                }
+                const bool occupied = gameMap && fieldOccupied(bpos);
                 const float coverage = gos_terrain_indirect_HardSurfaceCoverageReadOnly(bx,by);
                 if (!clumpSurfaceAllowed(true,elevation<=Terrain::waterElevation+kBeachMarginWU,
                                          occupied,coverage,slope,false)) continue;
