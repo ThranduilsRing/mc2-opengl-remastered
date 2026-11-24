@@ -67,3 +67,12 @@ TEST_CASE("water chunk frustum: any-chunk walk ignores empty chunks and an empty
     CHECK_FALSE(wf::anyChunkInView(glm::value_ptr(m), std::vector<Chunk>{{-50, -900, 50, -600, {1}}}, 0, 2));      // behind
     CHECK(wf::anyChunkInView(glm::value_ptr(m), std::vector<Chunk>{{-50, -900, 50, -600, {1}}, {-20, 300, 20, 360, {1}}}, 0, 2));
 }
+
+TEST_CASE("water: a map whose water level is below all its terrain is dry (DarkRain torrin)") {
+    struct V { unsigned char water; };
+    const V dry[] = {{0x00}, {0x40}, {0x80}, {0xC0}};      // anim markers only, no underwater bit
+    const V wet[] = {{0x40}, {0x81}, {0x00}};
+    CHECK_FALSE(wf::anyWaterVertex(dry));
+    CHECK(wf::anyWaterVertex(wet));
+    CHECK_FALSE(wf::anyWaterVertex(std::span{wet, size_t{0}}));
+}
