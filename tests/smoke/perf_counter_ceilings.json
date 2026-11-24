@@ -1,7 +1,7 @@
 {
  "mc2_01": {
   "draws.legacy": 0.8,
-  "draws.props": 201.7656,
+  "draws.props": 13.0,
   "draws.shadow": 70.512,
   "draws.sky": 2.8,
   "draws.terrain": 47.008,
@@ -13,7 +13,7 @@
  "mc2_10": {
   "walk.update": 64.0,
   "draws.legacy": 2.048,
-  "draws.props": 334.4328,
+  "draws.props": 13.0,
   "draws.shadow": 229.968,
   "draws.sky": 2.8,
   "draws.terrain": 67.024,
@@ -25,14 +25,18 @@
  "mc2_24": {
   "walk.update": 64.0
  },
+ "_props_note": "draws.props counts vkCmdDrawIndexedIndirectCount calls per non-empty pipeline list per pass, not prop instances (vulkan_color_prop_island.cpp). E:/mc2-archive-2026-10/proofs/tree-lod-props-perf-1 run-base/run-tip samples at c94765b31/4736bd16f: final mc2_10 11.4880..11.6138, mc2_01 11.4424..11.5579; intermediate cumulative max 12.1333. Use 13 with modest headroom for both cumulative and windowed counts.",
  "_window": {
   "ticks": "30..120",
-  "_note": "mc2_10 draws.props 4.3 -> 5.0 (1120a): the last 5 merge-gate tier1 logs (E:/mc2-archive-2026-10/proofs/merge-gate/{20261120-055901,20261120-035809,merge-1119f,20261119-222440,merge-1119e}/gate.log) read 4.766, 4.748, 4.76, 4.76, 4.748 (max 4.766); ceiling = max + ~5%",
+  "_note": "Same archived runs as _props_note: mc2_10 window 10.7000..10.9771, mc2_01 window 11.2489..11.6260. Props ceiling 13 replaces the stale mc2_10 ceiling 5 and adds the missing mc2_01 window ceiling.",
   "stems": {
+   "mc2_01": {
+    "draws.props": 13.0
+   },
    "mc2_10": {
     "draws.mech_depth": 0.05,
     "draws.mech_color": 0.05,
-    "draws.props": 5.0,
+    "draws.props": 13.0,
     "draws.terrain": 46.0,
     "draws.water": 2.0,
     "draws.legacy": 2.0,

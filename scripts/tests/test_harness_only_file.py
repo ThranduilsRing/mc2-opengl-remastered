@@ -1,6 +1,9 @@
 """build_contract_harnesses --only <tests/unit file stem> expands to that file's TEST_CASE names."""
 import os
 import sys
+from unittest.mock import Mock
+
+import pytest
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
@@ -19,6 +22,20 @@ def test_file_stem_expands_to_its_cases():
 def test_non_files_pass_through():
     assert bch.unit_file_cases("no_such_file_xyz") is None
     assert bch.expand_file_selection(["a*", "b"]) == ["a*", "b"]
+
+
+@pytest.mark.parametrize("selection", ["test_authored_order_seam",
+                                     "SaveLoad/v1 fixture without WRLD retains legacy turn zero",
+                                     "SaveLoad/v1 fixture*"])
+@pytest.mark.parametrize("seam", [[], ["--seam"]])
+def test_seam_selection_prints_exact_build_target_before_configure(selection, seam, monkeypatch, capsys):
+    build = Mock()
+    monkeypatch.setattr(bch, "build_and_run_unit_tests", build)
+    with pytest.raises(SystemExit) as error:
+        bch.main(["--only", selection, *seam])
+    assert error.value.code == 2
+    assert "ninja -C build64-ninja mc2_authored_order_seam" in capsys.readouterr().err
+    build.assert_not_called()
 
 
 # Trigger: tools/build_contract_harnesses.py configure reuse.
