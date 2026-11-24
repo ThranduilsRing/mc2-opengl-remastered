@@ -73,6 +73,23 @@ def test_mc2x_dll_strings_include_legacy_ids_and_escape(tmp_path, monkeypatch):
     assert 'cveg.dll.99' not in text
 
 
+def test_mc2x_shared_roster_keeps_authored_player_profile(tmp_path):
+    import mc2x_import as converter
+    root = tmp_path / "mods/mc2x-compat"
+    warriors = root / "data/missions/warriors"
+    warriors.mkdir(parents=True)
+    profiles = warriors.parent / "profiles"
+    profiles.mkdir()
+    (profiles / "pmwshadow.fit").write_bytes(b"shared Shadow")
+    (warriors / "pmwcobra.fit").write_bytes(b"shared Cobra")
+    (warriors / "pmp_cobra.fit").write_bytes(b"authored Cobra")
+    for _ in range(2):
+        assert converter.write_mc2x_roster(str(tmp_path)) == 2
+        assert (warriors / "pmp_shadow.fit").read_bytes() == b"shared Shadow"
+        assert (warriors / "pmp_cobra.fit").read_bytes() == b"authored Cobra"
+        assert (root / "data/objects/pilots.csv").read_text().splitlines() == ["pmp_cobra", "pmp_shadow"]
+
+
 def test_mc2x_cveg_roster_adds_player_pilots_once(tmp_path):
     import mc2x_import as converter
     roster = tmp_path / "mods/mc2x-compat/data/objects/pilots.csv"

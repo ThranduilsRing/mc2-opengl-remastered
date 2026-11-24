@@ -158,6 +158,20 @@ def write_mc2x_strings(source, deploy):
     return sum(1 for t in table.values() if t.strip())
 
 
+def write_mc2x_roster(deploy):
+    """MC2X purchase files use pmp_ aliases for the shared pmw pilot profiles."""
+    from pathlib import Path
+    root = Path(deploy) / "mods/mc2x-compat"
+    warriors = root / "data/missions/warriors"
+    warriors.mkdir(parents=True, exist_ok=True)
+    for profile in sorted(warriors.glob("pmw*.fit")) + sorted((root / "data/missions/profiles").glob("pmw*.fit")):
+        target = warriors / ("pmp_" + profile.stem[3:].lower() + ".fit")
+        if not target.exists():
+            target.write_bytes(profile.read_bytes())
+    from transfer_mc2x_campaign import write_player_roster
+    return write_player_roster(root, root / "data/objects/pilots.csv")
+
+
 def write_cveg_roster(deploy):
     """CVE-G campaigns buy player pilots by their pmp_ names, but MC2X's roster file lists only the pmw
     warriors, so the bay had no pilots. cveg's roster is the compat roster plus every pmp_ pilot it ships."""
@@ -239,6 +253,7 @@ def main(argv=None):
                 for name in miss:
                     print(f"WARNING: {m}: missing recipe file: {name}", file=sys.stderr)
             print(f"  mc2x-compat: {write_mc2x_strings(args.source, staged.deploy)} mc2xres.dll strings")
+            print(f"  mc2x-compat: {write_mc2x_roster(staged.deploy)} shared player pilot aliases")
             print(f"  cveg: {write_cveg_roster(staged.deploy)} player pilots in the roster")
             if not os.path.isfile(os.path.join(staged.deploy, "mods", "mc2x-compat", "data/objects/object2.pak")):
                 print("ERROR: no data/objects/object2.pak produced for mc2x-compat", file=sys.stderr)
