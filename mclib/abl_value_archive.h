@@ -30,6 +30,12 @@ struct AblVariableRecord {
     }
 };
 
+// A framed value record's size is valid when it holds at least the tag and version, fits the file cap, and fits what is left of a
+// stream that reports its remaining length (remaining < 0: unknown).
+inline bool ablRecordSizeValid(std::int64_t size, std::int64_t remaining) {
+    return size >= 8 && static_cast<std::uint64_t>(size) <= maxFileBytes && (remaining < 0 || size <= remaining);
+}
+
 template<class Slot> AblVariableRecord captureAblVariable(const Slot& slot, std::size_t size) {
     AblVariableRecord value;
     if (size) {
