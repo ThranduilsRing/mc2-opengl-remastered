@@ -165,13 +165,65 @@ def test_mapping_drives_packages_and_checker():
     mapping = {"a": {"key": "staticprop:a", "pick": "bt_house"}, "b": {"key": "staticprop:b", "pick": "bt_house"},
                "c": {"key": "staticprop:c", "pick": "bt_house", "review": "none"}}
     props = mp.mapping_props(mapping, lib, bind)
-    assert [p["replaces"] for p in props] == [["staticprop:a", "staticprop:b"]]
+    assert [p["replaces"] for p in props] == [["staticprop:a"], ["staticprop:b"]]
+    assert props[0]["id"] != props[1]["id"]
     assert props[0]["materials"][0]["alb"] == "alb" and props[0]["lods"][1]["distance_wu"] == 600
     mp.check_ids(props)
-    man = [{"id": "bt_house", "replaces": props[0]["replaces"]}]
+    man = [{"id": p["id"], "source_id": p["source_id"], "replaces": list(p["replaces"])} for p in props]
     assert cpp.check_mapping(mapping, man) == []
     man[0]["replaces"].append("staticprop:c")
     assert len(cpp.check_mapping(mapping, man)) == 1
+
+
+def test_stock_fit_pins_both_footprint_axes_and_clamps_height():
+    import extract_bt2018_props as ex
+    import pytest
+    for height in (2, 20, 200):
+        turn, scale, ratio = ex.fit_stock([80, height, 40], [40, 20, 80])
+        assert turn
+        assert scale[0] == scale[2]
+        assert np.all((ratio[[0, 2]] >= 0.9) & (ratio[[0, 2]] <= 1.0))
+        assert 0.6 <= ratio[1] <= 1.6
+    with pytest.raises(ValueError, match="footprint mismatch"):
+        ex.fit_stock([80, 20, 80], [40, 20, 80])
+
+
+def test_albedo_guard_checks_stock_luminance_saturation_and_normals():
+    import extract_bt2018_props as ex
+    import pytest
+    stock = {"luminance": 0.4, "saturation": 0.2}
+    image = np.full((4, 4, 4), [90, 100, 110, 255], np.uint8)
+    assert ex.check_albedo(image, stock)["luminance"] > 0.3
+    for bad, message in (([128, 128, 255, 255], "normal map"),
+                         ([250, 250, 250, 255], "luminance"),
+                         ([0, 0, 0, 255], "luminance"), ([255, 0, 0, 255], "saturation")):
+        with pytest.raises(ValueError, match=message):
+            ex.check_albedo(np.full((4, 4, 4), bad, np.uint8), stock)
+    image[0, 0] = [0, 0, 0, 0]  # unused atlas background must not bias the comparison
+    assert ex.check_albedo(image, stock)["luminance"] > 0.3
+
+
+def test_prop_recipe_keeps_full_detail_atlas_and_scale_audit(tmp_path, monkeypatch):
+    import extract_bt2018_props as ex
+    import json
+    from tools.content_pipeline import cache, cook
+    from tools.content_pipeline.tests.test_content_pipeline import make_gltf
+    monkeypatch.setattr(cache, "DEFAULT_DIR", tmp_path / "cache")
+    fit = {"scale": [0.75, 1.0, 0.75], "ratio": [1.0, 0.6, 0.95]}
+    manifest = {"id": "bt_a", "replaces": ["staticprop:a"], "category": "building", "stock_fit": fit,
+                "lods": [{"glb": "lod0.glb"}]}
+    spec = ex.build_recipe([manifest], Path("packages"), {})["assets"][0]
+    assert spec["stock_fit"] == fit
+    assert spec["texel_scale"] == 8
+    assert spec["lods"] == []
+    src, *_ = make_gltf(tmp_path)
+    spec["intact"] = str(src)
+    recipe = {"mod_id": "test-fit", "assets": [spec], "out": str(tmp_path / "mod")}
+    out = cook.cook(recipe, compress=False)
+    registry = json.loads((out / "data/model_overrides/models.json").read_text())["overrides"][0]
+    assert registry["stockFit"] == fit
+    assert registry["scale"] == 1.0  # import scale is baked; runtime must not apply it twice
+    assert all(0.9 <= registry["stockFit"]["ratio"][axis] <= 1.0 for axis in (0, 2))
 
 
 def test_check_ids_rejects_long_or_duplicate_ids():

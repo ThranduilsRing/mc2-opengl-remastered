@@ -135,10 +135,12 @@ def mapping_props(mapping, library, bindings):
                 continue
             specs.append({"alb": mp["_MainTex"], "nrm": mp.get("_BumpMap"), "amb": mp.get("_OcclusionMap"),
                           "mtl": mp.get("_MetallicGlossMap"), "cutoff": mat.get("cutoff", 0.5), "bump_scale": mat.get("bump_scale", 1.0)})
-        props.append({"id": pid, "category": a["category"], "class": "dielectric", "file": a["file"],
+        for key in keys:
+            props.append({"id": pc.short_id(key.split(":", 1)[-1]), "source_id": pid,
+                      "category": a["category"], "class": "dielectric", "file": a["file"],
                       "placement_scale": a.get("placement_scale", [1.0, 1.0, 1.0]),
                       "lods": [{"mesh": n, "distance_wu": 600 * i} for i, n in enumerate(a["lod_meshes"])],
-                      "materials": specs, "material_names": a.get("materials") or [], "replaces": keys})
+                      "materials": specs, "material_names": a.get("materials") or [], "replaces": [key]})
     return props
 
 

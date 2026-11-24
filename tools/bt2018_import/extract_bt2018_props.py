@@ -192,15 +192,76 @@ def spec_material(spec):
     return {"maps": maps, "color": (1.0, 1.0, 1.0), "floats": {"_BumpScale": float(spec.get("bump_scale", 1.0))}}
 
 
+def fit_stock(size, stock):
+    """Uniform XZ fit, allowing a quarter turn; clamp height independently. Reject poor aspect matches."""
+    size, stock = np.asarray(size, float), np.asarray(stock, float)
+    if np.any(size <= 0) or np.any(stock <= 0):
+        raise ValueError("degenerate bounds")
+    candidates = []
+    for turn in (False, True):
+        oriented = size[[2, 1, 0]] if turn else size
+        xz = min(stock[0] / oriented[0], stock[2] / oriented[2])
+        scale = np.array([xz, np.clip(oriented[1] * xz, stock[1] * 0.6, stock[1] * 1.6) / oriented[1], xz])
+        ratio = oriented * scale / stock
+        candidates.append((min(ratio[0], ratio[2]), turn, scale, ratio))
+    coverage, turn, scale, ratio = max(candidates, key=lambda c: c[0])
+    if coverage < 0.9:
+        raise ValueError(f"footprint mismatch {ratio.round(3).tolist()}")
+    return turn, scale, ratio
+
+
+def albedo_metrics(rgba):
+    rgb = np.asarray(rgba)[..., :3].reshape(-1, 3).astype(float) / 255.0
+    if np.asarray(rgba).shape[-1] == 4:
+        rgb = rgb[np.asarray(rgba)[..., 3].reshape(-1) > 0]
+    if not len(rgb):
+        raise ValueError("empty albedo")
+    mean = rgb.mean(0)
+    if abs(mean[0] - 0.5) < 0.12 and abs(mean[1] - 0.5) < 0.12 and mean[2] > 0.85:
+        raise ValueError("normal map bound as albedo")
+    hi, lo = rgb.max(1), rgb.min(1)
+    return {"luminance": float((rgb @ [0.2126, 0.7152, 0.0722]).mean()),
+            "saturation": float(((hi - lo) / np.maximum(hi, 1e-6)).mean())}
+
+
+def check_albedo(rgba, stock):
+    metrics = albedo_metrics(rgba)
+    lum, sat = metrics["luminance"], metrics["saturation"]
+    if not max(0.04, stock["luminance"] * 0.5) <= lum <= min(0.9, stock["luminance"] * 1.7):
+        raise ValueError(f"albedo luminance {lum:.3f} versus stock {stock['luminance']:.3f}")
+    if not stock["saturation"] * 0.15 <= sat <= min(0.8, stock["saturation"] * 2.5 + 0.1):
+        raise ValueError(f"albedo saturation {sat:.3f} versus stock {stock['saturation']:.3f}")
+    return metrics
+
+
 def build_prop(inst, prop, out, matidx, texcache):
     """One prop package: per LOD one GLB with one baked texture set (albedo, normal, ORM) over all submeshes."""
     pid = prop["id"]
     pdir = out / pid
     pdir.mkdir(parents=True, exist_ok=True)
     lods, materials_doc, bounds = [], [], None
-    for lod_i, lod in enumerate(prop["lods"]):
+    from stock_props import stock_prims
+    stock = stock_prims(prop["replaces"][0].split(":", 1)[-1], "A:/Games/mc2-srcdata/tgl", out / "stock", textured=True)  # drive-path: ok owner PC stock source
+    stock_pos = np.concatenate([p["pos"] for p in stock])
+    stock_size = stock_pos.max(0) - stock_pos.min(0)
+    stock_tex = [p["tex"].reshape(-1, 3) for p in stock if p["tex"] is not None]
+    if not stock_tex:
+        raise ValueError("stock texture unavailable")
+    stock_metrics = albedo_metrics(np.concatenate(stock_tex))
+    # Independent LOD bakes have different UV layouts/material slots. Keep the full-detail atlas and mesh.
+    for lod_i, lod in enumerate(prop["lods"][:1]):
         pos, nrm, uv, _tan, subs, col = mesh_prims(find_mesh(inst, prop["file"], lod["mesh"]))
         pos = pos * np.asarray(prop.get("placement_scale", (1.0, 1.0, 1.0)), np.float32)
+        turn, scale, ratio = fit_stock((pos.max(0) - pos.min(0)) * WU_PER_M, stock_size)
+        if turn:
+            pos, nrm = pos[:, [2, 1, 0]].copy(), nrm[:, [2, 1, 0]].copy()
+            pos[:, 2] *= -1
+            nrm[:, 2] *= -1
+        pos *= scale
+        pos -= np.array([(pos[:, 0].min() + pos[:, 0].max()) / 2, pos[:, 1].min(),
+                         (pos[:, 2].min() + pos[:, 2].max()) / 2])
+        nrm /= scale
+        nrm /= np.maximum(np.linalg.norm(nrm, axis=1, keepdims=True), 1e-6)
         auto = renderer_materials(inst, prop["file"], lod["mesh"])
         names = [m["material"] for m in auto] if auto else list(prop.get("material_names") or [])
         specs = prop.get("materials") or []
@@ -218,6 +279,17 @@ def build_prop(inst, prop, out, matidx, texcache):
         size = BAKE_PX[min(lod_i, len(BAKE_PX) - 1)]
         unity_uv = np.stack([uv[:, 0], 1.0 - uv[:, 1]], -1)  # mesh_prims already flipped v for glTF
         alb, nimg, orm, new_uvs = bake_materials.bake(unity_uv, col, [s.reshape(-1, 3) for s in subs], mats, texcache, size)
+        for mat in mats:
+            for slot in ("_MainTex", "_BlendMainTex"):
+                spec = mat["maps"].get(slot) if mat else None
+                if spec:
+                    image = texcache.full[spec[0]]
+                    if min(image.size) < 128:
+                        raise ValueError(f"tiny albedo source {spec[0]}: {image.size}")
+                    albedo_metrics(np.asarray(image))
+        metrics = check_albedo(alb, stock_metrics)
+        if missing:
+            raise ValueError(f"unresolved materials: {sorted(missing)}")
         images = [png(alb), png(nimg), png(orm)]
         gl = {"name": f"{pid}_0", "doubleSided": False,
               "pbrMetallicRoughness": {"baseColorTexture": {"index": 0}, "metallicFactor": 0.0, "roughnessFactor": 1.0,
@@ -241,6 +313,10 @@ def build_prop(inst, prop, out, matidx, texcache):
     footprint = [[x, z] for x in (-hi[0] * WU_PER_M, -lo[0] * WU_PER_M) for z in (lo[2] * WU_PER_M, hi[2] * WU_PER_M)]
     manifest = {
         "schema": SCHEMA, "id": pid, "category": prop["category"], "license": LICENSE,
+        "source_id": prop.get("source_id", pid),
+        "stock_fit": {"scale": scale.tolist(), "yaw_degrees": 90 if turn else 0,
+                      "stock_size_wu": stock_size.tolist(), "ratio": ratio.tolist(),
+                      "albedo": metrics, "stock_albedo": stock_metrics},
         "source": {"file": prop["file"], "meshes": [l["mesh"] for l in lods], "unity_frame": "left-handed Y-up, metres"},
         "units": {"source": "m", "wu_per_m": WU_PER_M, "frame": "gltf"},
         "bounds": bounds, "footprint_wu": [[round(a, 2), round(b, 2)] for a, b in footprint],
@@ -261,6 +337,7 @@ def build_recipe(manifests, out, catalog):
         pdir = out / m["id"]
         assets.append({"frontend": "gltf", "id": m["id"], "replaces": keys[0], "kind": "building" if m["category"] in ("building", "industrial") else "prop",
                        "intact": str(pdir / "lod0.glb"), "frame": "gltf", "wu_per_unit": WU_PER_M,
+                       "stock_fit": m["stock_fit"], "texel_scale": 8,
                        "lods": [[str(pdir / l["glb"]), l["distance_wu"]] for l in m["lods"][1:]],
                        "license": LICENSE})
         for extra in keys[1:]:
@@ -293,15 +370,28 @@ def main(argv=None):
     matidx = bake_materials.MaterialIndex(inst, args.material_index or args.out / "material_index.json")
     texcache = bake_materials.TexCache(inst)
     wanted = set(args.only.split(",")) if args.only else None
-    manifests = []
+    manifests, dropped = [], {}
     args.out.mkdir(parents=True, exist_ok=True)
     for prop in catalog["props"]:
         if wanted and prop["id"] not in wanted:
             continue
-        manifests.append(build_prop(inst, prop, args.out, matidx, texcache))
+        try:
+            manifest = build_prop(inst, prop, args.out, matidx, texcache)
+        except ValueError as exc:
+            print("DROP", prop["replaces"], str(exc))
+            dropped.update({key: str(exc) for key in prop["replaces"]})
+            texcache.full.clear()
+            continue
+        manifests.append(manifest)
         texcache.full.clear()
         print("prop", prop["id"], manifests[-1]["bounds"]["size_wu"], [l["triangles"] for l in manifests[-1]["lods"]])
     (args.out / "recipe.json").write_text(json.dumps(build_recipe(manifests, args.out, catalog), indent=2) + "\n", encoding="utf-8")
+    selection = {"kept": {key: m["source_id"] for m in manifests for key in m["replaces"]}, "dropped": dropped}
+    if args.mapping:
+        mapping = json.loads(args.mapping.read_text(encoding="utf-8"))["map"]
+        selection["dropped"].update({m["key"]: "reviewed none" for m in mapping.values()
+                                     if not m.get("pick") or m.get("review") == "none"})
+    (args.out / "selection.json").write_text(json.dumps(selection, indent=2) + "\n", encoding="utf-8")
     return 0
 
 

@@ -104,8 +104,8 @@ class TexCache:
         if name not in self.full:
             try:
                 self.full[name] = self.inst.texture(name)
-            except (KeyError, StopIteration):  # texture not in the install: neutral grey (flat normal)
-                self.full[name] = Image.new("RGBA", (4, 4), (128, 128, 255, 128))
+            except (KeyError, StopIteration) as exc:
+                raise ValueError(f"missing texture {name}") from exc
         im = self.full[name]
         width = min(width, im.size[0])
         key = (name, width)
@@ -209,7 +209,7 @@ def bake(uv, colors, subs, mats, tc, size=2048):
         covered[yy, xx] = True
     alb, nrm, orm = (dilate(x, covered) for x in (alb, nrm, orm))
     u8 = lambda x: (np.clip(x, 0, 1) * 255 + 0.5).astype(np.uint8)
-    return (np.dstack([u8(alb), np.full((size, size), 255, np.uint8)]), u8(nrm),
+    return (np.dstack([u8(alb), covered.astype(np.uint8) * 255]), u8(nrm),
             np.dstack([u8(orm), np.full((size, size), 255, np.uint8)]), new_uvs)
 
 

@@ -108,7 +108,7 @@ def check_cooked(mod, manifests):
 
 def check_mapping(mapping, manifests):
     errs = []
-    owner = {k.lower(): man["id"] for man in manifests for k in man["replaces"]}
+    owner = {k.lower(): man.get("source_id", man["id"]) for man in manifests for k in man["replaces"]}
     for name, m in sorted(mapping.items()):
         key = m["key"].lower()
         if m.get("pick") and m.get("review") != "none":
