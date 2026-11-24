@@ -1,0 +1,29 @@
+{
+ "schema_v": 1,
+ "mission": "mc2_01",
+ "_note": "lane terrain-normal-uniform-1 day close-up pose",
+ "bookmarks": [
+  {
+   "name": "nu12",
+   "pos": [
+    1234.7729,
+    -1904.4094,
+    0.0
+   ],
+   "rot": 160.0,
+   "proj": 35.0,
+   "alt": 300
+  },
+  {
+   "name": "nu12_dup",
+   "pos": [
+    1234.7729,
+    -1904.4094,
+    0.0
+   ],
+   "rot": 160.0,
+   "proj": 35.0,
+   "alt": 300
+  }
+ ]
+}
