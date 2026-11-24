@@ -10,7 +10,11 @@
     "waterSkyTintStrength": 0.0,
     "vfxBrightness": 1.0,
     "vfxAdditiveBrightness": 1.0,
-    "mechSpecularStrength": 0.05
+    "mechSpecularStrength": 0.05,
+    "atmoDensity": 1.0,
+    "atmoHeightFalloff": 0.0008,
+    "atmoSunScatter": 0.35,
+    "atmoAnisotropy": 0.55
   },
   "missions": {
     "mc2_01": {

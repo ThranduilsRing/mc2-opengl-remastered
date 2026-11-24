@@ -65,6 +65,7 @@
 #include <SDL2/SDL.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
@@ -74,6 +75,9 @@
 #include <vector>
 #include "../../mclib/battle_bench_wait.h"
 #include "vk_island_fail_policy.h"
+
+extern void gos_GetTerrainLightDir(float* x, float* y, float* z);
+float mc2NightLightFactor();   // mclib/camera.cpp: 0 day/evening .. 1 full night
 
 namespace {
 
@@ -132,8 +136,11 @@ struct EdgeFogParams {
     float u_hazeFull;              // off 116
     int   u_fogProfile;            // off 120 (DrawDistance 0 = Stock)
     float _pad1;                   // off 124
+    float u_atmoParams[4];         // off 128 quality, ground extinction/wu, height falloff/wu, HG g
+    float u_atmoSun[4];            // off 144 unit toward sun (Z up), in-scatter strength
+    float u_atmoColor[4];          // off 160 ambient scatter rgb, base elevation
 };
-static_assert(sizeof(EdgeFogParams) == 128, "EdgeFogParams std140 offsets drifted");
+static_assert(sizeof(EdgeFogParams) == 176, "EdgeFogParams std140 offsets drifted");
 
 struct FogOobParams {
     float invViewProj[16];     // off 0
@@ -595,6 +602,23 @@ bool gosPostProcess::runVkPostFogNative()
         p.u_horizonClampEnabled = fogHorizonClampEnabled_ ? 1 : 0;
         p.u_horizonFadeStartSin = fogHorizonFadeStartSin_;
         p.u_horizonFadeEndSin   = fogHorizonFadeEndSin_;
+        {
+            const int quality = std::clamp(mc2::options::current().atmosphereQuality, 0, 2);
+            const float night = mc2NightLightFactor();
+            float lx = 0.f, ly = 0.f, lz = 1.f;
+            gos_GetTerrainLightDir(&lx, &ly, &lz);
+            const float len = std::sqrt(lx * lx + ly * ly + lz * lz);
+            if (len > 1e-6f) { lx /= len; ly /= len; lz /= len; } else { lx = ly = 0.f; lz = 1.f; }
+            const float nightDim = 1.0f - 0.85f * night;   // sun scatter and the sky colour fade with the sun
+            p.u_atmoParams[0] = static_cast<float>(quality);
+            p.u_atmoParams[1] = 6e-5f * atmoDensity_ * (quality == 1 ? 0.7f : 1.0f);
+            p.u_atmoParams[2] = atmoFalloff_;
+            p.u_atmoParams[3] = atmoAnisotropy_;
+            p.u_atmoSun[0] = lx; p.u_atmoSun[1] = ly; p.u_atmoSun[2] = lz;
+            p.u_atmoSun[3] = atmoSunScatter_ * nightDim;
+            for (int c = 0; c < 3; ++c) p.u_atmoColor[c] = edgeFogColor_[c] * 0.85f * nightDim;
+            p.u_atmoColor[3] = waterElevation_;
+        }
         if (void* m = frame.edgeUbo.map()) {
             std::memcpy(m, &p, sizeof(p));
             frame.edgeUbo.unmap();

@@ -118,6 +118,27 @@
           "name": "_pad1",
           "offset": 124,
           "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "u_atmoParams",
+          "offset": 128,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "u_atmoSun",
+          "offset": 144,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "u_atmoColor",
+          "offset": 160,
+          "type": "vec4"
         }
       ],
       "name": "EdgeFogParams"

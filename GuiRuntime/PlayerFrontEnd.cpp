@@ -779,6 +779,12 @@ void drawOptions() {
                 continue; // Legacy material/profile switch; player budget controls follow.
             } else if (std::string_view(option.key) == "ReflectionQuality") {
                 continue; // The live Water quality section owns these controls.
+            } else if (std::string_view(option.key) == "CameraView") {
+                const char* labels[] = {"Stock", "Closer", "Wide"};
+                ImGui::Combo("Camera view", &(draft.*option.l), labels, IM_ARRAYSIZE(labels));
+            } else if (std::string_view(option.key) == "AtmosphereQuality") {
+                const char* labels[] = {"Off", "Low", "High"};
+                ImGui::Combo("Atmosphere (fog and sun haze)", &(draft.*option.l), labels, IM_ARRAYSIZE(labels));
             } else if (std::string_view(option.key) == "WaterDetail" || std::string_view(option.key) == "DrawDistance") {
                 continue; // DrawDistance GUI row is a later lane
             } else if (std::string_view(option.key) == "TextureQuality") {

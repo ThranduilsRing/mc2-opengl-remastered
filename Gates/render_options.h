@@ -20,6 +20,7 @@ namespace mc2::options {
 
 // Defaults here ARE the shipped defaults: a missing key, a missing file, and a tool that never loads options.cfg all behave alike.
 struct RenderOptions {
+    int cameraView = 2; // 0 Stock, 1 Closer, 2 Wide
     bool remasteredBuildings = false; // bundled building art (default OFF = Classic, owner 2026-11-13); Classic leaves campaign/mod assets intact
     bool stockOverlayConcrete = false; // concrete look: false = new detail layers + terrain-matched overlay cement (default), true = stock overlay splotches
     // Post-process look.
@@ -68,6 +69,8 @@ struct RenderOptions {
     bool mechLabLocations = true;
     // Draw distance (fog profile): 0 Stock (9000->18000 wu haze), 1 Balanced, 2 Performance, 3 RT-headroom.
     int drawDistance = 0;
+    // Analytic atmosphere (distance extinction + height fog, HG sun in-scatter): 0 Off, 1 Low (extinction only), 2 High.
+    int atmosphereQuality = 2;
     bool operator==(const RenderOptions&) const = default;
 };
 
@@ -118,6 +121,8 @@ inline constexpr Option kOptions[] = {
     detail::longOpt ("TextureQuality",                &RenderOptions::textureQuality, -1, 3),
     detail::boolOpt ("MechLabLocations",              &RenderOptions::mechLabLocations),
     detail::longOpt ("DrawDistance",                  &RenderOptions::drawDistance, 0, 3),
+    detail::longOpt ("AtmosphereQuality",             &RenderOptions::atmosphereQuality, 0, 2),
+    detail::longOpt ("CameraView",                    &RenderOptions::cameraView, 0, 2),
 };
 
 inline constexpr std::size_t kOptionCount = sizeof(kOptions) / sizeof(kOptions[0]);

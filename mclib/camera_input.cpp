@@ -166,7 +166,7 @@ void Camera::ZoomNormal (void)
 	}
 	else
 	{
-		camera_fov = 40.0f;
+		camera_fov = DefaultFov;
 		cosHalfFOV = cos(camera_fov * DEGREES_TO_RADS);
 		float anglePercent = (projectionAngle - MIN_PERSPECTIVE) / (MAX_PERSPECTIVE - MIN_PERSPECTIVE);
 		float testMax = Camera::AltitudeMaximumLo + ((Camera::AltitudeMaximumHi - Camera::AltitudeMaximumLo) * anglePercent);
@@ -188,7 +188,7 @@ void Camera::ZoomMin (void)
 	}
 	else
 	{
-		camera_fov = 40.0f;
+		camera_fov = DefaultFov;
 		cosHalfFOV = cos(camera_fov * DEGREES_TO_RADS);
 		float anglePercent = (projectionAngle - MIN_PERSPECTIVE) / (MAX_PERSPECTIVE - MIN_PERSPECTIVE);
 		float testMax = Camera::AltitudeMaximumLo + ((Camera::AltitudeMaximumHi - Camera::AltitudeMaximumLo) * anglePercent);
@@ -210,7 +210,7 @@ void Camera::ZoomDefault (void)
 	}
 	else
 	{
-		camera_fov = 40.0f;
+		camera_fov = DefaultFov;
 		cosHalfFOV = cos(camera_fov * DEGREES_TO_RADS);
 		cameraAltitude = AltitudeDefault;
 		cameraAltitudeDesired = cameraAltitude;
@@ -233,7 +233,7 @@ void Camera::ZoomTight (void)
 	}
 	else
 	{
-		camera_fov = 40.0f;
+		camera_fov = DefaultFov;
 		cosHalfFOV = cos(camera_fov * DEGREES_TO_RADS);
 		cameraAltitude = AltitudeTight;
 		cameraAltitudeDesired = cameraAltitude;
@@ -256,7 +256,7 @@ void Camera::ZoomMax (void)
 	}
 	else
 	{
-		camera_fov = 40.0f;
+		camera_fov = DefaultFov;
 		cosHalfFOV = cos(camera_fov * DEGREES_TO_RADS);
 		cameraAltitude = AltitudeMinimum;
 		cameraAltitudeDesired = cameraAltitude;
@@ -308,7 +308,7 @@ void Camera::tiltDown (float amount)
 void Camera::tiltNormal (void)
 {
 	pitchActive = false;
-	projectionAngle = NORM_PERSPECTIVE;
+	projectionAngle = NORM_PERSPECTIVE + DefaultPitchDelta;
 	calculateProjectionConstants();
 }
 
