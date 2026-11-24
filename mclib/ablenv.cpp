@@ -1713,15 +1713,16 @@ void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc, bool values) {
 
 	for (int i = 0; i < (numMods - numLibs); i++) {
 		ABLModulePtr module = nullptr;
-		if (malloc)
-			module = new ABLModule;
+		std::unique_ptr<ABLModule> ownedModule;
+		if (malloc) {
+			ownedModule = std::make_unique<ABLModule>();
+			module = ownedModule.get();
+		}
 		else
 			module = ModuleInstanceRegistry[numLibs + i];
 		module->read(ablFile, values);
-		if (g_ablValueReadFailed) {
-			if (malloc) delete module;
-			return;
-		}
+		if (g_ablValueReadFailed) return;
+		ownedModule.release(); // A successful read registered the instance with the environment.
 		readOrder.push_back(module);
 	}
 	if (values) {
