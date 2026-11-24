@@ -13,6 +13,7 @@ struct MissionLoadFrame {
 	bool turnOffAsyncMouse;
 	bool incompatibleSave = false;
 	bool campaignRefused = false;   // incompatibleSave because the saved campaign file is gone or broken
+	bool otherMissionRefused = false;   // incompatibleSave because the save is from another mission or mod than the running one
 	PacketFile loadFile;
 	long result;
 	DWORD currentPacket;

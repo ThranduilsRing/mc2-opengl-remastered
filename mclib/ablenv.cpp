@@ -67,23 +67,44 @@ template<class T> static void writeAblRecord(ABLFile* file, T value, uint32_t ta
 		ABL_Fatal(0, "ABL: unable to write value record");
 }
 
+// A damaged or short save stream: report once, remember it, and let every later value read return at once. ABL_Fatal's callback
+// returns in the shipped game, so a size that failed its check must never reach an allocation.
+static bool g_ablValueReadFailed = false;
+
+static void failAblValueRead(mc2::czstring why) {
+	g_ablValueReadFailed = true;
+	ABL_Fatal(0, why);
+}
+
+bool ABLi_environmentLoadFailed (void) {
+	return g_ablValueReadFailed;
+}
+
 template<class T> static T readAblRecord(ABLFile* file, uint32_t tag) {
 
-	const auto size = file->readInt();
-	if (size < 8 || size > mc2::save::maxFileBytes || (file->remaining() >= 0 && size > file->remaining()))
-		ABL_Fatal(0, "ABL: invalid value record size");
-	mc2::save::Bytes bytes(static_cast<size_t>(size));
 	T value;
+	if (g_ablValueReadFailed)
+		return value;
+	const auto size = file->readInt();
+	if (!mc2::save::ablRecordSizeValid(size, file->remaining())) {
+		failAblValueRead("ABL: invalid value record size");
+		return value;
+	}
+	mc2::save::Bytes bytes(static_cast<size_t>(size));
 	if (file->read(bytes.data(), size) != size || !mc2::save::decodeTaggedRecord(bytes, value, tag))
-		ABL_Fatal(0, "ABL: invalid value record");
+		failAblValueRead("ABL: invalid value record");
 	return value;
 }
 
 static void readAblVariable(ABLFile* file, StackItem& slot, long size) {
 
+	if (g_ablValueReadFailed)
+		return;
 	const auto value = readAblRecord<mc2::save::AblVariableRecord>(file, mc2::save::tagAblVariable);
+	if (g_ablValueReadFailed)
+		return;
 	if (size < 0 || !mc2::save::restoreAblVariable(value, slot, static_cast<size_t>(size)))
-		ABL_Fatal(0, "ABL: variable size differs from compiled declaration");
+		failAblValueRead("ABL: variable size differs from compiled declaration");
 }
 
 //---------------------------------------------------------------------------
@@ -700,11 +721,16 @@ void ABLModule::write (ABLFile* moduleFile, bool values) {
 
 void ABLModule::read (ABLFile* moduleFile, bool values) {
 
+	if (values && g_ablValueReadFailed)
+		return;
+
 	// Existing modules retain their allocations while their saved data is restored.
 	bool fresh = (id == -1);
 	mc2::save::AblModuleRecord record;
 	if (values) {
 		record = readAblRecord<mc2::save::AblModuleRecord>(moduleFile, mc2::save::tagAblModule);
+		if (g_ablValueReadFailed)
+			return;
 		if (record.handle >= NumModulesRegistered || (!fresh && record.handle != handle))
 			ABL_Fatal(0, "ABL: module handle differs from compiled registry");
 		std::memcpy(name, record.name.c_str(), record.name.size() + 1);
@@ -1579,8 +1605,11 @@ void ABLi_saveEnvironment (ABLFile* ablFile, bool values) {
 void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc, bool values) {
 
 	mc2::save::AblEnvironmentRecord record;
+	g_ablValueReadFailed = false;
 	if (values) {
 		record = readAblRecord<mc2::save::AblEnvironmentRecord>(ablFile, mc2::save::tagAblEnvironment);
+		if (g_ablValueReadFailed)
+			return;
 		if (record.libraries > static_cast<uint32_t>(MaxLibraries) ||
 			record.files.size() > static_cast<size_t>(MaxModules) || record.modules > static_cast<uint32_t>(MaxModules))
 			ABL_Fatal(0, "ABL: environment exceeds registry capacity");

@@ -208,6 +208,8 @@ void Mission::loadMissionScript(MissionLoadFrame& f) {
 
 #ifdef USE_ABL_LOAD
 	ABLi_loadEnvironment(&ablFile, true, f.sections.find(mc2::save::tagAblEnvironment) != nullptr);
+	if (ABLi_environmentLoadFailed())
+		mc2::fmt::print_err("[SAVE v2] event=abl_load_failed file={}\n", mc2::fmt::safe(f.loadFileName));   // script state stays at its compiled defaults
 #endif
 		
 	ablFile.close();
