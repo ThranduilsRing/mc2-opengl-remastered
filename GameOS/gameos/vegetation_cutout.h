@@ -6,6 +6,17 @@
 #include <vector>
 
 namespace mc2::vegetation {
+// Tree foliage tone (owner 11-23: the corrected mips read too light/lime). tone 0 = authored colour, 1 = fully toned: RGB is
+// darkened and pulled toward its luma. Applied to tree layers before the mip chain so every mip, 0 included, carries it.
+inline void toneFoliageRgb(std::span<uint8_t> rgba, float tone) {
+    if (tone <= 0.0f) return;
+    const float mul = 1.0f - 0.4f * tone, desat = 0.5f * tone;
+    for (size_t i = 0; i + 3 < rgba.size(); i += 4) {
+        const float luma = 0.299f * rgba[i] + 0.587f * rgba[i + 1] + 0.114f * rgba[i + 2];
+        for (int c = 0; c < 3; ++c)
+            rgba[i + c] = static_cast<uint8_t>(std::clamp(std::lround((rgba[i + c] + (luma - rgba[i + c]) * desat) * mul), 0L, 255L));
+    }
+}
 inline float cutoutCoverage(std::span<const uint8_t> rgba, float scale = 1.0f, long threshold = 128) {
     size_t covered = 0;
     for (size_t i = 3; i < rgba.size(); i += 4)
@@ -29,6 +40,27 @@ inline void preserveCutoutAlpha(std::span<uint8_t> rgba, float target, long thre
     }
     for (size_t i = 3; i < rgba.size(); i += 4)
         rgba[i] = static_cast<uint8_t>(std::clamp(std::lround(static_cast<float>(rgba[i]) * best), 0L, 255L));
+}
+
+// One 2x downsample of a cutout layer: alpha is the plain box mean, colour is the ALPHA-WEIGHTED mean. A plain box mean mixes the
+// black RGB that sits under transparent texels into every leaf edge, so each mip darkens (a far canopy reads as a dark hollow).
+inline std::vector<uint8_t> downsampleCutoutRgba8(const std::vector<uint8_t>& src, uint32_t width, uint32_t height) {
+    const uint32_t dw = std::clamp(width / 2, 1u, width), dh = std::clamp(height / 2, 1u, height);
+    std::vector<uint8_t> dst(static_cast<size_t>(dw) * dh * 4);
+    for (uint32_t y = 0; y < dh; ++y)
+        for (uint32_t x = 0; x < dw; ++x) {
+            uint32_t rgb[3]{}, alpha = 0, weight = 0;
+            for (uint32_t k = 0; k < 4; ++k) {
+                const uint32_t sx = std::clamp(2 * x + (k & 1), 0u, width - 1), sy = std::clamp(2 * y + (k >> 1), 0u, height - 1);
+                const uint8_t* p = &src[(static_cast<size_t>(sy) * width + sx) * 4];
+                for (int c = 0; c < 3; ++c) rgb[c] += p[c] * p[3];
+                alpha += p[3]; weight += p[3];
+            }
+            uint8_t* o = &dst[(static_cast<size_t>(y) * dw + x) * 4];
+            for (int c = 0; c < 3; ++c) o[c] = weight ? static_cast<uint8_t>((rgb[c] + weight / 2) / weight) : 0;
+            o[3] = static_cast<uint8_t>((alpha + 2) / 4);
+        }
+    return dst;
 }
 
 // Filtering a cutout must find its edge colours outside coverage, rather than

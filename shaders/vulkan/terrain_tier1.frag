@@ -409,7 +409,8 @@ void main() {
     {
         float natural = materialW.y + materialW.z;   // grass + dirt: the natural-ground weight
         float slopeClean = smoothstep(0.80, 0.92, abs(baseNormal.z));   // steep ground keeps the cliff/rock look
-        float wMottle = clamp(natural, 0.0, 1.0) * (1.0 - materialSnow) * (1.0 - F3pc) * (cementHit ? 0.0 : 1.0) * slopeClean;
+        // uT.reserved776 carries the vegetation switch (see vulkan_terrain_island_run.cpp): the mottle is vegetation, off with it.
+        float wMottle = (uT.reserved776 != 0 ? 1.0 : 0.0) * clamp(natural, 0.0, 1.0) * (1.0 - materialSnow) * (1.0 - F3pc) * (cementHit ? 0.0 : 1.0) * slopeClean;
         float coastDry = 0.0;
         if (TS_shorelineOn != 0) {
             float aboveW = v_worldPos.z - uT.shorelineWaterElev;
