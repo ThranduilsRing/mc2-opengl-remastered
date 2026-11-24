@@ -1477,6 +1477,8 @@ def pre_gate(root: str, exe: str | None = None, nightly_proofs: str | None = Non
     steps += [(label, py + [os.path.join(root, script), *args]) for label, script, args in EARLY_ROWS]
     # W138h: the stock-data contract went red only on the laptop; the contracts board's own args (--no-data --quiet).
     steps += [("stock_mission_data", py + [os.path.join(root, "scripts", "check-stock-mission-data.py"), "--no-data", "--quiet"])]
+    # The gate's path-scoped contracts own these rows; pre-gate checks only deploy inputs.
+    steps = [(label, cmd) for label, cmd in steps if label not in PRE_GATE_CONTRACT_ROWS]
     exe = exe or os.path.join(root, "build64-ninja", "mc2.exe")
     if os.path.isfile(exe) and exe_matches_head(root, os.path.relpath(os.path.dirname(exe), root)) is False:
         print("pre-gate: exe-fingerprint: FAIL\nthe built exe embeds a different sha than HEAD; rebuild (scripts/ninja_build.py) before the gate", flush=True)

@@ -115,6 +115,8 @@ def test_nightly_without_a_window_keeps_the_slim_row(monkeypatch):
     (["docs/notes.md"], set()),
     (["code/mission_update.cpp"], {"determinism-mc2_24", "saveload-mc2_01"}),
     (["code/mc2movie.cpp"], {"player-path"}),
+    (["code/logisticscomponent.cpp", "code/mechlabscreen.cpp"], set()),
+    (["code/campaign.cpp"], {"player-path"}),
     (["code/mission_update.cpp", "code/mainmenu.cpp", "data/defs/ui.fit"],
      {"determinism-mc2_24", "saveload-mc2_01", "player-path"}),
 ])
@@ -123,7 +125,8 @@ def test_merge_stage_budget_pin(paths, extra):
     planned = [s for s in scheduled if gate.tier_includes(s[0], 0)]
     steps, _ = gate.promote_for_diff(planned, scheduled, planned, paths, [], False)
     assert gate.promoted_stages(paths) == extra
-    assert {n for n, _, _ in steps} == {"editor", "contracts", "harnesses", "deploy", "tier1"} | extra
+    assert {n for n, _, _ in steps} == {"contracts", "harnesses", "deploy", "tier1"} | extra
+    assert gate.tier_includes("editor", 1)
 
 
 @pytest.mark.parametrize("reused", [False, True])

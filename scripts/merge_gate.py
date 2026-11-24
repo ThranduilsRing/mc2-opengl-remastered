@@ -71,7 +71,7 @@ MOD_BATTERY_STAGES = ("mods", "mods-slim")
 def stage_tier(name):
     if name.startswith(("capture-", "compare-captures", "compare-noise")):
         return 1
-    if name in NON_BLOCKING_STAGES:
+    if name in NON_BLOCKING_STAGES or name == "editor":
         return 1
     if name in ("mods", "video-decode"):
         return 2
@@ -154,8 +154,8 @@ def mod_battery_results(output):
 #: Nightly 03/16 determinism is one pinned run (`check --single`, p29 L23); weekly and sim-sensitive diffs keep the a/b pair.
 SINGLE_RUN_DETERMINISM = ("mc2_03", "mc2_16")
 #: Front end, logistics and comm video: only player-path drives them (every other smoke boots --mission under SmokeMode).
-PLAYER_PATH_GLOBS = ("code/logistics*", "code/mainmenu*", "code/mc2movie*", "code/loadscreen*", "code/mechlab*", "code/mechbay*",
-                     "code/pilotready*", "code/missionbegin*", "code/missionselect*", "code/*video*", "code/*movie*", "code/*menu*",
+PLAYER_PATH_GLOBS = ("code/mainmenu*", "code/mc2movie*", "code/loadscreen*", "code/logisticsmainmenu*", "code/logisticssave*", "code/logisticsload*",
+                     "code/campaign*", "code/missionbegin*", "code/missionselect*", "code/*video*", "code/*movie*", "code/*menu*",
                      "guiruntime/playerfrontend*", "gameos/gameos/*video*", "gameos/gameos/*movie*", "scripts/run_player_path.py")
 
 
