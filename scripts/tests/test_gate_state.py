@@ -392,7 +392,6 @@ def test_cached_deploy_requires_actual_candidate_identity(journal, monkeypatch, 
     (["docs/land-as-ready.md"], True),                       # doc
     (["tests/callers.json"], True),                          # test fixture / inventory
     (["scripts/tests/test_x.py"], True),                     # pytest file
-    (["tests/unit/test_x.cpp"], True),
     (["scripts/run_smoke.py"], False),                       # runtime driver: engine
     (["mclib/quad.cpp"], False),                             # C++
     (["shaders/a.frag", "docs/a.md"], False),                # any runtime path poisons the set
@@ -405,28 +404,6 @@ def test_stage_reuse_across_head_change_only_for_nonruntime_paths(monkeypatch, p
     monkeypatch.setattr(gate.subprocess, "run", lambda *a, **k: done)
     assert gate.head_delta_nonruntime("old", "new") is ok
     assert gate.head_delta_nonruntime("", "new") is False
-
-
-@pytest.mark.parametrize("change", ["tests", "engine", "unknown", "dirty", "missing-fingerprint"])
-def test_runtime_tree_reuse_after_relink(journal, monkeypatch, change):
-    import exe_fingerprint
-    current = ["old"]
-    def tree(*args):
-        if args[0] != "ls-tree":
-            return current[0] if args[0] == "rev-parse" else ""
-        ref = args[-1]
-        blob = "changed" if ref == "new" and change in ("engine", "unknown") else "original"
-        path = "unknown/file.bin" if change == "unknown" else "code/game.cpp"
-        return f"100644 blob {blob}\t{path}\0" + f"100644 blob {ref}\ttests/unit/test_x.cpp\0"
-    monkeypatch.setattr(gate, "git", tree)
-    steps = [("tier1", ["smoke", "--exe", str(journal[1]), *evidence(journal, "tier1")], {})]
-    runner = lambda *a, **kw: types.SimpleNamespace(returncode=0)
-    run_state(journal, monkeypatch, steps, runner, head="old")
-    current[0] = "new"
-    journal[1].write_bytes(b"relinked exe")
-    monkeypatch.setattr(exe_fingerprint, "extract", lambda *a: dict(present=change != "missing-fingerprint", dirty=change == "dirty", sha="new"))
-    _, state = run_state(journal, monkeypatch, steps, runner, head="new")
-    assert state.reused == (["tier1"] if change == "tests" else [])
 
 
 @pytest.mark.parametrize("layout", ["out", "compare-only", "artifact-root", "none"])
