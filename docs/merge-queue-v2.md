@@ -25,6 +25,25 @@ Checks run by default only for touched logic: `scripts/contracts-cache-inputs.tx
 
 ## Publishing to v0.4 (`deploy_payload.py --target game`)
 
+Intentional assets are pinned by the committed `intentional-asset-changes.json`,
+including ignored model overrides and mip textures. Before promotion, archive a
+lane's cooked bytes with `py -3 scripts/deploy_payload.py --from-install <lane-install>`.
+This reads the install and checkout, accepting only bytes matching HEAD's declarations,
+and atomically saves each blob as `<store>/<sha256>`. Missing inputs are listed so
+multiple seed installs can contribute; a deployment requires every declaration to resolve.
+The default store is `E:/mc2-asset-store`; `--asset-store <dir>` or `MC2_ASSET_STORE`
+selects another store. Keep the store when deleting lane installs.
+
+Normal deployment resolves every declaration from matching checkout, store or installed
+bytes before copying payload files. Missing or stale target files are replaced and
+recorded in the deploy manifest; absent or corrupt content fails with its path and hash.
+`py -3 scripts/deploy_payload.py --target game --dry-run` audits only intentional assets:
+it lists missing/mismatched paths, verifies available bytes and fails on unresolved hashes.
+It never cooks, builds, takes a lease or writes to the target or store; it does not
+certify executable freshness or the rest of the deployment. Seed once from
+`E:/mc2-archive-2026-10/assets/conifer-cooks-1122o` and `E:/mc2-installs/merge-gate`
+using separate `--from-install` invocations.
+
 The publish refuses an exe that is not the one the newest gate PASSed for HEAD. By default it reads `<src>/build64-ninja/gate-verdict.json`; a PASS from a stage or lane tree is passed explicitly with `--verdict <path>/gate-verdict.json`. It is accepted only if `verdict` is PASS, its `head` equals the deploying tree's HEAD and `artifacts.exe_sha256` equals the sha256 of the exe being deployed; anything else refuses. The gate keys on the resolved target (the v0.4 preset dir with a game exe), so `--target game`, `--target game --allow-new-target` and the positional v0.4 path are all gated, and a v0.4 publish always implies `--require-clean`. The refusal says to deploy the exe the gate tested or pass `--verdict`; `--allow-unverified-exe` stays in `--help` but on v0.4 it logs a WARNING and writes `.deployed_manifest.unverified.json` beside the manifest. Install DLLs that are hardlinks into the shared pool are never written through: when the replace of such a file is refused (an open handle with delete sharing on this install's own path) the old entry is renamed aside to `<name>.old-<pid>-<n>` and a private copy takes its place. An aside that cannot be deleted is listed in `<install>/.deploy-asides.json`; every deploy into that install deletes the listed ones right after taking the folder lease and again before releasing it (so failed deploys are covered). Only paths matching `.old-<pid>[-<n>]` inside the install are deleted; other `*.old-*` files are never touched. If even the rename fails the deploy stops naming the file as hardlinked and in use by another process.
 
 ## Mods (owner 2026-11-08)
