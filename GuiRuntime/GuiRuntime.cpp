@@ -55,9 +55,11 @@ static bool traceEnabled()
 
 static const char* fileForFamily(std::string_view family)
 {
-    if (family == "agency")        return "Agency-Regular.ttf";
-    if (family == "agency_bold")   return "Agency-Bold.ttf";
-    if (family == "impact")        return "Impact.ttf";
+    // Agency (Elfring, restricted licence, broken 'u' glyph) and Impact (Monotype) are not redistributable;
+    // the catalog names stay, the faces are the open Liberation Sans Narrow.
+    if (family == "agency")        return "LiberationSansNarrow-Regular.ttf";
+    if (family == "agency_bold")   return "LiberationSansNarrow-Bold.ttf";
+    if (family == "impact")        return "LiberationSansNarrow-Bold.ttf";
     if (family == "blade_runner")  return "BladeRunnerMovieFont.ttf";
     if (family == "cousine")       return "Cousine-Regular.ttf";
     if (family == "roboto")        return "Roboto-Medium.ttf";
