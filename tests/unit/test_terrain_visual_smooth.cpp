@@ -25,8 +25,11 @@ TEST_CASE("visual smooth: terraced wall melts, flats stay, gameplay input untouc
     for (int fx = 30; fx < 46; ++fx)
         maxStep = std::max(maxStep, std::fabs(vh[static_cast<size_t>(row) * V + fx + 1] - vh[static_cast<size_t>(row) * V + fx]));
     CHECK(maxStep < 45.0f);
+    float maxDrift = 0.0f;
     for (int cx = 0; cx < N; ++cx)                                   // drift stays inside the cliff limit
-        CHECK(std::fabs(vh[static_cast<size_t>(row) * V + cx * 4] - before[static_cast<size_t>(cx) + static_cast<size_t>(row / 4) * N]) <= 72.0f + 1e-3f);
+        maxDrift = std::max(maxDrift, std::fabs(vh[static_cast<size_t>(row) * V + cx * 4] - before[static_cast<size_t>(cx) + static_cast<size_t>(row / 4) * N]));
+    MESSAGE("terraced wall maximum coarse-vertex drift (wu): ", maxDrift);
+    CHECK(maxDrift <= 72.0f + 1e-3f);
 }
 
 TEST_CASE("ravine weathering: only blocked cells move, passable cell centres keep their height, mask untouched")
