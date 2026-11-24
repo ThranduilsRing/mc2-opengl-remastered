@@ -1036,7 +1036,8 @@ float groundLift(const ImportedAnimEntry& e, const std::vector<mc2skel::GpuBone>
         float y = 1e30f;
         for (const aiVector3D& v : e.boneSupport[i]) {
             const aiVector3D p = D * v;
-            if (p.y < y) { y = p.y; point = p; }
+            point = p.y < y ? p : point;
+            y = point.y;
         }
         lowestY = std::min(lowestY, y);
         if (!low || maxLow <= 0) continue;

@@ -190,7 +190,7 @@ void Mech3DAppearance::updateGeometry (void)
 	{
 		glm::vec3 origin;
 		mc2ToRender(origin, position);
-		const glm::quat yaw = mc2::math::quatFromEulerSim(mc2::math::Euler(0.0f, rotation * DEGREES_TO_RADS, 0.0f));
+		glm::quat yaw = mc2::math::quatFromEulerSim(mc2::math::Euler(0.0f, rotation * DEGREES_TO_RADS, 0.0f));
 		mechShape->TransformMultiShape_HierarchyOnly(&origin, &yaw);
 		ground.under = &surfaceUnder;
 		ground.ctx = &frame;
