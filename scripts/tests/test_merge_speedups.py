@@ -1321,15 +1321,6 @@ def test_gate_state_journals_stage_seconds_for_the_next_gate(tmp_path):
         gate.ACTIVE_STATE = monkey
 
 
-def test_window_reuse_is_keyed_on_the_tree_not_the_clock():
-    import merge_gate as gate
-    window = {"tree": "abc", "started": 0}
-    assert gate.window_reusable(window, "abc", now=10 ** 9)
-    assert not gate.window_reusable(window, "def", now=1)
-    assert gate.window_reusable({"started": 100}, "x", now=200)
-    assert not gate.window_reusable({"started": 100}, "x", now=5000)
-
-
 def test_in_gate_flag_only_on_game_stages():
     import merge_gate as gate
     for name in ("contracts", "harnesses", "pytest"):

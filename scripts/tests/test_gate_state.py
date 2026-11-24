@@ -407,7 +407,7 @@ def test_stage_reuse_across_head_change_only_for_nonruntime_paths(monkeypatch, p
     assert gate.head_delta_nonruntime("", "new") is False
 
 
-@pytest.mark.parametrize("change", ["tests", "engine", "unknown", "dirty", "missing-fingerprint"])
+@pytest.mark.parametrize("change", ["tests", "engine", "unknown", "shader", "art", "dirty", "missing-fingerprint"])
 def test_runtime_tree_reuse_after_relink(journal, monkeypatch, change):
     import exe_fingerprint
     current = ["old"]
@@ -415,8 +415,9 @@ def test_runtime_tree_reuse_after_relink(journal, monkeypatch, change):
         if args[0] != "ls-tree":
             return current[0] if args[0] == "rev-parse" else ""
         ref = args[-1]
-        blob = "changed" if ref == "new" and change in ("engine", "unknown") else "original"
-        path = "unknown/file.bin" if change == "unknown" else "code/game.cpp"
+        blob = "changed" if ref == "new" and change in ("engine", "unknown", "shader", "art") else "original"
+        path = {"unknown": "unknown/file.bin", "shader": "shaders/vulkan/terrain.frag",
+                "art": "data/art/mc2_component_x.tga"}.get(change, "code/game.cpp")
         return f"100644 blob {blob}\t{path}\0" + f"100644 blob {ref}\ttests/unit/test_x.cpp\0"
     monkeypatch.setattr(gate, "git", tree)
     steps = [("tier1", ["smoke", "--exe", str(journal[1]), *evidence(journal, "tier1")], {})]

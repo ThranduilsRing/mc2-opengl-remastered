@@ -154,9 +154,14 @@ def mod_battery_results(output):
 #: Nightly 03/16 determinism is one pinned run (`check --single`, p29 L23); weekly and sim-sensitive diffs keep the a/b pair.
 SINGLE_RUN_DETERMINISM = ("mc2_03", "mc2_16")
 #: Front end, logistics and comm video: only player-path drives them (every other smoke boots --mission under SmokeMode).
-PLAYER_PATH_GLOBS = ("code/mainmenu*", "code/mc2movie*", "code/loadscreen*", "code/logisticsmainmenu*", "code/logisticssave*", "code/logisticsdata_save*", "code/logisticsload*",
+PLAYER_PATH_GLOBS = ("code/mainmenu*", "code/mc2movie*", "code/loadscreen*", "code/logisticsmainmenu*", "code/logisticssave*", "code/logisticsdata*", "code/logisticsload*",
+                     "code/mechlab*", "code/mechbay*", "code/pilotready*",
                      "code/campaign*", "code/missionbegin*", "code/missionselect*", "code/*video*", "code/*movie*", "code/*menu*",
                      "guiruntime/playerfrontend*", "gameos/gameos/*video*", "gameos/gameos/*movie*", "scripts/run_player_path.py")
+
+
+#: Diffs that can break the Mission Editor build (nightly otherwise): its sources, shared engine headers, the platform layer and CMake.
+EDITOR_BUILD_GLOBS = ("editor/*", "mclib/*.h", "gameos/*", "*cmakelists.txt", "cmake/*", "scripts/merge_gate_editor.py")
 
 
 def sim_sensitive(paths):
@@ -176,6 +181,8 @@ def promoted_stages(paths):
         want |= {"determinism-mc2_24", "saveload-mc2_01"}
     if any(fnmatch.fnmatchcase(p.lower(), g) for p in norm for g in PLAYER_PATH_GLOBS):
         want.add("player-path")
+    if any(fnmatch.fnmatchcase(p.lower(), g) for p in norm for g in EDITOR_BUILD_GLOBS):
+        want.add("editor")
     return want
 
 
@@ -241,13 +248,6 @@ def aux_device():
         pass
     return host_lease.host_lane_device()
 
-
-def window_reusable(window, tree, now=None):
-    """A6: lane_merge verification may be reused when the window recorded the commit tree and it is still HEAD's tree
-    (content-addressed, no clock); a record without a tree keeps the old 20-minute clock."""
-    if window.get("tree"):
-        return window["tree"] == tree
-    return (now if now is not None else time.time()) - window.get("started", 0) <= 1200
 
 # Last-measured stage seconds (W112) for worker balancing when no journal exists yet.
 DEFAULT_STAGE_SECONDS = {"mods": 876, "mods-slim": 900,"tier1": 120, "tier1-full": 304, "capture-after": 70, "player-path": 180, "video-decode": 250,
@@ -825,13 +825,14 @@ def head_delta_nonruntime(old, new, row=None):
 
 
 def runtime_input_tree(ref):
-    """Hash engine-domain Git entries; unclassified paths remain engine inputs."""
+    """Hash the runtime-input Git entries (engine, shader and art domains; unclassified paths count as engine), so a
+    shader-only or art-only follow-up never reuses a runtime row recorded before it."""
     if not ref:
         return None
     try:
         entries = git("ls-tree", "-rz", ref).split("\0")
         engine = [entry for entry in entries if entry and "\t" in entry
-                  and "engine" in change_domains([entry.split("\t", 1)[1]])]
+                  and change_domains([entry.split("\t", 1)[1]]) & {"engine", "shaders", "art"}]
         return hashlib.sha256("\0".join(engine).encode()).hexdigest() if engine else None
     except (OSError, subprocess.CalledProcessError):
         return None
@@ -2319,14 +2320,6 @@ def main(argv=None):
         for n, c, _ in steps:
             if n == "compare-captures-classic":
                 c[c.index("--compare-only") + 1] = str(classic_before)
-    if window and window.get("native_unit") == "PASS" and window_reusable(window, git("rev-parse", "HEAD^{tree}")):
-        reused = []
-        for name, command, overrides in steps:
-            if name == "harnesses" and "--unit" in command:
-                command = ["--python-only" if arg == "--unit" else arg for arg in command]
-                overrides = dict(overrides, MC2_GATE_COVERAGE="native unit tier reused from successful lane_merge verification at this HEAD; Python contracts run here")
-            reused.append((name, command, overrides))
-        steps = reused
     if args.install:
         install = args.install.resolve()
         allowed = Path(EROOT + "/mc2-installs").resolve()
