@@ -1,0 +1,48 @@
+{
+  "Locations": [
+    {
+      "Location": "Head",
+      "Hardpoints": []
+    },
+    {
+      "Location": "LeftArm",
+      "Hardpoints": []
+    },
+    {
+      "Location": "RightArm",
+      "Hardpoints": []
+    },
+    {
+      "Location": "LeftTorso",
+      "Hardpoints": [
+        {
+          "WeaponMount": "Missile"
+        }
+      ],
+      "MaxRearArmor": 75
+    },
+    {
+      "Location": "RightTorso",
+      "Hardpoints": []
+    },
+    {
+      "Location": "CenterTorso",
+      "Hardpoints": [
+        {
+          "WeaponMount": "Energy"
+        },
+        {
+          "WeaponMount": "Energy"
+        }
+      ]
+    },
+    {
+      "Location": "LeftLeg",
+      "Hardpoints": []
+    },
+    {
+      "Location": "RightLeg",
+      "Hardpoints": []
+    }
+  ]
+}

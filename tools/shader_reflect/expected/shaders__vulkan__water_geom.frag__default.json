@@ -792,7 +792,7 @@
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "reserved776",
+          "name": "vegetationEnabled",
           "offset": 776,
           "type": "int"
         },

@@ -313,7 +313,7 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     u.snowBrightnessDampen = feed.snowBrightnessDampen;
     u.groundMottleOn = GosVegetation::isEnabled() && GosVegetation::instanceCount() != 0 ? 1 : 0;
     u.edgeFeatherStrength  = feed.edgeFeatherStrength;
-    u.reserved776           = GosVegetation::isEnabled() ? 1 : 0;   // the green ground mottle is vegetation: off with it
+    u.vegetationEnabled     = GosVegetation::isEnabled() ? 1 : 0;   // the green ground mottle is vegetation: off with it
     u.shorelineOn           = feed.shorelineOn ? 1 : 0;
     u.shorelineHasMask      = s->shoreMaskReady ? 1 : 0;
     u.shorelineWaterElev    = feed.shorelineWaterElev;

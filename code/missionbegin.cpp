@@ -69,6 +69,15 @@ bool	MissionBegin::FirstTimeMechLab = true;
 // Set on construction, cleared on destruction — a plain lifetime mirror.
 static MissionBegin* s_devShellMissionBegin = nullptr;
 
+static const std::string& previewChassis()
+{
+	static const std::string value = [] {
+		const char* env = std::getenv("MECH_PREVIEW_CHASSIS");
+		return std::string(env ? env : "");
+	}();
+	return value;
+}
+
 MissionBegin::MissionBegin()
 {
 	s_devShellMissionBegin = this;
@@ -1230,7 +1239,7 @@ void MissionBegin::updateSoakAutoPurchase() {
 						}
 
 						// MECH_PREVIEW_CHASSIS=a,b: those chassis (substring of the variant name) lead the lance.
-						if ( const std::string_view want = std::getenv( "MECH_PREVIEW_CHASSIS" ) ? std::getenv( "MECH_PREVIEW_CHASSIS" ) : ""; !want.empty() )
+						if ( const std::string_view want = previewChassis(); !want.empty() )
 						{
 							const std::string list = "," + std::string( want ) + ",";
 							int front = 0;
@@ -1375,7 +1384,7 @@ void MissionBegin::updateSoakAutoPurchase() {
 						}
 						// MECH_PREVIEW_CHASSIS=<text>: harness choice of the bought mech (case-insensitive substring of
 						// the variant name or the package chassis stem), so a capture opens the lab on that chassis.
-						if ( const char* want = std::getenv( "MECH_PREVIEW_CHASSIS" ); want && *want )
+						if ( const char* want = previewChassis().c_str(); *want )
 						{
 							auto lower = []( std::string s ) { for ( char& c : s ) c = static_cast<char>( std::tolower( static_cast<unsigned char>( c ) ) ); return s; };
 							const std::string needle = lower( want );

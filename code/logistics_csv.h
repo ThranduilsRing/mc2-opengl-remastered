@@ -27,9 +27,20 @@
 #define MC2_LOGISTICS_CSV_H
 
 #include <cstdlib>   // atoi, atof
+#include <cctype>
 #include <cstring>   // memcpy
 
 namespace logistics_csv {
+
+// pilots.csv uses only the first cell; trim it before opening its FIT file.
+inline char* pilotFileName(char* row) {
+    if (char* comma = std::strchr(row, ',')) *comma = '\0';
+    while (std::isspace(static_cast<unsigned char>(*row))) ++row;
+    char* end = row + std::strlen(row);
+    while (end != row && std::isspace(static_cast<unsigned char>(end[-1]))) --end;
+    *end = '\0';
+    return row;
+}
 
 // Max field scan length (legacy cap; an over-cap field returns 0 like the
 // original's `return false`).
