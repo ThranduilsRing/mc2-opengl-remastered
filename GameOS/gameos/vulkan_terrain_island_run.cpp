@@ -257,6 +257,7 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     u.groundAoMaterial = groundAo ? normalTuning.at("terrainGroundAoMaterial") : 0.0f;
     const auto* aoFields = gos_TerrainFieldStore();
     u.groundAoSource = aoFields && aoFields->materialNormals().grassSourceAo ? normalTuning.at("terrainGroundAoSource") : 0.0f;
+    { static int dbgN = 0; if (dbgN++ < 3) mc2::fmt::print_out("[AODBG] fields={} flag={} src={}\n", aoFields != nullptr, aoFields && aoFields->materialNormals().grassSourceAo, u.groundAoSource); }
     // VK-TERRAIN-LODFADE: camera pos + gate, precondition-chained on detail
     // being enabled (fading an already-off detail term is a no-op).
     u.cameraPosMC2[0] = feed.cameraPosMC2[0];
