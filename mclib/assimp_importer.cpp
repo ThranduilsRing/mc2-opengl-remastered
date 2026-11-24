@@ -119,6 +119,7 @@ static std::string ContentFloatKey(float value) {
 #include "file.h"              // ModCapabilityMounted (package capability)
 #include "mech_clip_state.h"   // P9: gesture -> clip state machine + stride matching
 #include "mech_grounding.h"
+#include "foot_grounding.h"
 
 // BT2018-SKEL-ENGINE-1A — bind-pose bake trace (default OFF). MC2_MECH_SKEL_TRACE=1.
 static const bool s_mechSkelTrace = false;
@@ -1019,15 +1020,39 @@ std::optional<float> clipDurationSec(const aiScene* scene, std::string_view clip
 // 1C/P9: per-frame clip choice lives in mclib/mech_clip_state.h (mc2clip::select): gesture
 // state + measured speed -> clip, one-shot vs loop, stride-matched locomotion.
 
-// Lift that puts the lowest point of the posed mech on the ground (model space, up = y).
-float groundLift(const ImportedAnimEntry& e, const std::vector<mc2skel::GpuBone>& globals) {
+// Lift that puts the lowest point of the posed mech on the ground (model space, up = y). With `low`, also reports up to
+// maxLow of the lowest bone points, lowest and mutually at least kSpread apart first (model space): the footprint a
+// fallen pose rests on. *written receives how many.
+float groundLift(const ImportedAnimEntry& e, const std::vector<mc2skel::GpuBone>& globals,
+                 aiVector3D* low = nullptr, int maxLow = 0, int* written = nullptr) {
+    constexpr float kSpread = 3.0f;
     float lowestY = 1e30f;
+    int count = 0;
     const size_t n = std::min({globals.size(), e.invMWrest.size(), e.boneSupport.size()});
     for (size_t i = 0; i < n; ++i) {
         if (e.boneSupport[i].empty()) continue;
         const aiMatrix4x4 D = (e.AS1 * rowMajorToAi(globals[i].m)) * e.invMWrest[i];
-        for (const aiVector3D& v : e.boneSupport[i]) lowestY = std::min(lowestY, (D * v).y);
+        aiVector3D point;
+        float y = 1e30f;
+        for (const aiVector3D& v : e.boneSupport[i]) {
+            const aiVector3D p = D * v;
+            if (p.y < y) { y = p.y; point = p; }
+        }
+        lowestY = std::min(lowestY, y);
+        if (!low || maxLow <= 0) continue;
+        int near = -1;
+        for (int k = 0; k < count; ++k)
+            if ((low[k] - point).SquareLength() < kSpread * kSpread) { near = k; break; }
+        if (near >= 0) { if (point.y < low[near].y) low[near] = point; }
+        else if (count < maxLow || point.y < low[count - 1]) low[count < maxLow ? count++ : count - 1] = point;
+        for (int k = 1; k < count; ++k) {   // lowest first
+            const aiVector3D p = low[k];
+            int j = k;
+            for (; j > 0 && low[j - 1].y > p.y; --j) low[j] = low[j - 1];
+            low[j] = p;
+        }
     }
+    if (written) *written = count;
     return lowestY < 1e29f ? -lowestY : 0.0f;
 }
 
@@ -1388,13 +1413,23 @@ static void rebakeImportedPresentation(ImportedAnimEntry& e, const std::vector<m
 
 namespace {
 void groundActorPose(const ImportedAnimEntry& e, const ActorAnimState& s,
-                     std::vector<mc2skel::GpuBone>& globals, unsigned frameStamp) {
+                     std::vector<mc2skel::GpuBone>& globals, unsigned frameStamp,
+                     const mc2mechanim::VisualGround* ground = nullptr) {
     if (s.activeClip.starts_with("atlas_moveCore")) {
         std::vector<glm::mat4> pose(globals.size());
         for (size_t b = 0; b < globals.size(); ++b)
             for (int r = 0; r < 4; ++r)
                 for (int c = 0; c < 4; ++c) pose[b][c][r] = globals[b].m[r * 4 + c];
-        mc2ground::solve(e.grounding, pose);
+        // FOOT-GROUNDING-1 (draw side): each leg rides as far above the shared floor as the surface under its foot is
+        // above the surface under the root. Clip Y is model Y before the import scale.
+        float legLift[2] = {0.0f, 0.0f};
+        if (ground && !e.grounding.legs[0].sole.empty() && !e.grounding.legs[1].sole.empty())
+            for (int side = 0; side < 2; ++side) {
+                const glm::vec3 ankle(pose[e.grounding.legs[side].foot][3]);
+                const aiVector3D model = e.AS1 * aiVector3D(ankle.x, ankle.y, ankle.z);
+                legLift[side] = ground->under(ground->ctx, &model.x) / e.scale;
+            }
+        mc2ground::solve(e.grounding, pose, ground ? legLift : nullptr);
         if (s_mechSkelTrace && frameStamp % 6 == 0) {
             float soles[2] = {1e30f, 1e30f};
             for (int side = 0; side < 2; ++side)
@@ -1412,12 +1447,30 @@ void groundActorPose(const ImportedAnimEntry& e, const ActorAnimState& s,
                 for (int c = 0; c < 4; ++c) globals[b].m[r * 4 + c] = pose[b][c][r];
     }
 }
+// FOOT-GROUNDING-1 (draw side): extra lift for a fallen clip. The pose rests on its lowest bone points; each of them
+// stays on or above the visual surface under itself, against the surface under the root.
+float fallenPoseLift(const ImportedAnimEntry& e, const ActorAnimState& s,
+                     const std::vector<mc2skel::GpuBone>& globals, const mc2mechanim::VisualGround& ground) {
+    const std::string_view clip = s.activeClip;
+    if (!clip.starts_with("atlas_death") && !clip.starts_with("atlas_downed") && clip != "atlas_hitReactKnockdownInpl") return 0.0f;
+    aiVector3D low[4];
+    int count = 0;
+    groundLift(e, globals, low, 4, &count);
+    float offset[4] = {}, height[4] = {};
+    for (int i = 0; i < count; ++i) {
+        offset[i] = ground.under(ground.ctx, &low[i].x);
+        height[i] = low[i].y - low[0].y;
+    }
+    return mc2foot::restLift({offset, static_cast<size_t>(count)}, {height, static_cast<size_t>(count)});
+}
 }
 
 void mc2mechanim::CopyImportedActorPose(const void* source, const void* destination,
-                                      const mc2::sim::ImportedAnimState& presentation, float torsoYawDeg) {
+                                       const mc2::sim::ImportedAnimState& presentation, float torsoYawDeg,
+                                       const VisualGround* ground) {
     ZoneScopedN("Mech.ImportedPresentationPose");
     if (!source || !destination) return;
+    if (ground) ground->fallenLift = 0.0f;
     for (auto& entry : g_importedAnims) {
         const auto found = entry.actors.find(source);
         if (found != entry.actors.end()) {
@@ -1427,8 +1480,10 @@ void mc2mechanim::CopyImportedActorPose(const void* source, const void* destinat
             static_cast<mc2::sim::ImportedAnimState&>(draw) = presentation;
             auto twist = entry.torsoTwist;
             twist.degrees = torsoYawDeg;
-            if (mc2skel::EvaluateActorClipGpuBones(*entry.plan, draw, draw.lastGlobals, &twist))
-                groundActorPose(entry, draw, draw.lastGlobals, draw.lastFrame);
+            if (mc2skel::EvaluateActorClipGpuBones(*entry.plan, draw, draw.lastGlobals, &twist)) {
+                groundActorPose(entry, draw, draw.lastGlobals, draw.lastFrame, ground);
+                if (ground) ground->fallenLift = fallenPoseLift(entry, draw, draw.lastGlobals, *ground);
+            }
             if (entry.gpuMode) buildGpuModelDelta(entry, draw, draw.lastGlobals);
             else rebakeImportedPresentation(entry, draw.lastGlobals);
         }

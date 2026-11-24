@@ -87,8 +87,20 @@ int ImportedGpuLiftAxis();
 void UnregisterImportedActor(const void* actorKey);
 // Drop the imported-anim entry (and its scene) of a type being freed.
 void UnregisterImportedType(const void* multi);
+
+// FOOT-GROUNDING-1 (draw side only): lets the leg solve and fallen poses read the visual surface under themselves.
+// Render-only: the sim-side tick never passes one, so gameplay grounding is unchanged.
+struct VisualGround {
+    // Visual surface height under a model-space (Y up) point of this actor's drawn pose, against the surface under its
+    // root (world units), already limited by mc2foot::follow.
+    float (*under)(void* ctx, const float modelXyz[3]);
+    void* ctx;
+    float fallenLift = 0.0f;   // out: extra world lift so no low point of a fallen pose is under the surface
+};
+// ground: optional draw-side grounding (see VisualGround); nullptr keeps the shared flat floor.
 void CopyImportedActorPose(const void* source, const void* destination,
-                           const mc2::sim::ImportedAnimState& presentation, float torsoYawDeg);
+                           const mc2::sim::ImportedAnimState& presentation, float torsoYawDeg,
+                           const VisualGround* ground = nullptr);
 
 // AO-1: imported mech's AO texture name (materials.ao.tga from the package), or nullptr
 // if not imported / no AO declared. Caller loads it + binds on texture unit 6.

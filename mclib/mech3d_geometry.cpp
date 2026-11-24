@@ -12,7 +12,22 @@
 #include <format>
 #include "mover_lamps.h"
 #include "mech_death_policy.h"
+#include "foot_grounding.h"
 #include "../code/job_system.h"
+
+namespace {
+// FOOT-GROUNDING-1: draw frame of an imported mech (model space, Y up -> world) and its root, for the visual-ground read.
+struct FootGroundFrame { const glm::mat4* modelToWorld; glm::vec3 root; };
+// Visual surface under a model-space point of the drawn pose against the surface under the root, within the 45-degree reach.
+float surfaceUnder (void* ctx, const float modelXyz[3])
+{
+	const auto& frame = *static_cast<const FootGroundFrame*>(ctx);
+	const glm::vec3 world = *frame.modelToWorld * glm::vec4(modelXyz[0], modelXyz[1], modelXyz[2], 1.0f);
+	const glm::vec3 at(-world.x, world.z, world.y);   // render space -> MC2 space, as GetTransformedNodePosition
+	return mc2foot::follow(TerrainRuntime::sampleVisualHeight(at) - TerrainRuntime::sampleVisualHeight(frame.root),
+		mc2foot::reach(std::hypot(at.x - frame.root.x, at.y - frame.root.y)));
+}
+}
 
 // T1.15 SpotLight_ illumination diagnostic — registration probe (mech class).
 // First-hit always-on; per-summary every 600 updateGeometry calls when env=1.
@@ -162,8 +177,27 @@ void Mech3DAppearance::updateGeometry (void)
 {
 	if (!simPresentationPass && (simulationOwned() || mc2::overlap::onSimWorker())) { updateSimPose(); return; }
 	mc2::overlap::assertMainThread("Mech3DAppearance::updateGeometry");
+    // FOOT-GROUNDING-1: with a visual bake, feet and fallen bodies rest on the surface under themselves, not under the root.
+    const bool footGrounding = baseRootNodeHeight != -99999.9f && !TerrainRuntime::groundHeightView().heights.empty();
+    const bool imported = mc2mechanim::ImportedGpuTypeInfo(mechShape->GetMultiType(), nullptr, nullptr) > 0;
+    mc2mechanim::VisualGround ground;
     if (!simulationOwned()) tickImportedAnimation(true, true);
-    else mc2mechanim::CopyImportedActorPose(simulationShape_.get(), mechShape, unitAnim().imported, unitAnim().torsoRotation);
+    else {
+	// Draw side only (the sim-side tick keeps the flat floor). Placing the pose first maps model points to the world;
+	// the body transform below reuses that walk when the lift does not move it.
+	FootGroundFrame frame{&mechShape->GetShapeRec(0)->shapeToWorld, position};
+	if (footGrounding && imported && mechShape->GetNumShapes() > 0)
+	{
+		glm::vec3 origin;
+		mc2ToRender(origin, position);
+		const glm::quat yaw = mc2::math::quatFromEulerSim(mc2::math::Euler(0.0f, rotation * DEGREES_TO_RADS, 0.0f));
+		mechShape->TransformMultiShape_HierarchyOnly(&origin, &yaw);
+		ground.under = &surfaceUnder;
+		ground.ctx = &frame;
+		mc2mechanim::CopyImportedActorPose(simulationShape_.get(), mechShape, unitAnim().imported, unitAnim().torsoRotation, &ground);
+	}
+	else mc2mechanim::CopyImportedActorPose(simulationShape_.get(), mechShape, unitAnim().imported, unitAnim().torsoRotation);
+    }
 	ZoneScopedN("GameLogic.Mech3D.UpdateGeometry");
 	// F3 CPU projection cost-baseline: sidecar bucket (NEVER in
 	// projection_total). One scope per visible mech per frame.
@@ -210,8 +244,11 @@ void Mech3DAppearance::updateGeometry (void)
    	glm::vec3 xlatPosition;
    	mc2ToRender(xlatPosition, position);
 	// No lift until update() has sampled baseRootNodeHeight (saved state) off this pose, so that sample is exact by construction.
-	visualDelta_ = baseRootNodeHeight == -99999.9f ? 0.0f : TerrainRuntime::visualHeightDelta(position);
-	xlatPosition.y += visualDelta_;   // UNIT-VISUAL-SNAP-1: draw only, sim copy untouched
+	float rootDelta = baseRootNodeHeight == -99999.9f ? 0.0f : TerrainRuntime::visualHeightDelta(position);
+	if (footGrounding && !imported)
+		rootDelta += poseGroundLift(rootDelta);   // node-animated pose: the planted foot, or the lowest nodes of a fallen one
+	visualDelta_ = rootDelta + ground.fallenLift;   // UNIT-VISUAL-SNAP-1: draw only, sim copy untouched
+	xlatPosition.y += visualDelta_;
 
 	//Update flashing regardless of view!!!
 	// FREEZE-MOVERS-1: drawFlash toggles off a wall-clock timer, so a damaged
@@ -1010,6 +1047,43 @@ void Mech3DAppearance::updateGeometry (void)
 glm::vec3 Mech3DAppearance::snapAnchor (glm::vec3 nodePos) const
 {
 	return mc2snap::liftAnchorZ(nodePos, visualDelta_);
+}
+
+// FOOT-GROUNDING-1: extra draw lift for a node-animated pose, from sim-true node positions only. Upright: the foot
+// nearer the ground (the planted one) follows the surface under itself. Fallen or destroyed: the body keeps its
+// clearance over the surface under its three lowest nodes. Zero wherever the visual and gameplay surfaces agree.
+float Mech3DAppearance::poseGroundLift (float rootDelta)
+{
+	const long nodes = mechType->getTotalNodes();
+	if (nodes < 2)
+		return 0.0f;
+	const long gesture = unitAnim().currentGestureId;
+	const bool fallen = (status == OBJECT_STATUS_DESTROYED) || gesture == GestureFallBackward || gesture == GestureFallForward ||
+		gesture == GestureFallenForward || gesture == GestureFallenBackward;
+	glm::vec3 low[3];
+	int count = 0;
+	for (long node = fallen ? 0 : nodes - 2; node < nodes; ++node)
+	{
+		const glm::vec3 at = getNodePosition(node);
+		if (at.x == 0.0f && at.y == 0.0f && at.z == 0.0f)
+			continue;   // node absent from this shape
+		int k = count;
+		while (k > 0 && low[k - 1].z > at.z)
+			--k;
+		if (k >= 3)
+			continue;
+		const int last = count < 3 ? count++ : 2;
+		for (int m = last; m > k; --m)
+			low[m] = low[m - 1];
+		low[k] = at;
+	}
+	// The surface under the node against the one under the root, within the node's horizontal reach.
+	float offset[3] = {}, height[3] = {};
+	for (int i = 0; i < count; ++i)
+		offset[i] = mc2foot::follow(TerrainRuntime::visualHeightDelta(low[i]) - rootDelta,
+			mc2foot::reach(std::hypot(low[i].x - position.x, low[i].y - position.y)));
+	const auto count3 = static_cast<size_t>(count);
+	return fallen ? mc2foot::restLift({offset, count3}, {height, count3}) : (count ? offset[0] : 0.0f);
 }
 
 void Mech3DAppearance::updateSimPose (bool advanceClock)

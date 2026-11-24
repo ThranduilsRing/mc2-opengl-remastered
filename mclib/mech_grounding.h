@@ -43,7 +43,9 @@ inline glm::mat4 moveBone(const glm::mat4& old, glm::vec3 pos, glm::quat rotatio
     return out;
 }
 
-inline void solve(const Rig& rig, std::vector<glm::mat4>& pose) {
+// legLift[side] (clip units, optional): how far that leg's sole rides above the shared floor, so each foot rests on
+// the surface under itself (FOOT-GROUNDING-1). Limited to what the leg reaches.
+inline void solve(const Rig& rig, std::vector<glm::mat4>& pose, const float* legLift = nullptr) {
     if (rig.legs[0].sole.empty() || rig.legs[1].sole.empty()) return;
     const auto original = pose;
     // Swing height is measured at the authored sole, not the ankle: a toe-down
@@ -77,9 +79,11 @@ inline void solve(const Rig& rig, std::vector<glm::mat4>& pose) {
             const glm::vec4 local = invFoot * original[p.bone] * glm::vec4(p.local, 1.0f);
             soleY = std::min(soleY, (placed * local).y);
         }
-        glm::vec3 target(ankle.x, rig.floor + swing - soleY, ankle.z);
         // Keep a reachable ankle on the contact plane, shortening only fore/aft reach.
         const float reach = (upper + lower) * 0.99999f;
+        const float soleHeight = rig.floor + swing - soleY;
+        const float lift = legLift ? std::clamp(legLift[side], -reach - (soleHeight - hip.y), reach - (soleHeight - hip.y)) : 0.0f;
+        glm::vec3 target(ankle.x, soleHeight + lift, ankle.z);
         const float dy = target.y - hip.y;
         const float maxXZ = std::sqrt(std::max(0.0f, reach * reach - dy * dy));
         glm::vec3 xz(target.x - hip.x, 0, target.z - hip.z);

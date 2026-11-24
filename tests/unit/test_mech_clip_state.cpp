@@ -7,6 +7,7 @@
 #include "doctest.h"
 #include "mech_clip_state.h"
 #include "mech_grounding.h"
+#include "foot_grounding.h"
 #include "mech_model_delta.h"
 #include "unit_anim_state.h"
 #include "mech_skel_import.h"
@@ -202,6 +203,67 @@ TEST_CASE("imported grounding: a toe-down swing foot keeps its sole height and k
     CHECK(sole(rig.legs[0], pose) == doctest::Approx(0).epsilon(1e-4));
     CHECK(sole(rig.legs[1], pose) == doctest::Approx(authoredSwing).epsilon(1e-4));
     for (const auto& leg : rig.legs) CHECK(glm::dot(plane(original, leg), plane(pose, leg)) > 0);
+}
+
+TEST_CASE("imported grounding: each leg rides above the shared floor as far as its foot's surface and reach allow") {
+    mc2ground::Rig rig;
+    std::vector<glm::mat4> pose(7, glm::mat4(1));
+    for (int side = 0; side < 2; ++side) {
+        auto& leg = rig.legs[side];
+        leg.thigh = side * 3; leg.calf = side * 3 + 1; leg.foot = side * 3 + 2;
+        const float x = side ? 0.3f : -0.3f;
+        pose[leg.thigh][3] = glm::vec4(x, 2, 0, 1);
+        pose[leg.calf][3] = glm::vec4(x, 1, -0.6f, 1);
+        pose[leg.foot] = mc2ground::columnRotation(glm::angleAxis(0.3f, glm::vec3(1, 0, 0)));
+        pose[leg.foot][3] = glm::vec4(x, 0.2f, 0, 1);
+        for (float px : {-0.15f, 0.15f})
+            for (float pz : {-0.3f, 0.3f}) leg.sole.push_back({leg.foot, {px, -0.1f, pz}});
+    }
+    const auto original = pose;
+    auto sole = [&](int side, const std::vector<glm::mat4>& p) {
+        float y = 100;
+        for (const auto& s : rig.legs[side].sole) y = std::min(y, (p[s.bone] * glm::vec4(s.local, 1)).y);
+        return y;
+    };
+    const float reach = (glm::length(glm::vec3(original[1][3] - original[0][3])) + glm::length(glm::vec3(original[2][3] - original[1][3]))) * 0.99999f;
+    mc2ground::solve(rig, pose, nullptr);
+    const auto shared = sole(1, pose);
+    const auto kneeSide = [](glm::vec3 hip, glm::vec3 knee, glm::vec3 ankle) {
+        return glm::dot(knee - hip, glm::cross(glm::normalize(ankle - hip), glm::vec3(1, 0, 0)));
+    };
+    SUBCASE("a leg lifts by its own amount; the other stays on the shared floor") {
+        const float legLift[2] = {-0.2f, 0.5f};
+        mc2ground::solve(rig, pose, legLift);
+        CHECK(sole(0, pose) == doctest::Approx(shared - 0.2f).epsilon(1e-4));
+        CHECK(sole(1, pose) == doctest::Approx(shared + 0.5f).epsilon(1e-4));
+        CHECK(glm::length(glm::vec3(pose[3][3] - pose[4][3])) == doctest::Approx(glm::length(glm::vec3(original[3][3] - original[4][3]))).epsilon(1e-5));
+        CHECK(kneeSide(original[3][3], original[4][3], original[5][3]) * kneeSide(pose[3][3], pose[4][3], pose[5][3]) > 0); // authored knee side
+    }
+    SUBCASE("an unreachable lift stops at full extension instead of dropping the authored pose") {
+        const float legLift[2] = {0.0f, 50.0f};
+        mc2ground::solve(rig, pose, legLift);
+        CHECK(sole(0, pose) == doctest::Approx(shared).epsilon(1e-4));
+        CHECK(sole(1, pose) > shared + 0.5f);
+        CHECK(glm::length(glm::vec3(pose[5][3] - pose[3][3])) == doctest::Approx(reach).epsilon(1e-4));
+    }
+}
+
+TEST_CASE("foot grounding: contacts follow the surface within reach; a resting body moves only for its most demanding contact") {
+    using namespace mc2foot;
+    CHECK(follow(3.0f, 2.0f) == 2.0f);
+    CHECK(follow(-3.0f, 2.0f) == -2.0f);
+    CHECK(follow(1.0f, 2.0f) == 1.0f);
+    CHECK(reach(0.0f) == kMinReach);
+    CHECK(reach(7.0f) == 7.0f);
+    const float zero[3] = {};
+    CHECK(restLift(zero, zero) == 0.0f);            // surfaces agree: byte-identical lift
+    const float under[1] = {-4.0f}, resting[1] = {0.0f};
+    CHECK(restLift(under, resting) == -4.0f);       // root over a bump: the body lowers onto the ground under its low point
+    const float offset[3] = {-4.0f, 3.0f, 0.5f}, height[3] = {0.0f, 1.0f, 2.5f};
+    CHECK(restLift(offset, height) == 2.0f);        // only the bump under the point 1 above the resting one penetrates (3 - 1)
+    const float high[2] = {0.0f, 3.0f}, higher[2] = {0.0f, 9.0f};
+    CHECK(restLift(high, higher) == 0.0f);          // a high contact over a bump stays clear: no lift
+    CHECK(restLift({}, {}) == 0.0f);
 }
 
 TEST_CASE("imported grounding: a stock rig without imported soles stays byte-identical") {
