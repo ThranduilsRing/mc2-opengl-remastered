@@ -1772,8 +1772,9 @@ void buildGpuModelDelta(const ImportedAnimEntry& e, ActorAnimState& s,
     // Upright clips keep the static rest lift (a per-frame lowest point bobs each step).
     // Falls are played rotation-only, which drops their pelvis descent, so they are
     // grounded per frame instead: BT lowers the pelvis at runtime with GrounderIK too.
-    const bool fallen = mc2clip::groundingRole(e.groundingRoles, s.activeClip) == "body";
-    s.gpuLift = fallen ? groundLift(e, globals) : e.restLift;
+    const bool legsSolved = !e.grounding.legs[0].sole.empty() && !e.grounding.legs[1].sole.empty();
+    const bool perFrame = mc2clip::liftFollowsPose(mc2clip::groundingRole(e.groundingRoles, s.activeClip), legsSolved);
+    s.gpuLift = perFrame ? groundLift(e, globals) : e.restLift;
 }
 } // namespace
 

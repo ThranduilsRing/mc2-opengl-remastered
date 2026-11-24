@@ -33,6 +33,13 @@ TEST_CASE("clip grounding: package roles override naming and preserve legacy pac
     CHECK(groundingRole({}, "atlas_moveJumpUpIdle") == "none");
 }
 
+TEST_CASE("clip grounding: a walk on a rig the leg solver cannot resolve follows the pose (MW5 in-game float)") {
+    CHECK(liftFollowsPose("feet", false));    // MW5 Mad Cat: no j_L/R Thigh-Calf-Foot bones, solver is a no-op
+    CHECK_FALSE(liftFollowsPose("feet", true));   // BT rig: the solver grounds each foot, rest lift stays
+    CHECK(liftFollowsPose("body", true));
+    CHECK_FALSE(liftFollowsPose("none", false));
+}
+
 // Trigger: interrupted/restored fades in assimp_importer.cpp and mech_skel_import.cpp.
 TEST_CASE("clip state: interrupted local fade and missing outgoing restore publish immediately") {
     aiScene scene;

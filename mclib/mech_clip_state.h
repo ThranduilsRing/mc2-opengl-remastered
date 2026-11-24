@@ -207,6 +207,13 @@ inline std::string_view groundingRole(const std::map<std::string, std::string>& 
     return proneClip(clip) ? "body" : clip.starts_with("atlas_moveCore") ? "feet" : "none";
 }
 
+// Whether the draw lift follows the pose's lowest point every frame instead of the static rest lift: fallen bodies, and
+// walking clips of a rig whose legs the per-leg solver cannot resolve (it then leaves the authored root bob in, which
+// floats the mech by up to a stride's height).
+inline bool liftFollowsPose(std::string_view role, bool legsSolved) {
+    return role == "body" || (role == "feet" && !legsSolved);
+}
+
 inline float fadeDuration(std::string_view previous, std::string_view next) {
     return proneClip(previous) || proneClip(next) ? 0.25f : 0.15f;
 }
