@@ -137,6 +137,9 @@ def region_of_tgl(node: str):
     return 6
 
 
+LIMB_MIN = {"leg": 0.13, "arm": 0.10}   # minimum limb part width as a share of figure height (.tgl mechs only)
+
+
 def load_parts_tgl(tgl: Path):
     """[(region, positions, triangles, part)] of a legacy MC2/MCO .tgl shape, turned to face +Z like the GLBs."""
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -151,6 +154,17 @@ def load_parts_tgl(tgl: Path):
         if any(k in node["name"].lower() for k in ("rotor", "blade", "prop")):
             rotors.add(index)
         parts.append((region_of_tgl(node["name"]), tri, np.arange(len(tri)).reshape(-1, 3), index))
+    if parts and any(region in (0, 1) for region, *_ in parts):
+        # Low-poly MCO limbs come out as 1-2 px twigs; stock legs are 5-8 px plates of a 40x48 cell. Widen each thin
+        # limb part about its own centre to a share of the figure height (legs ~6 px, arms ~5 px).
+        allp = np.concatenate([p for _, p, *_ in parts])
+        tall = float(allp[:, 1].max() - allp[:, 1].min())
+        for k, (region, p, tris, index) in enumerate(parts):
+            want = {0: LIMB_MIN["leg"], 1: LIMB_MIN["leg"], 2: LIMB_MIN["arm"], 3: LIMB_MIN["arm"]}.get(region, 0) * tall
+            c, width = (p.min(0) + p.max(0)) / 2, float(p[:, 0].max() - p[:, 0].min())
+            if want and width < want:
+                f = min(want / max(width, 1e-6), 4.0)
+                parts[k] = (region, (p - c) * [f, 1, min(f, 2.0)] + c, tris, index)
     if not any(region in (0, 1) for region, *_ in parts):            # no legs: a vehicle, drawn from above, nose up
         parts = [(region, p[:, [0, 2, 1]] * [1, 1, -1], tris, index) for region, p, tris, index in parts]
         # Stock copters draw the rotor as an X of two thin full-length blades, not the spinning disc the model carries.
