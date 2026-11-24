@@ -404,8 +404,8 @@ def test_retarget_turns_bones_in_model_space_whatever_the_bind_frame(tmp_path):
 
 
 def test_native_clip_baker_decodes_streamed_dense_and_constant_curves():
-    """Trigger: tools/bt2018_extract/bake_clips.py (native BT clips replace Atlas retargets)."""
-    from tools.bt2018_extract import bake_clips as B
+    """Trigger: tools/bt2018_import/bake_clips.py (native BT clips replace Atlas retargets)."""
+    from tools.bt2018_import import bake_clips as B
     # one streamed curve: key at t=0 value 1 slope 2, key at t=1 constant 5; one constant curve 7
     words = struct.unpack("<14I", struct.pack("<fi i4f fi i4f", 0.0, 1, 0, 0, 0, 2.0, 1.0, 1.0, 1, 0, 0, 0, 0, 5.0))
     clip = {"m_StreamedClip": {"data": list(words), "curveCount": 1},
@@ -419,7 +419,7 @@ def test_baked_clip_buffer_views_stay_inside_the_binary_chunk(tmp_path):
     """Trigger: bake_clips.add_to_glb. f8 keys once sized views at 2x the f4 bytes written: Assimp rejected 50/51 GLBs (3 mechs drew placeholders)."""
     pygltflib = pytest.importorskip("pygltflib")
     import numpy as np
-    from tools.bt2018_extract import bake_clips as B
+    from tools.bt2018_import import bake_clips as B
     g = pygltflib.GLTF2(nodes=[pygltflib.Node(name="j_Root")], buffers=[pygltflib.Buffer(byteLength=4)])
     g.set_binary_blob(b"\0\0\0\0")
     g.save(str(tmp_path / "in.glb"))
@@ -428,6 +428,63 @@ def test_baked_clip_buffer_views_stay_inside_the_binary_chunk(tmp_path):
     out = pygltflib.GLTF2().load(str(tmp_path / "out.glb"))
     end = len(out.binary_blob())
     assert all(v.byteOffset + v.byteLength <= end for v in out.bufferViews)
+
+
+def test_native_decoder_uses_avatar_paths_and_rotation_only(tmp_path):
+    from tools.bt2018_import import bake_clips as B
+    from pygltflib import GLTF2
+    tt = {"m_Name": "crab_idle", "m_MuscleClip": {"m_StartTime": 0.0, "m_StopTime": 0.1,
+          "m_Clip": {"m_StreamedClip": {"data": [], "curveCount": 0},
+          "m_DenseClip": {"m_CurveCount": 0}, "m_ConstantClip": {"data": [100, 200, 300, 0.5, 0.5, 0.5, 0.5, 0, 0, 0, 1]}}},
+          "m_ClipBindingConstant": {"genericBindings": [
+              {"typeID": 4, "attribute": 1, "path": 42},
+              {"typeID": 4, "attribute": 2, "path": 42},
+              {"typeID": 4, "attribute": 2, "path": 99}]}}
+    dur, rots = B.decode_clip(tt, {42: "j_Root"})
+    assert list(rots) == ["j_Root"]  # helper 99 is outside the Avatar
+    assert rots["j_Root"][0].tolist() == [0.5, -0.5, -0.5, 0.5]
+    from pygltflib import Node, Buffer
+    g = GLTF2(nodes=[Node(name="j_Root")], buffers=[Buffer(byteLength=4)])
+    g.set_binary_blob(b"\0" * 4)
+    g.save(str(tmp_path / "raw.glb"))
+    from bt2018_retarget_clips import retarget_file
+    retarget_file(str(tmp_path / "raw.glb"), "absent-atlas.glb", str(tmp_path / "own.glb"),
+                  own_clips={"atlas_idle": (dur, rots)})
+    own = GLTF2().load(str(tmp_path / "own.glb"))
+    assert [a.name for a in own.animations] == ["atlas_idle"]
+    assert {c.target.path for c in own.animations[0].channels} == {"rotation"}
+    times = B.np.frombuffer(own.binary_blob(), '<f4', 4, own.bufferViews[0].byteOffset)
+    assert times[-1] == pytest.approx(dur)
+
+
+def test_native_controller_keeps_aliases_instead_of_guessing_suffixes(monkeypatch):
+    from types import SimpleNamespace as NS
+    from tools.bt2018_import import bake_clips as B
+    clip = NS(path_id=7, read_typetree=lambda: {"m_Name": "catapult_attackMeleePush"})
+    entries = [NS(m_OriginalClip=NS(deref=lambda n=n: NS(peek_name=lambda: n)),
+                  m_OverrideClip=NS(path_id=7, deref=lambda: clip))
+               for n in ("atlas_attackMeleePush", "atlas_attackMeleePunch")]
+    controller = NS(type=NS(name="AnimatorOverrideController"),
+                    peek_name=lambda: "charoverctrl_catapultBase-001",
+                    read=lambda: NS(m_Clips=entries))
+    avatar = NS(type=NS(name="Avatar"), read_typetree=lambda: {"m_TOS": [(42, "j_Root/j_Arm")]})
+    monkeypatch.setitem(sys.modules, "UnityPy", NS(__version__=B.UNITYPY_VERSION,
+                                                  load=lambda _: NS(objects=[controller, avatar])))
+    seen = []
+    monkeypatch.setattr(B, "decode_clip", lambda tt, paths: seen.append((tt, paths)) or (1, {}))
+    clips = B.native_clips("read-only-bundle", "catapult")
+    assert set(clips) == {"atlas_attackMeleePush", "atlas_attackMeleePunch"}
+    assert len(seen) == 1 and seen[0][1] == {42: "j_Arm"}
+
+
+def test_native_search_uses_dlc_and_falls_back_only_when_absent(tmp_path, monkeypatch):
+    from tools.bt2018_import import bake_clips as B
+    for name in ("chrprfmech_ravenbase-001", "urbanwarfare"):
+        (tmp_path / name).touch()
+    monkeypatch.setattr(B, "native_clips", lambda path, fam: {"atlas_idle": (1, {})}
+                        if Path(path).name == "urbanwarfare" and fam == "raven" else {})
+    assert B.chassis_clips(tmp_path, "raven") == {"atlas_idle": (1, {})}
+    assert B.chassis_clips(tmp_path, "absent") == {}
 
 
 # ---------------------------------------------------------------- P6 icons

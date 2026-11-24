@@ -181,9 +181,15 @@ def arm_lift_fix(tgt, parent, bind_world, idle_world, side):
     return ua, np.append(axis * np.sin(half), np.cos(half))
 
 
-def retarget_file(target_path, atlas_path, out_path):
-    """Retarget Atlas rotation clips in target_path from the Atlas-skeleton bind
-    into target_path's own bind frame; write to out_path. Returns (channels, keys)."""
+def retarget_file(target_path, atlas_path, out_path, own_clips=None):
+    """Bake own clips when supplied, otherwise retarget Atlas through the bind frames.
+    Write out_path; return (rotation channels, rotation keys)."""
+    if own_clips:
+        from tools.bt2018_import.bake_clips import add_to_glb
+        retarget_file.last_report = None
+        add_to_glb(target_path, out_path, own_clips)
+        return (sum(len(rots) for _, rots in own_clips.values()),
+                sum(len(q) for _, rots in own_clips.values() for q in rots.values()))
     tgt = GLTF2().load(target_path)
     atl = GLTF2().load(atlas_path)
     blob = bytearray(tgt.binary_blob())
