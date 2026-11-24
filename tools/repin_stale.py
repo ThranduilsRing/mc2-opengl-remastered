@@ -127,7 +127,7 @@ def repin_command(row: dict, install: str, det_duration: int, tmp: str) -> list[
         if type(frames) is not int or frames <= 0:
             raise SystemExit(f"repin_stale: {m} needs a positive recorded frame count for --ticks")
         form += ["--ticks", str(frames)]  # run does not infer ticks from the baseline, unlike check
-    return [py + [sd, "run", m, "--duration", str(det_duration), "--install", install, "--out", out, "--baseline"] + form + env,
+    return [py + [sd, "run", m, "--duration", str(det_duration), "--install", install, "--out", out] + form + env,
             py + [sd, "write-baseline", "@LOG@", "--frames", str(row["data"].get("frames", 0)), "--mission", m, "--install", install] + env]
 
 
