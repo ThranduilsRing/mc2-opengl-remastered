@@ -352,11 +352,14 @@ std::vector<std::string> modelOverrideProviderDirs(bool bundledArt, const std::v
     std::vector<std::string> out;
     // Dense bundled geometry stalls 24-EU/shared-DDR4 presets, so the kits merge at lowest priority
     // only with bundled art on; a mod that declares a kit as a dependency still gets it below itself.
+    const auto providerDir = [](std::string_view root) {
+        return (std::filesystem::path(root) / "data" / "model_overrides").generic_string();
+    };
     if (bundledArt)
-        for (const char* kit : kKits) out.push_back(std::string(kit) + "/data/model_overrides");
+        for (const char* kit : kKits) out.push_back(providerDir(kit));
     out.push_back("data/model_overrides");
     for (const auto& root : mountOrder) {
-        const std::string dir = root + "/data/model_overrides";
+        const std::string dir = providerDir(root);
         if (std::find(out.begin(), out.end(), dir) == out.end()) out.push_back(dir);
     }
     return out;
@@ -391,8 +394,9 @@ ModelOverrideRegistry& ModelOverrideRegistry::instance() {
         if (!bundledArt && (active == "mc2-industrial-kit" || active == "mc2-vehicle-kit")) active.clear();
         const auto mounts = modelOverrideMountOrder(active, mc2::gate::str<"MC2_MOD_DEPS">(), activeModJsonDeps(active));
         for (const auto& dir : modelOverrideProviderDirs(bundledArt, mounts)) {
-            const int n = g.mergeFromFile(dir + "/models.json", dir);
-            const int c = g.mergeConditionsFromFile(dir + "/conditions.json");
+            const std::filesystem::path base(dir);
+            const int n = g.mergeFromFile((base / "models.json").generic_string(), dir);
+            const int c = g.mergeConditionsFromFile((base / "conditions.json").generic_string());
             if (n || c || dir == "data/model_overrides")
                 mc2::fmt::print_err("[MODOVERRIDE] {}: {:d} override(s), {:d} condition pick(s) merged (total {:d})\n",
                                     dir.c_str(), mc2::fmt::as_i32(n), mc2::fmt::as_i32(c), mc2::fmt::as_i32(g.count()));
