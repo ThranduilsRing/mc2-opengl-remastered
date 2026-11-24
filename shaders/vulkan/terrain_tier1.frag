@@ -528,7 +528,7 @@ void main() {
         else if (kCsmDebugMode == 13) { vec2 rel = N.xy / max(N.z, 0.2) - dbgBaseN.xy / max(dbgBaseN.z, 0.2); fragColor = vec4(vec3(clamp(length(rel) * 4.0, 0.0, 1.0)), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }   // total detail relief (all classes + rock) over the macro slope, x4
         else if (kCsmDebugMode == 12) { fragColor = vec4(prelitBase, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; } // raw prelit before material/lighting
         // Material weights false colour: rock grey, grass green (forest-floor share yellow), dirt red, concrete blue, snow white.
-        else if (kCsmDebugMode == 11) { fragColor = vec4(materialW.x * vec3(0.35) + (materialW.y + materialW.z) * mv_forestMix * vec3(1.0, 0.9, 0.0) + (1.0 - mv_forestMix) * (materialW.y * vec3(0.1, 0.9, 0.1) + materialW.z * vec3(0.9, 0.2, 0.1)) +
+        else if (kCsmDebugMode == 11) { fragColor = vec4(materialW.x * (1.0 - mv_forestMix * smoothstep(0.75, 0.95, dbgBaseN.z)) * vec3(0.35) + (materialW.y + materialW.z + materialW.x * smoothstep(0.75, 0.95, dbgBaseN.z)) * mv_forestMix * vec3(1.0, 0.9, 0.0) + (1.0 - mv_forestMix) * (materialW.y * vec3(0.1, 0.9, 0.1) + materialW.z * vec3(0.9, 0.2, 0.1)) +
                                                          materialW.w * vec3(0.1, 0.3, 1.0) + vec3(materialSnow), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
 
         float normalSize = float(textureSize(u_matNormalArray, 0).x);

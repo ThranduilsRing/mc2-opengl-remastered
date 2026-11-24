@@ -16,8 +16,10 @@ vec3 mv_detailDecode(vec3 texel) {
     return texel * vec3(2.0, -2.0, 2.0) + vec3(-1.0, 1.0, -1.0);
 }
 vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz, vec2 uvDx, vec2 uvDy) {
-    float wForest = mv_forestMix * (w.y + w.z);
-    w.y *= 1.0 - mv_forestMix; w.z *= 1.0 - mv_forestMix;
+    // Flat rock ground (colour classes that fail the grass/dirt thresholds) also reads as forest floor under trees; slopes stay rock.
+    float forestRock = smoothstep(0.75, 0.95, macroNz);
+    float wForest = mv_forestMix * (w.y + w.z + w.x * forestRock);
+    w.x *= 1.0 - mv_forestMix * forestRock; w.y *= 1.0 - mv_forestMix; w.z *= 1.0 - mv_forestMix;
     vec2 uv = worldXY * (uT.detailTiling / MATV_WU_PER_TILE);
     vec2 uvRock     = uv * (MATV_TILING.x / 3.0);
     vec2 uvGrass    = uv * MATV_TILING.y;
@@ -53,7 +55,7 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz, vec2
                : textureGrad(u_matNormalArray, vec3(uvRock, float(MAT_LAYER_ROCK)), uvDx * (MATV_TILING.x / 3.0), uvDy * (MATV_TILING.x / 3.0));
         dN += w.x * (MATV_NORMAL_BOOST.x / 3.0) * fwRock * dfRock * mv_detailDecode(s.rgb);
     }
-    // Forest floor (under trees): mv_forestMix is the tree-canopy density mask; it takes that share of the grass AND dirt weights
+    // Forest floor (under trees): mv_forestMix is the tree-canopy density mask; it takes that share of the grass, dirt and flat-rock weights
     // (same tiling and boost bound as the turf it replaces).
     if (wForest > 0.01 && fwGrass != 0.0 && dfGrass > 0.0) {
         vec4 sf = (atsGrass > 0.01 && fwGrass > 0.4)
