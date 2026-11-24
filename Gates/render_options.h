@@ -68,6 +68,8 @@ struct RenderOptions {
     bool mechLabLocations = true;
     // Draw distance (fog profile): 0 Stock (9000->18000 wu haze), 1 Balanced, 2 Performance, 3 RT-headroom.
     int drawDistance = 0;
+    // Analytic atmosphere (distance extinction + height fog, HG sun in-scatter): 0 Off, 1 Low (extinction only), 2 High.
+    int atmosphereQuality = 2;
     bool operator==(const RenderOptions&) const = default;
 };
 
@@ -118,6 +120,7 @@ inline constexpr Option kOptions[] = {
     detail::longOpt ("TextureQuality",                &RenderOptions::textureQuality, -1, 3),
     detail::boolOpt ("MechLabLocations",              &RenderOptions::mechLabLocations),
     detail::longOpt ("DrawDistance",                  &RenderOptions::drawDistance, 0, 3),
+    detail::longOpt ("AtmosphereQuality",             &RenderOptions::atmosphereQuality, 0, 2),
 };
 
 inline constexpr std::size_t kOptionCount = sizeof(kOptions) / sizeof(kOptions[0]);

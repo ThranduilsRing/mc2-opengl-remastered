@@ -426,6 +426,7 @@ struct Bookmark {
     float proj = 30.0f;     // projectionAngle (deg)
     float alt = 1200.0f;    // camera altitude
     bool hasPos = false;
+    int preset = -1;        // Camera::applyPreset index (fov + matched altitude/pitch); -1 = stock framing untouched
 };
 
 // Read a JSON number array "[a, b, c]" starting at *p (after the key); returns
@@ -512,6 +513,11 @@ bool load_bookmarks(mc2::czstring path, std::string& missionOut,
         if (const auto v = read_scalar(obj.c_str(), "rot")) b.rot = *v;
         if (const auto v = read_scalar(obj.c_str(), "proj")) b.proj = *v;
         if (const auto v = read_scalar(obj.c_str(), "alt")) b.alt = *v;
+        if (const auto v = read_scalar(obj.c_str(), "preset")) {
+            b.preset = static_cast<int>(*v);
+            b.alt *= Camera::presetAltScale(b.preset);
+            b.proj += Camera::presetPitchDelta(b.preset);
+        }
         out.push_back(b);
         p += 6;
     }
@@ -662,6 +668,10 @@ void apply_bookmark(const Bookmark& b0) {
     rot.y = b.rot;    // cameraRotation
     rot.z = b.alt;    // altitude (setRotation writes cameraAltitude = rot.z)
     eye->setRotation(rot);
+    if (b.preset >= 0) {
+        eye->setFieldOfView(Camera::presetFov(b.preset));
+        eye->cosHalfFOV = cosf(Camera::presetFov(b.preset) * 0.7071f * DEGREES_TO_RADS);   // the view-cone cull follows the lens
+    }
     // VK-FIRST-BOOKMARK-POSE-1: the hard setPosition/setRotation above does NOT
     // clear the intro-swoop goal or the object-tracking target, so the NEXT
     // eye->update() (which runs every frame during the frozen sweep) would drag

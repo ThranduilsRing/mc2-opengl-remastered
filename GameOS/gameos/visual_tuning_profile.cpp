@@ -73,6 +73,7 @@ std::map<std::string, float> engineDefaults() {
         {"vfxBrightness",1}, {"vfxAdditiveBrightness",1},
         {"vfxLitStrength",0.7f}, {"mechSpecularStrength",0.05f},
         {"cloudStrength",0.30f}, {"cloudCoverage",0.20f}, {"cloudSoftness",0.12f}, {"cloudWaterScale",0.5f},
+        {"atmoDensity",1.0f}, {"atmoHeightFalloff",8e-4f}, {"atmoSunScatter",0.35f}, {"atmoAnisotropy",0.55f},
         {"terrainClassGrassGmRLo",-0.02f}, {"terrainClassGrassGmRHi",0.06f},
         {"terrainClassGrassBrLo",0.22f}, {"terrainClassGrassBrHi",0.40f},
         {"terrainClassDirtRmGLo",-0.02f}, {"terrainClassDirtRmGHi",0.06f},
@@ -95,6 +96,9 @@ bool validValue(std::string_view key, double value) {
     else if (key == "mechSpecularStrength") hi = 4;
     else if (key == "vfxBrightness" || key == "vfxAdditiveBrightness") hi = 8;
     else if (key == "vfxLitStrength" || key == "cloudStrength" || key == "cloudCoverage" || key == "cloudSoftness" || key == "cloudWaterScale") hi = 1;
+    else if (key == "atmoHeightFalloff") hi = 0.01f;
+    else if (key == "atmoAnisotropy") hi = 0.95f;
+    else if (key == "atmoSunScatter") hi = 4;
     else if (key.find("terrainClass") == 0) {
         hi = 1;
         if (key.find("GmR") != std::string::npos || key.find("RmG") != std::string::npos) lo = -1;
@@ -339,6 +343,14 @@ static void applyKey(mc2::czstring key, float val, int& count) {
         count++;
     } else if (strcmp(key, "cloudWaterScale") == 0) {
         mc2SetCloudWaterScale(val);
+        count++;
+    } else if (strncmp(key, "atmo", 4) == 0) {
+        if (gosPostProcess* pp = getGosPostProcess()) {
+            if (strcmp(key, "atmoDensity") == 0) pp->atmoDensity_ = val;
+            else if (strcmp(key, "atmoHeightFalloff") == 0) pp->atmoFalloff_ = val;
+            else if (strcmp(key, "atmoSunScatter") == 0) pp->atmoSunScatter_ = val;
+            else if (strcmp(key, "atmoAnisotropy") == 0) pp->atmoAnisotropy_ = val;
+        }
         count++;
     // TERRAIN-CLASSIFY-TUNING-1: per-mission RGB classifier thresholds.
     } else if (strcmp(key, "terrainClassGrassGmRLo") == 0) {

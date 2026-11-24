@@ -144,6 +144,13 @@ public:
     float edgeFogHeight_   = 2000.0f;  // cloud bank top in world Z (MC2_EDGE_FOG_HEIGHT)
     float edgeFogMax_      = 0.92f;    // max opacity
 
+    // Analytic atmosphere (fid-1), a layer of the edge-fog pass: distance extinction + height fog along the view ray, HG sun
+    // in-scatter. Per-mission via visual_tuning atmo* keys; the player's AtmosphereQuality option picks Off/Low/High.
+    float atmoDensity_   = 1.0f;       // multiplier of the base ground extinction (6e-5 per wu)
+    float atmoFalloff_   = 8e-4f;      // height falloff per wu
+    float atmoSunScatter_ = 0.35f;     // sun in-scatter strength (High only)
+    float atmoAnisotropy_ = 0.55f;     // Henyey-Greenstein g
+
     // Native scene image owners, rebuilt together on resize. Their registry
     // entries are the only images the islands and explicit readbacks consume.
     Mc2SharedSceneDepth* sharedSceneDepth_ = nullptr;
