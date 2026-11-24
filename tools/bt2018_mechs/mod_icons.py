@@ -50,7 +50,7 @@ def model_of(mod: Path, stem: str):
     ini = _ci(tgl, stem + ".ini") if tgl else None
     name = stem
     if ini:
-        m = re.search(r'FileName0\s*=\s*"([^"]+)"', ini.read_text("latin1", errors="replace"))
+        m = re.search(r'(?mi)^\s*st\s+FileName0?\s*=\s*"([^"]+)"', ini.read_text("latin1", errors="replace"))
         if m:
             name = Path(m.group(1)).stem
     return _ci(tgl, name + ".tgl") if tgl else None
