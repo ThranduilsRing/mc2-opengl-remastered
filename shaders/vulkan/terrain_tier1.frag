@@ -438,6 +438,10 @@ void main() {
     // Continuous world derivatives, before any divergent material branch or POM.
     vec3 cliffDx = dFdx(v_worldPos) / MATV_CLIFF_TS;
     vec3 cliffDy = dFdy(v_worldPos) / MATV_CLIFF_TS;
+    // Match the filtered shading surface: raster-triangle slopes made each tile
+    // choose a different triplanar mip and stamped its edges into ground albedo.
+    cliffDx.z = -dot(baseNormal.xy, cliffDx.xy) / max(baseNormal.z, 0.2);
+    cliffDy.z = -dot(baseNormal.xy, cliffDy.xy) / max(baseNormal.z, 0.2);
     float cliffSize = float(textureSize(u_matNormalArray, 0).x);
     vec3 cliffLod = max(vec3(0.0), 0.5 * log2(max(vec3(1e-12), cliffSize * cliffSize * vec3(
         max(dot(cliffDx.yz, cliffDx.yz), dot(cliffDy.yz, cliffDy.yz)),
