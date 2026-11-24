@@ -1467,7 +1467,7 @@ float fallenPoseLift(const ImportedAnimEntry& e, const ActorAnimState& s,
 
 void mc2mechanim::CopyImportedActorPose(const void* source, const void* destination,
                                        const mc2::sim::ImportedAnimState& presentation, float torsoYawDeg,
-                                       const VisualGround* ground) {
+                                       VisualGround* ground) {
     ZoneScopedN("Mech.ImportedPresentationPose");
     if (!source || !destination) return;
     if (ground) ground->fallenLift = 0.0f;
