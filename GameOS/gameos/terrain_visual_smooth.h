@@ -41,7 +41,8 @@ inline void carveRavines(std::vector<float>& h, int V, const std::vector<unsigne
     std::vector<float> d(n), toImp(n);
     for (int y = 0; y < V; ++y)
         for (int x = 0; x < V; ++x) {
-            const int r = std::min(y * 3 / 4, cellsSide - 1), c = std::min(x * 3 / 4, cellsSide - 1);
+            const int r = std::min(y * 3 / 4, cellsSide - 1);
+            const int c = std::min(x * 3 / 4, cellsSide - 1);
             const bool imp = blocked[static_cast<size_t>(r) * cellsSide + c] != 0;
             d[static_cast<size_t>(x) + static_cast<size_t>(y) * V] = imp ? 1e9f : 0.0f;
             toImp[static_cast<size_t>(x) + static_cast<size_t>(y) * V] = imp ? 0.0f : 1e9f;
@@ -104,7 +105,8 @@ inline void carveRavines(std::vector<float>& h, int V, const std::vector<unsigne
                 hw = L + (H - L) * std::pow(t, 1.0f + 0.9f * slump) + 28.0f * (1.0f - t) * t * (ravineNoise(fx * 0.9f, fy * 0.9f, 7) - 0.5f);   // scree roughness on the apron
             }
             float out = h0[i] + wgt * (hw - h0[i]);
-            out = h0[i] > waterElev ? std::max(out, waterElev + 1.0f) : std::min(out, waterElev - 1.0f);
+            if (h0[i] > waterElev) out = std::max(out, waterElev + 1.0f);
+            else out = std::min(out, waterElev - 1.0f);
             h[i] = out;
         }
 }
@@ -200,7 +202,7 @@ inline std::optional<std::vector<float>> buildSmoothedVisualHeight(const float* 
         h.swap(nx);
     }
 
-    // soft drift clamp (C1 tanh) against the baseline: flats <= 4 wu, steep faces <= 56 wu
+    // soft drift clamp (C1 tanh) against the baseline: flats <= 4 wu, steep faces <= 72 wu
     for (size_t i = 0; i < h.size(); ++i) {
         const float lim = kFlatDrift + (kCliffDrift - kFlatDrift) * w[i];
         h[i] = base[i] + lim * std::tanh((h[i] - base[i]) / lim);
