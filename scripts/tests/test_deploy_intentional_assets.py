@@ -90,3 +90,64 @@ def test_stale_source_cannot_override_store_and_preserve_cannot_hide_drift(asset
     items = dp.intentional_payload(source, target, store)
     with pytest.raises(SystemExit):
         dp.deploy(items, str(target), False, preserve=list(declared))
+
+
+@pytest.mark.parametrize("changed", ["source", "copy", "deployed"])
+def test_declared_hash_survives_resolution_and_copy(assets, monkeypatch, changed):
+    source, target, store, declared = assets
+    for sha, content in zip(declared.values(), (b"cooked", b"texture")):
+        (store / sha).write_bytes(content)
+    items = dp.intentional_payload(source, target, store)
+    if changed == "source":
+        Path(items[0][0]).write_bytes(b"changed after resolution")
+    elif changed == "copy":
+        monkeypatch.setattr(dp.shutil, "copyfile", lambda src, dst: Path(dst).write_bytes(b"corrupt copy"))
+    else:
+        replace = dp.replace_file
+        def corrupt(src, dst):
+            replace(src, dst)
+            Path(dst).write_bytes(b"corrupt deployed bytes")
+        monkeypatch.setattr(dp, "replace_file", corrupt)
+    with pytest.raises(SystemExit):
+        dp.deploy(items, str(target), False)
+    if changed != "deployed":
+        assert not (target / next(iter(declared))).exists()
+
+
+def test_unchanged_declarations_reuse_verified_hashes_and_repair_drift(assets, monkeypatch):
+    import os
+    source, target, store, declared = assets
+    for sha, content in zip(declared.values(), (b"cooked", b"texture")):
+        (store / sha).write_bytes(content)
+    dp.deploy(dp.intentional_payload(source, target, store), str(target), False)
+    hashed, original = [], dp.sha256_file
+    monkeypatch.setattr(dp, "sha256_file", lambda p: hashed.append(Path(p)) or original(p))
+    dp.deploy(dp.intentional_payload(source, target, store), str(target), False)
+    assert hashed == []
+    dst = target / "data/tgl/32/fir.tga"
+    stamp = dst.stat()
+    dst.write_bytes(b"changed")  # same size, even if the timestamp is restored
+    os.utime(dst, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
+    dp.deploy(dp.intentional_payload(source, target, store), str(target), False)
+    assert dst in hashed and dst.read_bytes() == b"texture"
+
+
+@pytest.mark.parametrize("prior_manifest", [False, True])
+@pytest.mark.parametrize("corrupt", [False, True])
+def test_manifest_only_keeps_declared_tgl_without_cooked_source(assets, monkeypatch, prior_manifest, corrupt):
+    source, target, store, declared = assets
+    for rel, content in zip(declared, (b"cooked", b"texture")):
+        dst = target / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_bytes(content)
+    if prior_manifest:
+        dp.write_manifest(str(target), {rel: (sha, (target / rel).stat().st_size, None)
+                                      for rel, sha in declared.items()}, "test")
+    monkeypatch.setattr(dp, "enumerate_payload", lambda *a, **kw: [])
+    if corrupt:
+        (target / "data/tgl/32/fir.tga").write_bytes(b"bad texture")
+        with pytest.raises(SystemExit):
+            dp.write_manifest_only(str(source), str(source), "mc2.exe", "mc2.pdb", str(target))
+    else:
+        dp.write_manifest_only(str(source), str(source), "mc2.exe", "mc2.pdb", str(target))
+        assert {rel: row[0] for rel, row in dp.read_manifest(str(target)).items()} == declared
