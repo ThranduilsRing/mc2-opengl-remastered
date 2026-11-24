@@ -61,6 +61,24 @@ struct Meter {
         variants.service(now, attempted);
     }
 };
+// MAIN_STALL watchdog, fed the gap since the window thread last pumped: Begin once when a stall begins (gap >= limit), End once when pumping
+// resumes, else None. `gap` is the value to report: the starting gap for Begin, the longest gap seen for End.
+enum class StallEdge { None, Begin, End };
+struct StallWatch {
+    std::uint64_t worst = 0, gap = 0;
+    StallEdge step(std::uint64_t now_gap, std::uint64_t limit = 4000) {
+        if (now_gap >= limit) {
+            const bool fresh = worst == 0;
+            worst = std::max(worst, now_gap);
+            gap = now_gap;
+            return fresh ? StallEdge::Begin : StallEdge::None;
+        }
+        if (worst == 0) return StallEdge::None;
+        gap = worst;
+        worst = 0;
+        return StallEdge::End;
+    }
+};
 // Workers cannot mutate the window thread's scopes or throttle timestamp.
 inline thread_local Meter meter;
 }

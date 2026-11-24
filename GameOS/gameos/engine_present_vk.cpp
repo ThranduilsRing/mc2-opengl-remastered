@@ -2846,10 +2846,16 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     { ZoneScopedN("VKIsl.Present.Acquire");   // VK-ISLAND-TRACY-1: vkAcquireNextImageKHR (can block on WSI)
       mc2::battlebench::NsScope benchAcquire(mc2::battlebench::PresAcquireNs, 0);
       const auto acqT0 = std::chrono::steady_clock::now();
-      r = offscreen ? VK_SUCCESS : vkAcquireNextImageKHR(dev, swapchain, UINT64_MAX, acquireSem, VK_NULL_HANDLE, &imageIndex);
+      r = offscreen ? VK_SUCCESS : vkAcquireNextImageKHR(dev, swapchain, 250ull * 1000 * 1000, acquireSem, VK_NULL_HANDLE, &imageIndex);
       mc2_hitch2::noteAcquire(static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - acqT0).count())); }
     if (r == VK_ERROR_OUT_OF_DATE_KHR) {
         s.lastWsiResult = r; // Rebuild only after the next Render handoff.
+        return true;
+    }
+    // Bounded acquire (unfocused-not-responding): no image within 250 ms (window occluded / not composited) drops this frame instead of parking the worker until the window is shown again; a parked worker stalls main past 5 s into the inline rollback.
+    if (r == VK_TIMEOUT || r == VK_NOT_READY) {
+        static bool logged = false;
+        if (!logged) { logged = true; plog("[PRESENT_WAIT] acquire timed out after 250 ms (window occluded?): frame dropped (logged once)."); }
         return true;
     }
     if (r != VK_SUCCESS && r != VK_SUBOPTIMAL_KHR) {

@@ -70,3 +70,17 @@ TEST_CASE("loading pump: throttled attempts cannot count as service") {
     CHECK(m.variants.services == 1);
     CHECK(m.variants.maxGap == 100);
 }
+
+TEST_CASE("loading pump: MAIN_STALL watch reports one begin and one end per stall") {
+    using E = mc2::loadpump::StallEdge;
+    mc2::loadpump::StallWatch w;
+    CHECK(w.step(0) == E::None);
+    CHECK(w.step(3999) == E::None);
+    CHECK(w.step(4000) == E::Begin);
+    CHECK(w.gap == 4000);
+    CHECK(w.step(9000) == E::None);   // still stalled: no second begin
+    CHECK(w.step(20) == E::End);
+    CHECK(w.gap == 9000);       // end reports the longest gap
+    CHECK(w.step(20) == E::None);
+    CHECK(w.step(5000) == E::Begin);   // a later stall is a new begin
+}

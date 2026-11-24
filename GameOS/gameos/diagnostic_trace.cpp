@@ -52,6 +52,7 @@ const std::unordered_set<std::string>& knownTags() {
         "BUILD",
         "DEVICE",
         "EXIT_REASON",  // {"reason":...} once when the frame loop ends (gameosmain.cpp); a trace with no EXIT_REASON ended in a crash or a hard exit.
+        "MAIN_STALL",   // {"event":"begin"|"end",...}: the window thread pumped no messages for >=4 s (gos_render.cpp watchdog); a begin with no end = hung, then killed.
         "SHADER_COMPILE",
         "CAPTURE_FOCUS",
         "COMPASS_SYNC",   // [COMPASS_SYNC]: per-frame compass camera position/yaw/pitch at the render-time refresh. Opt-in.
@@ -95,6 +96,7 @@ constexpr std::string_view kDefaultTags[] = {
     "BUILD",
     "DEVICE",
     "EXIT_REASON",
+    "MAIN_STALL",
     "SHADER_COMPILE",
 };
 

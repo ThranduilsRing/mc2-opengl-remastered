@@ -1344,7 +1344,19 @@ bool VulkanContext::wait(const GpuTicket& t, uint64_t timeoutNs, std::string_vie
     wi.pSemaphores = &gfxTimeline_;
     wi.pValues = &t.gfx;
     const auto waitT0 = std::chrono::steady_clock::now();
-    const VkResult r = [&] { MC2_LOAD_SCOPE("gpuwait.timeline"); return vkWaitSemaphores(device_, &wi, timeoutNs); }();
+    // Main owns the window: wait in 50 ms slices and pump between them, so a GPU queue held up by WSI (an occluded or unfocused window
+    // whose acquire semaphore signals late) cannot freeze the message loop into Windows' "not responding" (unfocused-not-responding).
+    const VkResult r = [&] {
+        MC2_LOAD_SCOPE("gpuwait.timeline");
+        if (present_thread::onWorker()) return vkWaitSemaphores(device_, &wi, timeoutNs);
+        constexpr uint64_t kSliceNs = 50ull * 1000 * 1000;
+        for (uint64_t left = timeoutNs;;) {
+            const VkResult sliced = vkWaitSemaphores(device_, &wi, left < kSliceNs ? left : kSliceNs);
+            if (sliced != VK_TIMEOUT || left <= kSliceNs) return sliced;
+            if (left != UINT64_MAX) left -= kSliceNs;
+            present_thread::pumpWindowMessages();
+        }
+    }();
     // Only a wait that blocked is counted; a one-shot caller's open scope counts its own.
     if (!mc2_hitch2::inOneShotScope()) mc2_hitch2::noteWait(mc2_hitch2::kSlot, why, std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - waitT0).count());
     if (r != VK_SUCCESS) ctxlog("timeline wait for %.*s ended with VkResult=%d (ticket gfx=%llu).", static_cast<int>(why.size()), why.data(), static_cast<int>(r), static_cast<unsigned long long>(t.gfx));
