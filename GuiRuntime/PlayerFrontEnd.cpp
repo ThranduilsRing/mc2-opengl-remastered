@@ -781,7 +781,7 @@ void drawOptions() {
                 continue; // The live Water quality section owns these controls.
             } else if (std::string_view(option.key) == "CameraView") {
                 const char* labels[] = {"Stock", "Closer", "Wide"};
-                ImGui::Combo("Camera view", &(draft.*option.l), labels, IM_ARRAYSIZE(labels));
+                ImGui::Combo("Camera view (next mission)", &(draft.*option.l), labels, IM_ARRAYSIZE(labels));
             } else if (std::string_view(option.key) == "AtmosphereQuality") {
                 const char* labels[] = {"Off", "Low", "High"};
                 ImGui::Combo("Atmosphere (fog and sun haze)", &(draft.*option.l), labels, IM_ARRAYSIZE(labels));

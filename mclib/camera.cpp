@@ -417,10 +417,12 @@ long Camera::init (FitIniFilePtr cameraFile )
 		lightDirection.z = sin(lightPitch * DEGREES_TO_RADS);
 	}
 
+	bool cameraFromSave = false;
 	{
 		// A save's camera block already carries the scaled colours (Camera::save marks it).
 		bool profileApplied = false;
 		const bool fromSave = cameraFile->readIdBoolean("NightProfileApplied", profileApplied) == NO_ERR;
+		cameraFromSave = fromSave;
 		if (!fromSave)
 			profileApplied = false;
 		applyMissionLightProfile(*this, profileApplied);
@@ -497,6 +499,7 @@ long Camera::init (FitIniFilePtr cameraFile )
 
 	result = cameraFile->readIdFloat("NewScale",newScaleFactor);
 	gosASSERT(result == NO_ERR);
+	const float fileNewScale = newScaleFactor;
 
 	float startRotation = 0.0;
 	result = cameraFile->readIdFloat("StartRotation",startRotation);
@@ -618,6 +621,13 @@ long Camera::init (FitIniFilePtr cameraFile )
 	float testMax = Camera::AltitudeMaximumLo + ((Camera::AltitudeMaximumHi - Camera::AltitudeMaximumLo) * anglePercent);
 
 	newScaleFactor = 1.0f - ((cameraAltitude - AltitudeMinimum) / testMax);
+	if (cameraFromSave)
+	{
+		// A save holds the zoom as NewScale only; rebuild the altitude that produced it so the resumed camera re-saves the same bytes.
+		cameraAltitude = AltitudeMinimum + (1.0f - fileNewScale) * testMax;
+		cameraAltitudeDesired = cameraAltitude;
+		newScaleFactor = fileNewScale;
+	}
 
 	terrainLightNight = false;
 	terrainLightCalc = true;

@@ -392,9 +392,8 @@ class Camera
 		static float            AltitudeTight;
 		static float            AltitudeDefault;
 		// Coupled FOV / altitude / pitch looks (fid-1): 0 stock, 1 closer-wider, 2 BT-like. Altitude and pitch scale with the FOV
-		// so the subject keeps a similar size; the owner's pick becomes kDefaultPreset.
+		// so the subject keeps a similar size. The preset applies at mission load (a quickload keeps the saved camera).
 		static constexpr int    kPresetCount = 3;
-		static constexpr int    kDefaultPreset = mc2::options::RenderOptions{}.cameraView;
 		static float            DefaultFov;				//horizontal degrees
 		static float            DefaultPitchDelta;
 		static void				applyPreset (int preset);
@@ -1823,6 +1822,14 @@ class Camera
 			newScaleFactor = 1.0f - ((cameraAltitude - AltitudeMinimum) / testMax);
 		}
 		
+		// Quickload: put back the saved pose after activate() reset it to the preset (pitch, rotation, altitude held, no easing).
+		void restoreSavedView (glm::vec3 rot)
+		{
+			setRotation(rot);
+			cameraAltitudeDesired = cameraAltitude;
+			pitchActive = false;
+		}
+
 		// VK-FIRST-BOOKMARK-POSE-1 (ported for CAMERA-PARK-1): neutralize every
 		// scripted camera-override source so a hard-set pose survives the NEXT
 		// Camera::update() byte-unchanged. Camera::update() re-asserts the
