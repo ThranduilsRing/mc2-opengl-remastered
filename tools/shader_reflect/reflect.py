@@ -437,8 +437,18 @@ def load_golden(shader_rel: str, variant: str) -> dict | None:
 
 def save_golden(shader_rel: str, variant: str, contract: dict) -> None:
     p = golden_path(shader_rel, variant)
+    content = serialize_contract(contract)
+    newline = "\n"
+    if p.exists():
+        existing = p.read_bytes().decode("utf-8")
+        normalized = existing.replace("\r\n", "\n").replace("\r", "\n")
+        if normalized == content:
+            return
+        first_newline = re.search(r"\r\n|\r|\n", existing)
+        if first_newline:
+            newline = first_newline.group()
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(serialize_contract(contract), encoding="utf-8")
+    p.write_bytes(content.replace("\n", newline).encode("utf-8"))
 
 
 def check_variant_coverage(
