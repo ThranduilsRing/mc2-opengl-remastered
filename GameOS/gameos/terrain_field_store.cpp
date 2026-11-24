@@ -148,6 +148,11 @@ bool TerrainFieldStore::setWaterShoreHeight(const float* heights, int width, int
     return true;
 }
 
+void TerrainFieldStore::setTreePositions(std::vector<float> xy) {
+    treeXY_ = std::move(xy);
+    treeVersion_ = nextVersion();
+}
+
 void TerrainFieldStore::clearShoreFields() {
     shorelineMask_.texels.clear();
     shorelineMask_.width = 0;

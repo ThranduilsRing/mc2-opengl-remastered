@@ -137,6 +137,7 @@ extern "C" int mc2_vk_terrain_island_prewarm(int w, int h) {
     snapshot_cement(s, feed);
     import_shore_mask(s, feed);
     import_materials(s);
+    import_forest_mask(s);
     import_concrete_detail(s);
     import_matnormal(s, feed);
     if (feed.visualHeightCpu) snapshot_visual_height(s, feed);
@@ -601,6 +602,7 @@ static bool borrow_terrain_images(TerrainIsland* s) {
     borrow(s->cementTexture, main->cementTexture);
     borrow(s->shoreMaskTexture, main->shoreMaskTexture);
     borrow(s->materialTexture, main->materialTexture);
+    borrow(s->forestMaskTexture, main->forestMaskTexture);
     borrow(s->matNormalTexture, main->matNormalTexture);
     borrow(s->concreteDetailTexture, main->concreteDetailTexture);
     s->colormapReady = main->colormapReady;
@@ -682,6 +684,7 @@ static int run_terrain(int w, int h, TerrainIsland* supplied = nullptr,
         import_cement(s, feed);
         import_shore_mask(s, feed);
         import_materials(s);
+        import_forest_mask(s);
         import_concrete_detail(s);
         import_matnormal(s, feed);
     }

@@ -257,6 +257,10 @@ struct TerrainIsland : mc2vk::IslandState {
     mc2vk::ResidentTextureRef shoreMaskTexture;
     uint64_t      shoreMaskVersionImported = 0;   // field-store mask version last imported (0 = none)
     bool          shoreMaskReady = false;         // the bound mask is the mission's, not the dummy
+    // Binding 20: tree-canopy density over the colormap atlas extent (forest-floor share), splatted from the mission's tree placements.
+    mc2vk::ResidentTextureRef forestMaskTexture;
+    uint64_t      forestTreeVersionImported = 0;
+    std::array<float, 3> forestParamsImported{};
     // Baked material weights reuse the former, unconsumed shore-image slot.
     mc2vk::ResidentTextureRef materialTexture;
     mc2vk::ResidentTextureRef materialPending;         // a coverage-only update, swapped in once resident (the old one stays bound until then)
@@ -366,6 +370,8 @@ bool ensure_dummy_shore_mask(TerrainIsland* s);
 void import_shore_mask(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 bool ensure_dummy_materials(TerrainIsland* s);
 void import_materials(TerrainIsland* s);
+bool ensure_dummy_forest_mask(TerrainIsland* s);
+void import_forest_mask(TerrainIsland* s);
 bool snapshot_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 
 

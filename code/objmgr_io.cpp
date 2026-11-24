@@ -26,6 +26,7 @@
 #include "../GameOS/gameos/load_scope.h"
 #include "../GameOS/gameos/gos_render.h"
 #include "../GameOS/gameos/gos_mech_batcher.h"
+#include "../GameOS/gameos/gos_terrain_lod_chunk.h"
 
 extern "C" void mission_load_pump();
 
@@ -269,6 +270,18 @@ void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 	//Done loading the objects, free the memory holding them!!
 	std::free(objData);
 	objData = nullptr;
+
+	// Tree placements drive the terrain forest-floor layer (a canopy-density mask is splatted from them in the renderer).
+	{
+		std::vector<float> treeXY;
+		for (long i = 0; i < numTerrainObjects; ++i) {
+			TerrainObjectPtr obj = terrainObjects[i];
+			if (!obj || obj->getSubType() != TERROBJ_TREE) continue;
+			const glm::vec3 p = obj->getPosition();
+			treeXY.push_back(p.x); treeXY.push_back(p.y);
+		}
+		gos_TerrainLodChunk_UploadTreePositions(treeXY);
+	}
 
 	//---------------------------------------------------
 	// Finally, let's build the control building lists...

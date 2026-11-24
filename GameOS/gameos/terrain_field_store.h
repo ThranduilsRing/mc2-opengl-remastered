@@ -97,6 +97,11 @@ public:
     const FieldImage<float>& waterShoreHeight() const { return waterShoreHeight_; }
     WaterShoreHeightKind waterShoreHeightKind() const { return waterShoreHeightKind_; }
 
+    // World (x,y) pairs of the loaded mission's trees (the forest-floor mask is splatted from them); a new version on every set.
+    void setTreePositions(std::vector<float> xy);
+    const std::vector<float>& treePositions() const { return treeXY_; }
+    uint64_t treeVersion() const { return treeVersion_; }
+
     // The cement / road overlay atlas of the loaded mission (RGBA8, R first), as the GL atlas was uploaded. Rejected (with a log
     // line, previous image kept) on a null or out-of-range size.
     bool setCementAtlas(const uint8_t* rgba, int width, int height);
@@ -135,6 +140,8 @@ private:
     FieldImage<float> waterShoreHeight_;
     WaterShoreHeightKind waterShoreHeightKind_ = WaterShoreHeightKind::RawHeight;
     FieldImage<uint8_t> cementAtlas_;
+    std::vector<float> treeXY_;
+    uint64_t treeVersion_ = 0;
     ColormapAtlas colormapAtlas_;
     MaterialNormalArray materialNormals_;
     SurfaceAsset surfaceAsset_;

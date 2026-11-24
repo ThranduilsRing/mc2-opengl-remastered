@@ -69,6 +69,7 @@ layout(set = 0, binding = 1, std430) readonly buffer TerrainHeightBuf {
 } uH;
 // TERRAIN-SHORELINE-V3: optional mask sidecar (G wet, B foam, A valid); read only while TS_shorelineHasMask != 0.
 layout(set = 0, binding = 14) uniform sampler2D u_shorelineMask;
+layout(set = 0, binding = 20) uniform sampler2D u_forestMask;   // R8 tree-canopy density over the colormap atlas extent
 
 // Material layer indices (mirror shaders/include/terrain_mat_layers.hglsl).
 #define MAT_LAYER_ROCK     0
@@ -463,9 +464,11 @@ void main() {
             vec3 dN    = vec3(0.0);
             if ((kPlanarReflection == 0 || kReflectCutDetail == 0) && TS_detailReady != 0 && uT.detailStrength != 0.0) {
                 if (mv_needDetail(baseN, lightDir, materialW, materialSnow, v_worldPos, normalLightFloor)) {
-                    // Under-forest ground: dark green macro colour reads as forest canopy shade. Needs the 7th array layer.
-                    mv_forestMix = textureSize(u_matNormalArray, 0).z > MAT_LAYER_FOREST
-                        ? smoothstep(0.30, 0.12, dot(base, vec3(0.299, 0.587, 0.114))) * smoothstep(-0.01, 0.03, base.g - base.r) : 0.0;
+                    // Under-forest ground: the tree-canopy density mask (splatted from tree placements at mission load), same atlas UV as
+                    // the macro colour. Needs the 7th array layer.
+                    mv_forestMix = (TS_colormapReady != 0 && textureSize(u_matNormalArray, 0).z > MAT_LAYER_FOREST)
+                        ? textureLod(u_forestMask, vec2((v_worldPos.x - uT.atlasTopLeftX) * uT.atlasOneOverWorldUnits,
+                                                        (uT.atlasTopLeftY - v_worldPos.y) * uT.atlasOneOverWorldUnits), 0.0).r : 0.0;
                     dN = mv_detailNormal(materialW, materialSnow, v_worldPos.xy, baseN.z, detailUvDx, detailUvDy);
                 } else {
                     resolveLampNormal = true;
@@ -525,7 +528,7 @@ void main() {
         else if (kCsmDebugMode == 13) { vec2 rel = N.xy / max(N.z, 0.2) - dbgBaseN.xy / max(dbgBaseN.z, 0.2); fragColor = vec4(vec3(clamp(length(rel) * 4.0, 0.0, 1.0)), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }   // total detail relief (all classes + rock) over the macro slope, x4
         else if (kCsmDebugMode == 12) { fragColor = vec4(prelitBase, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; } // raw prelit before material/lighting
         // Material weights false colour: rock grey, grass green (forest-floor share yellow), dirt red, concrete blue, snow white.
-        else if (kCsmDebugMode == 11) { fragColor = vec4(materialW.x * vec3(0.35) + materialW.y * mix(vec3(0.1, 0.9, 0.1), vec3(1.0, 0.9, 0.0), mv_forestMix) + materialW.z * vec3(0.9, 0.2, 0.1) +
+        else if (kCsmDebugMode == 11) { fragColor = vec4(materialW.x * vec3(0.35) + (materialW.y + materialW.z) * mv_forestMix * vec3(1.0, 0.9, 0.0) + (1.0 - mv_forestMix) * (materialW.y * vec3(0.1, 0.9, 0.1) + materialW.z * vec3(0.9, 0.2, 0.1)) +
                                                          materialW.w * vec3(0.1, 0.3, 1.0) + vec3(materialSnow), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
 
         float normalSize = float(textureSize(u_matNormalArray, 0).x);

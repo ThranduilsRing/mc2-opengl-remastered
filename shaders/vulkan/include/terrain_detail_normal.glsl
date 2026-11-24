@@ -6,7 +6,7 @@
 #define DF_L0 2.0
 #define DF_L1 4.0
 float mv_detailTexelGM = 0.0;
-float mv_forestMix = 0.0;   // 0..1 share of the grass weight that reads as forest floor (set in main())
+float mv_forestMix = 0.0;   // 0..1 tree-canopy density at this pixel (forest-floor share of grass+dirt; set in main())
 float mv_detailFade(float texelsPerPixel) {
     return 1.0 - smoothstep(DF_L0, DF_L1, log2(max(texelsPerPixel, 1e-6)));
 }
@@ -16,6 +16,8 @@ vec3 mv_detailDecode(vec3 texel) {
     return texel * vec3(2.0, -2.0, 2.0) + vec3(-1.0, 1.0, -1.0);
 }
 vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz, vec2 uvDx, vec2 uvDy) {
+    float wForest = mv_forestMix * (w.y + w.z);
+    w.y *= 1.0 - mv_forestMix; w.z *= 1.0 - mv_forestMix;
     vec2 uv = worldXY * (uT.detailTiling / MATV_WU_PER_TILE);
     vec2 uvRock     = uv * (MATV_TILING.x / 3.0);
     vec2 uvGrass    = uv * MATV_TILING.y;
@@ -51,19 +53,20 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz, vec2
                : textureGrad(u_matNormalArray, vec3(uvRock, float(MAT_LAYER_ROCK)), uvDx * (MATV_TILING.x / 3.0), uvDy * (MATV_TILING.x / 3.0));
         dN += w.x * (MATV_NORMAL_BOOST.x / 3.0) * fwRock * dfRock * mv_detailDecode(s.rgb);
     }
+    // Forest floor (under trees): mv_forestMix is the tree-canopy density mask; it takes that share of the grass AND dirt weights
+    // (same tiling and boost bound as the turf it replaces).
+    if (wForest > 0.01 && fwGrass != 0.0 && dfGrass > 0.0) {
+        vec4 sf = (atsGrass > 0.01 && fwGrass > 0.4)
+                ? mv_sampleAntiTileArr(MAT_LAYER_FOREST, uvGrass * 0.8, atsGrass, uvDx * MATV_TILING.y * 0.8, uvDy * MATV_TILING.y * 0.8, fwGrass)
+                : textureGrad(u_matNormalArray, vec3(uvGrass * 0.8, float(MAT_LAYER_FOREST)), uvDx * MATV_TILING.y * 0.8, uvDy * MATV_TILING.y * 0.8);
+        dN += wForest * MATV_NORMAL_BOOST.y * 1.2 * fwGrass * dfGrass * mv_detailDecode(sf.rgb);
+    }
     if (w.y > 0.01 && fwGrass != 0.0) {
         if (dfGrass > 0.0) {
             vec4 s = (atsGrass > 0.01 && fwGrass > 0.4)
                    ? mv_sampleAntiTileArr(MAT_LAYER_GRASS, uvGrass, atsGrass, uvDx * MATV_TILING.y, uvDy * MATV_TILING.y, fwGrass)
                    : textureGrad(u_matNormalArray, vec3(uvGrass, float(MAT_LAYER_GRASS)), uvDx * MATV_TILING.y, uvDy * MATV_TILING.y);
-            dN += w.y * (1.0 - mv_forestMix) * MATV_NORMAL_BOOST.y * fwGrass * dfGrass * mv_detailDecode(s.rgb);
-            // Forest floor takes mv_forestMix of the grass weight (same tiling and boost bound as the turf it replaces).
-            if (mv_forestMix > 0.01) {
-                vec4 sf = (atsGrass > 0.01 && fwGrass > 0.4)
-                        ? mv_sampleAntiTileArr(MAT_LAYER_FOREST, uvGrass * 0.8, atsGrass, uvDx * MATV_TILING.y * 0.8, uvDy * MATV_TILING.y * 0.8, fwGrass)
-                        : textureGrad(u_matNormalArray, vec3(uvGrass * 0.8, float(MAT_LAYER_FOREST)), uvDx * MATV_TILING.y * 0.8, uvDy * MATV_TILING.y * 0.8);
-                dN += w.y * mv_forestMix * MATV_NORMAL_BOOST.y * 1.2 * fwGrass * dfGrass * mv_detailDecode(sf.rgb);
-            }
+            dN += w.y * MATV_NORMAL_BOOST.y * fwGrass * dfGrass * mv_detailDecode(s.rgb);
         }
         // GRASS-GROUND-NORMAL: a second, larger-scale tap of the turf (0.29x, rotated ~37 deg) so the
         // tuft/dirt-gap clumps vary over ~1300 wu and the 384 wu tile does not repeat. Its own fade.
