@@ -556,6 +556,9 @@ mc2pkg::LocationVariant LogisticsVariant::locationRecord() const {
 		specs.push_back(layoutComponent(*c.component));
 	}
 	const auto* package = chassis->getPackage();
+	// A pack's MountTags list weapons (machine guns) that may also use an AntiPersonnel mount; they keep their own category too.
+	if (package) for (std::size_t i = 0; i < specs.size(); ++i)
+		if (specs[i].mountMask && package->apCapable(specs[i].id)) specs[i].mountMask |= mc2pkg::AntiPersonnel;
 	const std::string stem = std::filesystem::path(chassis->fileName).stem().string();
 	const auto layoutPath = std::filesystem::path("data") / "defs" / "chassis" / "core" / stem / "locations.fit";
 	if (!chassis->layoutCacheLoaded) {   // the sheet asks ~10x per frame: parse the FIT once per chassis

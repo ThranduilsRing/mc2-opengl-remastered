@@ -501,3 +501,33 @@ TEST_CASE("chassis_layout: production armor edits preserve cost tonnage and plat
     v.layoutState.armorExplicit=false;
     CHECK(v.armorAllocation() == chassis.baseArmorLoc);
 }
+// Owner report 2026-11-23: "LAYOUT WARNING" on a Marauder MAD-3R BT with an Ultra AC and a machine gun in the
+// centre torso (hardpoints B + A). The MG's mount mask was Ballistic only, so both guns wanted the one B mount.
+TEST_CASE("chassis_layout: machine gun uses the anti-personnel hardpoint and a failure names its item") {
+    ChassisLayout layout; layout.payload = 34; layout.fixedInventory.fill(0);
+    for (auto& l : layout.locations) l.slots = 12;
+    const auto key = [](const char* n) { return hardpointKey(n); };
+    layout.locations[4].hardpoints = {{Energy, key("LeftArm.0"), {}}, {Energy, key("LeftArm.1"), {}}};
+    layout.locations[1].hardpoints = {{Ballistic, key("CenterTorso.0"), {}}, {AntiPersonnel, key("CenterTorso.1"), {}}};
+    LayoutComponent uac; uac.id = 150; uac.kind = EquipmentKind::Weapon; uac.mountMask = Ballistic; uac.weight = 12;
+    LayoutComponent mg = uac; mg.id = 67; mg.weight = 1;
+    LayoutComponent ppc = uac; ppc.id = 145; ppc.mountMask = Energy; ppc.weight = 6;
+    LocationVariant record; record.version = 2;
+    record.items = {{ppc.id, 0, 0, 1, 4, 0, 0}, {uac.id, 0, 0, 1, 1, 0, 0}, {mg.id, 0, 0, 1, 1, 1, 0}};
+    std::vector<LayoutComponent> specs = {ppc, uac, mg};
+
+    CHECK_FALSE(validateLocations(layout, record, specs));            // MG mask as shipped before: Ballistic only
+    CHECK(record.grandfathered);
+    CHECK(record.grandfatherReason.verdict == PlaceVerdict::NoFreeHardpoint);
+    CHECK(record.grandfatherReason.location == 1);
+    CHECK(record.grandfatherReason.item == 1);                        // first of the two guns fighting for B
+    CHECK_FALSE(canSaveLocationVariant(record));
+    CHECK(std::string(verdictText(record.grandfatherReason.verdict)) == "no free hardpoint");
+    CHECK(std::string(locationShortName(1)) == "CT");
+
+    specs[2].mountMask |= AntiPersonnel;                              // what LogisticsVariant now does for MountTags ordinals
+    CHECK(validateLocations(layout, record, specs));
+    CHECK_FALSE(record.grandfathered);
+    CHECK(record.grandfatherReason.item == -1);
+    CHECK(canSaveLocationVariant(record));
+}

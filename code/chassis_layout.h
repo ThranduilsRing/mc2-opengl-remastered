@@ -74,9 +74,10 @@ struct PlaceResult {
 // Maximum matching permits omni pods without greedy assignment rejecting a legal
 // loadout. Explicit saved keys are pinned; unmatched legacy keys are allocated.
 inline std::optional<std::vector<unsigned>> matchLocationMounts(
-    const ChassisLayout& layout, const std::vector<LocationItem>& items) {
+    const ChassisLayout& layout, const std::vector<LocationItem>& items, int onlyLocation = -1) {
     std::vector<unsigned> keys(items.size(), 0);
     for (int loc = 0; loc < 8; ++loc) {
+        if (onlyLocation >= 0 && loc != onlyLocation) continue; // a mount fault belongs to its own location's items
         const auto& mounts = layout.locations[loc].hardpoints;
         std::vector<int> owners(mounts.size(), -1);
         for (std::size_t i = 0; i < items.size(); ++i) {
@@ -153,7 +154,7 @@ inline PlaceResult checkPlace(const ChassisLayout& layout, const std::vector<Loc
     if (electronics > 3) return {PlaceVerdict::TooManyElectronics};
     // resetComponents starts weapon/ammo insertion at 17 and permits 54 entries.
     if (inventory > 72 || weaponsAmmo > 54) return {PlaceVerdict::InventoryLimit};
-    const auto keys = matchLocationMounts(layout, all);
+    const auto keys = matchLocationMounts(layout, all, location);
     if (!keys) return {PlaceVerdict::NoFreeHardpoint};
     if (mass > layout.payload + 1e-6) return {PlaceVerdict::OverPayload, mass - layout.payload};
     if (heat > cooling + 1e-6) return {PlaceVerdict::TooHot};
@@ -165,12 +166,41 @@ struct VariantItem {
     int location = -1, slot = -1;
     unsigned hardpoint = 0;
 };
+// Why a layout is grandfathered: the first item (index into LocationVariant::items,
+// -1 for a whole-record fault) whose placement check fails, and the verdict.
+struct GrandfatherReason {
+    int item = -1;
+    PlaceVerdict verdict = PlaceVerdict::Legal;
+    int location = -1;
+};
+inline const char* verdictText(PlaceVerdict v) {
+    switch (v) {
+        case PlaceVerdict::Legal: return "legal";
+        case PlaceVerdict::LocationNotAllowed: return "not allowed in this location";
+        case PlaceVerdict::NoFreeSlots: return "no free slot";
+        case PlaceVerdict::NoFreeHardpoint: return "no free hardpoint";
+        case PlaceVerdict::OverPayload: return "over payload";
+        case PlaceVerdict::TooHot: return "too hot";
+        case PlaceVerdict::OneJumpJet: return "only one jump jet allowed";
+        case PlaceVerdict::OneXLEngine: return "only one XL engine allowed";
+        case PlaceVerdict::TooManyElectronics: return "too many electronics";
+        case PlaceVerdict::SpecLimit: return "too many items";
+        case PlaceVerdict::InventoryLimit: return "inventory limit reached";
+        case PlaceVerdict::InvalidComponent: return "invalid component";
+    }
+    return "illegal";
+}
+inline const char* locationShortName(int location) {
+    static constexpr const char* names[8] = {"HD", "CT", "LT", "RT", "LA", "RA", "LL", "RL"};
+    return location >= 0 && location < 8 ? names[location] : "?";
+}
 struct LocationVariant {
     int version = 1;
     std::vector<VariantItem> items; // always original order, including grandfathered items
     std::array<int, 11> armor{};
     bool armorExplicit = false;
     bool grandfathered = false, edited = false, classicReadOnly = false;
+    GrandfatherReason grandfatherReason; // derived by validateLocations; not saved
 };
 inline bool canSaveLocationVariant(const LocationVariant& record) { return !record.grandfathered; }
 // Shared production FIT adapters. A malformed record fails atomically; legality
@@ -180,7 +210,10 @@ bool writeLocationVariant(FitIniFile&, const LocationVariant&);
 
 inline bool validateLocations(const ChassisLayout& layout, LocationVariant& record,
                               const std::vector<LayoutComponent>& components) {
-    if (components.size() != record.items.size()) { record.grandfathered = true; return false; }
+    record.grandfatherReason = {};
+    if (components.size() != record.items.size()) {
+        record.grandfathered = true; record.grandfatherReason = {-1, PlaceVerdict::InvalidComponent, -1}; return false;
+    }
     std::vector<LocationItem> all;
     bool legal = true;
     for (std::size_t i = 0; i < record.items.size(); ++i) {
@@ -190,7 +223,10 @@ inline bool validateLocations(const ChassisLayout& layout, LocationVariant& reco
     for (std::size_t i = 0; i < all.size(); ++i) {
         auto others = all;
         others.erase(others.begin() + static_cast<std::ptrdiff_t>(i));
-        if (checkPlace(layout, others, all[i], all[i].location).verdict != PlaceVerdict::Legal) legal = false;
+        const auto verdict = checkPlace(layout, others, all[i], all[i].location).verdict;
+        if (verdict == PlaceVerdict::Legal) continue;
+        if (legal) record.grandfatherReason = {static_cast<int>(i), verdict, all[i].location};
+        legal = false;
     }
     record.grandfathered = !legal;
     return legal;
@@ -199,7 +235,9 @@ inline bool validateLocations(const ChassisLayout& layout, LocationVariant& reco
 inline void mapLegacyLocations(const ChassisLayout& layout, LocationVariant& record,
                                const std::vector<LayoutComponent>& components,
                                const PackageChassis* package = nullptr) {
-    if (record.items.size() != components.size()) { record.grandfathered = true; return; }
+    if (record.items.size() != components.size()) {
+        record.grandfathered = true; record.grandfatherReason = {-1, PlaceVerdict::InvalidComponent, -1}; return;
+    }
     // Physical critical entries copied from logisticsTable, starting at index 17.
     std::vector<std::pair<int, int>> roundRobin = {{6,4},{6,5},{7,3},{7,4},{7,5}};
     for (int s = 0; s < 8; ++s) {
