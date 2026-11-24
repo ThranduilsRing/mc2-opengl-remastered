@@ -40,7 +40,8 @@ def test_rg_normal_flip_and_reconstruction(tmp_path):
     assert np.all(xyz[:, 2] >= 0)
 
 
-def test_cook_and_ktx_only_pack(tmp_path, monkeypatch, fixture):
+@pytest.mark.parametrize("orm", [False, True])
+def test_cook_and_ktx_only_pack(tmp_path, monkeypatch, fixture, orm):
     alb, nrm = tmp_path / "alb.png", tmp_path / "nrm.png"
     Image.new("RGBA", (2, 2), (97, 53, 21, 255)).save(alb)
     Image.new("RGB", (2, 2), (128, 128, 0)).save(nrm)
@@ -56,6 +57,10 @@ def test_cook_and_ktx_only_pack(tmp_path, monkeypatch, fixture):
     C.cook("ktx.exe", alb, nrm, cooked, scratch)
     assert calls == [("ktx.exe", "mw5_madcat_alb.png", (2048, 2048)),
                      ("ktx.exe", "mw5_madcat_nrm.png", (2048, 2048))]
+    if orm:
+        for tier in ("", "128"):
+            (cooked / tier / "mw5_madcat_orm.ktx2").write_bytes(b"synthetic-cooked")
+    (cooked / "mw5_madcat_alb.png").write_bytes(alb.read_bytes())
     inst = tmp_path / "install"
     (inst / "data/tgl").mkdir(parents=True)
     (inst / "data/tgl/madcat.ini").write_text("FITini\n[Gestures]\nl NumGestures = 1\nFITend\n")
@@ -67,11 +72,17 @@ def test_cook_and_ktx_only_pack(tmp_path, monkeypatch, fixture):
     P.main()
     tgl = inst / "mods/mw5_mechs/data/tgl"
     pkg = json.loads((tgl / "mw5_madcat.package.json").read_text())
-    assert pkg["featureBits"] == ["HAS_NORMAL"] and set(pkg["materials"]) == {"albedo", "normal"}
+    assert pkg["featureBits"] == ["HAS_NORMAL"]
+    assert set(pkg["materials"]) == ({"albedo", "normal", "orm"} if orm else {"albedo", "normal"})
     assert pkg["materials"]["normal"]["logicalFormat"] == "linear-normal-xyz"
     for mat in pkg["materials"].values():
         assert (tgl / mat["ktx2"]).read_bytes() == (tgl / "128" / mat["ktx2"]).read_bytes()
     assert not list(tgl.rglob("*.tga"))
+    doc, _ = P.load_glb(tgl / "mw5_madcat.glb")
+    assert all((tgl / image["uri"]).is_file() for image in doc["images"])
+    (cooked / "128/mw5_madcat_nrm.ktx2").unlink()
+    with pytest.raises(FileNotFoundError):
+        P.main()
 
 
 def test_cook_uses_recipe_stem(tmp_path, monkeypatch):
