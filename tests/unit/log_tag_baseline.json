@@ -4885,7 +4885,16 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 2
+   "count": 1
+  },
+  {
+   "tag": "ICON_REGISTRY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "index"
+   ],
+   "count": 1
   },
   {
    "tag": "ICON_REGISTRY",
@@ -9060,10 +9069,32 @@
    "stream": "stderr",
    "keys": [
     "event",
+    "file"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SAVE",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [
+    "event",
     "reason",
     "file"
    ],
    "count": 3
+  },
+  {
+   "tag": "SAVE",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "reason",
+    "running",
+    "file"
+   ],
+   "count": 1
   },
   {
    "tag": "SAVELOAD",

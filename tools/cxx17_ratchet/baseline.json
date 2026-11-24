@@ -2196,6 +2196,7 @@
   "code/save_brain_section.h": {},
   "code/save_exactness.h": {},
   "code/save_fix_section.h": {},
+  "code/save_identity.h": {},
   "code/save_layout_guard.h": {},
   "code/save_sections.cpp": {},
   "code/save_sections.h": {},
@@ -3484,7 +3485,7 @@
    "LG20": 1
   }
  },
- "head": "4aa05690a",
+ "head": "bfbd644d5",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

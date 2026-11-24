@@ -43,6 +43,9 @@
   "mclib/bdactor_diag.cpp": {
    "pointer_key": 1
   },
+  "mclib/bdactor_tree_static.cpp": {
+   "pointer_key": 1
+  },
   "mclib/fx/fx_render.h": {
    "pointer_key": 1
   },
