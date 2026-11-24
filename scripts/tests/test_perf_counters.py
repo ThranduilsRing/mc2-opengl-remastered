@@ -27,6 +27,22 @@ def test_parse_takes_numeric_fields_and_skips_labels():
     assert "first_vk_wait_site" not in got and got["first_vk_wait_ms_into_frame"] == 1.5
 
 
+def test_shipped_props_ceilings_cover_pipeline_list_counts():
+    for stem, measured in (("mc2_01", 12.1333), ("mc2_10", 11.8508)):
+        cfg = GateConfig(duration_s=30, stem=stem, vegetation_expected=False,
+                         perf_ceilings=load_perf_ceilings(), window_ceilings=load_window_ceilings())
+        s = _ready()
+        for count, warn in ((measured, False), (13.01, True)):
+            s.perf_counters = {"draws.props": count}
+            s.perf_window = {"ticks": "30..120", "complete": 1, "draws.props": count}
+            verdict = evaluate(s, cfg, exit_code=0, walltime_s=31)
+            warnings = verdict.warnings + verdict.details
+            props = [w for w in warnings if "draws.props" in w]
+            assert bool(props) == warn, (stem, count, warnings)
+            if warn:
+                assert len(props) == 2  # cumulative and fixed-window ceilings both enforce the limit
+
+
 def test_parse_log_keeps_last_line():
     s = parse_log(LINE + "\n" + LINE.replace("frames=300", "frames=600") + "\n")
     assert s.perf_counters["frames"] == 600
