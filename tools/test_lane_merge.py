@@ -456,8 +456,9 @@ class _R:
         self.returncode, self.stdout = rc, out
 
 
-def test_verify_overlaps_build_and_scoped_python(tmp_path):
+def test_verify_overlaps_build_and_scoped_python(tmp_path, monkeypatch):
     lm = _load_module()
+    monkeypatch.setattr(lm, "git_out", lambda *a: "")
     (tmp_path / "scripts").mkdir()
     for n in ("ninja_build.py", "run_scripts_tests.py", "run_tools_tests.py"):
         (tmp_path / "scripts" / n).write_text("")
@@ -501,6 +502,31 @@ def test_verify_is_skipped_without_the_scripts_or_when_switched_off(tmp_path):
     (tmp_path / "scripts").mkdir()
     (tmp_path / "scripts" / "ninja_build.py").write_text("")
     assert lm.verify_merged(str(tmp_path), "none")[0] == "SKIPPED"
+
+
+@pytest.mark.parametrize("changed", ["GameOS/gameos/present_thread.cpp", "mclib/shared.h", "editor/tool.cpp",
+                                     "CMakeLists.txt", "cmake/targets.cmake", "code/mission.cpp"])
+@pytest.mark.parametrize("base", [None, "current-window"])
+def test_verify_builds_editor_for_shared_gate_inputs(tmp_path, monkeypatch, changed, base):
+    import merge_gate
+    lm = _load_module()
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "scripts/ninja_build.py").write_text("")
+    (tmp_path / "build64-ninja").mkdir()
+    (tmp_path / "build64-ninja/merge-window.json").write_text('{"base": "window-base"}')
+    seen = []
+    def diff(root, *args):
+        assert args == ("diff", "--name-only", base or "window-base", "HEAD")
+        return changed
+    monkeypatch.setattr(lm, "git_out", diff)
+    def runner(root, cmd, env=None):
+        seen.append(cmd[2:])
+        return _R(1 if "EditRel" in cmd else 0, "editor link failed")
+    verdict, results = lm.verify_merged(str(tmp_path), "build", runner, base=base)
+    editor = "editor" in merge_gate.promoted_stages([changed])
+    assert seen == [["mc2", "EditRel"] if editor else []]
+    assert verdict == ("FAIL" if editor else "OK")
+    assert results[0][1] == int(editor)
 
 
 BUGS = ".claude/cleanup/BUGS-FOUND-FIXED.md"
@@ -621,7 +647,7 @@ def _run_batch(env_, *argv):
     repo, tools = env_
     lm = _load_module()
     verifies = []
-    lm.verify_merged = lambda root, m, runner=None: (verifies.append(m), ("OK", []))[1]
+    lm.verify_merged = lambda root, m, runner=None, base=None: (verifies.append(m), ("OK", []))[1]
     rc = lm.main(["--batch", *argv, "--root", str(repo), "--tools-dir", str(tools)])
     return rc, verifies
 
@@ -704,7 +730,7 @@ def test_contained_batch_still_verifies(env, monkeypatch, mode):
     lm = _load_module()
     repo, tools = env
     verifies = []
-    monkeypatch.setattr(lm, "verify_merged", lambda root, mode: (verifies.append(mode), ("OK", []))[1])
+    monkeypatch.setattr(lm, "verify_merged", lambda root, mode, **kw: (verifies.append(mode), ("OK", []))[1])
     monkeypatch.setattr(lm, "merge_tip", lambda *a: pytest.fail("contained tip merged"))
     assert lm.main(["--batch", "HEAD", "--verify", mode, "--root", str(repo), "--tools-dir", str(tools)]) == 0
     assert verifies == [mode]
@@ -898,7 +924,7 @@ def test_batch_auto_resolves_generated_conflicts_and_regenerates(env, monkeypatc
         return real_run(root, cmd, env)
     verifies = []
     monkeypatch.setattr(lm, "run", runner)
-    monkeypatch.setattr(lm, "verify_merged", lambda root, mode, runner=None: (verifies.append(mode), ("OK", []))[1])
+    monkeypatch.setattr(lm, "verify_merged", lambda root, mode, runner=None, base=None: (verifies.append(mode), ("OK", []))[1])
     monkeypatch.setattr(lm, "GENERATED_REGENERATORS", ((set(GENERATED_FILES), "regen.py", []),))
     rc = lm.main(["--batch", "lane_a", "lane_b", "--root", str(repo), "--tools-dir", str(tools), "--no-receipt-check"])
     assert rc == 0, capsys.readouterr().err
@@ -1020,7 +1046,7 @@ def _derived_batch(env, monkeypatch, lane_edits, regen):
     git(repo, "checkout", "-q", "main")
     lm = _load_module()
     monkeypatch.setattr(lm, "regenerate_all", lambda root, **kw: regen(repo) or [])
-    monkeypatch.setattr(lm, "verify_merged", lambda *a: ("OK", []))
+    monkeypatch.setattr(lm, "verify_merged", lambda *a, **kw: ("OK", []))
     return lm, lm.main(["--batch", "lane_g", "--root", str(repo), "--tools-dir", str(tools)])
 
 
@@ -1449,7 +1475,7 @@ if p.read_text() != 'recorded at merged HEAD':
 """)
     lm = _load_module()
     verifies = []
-    monkeypatch.setattr(lm, "verify_merged", lambda *a: verifies.append(a) or ("OK", []))
+    monkeypatch.setattr(lm, "verify_merged", lambda *a, **kw: verifies.append(a) or ("OK", []))
     assert lm.main(["--batch", "lane_a", "--root", str(repo), "--tools-dir", str(tools)]) == 0
     assert verifies and "RATCHET-DEBT cxx17" in capsys.readouterr().out
     assert git(repo, "show", "HEAD:" + CXX) == 'recorded at merged HEAD'

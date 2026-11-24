@@ -164,6 +164,12 @@ PLAYER_PATH_GLOBS = ("code/mainmenu*", "code/mc2movie*", "code/loadscreen*", "co
 EDITOR_BUILD_GLOBS = ("editor/*", "mclib/*.h", "gameos/*", "*cmakelists.txt", "cmake/*", "scripts/merge_gate_editor.py")
 
 
+def editor_build_required(paths):
+    import fnmatch
+    return any(fnmatch.fnmatchcase(p.replace("\\", "/").lower(), g)
+               for p in paths for g in EDITOR_BUILD_GLOBS)
+
+
 def sim_sensitive(paths):
     """Changed paths matching tools/sim_sensitive_paths.json (the lane precheck's own sim/save list; '*' crosses '/')."""
     import fnmatch
@@ -181,7 +187,7 @@ def promoted_stages(paths):
         want |= {"determinism-mc2_24", "saveload-mc2_01"}
     if any(fnmatch.fnmatchcase(p.lower(), g) for p in norm for g in PLAYER_PATH_GLOBS):
         want.add("player-path")
-    if any(fnmatch.fnmatchcase(p.lower(), g) for p in norm for g in EDITOR_BUILD_GLOBS):
+    if editor_build_required(norm):
         want.add("editor")
     return want
 
@@ -367,10 +373,46 @@ def preflight(head, install, window, steps, seed=Path(EROOT + "/mc2-installs/_le
     from exe_fingerprint import extract, build_current, sha_agrees
     from deploy_payload import verify_published_identity, staleness_report
     import saveload_roundtrip as saves
+    import asset_parity
+    import sim_determinism as sim
 
     started = time.monotonic()
     errors = []
     rebuild = f"cd {ROOT.as_posix()} && py -3 scripts/ninja_build.py"   # the gate never builds; deploy refuses a stale exe ~10 min in
+    install = Path(install)
+    if not install.is_dir():
+        print(f'[merge_gate] preflight FAIL: gate install missing: {install}; fix: '
+              f'py -3 scripts/make-isolated-deploy.py --from "{Path(seed).as_posix()}" --to "{install.as_posix()}"', flush=True)
+        return 1
+    ref = asset_parity.default_ref()
+    try:
+        for rel, expected in asset_parity.intentional_changes(head, ROOT).items():
+            source = ref / rel
+            if not source.is_file() or asset_parity._sha(source) != expected:
+                errors.append(f'intentional asset reference hash mismatch: {source}; fix: '
+                              f'py -3 scripts/deploy_payload.py "{ref.as_posix()}" --ninja')
+    except (OSError, ValueError) as exc:
+        errors.append(f'intentional assets: {exc}; fix: git restore --source={head} -- intentional-asset-changes.json')
+    fingerprint = None
+    for name, command, env in steps:
+        if env.get('MC2_GATE_SKIP_REASON') or not name.startswith(('determinism-', 'saveload-')):
+            continue
+        mission = command[command.index('--mission') + 1] if '--mission' in command else name.split('-', 1)[1]
+        baseline = (ROOT / ('tests/saveload/baselines' if name.startswith('saveload-') else 'tests/smoke/sim_determinism')
+                    / (mission + '.json'))
+        try:
+            pinned = json.loads(baseline.read_text(encoding='utf-8')).get('data_fingerprint')
+            if not pinned:
+                continue
+            if fingerprint is None:
+                fingerprint = sim.data_fingerprint(str(install), sim.load_overlay_manifest(
+                    str(ROOT / 'tests/smoke/sim_determinism/data_overlay.json')))
+            if fingerprint.get('problems') or fingerprint['digest'] != pinned['digest']:
+                errors.append(f'{name} install data fingerprint differs from {baseline}: '
+                              f'{fingerprint["digest"]} != {pinned["digest"]}; fix: '
+                              f'py -3 scripts/asset_parity.py "{install.as_posix()}" --sync --ref "{ref.as_posix()}"')
+        except (OSError, ValueError, KeyError) as exc:
+            errors.append(f'{name} pinned data: {exc}; fix: git restore --source={head} -- "{baseline.relative_to(ROOT).as_posix()}"')
     for name in ("mc2.exe", "out/tools/asset_viewer/mc2_asset_viewer.exe"):
         fp = extract(ROOT / "build64-ninja" / name)
         # mc2.exe: a clean ancestor build stays current when no build input changed since (data/test-only commits).
