@@ -28,12 +28,14 @@ def normal_image(src, size=2048):
     return Image.fromarray(np.uint8(np.clip((xyz * .5 + .5) * 255 + .5, 0, 255))).convert("RGBA")
 
 
-def cook(ktx, albedo, normal, deploy, scratch, recipe=None):
+def cook(ktx, albedo, normal, deploy, scratch, recipe=None, orm=None, normal_ready=False):
     recipe = load_recipe() if recipe is None else recipe
     deploy, scratch = Path(deploy), Path(scratch)
     scratch.mkdir(parents=True, exist_ok=True)
     images = {"alb": Image.open(albedo).convert("RGBA").resize((2048, 2048), Image.Resampling.LANCZOS),
-              "nrm": normal_image(normal)}
+              "nrm": Image.open(normal).convert("RGBA") if normal_ready else normal_image(normal)}
+    if orm:    # linear R=AO, G=roughness, B=metal from bake_material.py; no resize filtering of data beyond the bake's own
+        images["orm"] = Image.open(orm).convert("RGBA").resize((2048, 2048), Image.Resampling.BOX)
     for tag, img in images.items():
         stem = f"{recipe['mc2']['stem']}_{tag}"
         png, cooked = scratch / f"{stem}.png", scratch / f"{stem}.ktx2"
@@ -50,6 +52,8 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__)
     for name in ("ktx", "albedo", "normal", "deploy", "scratch"):
         ap.add_argument("--" + name, required=True)
+    ap.add_argument("--orm", help="packed AO/roughness/metal PNG")
+    ap.add_argument("--normal-ready", action="store_true", help="--normal is already the final XYZ map (bake_material.py output)")
     ap.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
     a = ap.parse_args()
-    cook(a.ktx, a.albedo, a.normal, a.deploy, a.scratch, load_recipe(a.recipe))
+    cook(a.ktx, a.albedo, a.normal, a.deploy, a.scratch, load_recipe(a.recipe), a.orm, a.normal_ready)

@@ -137,3 +137,53 @@ def test_source_material_survives_rigid_split(fixture, tmp_path):
     d = B.build(skm, tmp_path, tmp_path / "out.glb", "mw5_madcat_alb.tga")
     assert [m["name"] for m in d["materials"]] == ["mw5_body", "mw5_variant"]
     assert all([p["material"] for p in m["primitives"]] == [0, 1] for m in d["meshes"])
+
+
+def _synthetic_params():
+    return {"scalars": {"PaintWear": 2, "PaintWearTightness": 26, "DirtStrength": 0, "GrimeMultiplier": -1, "DirtRoughness": 1,
+                        "PaintRoughness": 1, "PaintRoughnessMultiplier": 2, "ScratchRoughnessMultiplier": .2,
+                        "GrimeRoughnessMultiplier": .4, "MetalDetailContrast": -.2, "PaintDetailContrast": .3,
+                        "MetalTilingScale": 2, "PaintTilingScale": 1},
+            "vectors": {"DirtColor": [0, 0, 0], "GrimeColor": [0, 0, 0]},
+            "paint": {"MetalColorMultiplier": [.5, .5, .5], "PaintColorMultiplier": [1, 1, 1], "PaintColorPrimary": [.1, .2, .3],
+                      "PaintColorSecondary": [0, 0, 0], "PaintColorTertiary": [0, 0, 0]},
+            "metals": {"A": {"roughness": 2.9, "metallic": 1}, "B": {"roughness": .25, "metallic": .5}},
+            "metalId": {"000": "A", "010": "B"}}
+
+
+def test_bake_material_channels(monkeypatch):
+    """Paint is rough non-metal; bare metal takes its metalID material's roughness (clamped to 1) and metallic;
+    a strong scratch exposes metal through paint; the normal map stays unit length."""
+    from tools.mw5_mechs import bake_material as M
+    monkeypatch.setattr(M, "SIZE", 4)
+    # pixels: paint, bare metal id 000, bare metal id 010, paint with a strong scratch
+    mask = np.zeros((4, 4, 4), np.float32); mask[..., 3] = 1; mask[0, 0, 0] = 1; mask[0, 3, 0] = 1
+    mid = np.zeros((4, 4, 4), np.float32); mid[0, 2, 1] = 1; mid[0, 2, 3] = 1
+    wear = np.zeros((4, 4, 3), np.float32); wear[0, 3, 0] = 1
+    nrm = np.full((4, 4, 3), .5, np.float32)
+    detail = (np.full((8, 8, 3), .5, np.float32),) * 2
+    alb, orm, nm = (np.asarray(i) / 255 for i in M.bake(mask, mid, wear, nrm, _synthetic_params(), detail))
+    assert alb.shape == orm.shape == nm.shape == (4, 4, 4)
+    rough, metal = orm[0, :, 1], orm[0, :, 2]
+    assert metal[0] == 0 and abs(rough[0] - 1) < .01                  # paint
+    assert abs(metal[1] - 1) < .01 and abs(rough[1] - 1) < .01        # id 000: roughness 2.9 clamps to 1
+    assert abs(metal[2] - .5) < .01 and abs(rough[2] - .25) < .01     # id 010
+    assert metal[3] == 1 or abs(metal[3] - 1) < .01                   # scratched paint is bare metal
+    assert rough[3] < .3                                              # and shiny (ScratchRoughnessMultiplier)
+    assert np.allclose(orm[..., 0], 1) and np.allclose(np.linalg.norm(nm[..., :3] * 2 - 1, axis=-1), 1, atol=.03)
+
+
+def test_pack_texture_references_resolve():
+    """Every texture a built pack's package.json names exists in both size tiers as a 2048 BC7 KTX2."""
+    import os
+    pack = Path(os.environ.get("MW5_PACK_DIR", "E:/mc2-installs/mods-fix-ready/mw5-madcat/mods/mw5_mechs/data/tgl"))
+    if not (pack / "mw5_madcat.package.json").is_file():
+        pytest.skip("no built MW5 pack here")
+    pkg = json.loads((pack / "mw5_madcat.package.json").read_text())
+    assert {"albedo", "normal", "orm"} <= set(pkg["materials"])
+    for mat in pkg["materials"].values():
+        for tier in ("", "128"):
+            head = (pack / tier / mat["ktx2"]).read_bytes()[:28]
+            assert head[:12] == b"\xabKTX 20\xbb\r\n\x1a\n"
+            vk_format, _, width, height = np.frombuffer(head[12:28], "<u4")
+            assert (vk_format, width, height) == (145, 2048, 2048)    # BC7 UNORM; the cook is linear-tagged for data maps
