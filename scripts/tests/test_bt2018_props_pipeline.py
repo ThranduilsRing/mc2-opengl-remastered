@@ -94,3 +94,29 @@ def test_silhouette_distinguishes_tall_from_wide():
     assert raster.silhouette(tall).shape == (288,)
     assert raster.silhouette(tall).sum() > 0
     assert l_shape.shape[0] == 8
+
+
+def test_matcher_ranks_by_category_then_size():
+    import match_stock_props as mp
+    assets = [
+        {"id": "bt_a", "category": "industrial", "footprint_wu": [40, 40], "height_wu": 60, "materials_resolved": True},
+        {"id": "bt_b", "category": "industrial", "footprint_wu": [200, 200], "height_wu": 300, "materials_resolved": True},
+        {"id": "bt_c", "category": "rock", "footprint_wu": [40, 40], "height_wu": 60, "materials_resolved": True},
+        {"id": "bt_d", "category": "industrial", "footprint_wu": [40, 40], "height_wu": 60, "materials_resolved": False},
+    ]
+    stock = {"smallfueltank": {"size_wu": [40, 60, 40], "uses": 3},
+             "tc1_2": {"size_wu": [10, 80, 10], "uses": 99},
+             "rock_x": {"size_wu": [40, 60, 40], "uses": 1}}
+    m = mp.match(stock, assets)
+    assert "tc1_2" not in m                      # vegetation never matched
+    assert m["smallfueltank"]["pick"] == "bt_a"  # same category, same size, resolved materials
+    assert m["smallfueltank"]["alternatives"][0] == "bt_d"
+    assert m["rock_x"]["pick"] == "bt_c"
+    assert m["smallfueltank"]["key"] == "staticprop:smallfueltank"
+
+
+def test_matcher_reports_no_candidate():
+    import match_stock_props as mp
+    m = mp.match({"lookouttower": {"size_wu": [20, 200, 20]}}, [{"id": "bt_x", "category": "debris", "footprint_wu": [1, 1],
+                                                              "height_wu": 1, "materials_resolved": True}])
+    assert m["lookouttower"]["pick"] is None
