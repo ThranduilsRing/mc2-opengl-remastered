@@ -155,11 +155,12 @@ void run() {
 
 void pumpWindowMessages() {
     graphics::pump_loading_events();
+    detail::serviceWindow(std::this_thread::get_id() == mainThread.load(std::memory_order_relaxed), [] {
 #ifdef _WIN32
-    if (std::this_thread::get_id() != mainThread.load(std::memory_order_relaxed)) return;
-    MSG m;
-    PeekMessageW(&m, nullptr, 0, 0, PM_NOREMOVE | PM_QS_SENDMESSAGE);   // runs sent messages only; posted input stays for SDL
+        MSG m;
+        PeekMessageW(&m, nullptr, 0, 0, PM_NOREMOVE | PM_QS_SENDMESSAGE);   // runs sent messages only; posted input stays for SDL
 #endif
+    }, graphics::note_window_pumped);
 }
 
 void start() {
