@@ -11,8 +11,8 @@
 
 #include <cstring>
 
-// Tree foliage tone (owner 11-23: corrected mips read too light/lime; 0 = authored colour, 0.85 = old far-tree luminance, 0.43 = midpoint).
-static constexpr float kTreeFoliageTone = 0.43f;
+// Tree foliage tone (owner 11-23: corrected mips read too light/lime; 0 = authored colour, 0.85 = old far-tree luminance, 0.43 = midpoint; owner 11-23 picked option C = 0.64).
+static constexpr float kTreeFoliageTone = 0.64f;
 
 // Build the per-group texture arrays and publish the per-packet and per-type layer tables.
 bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
