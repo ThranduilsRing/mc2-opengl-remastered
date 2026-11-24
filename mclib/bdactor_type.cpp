@@ -443,7 +443,10 @@ void BldgAppearanceType::init (mc2::czstring fileName)
 	{
 		if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
 			mc2::fmt::print_err("[MODOVERRIDE_TRACE] staticProp '{}'\n", mc2::fmt::safe(bldgBaseName));
-		const ModelOverrideRecord* ov = ModelOverrideRegistry::instance().resolve("staticProp", bldgBaseName);
+		// Buildings that are really trees (mc2x-compat Pine1/2/3, tc1_*: ObjectTypeNum 1) share the tree shape
+		// names, so a tree record covers them and a mission's pines match the stock missions.
+		const ModelOverrideRecord* ov = ModelOverrideRegistry::instance().resolveBuilding(bldgBaseName);
+		const bool treeRecord = ov && ov->overrideClass == "tree";
 		const bool userOverridesKit = ov && userArt && ov->manifestDir == "mods/mc2-industrial-kit/data/model_overrides";
 		if (userOverridesKit)
 			mc2::fmt::print_err("[MODOVERRIDE] building '{}': user assets take priority over bundled kit\n", fileName);
@@ -464,12 +467,14 @@ void BldgAppearanceType::init (mc2::czstring fileName)
 				const auto& lods = cond ? cond->intact.lods : ov->lods;
 				for (const auto& lod : lods)
 				{
-					if (lod.lod <= 0 || lod.lod >= MAX_LODS || bldgRenderLods[lod.lod]) continue;
+					if (lod.lod <= 0 || lod.lod >= (treeRecord ? MAX_TREE_RENDER_LODS : MAX_LODS) || bldgRenderLods[lod.lod]) continue;
 					auto shape = std::make_unique<TG_TypeMultiShape>();
 					if (importOverrideRenderShape(*ov, lod.sourceRelPath, bldgBaseName, "LOD", shape.get()))
 					{
 						bldgRenderLods[lod.lod] = std::move(shape);
-						if (lodDistance[lod.lod] <= 0) lodDistance[lod.lod] = lod.distance;
+						// A tree chain is switched by the batcher alone: a per-actor swap at the stock distance would re-register every tree.
+						if (treeRecord && lod.lod < MAX_LODS) lodDistance[lod.lod] = 0.0f;
+						else if (lod.lod < MAX_LODS && lodDistance[lod.lod] <= 0) lodDistance[lod.lod] = lod.distance;
 					}
 				}
 				if (destroyed.present())
@@ -604,22 +609,24 @@ void BldgAppearanceType::registerRenderShapes (void)
 			bldgShape[0]->GetTextureName(t, name, sizeof(name));
 			stockAlphaLighting |= S_strnicmp(name, "a_", 2) == 0;
 		}
-	for (int i = 0; i < MAX_LODS; ++i)
+	const bool treeRecord = isOverride && propMaterialSource && propMaterialSource->overrideClass == "tree";
+	const int lodSlots = treeRecord ? MAX_TREE_RENDER_LODS : MAX_LODS;
+	for (int i = 0; i < lodSlots; ++i)
 		GpuStaticPropBatcher::instance().registerMultiShape(getBldgRenderShape(i), isOverride,
-			isOverride ? propMaterialSource : nullptr, false, stockAlphaLighting);
+			isOverride ? propMaterialSource : nullptr, treeRecord, stockAlphaLighting && !treeRecord);
 	if (isOverride) {
 		// Authored LODs: the batcher picks one per instance per frame by camera distance (stock shapes have none).
-		TG_TypeMultiShape* lodShapes[MAX_LODS]{};
-		float lodDists[MAX_LODS]{};
-		for (int i = 0; i < MAX_LODS; ++i) {
+		TG_TypeMultiShape* lodShapes[MAX_TREE_RENDER_LODS]{};
+		float lodDists[MAX_TREE_RENDER_LODS]{};
+		for (int i = 0; i < lodSlots; ++i) {
 			lodShapes[i] = (i == 0 || bldgRenderLods[i]) ? getBldgRenderShape(i) : nullptr;
-			lodDists[i] = lodDistance[i];
+			lodDists[i] = i < MAX_LODS ? lodDistance[i] : 0.0f;
 		}
 		// The stock .fit LOD distances (x5) already fill lodDistance[]; the authored distances win here.
 		if (propMaterialSource)
 			for (const auto& lod : propMaterialSource->lods)
-				if (lod.lod > 0 && lod.lod < MAX_LODS && lod.distance > 0.0f) lodDists[lod.lod] = lod.distance;
-		GpuStaticPropBatcher::instance().registerLodGroup(std::span<TG_TypeMultiShape* const>(lodShapes, MAX_LODS), std::span<const float>(lodDists, MAX_LODS));
+				if (lod.lod > 0 && lod.lod < lodSlots && lod.distance > 0.0f) lodDists[lod.lod] = lod.distance;
+		GpuStaticPropBatcher::instance().registerLodGroup(std::span<TG_TypeMultiShape* const>(lodShapes, lodSlots), std::span<const float>(lodDists, lodSlots), treeRecord);
 	}
 	GpuStaticPropBatcher::instance().registerMultiShape(getBldgDmgRenderShape(), bldgDmgRenderShape != nullptr,
 		bldgDmgRenderShape ? propMaterialSource : nullptr);

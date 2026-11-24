@@ -89,6 +89,9 @@ public:
     // The condition chosen for an appearance in a mission ("" = pristine, the default).
     std::string selectedCondition(std::string_view mission, std::string_view appearanceName) const;
     const ModelOverrideRecord* resolve(mc2::czstring overrideClass, mc2::czstring appearanceName) const;
+    // A building object's record: its staticProp record, else the tree record of the same shape name (mod pines and
+    // broadleafs are buildings that reuse the stock tree shapes).
+    const ModelOverrideRecord* resolveBuilding(mc2::czstring shapeName) const;
     int count() const { return static_cast<int>(records_.size()); }
     const std::string& manifestDir() const { return manifestDir_; }
     static ModelOverrideRegistry& instance();
