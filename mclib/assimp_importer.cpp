@@ -13,6 +13,7 @@
 // Findings: docs/superpowers/explorations/2026-05-02-track-d-mvp-adversarial-findings.md
 #include "mc2_czstring.h"
 #include <chrono>
+#include <tracy/Tracy.hpp>
 #include "assimp_importer.h"
 #include "unit_anim_state.h"
 #include "mech_model_delta.h"
@@ -1018,9 +1019,8 @@ std::optional<float> clipDurationSec(const aiScene* scene, std::string_view clip
 
 // P9: planted-foot speed of each locomotion clip, measured once at import. A clip plays in
 // place, so while a foot is planted it slides backwards under the root at exactly the ground
-// speed the clip was authored for. Playback rate = actual speed / this value, and the planted
-// foot then stays put (mc2clip::strideRate). Units: the GPU model space (AS1 includes the
-// import scale), up = y. Needs e.AS1, so it runs on the GPU path only.
+// speed the clip was authored for. Measure in source Y-up space, then apply the import
+// scale to obtain world units/s (before the Z-up GPU axis conversion).
 void measureClipStrides(ImportedAnimEntry& e) {
     static const char* const kClips[] = {
         "atlas_moveCoreWalkFwd", "atlas_moveCoreRunFwd", "atlas_moveCoreSprintFwd", "atlas_moveCoreWalkBwd",
@@ -1041,25 +1041,15 @@ void measureClipStrides(ImportedAnimEntry& e) {
             double tt = 0, dd = 0;
             if (!mc2skel::EvaluateClipGpuBones(*e.plan, clip, static_cast<float>(f), g, &tt, &dd)) break;
             for (int k = 0; k < 2; ++k) {
-                const aiMatrix4x4 M = e.AS1 * rowMajorToAi(g[feet[k]].m);
+                const aiMatrix4x4 M = rowMajorToAi(g[feet[k]].m);
                 pos[k].push_back(aiVector3D(M.a4, M.b4, M.c4));
             }
         }
-        // One gait cycle moves each foot through its full fore-aft range twice (stance back,
-        // swing forward); the planted half covers that range at ground speed, so speed =
-        // 2 * range / duration along the foot's dominant horizontal axis. (A per-frame
-        // "lowest frames" test picked swing frames on in-place BT clips and over-read ~4x.)
-        float sum = 0.0f; int n = 0;
-        for (auto & po : pos) {
-            if (po.size() < 3) continue;
-            const auto [xlo, xhi] = std::ranges::minmax(po | std::views::transform([](const aiVector3D& p) { return p.x; }));
-            const auto [zlo, zhi] = std::ranges::minmax(po | std::views::transform([](const aiVector3D& p) { return p.z; }));
-            sum += 2.0f * std::max(xhi - xlo, zhi - zlo) / *dur;
-            ++n;
-        }
-        if (n > 0 && sum / n > 0.5f) {
-            e.strideSpeed[clip] = sum / n;
-            mc2::fmt::print_err("[MECH_IMPORT] stride '{}' planted-foot speed={:.2f} u/s (cycle {:.2f}s)\n", clip, sum / n, *dur);
+        const auto stride = mc2clip::measureStride(pos, *dur);
+        if (stride.speed() * e.scale > 0.5f) {
+            e.strideSpeed[clip] = stride.speed() * e.scale;
+            mc2::fmt::print_err("[MECH_IMPORT] stride '{}' planted={:.4f} estimate={:.4f} local u/s selected={:.2f} u/s (cycle {:.2f}s)\n",
+                clip, stride.planted, stride.estimate, e.strideSpeed[clip], *dur);
         }
     }
 }
@@ -1377,7 +1367,37 @@ static void rebakeImportedPresentation(ImportedAnimEntry& e, const std::vector<m
     ComputeBoundingBox(e.multi);
 }
 
-void mc2mechanim::CopyImportedActorPose(const void* source, const void* destination) {
+namespace {
+void groundActorPose(const ImportedAnimEntry& e, const ActorAnimState& s,
+                     std::vector<mc2skel::GpuBone>& globals, unsigned frameStamp) {
+    if (s.activeClip.starts_with("atlas_moveCore")) {
+        std::vector<glm::mat4> pose(globals.size());
+        for (size_t b = 0; b < globals.size(); ++b)
+            for (int r = 0; r < 4; ++r)
+                for (int c = 0; c < 4; ++c) pose[b][c][r] = globals[b].m[r * 4 + c];
+        mc2ground::solve(e.grounding, pose);
+        if (s_mechSkelTrace && frameStamp % 6 == 0) {
+            float soles[2] = {1e30f, 1e30f};
+            for (int side = 0; side < 2; ++side)
+                for (const auto& p : e.grounding.legs[side].sole)
+                    soles[side] = std::min(soles[side], (pose[p.bone] * glm::vec4(p.local, 1)).y);
+            const auto torso = std::find(e.names.begin(), e.names.end(), "j_Spine2");
+            const size_t b = static_cast<size_t>(torso - e.names.begin());
+            const float pitch = b < pose.size() ? std::atan2(pose[b][1].z, pose[b][1].y) * 57.29578f : 0;
+            MECH_SKEL_TRACE("ground frame=%u clip=%s time=%.4f soles=(%.4f,%.4f) pitch=%.3f",
+                frameStamp, s.activeClip.c_str(), s.clipTimeSec, (soles[0] - e.grounding.floor) * e.scale,
+                (soles[1] - e.grounding.floor) * e.scale, pitch);
+        }
+        for (size_t b = 0; b < globals.size(); ++b)
+            for (int r = 0; r < 4; ++r)
+                for (int c = 0; c < 4; ++c) globals[b].m[r * 4 + c] = pose[b][c][r];
+    }
+}
+}
+
+void mc2mechanim::CopyImportedActorPose(const void* source, const void* destination,
+                                      const mc2::sim::ImportedAnimState& presentation, float torsoYawDeg) {
+    ZoneScopedN("Mech.ImportedPresentationPose");
     if (!source || !destination) return;
     for (auto& entry : g_importedAnims) {
         const auto found = entry.actors.find(source);
@@ -1385,6 +1405,11 @@ void mc2mechanim::CopyImportedActorPose(const void* source, const void* destinat
             const auto& [foundKey, foundState] = *found;
             entry.actors[destination] = foundState;
             auto& draw = entry.actors[destination];
+            static_cast<mc2::sim::ImportedAnimState&>(draw) = presentation;
+            auto twist = entry.torsoTwist;
+            twist.degrees = torsoYawDeg;
+            if (mc2skel::EvaluateActorClipGpuBones(*entry.plan, draw, draw.lastGlobals, &twist))
+                groundActorPose(entry, draw, draw.lastGlobals, draw.lastFrame);
             if (entry.gpuMode) buildGpuModelDelta(entry, draw, draw.lastGlobals);
             else rebakeImportedPresentation(entry, draw.lastGlobals);
         }
@@ -1698,28 +1723,7 @@ void mc2mechanim::TickImportedMechs(float dt, unsigned frameStamp, const MechMot
         thread_local std::vector<mc2skel::GpuBone> globals;
         globals.clear();
         if (sampleActorClip(e, s, dt, motion, globals, advanceClock)) {
-            if (s.activeClip.starts_with("atlas_moveCore")) {
-                std::vector<glm::mat4> pose(globals.size());
-                for (size_t b = 0; b < globals.size(); ++b)
-                    for (int r = 0; r < 4; ++r)
-                        for (int c = 0; c < 4; ++c) pose[b][c][r] = globals[b].m[r * 4 + c];
-                mc2ground::solve(e.grounding, pose);
-                if (s_mechSkelTrace && frameStamp % 6 == 0) {
-                    float soles[2] = {1e30f, 1e30f};
-                    for (int side = 0; side < 2; ++side)
-                        for (const auto& p : e.grounding.legs[side].sole)
-                            soles[side] = std::min(soles[side], (pose[p.bone] * glm::vec4(p.local, 1)).y);
-                    const auto torso = std::find(e.names.begin(), e.names.end(), "j_Spine2");
-                    const size_t b = static_cast<size_t>(torso - e.names.begin());
-                    const float pitch = b < pose.size() ? std::atan2(pose[b][1].z, pose[b][1].y) * 57.29578f : 0;
-                    MECH_SKEL_TRACE("ground frame=%u clip=%s time=%.4f soles=(%.4f,%.4f) pitch=%.3f",
-                        frameStamp, s.activeClip.c_str(), s.clipTimeSec, (soles[0] - e.grounding.floor) * e.scale,
-                        (soles[1] - e.grounding.floor) * e.scale, pitch);
-                }
-                for (size_t b = 0; b < globals.size(); ++b)
-                    for (int r = 0; r < 4; ++r)
-                        for (int c = 0; c < 4; ++c) globals[b].m[r * 4 + c] = pose[b][c][r];
-            }
+            groundActorPose(e, s, globals, frameStamp);
             s.lastGlobals.swap(globals);   // retain the previous buffer for the next sample
             mc2clip::publishPreviewPose(motion.preview, e.gpuMode,
                 [&] { buildGpuModelDelta(e, s, s.lastGlobals); },

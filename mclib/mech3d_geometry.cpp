@@ -163,7 +163,7 @@ void Mech3DAppearance::updateGeometry (void)
 	if (!simPresentationPass && (simulationOwned() || mc2::overlap::onSimWorker())) { updateSimPose(); return; }
 	mc2::overlap::assertMainThread("Mech3DAppearance::updateGeometry");
     if (!simulationOwned()) tickImportedAnimation(true, true);
-    else mc2mechanim::CopyImportedActorPose(simulationShape_.get(), mechShape);
+    else mc2mechanim::CopyImportedActorPose(simulationShape_.get(), mechShape, unitAnim().imported, unitAnim().torsoRotation);
 	ZoneScopedN("GameLogic.Mech3D.UpdateGeometry");
 	// F3 CPU projection cost-baseline: sidecar bucket (NEVER in
 	// projection_total). One scope per visible mech per frame.

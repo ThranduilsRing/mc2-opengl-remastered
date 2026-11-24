@@ -54,6 +54,23 @@ struct ImportedAnimState {
         if (a.sectionVersion >= 5) a.sequence(fadeSourceLocals, 4096);
     }
 };
+// Match root interpolation between the two published ticks, including clip wrap.
+inline void presentImportedAnimation(const ImportedAnimState& previous, ImportedAnimState& draw, float alpha) {
+    if (previous.activeClip != draw.activeClip || previous.mode != draw.mode) return;
+    const auto sampleTime = [alpha](float from, float to, float duration, mc2clip::Mode mode) {
+        if (mode == mc2clip::Mode::Loop && to < from) to += duration;
+        float timeSec = from + (to - from) * std::clamp(alpha, 0.0f, 1.0f);
+        if (mode == mc2clip::Mode::Loop && duration > 0 && timeSec >= duration) timeSec -= duration;
+        return timeSec;
+    };
+    draw.clipTimeSec = sampleTime(previous.clipTimeSec, draw.clipTimeSec, draw.durationSec, draw.mode);
+    if (!draw.previousClip.empty() && previous.previousClip == draw.previousClip) {
+        draw.previousClipTimeSec = sampleTime(previous.previousClipTimeSec, draw.previousClipTimeSec,
+            draw.previousDurationSec, draw.previousOnce ? mc2clip::Mode::Once : mc2clip::Mode::Loop);
+        draw.fadeTimeSec = previous.fadeTimeSec + (draw.fadeTimeSec - previous.fadeTimeSec) * std::clamp(alpha, 0.0f, 1.0f);
+    }
+}
+
 // Advanced only by the fixed tick; copied into immutable render snapshots.
 struct UnitAnimState {
     float mechFrameRate{};
