@@ -327,6 +327,11 @@ const ModelOverrideRecord* ModelOverrideRegistry::resolve(mc2::czstring override
     return nullptr;
 }
 
+const ModelOverrideRecord* ModelOverrideRegistry::resolveBuilding(mc2::czstring shapeName) const {
+    const ModelOverrideRecord* prop = resolve("staticProp", shapeName);
+    return prop ? prop : resolve("tree", shapeName);
+}
+
 std::vector<std::string> modelOverrideMountOrder(std::string_view activeMod, std::string_view envDeps,
                                                  const std::vector<std::string>& modJsonDeps) {
     // mclib/vfs.cpp InitModSearchPaths: deps = mod.json deps, then MC2_MOD_DEPS (comma/semicolon, highest-priority-first),

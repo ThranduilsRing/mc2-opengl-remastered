@@ -60,7 +60,7 @@ class BldgAppearanceType : public AppearanceType
 		// NULL = no override → render falls back to stock bldgShape[lod].
 		// Collision/damage NEVER read this; they read bldgShape[lod] directly.
 		std::unique_ptr<TG_TypeMultiShape> bldgRenderShape;
-		std::unique_ptr<TG_TypeMultiShape> bldgRenderLods[MAX_LODS];
+		std::unique_ptr<TG_TypeMultiShape> bldgRenderLods[MAX_TREE_RENDER_LODS]; // slots >= MAX_LODS exist only for tree-record chains
 		// Destroyed-state render override (the cooked "destroyed" chain); NULL = stock bldgDmgShape.
 		std::unique_ptr<TG_TypeMultiShape>	bldgDmgRenderShape;
         const ModelOverrideRecord* propMaterialSource = nullptr; // transient; registry owns it
