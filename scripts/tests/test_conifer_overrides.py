@@ -1,4 +1,5 @@
 """Stock Pine1/2/3 render as the cooked Poly Haven conifers on the island-tree LOD chain (owner 11-14, 11-23)."""
+import hashlib
 import json
 from pathlib import Path
 
@@ -40,3 +41,8 @@ def test_every_conifer_file_is_pinned_for_deploy():
         paths = _chain(rec) + [s[k] for s in rec['materials']['slots'] for k in ('normal', 'orm')]
         for p in paths:
             assert len(PINS.get(f'data/model_overrides/{p}', '')) == 64, p
+
+
+def test_deploy_preserves_the_conifer_registry():
+    path = 'data/model_overrides/models.json'
+    assert PINS[path] == hashlib.sha256((ROOT / path).read_bytes()).hexdigest()
