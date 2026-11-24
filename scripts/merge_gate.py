@@ -1629,22 +1629,8 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             and s[0] != 'determinism-' + WINDOWED_DETERMINISM
             and not s[2].get("MC2_GATE_SKIP_REASON")]
     steps = [s for s in steps if s not in farm]
-    with ThreadPoolExecutor(max_workers=2 + bool(farm)) as pool:
-        harness = next((s for s in steps if s[0] == "harnesses" and not s[2].get("MC2_GATE_SKIP_REASON")), None)
-        contracts = next((s for s in steps if s[0] == "contracts" and not s[2].get("MC2_GATE_SKIP_REASON")), None)
-        harness_future = None
-        def timed_child(command, cwd, env):
-            started = time.monotonic()
-            result = run_child(command, cwd=cwd, env=env)
-            result.gate_elapsed = time.monotonic() - started
-            return result
+    with ThreadPoolExecutor(max_workers=2 + sum(s[0] in OFFLINE_STAGES for s in steps) + bool(farm)) as pool:
         def runner(command, cwd, env):
-            nonlocal harness_future
-            if contracts and harness and command == contracts[1]:
-                harness_future = pool.submit(timed_child, harness[1], cwd,
-                    dict(os.environ, **harness[2]))
-            if harness_future and command == harness[1]:
-                return harness_future.result()
             with install_lock(command):
                 return run_child(command, cwd=cwd, env=env)
         # The wrapper deliberately leaves leasing to each harness, rather than
@@ -1674,9 +1660,8 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             print(f"[merge_gate] worker balance: A+={[s[0] for s in to_a]} B+={[s[0] for s in determinism]} (A={load_a:.0f}s B={load_b:.0f}s before)", flush=True)
         # Save rows have private MC2_SAVE_DIR dirs, so they no longer wait for the mods battery.
         offline = [s for s in stock if s[0] in OFFLINE_STAGES]
-        offline_result = execute(offline, head, runner=runner, completed=completed) if offline else 0
-        if offline_result and not keep_going:
-            return 1
+        pending.extend(pool.submit(execute, [s], head, runner=runner, completed=completed) for s in offline)
+        offline_result = 0
         stock = [s for s in stock if s not in offline]
         boundary = next((i + 1 for i, s in enumerate(stock) if s[0] == "deploy"), 0)
         prefix = stock[:boundary]
@@ -1768,7 +1753,6 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
                             close_clone(copy_context)
             pending.append(pool.submit(auxiliary))
         result |= execute(stock[boundary:], head, runner=runner, completed=completed) if stock[boundary:] else 0
-        result |= offline_result
         for future in pending:
             result |= future.result()
         # Reuse can depend on both workers. Join them before reading their verdicts.
