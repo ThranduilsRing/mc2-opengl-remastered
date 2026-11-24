@@ -401,7 +401,7 @@ DWORD load(mc2::czstring path, gos_TextureFormat format, DWORD hints, DWORD vari
     } else if (!source->bytes) {
         source->file=true;
         if (file.isLoadedFromDisk()) {
-            const bool native=strstr(path,"mcui_gn_mechicons") || strstr(path,"cursors") || strstr(path,"mcl_mc_");
+            const bool native=strstr(path,"mcui_gn_mechicons") || strstr(path,"mc2x_mechicons") || strstr(path,"cursors") || strstr(path,"mcl_mc_");
             source->uvScale=native ? 1 : 4;
         }
         tryReadTgaLogicalSize(file,path,source->uvScale,source->logicalWidth,source->logicalHeight);

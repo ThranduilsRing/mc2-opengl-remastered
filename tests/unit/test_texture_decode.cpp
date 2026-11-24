@@ -45,6 +45,34 @@ std::vector<uint8_t> tga(int w, int h, int bpp, const std::vector<uint8_t>& bgra
 
 }  // namespace
 
+TEST_CASE("texture decode: TGA origins agree for raw and RLE loading art") {
+    const std::vector<uint8_t> expected{255, 0, 0, 255, 0, 255, 0, 255,
+                                        0, 0, 255, 255, 255, 255, 255, 255};
+    for (const bool top : {false, true}) {
+        const std::vector<uint8_t> pixels = top
+            ? std::vector<uint8_t>{0, 0, 255, 255, 0, 255, 0, 255, 255, 0, 0, 255, 255, 255, 255, 255}
+            : std::vector<uint8_t>{255, 0, 0, 255, 255, 255, 255, 255, 0, 0, 255, 255, 0, 255, 0, 255};
+        for (const bool rle : {false, true}) {
+            auto bytes = tga(2, 2, 32, {});
+            bytes[17] = top ? 0x28 : 8;
+            bytes[2] = rle ? 10 : 2;
+            if (rle) bytes.push_back(3); // one raw packet spans both rows
+            bytes.insert(bytes.end(), pixels.begin(), pixels.end());
+            const auto decoded = mc2tex::decodeMemory(bytes.data(), bytes.size(), "loading.tga", gos_Texture_Solid, 0);
+            REQUIRE(decoded);
+            CHECK(decoded->pixels == expected);
+            if (rle) {
+                bytes.resize(18);
+                bytes.insert(bytes.end(), {0x83, 0, 0, 255, 255});
+                const auto repeat = mc2tex::decodeMemory(bytes.data(), bytes.size(), "loading.tga", gos_Texture_Solid, 0);
+                REQUIRE(repeat);
+                CHECK(repeat->pixels == std::vector<uint8_t>{255, 0, 0, 255, 255, 0, 0, 255,
+                                                            255, 0, 0, 255, 255, 0, 0, 255});
+            }
+        }
+    }
+}
+
 TEST_CASE("texture lock: fused BGRA copy matches the legacy word swizzle") {
     std::vector<uint8_t> source(256 * 4), expected(source.size()), actual(source.size(), 0xcd);
     for (uint32_t i = 0; i < 256; ++i) {
