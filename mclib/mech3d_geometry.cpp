@@ -22,7 +22,7 @@ struct FootGroundFrame { const glm::mat4* modelToWorld; glm::vec3 root; };
 float surfaceUnder (void* ctx, const float modelXyz[3])
 {
 	const auto& frame = *static_cast<const FootGroundFrame*>(ctx);
-	const glm::vec3 world = *frame.modelToWorld * glm::vec4(modelXyz[0], modelXyz[1], modelXyz[2], 1.0f);
+	const glm::vec3 world = mc2foot::worldPoint(*frame.modelToWorld, modelXyz);
 	const glm::vec3 at(-world.x, world.z, world.y);   // render space -> MC2 space, as GetTransformedNodePosition
 	return mc2foot::follow(TerrainRuntime::sampleVisualHeight(at) - TerrainRuntime::sampleVisualHeight(frame.root),
 		mc2foot::reach(std::hypot(at.x - frame.root.x, at.y - frame.root.y)));
@@ -185,9 +185,15 @@ void Mech3DAppearance::updateGeometry (void)
     else {
 	// Draw side only (the sim-side tick keeps the flat floor). Placing the pose first maps model points to the world;
 	// the body transform below reuses that walk when the lift does not move it.
-	FootGroundFrame frame{&mechShape->GetShapeRec(0)->shapeToWorld, position};
 	if (footGrounding && imported && mechShape->GetNumShapes() > 0)
 	{
+		ZoneScopedN("Mech3D.FootGrounding");
+		FootGroundFrame frame{&mechShape->GetShapeRec(0)->shapeToWorld, position};
+		// The torso twist is node state the walk reads; set it first so this walk is final for the turn (the body
+		// transform below skips an already-stamped walk when the lift is 0).
+		glm::quat torso = mc2::math::quatFromEulerSim(mc2::math::Euler(0.0f, unitAnim().torsoRotation * DEGREES_TO_RADS, 0.0f));
+		if (rotationalNodeIndex == -1) rotationalNodeIndex = mechShape->SetNodeRotation("joint_torso", &torso);
+		else mechShape->SetNodeRotation(rotationalNodeIndex, &torso);
 		glm::vec3 origin;
 		mc2ToRender(origin, position);
 		glm::quat yaw = mc2::math::quatFromEulerSim(mc2::math::Euler(0.0f, rotation * DEGREES_TO_RADS, 0.0f));
@@ -1054,8 +1060,9 @@ glm::vec3 Mech3DAppearance::snapAnchor (glm::vec3 nodePos) const
 // clearance over the surface under its three lowest nodes. Zero wherever the visual and gameplay surfaces agree.
 float Mech3DAppearance::poseGroundLift (float rootDelta)
 {
+	ZoneScopedN("Mech3D.PoseGroundLift");
 	const long nodes = mechType->getTotalNodes();
-	if (nodes < 2)
+	if (nodes < 2 || mechType->numFootNodes < 2)
 		return 0.0f;
 	const long gesture = unitAnim().currentGestureId;
 	const bool fallen = (status == OBJECT_STATUS_DESTROYED) || gesture == GestureFallBackward || gesture == GestureFallForward ||

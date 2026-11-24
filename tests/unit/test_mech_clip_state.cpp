@@ -476,3 +476,15 @@ TEST_CASE("clip state: presentation clocks follow root alpha without changing si
     mc2::sim::presentImportedAnimation(previous, draw, 0.5f);
     CHECK(draw.clipTimeSec == 0);
 }
+
+// Trigger: mc2foot::worldPoint (foot grounding visual-surface read). The engine matrix is row-vector: point * M.
+TEST_CASE("foot grounding: worldPoint uses the row-vector shapeToWorld layout") {
+    glm::mat4 m(1.0f);
+    m[0][0] = 0; m[0][2] = 1; m[2][0] = -1; m[2][2] = 0;   // rotation part, glm m[column][row]
+    m[0][3] = 10; m[1][3] = 2; m[2][3] = -3;               // translation in m[c][3], as buildTranslation writes it
+    const float p[3] = {1, 0, 0};
+    const glm::vec3 w = mc2foot::worldPoint(m, p);          // out[c] = dot((x,y,z,1), m[c])
+    CHECK(w.x == doctest::Approx(10));
+    CHECK(w.y == doctest::Approx(2));
+    CHECK(w.z == doctest::Approx(-4));
+}

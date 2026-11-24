@@ -9,6 +9,13 @@
 namespace mc2foot {
 constexpr float kMinReach = 2.0f;
 
+// A model-space point to the world through an engine shapeToWorld (row-vector layout: point * matrix, translation in
+// m[c][3]), the mapping the GPU mech batcher uses.
+inline glm::vec3 worldPoint(const glm::mat4& shapeToWorld, const float modelXyz[3])
+{
+    return glm::vec3(glm::vec4(modelXyz[0], modelXyz[1], modelXyz[2], 1.0f) * shapeToWorld);
+}
+
 // How far a contact may leave the surface under the root: the surface may rise or fall at 45 degrees across the
 // horizontal distance to the contact, and never less than kMinReach. A steeper step is an edge the contact hangs over.
 inline float reach(float horizontalDistance) { return std::max(kMinReach, horizontalDistance); }
