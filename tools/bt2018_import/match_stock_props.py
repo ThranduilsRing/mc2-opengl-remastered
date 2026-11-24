@@ -88,6 +88,44 @@ def match(stock_props, assets, top=4):
     return out
 
 
+ID_MAX = 16  # cook.py truncates node names past 16 characters; ids must stay unique within that
+
+
+def mapping_props(mapping, library, bindings):
+    """Reviewed matcher output -> props_catalog-style props: one package per picked asset, replacing every
+    stock key that picked it. Keys reviewed "none" keep stock. Materials come from the scene/prefab bindings."""
+    assets = {a["id"]: a for a in library["assets"]}
+    by_pick = {}
+    for key, m in sorted(mapping.items()):
+        if m.get("pick") and m.get("review") != "none":
+            by_pick.setdefault(m["pick"], []).append(m["key"])
+    props = []
+    for pid, keys in sorted(by_pick.items()):
+        a = assets[pid]
+        specs = []
+        for name in a.get("materials") or []:
+            mat = bindings["materials"].get(name, {})
+            mp = mat.get("maps", {})
+            if not mp.get("_MainTex"):
+                continue
+            specs.append({"alb": mp["_MainTex"], "nrm": mp.get("_BumpMap"), "amb": mp.get("_OcclusionMap"),
+                          "mtl": mp.get("_MetallicGlossMap"), "cutoff": mat.get("cutoff", 0.5), "bump_scale": mat.get("bump_scale", 1.0)})
+        props.append({"id": pid, "category": a["category"], "class": "dielectric", "file": a["file"],
+                      "placement_scale": a.get("placement_scale", [1.0, 1.0, 1.0]),
+                      "lods": [{"mesh": n, "distance_wu": 600 * i} for i, n in enumerate(a["lod_meshes"])],
+                      "materials": specs, "replaces": keys})
+    return props
+
+
+def check_ids(props):
+    """Pre-check before any extraction: ids fit the cook's node-name limit and stay unique."""
+    ids = [p["id"] for p in props]
+    bad = [i for i in ids if len(i) > ID_MAX]
+    dup = sorted({i for i in ids if ids.count(i) > 1})
+    if bad or dup:
+        raise SystemExit(f"prop ids over {ID_MAX} chars {bad} or duplicated {dup}")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--library", type=Path, required=True)

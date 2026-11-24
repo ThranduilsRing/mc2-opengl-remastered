@@ -149,3 +149,30 @@ def test_matcher_rejects_fragments_and_volume_mismatch():
               dict(base, id="bt_ok", solidity=0.8, volume_wu3=48000)]
     m = mp.match({"house": {"size_wu": [40, 40, 40], "volume_wu3": 50000, "uses": 1}}, assets)
     assert m["house"]["pick"] == "bt_ok" and m["house"]["alternatives"] == []
+
+
+def test_mapping_drives_packages_and_checker():
+    import check_prop_packages as cpp
+    import match_stock_props as mp
+    lib = {"assets": [{"id": "bt_house", "category": "building", "file": "f", "lod_meshes": ["h_LOD0", "h_LOD1"],
+                       "materials": ["m"], "placement_scale": [1, 1, 1]}]}
+    bind = {"materials": {"m": {"maps": {"_MainTex": "alb", "_BumpMap": "nrm"}}}}
+    mapping = {"a": {"key": "staticprop:a", "pick": "bt_house"}, "b": {"key": "staticprop:b", "pick": "bt_house"},
+               "c": {"key": "staticprop:c", "pick": "bt_house", "review": "none"}}
+    props = mp.mapping_props(mapping, lib, bind)
+    assert [p["replaces"] for p in props] == [["staticprop:a", "staticprop:b"]]
+    assert props[0]["materials"][0]["alb"] == "alb" and props[0]["lods"][1]["distance_wu"] == 600
+    mp.check_ids(props)
+    man = [{"id": "bt_house", "replaces": props[0]["replaces"]}]
+    assert cpp.check_mapping(mapping, man) == []
+    man[0]["replaces"].append("staticprop:c")
+    assert len(cpp.check_mapping(mapping, man)) == 1
+
+
+def test_check_ids_rejects_long_or_duplicate_ids():
+    import match_stock_props as mp
+    import pytest
+    with pytest.raises(SystemExit):
+        mp.check_ids([{"id": "bt_" + "x" * 14}])
+    with pytest.raises(SystemExit):
+        mp.check_ids([{"id": "bt_a"}, {"id": "bt_a"}])

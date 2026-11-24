@@ -1,13 +1,14 @@
 #!/usr/bin/env py -3
 """Offline checker for BT2018 prop packages (extract_bt2018_props.py output).
 
-  py -3 tools/bt2018_import/check_prop_packages.py <out dir> [--cooked <mod dir>]
+  py -3 tools/bt2018_import/check_prop_packages.py <out dir> [--cooked <mod dir>] [--mapping mapping.json]
 
 Per package: manifest schema and required fields, LOD GLBs exist with matching sha256 and decode
 (glTF header, accessors in range, every material texture resolves to an embedded image), the scale is
 sane (largest extent 0.5..250 m at 4 wu/m; terrain-sized meshes fail), triangle counts fall with LOD,
 and every `replaces` key is '<class>:<name>'. With --cooked the mod's models.json must carry every
-replaces key and every referenced file must exist. Exit 0 = no errors.
+replaces key and every referenced file must exist. With --mapping every picked stock key must be replaced by
+the package of its pick, and keys reviewed "none" (and unpicked keys) must stay stock. Exit 0 = no errors.
 """
 from __future__ import annotations
 
@@ -105,10 +106,24 @@ def check_cooked(mod, manifests):
     return errs
 
 
+def check_mapping(mapping, manifests):
+    errs = []
+    owner = {k.lower(): man["id"] for man in manifests for k in man["replaces"]}
+    for name, m in sorted(mapping.items()):
+        key = m["key"].lower()
+        if m.get("pick") and m.get("review") != "none":
+            if owner.get(key) != m["pick"]:
+                errs.append(f"mapping: {m['key']} should be replaced by {m['pick']}, packages give {owner.get(key)}")
+        elif key in owner:
+            errs.append(f"mapping: {m['key']} is reviewed none/unpicked but {owner[key]} replaces it")
+    return errs
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("root", type=Path)
     ap.add_argument("--cooked", type=Path)
+    ap.add_argument("--mapping", type=Path)
     args = ap.parse_args(argv)
     manifests, errors = [], []
     for pdir in sorted(p for p in args.root.iterdir() if (p / "bt2018_prop_package.json").is_file()):
@@ -119,6 +134,8 @@ def main(argv=None):
               f"lods={[l['triangles'] for l in man.get('lods', [])]}")
     if args.cooked:
         errors += check_cooked(args.cooked, manifests)
+    if args.mapping:
+        errors += check_mapping(json.loads(args.mapping.read_text(encoding="utf-8"))["map"], manifests)
     for e in errors:
         print("ERROR", e)
     print(f"{len(manifests)} packages, {len(errors)} errors")

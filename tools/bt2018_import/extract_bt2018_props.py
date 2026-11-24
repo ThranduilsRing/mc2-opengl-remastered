@@ -9,6 +9,12 @@ glTF 2.0 (metres, right handed, PBR maps embedded) so the common cooker consumes
     py -3 tools/content_pipeline/cook.py <out>/recipe.json            (-> mods/bt2018-props)
     py -3 tools/bt2018_import/check_prop_packages.py <out>
 
+or, driven by the reviewed auto-matcher output instead of props_catalog.json:
+
+    py -3.12 tools/bt2018_import/extract_bt2018_props.py --out <out>         --mapping mapping.json --library lib/catalog.json --bindings all.json
+    py -3 tools/content_pipeline/cook.py <out>/recipe.json --no-compress   (proof cook)
+    py -3 tools/bt2018_import/check_prop_packages.py <out> --mapping mapping.json --cooked <out>/mod/bt2018-props
+
 Extracted bytes never enter git; the catalog (mesh names, texture stems, classes, the stock mapping
 table) is the committed recipe. Frame: Unity (left handed) -> glTF by negating X and flipping winding;
 UV v flips; the cooker applies 4 wu per metre (wu_per_unit in the recipe).
@@ -110,7 +116,11 @@ def pack_maps(inst, spec, alpha_mask):
     if not alpha_mask:
         alb = alb.copy()
         alb[..., 3] = 255
-    nrm = fit(spec["nrm"]).astype(np.float32)
+    if not spec.get("nrm"):  # material without a normal map: flat tangent-space normal
+        nrm = np.zeros((*size, 4), np.float32)
+        nrm[..., :2] = 127.5
+    else:
+        nrm = fit(spec["nrm"]).astype(np.float32)
     dxt5 = nrm[..., 0].mean() > 240  # DXT5nm: x in A, y in G
     x = (nrm[..., 3] if dxt5 else nrm[..., 0]) / 127.5 - 1
     y = nrm[..., 1] / 127.5 - 1
@@ -208,6 +218,7 @@ def build_prop(inst, prop, out):
     for lod_i, lod in enumerate(prop["lods"]):
         mesh = find_mesh(inst, prop["file"], lod["mesh"])
         pos, nrm, uv, tan, subs = mesh_prims(mesh)
+        pos = pos * np.asarray(prop.get("placement_scale", (1.0, 1.0, 1.0)), np.float32)
         auto = renderer_materials(inst, prop["file"], lod["mesh"])
         specs = prop.get("materials") or []
         prims = []
@@ -288,8 +299,18 @@ def main(argv=None):
     ap.add_argument("--catalog", type=Path, default=Path(__file__).with_name("props_catalog.json"))
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--only", help="comma separated prop ids")
+    ap.add_argument("--mapping", type=Path, help="match_stock_props.py output; with --library and --bindings replaces --catalog")
+    ap.add_argument("--library", type=Path)
+    ap.add_argument("--bindings", type=Path)
     args = ap.parse_args(argv)
-    catalog = json.loads(args.catalog.read_text(encoding="utf-8"))
+    from match_stock_props import mapping_props, check_ids
+    if args.mapping:
+        catalog = {"props": mapping_props(json.loads(args.mapping.read_text(encoding="utf-8"))["map"],
+                                          json.loads(args.library.read_text(encoding="utf-8")),
+                                          json.loads(args.bindings.read_text(encoding="utf-8")))}
+    else:
+        catalog = json.loads(args.catalog.read_text(encoding="utf-8"))
+    check_ids(catalog["props"])
     inst = Install(args.install)
     wanted = set(args.only.split(",")) if args.only else None
     manifests = []
