@@ -12,7 +12,16 @@ Diff promotions at a per-merge gate (`promoted_stages`): a sim-sensitive diff ad
 
 Checks run by default only for touched logic: `scripts/contracts-cache-inputs.txt` is the contract trigger table; unscoped rows run nightly, and explicit `--rows` still runs an offline proof. The comparison base selects Python modules; full suites run nightly. Precheck receipts are informational. Precheck links only with `--with-link` and records whether sim rows are required without starting games. The merged tree gets one build and the gate's sim rows. Ratchet debt, a loosened log-tag census and a lowered gate population floor are merge review notes; generators re-record the current baselines and must successfully recheck them. Generator/tool execution failures remain errors. Lane-tip lint still checks the lane's own ratchet delta. Stale generated outputs are deferred only for known stale-only diagnostics, then regenerated and successfully rechecked at batch end.
 
-`gate-verdict.json` records wall seconds, per-stage seconds, stage reasons and measured host lease wait separately. A tier-0 gate over 20 minutes excluding host lease wait prints advisory `[GATE_BUDGET] OVER` and its three longest stages; the orchestrator opens an infrastructure lane when it fires. Logs are UTF-8.
+`gate-verdict.json` records wall seconds, per-stage seconds, stage reasons and measured host lease wait separately. A tier-0 gate over 20 minutes excluding host lease wait prints advisory `[GATE_BUDGET] OVER` and its three longest stages; the orchestrator opens an infrastructure lane when it fires. Logs are UTF-8. It also carries `stage_table` (name, status, seconds, scheduler wait, longest first).
+
+## Pare-down rules (owner 2026-11-23)
+
+- Scoped pytest: an unmapped path no longer selects the full suite (`scripts/run_tools_tests.py` prints the unmapped list; an unmapped script or tool module named X selects tests whose name contains X). lane_merge verify runs the scoped Python tests in parallel with the build. The full suites run nightly; run them in the background when the last nightly is more than 24 h old.
+- The gate runs runtime rows concurrently with the offline stages, and a runtime row is reused when the hash of the engine-domain input tree and the exe fingerprint are unchanged (unknown paths count as engine). An offline red fixed by a tests-only commit is re-proved by rerunning that one row, not the whole gate.
+- The editor stage and the player-path row (except front-end, campaign, video and save diffs) are nightly. No merge-install smoke-lite: gate tier1 covers it. The doctest runs once, in the gate harness tree.
+- v0.4 promotion: re-check owner state right before the deploy; `py -3 scripts/deploy_payload.py --target game --ninja --verdict <slot>/build64-ninja/gate-verdict.json`; then one smoke-lite with gate priority: `MC2_IN_GATE=1 py -3 scripts/run_smoke.py --lite --keep-logs --exe A:/Games/mc2-opengl/mc2-win64-v0.4/mc2.exe`. No lane exclusive or Tracy capture until it ends.
+- The gate install is the persistent `E:/mc2-installs/merge-gate`, reseeded weekly (private save dirs per window).
+- Dirty README.md (owner edits) never blocks the clean-tree check.
 
 ## Publishing to v0.4 (`deploy_payload.py --target game`)
 

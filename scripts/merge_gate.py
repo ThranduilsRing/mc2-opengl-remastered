@@ -71,7 +71,7 @@ MOD_BATTERY_STAGES = ("mods", "mods-slim")
 def stage_tier(name):
     if name.startswith(("capture-", "compare-captures", "compare-noise")):
         return 1
-    if name in NON_BLOCKING_STAGES:
+    if name in NON_BLOCKING_STAGES or name == "editor":
         return 1
     if name in ("mods", "video-decode"):
         return 2
@@ -154,8 +154,8 @@ def mod_battery_results(output):
 #: Nightly 03/16 determinism is one pinned run (`check --single`, p29 L23); weekly and sim-sensitive diffs keep the a/b pair.
 SINGLE_RUN_DETERMINISM = ("mc2_03", "mc2_16")
 #: Front end, logistics and comm video: only player-path drives them (every other smoke boots --mission under SmokeMode).
-PLAYER_PATH_GLOBS = ("code/logistics*", "code/mainmenu*", "code/mc2movie*", "code/loadscreen*", "code/mechlab*", "code/mechbay*",
-                     "code/pilotready*", "code/missionbegin*", "code/missionselect*", "code/*video*", "code/*movie*", "code/*menu*",
+PLAYER_PATH_GLOBS = ("code/mainmenu*", "code/mc2movie*", "code/loadscreen*", "code/logisticsmainmenu*", "code/logisticssave*", "code/logisticsload*",
+                     "code/campaign*", "code/missionbegin*", "code/missionselect*", "code/*video*", "code/*movie*", "code/*menu*",
                      "guiruntime/playerfrontend*", "gameos/gameos/*video*", "gameos/gameos/*movie*", "scripts/run_player_path.py")
 
 
@@ -444,6 +444,7 @@ class GateState:
         self.started_signatures = {}
         self.started_reports = {}
         self.specs = {n: (c, e) for n, c, e in steps}
+        self.runtime_tree = runtime_input_tree(head)
 
     def __enter__(self):
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -530,15 +531,19 @@ class GateState:
                     if not layer.is_dir():
                         raise FileNotFoundError(f'mod receipt input missing: {layer}')
                     inputs.update(p for p in layer.rglob('*') if p.is_file())
+        exe_tree = None
         for arg in command:
             path = Path(arg)
             if not path.is_absolute():
                 path = ROOT / path
             if path.is_file():
+                if self.runtime_tree and path.resolve() == self.exe.resolve():
+                    exe_tree = self.runtime_tree   # exe bytes embed HEAD; key it by its engine input tree
+                    continue
                 inputs.add(path)
             elif path.is_dir() and '--install' in command and arg == command[command.index('--install') + 1]:
                 inputs.add(path / '.deployed_manifest.csv')
-        hashes = {}
+        hashes = {'{EXE_TREE}': exe_tree} if exe_tree else {}
         for path in sorted(inputs, key=str):
             key = str(path)
             if base is not None and path.is_relative_to(base):
@@ -570,8 +575,17 @@ class GateState:
         row = self.data["stages"].get(name, {})
         sha = self.exe_sha()
         offline = name in OFFLINE_STAGES
-        if not ((row.get('head') == self.head or (not offline and head_delta_nonruntime(row.get('head'), self.head, name)))
-                and (offline or sha is not None and row.get('exe_sha') == sha)
+        same_runtime = bool(self.runtime_tree and row.get('runtime_tree') == self.runtime_tree)
+        exe_ok = sha is not None and row.get('exe_sha') == sha
+        if not offline and not exe_ok and same_runtime and sha is not None and name != 'deploy':
+            from exe_fingerprint import extract
+            try:
+                fp = extract(self.exe)
+                exe_ok = bool(fp.get('present') and not fp.get('dirty') and runtime_input_tree(fp.get('sha')) == self.runtime_tree)
+            except (OSError, ValueError):
+                exe_ok = False
+        if not ((row.get('head') == self.head or (not offline and (same_runtime or head_delta_nonruntime(row.get('head'), self.head, name))))
+                and (offline or exe_ok)
                 and stage_passed(row.get('status', '')) and not row.get('status', '').startswith(ADVISORY_PREFIX)):   # a red advisory row is rerun, never replayed
             return False
         specs = (command, overrides) if name == 'mods' else self.specs.get(name, (command, overrides))
@@ -648,7 +662,7 @@ class GateState:
                 except OSError:
                     pass
             self.data["stages"][name] = dict(
-                head=self.head, exe_sha=self.exe_sha(), status=status, seconds=seconds,
+                head=self.head, exe_sha=self.exe_sha(), runtime_tree=self.runtime_tree, status=status, seconds=seconds,
                 artefact_dir=artefact, scheduler_wait_seconds=scheduler_wait,
                 signature=signature, evidence=evidence)
             self.write()
@@ -810,6 +824,19 @@ def head_delta_nonruntime(old, new, row=None):
     return bool(out) and change_domains(out) <= {'docs', 'tooling'}
 
 
+def runtime_input_tree(ref):
+    """Hash engine-domain Git entries; unclassified paths remain engine inputs."""
+    if not ref:
+        return None
+    try:
+        entries = git("ls-tree", "-rz", ref).split("\0")
+        engine = [entry for entry in entries if entry and "\t" in entry
+                  and "engine" in change_domains([entry.split("\t", 1)[1]])]
+        return hashlib.sha256("\0".join(engine).encode()).hexdigest() if engine else None
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
 def change_domains(paths):
     domains = set()
     for raw in paths:
@@ -817,6 +844,8 @@ def change_domains(paths):
         suffix = Path(p).suffix
         if p.startswith(("docs/", ".claude/")) or suffix in (".md", ".rst"):
             domains.add("docs")
+        elif p.startswith(("tests/unit/", "scripts/tests/")) or (p.startswith("tools/") and Path(p).name.startswith("test_")):
+            domains.add("tooling")
         elif p.startswith(("scripts/merge_gate.py", "scripts/deploy_payload.py", "scripts/kit", "scripts/run_smoke.py",
                            "scripts/smoke_lib/", "scripts/run_visual_capture.py", "scripts/check-default-build-quiet.py",
                            "scripts/cc_launcher.py", "scripts/ninja_build.py", "scripts/run-unit-tests.sh",
@@ -1399,6 +1428,9 @@ def write_verdict(paths, *, head, branch, verdict, steps, skipped, artifacts, ti
                 required=[n for n, _, _ in steps],
                 executed={n: r for n, r in ROW_RESULTS.items() if not r["status"].startswith(("SKIP", "DRY-RUN"))},
                 skipped={n: reasons.get(n, "not run") for n in skipped},
+                stage_table=[dict(name=n, status=r["status"], seconds=round(r.get("seconds", 0.0), 1),
+                                  scheduler_wait_s=round(r.get("scheduler_wait_seconds", 0.0), 1))
+                             for n, r in sorted(ROW_RESULTS.items(), key=lambda kv: -kv[1].get("seconds", 0.0))],
                 not_run=[n for n, _, _ in steps if n not in ROW_RESULTS and n not in skipped],
                 failed=[dict(name=n, status=s) for n, s in FAILED_STAGES],
                 advisory=[dict(name=n, status=r["status"]) for n, r in ROW_RESULTS.items() if r["status"].startswith(ADVISORY_PREFIX)],
@@ -1629,22 +1661,8 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             and s[0] != 'determinism-' + WINDOWED_DETERMINISM
             and not s[2].get("MC2_GATE_SKIP_REASON")]
     steps = [s for s in steps if s not in farm]
-    with ThreadPoolExecutor(max_workers=2 + bool(farm)) as pool:
-        harness = next((s for s in steps if s[0] == "harnesses" and not s[2].get("MC2_GATE_SKIP_REASON")), None)
-        contracts = next((s for s in steps if s[0] == "contracts" and not s[2].get("MC2_GATE_SKIP_REASON")), None)
-        harness_future = None
-        def timed_child(command, cwd, env):
-            started = time.monotonic()
-            result = run_child(command, cwd=cwd, env=env)
-            result.gate_elapsed = time.monotonic() - started
-            return result
+    with ThreadPoolExecutor(max_workers=2 + sum(s[0] in OFFLINE_STAGES for s in steps) + bool(farm)) as pool:
         def runner(command, cwd, env):
-            nonlocal harness_future
-            if contracts and harness and command == contracts[1]:
-                harness_future = pool.submit(timed_child, harness[1], cwd,
-                    dict(os.environ, **harness[2]))
-            if harness_future and command == harness[1]:
-                return harness_future.result()
             with install_lock(command):
                 return run_child(command, cwd=cwd, env=env)
         # The wrapper deliberately leaves leasing to each harness, rather than
@@ -1674,9 +1692,8 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             print(f"[merge_gate] worker balance: A+={[s[0] for s in to_a]} B+={[s[0] for s in determinism]} (A={load_a:.0f}s B={load_b:.0f}s before)", flush=True)
         # Save rows have private MC2_SAVE_DIR dirs, so they no longer wait for the mods battery.
         offline = [s for s in stock if s[0] in OFFLINE_STAGES]
-        offline_result = execute(offline, head, runner=runner, completed=completed) if offline else 0
-        if offline_result and not keep_going:
-            return 1
+        pending.extend(pool.submit(execute, [s], head, runner=runner, completed=completed) for s in offline)
+        offline_result = 0
         stock = [s for s in stock if s not in offline]
         boundary = next((i + 1 for i, s in enumerate(stock) if s[0] == "deploy"), 0)
         prefix = stock[:boundary]
@@ -1768,7 +1785,6 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
                             close_clone(copy_context)
             pending.append(pool.submit(auxiliary))
         result |= execute(stock[boundary:], head, runner=runner, completed=completed) if stock[boundary:] else 0
-        result |= offline_result
         for future in pending:
             result |= future.result()
         # Reuse can depend on both workers. Join them before reading their verdicts.
@@ -2303,7 +2319,7 @@ def main(argv=None):
         for n, c, _ in steps:
             if n == "compare-captures-classic":
                 c[c.index("--compare-only") + 1] = str(classic_before)
-    if window and window_reusable(window, git("rev-parse", "HEAD^{tree}")):
+    if window and window.get("native_unit") == "PASS" and window_reusable(window, git("rev-parse", "HEAD^{tree}")):
         reused = []
         for name, command, overrides in steps:
             if name == "harnesses" and "--unit" in command:

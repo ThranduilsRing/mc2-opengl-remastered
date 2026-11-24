@@ -49,13 +49,27 @@ def test_art_input_runs_its_selected_module(monkeypatch):
     assert rtt.main() == 0
 
 
-def test_unmapped_change_falls_back_and_art_is_local():
+def test_unmapped_change_is_reported_and_art_is_local(capsys):
     import run_tools_tests as rtt
     modules = ["tools/scifi_kit/test_kit.py", "tools/blender_pipeline/test_export.py"]
-    assert rtt.scoped_modules(modules, ["new_subsystem/input.xyz"]) == modules
+    assert rtt.scoped_modules(modules, ["new_subsystem/input.xyz"]) == []
+    assert "new_subsystem/input.xyz" in capsys.readouterr().out
     assert rtt.scoped_modules(modules, ["tools/scifi_kit/cook.py"]) == modules[:1]
     assert rtt.scoped_modules(modules, ["tools/blender_pipeline/export.py"]) == modules[1:]
     assert rtt.scoped_modules(modules, ["data/new.glb"]) == modules
+
+
+def test_1122m_selection_is_small_and_includes_campaign_marker():
+    import run_tools_tests as rtt
+    import run_scripts_tests as rst
+    paths = subprocess.run(["git", "diff", "--name-only", "8fc8afe78", "7fb0d52f7"], cwd=rtt.ROOT, text=True,
+                           check=True, stdout=subprocess.PIPE,
+                           **console_child.child_kwargs(redirected=True)).stdout.splitlines()
+    modules = rtt.discover() + rst.discover()
+    selected = rtt.scoped_modules(modules, paths)
+    assert len(modules) == 422
+    assert len(selected) == 10
+    assert "scripts/tests/test_campaign_marker_selection.py" in selected
 
 
 def test_exact_tip_passes_reject_dirty_moved_failed_and_corrupt(tmp_path, monkeypatch):

@@ -183,7 +183,7 @@ TEST_CASE("icon_atlas_harness/exact_size_hud_art_beats_resampling") {
 
 TEST_CASE("icon_atlas_harness/stock_chassis_have_art_for_every_hud_size") {
     namespace fs = std::filesystem;
-    const fs::path hud = fs::path(__FILE__).parent_path().parent_path().parent_path() / "data" / "art" / "mechicons" / "hud";
+    const fs::path hud = fs::path(MC2_REPO_ROOT) / "data" / "art" / "mechicons" / "hud";
     if (!fs::exists(hud / "front")) return; // source tree without data/
     struct Size { int w, h; };
     const auto pngSize = [](const fs::path& p, int& w, int& h) {
@@ -217,7 +217,7 @@ TEST_CASE("icon_atlas_harness/stock_chassis_have_art_for_every_hud_size") {
 
 TEST_CASE("icon_atlas_harness/stock_data_one_file_per_mech_side_and_pilot") {
     namespace fs = std::filesystem;
-    const fs::path art = fs::path(__FILE__).parent_path().parent_path().parent_path() / "data" / "art";
+    const fs::path art = fs::path(MC2_REPO_ROOT) / "data" / "art";
     if (!fs::exists(art / "mechicons")) return; // source tree without data/
     CHECK_FALSE(fs::exists(art / "mechicons" / "hud" / "mcui_low4"));
     CHECK_FALSE(fs::exists(art / "mechicons" / "hud" / "mcui_med4"));
