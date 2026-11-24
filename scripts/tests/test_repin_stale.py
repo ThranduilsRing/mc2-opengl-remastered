@@ -35,6 +35,30 @@ def test_repin_commands(tmp_path):
     det = {"kind": "determinism", "mission": "mc2_03", "data": {"frames": 99, "env": {"A": "1"}}}
     run, write = rs.repin_command(det, "inst", 30, str(tmp_path))
     assert "run" in run and "A=1" in run and "write-baseline" in write and "99" in write
+    assert "--baseline" not in run
+
+
+@pytest.mark.parametrize("pair_rc", [0, 1, 2])
+def test_repin_writes_baseline_only_after_pair_success(tmp_path, monkeypatch, pair_rc):
+    row = {"kind": "determinism", "mission": "mc2_03", "data": {"frames": 5}}
+    calls, kept = [], []
+    log = Path(rs.run_dir(str(tmp_path), row)) / "a" / "mc2_03.log"
+
+    def fake_call(cmd, cwd):
+        calls.append(cmd)
+        assert cwd == rs.ROOT
+        if "run" in cmd:
+            log.parent.mkdir(parents=True)
+            log.write_text("pair log")
+            return pair_rc
+        assert "write-baseline" in cmd and str(log) in cmd
+        return 0
+
+    monkeypatch.setattr(rs.subprocess, "call", fake_call)
+    monkeypatch.setattr(rs, "keep_unknown_keys", kept.append)
+    assert rs.repin(row, "inst", 30, str(tmp_path)) == (pair_rc == 0)
+    assert len(calls) == (2 if pair_rc == 0 else 1)
+    assert kept == ([row] if pair_rc == 0 else [])
 
 
 def _gate_steps():
