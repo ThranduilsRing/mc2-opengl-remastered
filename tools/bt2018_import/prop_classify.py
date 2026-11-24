@@ -65,8 +65,9 @@ def is_junk(name):
 def group_assets(mesh_names):
     """Mesh names -> {family: {"lods": [mesh names by LOD order], "shell": bool}}.
 
-    A family with a *_shell mesh is an intact building (the split/fract pieces are destruction
-    debris and are ignored). Otherwise the family's *_LODn meshes (or the plain mesh) are the LODs.
+    The family's *_LODn meshes (or the plain mesh) are the intact prop. A *_shell mesh is what is left
+    standing after destruction (a partial remnant), so it is used only when a family has no LOD mesh;
+    "shell" then flags the entry. split/fract pieces are destruction debris and are ignored.
     Colliders, instances, pieces, vegetation and generic scene meshes are dropped.
     """
     fams = {}
@@ -83,12 +84,11 @@ def group_assets(mesh_names):
     for family, fam in fams.items():
         if is_vegetation(family) or is_junk(family):
             continue
-        if fam["shell"]:
-            lods = [fam["shell"]]
-        else:
-            lods = [fam["lods"][k] for k in sorted(fam["lods"])]
+        lods = [fam["lods"][k] for k in sorted(fam["lods"])]
         if lods:
-            out[family] = {"lods": lods, "shell": bool(fam["shell"])}
+            out[family] = {"lods": lods, "shell": False}
+        elif fam["shell"]:
+            out[family] = {"lods": [fam["shell"]], "shell": True}
     return out
 
 

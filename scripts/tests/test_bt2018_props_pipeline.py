@@ -21,12 +21,14 @@ def test_parse_name_kinds():
     assert pc.parse_name("a|b|Dupli|1")["kind"] == "instance"
 
 
-def test_group_assets_prefers_shell_and_drops_pieces_and_vegetation():
-    names = ["cityBuildingA_shell", "cityBuildingA_shell_COL", "cityBuildingA_split_001", "cityBuildingA_fract_002",
+def test_group_assets_prefers_intact_lods_over_destroyed_shell():
+    names = ["villaD_shell", "villaD_LOD1", "villaD_LOD0", "villaD_split_003",
+             "cityBuildingA_shell", "cityBuildingA_shell_COL", "cityBuildingA_split_001", "cityBuildingA_fract_002",
              "envMdlRock_scatterC_LOD0", "envMdlRock_scatterC_LOD2", "envMdlRock_scatterC_LOD1",
              "envMdlTree_pine_LOD0", "envMdlBush_x_LOD0", "uixSvgIcon_scrap", "lowWall150m_shell"]
     g = pc.group_assets(names)
-    assert g["cityBuildingA"] == {"lods": ["cityBuildingA_shell"], "shell": True}
+    assert g["villaD"] == {"lods": ["villaD_LOD0", "villaD_LOD1"], "shell": False}
+    assert g["cityBuildingA"] == {"lods": ["cityBuildingA_shell"], "shell": True}  # shell only as a fallback
     assert g["envMdlRock_scatterC"]["lods"] == ["envMdlRock_scatterC_LOD0", "envMdlRock_scatterC_LOD1", "envMdlRock_scatterC_LOD2"]
     assert "lowWall150m" in g
     assert not any("Tree" in k or "Bush" in k or "uix" in k for k in g)
@@ -127,3 +129,23 @@ def test_fragments_are_not_props():
         assert pc.is_fragment(n), n
     for n in ("smallBldgE", "industrialTankA", "lookoutTowerA"):
         assert not pc.is_fragment(n), n
+
+
+def test_solid_metrics_closed_box_vs_open_fragment():
+    box = raster.solid_metrics(_box())
+    frag = _box()
+    frag[0]["idx"] = frag[0]["idx"][[8, 9, 4, 5]]  # one wall and the floor: a partial destruction shell
+    f = raster.solid_metrics(frag)
+    assert box["solidity"] > 0.95 and abs(box["volume"] - 8.0) < 0.1
+    assert f["solidity"] < 0.1
+
+
+def test_matcher_rejects_fragments_and_volume_mismatch():
+    import match_stock_props as mp
+    base = {"category": "building", "footprint_wu": [40, 40], "height_wu": 40, "materials_resolved": True}
+    assets = [dict(base, id="bt_shell", shell=True, solidity=0.9, volume_wu3=50000),
+              dict(base, id="bt_hollow", solidity=0.1, volume_wu3=6000),
+              dict(base, id="bt_mast", category="building", solidity=0.5, volume_wu3=2000),
+              dict(base, id="bt_ok", solidity=0.8, volume_wu3=48000)]
+    m = mp.match({"house": {"size_wu": [40, 40, 40], "volume_wu3": 50000, "uses": 1}}, assets)
+    assert m["house"]["pick"] == "bt_ok" and m["house"]["alternatives"] == []

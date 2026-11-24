@@ -3,9 +3,12 @@
 
   py -3 tools/bt2018_import/match_stock_props.py --library <lib>/catalog.json --stock stock_props.json --out mapping.json
 
-stock_props.json: {"<appearance>": {"size_wu": [x, y_up, z], "uses": N, "silhouette": [288 bits] | null}}
-Cost = category compatibility + log size ratios (height, both footprint axes) + silhouette Hamming
-distance + a flat penalty for assets without resolved materials. Vegetation stock keys are skipped.
+stock_props.json: {"<appearance>": {"size_wu": [x, y_up, z], "uses": N, "volume_wu3", "solidity", "silhouette": [288 bits] | null}}
+Cost = category compatibility + log size ratios (height, both footprint axes, solid volume) + silhouette
+Hamming distance + a flat penalty for assets without resolved materials. Rejected outright: fragments
+(a destruction shell, or a building-like asset whose column-filled solid is under SOLID_MIN of its bbox)
+and candidates whose solid volume is outside VOLUME_RATIO of the stock prop's (an antenna for a tower).
+Vegetation stock keys are skipped.
 The mapping is the cook input: edit "pick" per stock key to override the auto choice.
 """
 from __future__ import annotations
@@ -34,6 +37,11 @@ COMPAT = {
 }
 
 
+SOLID_MIN = 0.22                 # column-filled volume / bbox volume below this is a partial shell
+VOLUME_RATIO = (0.3, 3.5)        # allowed candidate / stock solid volume
+_SOLID_CATS = ("building", "military", "industrial")
+
+
 def _lr(a, b):
     return abs(math.log(max(a, 1e-3) / max(b, 1e-3)))
 
@@ -42,9 +50,16 @@ def cost(stock, cand, stock_cat):
     compat = COMPAT.get(stock_cat, {}).get(cand["category"])
     if compat is None:
         return None
+    if cand.get("shell") or (cand["category"] in _SOLID_CATS and cand.get("solidity", 1.0) < SOLID_MIN):
+        return None
     sx, sy, sz = stock["size_wu"]
     fa, fb = sorted((sx, sz)), sorted(cand["footprint_wu"])
-    c = compat + _lr(cand["height_wu"], sy) + 0.5 * (_lr(fb[0], fa[0]) + _lr(fb[1], fa[1]))
+    c = compat + _lr(cand["height_wu"], sy) + 0.75 * (_lr(fb[0], fa[0]) + _lr(fb[1], fa[1]))
+    if stock.get("volume_wu3") and cand.get("volume_wu3") is not None:
+        r = max(cand["volume_wu3"], 1e-3) / max(stock["volume_wu3"], 1e-3)
+        if not VOLUME_RATIO[0] <= r <= VOLUME_RATIO[1]:
+            return None
+        c += 0.5 * abs(math.log(r))
     sil = stock.get("silhouette")
     if sil and cand.get("silhouette"):
         c += 0.8 * sum(a != b for a, b in zip(sil, cand["silhouette"])) / len(sil)

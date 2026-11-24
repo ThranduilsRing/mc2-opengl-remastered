@@ -129,3 +129,44 @@ def contact_sheet(tiles, labels, cols, tile=128, label_h=26, font=None):
         if len(lab) > 30:
             d.text((x + 3, y + tile + 13), lab[30:60], fill=(220, 220, 220), font=font)
     return sheet
+
+
+def _surface_points(prims, step):
+    """Barycentric grid samples on every triangle, at most `step` apart (so a surface closes in voxels)."""
+    out = []
+    for p in prims:
+        pos, t = p["pos"], p["idx"]
+        a, b, c = pos[t[:, 0]], pos[t[:, 1]], pos[t[:, 2]]
+        edge = np.maximum.reduce([np.linalg.norm(b - a, axis=1), np.linalg.norm(c - b, axis=1), np.linalg.norm(a - c, axis=1)])
+        ks = np.clip(np.ceil(edge / step), 1, 96).astype(int)
+        out.append(pos)
+        for k in np.unique(ks):
+            sel = ks == k
+            g = np.array([(i / k, j / k) for i in range(k + 1) for j in range(k + 1 - i)], np.float32)
+            aa, bb, cc = a[sel], b[sel], c[sel]
+            out.append((aa[:, None] + g[None, :, :1] * (bb - aa)[:, None] + g[None, :, 1:] * (cc - aa)[:, None]).reshape(-1, 3))
+    return np.concatenate(out)
+
+
+def solid_metrics(prims, n=32):
+    """Column-filled voxel solid of a prop: {"volume", "solidity", "top_cover"} in the units of pos.
+
+    Each vertical column is filled from the ground to its highest surface voxel (a height field: props stand
+    on the ground and buildings usually have no floor), so a closed building is nearly its bbox and a mast,
+    a lone wall fragment or a partial destruction shell keeps a small volume. solidity = volume / bbox volume,
+    top_cover = filled fraction of the top-view footprint.
+    """
+    allp = np.concatenate([p["pos"] for p in prims])
+    lo, hi = allp.min(0), allp.max(0)
+    span = np.maximum(hi - lo, 1e-6)
+    vox = span / n  # one grid per prop, n cells on every axis; sampled in grid units so thin axes stay closed
+    gridded = [dict(p, pos=(p["pos"] - lo) / vox) for p in prims]
+    q = np.clip(_surface_points(gridded, 0.9).astype(int), 0, n - 1)
+    grid = np.zeros((n, n, n), bool)
+    grid[q[:, 0], q[:, 1], q[:, 2]] = True
+    occ = grid.any(1)
+    ys = np.arange(n)[None, :, None]
+    last = np.where(occ, n - 1 - grid[:, ::-1, :].argmax(1), -1)
+    filled = ys <= last[:, None, :]
+    sol = float(filled.mean())
+    return {"volume": sol * float(np.prod(span)), "solidity": sol, "top_cover": float(occ.mean())}
