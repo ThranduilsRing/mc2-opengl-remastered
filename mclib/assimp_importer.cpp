@@ -1299,10 +1299,10 @@ void RegisterImportedAnim(mc2::czstring path, TG_TypeMultiShape* out, const Skel
         // rigid part is one of them.
         {
             std::vector<aiVector3D> dirs;
-            for (int x = -1; x <= 1; ++x)
-                for (int y = -1; y <= 1; ++y)
-                    for (int z = -1; z <= 1; ++z)
-                        if (x || y || z) dirs.emplace_back(float(x), float(y), float(z));
+            for (float x = -1; x <= 1; ++x)
+                for (float y = -1; y <= 1; ++y)
+                    for (float z = -1; z <= 1; ++z)
+                        if (x != 0 || y != 0 || z != 0) dirs.emplace_back(x, y, z);
             std::vector<std::vector<float>> best(bake.rest.size(), std::vector<float>(dirs.size(), -1e30f));
             e.boneSupport.assign(bake.rest.size(), std::vector<aiVector3D>(dirs.size()));
             const TG_TypeVertex* tv = e.shape->GetTypeVertices();
@@ -1311,8 +1311,12 @@ void RegisterImportedAnim(mc2::czstring path, TG_TypeMultiShape* out, const Skel
                 const size_t b = e.perVertexBone[vi];
                 if (b >= e.boneSupport.size()) continue;
                 const aiVector3D p(tv[vi].position.x, tv[vi].position.y, tv[vi].position.z);
-                for (size_t d = 0; d < dirs.size(); ++d)
-                    if (p * dirs[d] > best[b][d]) { best[b][d] = p * dirs[d]; e.boneSupport[b][d] = p; }
+                for (size_t d = 0; d < dirs.size(); ++d) {
+                    const float reach = p * dirs[d];
+                    if (reach <= best[b][d]) continue;
+                    best[b][d] = reach;
+                    e.boneSupport[b][d] = p;  // the extreme vertex itself, not just its reach
+                }
             }
             for (size_t b = 0; b < best.size(); ++b)
                 if (best[b][0] < -1e29f) e.boneSupport[b].clear();  // bone owns no vertices
