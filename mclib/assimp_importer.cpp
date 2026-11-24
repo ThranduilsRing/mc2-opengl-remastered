@@ -1041,11 +1041,11 @@ float groundLift(const ImportedAnimEntry& e, const std::vector<mc2skel::GpuBone>
         }
         lowestY = std::min(lowestY, y);
         if (!low || maxLow <= 0) continue;
-        int near = -1;
+        int same = -1;
         for (int k = 0; k < count; ++k)
-            if ((low[k] - point).SquareLength() < kSpread * kSpread) { near = k; break; }
-        if (near >= 0) { if (point.y < low[near].y) low[near] = point; }
-        else if (count < maxLow || point.y < low[count - 1]) low[count < maxLow ? count++ : count - 1] = point;
+            if ((low[k] - point).SquareLength() < kSpread * kSpread) { same = k; break; }
+        if (same >= 0) { low[same] = point.y < low[same].y ? point : low[same]; }
+        else if (count < maxLow || point.y < low[count - 1].y) low[count < maxLow ? count++ : count - 1] = point;
         for (int k = 1; k < count; ++k) {   // lowest first
             const aiVector3D p = low[k];
             int j = k;
