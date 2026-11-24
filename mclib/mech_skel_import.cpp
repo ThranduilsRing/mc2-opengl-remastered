@@ -152,6 +152,10 @@ struct SkelPlan {
     std::vector<int> parent;                 // node index of parent, -1 for the root
     std::vector<int> boneNode;               // parallel to boneNames; -1 = not a node (identity)
     std::vector<std::vector<const aiNodeAnim*>> chanByNode;  // [anim][node]; nullptr = no channel
+    // Horizontal (x, z) rest offset of the skeleton root from the actor origin. A Unity prefab can park the whole
+    // rig off-origin (the BT2018 Crab sits 0.124 m to one side while every other chassis is at 0), which drew the
+    // mech beside its unit position and selection bracket. emitBones removes it, so every chassis is centred on its root.
+    float anchorX = 0.0f, anchorZ = 0.0f;
 };
 
 namespace {
@@ -178,6 +182,17 @@ std::shared_ptr<const SkelPlan> BuildPlan(const aiScene* scene, const std::vecto
             const auto& [name, node] = *it;
             p->boneNode[b] = node;
         }
+    }
+    for (size_t b = 0; b < boneNames.size(); ++b) {   // the first bone with no bone ancestor is the skeleton root
+        if (p->boneNode[b] < 0) continue;
+        bool rooted = true;
+        for (int a = p->parent[p->boneNode[b]]; a >= 0 && rooted; a = p->parent[a])
+            for (int other : p->boneNode) rooted = rooted && other != a;
+        if (!rooted) continue;
+        aiMatrix4x4 world;
+        for (int a = p->boneNode[b]; a >= 0; a = p->parent[a]) world = p->nodes[a]->mTransformation * world;
+        p->anchorX = world.a4; p->anchorZ = world.c4;
+        break;
     }
     p->chanByNode.resize(scene->mNumAnimations);
     for (unsigned a = 0; a < scene->mNumAnimations; ++a) {
@@ -206,8 +221,10 @@ std::optional<int> findAnim(const aiScene* scene, std::string_view clip) {
 
 void emitBones(const SkelPlan& plan, const std::vector<aiMatrix4x4>& globals, std::vector<GpuBone>& out) {
     out.assign(plan.boneNode.size(), GpuBone{});
-    for (size_t i = 0; i < plan.boneNode.size(); ++i)
+    for (size_t i = 0; i < plan.boneNode.size(); ++i) {
         rowMajor(plan.boneNode[i] >= 0 ? globals[plan.boneNode[i]] : aiMatrix4x4(), out[i].m);
+        if (plan.boneNode[i] >= 0) { out[i].m[3] -= plan.anchorX; out[i].m[11] -= plan.anchorZ; }
+    }
 }
 
 // Clip time (ticks) for a 30 fps frame index, clamped to the clip.

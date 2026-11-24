@@ -404,8 +404,8 @@ def test_retarget_turns_bones_in_model_space_whatever_the_bind_frame(tmp_path):
 
 
 def test_native_clip_baker_decodes_streamed_dense_and_constant_curves():
-    """Trigger: tools/bt2018_extract/bake_clips.py (native BT clips replace Atlas retargets)."""
-    from tools.bt2018_extract import bake_clips as B
+    """Trigger: tools/bt2018_import/bake_clips.py (native BT clips replace Atlas retargets)."""
+    from tools.bt2018_import import bake_clips as B
     # one streamed curve: key at t=0 value 1 slope 2, key at t=1 constant 5; one constant curve 7
     words = struct.unpack("<14I", struct.pack("<fi i4f fi i4f", 0.0, 1, 0, 0, 0, 2.0, 1.0, 1.0, 1, 0, 0, 0, 0, 5.0))
     clip = {"m_StreamedClip": {"data": list(words), "curveCount": 1},
@@ -415,11 +415,36 @@ def test_native_clip_baker_decodes_streamed_dense_and_constant_curves():
     assert vals.tolist() == [[1.0, 0.0, 7.0], [2.0, 5.0, 7.0], [5.0, 10.0, 7.0]]
 
 
+def test_partial_own_clips_preserve_the_existing_retarget_per_missing_state(tmp_path):
+    from pygltflib import GLTF2
+    import numpy as np
+    from bt2018_retarget_clips import retarget_file, accessor_view
+    atlas, raw, baseline, out = [tmp_path / f"{n}.glb" for n in ("atlas", "raw", "baseline", "own")]
+    s = 2 ** -0.5
+    for p, bind in ((atlas, (0, 0, 0, 1)), (raw, (s, 0, 0, s))):
+        _tiny_glb(p, bind, [(0, 0, 0, 1), (0, 0, s, s)])
+        g = GLTF2().load(str(p))
+        fire = copy.deepcopy(g.animations[0])
+        fire.name = "atlas_attackFirePelvisBack"
+        g.animations.append(fire)
+        g.save(str(p))
+    retarget_file(str(raw), str(atlas), str(baseline))
+    own = np.array([[0, s, 0, s], [0, s, 0, s]])
+    retarget_file(str(raw), str(atlas), str(out), {"atlas_moveCoreIdle": (1, {"j_Hip": own})})
+    before, after = GLTF2().load(str(baseline)), GLTF2().load(str(out))
+    def keys(g, name):
+        a = next(a for a in g.animations if a.name == name)
+        return accessor_view(g, g.binary_blob(), a.samplers[0].output)[0]
+    assert {a.name for a in after.animations} == {a.name for a in before.animations}
+    np.testing.assert_array_equal(keys(after, "atlas_attackFirePelvisBack"), keys(before, "atlas_attackFirePelvisBack"))
+    np.testing.assert_allclose(keys(after, "atlas_moveCoreIdle"), own)
+
+
 def test_baked_clip_buffer_views_stay_inside_the_binary_chunk(tmp_path):
     """Trigger: bake_clips.add_to_glb. f8 keys once sized views at 2x the f4 bytes written: Assimp rejected 50/51 GLBs (3 mechs drew placeholders)."""
     pygltflib = pytest.importorskip("pygltflib")
     import numpy as np
-    from tools.bt2018_extract import bake_clips as B
+    from tools.bt2018_import import bake_clips as B
     g = pygltflib.GLTF2(nodes=[pygltflib.Node(name="j_Root")], buffers=[pygltflib.Buffer(byteLength=4)])
     g.set_binary_blob(b"\0\0\0\0")
     g.save(str(tmp_path / "in.glb"))
@@ -428,6 +453,66 @@ def test_baked_clip_buffer_views_stay_inside_the_binary_chunk(tmp_path):
     out = pygltflib.GLTF2().load(str(tmp_path / "out.glb"))
     end = len(out.binary_blob())
     assert all(v.byteOffset + v.byteLength <= end for v in out.bufferViews)
+
+
+def test_native_decoder_uses_avatar_paths_and_rotation_only(tmp_path):
+    from tools.bt2018_import import bake_clips as B
+    from pygltflib import GLTF2
+    tt = {"m_Name": "crab_idle", "m_MuscleClip": {"m_StartTime": 0.0, "m_StopTime": 0.1,
+          "m_Clip": {"m_StreamedClip": {"data": [], "curveCount": 0},
+          "m_DenseClip": {"m_CurveCount": 0}, "m_ConstantClip": {"data": [100, 200, 300, 0.5, 0.5, 0.5, 0.5, 0, 0, 0, 1]}}},
+          "m_ClipBindingConstant": {"genericBindings": [
+              {"typeID": 4, "attribute": 1, "path": 42},
+              {"typeID": 4, "attribute": 2, "path": 42},
+              {"typeID": 4, "attribute": 2, "path": 99}]}}
+    dur, rots = B.decode_clip(tt, {42: "j_Root"})
+    assert list(rots) == ["j_Root"]  # helper 99 is outside the Avatar
+    assert rots["j_Root"][0].tolist() == [0.5, -0.5, -0.5, 0.5]
+    from pygltflib import Node, Buffer
+    g = GLTF2(nodes=[Node(name="j_Root")], buffers=[Buffer(byteLength=4)])
+    g.set_binary_blob(b"\0" * 4)
+    g.save(str(tmp_path / "raw.glb"))
+    from bt2018_retarget_clips import retarget_file
+    retarget_file(str(tmp_path / "raw.glb"), "absent-atlas.glb", str(tmp_path / "own.glb"),
+                  own_clips={"atlas_idle": (dur, rots)})
+    own = GLTF2().load(str(tmp_path / "own.glb"))
+    assert [a.name for a in own.animations] == ["atlas_idle"]
+    assert {c.target.path for c in own.animations[0].channels} == {"rotation"}
+    times = B.np.frombuffer(own.binary_blob(), '<f4', 4, own.bufferViews[0].byteOffset)
+    assert times[-1] == pytest.approx(dur)
+
+
+def test_native_controller_keeps_aliases_instead_of_guessing_suffixes(monkeypatch):
+    from types import SimpleNamespace as NS
+    from tools.bt2018_import import bake_clips as B
+    clip = NS(path_id=7, read_typetree=lambda: {"m_Name": "catapult_attackMeleePush"})
+    entries = [NS(m_OriginalClip=NS(deref=lambda n=n: NS(peek_name=lambda: n)),
+                  m_OverrideClip=NS(path_id=7, deref=lambda: clip))
+               for n in ("atlas_attackMeleePush", "atlas_attackMeleePunch", "catapult_moveCoreIdle")]
+    entries.append(NS(m_OverrideClip=NS(path_id=0)))  # No own clip: leave this state to Atlas.
+    controller = NS(type=NS(name="AnimatorOverrideController"),
+                    peek_name=lambda: "charoverctrl_catapultBase-001",
+                    read=lambda: NS(m_Clips=entries))
+    avatar = NS(type=NS(name="Avatar"), read_typetree=lambda: {"m_TOS": [(42, "j_Root/j_Arm")]})
+    monkeypatch.setitem(sys.modules, "UnityPy", NS(__version__=B.UNITYPY_VERSION,
+                                                  load=lambda _: NS(objects=[controller, avatar])))
+    seen = []
+    monkeypatch.setattr(B, "decode_clip", lambda tt, paths: seen.append((tt, paths)) or (1, {}))
+    clips = B.native_clips("read-only-bundle", "catapult")
+    assert set(clips) == {"atlas_attackMeleePush", "atlas_attackMeleePunch",
+                          "catapult_moveCoreIdle", "atlas_moveCoreIdle"}
+    assert clips["catapult_moveCoreIdle"] is clips["atlas_moveCoreIdle"]
+    assert len(seen) == 1 and seen[0][1] == {42: "j_Arm"}
+
+
+def test_native_search_uses_dlc_and_falls_back_only_when_absent(tmp_path, monkeypatch):
+    from tools.bt2018_import import bake_clips as B
+    for name in ("chrprfmech_ravenbase-001", "urbanwarfare"):
+        (tmp_path / name).touch()
+    monkeypatch.setattr(B, "native_clips", lambda path, fam: {"atlas_idle": (1, {})}
+                        if Path(path).name == "urbanwarfare" and fam == "raven" else {})
+    assert B.chassis_clips(tmp_path, "raven") == {"atlas_idle": (1, {})}
+    assert B.chassis_clips(tmp_path, "absent") == {}
 
 
 # ---------------------------------------------------------------- P6 icons
@@ -888,3 +973,70 @@ def test_skin_pick_rejects_layouts_it_cannot_decode_instead_of_guessing(tmp_path
     g = _bin_glb([dict(mesh="a", mat=0, pos=_verts(3))], [("m1", "OPAQUE", "a-alb.png")])
     g.buffers[0].uri = "data:application/octet-stream;base64," + base64.b64encode(g.binary_blob()).decode()
     assert _pick(g) == "a-alb.tga"                                            # data: buffers decode
+
+
+def test_arm_lift_fix_lowers_a_raised_idle_hand_to_the_cap(tmp_path):
+    """Trigger: scripts/bt2018_retarget_clips.py. Owner 11-23: crab/rifleman/stalker arms up at idle."""
+    pygltflib = pytest.importorskip("pygltflib")
+    import numpy as np
+    from bt2018_retarget_clips import arm_lift_fix, quat_mul, quat_mat, elevation
+    N = pygltflib.Node
+    g = pygltflib.GLTF2(nodes=[N(name="j_LUpperArm", children=[1]), N(name="j_LHand", translation=[1.0, 0, 0.8])])
+    ident = np.array([0.0, 0.0, 0.0, 1.0])
+    h = np.radians(45) / 2
+    raised = np.array([0.0, 0.0, np.sin(h), np.cos(h)])                  # hand 45 deg above the shoulder
+    idle = [raised, raised]
+    ua, fix = arm_lift_fix(g, {1: 0}, [ident, ident], idle, "L")
+    assert ua == 0
+    hand = quat_mat(quat_mul(fix, raised)) @ [1.0, 0, 0.8]
+    assert abs(elevation(hand) - (-10.0)) < 0.01                          # cap = bind 0 + 10, clamped to -10
+    assert arm_lift_fix(g, {1: 0}, [ident, ident], [quat_mul(fix, raised)] * 2, "L") is None   # already low: untouched
+
+
+def test_arm_lift_fix_leaves_sideways_shoulder_pods_alone():
+    """Trigger: scripts/bt2018_retarget_clips.py. Owner 11-23: Catapult missile pods must stay level."""
+    pygltflib = pytest.importorskip("pygltflib")
+    import numpy as np
+    from bt2018_retarget_clips import arm_lift_fix, pod_arm
+    N = pygltflib.Node
+    ident = np.array([0.0, 0.0, 0.0, 1.0])
+    h = np.radians(45) / 2
+    raised = np.array([0.0, 0.0, np.sin(h), np.cos(h)])
+    for hand_t, fixed in (([1.0, 0, 0.1], False), ([0.1, 0, 1.0], True)):      # sideways pod vs forward arm
+        g = pygltflib.GLTF2(nodes=[N(name="j_LUpperArm", children=[1]), N(name="j_LHand", translation=hand_t)])
+        assert (arm_lift_fix(g, {1: 0}, [ident, ident], [raised, raised], "L") is not None) == fixed
+        assert (pod_arm(g, {1: 0}, [ident, ident], "L") is None) == fixed          # pods are held at bind
+
+
+def test_pose_error_is_zero_at_bind_and_flags_a_displaced_arm():
+    """Trigger: scripts/bt2018_retarget_clips.py. Ready-pose match against the BT2018 bind."""
+    pygltflib = pytest.importorskip("pygltflib")
+    import numpy as np
+    from bt2018_retarget_clips import pose_error, quat_mul
+    N = pygltflib.Node
+    g = pygltflib.GLTF2(nodes=[N(name="j_Spine2", children=[1]), N(name="j_LClavicle", children=[2], translation=[0.1, 0, 0]),
+                               N(name="j_LUpperArm", children=[3], translation=[0.1, 0, 0]), N(name="j_LHand", translation=[0.1, 0, 0])])
+    par = {1: 0, 2: 1, 3: 2}
+    ident = np.array([0.0, 0.0, 0.0, 1.0])
+    bind = [ident] * 4
+    assert pose_error(g, par, bind, bind)[0] == 0.0
+    h = np.radians(60) / 2
+    up = np.array([0.0, 0.0, np.sin(h), np.cos(h)])                      # arm lifted 60 deg about the shoulder
+    assert pose_error(g, par, bind, [ident, ident, up, up])[0] > 1.0
+
+
+def test_every_converted_chassis_ready_pose_matches_its_bt2018_bind(tmp_path):
+    """Trigger: scripts/bt2018_retarget_clips.py. Set BT2018_RAW_DIR (FBX2glTF raws) and BT2018_ATLAS."""
+    pytest.importorskip("pygltflib")
+    import glob
+    raw, atlas = os.environ.get("BT2018_RAW_DIR"), os.environ.get("BT2018_ATLAS")
+    if not raw or not atlas or not os.path.isdir(raw):
+        pytest.skip("set BT2018_RAW_DIR and BT2018_ATLAS")
+    from bt2018_retarget_clips import retarget_file
+    bad = []
+    for f in sorted(glob.glob(os.path.join(raw, "*.glb"))):
+        retarget_file(f, atlas, str(tmp_path / os.path.basename(f)))
+        r = retarget_file.last_report
+        if r is not None and not (r["converged"] and r["error_after"] <= 1.0):
+            bad.append((os.path.basename(f), round(r["error_after"], 2), r["worst"]))
+    assert not bad, f"chassis whose ready pose does not match BT2018 bind: {bad}"
