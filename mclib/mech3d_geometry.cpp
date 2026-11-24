@@ -178,7 +178,7 @@ void Mech3DAppearance::updateGeometry (void)
 	if (!simPresentationPass && (simulationOwned() || mc2::overlap::onSimWorker())) { updateSimPose(); return; }
 	mc2::overlap::assertMainThread("Mech3DAppearance::updateGeometry");
     // FOOT-GROUNDING-1: with a visual bake, feet and fallen bodies rest on the surface under themselves, not under the root.
-    const bool footGrounding = false && baseRootNodeHeight != -99999.9f && !TerrainRuntime::groundHeightView().heights.empty();
+    const bool footGrounding = baseRootNodeHeight != -99999.9f && !TerrainRuntime::groundHeightView().heights.empty();
     const bool imported = mc2mechanim::ImportedGpuTypeInfo(mechShape->GetMultiType(), nullptr, nullptr) > 0;
     mc2mechanim::VisualGround ground;
     if (!simulationOwned()) tickImportedAnimation(true, true);
