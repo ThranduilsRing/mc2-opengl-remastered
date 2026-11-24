@@ -1,0 +1,20 @@
+{
+  "Locations": [
+    {
+      "Location": "CenterTorso",
+      "AssignedArmor": 165,
+      "AssignedRearArmor": 50
+    }
+  ],
+  "inventory": [
+    {
+      "ComponentDefID": "Weapon_PPC_PPC_0-STOCK"
+    },
+    {
+      "ComponentDefID": "Weapon_LRM_LRM10_0-STOCK"
+    },
+    {
+      "ComponentDefID": "Weapon_Autocannon_LB10X_0-STOCK"
+    }
+  ]
+}

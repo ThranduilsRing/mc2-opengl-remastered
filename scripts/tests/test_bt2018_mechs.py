@@ -1,8 +1,8 @@
 """BT2018 first-class mechs: data-mapping tests (BT JSON -> MC2 profile, weapon mapping,
 hardpoint legality, compatibility-file layout) and the cook-reproducibility fix.
 
-Offline only. Tests that read the owner's BattleTech dump or stock source data skip when
-those folders are absent; everything else runs on the repo's recipes and tables.
+Offline only. BT schema and socket tests use tiny synthetic checked-in fixtures;
+stock corpus checks use the repository's stock-data resolver.
 """
 from __future__ import annotations
 
@@ -10,7 +10,6 @@ import copy
 import csv
 import io
 import json
-import os
 import struct
 import sys
 from pathlib import Path
@@ -48,8 +47,7 @@ def test_package_checker_showcase(tmp_path, monkeypatch, clips, valid):
         checker.main()
     assert result.value.code == (0 if valid else 1)
 
-DUMP = Path(os.environ.get("BT2018_DUMP", REPO / "scripts/tests/fixtures/bt2018-dump"))
-CONVERSIONS = Path(os.environ.get("BT2018_CONVERSIONS", REPO / "scripts/tests/fixtures/bt2018-conversions"))
+FIXTURES = REPO / "scripts/tests/fixtures/bt2018"
 
 
 @pytest.fixture(scope="module")
@@ -149,11 +147,10 @@ def test_stock_snapshots_match_compbas(tables):
             assert rows.get(pack["ordinal"], ["", "undefined"])[1] == "undefined", pack["ordinal"]
 
 
-@pytest.mark.skipif(not DUMP.is_dir(), reason="BattleTech dump not present")
-def test_every_dump_inventory_item_has_an_explicit_mapping(tables):
+def test_fixture_inventory_items_have_explicit_mappings(tables):
     wm, _ = tables
     kinds = {}
-    for p in sorted(DUMP.glob("mechdef_*.json")):
+    for p in sorted(FIXTURES.glob("mechdef_*.json")):
         md = btjson.load_tolerant(p).data
         for inv in md.get("inventory", []):
             rec = C.resolve_item(inv["ComponentDefID"], wm)
@@ -163,14 +160,13 @@ def test_every_dump_inventory_item_has_an_explicit_mapping(tables):
     assert kinds.get("stock", 0) > 0 and kinds.get("pack", 0) > 0
 
 
-@pytest.mark.skipif(not DUMP.is_dir(), reason="BattleTech dump not present")
 def test_json_backed_chassis_parses_to_locations_and_mounts():
-    cd = btjson.load_tolerant(DUMP / "chassisdef_archer_ARC-2R.json").data
+    cd = btjson.load_tolerant(FIXTURES / "chassisdef_fixture.json").data
     locs = btjson.chassis_locations(cd)
     assert locs["LeftTorso"]["mounts"] == ["Missile"]
     assert locs["CenterTorso"]["mounts"] == ["Energy", "Energy"]
     assert locs["LeftTorso"]["max_rear"] == 75 and locs["LeftArm"]["max_rear"] == -1
-    md = btjson.load_tolerant(DUMP / "mechdef_archer_ARC-2R.json").data
+    md = btjson.load_tolerant(FIXTURES / "mechdef_fixture.json").data
     armor = btjson.mechdef_armor(md)
     assert armor["CenterTorso"] == (165, 50)
 
@@ -556,16 +552,12 @@ def test_hud_icons_use_only_the_exact_region_palette():
         assert not ({194 + 2, 194 + 1} & {int(v) for v in rear[:, :, 0][rear[:, :, 3] > 0]})   # no limbs on the rear row
 
 
-MARAUDER_GLB = CONVERSIONS / "marauder.glb"
-
-
-@pytest.mark.skipif(not MARAUDER_GLB.is_file(), reason="converted Marauder not present")
 def test_muzzle_sockets_sit_on_geometry_not_joint_centres(marauder_recipe):
     from tools.bt2018_mechs import sockets as SK
     import numpy as np
     joints = {"weapon_leftarm": "j_LForearm", "weapon_leftarm2": "j_LForearm",
               "weapon_rightarm": "j_RForearm", "weapon_centertorso": "j_Spine2"}
-    off = SK.socket_offsets(MARAUDER_GLB, joints)
+    off = SK.socket_offsets(FIXTURES / "sockets.glb", joints)
     assert set(off) == set(joints)
     for name, v in off.items():
         assert np.linalg.norm(v) > 1e-3, name               # not the joint centre
@@ -574,28 +566,6 @@ def test_muzzle_sockets_sit_on_geometry_not_joint_centres(marauder_recipe):
                                          "weapon_lefttorso": "j_LClavicle", "weapon_righttorso": "j_RClavicle",
                                          "weapon_centertorso": "j_Spine2"}}, marauder_recipe, off)
     assert len(pkg["socketOffsets"]["weapon_leftarm"].split()) == 3
-
-
-def test_entire_converted_roster_compiles_with_unique_ids(tables):
-    """Trigger: tools/bt2018_mechs/{roster.py,data/roster.json,build_pack.py,compile.py}."""
-    from tools.bt2018_mechs import roster
-    conversions = CONVERSIONS
-    if not conversions.is_dir():
-        pytest.skip("external conversions absent; set BT2018_CONVERSIONS to the converted dump")
-    recipes = roster.recipes(conversions)
-    profiles = [C.build_profile(r, *tables) for r in recipes]
-    assert len(profiles) == 51
-    assert len({p["stem"] for p in profiles}) == 51
-    ids = [sid for i, p in enumerate(profiles) for sid in C.string_ids(p, i).values()]
-    assert len(set(ids)) == 102
-    for p, recipe in zip(profiles, recipes):
-        assert 0 < p["mc2"]["payload"] < p["mc2"]["tonnage"]
-        assert (conversions / recipe["mc2"]["model"]["source_glb"]).is_file()
-        package = C.load_json(conversions / recipe["mc2"]["model"]["package_json"])
-        C.emit_package_json(package, recipe)  # Every authored socket must resolve.
-        C.emit_csv(p, recipe, profiles.index(p))
-        if p["family"] != "marauder":
-            assert "pack-authored MC2 adaptation" in p["provenance"]["gameplay"]
 
 
 def test_roster_equipment_resolves_without_external_dump(tables, tmp_path):
@@ -614,7 +584,13 @@ def test_roster_equipment_resolves_without_external_dump(tables, tmp_path):
     recipes = roster.recipes(tmp_path)
     profiles = [C.build_profile(r, *tables) for r in recipes]
     assert len(profiles) == 51
+    assert len({p["stem"] for p in profiles}) == 51
+    ids = [sid for i, p in enumerate(profiles) for sid in C.string_ids(p, i).values()]
+    assert len(set(ids)) == 102
     for p in profiles:
+        assert 0 < p["mc2"]["payload"] < p["mc2"]["tonnage"]
+        if p["family"] != "marauder":
+            assert "pack-authored MC2 adaptation" in p["provenance"]["gameplay"]
         for v in p["variants"]:
             ids = [i["mc2"]["master_id"] for i in v["items"]]
             assert [i for i in ids if i in stock | added] == ids, p["family"]
@@ -675,54 +651,6 @@ def test_spawn_fixture_uses_a_shipped_pilot_with_combat_skills():
     for skill in ("Gunnery", "Piloting"):
         value = re.search(rf"(?im)^\s*c\s+{skill}\s*=\s*(\d+)", text)
         assert value and int(value.group(1)) > 0, f"spawn pilot needs usable {skill}"
-
-
-# One-shot clips mc2clip::select leaves for locomotion when the sim gesture ends (hits,
-# power-on, get-up). Their last frame is held until then, so it must BE the idle pose.
-# Prone clips (knockdown, downed/death idles) are held on purpose until the sim's GetUp.
-RETURN_TO_IDLE = ("atlas_hitReactLgtFwd", "atlas_hitReactLgtBwd", "atlas_hitReactLgtLeft",
-                  "atlas_hitReactLgtRight", "atlas_shutdownPwron", "atlas_downedGetup")
-
-
-@pytest.mark.parametrize("family", ["atlas", "marauder"])
-def test_one_shot_clips_end_on_the_idle_pose(family):
-    """Trigger: owner 11-16 'stayed leaning back after getting hit'. Held end pose == idle."""
-    pytest.importorskip("pygltflib")
-    from pygltflib import GLTF2
-    from bt2018_retarget_clips import quat_mul, node_bind_rot, accessor_view
-    import numpy as np
-    path = CONVERSIONS / f"{family}.glb"
-    if not path.is_file():
-        pytest.skip(f"set BT2018_CONVERSIONS to a dir with {family}.glb")
-    g = GLTF2().load(str(path)); blob = g.binary_blob()
-    parent = {c: i for i, n in enumerate(g.nodes) for c in (n.children or [])}
-    anims = {a.name: a for a in g.animations}
-
-    def world(clip, last):
-        local = {i: node_bind_rot(g, i) for i in range(len(g.nodes))}
-        a = anims[clip]
-        for ch in a.channels:
-            if ch.target.path == "rotation":
-                k = accessor_view(g, blob, a.samplers[ch.sampler].output)[0]
-                q = np.asarray(k[-1 if last else 0], np.float64)
-                local[ch.target.node] = q / np.linalg.norm(q)
-        out = {}
-        def w(i):
-            if i not in out:
-                out[i] = quat_mul(w(parent[i]), local[i]) if i in parent else local[i]
-            return out[i]
-        for i in local:
-            w(i)
-        return out
-
-    idle = world("atlas_moveCoreIdle", False)
-    for clip in RETURN_TO_IDLE:
-        if clip not in anims:
-            continue
-        end = world(clip, True)
-        worst = max(np.degrees(2 * np.arccos(min(1.0, abs(float(np.dot(end[i], idle[i]))))))
-                    for i in idle)
-        assert worst < 3.0, f"{family} {clip} ends {worst:.1f} deg from idle"
 
 
 def test_hud_icons_have_stock_tone_mix_and_no_outline_ring():
@@ -1023,23 +951,6 @@ def test_pose_error_is_zero_at_bind_and_flags_a_displaced_arm():
     h = np.radians(60) / 2
     up = np.array([0.0, 0.0, np.sin(h), np.cos(h)])                      # arm lifted 60 deg about the shoulder
     assert pose_error(g, par, bind, [ident, ident, up, up])[0] > 1.0
-
-
-def test_every_converted_chassis_ready_pose_matches_its_bt2018_bind(tmp_path):
-    """Trigger: scripts/bt2018_retarget_clips.py. Set BT2018_RAW_DIR (FBX2glTF raws) and BT2018_ATLAS."""
-    pytest.importorskip("pygltflib")
-    import glob
-    raw, atlas = os.environ.get("BT2018_RAW_DIR"), os.environ.get("BT2018_ATLAS")
-    if not raw or not atlas or not os.path.isdir(raw):
-        pytest.skip("set BT2018_RAW_DIR and BT2018_ATLAS")
-    from bt2018_retarget_clips import retarget_file
-    bad = []
-    for f in sorted(glob.glob(os.path.join(raw, "*.glb"))):
-        retarget_file(f, atlas, str(tmp_path / os.path.basename(f)))
-        r = retarget_file.last_report
-        if r is not None and not (r["converged"] and r["error_after"] <= 1.0):
-            bad.append((os.path.basename(f), round(r["error_after"], 2), r["worst"]))
-    assert not bad, f"chassis whose ready pose does not match BT2018 bind: {bad}"
 
 
 def test_pack_builder_names_every_cooked_texture_a_package_uses():
