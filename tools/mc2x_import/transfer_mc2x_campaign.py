@@ -238,7 +238,9 @@ def write_player_roster(mod_root, fallback_roster):
     root = Path(mod_root)
     roster = root / "data/objects/pilots.csv"
     base = roster if roster.is_file() else Path(fallback_roster)
-    names = base.read_text(encoding="latin-1").splitlines() if base.is_file() else []
+    # LogisticsData::loadPilots stops at the first blank line (readLine < 2 bytes); MC2X's roster has two
+    # in the middle, which hid every pilot after them (all the pmp_ player pilots).
+    names = [n for n in base.read_text(encoding="latin-1").splitlines() if n.strip()] if base.is_file() else []
     seen = {n.strip().lower() for n in names}
     warriors = root / "data/missions/warriors"
     player = {}
@@ -254,7 +256,7 @@ def write_player_roster(mod_root, fallback_roster):
         if name not in seen:
             names.append(name)
             seen.add(name)
-    if player:
+    if player or names:
         roster.parent.mkdir(parents=True, exist_ok=True)
         roster.write_bytes(("\r\n".join(names) + "\r\n").encode("latin-1"))
     return len(player)

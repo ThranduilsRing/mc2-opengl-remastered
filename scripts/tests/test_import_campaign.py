@@ -112,6 +112,17 @@ def test_mc2x_cveg_roster_adds_player_pilots_once(tmp_path):
         assert (warriors / "pmp_new.fit").read_bytes() == b"custom pilot"
 
 
+def test_player_roster_drops_blank_lines_that_end_the_engine_roster_load(tmp_path):
+    from transfer_mc2x_campaign import write_player_roster
+    root = tmp_path / "poar"
+    (root / "data/objects").mkdir(parents=True)
+    (root / "data/objects/pilots.csv").write_bytes(b"pmwace\r\n\r\n\r\npmp_cobra\r\n")
+    (root / "data/missions/warriors").mkdir(parents=True)
+    (root / "data/missions/warriors/pmp_cobra.fit").touch()
+    write_player_roster(root, tmp_path / "none.csv")
+    assert (root / "data/objects/pilots.csv").read_bytes() == b"pmwace\r\npmp_cobra\r\n"
+
+
 def test_omnitech_logistics_portrait_icon_and_kitfox_name(tmp_path, sample):
     from PIL import Image
     original, deploy = sample
