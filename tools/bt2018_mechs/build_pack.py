@@ -183,7 +183,8 @@ def build(args, out: Path):
     # override controller maps <family>_X onto atlas_X); a state without one keeps the
     # model-space Atlas retarget.
     sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
-    from bt2018_retarget_clips import retarget_file
+    from bt2018_retarget_clips import pose_table, retarget_file
+    pose_rows = []
     sources = {}
     assets = {}
     for p, recipe in zip(profiles, recipes_loaded):
@@ -191,6 +192,9 @@ def build(args, out: Path):
         dst = out / "data" / "tgl" / f"{model['pack_path']}.glb"
         dst.parent.mkdir(parents=True, exist_ok=True)
         retarget_file(str(conv / model["source_glb"]), str(conv / "atlas.glb"), str(dst))
+        r = retarget_file.last_report
+        if r:
+            pose_rows.append((model['pack_path'], r['error_before'], r['error_after'], r['iterations'], r['converged'], r['blend']))
         from tools.bt2018_mechs import glb_guard
         for name, n in glb_guard.dedupe_node_names(dst).items():
             print(f"[bt2018] {dst.name}: renamed {n} duplicate node(s) '{name}' (Assimp rejects repeats)")
@@ -248,6 +252,9 @@ def build(args, out: Path):
         "profiles": {p["chassis_id"]: {"variants": [v["name"] for v in p["variants"]], "report": p["report"]} for p in profiles},
     }
     write_text(out / "content" / "report.json", json.dumps(report, indent=2) + "\n")
+    if pose_rows:                      # ready-pose self-check against each chassis' BT2018 bind
+        write_text(out / "content" / "pose_table.txt", pose_table(pose_rows) + "\n")
+        print(pose_table(pose_rows))
     from tools.bt2018_mechs import glb_guard
     broken = glb_guard.validate_pack_glbs(out)
     if broken:

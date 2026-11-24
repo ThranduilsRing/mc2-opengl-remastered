@@ -921,3 +921,37 @@ def test_arm_lift_fix_leaves_sideways_shoulder_pods_alone():
         g = pygltflib.GLTF2(nodes=[N(name="j_LUpperArm", children=[1]), N(name="j_LHand", translation=hand_t)])
         assert (arm_lift_fix(g, {1: 0}, [ident, ident], [raised, raised], "L") is not None) == fixed
         assert (pod_arm(g, {1: 0}, [ident, ident], "L") is None) == fixed          # pods are held at bind
+
+
+def test_pose_error_is_zero_at_bind_and_flags_a_displaced_arm():
+    """Trigger: scripts/bt2018_retarget_clips.py. Ready-pose match against the BT2018 bind."""
+    pygltflib = pytest.importorskip("pygltflib")
+    import numpy as np
+    from bt2018_retarget_clips import pose_error, quat_mul
+    N = pygltflib.Node
+    g = pygltflib.GLTF2(nodes=[N(name="j_Spine2", children=[1]), N(name="j_LClavicle", children=[2], translation=[0.1, 0, 0]),
+                               N(name="j_LUpperArm", children=[3], translation=[0.1, 0, 0]), N(name="j_LHand", translation=[0.1, 0, 0])])
+    par = {1: 0, 2: 1, 3: 2}
+    ident = np.array([0.0, 0.0, 0.0, 1.0])
+    bind = [ident] * 4
+    assert pose_error(g, par, bind, bind)[0] == 0.0
+    h = np.radians(60) / 2
+    up = np.array([0.0, 0.0, np.sin(h), np.cos(h)])                      # arm lifted 60 deg about the shoulder
+    assert pose_error(g, par, bind, [ident, ident, up, up])[0] > 1.0
+
+
+def test_every_converted_chassis_ready_pose_matches_its_bt2018_bind(tmp_path):
+    """Trigger: scripts/bt2018_retarget_clips.py. Set BT2018_RAW_DIR (FBX2glTF raws) and BT2018_ATLAS."""
+    pytest.importorskip("pygltflib")
+    import glob
+    raw, atlas = os.environ.get("BT2018_RAW_DIR"), os.environ.get("BT2018_ATLAS")
+    if not raw or not atlas or not os.path.isdir(raw):
+        pytest.skip("set BT2018_RAW_DIR and BT2018_ATLAS")
+    from bt2018_retarget_clips import retarget_file
+    bad = []
+    for f in sorted(glob.glob(os.path.join(raw, "*.glb"))):
+        retarget_file(f, atlas, str(tmp_path / os.path.basename(f)))
+        r = retarget_file.last_report
+        if r is not None and not (r["converged"] and r["error_after"] <= 1.0):
+            bad.append((os.path.basename(f), round(r["error_after"], 2), r["worst"]))
+    assert not bad, f"chassis whose ready pose does not match BT2018 bind: {bad}"
