@@ -70,8 +70,10 @@ def add_cockpit(glb_in, glb_out, hull, glass, recipe=None):
         return len(accs) - 1
 
     hull_parts = static_primitives(hull)
-    glass_parts = hull_parts[1:] + static_primitives(glass)  # window insets + canopy pane
-    parts = {"cockpit_hull": [hull_parts[0]], "cockpit_glass": glass_parts}
+    glass_parts = hull_parts[1:] + (static_primitives(glass) if glass else [])  # window insets + canopy pane
+    parts = {"cockpit_hull": [hull_parts[0]]}
+    if glass_parts:
+        parts["cockpit_glass"] = glass_parts
     doc["materials"].append({"name": "mw5_glass", "pbrMetallicRoughness": {
         "baseColorTexture": {"index": 0}, "metallicFactor": cfg["glass"]["metallic"], "roughnessFactor": cfg["glass"]["roughness"]}})
     glass_material = len(doc["materials"]) - 1
@@ -108,6 +110,9 @@ def trim_proud_glass(glb_in, glb_out, margin=0.0):
     """Drop connected canopy-glass pieces whose top pokes above the nose hull (they showed as a black teardrop)."""
     doc, buf = load_glb(glb_in)
     by = {m["name"]: m["primitives"][0] for m in doc["meshes"] if m["name"] in ("cockpit_hull", "cockpit_glass")}
+    if "cockpit_glass" not in by:
+        Path(glb_out).write_bytes(Path(glb_in).read_bytes())
+        return 0
     hull_top = read_accessor(doc, buf, by["cockpit_hull"]["attributes"]["POSITION"])[:, 1].max()
     gp = by["cockpit_glass"]
     pos = read_accessor(doc, buf, gp["attributes"]["POSITION"])

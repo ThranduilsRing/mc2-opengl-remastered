@@ -1,0 +1,1141 @@
+{
+ "schema": "mw5-roster/1",
+ "chassis": [
+  {
+   "mc2": "werewolf",
+   "stock": true,
+   "campaign_uses": 163,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "hunchback",
+   "stock": true,
+   "campaign_uses": 130,
+   "mw5": "hunchback",
+   "mw5_object": "/Game/Objects/Mechs/Hunchback/Model/Body/Hunchback_SKM",
+   "status": "done"
+  },
+  {
+   "mc2": "bushwacker",
+   "stock": true,
+   "campaign_uses": 106,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "catapult",
+   "stock": true,
+   "campaign_uses": 103,
+   "mw5": "catapult",
+   "mw5_object": "/Game/Objects/Mechs/Catapult/Model/Body/Catapult_SKM",
+   "status": "done"
+  },
+  {
+   "mc2": "uller",
+   "stock": true,
+   "campaign_uses": 75,
+   "mw5": "kitfox",
+   "mw5_object": "/Game/DLC7/Objects/Mechs/CLANS/KitFox/Model/Body/Kitfox_SKM",
+   "status": "done"
+  },
+  {
+   "mc2": "madcat",
+   "stock": true,
+   "campaign_uses": 68,
+   "mw5": "timberwolf",
+   "mw5_object": "/Game/DLC7/Objects/Mechs/CLANS/TimberWolf/Model/Body/Timberwolf_SKM",
+   "status": "done"
+  },
+  {
+   "mc2": "zeus",
+   "stock": true,
+   "campaign_uses": 67,
+   "mw5": "zeus",
+   "mw5_object": "/Game/Objects/Mechs/Zeus/Model/Body/Zeus_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "shayu",
+   "stock": true,
+   "campaign_uses": 62,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "laohu",
+   "stock": true,
+   "campaign_uses": 52,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "hollander",
+   "stock": true,
+   "campaign_uses": 51,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "anubis",
+   "stock": true,
+   "campaign_uses": 45,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "raven",
+   "stock": true,
+   "campaign_uses": 44,
+   "mw5": "raven",
+   "mw5_object": "/Game/Objects/Mechs/Raven/Model/Body/Raven_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "flea",
+   "stock": true,
+   "campaign_uses": 42,
+   "mw5": "flea",
+   "mw5_object": "/Game/Objects/Mechs/Flea/Model/Body/Flea_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "menshen",
+   "stock": true,
+   "campaign_uses": 39,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "highlander",
+   "stock": true,
+   "campaign_uses": 37,
+   "mw5": "highlander",
+   "mw5_object": "/Game/Objects/Mechs/Highlander/Model/Body/Highlander_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "enfield",
+   "stock": true,
+   "campaign_uses": 35,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "mediumcopter",
+   "stock": true,
+   "campaign_uses": 32,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "starslayer",
+   "stock": true,
+   "campaign_uses": 27,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "thor",
+   "stock": true,
+   "campaign_uses": 27,
+   "mw5": "summoner",
+   "mw5_object": "/Game/DLC7/Objects/Mechs/CLANS/Summoner/Model/Body/Summoner_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "urbanmech",
+   "stock": true,
+   "campaign_uses": 27,
+   "mw5": "urbanmech",
+   "mw5_object": "/Game/Objects/Mechs/Urbanmech/Model/Body/Urbanmech_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "ryoken",
+   "stock": true,
+   "campaign_uses": 25,
+   "mw5": "stormcrow",
+   "mw5_object": "/Game/DLC7/Objects/Mechs/CLANS/Stormcrow/Model/Body/Stormcrow_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "vulture",
+   "stock": true,
+   "campaign_uses": 24,
+   "mw5": "maddog",
+   "mw5_object": "/Game/DLC7/Objects/Mechs/CLANS/Maddog/Model/Body/Maddog_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "shootist",
+   "stock": true,
+   "campaign_uses": 23,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "atlas",
+   "stock": true,
+   "campaign_uses": 22,
+   "mw5": "atlas",
+   "mw5_object": "/Game/Objects/Mechs/Atlas/Model/Body/Atlas_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "jaegermech",
+   "stock": true,
+   "campaign_uses": 20,
+   "mw5": "jagermech",
+   "mw5_object": "/Game/Objects/Mechs/Jagermech/Model/Body/Jagermech_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "shadowcat",
+   "stock": true,
+   "campaign_uses": 16,
+   "mw5": "shadowcat",
+   "mw5_object": "/Game/DLC7/Objects/Mechs/CLANS/ShadowCat/Model/Body/Shadowcat_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "wolfhound",
+   "stock": true,
+   "campaign_uses": 13,
+   "mw5": "wolfhound",
+   "mw5_object": "/Game/Objects/Mechs/Wolfhound/Model/Body/Wolfhound_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "heavycopter",
+   "stock": true,
+   "campaign_uses": 9,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "bloodasp",
+   "stock": true,
+   "campaign_uses": 6,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "cyclops",
+   "stock": true,
+   "campaign_uses": 3,
+   "mw5": "cyclops",
+   "mw5_object": "/Game/Objects/Mechs/Cyclops/Model/Body/Cyclops_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "anihilator",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "archer",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "archer",
+   "mw5_object": "/Game/Objects/Mechs/Archer/Model/Body/Archer_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "archer2",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "argus",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "assassin",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "assassin",
+   "mw5_object": "/Game/Objects/Mechs/Assassin/Model/Body/Assassin_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "avatar",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "awesome",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "awesome",
+   "mw5_object": "/Game/Objects/Mechs/Awesome/Model/Body/Awesome_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "battlemaster",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "battlemaster",
+   "mw5_object": "/Game/Objects/Mechs/Battlemaster/Model/Body/Battlemaster_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "blackjack",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "blackjack",
+   "mw5_object": "/Game/Objects/Mechs/Blackjack/Model/Body/Blackjack_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "bloodasp2",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "bloodkite",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "cauldron",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "centurion",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "centurion",
+   "mw5_object": "/Game/Objects/Mechs/Centurion/Model/Body/Centurion_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "centurion1",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "champio2",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "champion",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "champion",
+   "mw5_object": "/Game/DLC1/Objects/Mechs/Champion/Model/Body/Champion_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "chimera",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "cicada",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "cicada",
+   "mw5_object": "/Game/Objects/Mechs/Cicada/Model/Body/Cicada_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "commando",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "commando",
+   "mw5_object": "/Game/Objects/Mechs/Commando/Model/Body/Commando_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "commando2c",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "cougar",
+   "stock": true,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "cougar1",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "crab",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "crab",
+   "mw5_object": "/Game/Objects/Mechs/Crab/Model/Body/Crab_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "crossbow",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "crusader",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "crusader",
+   "mw5_object": "/Game/DLC4/Objects/Mechs/Crusader/Model/Body/Crusader_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "dervish",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "dervish",
+   "mw5_object": "/Game/DLC1/Objects/Mechs/Dervish/Model/Body/Dervish_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "direwolf",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "direwolf",
+   "mw5_object": "/Game/DLC7/Objects/Mechs/CLANS/DireWolf/Model/Body/Direwolf_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "dragon",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "dragon",
+   "mw5_object": "/Game/Objects/Mechs/Dragon/Model/Body/Dragon_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "elemental",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "enforcer",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "enforcer",
+   "mw5_object": "/Game/Objects/Mechs/Enforcer/Model/Body/Enforcer_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "executioner",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "executioner",
+   "mw5_object": "/Game/DLC7/Objects/Mechs/CLANS/Executioner/Model/Body/Executioner_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "fafnir",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "firefly",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "firemoth",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "firemoth",
+   "mw5_object": "/Game/DLC7/Objects/Mechs/CLANS/FireMoth/Model/Body/Firemoth_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "firestarter",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "firestarter",
+   "mw5_object": "/Game/Objects/Mechs/Firestarter/Model/Body/Firestarter_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "firewraith",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "flashman",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "gargoyle",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "gargoyle",
+   "mw5_object": "/Game/DLC7/Objects/Mechs/CLANS/Gargoyle/Model/Body/Gargoyle_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "gladiator",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "grizzly",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "guardian",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "hades",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "hellfire",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "hellhound",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "hellspawn",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "highlander2c",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "hollander2",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "hunchbackiic",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "huntsman",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "iceferret",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "intruder",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "jaegermech3",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "javelin",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "javelin",
+   "mw5_object": "/Game/Objects/Mechs/Javelin/Model/Body/Javelin_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "jenner",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "jenner",
+   "mw5_object": "/Game/Objects/Mechs/Jenner/Model/Body/Jenner_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "jenner2c",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "kodiak",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "kraken",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "locust",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "locust",
+   "mw5_object": "/Game/Objects/Mechs/Locust/Model/Body/Locust_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "locust2c",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "loki",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "hellbringer",
+   "mw5_object": "/Game/DLC7/Objects/Mechs/CLANS/Hellbringer/Model/Body/Hellbringer_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "longbow",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "longbow",
+   "mw5_object": "/Game/DLC5/Objects/Mechs/Longbow/Model/Body/Longbow_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "lupus",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "madcatmkii",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "madcatmkiii",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "maddog",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "maddog",
+   "mw5_object": "/Game/DLC7/Objects/Mechs/CLANS/Maddog/Model/Body/Maddog_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "marauder",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "marauder",
+   "mw5_object": "/Game/Objects/Mechs/Marauder/Model/Body/Marauder_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "marauder2c",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "mauler",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "mauler",
+   "mw5_object": "/Game/Objects/Mechs/Mauler/Model/Body/Mauler_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "mistlynx",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "mistlynx",
+   "mw5_object": "/Game/DLC7/Objects/Mechs/CLANS/MistLynx/Model/Body/Mistlynx_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "naga",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "nova",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "nova",
+   "mw5_object": "/Game/DLC7/Objects/Mechs/CLANS/Nova/Model/Body/Nova_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "nova1",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "novacat",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "omega",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "omen",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "orion",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "orion",
+   "mw5_object": "/Game/Objects/Mechs/Orion/Model/Body/Orion_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "orion2c",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "osiris",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "owens",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "panther",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "panther",
+   "mw5_object": "/Game/Objects/Mechs/Panther/Model/Body/Panther_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "phantom",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "puma",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "adder",
+   "mw5_object": "/Game/DLC7/Objects/Mechs/CLANS/Adder/Model/Body/Adder_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "quickdraw",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "quickdraw",
+   "mw5_object": "/Game/Objects/Mechs/Quickdraw/Model/Body/Quickdraw_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "ranger",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "rifleman",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "rifleman",
+   "mw5_object": "/Game/Objects/Mechs/Rifleman/Model/Body/Rifleman_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "rifleman2c",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "salamander",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "scoutcopter",
+   "stock": true,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "shadowhawk",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "shadowhawk",
+   "mw5_object": "/Game/Objects/Mechs/Shadowhawk/Model/Body/Shadowhawk_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "stalker",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "stalker",
+   "mw5_object": "/Game/Objects/Mechs/Stalker/Model/Body/Stalker_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "stinger",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "sunder",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "supernova",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "thanatos",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "thug",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "thunder",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "timberwolf",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "timberwolf",
+   "mw5_object": "/Game/DLC7/Objects/Mechs/CLANS/TimberWolf/Model/Body/Timberwolf_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "turkina",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "urbanmech2c",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "uziel",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "valkyrie",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "victor",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "victor",
+   "mw5_object": "/Game/Objects/Mechs/Victor/Model/Body/Victor_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "viking",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "vindicator",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "vindicator",
+   "mw5_object": "/Game/Objects/Mechs/Vindicator/Model/Body/Vindicator_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "vulcan",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "vulcan",
+   "mw5_object": "/Game/DLC1/Objects/Mechs/Vulcan/Model/Body/Vulcan_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "vulture1",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "warhammer",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "warhammer",
+   "mw5_object": "/Game/Objects/Mechs/Warhammer/Model/Body/Warhammer_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "warhammer2c",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "warhawk",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": "warhawk",
+   "mw5_object": "/Game/DLC7/Objects/Mechs/CLANS/Warhawk/Model/Body/Warhawk_SKM",
+   "status": "recipe-needed"
+  },
+  {
+   "mc2": "waterwolf",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "wolfhound2c",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  },
+  {
+   "mc2": "zeusmk2",
+   "stock": false,
+   "campaign_uses": 0,
+   "mw5": null,
+   "mw5_object": null,
+   "status": "no-mw5-asset"
+  }
+ ]
+}
