@@ -557,7 +557,7 @@ def test_muzzle_sockets_sit_on_geometry_not_joint_centres(marauder_recipe):
     import numpy as np
     joints = {"weapon_leftarm": "j_LForearm", "weapon_leftarm2": "j_LForearm",
               "weapon_rightarm": "j_RForearm", "weapon_centertorso": "j_Spine2"}
-    off = SK.socket_offsets(FIXTURES / "sockets.glb", joints)
+    off = SK.socket_offsets(REPO / "scripts/tests/fixtures/synthetic_mech/sockets_fixture.glb", joints)
     assert set(off) == set(joints)
     for name, v in off.items():
         assert np.linalg.norm(v) > 1e-3, name               # not the joint centre
