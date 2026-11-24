@@ -13953,6 +13953,17 @@
    "stream": "stderr",
    "keys": [
     "event",
+    "reason",
+    "waterElevation"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_STREAM",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
     "recipes",
     "candidates_walked",
     "waterElevation",
