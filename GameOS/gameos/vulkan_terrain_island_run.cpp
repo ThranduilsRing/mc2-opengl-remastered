@@ -3,6 +3,7 @@
 // VK terrain island: the extern C entry points: enabled / ready / prepare, the frame UBO and light-pool staging, and the per-frame run.
 // Declared in the class headers; shared names in vulkan_terrain_island_internal.h.
 #include "vulkan_terrain_island_internal.h"
+#include "terrain_field_store.h"
 #include "vulkan_mover_shadow.h"
 #include "../../RenderCore/TemporalInputs.h"
 #include "hitch_stats.h"
@@ -254,6 +255,8 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     const bool groundAo = mc2::options::current().groundAo && detail;
     u.groundAoShape = groundAo ? normalTuning.at("terrainGroundAoShape") : 0.0f;
     u.groundAoMaterial = groundAo ? normalTuning.at("terrainGroundAoMaterial") : 0.0f;
+    const auto* aoFields = gos_TerrainFieldStore();
+    u.groundAoSource = aoFields && aoFields->materialNormals().grassSourceAo ? normalTuning.at("terrainGroundAoSource") : 0.0f;
     // VK-TERRAIN-LODFADE: camera pos + gate, precondition-chained on detail
     // being enabled (fading an already-off detail term is a no-op).
     u.cameraPosMC2[0] = feed.cameraPosMC2[0];

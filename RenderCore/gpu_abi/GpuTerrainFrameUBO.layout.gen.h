@@ -121,4 +121,5 @@ static_assert(offsetof(TerrainFrameUBO, normalCementPeriod) == 892, "normalCemen
 static_assert(offsetof(TerrainFrameUBO, normalCementStrength) == 896, "normalCementStrength offset");
 static_assert(offsetof(TerrainFrameUBO, groundAoShape) == 900, "groundAoShape offset");
 static_assert(offsetof(TerrainFrameUBO, groundAoMaterial) == 904, "groundAoMaterial offset");
-static_assert(offsetof(TerrainFrameUBO, _pad) == 908, "_pad offset");
+static_assert(offsetof(TerrainFrameUBO, groundAoSource) == 908, "groundAoSource offset");
+static_assert(offsetof(TerrainFrameUBO, _pad) == 912, "_pad offset");

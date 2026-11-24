@@ -6,6 +6,8 @@
 #define DF_L0 2.0
 #define DF_L1 4.0
 float mv_detailTexelGM = 0.0;
+// GROUND-AO-1: cooked source AO of the grass turf (its normal-texel B channel), weighted by the tap weights; _W = 0 where no layer carries one.
+float mv_srcAoSum = 0.0, mv_srcAoW = 0.0;
 float mv_detailFade(float texelsPerPixel) {
     return 1.0 - smoothstep(DF_L0, DF_L1, log2(max(texelsPerPixel, 1e-6)));
 }
@@ -56,6 +58,7 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz, vec2
                    ? mv_sampleAntiTileArr(MAT_LAYER_GRASS, uvGrass, atsGrass, uvDx * MATV_TILING.y, uvDy * MATV_TILING.y, fwGrass)
                    : textureGrad(u_matNormalArray, vec3(uvGrass, float(MAT_LAYER_GRASS)), uvDx * MATV_TILING.y, uvDy * MATV_TILING.y);
             dN += w.y * MATV_NORMAL_BOOST.y * fwGrass * dfGrass * mv_detailDecode(s.rgb);
+            mv_srcAoSum += w.y * fwGrass * dfGrass * s.b; mv_srcAoW += w.y * fwGrass * dfGrass;
         }
         // GRASS-GROUND-NORMAL: a second, larger-scale tap of the turf (0.29x, rotated ~37 deg) so the
         // tuft/dirt-gap clumps vary over ~1300 wu and the 384 wu tile does not repeat. Its own fade.

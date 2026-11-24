@@ -55,6 +55,16 @@ class TestGrassTurf(unittest.TestCase):
         self.assertLess(np.abs(np.linalg.norm(n, axis=-1) - 1.0).max(), 0.03)
         self.assertEqual((int(t[..., 3].min()), int(t[..., 3].max())), (0, 255))  # height spans the full alpha range
 
+    def test_source_ao_rides_in_blue_and_follows_the_source(self):
+        ao = np.random.default_rng(3).uniform(0.4, 1.0, (self.SIZE, self.SIZE))
+        t = turf.turf_texels(self.blade, self.dirt, size=self.SIZE, blade_ao=ao)
+        base = turf.turf_texels(self.blade, self.dirt, size=self.SIZE)
+        self.assertTrue(np.array_equal(t[..., [0, 1, 3]], base[..., [0, 1, 3]]))   # normals and height unchanged
+        b = t[..., 2].astype(np.float64) / 255.0
+        self.assertAlmostEqual(float(b.mean()), turf.AO_MEAN, delta=0.05)
+        self.assertGreater(float(np.corrcoef(b.ravel(), ao.ravel())[0, 1]), 0.4)   # the source's occlusion pattern survives
+        self.assertLess(float(b.min()), 0.7)                                      # real cavities, not a flat tone
+
     def test_deterministic(self):
         a = turf.turf_texels(self.blade, self.dirt, size=self.SIZE)
         b = turf.turf_texels(self.blade, self.dirt, size=self.SIZE)

@@ -134,5 +134,6 @@ layout(set = TERRAIN_RESOURCE_SET, binding = 0, std140) uniform TerrainFrameUBO 
     float normalCementStrength;  // off 896
     float groundAoShape;  // off 900
     float groundAoMaterial;  // off 904
+    float groundAoSource;  // off 908
 } uT;
 #endif

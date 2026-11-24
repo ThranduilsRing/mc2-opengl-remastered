@@ -20,7 +20,8 @@
     "terrainNormalCementPeriod": 48.0,
     "terrainNormalCementStrength": 1.0,
     "terrainGroundAoShape": 1.0,
-    "terrainGroundAoMaterial": 1.0
+    "terrainGroundAoMaterial": 1.0,
+    "terrainGroundAoSource": 1.0
   },
   "missions": {
     "mc2_01": {
