@@ -39,6 +39,7 @@ def test_preview_routes(tmp_path):
     for screen in ("purchase", "mechbay"):
         normal, _ = ss.build_env(screen, tmp_path / "normal.tga", mission="mc2_02")
         assert normal["MC2_BOOT_TO_MISSION"] == "mc2_02"
+        assert normal["MC2_LAUNCHER_ENV_JSON"] == "1"
         assert not any(k in normal for k in ("MC2_SOAK_AUTOWIN", "MC2_SOAK_AUTO_PURCHASE",
                                              "MC2_PURCHASE_ALL", "MC2_BOOT_TO_MECHLAB"))
     lab, _ = ss.build_env("loadout@120", tmp_path / "lab.tga")

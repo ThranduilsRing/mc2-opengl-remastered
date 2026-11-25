@@ -47,6 +47,7 @@ def build_env(screen: str, out_tga: Path, *, campaign: str = "campaign", mission
         "MC2_SHOT_SCREEN": f"{name}@{settle}",
         "MC2_SCREENSHOT_PATH": str(out_tga),
         "MC2_RENDER_BACKEND": "vulkan",
+        "MC2_LAUNCHER_ENV_JSON": "1",
         "MC2_LOG": "1",
         "MC2_NO_CURSOR_GRAB": "1",
         "MC2_WIDTH": str(width),
