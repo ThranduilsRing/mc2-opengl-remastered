@@ -158,7 +158,7 @@ CAMO_PAINT = {"PaintColorPrimary": [0.130352, 0.119264, 0.052842], "PaintColorSe
               "PaintColorTertiary": [0.227137, 0.151058, 0.096266], "PaintColorMultiplier": [1, 1, 1],
               "MetalColorMultiplier": [0.630208, 0.618193, 0.57475]}   # the approved Mad Cat camo
 PAINT = "camo"                # "camo" = every mech wears the Mad Cat palette; "mw5" = the chassis' own default colours
-GUNMETAL = (40, 42, 46)       # weapon islands the body paint mask leaves bare would read as white boxes
+PAINTED_ISLAND_GAIN = 0.85    # weapon islands the body paint mask leaves bare take the chassis paint colour (gunmetal read near-black)
 DIRT_STRENGTH = 1.5           # the approved Mad Cat look: MW5's 0.75 doubled
 MADCAT_BOX = np.array([[-4.11, -0.09, -5.92], [4.66, 15.58, 5.92]])   # body bounds the DECALS were placed on
 
@@ -206,8 +206,11 @@ def bake(recipe, work):
     a, o = bake_extras.weather(fields, np.asarray(alb), np.asarray(orm), leaf("rust"), leaf("macro"))
     w_pos, _, w_cov, _ = bake_extras.rasterize(bake_extras.body_triangles(glb, weapons=True))
     bare = w_cov & (bake_material.load(leaf("mask"))[..., :3].sum(-1) < .15)
-    a[bare, :3] = GUNMETAL
-    o[bare, 1], o[bare, 2] = int(.45 * 255), int(.8 * 255)
+    macro = bake_material.load(leaf("macro"), channels="L")[..., 0]
+    paint = np.clip((np.asarray(params["paint"]["PaintColorPrimary"], float) + np.asarray(params["paint"]["PaintColorSecondary"], float)) / 2 * np.asarray(params["paint"].get("PaintColorMultiplier", [1, 1, 1]), float), 0, 1)
+    shade = (PAINTED_ISLAND_GAIN * (0.7 + 0.6 * macro))[..., None]
+    a[bare, :3] = np.clip(paint ** (1 / 2.2) * 255 * shade, 0, 255).astype(np.uint8)[bare]   # weapon islands wear the chassis paint, weathered
+    o[bare, 1], o[bare, 2] = int(.6 * 255), int(.25 * 255)
     if "decals" in ex["textures"]:
         a, o = bake_extras.decals(fields, a, o, leaf("decals"),
                                   scale_decals(bake_extras.DECALS, np.concatenate([p for p, _, _, _ in body])))

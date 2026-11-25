@@ -1,0 +1,217 @@
+{
+  "schema": "mw5-mech-recipe/1",
+  "family": "stormcrow",
+  "chassis_id": "mw5:stormcrow",
+  "requires_dlc": true,
+  "extraction": {
+    "mesh": "/Game/DLC7/Objects/Mechs/CLANS/Stormcrow/Model/Body/Stormcrow_SKM.Stormcrow_SKM",
+    "skeleton": "/Game/Objects/Mechs/_common/Mech_SKL.Mech_SKL",
+    "clips": {
+      "Stand": "/Game/DLC7/Objects/Mechs/CLANS/Stormcrow/Animation/SCR_Stand_ANI.SCR_Stand_ANI",
+      "WalkForward_Straight": "/Game/DLC7/Objects/Mechs/CLANS/Stormcrow/Animation/SCR_WalkForward_Straight_ANI.SCR_WalkForward_Straight_ANI",
+      "RunForward_Straight": "/Game/DLC7/Objects/Mechs/CLANS/Stormcrow/Animation/SCR_RunForward_Straight_ANI.SCR_RunForward_Straight_ANI",
+      "WalkBackward_Straight": "/Game/DLC7/Objects/Mechs/CLANS/Stormcrow/Animation/SCR_WalkBackward_Straight_ANI.SCR_WalkBackward_Straight_ANI",
+      "WalkForward_LeftLimp": "/Game/DLC7/Objects/Mechs/CLANS/Stormcrow/Animation/SCR_WalkForward_LeftLimp_ANI.SCR_WalkForward_LeftLimp_ANI",
+      "WalkForward_RightLimp": "/Game/DLC7/Objects/Mechs/CLANS/Stormcrow/Animation/SCR_WalkForward_RightLimp_ANI.SCR_WalkForward_RightLimp_ANI",
+      "Stand_Turn_Left": "/Game/DLC7/Objects/Mechs/CLANS/Stormcrow/Animation/SCR_Stand_Turn_Left_ANI.SCR_Stand_Turn_Left_ANI",
+      "Stand_Turn_Right": "/Game/DLC7/Objects/Mechs/CLANS/Stormcrow/Animation/SCR_Stand_Turn_Right_ANI.SCR_Stand_Turn_Right_ANI",
+      "Jumpjetting_Neutral": "/Game/DLC7/Objects/Mechs/CLANS/Stormcrow/Animation/SCR_Jumpjetting_Neutral_ANI.SCR_Jumpjetting_Neutral_ANI",
+      "Falling": "/Game/DLC7/Objects/Mechs/CLANS/Stormcrow/Animation/SCR_Falling_ANI.SCR_Falling_ANI",
+      "Crouch": "/Game/DLC7/Objects/Mechs/CLANS/Stormcrow/Animation/SCR_Crouch_ANI.SCR_Crouch_ANI"
+    },
+    "materials": [
+      "/Game/DLC7/Objects/Mechs/CLANS/_Common/ClanMech_BaseMech_MTI.ClanMech_BaseMech_MTI",
+      "/Game/DLC7/Objects/Mechs/CLANS/_Common/SkinMaterials/ClanMech_Default_MTI.ClanMech_Default_MTI"
+    ],
+    "textures": {
+      "mask": "/Game/DLC7/Objects/Mechs/CLANS/Stormcrow/Model/Body/Textures/Stormcrow_Body_Default_MSK.Stormcrow_Body_Default_MSK",
+      "normal": "/Game/DLC7/Objects/Mechs/CLANS/Stormcrow/Model/Body/Textures/Stormcrow_Body_NRM.Stormcrow_Body_NRM",
+      "macro": "/Game/Objects/_common/Materials/Textures/MacroVariation_CLR.MacroVariation_CLR",
+      "decals": "/Game/Objects/Mechs/_common/Material/Textures/MechDecals_ACL.MechDecals_ACL",
+      "rust": "/Game/Objects/Dropships/Leopard/Models/Materials/BaseMaterials/Textures/Rusted_CLR.Rusted_CLR",
+      "metal_id": "/Game/DLC7/Objects/Mechs/CLANS/Stormcrow/Model/Body/Textures/Stormcrow_body_metalID.Stormcrow_body_metalID",
+      "wear": "/Game/DLC7/Objects/Mechs/CLANS/Stormcrow/Model/Body/Textures/Stormcrow_Body_Wear_MSK.Stormcrow_Body_Wear_MSK"
+    },
+    "cockpit": {
+      "hull": "/Game/DLC7/Objects/Mechs/CLANS/Stormcrow/Model/Body/SCR_TP_Cockpit_DM0_STM",
+      "glass": "/Game/DLC7/Objects/Mechs/CLANS/Stormcrow/Model/Cockpit/Stormcrow_CockpitGlass_STM"
+    },
+    "weapons": {
+      "Weapon_Mech_SCR_Forearm_Right_EH1_Laser_SKM": "/Game/DLC7/Objects/Mechs/CLANS/Stormcrow/Model/Weapons/Weapon_Mech_SCR_Forearm_Right_EH1_Laser_SKM",
+      "Weapon_Mech_SCR_Forearm_Left_EH1_Laser_SKM": "/Game/DLC7/Objects/Mechs/CLANS/Stormcrow/Model/Weapons/Weapon_Mech_SCR_Forearm_Left_EH1_Laser_SKM",
+      "Weapon_Mech_SCR_Torso_Left_MH1_Missile10_SKM": "/Game/DLC7/Objects/Mechs/CLANS/Stormcrow/Model/Weapons/Weapon_Mech_SCR_Torso_Left_MH1_Missile10_SKM",
+      "Weapon_Mech_SCR_Torso_Right_MH1_Missile10_SKM": "/Game/DLC7/Objects/Mechs/CLANS/Stormcrow/Model/Weapons/Weapon_Mech_SCR_Torso_Right_MH1_Missile10_SKM"
+    }
+  },
+  "clips": {
+    "Stand": "atlas_moveCoreIdle",
+    "WalkForward_Straight": "atlas_moveCoreWalkFwd",
+    "RunForward_Straight": "atlas_moveCoreRunFwd",
+    "WalkBackward_Straight": "atlas_moveCoreWalkBwd",
+    "WalkForward_LeftLimp": "atlas_moveCoreWalkLimpFwdLeft",
+    "WalkForward_RightLimp": "atlas_moveCoreWalkLimpFwdRight",
+    "Stand_Turn_Left": "atlas_moveCoreTurnLeftIdle",
+    "Stand_Turn_Right": "atlas_moveCoreTurnRightIdle",
+    "Jumpjetting_Neutral": "atlas_moveJumpUpIdle"
+  },
+  "grounding": {
+    "atlas_moveCoreIdle": "feet",
+    "atlas_moveCoreWalkFwd": "feet",
+    "atlas_moveCoreRunFwd": "feet",
+    "atlas_moveCoreWalkBwd": "feet",
+    "atlas_moveCoreWalkLimpFwdLeft": "feet",
+    "atlas_moveCoreWalkLimpFwdRight": "feet",
+    "atlas_moveCoreTurnLeftIdle": "feet",
+    "atlas_moveCoreTurnRightIdle": "feet",
+    "atlas_hitReactKnockdownInpl": "body",
+    "atlas_downedIdle": "body",
+    "atlas_deathKnockdown": "body",
+    "atlas_deathIdle": "body",
+    "atlas_downedGetup": "body"
+  },
+  "hold_clips": {
+    "atlas_hitReactKnockdownInpl": [
+      "Falling",
+      -1
+    ],
+    "atlas_downedIdle": [
+      "Falling",
+      -1
+    ],
+    "atlas_deathKnockdown": [
+      "Falling",
+      -1
+    ],
+    "atlas_deathIdle": [
+      "Falling",
+      -1
+    ],
+    "atlas_downedGetup": [
+      "Stand",
+      0
+    ],
+    "atlas_hitReactLgtFwd": [
+      "Stand",
+      0
+    ],
+    "atlas_hitReactLgtBwd": [
+      "Stand",
+      0
+    ],
+    "atlas_hitReactLgtLeft": [
+      "Stand",
+      0
+    ],
+    "atlas_hitReactLgtRight": [
+      "Stand",
+      0
+    ],
+    "atlas_moveJumpUpStart": [
+      "Crouch",
+      0
+    ],
+    "atlas_moveJumpDownLand": [
+      "Crouch",
+      -1
+    ]
+  },
+  "bone_rename": {
+    "Thigh_Left": "j_LThigh",
+    "Calf_Left": "j_LCalf",
+    "Foot0_Left": "j_LFoot",
+    "Thigh_Right": "j_RThigh",
+    "Calf_Right": "j_RCalf",
+    "Foot0_Right": "j_RFoot",
+    "Torso_Pitch": "j_Spine2",
+    "Cockpit": "j_COCKPIT"
+  },
+  "keep_bones": [
+    "Cockpit",
+    "Pelvis",
+    "Root",
+    "Torso_Animation",
+    "Torso_Pitch",
+    "Torso_Twist"
+  ],
+  "keep_prefixes": [
+    "Forearm_",
+    "Clavicle_",
+    "Upperarm_"
+  ],
+  "clip_pattern": "SCR_{source}_ANI",
+  "mc2": {
+    "stem": "mw5_stormcrow",
+    "nodes": {
+      "joint_torso": "j_Spine2",
+      "cockpit": "j_COCKPIT",
+      "hit_left": "Clavicle_Left",
+      "hit_right": "Clavicle_Right"
+    },
+    "model": {
+      "host_ini": "ryoken",
+      "source_skm": "hull.gltf",
+      "anim_dir": ".",
+      "textures": "cooked",
+      "loadout": "loadout.json",
+      "attachments": [],
+      "normal_source": "native:Stormcrow_Body_NRM"
+    }
+  },
+  "cockpit": {
+    "bone": "j_COCKPIT",
+    "drop_glass": true,
+    "glass": {
+      "tile": "auto",
+      "albedo_linear": [
+        0.006,
+        0.012,
+        0.016
+      ],
+      "roughness": 0.05,
+      "metallic": 0.7
+    }
+  },
+  "mod": {
+    "id": "mw5_mechs",
+    "name": "MechWarrior 5 mechs (personal use)",
+    "description": "MW5 mech models on the stock MC2 chassis, generated from the owner's own MW5 files. Add-on layer: MC2_MOD_DEPS=mw5_mechs. Not for redistribution."
+  },
+  "loadout": [
+    {
+      "node": "weapon_0",
+      "mesh": "Weapon_Mech_SCR_Forearm_Right_EH1_Laser_SKM",
+      "bone": "Forearm_Right",
+      "type": 5,
+      "fires": [
+        "Fire00"
+      ]
+    },
+    {
+      "node": "weapon_1",
+      "mesh": "Weapon_Mech_SCR_Forearm_Left_EH1_Laser_SKM",
+      "bone": "Forearm_Left",
+      "type": 5,
+      "fires": [
+        "Fire00"
+      ]
+    },
+    {
+      "node": "weapon_2",
+      "mesh": "Weapon_Mech_SCR_Torso_Left_MH1_Missile10_SKM",
+      "bone": "Torso_Pitch",
+      "type": 1,
+      "fires": [
+        "Fire00"
+      ]
+    },
+    {
+      "node": "weapon_3",
+      "mesh": "Weapon_Mech_SCR_Torso_Right_MH1_Missile10_SKM",
+      "bone": "Torso_Pitch",
+      "type": 1,
+      "fires": [
+        "Fire00"
+      ]
+    }
+  ]
+}
