@@ -209,10 +209,16 @@ def test_deploy_cooks_mod_visual_height_and_retains_authored_bake(tmp_path, side
     _, side, blocks = locate_mapdata(read_packets(missions / "custom.pak"))
     expected = height_sig(extract_layers(side, blocks, 0)["elev"])
     assert (sidecar.parent / "gameplay_height.sig").read_text().strip() == expected
-    authored = b"\x5a" * sidecar.stat().st_size   # a current-size bake with a matching gameplay sig counts as authored: retained
+    authored = b"\x5a" * sidecar.stat().st_size
     sidecar.write_bytes(authored)
     deploy.cook_mod_visual_heights(root, tmp_path)
     assert sidecar.read_bytes() == authored
+    # Legacy authored bakes have no signature and must also survive deploy.
+    sig = sidecar.parent / "gameplay_height.sig"
+    sig.unlink()
+    deploy.cook_mod_visual_heights(root, tmp_path)
+    assert sidecar.read_bytes() == authored
+    assert not sig.exists()
 
 
 # --- cook: end-to-end determinism -------------------------------------------

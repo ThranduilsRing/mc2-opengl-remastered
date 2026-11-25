@@ -1195,6 +1195,19 @@ def _pyramid_top_score(elev, water_mask, land_mask):
     return float(pyr[0]["score"]) if pyr else 0.0
 
 
+def quality_passes(report: dict, reshape: bool, corner_clamp: float, max_drift: float) -> bool:
+    """Use the same quality gate for publishing the bake and reporting CLI success."""
+    error = report["max_corner_error_wu"]
+    if report.get("reauth"):
+        ra = report["reauth"]
+        # Allow extrema restoration slack plus the bounded shore adjustment.
+        cap = float(ra.get("effective_max_drift_wu", max_drift)) * 1.25 + float((ra.get("shore") or {}).get("bank_adjust_wu", {}).get("max", 0.0))
+        return (ra["extrema"]["violations"] == 0
+                and float(ra.get("landform_correlation_off_shore", ra["landform_correlation"])) >= 0.99
+                and 0.05 < error <= cap)
+    return error <= (corner_clamp if reshape else 0.0) + 1e-4
+
+
 def bake(mission: str, missions_dir: Path, out_root: Path, factor: int,
          reshape: bool = False, corner_clamp: float = 0.0,
          max_delta: float = 40.0, passes: int = 24,
@@ -1349,15 +1362,7 @@ def bake(mission: str, missions_dir: Path, out_root: Path, factor: int,
         "max_mips": mips_info,
         "note": note,
     }
-    if reauth:
-        ra = reauth_info
-        cap = float(ra.get("effective_max_drift_wu", max_drift)) * 1.25 + float((ra.get("shore") or {}).get("bank_adjust_wu", {}).get("max", 0.0))
-        ok = (ra["extrema"]["violations"] == 0
-              and float(ra.get("landform_correlation_off_shore", ra["landform_correlation"])) >= 0.99
-              and 0.05 < max_corner_err <= cap)
-    else:
-        ok = max_corner_err <= (corner_clamp if reshape else 0.0) + 1e-4
-    if not ok:
+    if not quality_passes(report, reshape, corner_clamp, max_drift):
         return report
     # Publish complete files only after the quality gate; signature is the commit marker.
     out_root.mkdir(parents=True, exist_ok=True)
@@ -1457,25 +1462,9 @@ def main() -> int:
         if rep.get("error"):
             print(f"[visual-bake] {m}: ERROR {rep['error']}", file=sys.stderr); rc = 1; continue
         extra = ""
+        ok = quality_passes(rep, args.reshape, args.corner_clamp, args.max_drift)
         if rep.get("reauth"):
             ra = rep["reauth"]
-            # reauth PASS = landform kept (corr + extrema) AND corners actually
-            # unpinned AND drift inside the soft bound (+tanh slack).
-            # corner cap: extrema re-injection may locally exceed the tanh soft
-            # bound while restoring a peak (that is the guarantee WORKING) ->
-            # allow 25% headroom over the EFFECTIVE drift (cliff smoothing: the
-            # cliff mask allows cliff_drift; flats keep max_drift).
-            eff = float(ra.get("effective_max_drift_wu", args.max_drift))
-            # Shore smoothing runs after reauthoring and has its own bounded corner adjustment.
-            corner_cap = eff * 1.25 + float((ra.get("shore") or {}).get("bank_adjust_wu", {}).get("max", 0.0))
-            # Gate on the off-shore correlation when the
-            # shore stage ran (== global when it didn't).
-            corr_gate = float(ra.get("landform_correlation_off_shore",
-                                     ra["landform_correlation"]))
-            ok = (ra["extrema"]["violations"] == 0
-                  and corr_gate >= 0.99
-                  and rep["max_corner_error_wu"] <= corner_cap
-                  and rep["max_corner_error_wu"] > 0.05)
             ce = ra["facet_crease_energy"]
             n_enf = ra["extrema"].get("enforced", ra["extrema"]["count"])
             extra = (f" corr={ra['landform_correlation']:.4f}"
@@ -1506,8 +1495,6 @@ def main() -> int:
                 extra += (f" mtn[seed={mi['seed']} rock={100*mi['rock_area_frac']:.0f}%"
                           f" detail_rms={mi['detail_rms_on_rock_wu']:.1f}wu]")
         else:
-            cap = (0.0 if not args.reshape else args.corner_clamp) + 1e-4
-            ok = rep["max_corner_error_wu"] <= cap
             if rep.get("reshape"):
                 ri = rep["reshape"]
                 extra = (f" pyr_score {ri['pyramid_top_score_before']:.2f}->{ri['pyramid_top_score_after']:.2f}"

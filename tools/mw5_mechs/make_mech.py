@@ -34,7 +34,6 @@ import build_pack  # noqa: E402
 import cook_textures  # noqa: E402
 import from_native  # noqa: E402
 import prone_pose  # noqa: E402
-from scripts import console_child  # noqa: E402
 from sockets import load_glb  # noqa: E402
 
 IDLE = "A:/Games/mc2-ops/idle_run.py"

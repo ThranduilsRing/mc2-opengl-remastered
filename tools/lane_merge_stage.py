@@ -102,8 +102,8 @@ def checked_out_elsewhere(root: str, branch: str) -> list[str]:
 
 
 def _dirty_besides_readme(root: str) -> list[tuple[str, str]]:
-    """Dirty entries other than README.md, which carries owner edits and never blocks a clean-tree check (docs/merge-queue-v2.md)."""
-    return [(xy, p) for xy, p in _git_util.status_entries(root) if p != "README.md"]
+    """Ignore unstaged owner edits to README.md; staged changes still block."""
+    return [(xy, p) for xy, p in _git_util.status_entries(root) if p != "README.md" or xy[0] != " "]
 
 
 def stage(root: str, window: str, tips: list[str]) -> dict:
