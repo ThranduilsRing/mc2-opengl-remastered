@@ -13,6 +13,53 @@ from tools.mw5_mechs.ue_basis import psa_pos_to_gltf, psa_quat_to_gltf
 from tools.mw5_mechs.verify_basis import angle, fk, world_rotation_delta
 
 
+@pytest.mark.parametrize('family,host,donor', [('atlas', 'atlas', 'atlas'), ('archer', 'archer', 'thor')])
+def test_logistics_keeps_donor_loadout_and_registers_new_chassis(tmp_path, monkeypatch, family, host, donor):
+    import csv
+    import io
+    from tools.mw5_mechs import build_pack as P
+    from tools.mc2x_import import fst
+    from tools.bt2018_mechs import render_icons as R
+    recipe = json.loads((Path(P.__file__).with_name('recipes') / (family + '.json')).read_text())
+    stem = recipe['mc2']['stem']
+    rows = [[''] * 15 for _ in range(116)]
+    rows[0][0] = 'BaseChassisInfo'
+    rows[2][3:5] = ['Tonnage', '100' if donor == 'atlas' else '70']
+    rows[12][1], rows[13][1] = '6', '5'
+    rows[22][:2] = ['VariantName', 'Donor Prime']
+    rows[25][:6] = ['Item0MasterId', '0', '1', '2', '99', 'Laser']
+    buf = io.StringIO()
+    csv.writer(buf).writerows(rows)
+    data = buf.getvalue().encode()
+    monkeypatch.setattr(fst, 'fst_entries', lambda p: [(0, len(data), len(data), f'data/objects/{donor}.csv', False, data),
+                                                       (0, 0, 0, 'data/objects/compbas.csv', False, b'99,EnergyWeapon\n')])
+    monkeypatch.setattr(fst, 'decompress_entry', lambda off, comp, real, lz, data: data)
+    monkeypatch.setattr(P, 'load_glb', lambda p: ({'extras': {'mw5Attachments': []}}, b''))
+    monkeypatch.setattr(P, 'package_nodes', lambda *a: ({'weapon_0': 'j_Spine2'}, {'weapon_0': '0 0 0'}, {}, 12))
+    icons = []
+    monkeypatch.setattr(R, 'build_icons', lambda *a: icons.append(a))
+    out = tmp_path / 'pack'
+    tgl = out / 'data/tgl'
+    tgl.mkdir(parents=True)
+    (tgl / (host + '.ini')).write_text('FITini\nFITend\n')
+    (tgl / (stem + '.package.json')).write_text('{}')
+    P.logistics(recipe, tmp_path, out)
+    target = out / 'data/objects' / ((host if host == donor else stem) + '.csv')
+    result = list(csv.reader(io.StringIO(target.read_text())))
+    assert result[25] == rows[25]
+    assert result[22][1].startswith('MW5 ') if host != donor else result[22][1] == 'Donor Prime'
+    assert result[8][1] == stem and result[10][1] == stem + '_bay'
+    assert result[2][4] == rows[2][4]
+    assert icons[0][1] == stem
+    report = json.loads((out / 'content' / (stem + '.json')).read_text())
+    assert report['donor'] == donor
+    fits = list((out / 'data/defs/chassis').rglob('chassisdef.fit'))
+    assert len(fits) == (host != donor)
+    if fits:
+        assert 'b Purchasable = TRUE' in fits[0].read_text()
+        assert 'st Socket = "weapon_0"' in fits[0].read_text()
+
+
 def chunk(name, size, records):
     return struct.pack("<20sIII", name.encode(), 0, size, len(records)) + b"".join(records)
 
@@ -234,10 +281,9 @@ def test_attached_muzzle_in_rotated_joint_frame(fixture, tmp_path, authored):
     if authored:
         assert np.allclose(point, [2, 3, 30])
     else:
-        # Independent expected tip: transform every source vertex, select by +Z.
-        verts = np.arange(18).reshape(6, 3)
-        world = (np.c_[verts, np.ones(6)] @ frame.T)[:, :3]
-        expected = verts[np.argmax(world[:, 2])]
+        # Missing socket uses the owning bone and a 40 cm forward offset.
+        tip = frame[:3, 3] + np.array([0, 0, .4])
+        expected = (np.linalg.inv(frame) @ np.r_[tip, 1])[:3]
         assert np.allclose(point, expected, atol=1e-4)
     assert all(len(n['name']) <= 24 for n in doc['nodes'])
     assert all(not any(s in m['name'].lower() for s in ('_explode', '_dmg', 'blip', 'indc', 'uix'))
@@ -307,6 +353,7 @@ def test_attachment_requires_resolved_bone(fixture, tmp_path):
 
 def test_recipe_entry_point_and_maps(fixture, tmp_path, monkeypatch):
     from tools.mw5_mechs import build_pack as P
+    monkeypatch.setattr(P, 'logistics', lambda *a: None)
     skm = fixture[0]
     recipe = B.load_recipe()
     recipe["mc2"]["stem"] = "fixture_mech"
