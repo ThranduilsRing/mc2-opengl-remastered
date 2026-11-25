@@ -693,11 +693,13 @@ void main(void)
     if (shorelineLook > 0) {
         foamMix = 0.0;
         shoreRipple = 0.0;
-        {
-            vec2 beachward = -shoreGrad / max(length(shoreGrad), 1e-4);
-            vec2 q = WorldPos.xy / 155.0 - beachward * time * 0.035;
-            vec4 foamTex = textureGrad(u_shoreFoam, fract(q), dFdx(q), dFdy(q));
-            float lace = textureGrad(u_shoreFoam, fract(q*2.31+0.37), dFdx(q*2.31), dFdy(q*2.31)).r;
+        vec2 beachward = -shoreGrad / max(length(shoreGrad), 1e-4);
+        vec2 q = WorldPos.xy / 155.0 - beachward * time * 0.035;
+        // Derivatives stay uniform; open water needs neither texture fetches nor foam evaluation.
+        vec2 foamDx = dFdx(q), foamDy = dFdy(q);
+        if (coastWeight > 0.0) {
+            vec4 foamTex = textureGrad(u_shoreFoam, fract(q), foamDx, foamDy);
+            float lace = textureGrad(u_shoreFoam, fract(q*2.31+0.37), foamDx*2.31, foamDy*2.31).r;
             float brokenPhase = breakerPhase + (lace - 0.5) * 2.4;
             float crest = smoothstep(0.15, 0.92, sin(brokenPhase));
             if (shorelineLook == 2) crest = max(crest, foldingFoam);
