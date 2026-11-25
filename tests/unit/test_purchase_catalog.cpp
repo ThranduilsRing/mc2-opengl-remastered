@@ -3,10 +3,48 @@
 // Also triggers: mclib/vfs.cpp, code/logisticsmech.cpp, code/logisticsdata_save.cpp.
 #include "doctest.h"
 #include "purchase_catalog.h"
+#include "game_rules.h"
+#include "inifile.h"
 #include "test_repo_root.h"
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+
+TEST_CASE("purchase_catalog/vehicle rule defaults on and filters every vehicle source") {
+    mc2::rules::GameRules rules;
+    CHECK(rules.purchaseVehicles);
+    for (bool vehicle : {false, true}) {
+        CHECK(mc2purchase::purchasable(vehicle, rules.purchaseVehicles));
+        rules.purchaseVehicles = false;
+        CHECK(mc2purchase::purchasable(vehicle, rules.purchaseVehicles) == !vehicle);
+        rules.purchaseVehicles = true;
+    }
+    rules.purchaseVehicles = false;
+    mc2::rules::GameRules restored;
+    for (const auto& entry : mc2::rules::cfgEntries(rules))
+        mc2::rules::loadCfgText(restored, entry.key + "=" + entry.text + "\n");
+    CHECK_FALSE(restored.purchaseVehicles);
+}
+
+TEST_CASE("purchase_catalog/zero rating vehicle prices use shipped tonnage and role data") {
+    FitIniFile table;
+    REQUIRE(table.open((std::string(MC2_REPO_ROOT) + "/data/defs/purchase/vehicle_prices.fit").c_str()) == NO_ERR);
+    REQUIRE(table.seekBlock("VehiclePrices") == NO_ERR);
+    long perTon = 0, minimum = 0;
+    REQUIRE(table.readIdLong("PerTon", perTon) == NO_ERR);
+    REQUIRE(table.readIdLong("Minimum", minimum) == NO_ERR);
+    REQUIRE(perTon > 0);
+    REQUIRE(minimum > 0);
+    for (float tons : {0.f, 1.f, 5.f, 20.f, 25.f, 30.f, 75.f, 100.f})
+        CHECK(mc2purchase::vehiclePrice(0, tons, perTon, minimum) > 0);
+    for (const auto* role : {"minelayer", "repairtruck", "mobilehq", "mog"}) {
+        long rate = 0;
+        REQUIRE(table.readIdLong(role, rate) == NO_ERR);
+        CHECK(rate >= perTon);
+        CHECK(mc2purchase::vehiclePrice(0, 30.f, rate, minimum) >= 30 * perTon);
+    }
+    CHECK(mc2purchase::vehiclePrice(2500, 75.f, perTon, minimum) == 2500);
+}
 
 TEST_CASE("purchase_catalog/transition bounds and closed group keyboard traversal") {
     mc2purchase::Group group{"bt2018", {0, 4, 1}, false};

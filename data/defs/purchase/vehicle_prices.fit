@@ -1,0 +1,13 @@
+FITini
+
+[VehiclePrices]
+// C-Bills per ton for zero-rating chassis; equipment is charged separately.
+l PerTon = 40
+l Minimum = 500
+// Specialist utility roles carry more equipment than a cargo chassis.
+l minelayer = 60
+l repairtruck = 100
+l mobilehq = 100
+l mog = 200
+
+FITend

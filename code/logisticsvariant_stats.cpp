@@ -592,6 +592,17 @@ void LogisticsVehicle::init( FitIniFile& file )
 	float rating = 25;
 	file.readIdFloat("BattleRating", rating);
 	baseCost = static_cast<long>(rating * 100);
+	if (baseCost <= 0) {
+		FitIniFile prices;
+		if (prices.open("data/defs/purchase/vehicle_prices.fit") == NO_ERR && prices.seekBlock("VehiclePrices") == NO_ERR) {
+			long perTon = 0, minimum = 0;
+			prices.readIdLong("PerTon", perTon);
+			prices.readIdLong("Minimum", minimum);
+			long roleRate = 0;
+			if (prices.readIdLong(fileName.c_str(), roleRate) == NO_ERR) perTon = roleRate;
+			baseCost = mc2purchase::vehiclePrice(baseCost, maxWeight, perTon, minimum);
+		}
+	}
 	maxHeat = 0;
 	helpID = encyclopediaID = IDS_VEHICLE_DESCRIPTION_0;
 	componentAreaWidth = 6;

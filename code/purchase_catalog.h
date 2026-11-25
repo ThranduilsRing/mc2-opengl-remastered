@@ -90,6 +90,13 @@ struct Item {
     float tonnage = 0;
     bool vehicle = false;
 };
+inline bool purchasable(bool vehicle, bool purchaseVehicles) {
+    return !vehicle || purchaseVehicles;
+}
+
+inline long vehiclePrice(long ratedPrice, float tons, long perTon, long minimum) {
+    return ratedPrice > 0 ? ratedPrice : std::max(minimum, static_cast<long>(tons * perTon));
+}
 struct Group {
     std::string source;
     std::vector<std::size_t> items;
