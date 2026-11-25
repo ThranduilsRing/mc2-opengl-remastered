@@ -46,11 +46,13 @@ def logistics(recipe, inst, out, loadout=None):
     host, stem = recipe['mc2']['model']['host_ini'], recipe['mc2']['stem']
     stock = {}
     components = {}
+    weights = {}
     for off, comp, real, name, lz, data in fst.fst_entries(inst / 'misc.fst'):
         if name.startswith('data/objects/') and name.endswith('.csv'):
             rows = list(csv.reader(io.StringIO(fst.decompress_entry(off, comp, real, lz, data).decode('latin-1'), newline='')))
             if name.endswith('/compbas.csv'):
                 components = {r[0]: r[1].removesuffix('Weapon') for r in rows[1:] if len(r) > 1 and r[1].endswith('Weapon')}
+                weights = {r[0]: float(r[6]) for r in rows[1:] if len(r) > 6 and r[6].strip().replace('.', '', 1).isdigit()}
             if rows and rows[0][0] == 'BaseChassisInfo' and len(rows) > 22 and rows[2][3] == 'Tonnage':
                 stock[Path(name).stem] = rows
     for name in stock:
@@ -64,6 +66,8 @@ def logistics(recipe, inst, out, loadout=None):
         tons = table.get(family, [float(stock[host][2][4]) if host in stock else 0])[0]
     donor = host if host in stock else DONORS[host]
     rows = [r[:] for r in stock[donor]]
+    if host not in stock:
+        rows = rows[:116]  # One recorded MC2 Prime adaptation; keep stock chassis variants intact.
     name = 'MW5 ' + {'madcat': 'Timber Wolf', 'uller': 'Kit Fox', 'ryoken': 'Stormcrow',
                      'thor': 'Summoner', 'vulture': 'Mad Dog', 'puma': 'Adder',
                      'jaegermech': 'JagerMech'}.get(host, family.title())
@@ -106,7 +110,10 @@ def logistics(recipe, inst, out, loadout=None):
         sockets = [k for k in pkg['nodes'] if k.startswith('weapon_')]
         if not sockets:
             raise ValueError(f'{stem}: no weapon sockets')
-        payload = .8 * float(rows[2][4]) - 7
+        # MC2 deliberately ignores component mass when fitting legacy variants.
+        # Preserve that donor's complete loadout under the package payload rule.
+        payload = max(.8 * float(rows[2][4]) - 7,
+                      sum(weights.get(r[4], 0) for r in rows[25:96] if len(r) > 4))
         hardpoints = []
         for mount, types in [('Energy', (4, 5)), ('Ballistic', (2,)), ('Missile', (1,))]:
             compatible = [r['node'] for r in loadout if r.get('node') and r['type'] in types]
@@ -117,7 +124,7 @@ def logistics(recipe, inst, out, loadout=None):
                 hardpoints.append(dict(id=f'CenterTorso.{mount}.{i}', location='CenterTorso', mount=mount, socket=socket))
         profile = dict(chassis_id=recipe['chassis_id'], stem=stem, family=family,
                        balance_profile='mc2-donor:' + donor, hardpoints=hardpoints,
-                       mc2=dict(tonnage=float(rows[2][4]), empty_mass=float(rows[2][4])-payload, payload=payload, layout_rev=1,
+                       mc2=dict(tonnage=float(rows[2][4]), empty_mass=.2*float(rows[2][4])+7, payload=payload, layout_rev=1,
                                 regions={'CenterTorso': [0, 0, int(rows[12][1]), int(rows[13][1])]}, ap_ordinals=[]))
         fit = out / 'data/defs/chassis/mw5' / family / 'chassisdef.fit'
         fit.parent.mkdir(parents=True, exist_ok=True)
@@ -130,7 +137,7 @@ def logistics(recipe, inst, out, loadout=None):
     report.parent.mkdir(parents=True, exist_ok=True)
     report.write_text(json.dumps(dict(chassis=recipe['chassis_id'], donor=donor, tonnage=tons,
                                      donor_tonnage=float(rows[2][4]), stats='stock' if host in stock else 'nearest-tonnage donor',
-                                     variants=[r[1] for r in stock[donor] if r and r[0] == 'VariantName'],
+                                     variants=[r[1] for r in stock[donor][:116 if host not in stock else len(stock[donor])] if r and r[0] == 'VariantName'],
                                      fire_points=sources, layout='MC2 donor grid'), indent=2) + '\n')
     render_icons.build_icons(tgl / (stem + '.glb'), stem, out / 'data/art')
 

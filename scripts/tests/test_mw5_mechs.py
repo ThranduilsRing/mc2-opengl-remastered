@@ -28,11 +28,13 @@ def test_logistics_keeps_donor_loadout_and_registers_new_chassis(tmp_path, monke
     rows[12][1], rows[13][1] = '6', '5'
     rows[22][:2] = ['VariantName', 'Donor Prime']
     rows[25][:6] = ['Item0MasterId', '0', '1', '2', '99', 'Laser']
+    rows += [r[:] for r in rows[19:116]]
+    rows[119][1] = 'Donor Elite'
     buf = io.StringIO()
     csv.writer(buf).writerows(rows)
     data = buf.getvalue().encode()
     monkeypatch.setattr(fst, 'fst_entries', lambda p: [(0, len(data), len(data), f'data/objects/{donor}.csv', False, data),
-                                                       (0, 0, 0, 'data/objects/compbas.csv', False, b'99,EnergyWeapon\n')])
+                                                       (0, 0, 0, 'data/objects/compbas.csv', False, b'Component Table,Type,Name,x,x,x,Weight\n99,EnergyWeapon,Laser,1,1,1,60\n')])
     monkeypatch.setattr(fst, 'decompress_entry', lambda off, comp, real, lz, data: data)
     monkeypatch.setattr(P, 'load_glb', lambda p: ({'extras': {'mw5Attachments': []}}, b''))
     monkeypatch.setattr(P, 'package_nodes', lambda *a: ({'weapon_0': 'j_Spine2'}, {'weapon_0': '0 0 0'}, {}, 12))
@@ -47,6 +49,7 @@ def test_logistics_keeps_donor_loadout_and_registers_new_chassis(tmp_path, monke
     target = out / 'data/objects' / ((host if host == donor else stem) + '.csv')
     result = list(csv.reader(io.StringIO(target.read_text())))
     assert result[25] == rows[25]
+    assert len(result) == (213 if host == donor else 116)
     assert result[22][1].startswith('MW5 ') if host != donor else result[22][1] == 'Donor Prime'
     assert result[8][1] == stem and result[10][1] == stem + '_bay'
     assert result[2][4] == rows[2][4]
@@ -58,6 +61,8 @@ def test_logistics_keeps_donor_loadout_and_registers_new_chassis(tmp_path, monke
     if fits:
         assert 'b Purchasable = TRUE' in fits[0].read_text()
         assert 'st Socket = "weapon_0"' in fits[0].read_text()
+        assert 'f Payload = 60.0' in fits[0].read_text()
+        assert 'f EmptyMass = 21.0' in fits[0].read_text()
 
 
 def chunk(name, size, records):
