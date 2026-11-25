@@ -1449,13 +1449,15 @@ def main() -> int:
             # allow 25% headroom over the EFFECTIVE drift (cliff smoothing: the
             # cliff mask allows cliff_drift; flats keep max_drift).
             eff = float(ra.get("effective_max_drift_wu", args.max_drift))
+            # Shore smoothing runs after reauthoring and has its own bounded corner adjustment.
+            corner_cap = eff * 1.25 + float((ra.get("shore") or {}).get("bank_adjust_wu", {}).get("max", 0.0))
             # Gate on the off-shore correlation when the
             # shore stage ran (== global when it didn't).
             corr_gate = float(ra.get("landform_correlation_off_shore",
                                      ra["landform_correlation"]))
             ok = (ra["extrema"]["violations"] == 0
                   and corr_gate >= 0.99
-                  and rep["max_corner_error_wu"] <= eff * 1.25
+                  and rep["max_corner_error_wu"] <= corner_cap
                   and rep["max_corner_error_wu"] > 0.05)
             ce = ra["facet_crease_energy"]
             n_enf = ra["extrema"].get("enforced", ra["extrema"]["count"])

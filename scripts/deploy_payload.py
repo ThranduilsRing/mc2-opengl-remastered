@@ -623,9 +623,14 @@ FOREST_FLOOR_SRC = "E:/mc2-ref/terrain-normals-2026-11-24"  # drive-path: ok PC-
 def cook_mod_visual_heights(src_root, target):
     """Reuse the offline sidecar cook for installed mod maps; retain authored bakes."""
     cook = Path(src_root) / "tools/terrain_beautify/visual_heightfield.py"
+    sys.path.insert(0, str(cook.parent))
+    from mission_terrain_analyzer import locate_mapdata, read_packets
     for pak in sorted((Path(target) / "mods").glob("*/data/missions/*.pak")):
         sidecar = pak.parent / (pak.stem + ".beauty") / "visual_height_4x.r32"
         if sidecar.is_file():
+            continue
+        if locate_mapdata(read_packets(pak)) is None:
+            log(f"mod visual height: {pak.name} has no terrain MapData; skipping")
             continue
         subprocess.run([sys.executable, str(cook), pak.stem, "--missions-dir", str(pak.parent),
                         "--out", str(pak.parent), "--allow-nonstock", "--reauth", "--reauth-passes", "4", "--cliff-drift", "56",

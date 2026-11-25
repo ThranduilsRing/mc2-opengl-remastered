@@ -198,7 +198,9 @@ def test_deploy_cooks_mod_visual_height_and_retains_authored_bake(tmp_path):
     missions.mkdir(parents=True)
     _write_synthetic_pak(missions / "custom.pak", 60, 0, 15)
     _write_fit(missions / "custom.fit", 0)
+    (missions / "scripts_only.pak").write_bytes(struct.pack("<II", 0xFEEDFACE, 8))
     deploy.cook_mod_visual_heights(root, tmp_path)
+    assert not (missions / "scripts_only.beauty").exists()
     sidecar = missions / "custom.beauty/visual_height_4x.r32"
     assert sidecar.stat().st_size == ((60 - 1) * 4 + 1) ** 2 * 4
     from height_sig import height_sig
