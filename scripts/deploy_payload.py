@@ -628,7 +628,7 @@ def cook_mod_visual_heights(src_root, target):
         if sidecar.is_file():
             continue
         subprocess.run([sys.executable, str(cook), pak.stem, "--missions-dir", str(pak.parent),
-                        "--out", str(pak.parent), "--allow-nonstock", "--reauth", "--cliff-drift", "56",
+                        "--out", str(pak.parent), "--allow-nonstock", "--reauth", "--reauth-passes", "4", "--cliff-drift", "56",
                         "--cliff-melt-passes", "4"], check=True, **console_child.child_kwargs())
 
 
