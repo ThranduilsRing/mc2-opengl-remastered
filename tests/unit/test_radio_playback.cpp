@@ -4,6 +4,7 @@
 #include <atomic>
 #include <memory>
 #include <vector>
+#include <string>
 
 namespace {
 constexpr bool TRUE = true, FALSE = false;
@@ -35,6 +36,9 @@ struct SoundSystem {
     bool isChannelPlaying(int channel) { return channel != RADIO_CHANNEL && otherSpeech; }
     void update() {}
     bool isPlayingVoiceOver();
+    std::vector<std::string> pendingStreams, wavPlays;
+    void startDigitalStream(const char* name) { wavPlays.emplace_back(name); stream3Handle = this; }
+    void updateDigitalStreams();
 };
 #include "voiceover_playback.inc"
 struct GameSoundSystem : SoundSystem {
@@ -85,6 +89,26 @@ TEST_CASE("MissionAudio/briefing and tutorial speech hold pilot radio in its que
         sound.update();
         CHECK(sound.plays == std::vector<int>{7});
     }
+}
+
+TEST_CASE("MissionAudio/objective WAVs wait for Renard and busy speech in FIFO order") {
+    SoundSystem sound;
+    sound.pendingStreams = {"tutorial.wav", "objective.wav"};
+    g_va.active = true;
+    sound.updateDigitalStreams();
+    CHECK(sound.wavPlays.empty());
+    g_va.active = false;
+    sound.otherSpeech = true;
+    sound.updateDigitalStreams();
+    CHECK(sound.wavPlays.empty());
+    sound.otherSpeech = false;
+    sound.updateDigitalStreams();
+    sound.updateDigitalStreams();
+    CHECK(sound.wavPlays == std::vector<std::string>{"tutorial.wav"});
+    sound.stream3Handle = nullptr;
+    sound.updateDigitalStreams();
+    CHECK(sound.wavPlays == std::vector<std::string>{"tutorial.wav", "objective.wav"});
+    CHECK(sound.pendingStreams.empty());
 }
 
 TEST_CASE("MissionAudio/radio cues play once with and without opening static and a slow load") {

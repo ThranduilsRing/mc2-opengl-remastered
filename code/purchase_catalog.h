@@ -80,6 +80,12 @@ inline bool unlocked(std::string_view chassis, int mission, const std::vector<Un
     });
 }
 
+inline bool supplementalAvailable(std::string_view chassis, bool package, int mission,
+    const std::vector<Unlock>& table) {
+    const bool listed = std::any_of(table.begin(), table.end(), [&](const Unlock& row) { return row.chassis == chassis; });
+    return unlocked(chassis, mission, table) || (package && !listed);
+}
+
 
 // Package registration owns imported chassis; otherwise use the winning CSV provider.
 inline std::string source(std::string_view package, std::string_view csvOwner) {
