@@ -233,6 +233,13 @@ def test_cockpit_hull_and_glass_added(tmp_path):
     assert ((uv * K.ATLAS >= [x, y]) & (uv * K.ATLAS <= [x + size, y + size])).all()
     assert by["cockpit_hull"]["primitives"][0]["material"] == 0
     assert all(len(s["joints"]) == 1 for s in g["skins"])
+    K.add_cockpit(tmp_path / "in.glb", tmp_path / "framed.glb", tmp_path / "hull.gltf", None, recipe)
+    framed, data = load_glb(tmp_path / "framed.glb")
+    assert len(framed["meshes"]) == len(framed["skins"]) == 1
+    prim = framed["meshes"][0]["primitives"][0]
+    assert framed["accessors"][prim["indices"]]["count"] == 33  # frame and its three window triangles
+    uv = B.read_accessor(framed, data, prim["attributes"]["TEXCOORD_0"])
+    assert np.allclose(uv[-9:], K.glass_uv(recipe["cockpit"]["glass"]["tile"]))
 
 
 def test_glass_stamp_fills_only_the_tile(tmp_path):

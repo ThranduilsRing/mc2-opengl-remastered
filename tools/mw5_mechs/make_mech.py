@@ -34,6 +34,7 @@ import build_pack  # noqa: E402
 import cook_textures  # noqa: E402
 import from_native  # noqa: E402
 import prone_pose  # noqa: E402
+from scripts import console_child  # noqa: E402
 from sockets import load_glb  # noqa: E402
 
 IDLE = "A:/Games/mc2-ops/idle_run.py"
@@ -62,7 +63,7 @@ def run(*cmd, ok=(0,)):
 
 def native_request(recipe):
     ex = recipe["extraction"]
-    return {"mesh": ex["mesh"], "clips": list(ex["clips"].values()), "materials": ex["materials"],
+    return {"mesh": ex["mesh"], "clips": [v for k, v in ex["clips"].items() if k != "Crouch"], "materials": ex["materials"],
             "loadouts": [], "textures": list(ex["textures"].values())}
 
 
@@ -120,6 +121,7 @@ def extract(recipe, work):
             "--ue", "4.26", "--request", request, "--out", native, ok=(0, 2))  # 2 = assets left on the bridge
     work.joinpath("hull.gltf").write_text(json.dumps(from_native.convert(native), allow_nan=False))
     objects = [ex["cockpit"]["hull"]] + ([ex["cockpit"]["glass"]] if ex["cockpit"].get("glass") else []) + list(ex["weapons"].values())
+    objects += [row["source"] for row in recipe["mc2"]["model"]["attachments"]]
     for path in objects:
         if not (work / "ex" / (path.lstrip("/") + ".gltf")).is_file():
             # umodel takes one exact object per call; a wildcard silently exports nothing
@@ -135,11 +137,28 @@ def weapon_attachments(recipe, work):
             continue
         seen.add((row["mesh"], row["bone"]))
         out.append(f"{work / 'ex' / (ex['weapons'][row['mesh']].lstrip('/') + '.gltf')}={row['bone']}")
+    for row in recipe["mc2"]["model"]["attachments"]:
+        out.append(f"{work / 'ex' / (row['source'].lstrip('/') + '.gltf')}={row['bone']}")
     return out
+
+
+def select_base_clips(recipe, available):
+    sources = [s for s in recipe["extraction"]["clips"] if recipe["clip_pattern"].format(source=s) in available]
+    if "Stand" not in sources:
+        raise ValueError("no base Stand animation")
+    for source, gesture in build_glb.CLIPS.items():
+        if gesture not in recipe["clips"].values():
+            recipe["hold_clips"].setdefault(gesture, [source, 0])
+    for gesture, (source, frame) in list(recipe["hold_clips"].items()):
+        if source not in sources:
+            fallback = next(s for s in ("Stand", "WalkForward_Straight", "RunForward_Straight") if s in sources)
+            recipe["hold_clips"][gesture] = [fallback, 0]
+            print(f"fallback_hold {gesture} source={source} -> {fallback} frame=0")
 
 
 def hull_glb(recipe, work):
     ex, stem = recipe["extraction"], recipe["mc2"]["stem"]
+    select_base_clips(recipe, {a["name"] for a in json.loads((work / "hull.gltf").read_text())["animations"]})
     base = work / "base.glb"
     build_glb.build(work / "hull.gltf", None, base, f"{stem}_alb.png", attachments=weapon_attachments(recipe, work), recipe=recipe)
     cockpit = ex["cockpit"]

@@ -151,7 +151,16 @@
       "anim_dir": ".",
       "textures": "cooked",
       "loadout": "loadout.json",
-      "attachments": [],
+      "attachments": [
+        {
+          "source": "/Game/DLC6/Objects/Mechs/Urbanmech/Model/Body/Parts/UM-SA/Urbanmech_Left_Arm_SKM",
+          "bone": "Forearm_Left"
+        },
+        {
+          "source": "/Game/DLC6/Objects/Mechs/Urbanmech/Model/Body/Parts/UM-SA/Urbanmech_Right_Arm_SKM",
+          "bone": "Forearm_Right"
+        }
+      ],
       "normal_source": "native:Urbanmech_Body_NRM"
     }
   },
