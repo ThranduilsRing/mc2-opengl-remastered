@@ -635,6 +635,22 @@ void main() {
         }
     }
 
+    // Coastal look (FoamFirst; after gokayfem coastal-water, MIT): RGB Beer-Lambert of the seabed down and back up the
+    // water column, plus its artistic caustic web; water_geom.frag adds the in-scattered light with the same coefficients.
+    float causticFw = length(fwidth(v_worldPos.xy)) * 0.21;   // uniform control flow: caustics fade below ~2 px
+    if (uT.shorelineOn == 2 && kPlanarReflection == 0 && v_worldPos.z < uT.shorelineWaterElev) {
+        float wd = uT.shorelineWaterElev - v_worldPos.z;
+        vec3 eyeA = normalize(mc2ToRender(uT.cameraPosMC2.xyz) - v_worldPos);
+        vec2 cp = v_worldPos.xy * 0.03;
+        float caustic = pow(max(0.0, sin(cp.x * 7.0 + sin(cp.y * 4.0 + uT.shorelineTime) * 1.3)
+                                   * sin(cp.y * 6.0 + cos(cp.x * 4.0 - uT.shorelineTime) * 1.2)), 9.0)
+                      * (1.0 - smoothstep(0.6, 2.0, causticFw));
+        float reef = smoothstep(0.1, 0.4, fbm(v_worldPos.xy / 380.0 + 7.3, 3)) * smoothstep(3.0, 9.0, wd) * (1.0 - smoothstep(45.0, 90.0, wd));
+        lit *= mix(vec3(1.0), vec3(0.42, 0.52, 0.46), reef * 0.75)   // darker reef/weed patches inside the shallows (owner refs)
+             * (1.0 + 1.2 * caustic * exp(-0.05 * wd))
+             * exp(-vec3(0.105, 0.022, 0.012) * wd * (1.0 + 1.0 / max(abs(eyeA.z), 0.25)));
+    }
+
     // Shade the receiver before compositing the authored road shoulder. Keeping
     // uniform flow also preserves derivatives across partially covered edges.
     lit = mix(lit, roadColor, roadCoverage);

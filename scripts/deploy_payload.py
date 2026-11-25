@@ -2899,7 +2899,9 @@ def deploy_shaders_only(src_root, build_dir, target, exe_name):
     if not items or {rel for _, rel, _ in items} != {
             rel for rel in rows if rel.startswith("shaders/vulkan/") and rel.endswith(".spv")}:
         fail("--shaders-only requires the existing shader inventory; full deploy first")
-    check_hardlink_isolation(items + [(None, MANIFEST_NAME, "manifest")], str(target))
+    # Only the shaders that differ are written (link-safe replace_file); unchanged seed links stay shared.
+    check_hardlink_isolation([i for i in items if sha256_file(i[0]) != rows[i[1]][0]]
+                             + [(None, MANIFEST_NAME, "manifest")], str(target))
     hashes = {}
     for src, rel, _ in items:
         dst = target / rel

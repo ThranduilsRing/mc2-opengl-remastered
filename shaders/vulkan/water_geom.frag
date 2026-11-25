@@ -605,7 +605,8 @@ void main(void)
     PREC vec2  waveSlope = vec2(0.0);
     if (debugMode != 3) waveSlope = waterWaveSlope(WorldPos.xy, time, footprint, RIPPLE_GAIN / 0.22, waveVar);
     int shorelineLook = max(int(F.f3.w + 0.5) - 1, 0);
-    float coastWeight = (1.0 - smoothstep(36.0, 100.0, shoreDistance))
+    float coastWeight = (1.0 - (shorelineLook == 1 ? smoothstep(170.0, 260.0, shoreDistance)   // coastal look: reaches the shelf break
+                                                   : smoothstep(36.0, 100.0, shoreDistance)))
                       * smoothstep(0.04, 0.08, length(shoreGrad));
     float swashPhase = time * 1.05 + dot(WorldPos.xy, vec2(0.003, 0.002));
     float swashFront = 18.0 + 14.0 * sin(swashPhase);
@@ -614,6 +615,22 @@ void main(void)
     if (shorelineLook > 0 && debugMode != 3)
         waveSlope += shoreGrad / max(length(shoreGrad), 1e-4) * cos(breakerPhase)
                    * 0.10 * coastWeight * (1.0 - smoothstep(8.0, 24.0, footprint));
+    // Coastal look (after gokayfem coastal-water, MIT): eight dispersive ripple trains spread on the golden angle (no
+    // wind streaks), each faded as its wavelength nears the pixel footprint; the faded slope goes to the GGX roughness.
+    float rippleCrest = 0.0;
+    if (shorelineLook == 1 && debugMode != 3) {
+        waveSlope *= 0.3; waveVar *= 0.09;
+        for (int i = 0; i < 8; ++i) {
+            float L = 90.0 * pow(0.69, float(i)), k = 6.2831853 / L, s = 0.055 * pow(0.84, float(i)) * (RIPPLE_GAIN / 0.22);
+            vec2  d = vec2(cos(0.7 + 2.39996 * float(i)), sin(0.7 + 2.39996 * float(i)));
+            float keep = smoothstep(2.0, 6.0, L / max(footprint, 1e-3));
+            float ph = k * dot(d, WorldPos.xy + float(i) * vec2(31.0, 17.0)) - sqrt(WAVE_G * k) * time;
+            waveSlope += d * (s * keep * cos(ph));
+            rippleCrest += s * k * keep * sin(ph);   // -Laplacian: crest convexity
+            waveVar += 0.5 * s * s * (1.0 - keep * keep);
+        }
+        rippleCrest /= 0.0675 * max(RIPPLE_GAIN / 0.22, 1e-3);   // sum of s*k over the trains: 1 where every crest meets
+    }
     float foldingFoam = 0.0;
     if (shorelineLook == 2 && debugMode != 3 && F.debug.y < 0.5) {
         vec3 dx=(fftShore(WorldPos.xy+vec2(1,0),shoreDepth)-fftShore(WorldPos.xy-vec2(1,0),shoreDepth))*0.5;
@@ -640,6 +657,11 @@ void main(void)
         vec3 lagoon = mix(vec3(0.055, 0.24, 0.23), SHALLOW_COLOR, smoothstep(0.0, 24.0, max(shoreDepth, 0.0)));
         waterCol = mix(waterCol, lagoon, coastWeight * 0.65);
     }
+    // Coastal look: the terrain absorbs the seabed per channel (terrain_tier1.frag); the water adds only the light the
+    // column scatters back, jade over the shelf turning navy offshore (owner refs E:/mc2-ref/refs/water).
+    if (shorelineLook == 1)
+        waterCol = mix(vec3(0.03, 0.20, 0.17), vec3(0.012, 0.05, 0.11), smoothstep(20.0, 110.0, tintThick))
+                 * (1.0 - exp(-vec3(0.105, 0.022, 0.012) * tintThick * (1.0 + 1.0 / max(vdir.z, 0.25))));
 
     PREC float shoreBlend = max(alphaDepth, 1.0);
     PREC float shore = smoothstep(-shoreBlend * 0.5, shoreBlend, WaterThickness);
@@ -697,7 +719,9 @@ void main(void)
         vec2 q = WorldPos.xy / 155.0 - beachward * time * 0.035;
         // Derivatives stay uniform; open water needs neither texture fetches nor foam evaluation.
         vec2 foamDx = dFdx(q), foamDy = dFdy(q);
-        if (coastWeight > 0.0) {
+        // Coastal look: the shelf-edge break sits where the turquoise turns blue, often beyond the coast band.
+        float shelfBreak = shorelineLook == 1 ? 17.0 + 7.0 * vnoise(WorldPos.xy / 700.0) : 0.0;
+        if (coastWeight > 0.0 || abs(shoreDepth - shelfBreak) < 6.0) {
             vec4 foamTex = textureGrad(u_shoreFoam, fract(q), foamDx, foamDy);
             float lace = textureGrad(u_shoreFoam, fract(q*2.31+0.37), foamDx*2.31, foamDy*2.31).r;
             float brokenPhase = breakerPhase + (lace - 0.5) * 2.4;
@@ -710,7 +734,26 @@ void main(void)
             float contact = (1.0 - smoothstep(6.0, 26.0 + foamAA, shoreDistance))
                           * (0.35 + 0.25 * sin(swashPhase - 0.8));
             float holes = smoothstep(0.10, 0.64, foamTex.r * 0.72 + lace * 0.28);
-            foamMix = clamp((crest * 0.95 + retention * 0.65 + contact) * holes * coastWeight, 0.0, 0.94);
+            foamMix = clamp((crest * 0.95 + retention * 0.65 + contact) * holes * max(coastWeight, smoothstep(0.03, 0.07, length(shoreGrad)) * step(abs(shoreDepth - shelfBreak), 6.0)), 0.0, 0.94);
+            if (shorelineLook == 1) {
+                // Coastal look (owner refs): sparse, thin foam. A bright lacy line at the waterline, and breakers only on
+                // the shelf edge offshore, in alongshore sections and wave sets, never a ring around every shore.
+                // Close up (refs 5/6) the line widens into a swash band whose ragged edge the lace texture cuts.
+                float swashW = mix(5.0, 20.0, 1.0 - smoothstep(1.0, 4.0, footprint)) * (0.8 + 0.2 * sin(swashPhase));
+                float edge = (1.0 - smoothstep(0.5 * swashW, swashW + foamAA, shoreDistance + (lace - 0.5) * 0.6 * swashW))
+                           * (0.6 + 0.4 * smoothstep(0.25, 0.7, 0.5 + 0.5 * sin(shoreDistance * 0.6 - time * 1.5 + lace * 3.0)));
+                float breakDist = shelfBreak / shoreSlope;
+                float sets = smoothstep(-0.2, 0.8, sin(time * 0.55 + dot(WorldPos.xy, vec2(0.0021, 0.0013))))
+                           * smoothstep(0.42, 0.68, vnoise(WorldPos.xy / 240.0 + vec2(0.0, 0.02 * time)));
+                float reef = (1.0 - smoothstep(1.5, 5.0 + foamAA, abs(shoreDistance - breakDist + 3.0 * sin(brokenPhase)) * min(shoreSlope / 0.08, 1.0)))
+                           + 0.35 * smoothstep(0.0, 4.0, breakDist - shoreDistance) * exp(-max(breakDist - shoreDistance, 0.0) / 14.0);
+                foamMix = clamp((edge * (0.5 + 0.8 * vnoise(WorldPos.xy / 160.0)) + reef * sets) * holes * max(coastWeight, smoothstep(0.03, 0.07, length(shoreGrad)) * step(abs(shoreDepth - shelfBreak), 6.0)), 0.0, 0.94);
+            }
+        }
+        if (shorelineLook == 1 && rippleCrest > 0.65) {   // tiny scattered whitecaps where the ripple crests pile up
+            float cap = textureGrad(u_shoreFoam, fract(q * 3.1), foamDx * 3.1, foamDy * 3.1).r;
+            foamMix = max(foamMix, 0.5 * smoothstep(0.65, 0.95, rippleCrest) * smoothstep(0.55, 0.8, cap)
+                                 * smoothstep(0.55, 0.75, vnoise(WorldPos.xy / 900.0)) * (1.0 - coastWeight));
         }
     }
     vec3 foamLight = max(vertexLightRGB, vec3(SKY_AMBIENT * nightSky));
@@ -737,6 +780,12 @@ void main(void)
         sunVis *= moverLit;
     }
     col = mix(col, F.f9.xyz * nightSky, clamp(F.f8.w, 0.0, 1.0));
+    if (shorelineLook == 1) {   // ocean.glsl: sunlight glowing through thin crests seen against the sun
+        vec2 toSun = normalize(uT.terrainLightDir.xy + vec2(1e-4, 0.0)), toEye = normalize(vdir.xy + vec2(1e-4, 0.0));
+        float back = pow(clamp(-dot(toSun, toEye), 0.0, 1.0), 4.0);
+        col += vertexLightRGB * sunVis * vec3(0.05, 0.26, 0.25) * smoothstep(0.55, 0.95, rippleCrest) * (0.03 + 0.5 * back);
+    }
+    float reflAmount = 0.0;
 
     // ---- RUNG-6.5 WATER-REFLECTION PORT (WATER-SKY-REFLECTION-1 + WATER-HDRI-REFL-1) ----
     // Sky setup and Fresnel retain the GL material math; spatial geometry is
@@ -778,6 +827,11 @@ void main(void)
         }
         //PORT-BEGIN:waterReflMix
         PREC float fres = REFL_F0 + (1.0 - REFL_F0) * pow(1.0 - max(dot(waveN, vdir), 0.0), 5.0);
+        if (shorelineLook == 1) {   // coastal look: exact unpolarised air-to-water Fresnel (IOR 1.333)
+            float ci = clamp(dot(waveN, vdir), 0.0, 1.0), ct = sqrt(1.0 - (1.0 - ci * ci) / 1.776889);
+            float rs = (ci - 1.333 * ct) / (ci + 1.333 * ct), rp = (1.333 * ci - ct) / (1.333 * ci + ct);
+            fres = 0.5 * (rs * rs + rp * rp);
+        }
         fres = max(fres, NEAR_REFL_FLOOR * nearGloss);   // WATER-GLOSS-NEAR
         // WATER-GRAZE-REFL-1: grazing fragments keep full reflection at distance.
         reflMix = clamp(fres * u_waterReflStrength * max(waveLOD, fres), 0.0, REFL_MAX);
@@ -786,6 +840,7 @@ void main(void)
         float geometryMix=clamp(fres*u_waterReflStrength,0.0,REFL_MAX);
         float totalMix=mix(reflMix,geometryMix,geometry.a);
         col=col*(1.0-totalMix)+reflectCol*(reflMix*(1.0-geometry.a))+geometry.rgb*geometryMix;
+        reflAmount=totalMix;
         //PORT-END:waterReflMix
     }
 
@@ -819,6 +874,22 @@ void main(void)
     if (kWaterDbgPass == 3) {
         FragColor = vec4(vec3(dot(col, vec3(0.2126, 0.7152, 0.0722))), 1.0);
         GBuffer1 = vec4(0.5, 0.5, 1.0, 0.875); return;
+    }
+    if (shorelineLook == 1) {
+        // Coastal look: col is premultiplied radiance (in-scatter + reflection + glints) over the absorbed seabed; only
+        // the reflected share hides it. Foam covers both; fog scales the added light by its own coverage.
+        float foamA = clamp(foamMix, 0.0, 1.0) * shore, fogT = 1.0;
+        if (F.fog_color.x > 0.0 || F.fog_color.y > 0.0 || F.fog_color.z > 0.0 || F.fog_color.w > 0.0) fogT = FogValue;
+        float wa = shore * reflAmount * (1.0 - foamA) + foamA;
+        vec3 premul = (col * shore * (1.0 - foamA) + vec3(0.86, 0.90, 0.88) * foamLight * foamA) * fogT
+                    + F.fog_color.rgb * (1.0 - fogT) * wa;
+        if (F.f8.x != 0.0 && F.f8.z > 0.0) {
+            float hz = clamp(edgeHazeAmount(WorldPos.xy, F.f8.z) * F.f8.y, 0.0, 1.0);
+            premul *= 1.0 - hz; wa *= 1.0 - hz;
+        }
+        FragColor = vec4(premul, wa);
+        GBuffer1 = vec4(0.5, 0.5, 1.0, 0.875);
+        return;
     }
     if (F.fog_color.x > 0.0 || F.fog_color.y > 0.0 || F.fog_color.z > 0.0 || F.fog_color.w > 0.0)
         col = mix(F.fog_color.rgb, col, FogValue);
