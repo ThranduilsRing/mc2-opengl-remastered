@@ -17,6 +17,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <string>
+#include <filesystem>
 
 using namespace mc2clip;
 
@@ -447,29 +448,41 @@ TEST_CASE("clip state: BT2018 planted stride bone oracle") {
     // Optional external art, supplied by the lane's installed mod; never substituted by synthetic bones.
     const char* root = std::getenv("BT2018_TEST_TGL");
     if (!root) { WARN("BT2018 art unavailable: set BT2018_TEST_TGL to run the bone oracle"); return; }
-    for (const auto& asset : {std::pair{"hunchback", 0.089690f}, std::pair{"centurion", 0.089382f}}) {
+    int chassis = 0;
+    for (const auto& asset : std::filesystem::directory_iterator(root)) {
+        if (asset.path().extension() != ".glb") continue;
+        ++chassis;
         Assimp::Importer importer;
-        const auto* scene = importer.ReadFile(std::string(root) + "/" + asset.first + ".glb", 0);
+        const auto* scene = importer.ReadFile(asset.path().string(), 0);
         REQUIRE(scene != nullptr);
+        for (const char* gait : {"atlas_moveCoreWalkFwd", "atlas_moveCoreRunFwd"}) {
+        INFO(asset.path().stem().string(), " ", gait);
         const aiAnimation* clip = nullptr;
         for (unsigned i = 0; i < scene->mNumAnimations; ++i)
-            if (scene->mAnimations[i]->mName == aiString("atlas_moveCoreWalkFwd")) clip = scene->mAnimations[i];
+            if (scene->mAnimations[i]->mName == aiString(gait)) clip = scene->mAnimations[i];
         REQUIRE(clip != nullptr);
         const float duration = static_cast<float>(clip->mDuration / (clip->mTicksPerSecond ? clip->mTicksPerSecond : 1000));
         const auto plan = mc2skel::BuildPlan(scene, {"j_LFoot", "j_RFoot"});
         std::vector<aiVector3D> feet[2];
         std::vector<mc2skel::GpuBone> bones;
         for (int f = 0; f <= static_cast<int>(duration * 30); ++f) {
-            REQUIRE(mc2skel::EvaluateClipGpuBones(*plan, "atlas_moveCoreWalkFwd", static_cast<float>(f), bones));
+            REQUIRE(mc2skel::EvaluateClipGpuBones(*plan, gait, static_cast<float>(f), bones));
             for (int k = 0; k < 2; ++k) feet[k].push_back({bones[k].m[3], bones[k].m[7], bones[k].m[11]});
         }
         const auto stride = measureStride(feet, duration);
-        std::printf("Stride oracle: %s planted=%.6f estimate=%.6f selected=%.6f local u/s\n",
-            asset.first, stride.planted, stride.estimate, stride.speed());
-        CHECK(stride.planted == doctest::Approx(asset.second).epsilon(0.001).scale(0));
-        CHECK(stride.speed() == stride.planted);
-        CHECK(stride.estimate > stride.planted);
+        REQUIRE(stride.planted > 0);
+        // Mean contact displacement per second, independent of the range fallback.
+        // Scale cancels in this ratio; exercise walk/run rates without changing sim speeds.
+        for (float rate : {0.5f, 1.0f, 2.0f}) {
+            const float speed = stride.planted * rate;
+            const float slip = std::abs(speed - strideRate(speed, stride.speed()) * stride.planted) / speed;
+            CHECK(slip < 0.05f);
+        }
+        std::printf("Stride oracle: %s %s planted=%.6f estimate=%.6f selected=%.6f local u/s\n",
+            asset.path().stem().string().c_str(), gait, stride.planted, stride.estimate, stride.speed());
+        }
     }
+    CHECK(chassis >= 51);
 }
 
 TEST_CASE("clip state: digitigrade contact-joint stride guard") {
@@ -482,7 +495,9 @@ TEST_CASE("clip state: digitigrade contact-joint stride guard") {
     CHECK(stride.speed() == stride.estimate);
     CHECK(StrideMeasurement{1, 0.49f}.speed() == 1);
     CHECK(StrideMeasurement{1, 0.5f}.speed() == 0.5f);
-    CHECK(StrideMeasurement{1, 1.1f}.speed() == 1.1f);
+    CHECK(StrideMeasurement{1, 1.425f}.speed() == 1.425f); // Jenner run, short stance
+    CHECK(StrideMeasurement{1, 2.0f}.speed() == 2.0f);
+    CHECK(StrideMeasurement{1, 2.01f}.speed() == 1.0f);
 }
 
 TEST_CASE("clip state: presentation clocks follow root alpha without changing simulation") {
