@@ -134,7 +134,7 @@ static bool renderMenuFontText( aText& label, int boxX, int boxY, int boxWidth, 
 		return false;
 	// The label's layout rectangle follows the loading frame through fitToWindow.
 	// Keep the detail block in that rectangle's column, rather than the full viewport.
-	const int detailSize = std::max( 1, static_cast<int>(label.height() * sy / 6.f) );
+	const int detailSize = std::max( 1, static_cast<int>(label.height() * sy / 3.f) );
 	const float line = detailSize * 1.3f;
 	const float detailWidth = w;
 	const float detailX = x;
