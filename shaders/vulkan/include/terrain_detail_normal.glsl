@@ -17,6 +17,12 @@ vec3 mv_detailDecode(vec3 texel) {
     // increases DOWN its rows. Convert before undoing any UV rotation.
     return texel * vec3(2.0, -2.0, 2.0) + vec3(-1.0, 1.0, -1.0);
 }
+// Desaturated soil falls into the colour classifier's rock remainder. Give its
+// flat areas turf relief/AO without changing the authored colour or steep rock.
+vec4 mv_groundDetailWeights(vec4 w, float macroNz) {
+    float soil = w.x * smoothstep(0.75, 0.95, macroNz);
+    return w + vec4(-soil, soil, 0.0, 0.0);
+}
 vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz, vec2 uvDx, vec2 uvDy) {
     // Flat rock ground (colour classes that fail the grass/dirt thresholds) also reads as forest floor under trees; slopes stay rock.
     float forestRock = smoothstep(0.75, 0.95, macroNz);
