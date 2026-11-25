@@ -126,6 +126,26 @@ TEST_CASE("preview resolver: missing binding retains the mission active clip") {
     CHECK(resolveClip("", "atlas_moveCoreIdle", has) == "atlas_moveCoreIdle");
 }
 
+TEST_CASE("BT2018 standing: authored moving idle binds in mission and preview; MW5 keeps Stand") {
+    const auto bt = [](std::string_view s) {
+        return s == "atlas_moveCoreIdle" || s == "atlas_moveCoreIdleFlavor1";
+    };
+    Phase ph;
+    for (int gesture : {2, 13}) { // stand and idle
+        const auto choice = select(gesture, 0, 0, 0, false, false, "atlas_moveCoreIdle", ph);
+        CHECK(standingClip(choice.clip, bt) == std::string_view("atlas_moveCoreIdleFlavor1"));
+        CHECK(choice.mode == Mode::Loop);
+        CHECK_FALSE(choice.locomotion);
+    }
+    CHECK(previewClip("atlas_moveCoreIdle", "", bt) == "atlas_moveCoreIdleFlavor1");
+    CHECK(previewClip("", "", bt) == "atlas_moveCoreIdleFlavor1");
+    CHECK(standingClip("atlas_shutdownIdle", bt) == std::string_view("atlas_shutdownIdle"));
+    CHECK(standingClip("atlas_moveCoreWalkFwd", bt) == std::string_view("atlas_moveCoreWalkFwd"));
+    const auto mw5 = [](std::string_view s) { return s == "atlas_moveCoreIdle"; };
+    CHECK(standingClip("atlas_moveCoreIdle", mw5) == std::string_view("atlas_moveCoreIdle"));
+    CHECK(previewClip("atlas_moveCoreIdle", "", mw5) == "atlas_moveCoreIdle");
+}
+
 TEST_CASE("preview showcase: manifest, default walk, idle, first clip fallback (never the park gesture's shutdown pose)") {
     const auto has = [](std::string_view s) { return s == "show" || s == "atlas_shutdownIdle" || s == "atlas_moveCoreWalkFwd" || s == "atlas_moveCoreIdle" || s == "first"; };
     CHECK(previewClip("show", "first", has) == "show");
