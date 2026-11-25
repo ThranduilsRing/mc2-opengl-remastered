@@ -6,6 +6,7 @@
 #include "texture_decode.h"
 #include "load_scope.h"
 #include "terrain_field_store.h"
+#include "terrain_forest_mask.h"
 #include "cement_layers.h"
 #include "terrain_fine_height_bake.h"
 #include "gameos.hpp"
@@ -389,6 +390,37 @@ bool ensure_dummy_materials(TerrainIsland* s) {
     if (s->materialTexture) return true;
     const uint8_t rock[4] = {};
     return upload_sampled_image(s, s->materialTexture, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, rock, sizeof(rock));
+}
+
+// Binding 20 is always a valid descriptor; the dummy (no canopy) reads as no forest floor anywhere.
+bool ensure_dummy_forest_mask(TerrainIsland* s) {
+    if (!create_colormap_sampler(s)) return false;
+    if (s->forestMaskTexture) return true;
+    const uint8_t zero[4] = {};
+    return upload_sampled_image(s, s->forestMaskTexture, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, zero, sizeof(zero));
+}
+
+// Splat the mission's tree placements into the canopy-density mask (R of RGBA8) over the colormap atlas extent; rebuilt when the
+// trees or the atlas extent change. Canopy radius and grid are fixed: the mask is a soft blob field, not a per-tree footprint.
+void import_forest_mask(TerrainIsland* s) {
+    const auto* fields = gos_TerrainFieldStore();
+    if (!fields || !(s->colormapCookParams[2] > 0.0f)) return;
+    const std::array<float, 3> params{s->colormapCookParams[0], s->colormapCookParams[1], s->colormapCookParams[2]};
+    if (fields->treeVersion() == s->forestTreeVersionImported && params == s->forestParamsImported && s->forestMaskTexture) return;
+    constexpr int kEdge = 1024;
+    constexpr float kCanopyRadius = 70.0f;   // wu
+    std::vector<uint8_t> density;
+    mc2terrain::splatForestMask(fields->treePositions(), params[0], params[1], 1.0f / params[2], kEdge, kEdge, kCanopyRadius, density);
+    std::vector<uint8_t> rgba(density.size() * 4);
+    for (size_t i = 0; i < density.size(); ++i) { rgba[4*i] = rgba[4*i+1] = rgba[4*i+2] = density[i]; rgba[4*i+3] = 255; }
+    if (!upload_sampled_image(s, s->forestMaskTexture, VK_FORMAT_R8G8B8A8_UNORM, kEdge, kEdge, rgba.data(), rgba.size())) {
+        vlog("FOREST_MASK: upload failed; no forest floor this mission.");
+        return;
+    }
+    s->forestTreeVersionImported = fields->treeVersion();
+    s->forestParamsImported = params;
+    vlog("FOREST_MASK: %zu trees splatted into %dx%d (canopy %.0f wu).", fields->treePositions().size() / 2, kEdge, kEdge, kCanopyRadius);
+    write_descriptors(s);
 }
 
 void import_materials(TerrainIsland* s) {

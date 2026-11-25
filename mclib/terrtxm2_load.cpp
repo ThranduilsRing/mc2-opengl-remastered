@@ -654,16 +654,18 @@ long TerrainColorMap::init (char *fileName)
 		int arrayWidth = 0;
 		bool usedCooked = false;
 		if (auto* fields = gos_TerrainFieldStore()) {
-			std::vector<RenderCore::KtxImage> cooked(6);
-			FullPathFileName grassPath;
+			std::vector<RenderCore::KtxImage> cooked(7);
+			FullPathFileName grassPath, dirtPath;
 			grassPath.init(texturePath, normalNames[1], ".tga");
-			bool turf = false;
-			usedCooked = mc2::terrain::loadCookedNormals(std::span(cooked), LookupModOwner(grassPath) != nullptr,
-				[&](int mat, bool wantTurf) {
+			dirtPath.init(texturePath, normalNames[2], ".tga");
+			bool turf = false, sand = false;
+			usedCooked = mc2::terrain::loadCookedNormals(std::span(cooked), LookupModOwner(grassPath) != nullptr, LookupModOwner(dirtPath) != nullptr,
+				[&](int mat, bool alt) {
 					FullPathFileName nmPath;
 					nmPath.init(texturePath, normalNames[mat], ".tga");
-					auto layer = mc2::textures::loadCookedSidecar(wantTurf ? mc2::terrain::kGrassTurfSource : static_cast<const char*>(nmPath));
-					if (mat == 1) turf = wantTurf && layer.has_value();
+					auto layer = mc2::textures::loadCookedSidecar(alt ? (mat == 6 ? mc2::terrain::kForestFloorSource : mat == 1 ? mc2::terrain::kGrassTurfSource : mc2::terrain::kDirtSandSource) : static_cast<const char*>(nmPath));
+					if (mat == 1) turf = alt && layer.has_value();
+					if (mat == 2) sand = alt && layer.has_value();
 					return layer;
 				},
 				[&](std::span<const RenderCore::KtxImage> layers) { return fields->setMaterialNormals(layers); });

@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <span>
 
 // Terrain LOD chunk render system.
 // mclib/ calls these functions. GameOS/gameos/ implements them.
@@ -130,6 +131,9 @@ void gos_TerrainLodChunk_UploadCementWordsFull(const unsigned int* words, int co
 // texture handle is valid. Passthrough (gate off or no sidecar) never calls
 // this and u_useControlMap uploads 0 (byte-identical legacy classifier path).
 void gos_TerrainLodChunk_UploadControlMap(const unsigned char* rgba, int side);
+
+// Tree placements of the loaded mission (count world (x,y) float pairs): the terrain forest-floor layer is driven from them.
+void gos_TerrainLodChunk_UploadTreePositions(std::span<const float> xy);
 
 // TERRAIN-OVERLAY-V2-PARITY-1: upload the authored cement/pad/runway overlay
 // sidecar as a GL_RGBA8 2D texture (arbitrary WxH, NOT tied to vertex grid)

@@ -105,6 +105,11 @@ void gos_TerrainLodChunk_UploadTerrainTypeFull(const float* types, int mapSide)
     if (auto* store = gos_TerrainFieldStore()) (void)store->setTerrainTypes(types, mapSide);
 }
 
+void gos_TerrainLodChunk_UploadTreePositions(std::span<const float> xy)
+{
+    if (auto* store = gos_TerrainFieldStore()) store->setTreePositions(std::vector<float>(xy.begin(), xy.end()));
+}
+
 void gos_TerrainLodChunk_UploadControlMap(const unsigned char* rgba, int side)
 {
     if (auto* store = gos_TerrainFieldStore()) (void)store->setControlMap(rgba, side);
