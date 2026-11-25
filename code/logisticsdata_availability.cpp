@@ -27,13 +27,7 @@ long LogisticsData::updateAvailability()
 
 	bNewWeapons = 0;
 
-	// MC2_PURCHASE_ALL (default OFF; launcher Engine Option): unlock every
-	// COMPONENT/weapon so modded gear (e.g. the Magic clan double heat sinks)
-	// is buyable. It only forces AllComponents below — it does NOT blanket-mark
-	// mechs/pilots, so the mission's own [Mechs]/[Pilots] lists still bound the
-	// roster (no random modded chassis like the imported Marauder leaking in;
-	// stock campaign mechs all become buildable since every component is now
-	// available).
+	// Existing launcher sandbox option: all loaded chassis and components.
 	static const bool s_purchaseAll = mc2::gate::get<"MC2_PURCHASE_ALL">();
 
 	std::string purchaseFileName = mc2::str::ascii_lower( missionInfo->getCurrentPurchaseFile() );
@@ -205,10 +199,23 @@ long LogisticsData::updateAvailability()
 		}
 	}
 
-	// Loaded mod chassis are sold as complete mechs, independently of campaign equipment unlocks.
+	// Supplemental chassis follow the stock purchase-file mission, never the CSV provider.
+	std::vector<mc2purchase::Unlock> unlocks;
+	FitIniFile unlockFile;
+	if (unlockFile.open("data/defs/purchase/unlocks.fit") == NO_ERR && unlockFile.seekBlock("Unlocks") == NO_ERR)
+		for (int i = 0; ; ++i) {
+			char key[32], stem[256];
+			mc2::fmt::to_buf(key, "Unit{:d}", i);
+			if (unlockFile.readIdString(key, stem, sizeof(stem)) != NO_ERR) break;
+			mc2::fmt::to_buf(key, "Mission{:d}", i);
+			long mission = 0;
+			if (unlockFile.readIdLong(key, mission) == NO_ERR) unlocks.push_back({stem, mission});
+		}
+	const int purchaseMission = mc2purchase::missionNumber(purchaseFileName);
 	for (auto & variant : variants)
 	{
-		if ( variant->isAvailable() || !mc2purchase::available(false, mc2purchase::chassisSource(variant->getFileName())) )
+		const auto stem = std::filesystem::path(variant->getFileName()).stem().string();
+		if ( variant->isAvailable() || !(s_purchaseAll || mc2purchase::unlocked(stem, purchaseMission, unlocks)) )
 			continue;
 		variant->setAvailable( true );
 		if ( !(variant->getID() >> 16) )

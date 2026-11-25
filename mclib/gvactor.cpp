@@ -202,9 +202,13 @@ void GVAppearanceType::init (mc2::czstring fileName)
 	const auto* iniOwner = LookupModOwner(iniName);
 	const bool userIni = userLooseBuildingAsset(static_cast<const char*>(iniName), iniOwner ? iniOwner : "",
 		[&] { return ReadArchiveBytes(iniName, 1024u * 1024u); });
-	if (!importSourceBase[0] && !userIni)
+	if (!importSourceBase[0])
 	if (const auto* ov = ModelOverrideRegistry::instance().resolve("vehicle", fileName))
 	{
+		const std::string manifestPath = (std::filesystem::path(ov->manifestDir) / "models.json").generic_string();
+		const auto* overrideOwner = LookupModOwner(manifestPath.c_str());
+		if (!userIni || (iniOwner && overrideOwner && strcmp(iniOwner, overrideOwner) == 0))
+		{
 #ifdef ENABLE_ASSIMP_IMPORTER
 		bool complete = ov->lods.size() == 2 && ov->lods[0].lod == 1 && ov->lods[1].lod == 2;
 		for (int i = 0; complete && i < 3; ++i)
@@ -225,6 +229,7 @@ void GVAppearanceType::init (mc2::czstring fileName)
 		if (!complete) for (auto& shape : renderLods) shape.reset();
 		mc2::fmt::print_err("[VEHICLE_OVERRIDE] {}: {} (stock simulation/pick)\n", fileName, complete ? "3 LODs" : "stock fallback");
 #endif
+		}
 	}
 
 	result = iniFile.readIdString("ShadowName",aseFileName,511);

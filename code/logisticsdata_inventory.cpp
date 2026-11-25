@@ -1,6 +1,7 @@
 // LogisticsData: components, mech purchase and sale, force groups, inventory lists and the vehicle pilot (with the infinite-money cheat gate).
 // Declared in the class headers; shared names in logisticsdata_internal.h.
 #include "logisticsdata_internal.h"
+#include "purchase_catalog.h"
 
 
 // Interactive cheat gates -- read once at startup, default OFF (unset = nullptr = false)
@@ -65,7 +66,7 @@ int LogisticsData::getPurchasableMechs( LogisticsVariant** array, int& count )
 	count = 0;
 	for (auto & variant : instance->variants)
 	{
-		if ( variant->isAvailable() )
+		if ( variant->isAvailable() && mc2purchase::purchasable(variant->getChassis()->isVehicle(), rules().purchaseVehicles) )
 		{
 			if ( count >= arraySize )
 			{
@@ -91,6 +92,8 @@ std::expected<void, int> LogisticsData::purchaseMech( LogisticsVariant* pVariant
 {
 	if ( !pVariant )
 		return std::unexpected(-1);
+	if ( !mc2purchase::purchasable(pVariant->getChassis()->isVehicle(), rules().purchaseVehicles) )
+		return std::unexpected(INVALID_ID);
 
 	int RP = pVariant->getCost();
 
@@ -109,6 +112,8 @@ std::expected<void, int> LogisticsData::purchaseMech( LogisticsVariant* pVariant
 std::expected<void, int> LogisticsData::canPurchaseMech( LogisticsVariant* pVar )
 {
 	if ( !pVar )
+		return std::unexpected(INVALID_ID);
+	if ( !mc2purchase::purchasable(pVar->getChassis()->isVehicle(), rules().purchaseVehicles) )
 		return std::unexpected(INVALID_ID);
 
 	if ( cheatInfiniteMoney() )

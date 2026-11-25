@@ -26,7 +26,7 @@ public:
 	virtual ~GameRulesDialog();
 
 	// Rows the page provides; the descriptor table may not outgrow it (checked at init).
-	static constexpr std::size_t kPageRows = 9;
+	static constexpr std::size_t kPageRows = 10;
 
 private:
 	GameRulesDialog( const GameRulesDialog& ) = delete;

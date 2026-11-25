@@ -3,10 +3,48 @@
 // Also triggers: mclib/vfs.cpp, code/logisticsmech.cpp, code/logisticsdata_save.cpp.
 #include "doctest.h"
 #include "purchase_catalog.h"
+#include "game_rules.h"
+#include "inifile.h"
 #include "test_repo_root.h"
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+
+TEST_CASE("purchase_catalog/vehicle rule defaults on and filters every vehicle source") {
+    mc2::rules::GameRules rules;
+    CHECK(rules.purchaseVehicles);
+    for (bool vehicle : {false, true}) {
+        CHECK(mc2purchase::purchasable(vehicle, rules.purchaseVehicles));
+        rules.purchaseVehicles = false;
+        CHECK(mc2purchase::purchasable(vehicle, rules.purchaseVehicles) == !vehicle);
+        rules.purchaseVehicles = true;
+    }
+    rules.purchaseVehicles = false;
+    mc2::rules::GameRules restored;
+    for (const auto& entry : mc2::rules::cfgEntries(rules))
+        mc2::rules::loadCfgText(restored, entry.key + "=" + entry.text + "\n");
+    CHECK_FALSE(restored.purchaseVehicles);
+}
+
+TEST_CASE("purchase_catalog/zero rating vehicle prices use shipped tonnage and role data") {
+    FitIniFile table;
+    REQUIRE(table.open((std::string(MC2_REPO_ROOT) + "/data/defs/purchase/vehicle_prices.fit").c_str()) == NO_ERR);
+    REQUIRE(table.seekBlock("VehiclePrices") == NO_ERR);
+    long perTon = 0, minimum = 0;
+    REQUIRE(table.readIdLong("PerTon", perTon) == NO_ERR);
+    REQUIRE(table.readIdLong("Minimum", minimum) == NO_ERR);
+    REQUIRE(perTon > 0);
+    REQUIRE(minimum > 0);
+    for (float tons : {0.f, 1.f, 5.f, 20.f, 25.f, 30.f, 75.f, 100.f})
+        CHECK(mc2purchase::vehiclePrice(0, tons, perTon, minimum) > 0);
+    for (const auto* role : {"minelayer", "repairtruck", "mobilehq", "mog"}) {
+        long rate = 0;
+        REQUIRE(table.readIdLong(role, rate) == NO_ERR);
+        CHECK(rate >= perTon);
+        CHECK(mc2purchase::vehiclePrice(0, 30.f, rate, minimum) >= 30 * perTon);
+    }
+    CHECK(mc2purchase::vehiclePrice(2500, 75.f, perTon, minimum) == 2500);
+}
 
 TEST_CASE("purchase_catalog/transition bounds and closed group keyboard traversal") {
     mc2purchase::Group group{"bt2018", {0, 4, 1}, false};
@@ -58,13 +96,34 @@ TEST_CASE("purchase_catalog/installed assets mount without selecting a campaign"
 }
 
 TEST_CASE("purchase_catalog/availability preserves stock progression") {
-    CHECK_FALSE(mc2purchase::available(false, ""));
-    CHECK(mc2purchase::available(true, ""));
-    CHECK(mc2purchase::available(false, "bt2018"));
-    CHECK(mc2purchase::available(false, "omnitech"));
+    const std::vector<mc2purchase::Unlock> table{{"hunter", 1}, {"mw5_atlas", 9}, {"mw5_direwolf", 22}};
+    for (int mission = 1; mission <= 24; ++mission) {
+        CHECK(mc2purchase::unlocked("hunter", mission, table));
+        CHECK(mc2purchase::unlocked("mw5_atlas", mission, table) == (mission >= 9));
+        CHECK(mc2purchase::unlocked("mw5_direwolf", mission, table) == (mission >= 22));
+        CHECK_FALSE(mc2purchase::unlocked("unknown_pack", mission, table));
+        const auto path = "data/missions/purchase" + std::string(mission < 10 ? "0" : "") + std::to_string(mission) + ".fit";
+        CHECK(mc2purchase::missionNumber(path) == mission);
+    }
+    CHECK(mc2purchase::missionNumber("data/missions/purchase_all.fit") == 0);
+    CHECK(mc2purchase::missionNumber("purchase00.fit") == 0);
+    CHECK(mc2purchase::missionNumber("purchase25.fit") == 0);
+    CHECK_FALSE(mc2purchase::unlocked("hunter", 0, table));
     CHECK(mc2purchase::source("bt2018", "skin") == "bt2018");
     CHECK(mc2purchase::source("", "desertfox") == "desertfox");
     CHECK(mc2purchase::source("", "").empty());
+}
+
+TEST_CASE("purchase_catalog/vehicles have separate stable dropdowns") {
+    const std::vector<mc2purchase::Item> items{{"", "Hunter", 25, true}, {"", "Atlas", 100},
+        {"mw5-vehicles", "MW5 Scorpion", 25, true}, {"", "Vedette", 50, true}};
+    const auto groups = mc2purchase::group(items, "");
+    REQUIRE(groups.size() == 3);
+    CHECK_FALSE(groups[0].vehicle);
+    CHECK(groups[1].vehicle);
+    CHECK(groups[1].items == std::vector<std::size_t>{3, 0});
+    CHECK(groups[2].vehicle);
+    CHECK(groups[2].source == "mw5-vehicles");
 }
 
 TEST_CASE("purchase_catalog/sections count sort and open only campaign source") {

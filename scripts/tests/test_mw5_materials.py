@@ -66,6 +66,7 @@ def test_pack_rest_sole_includes_toes_and_bind_transform(fixture, tmp_path):
 
 @pytest.mark.parametrize("orm", [False, True])
 def test_cook_and_ktx_only_pack(tmp_path, monkeypatch, fixture, orm):
+    monkeypatch.setattr(P, 'logistics', lambda *a: None)
     alb, nrm = tmp_path / "alb.png", tmp_path / "nrm.png"
     Image.new("RGBA", (2, 2), (97, 53, 21, 255)).save(alb)
     Image.new("RGB", (2, 2), (128, 128, 0)).save(nrm)

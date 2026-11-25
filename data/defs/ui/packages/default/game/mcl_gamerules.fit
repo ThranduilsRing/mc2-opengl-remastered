@@ -1,4 +1,4 @@
-// Game Rules dialog page (hand-authored, defs-only: no legacy FIT). Rows 0..8 are filled at runtime from the
+// Game Rules dialog page (hand-authored, defs-only: no legacy FIT). Rows 0..9 are filled at runtime from the
 // mc2::rules::kRules descriptor table by code/gamerulesdialog.cpp (labels, values and visibility); this file only holds the frame.
 
 GuiPage {
@@ -117,9 +117,9 @@ GuiText {
     pageKey = "game.mcl_gamerules"
     role = "text"
     layer = "text"
-    rect = "130,152,290,32"
-    controlRect = "130,152,290,32"
-    textRect = "130,152,290,32"
+    rect = "130,148,290,32"
+    controlRect = "130,148,290,32"
+    textRect = "130,148,290,32"
     visibleText = "RULE 1"
     font = "Agency Regular"
     fontSize = 17
@@ -136,10 +136,10 @@ GuiButton {
     pageKey = "game.mcl_gamerules"
     role = "button"
     layer = "control"
-    rect = "440,152,230,32"
-    controlRect = "440,152,230,32"
-    hitRect = "440,152,230,32"
-    textRect = "440,152,230,32"
+    rect = "440,148,230,32"
+    controlRect = "440,148,230,32"
+    hitRect = "440,148,230,32"
+    textRect = "440,148,230,32"
     visibleText = "-"
     legacyId = 101
     font = "Agency Regular"
@@ -163,9 +163,9 @@ GuiText {
     pageKey = "game.mcl_gamerules"
     role = "text"
     layer = "text"
-    rect = "130,192,290,32"
-    controlRect = "130,192,290,32"
-    textRect = "130,192,290,32"
+    rect = "130,184,290,32"
+    controlRect = "130,184,290,32"
+    textRect = "130,184,290,32"
     visibleText = "RULE 2"
     font = "Agency Regular"
     fontSize = 17
@@ -182,10 +182,10 @@ GuiButton {
     pageKey = "game.mcl_gamerules"
     role = "button"
     layer = "control"
-    rect = "440,192,230,32"
-    controlRect = "440,192,230,32"
-    hitRect = "440,192,230,32"
-    textRect = "440,192,230,32"
+    rect = "440,184,230,32"
+    controlRect = "440,184,230,32"
+    hitRect = "440,184,230,32"
+    textRect = "440,184,230,32"
     visibleText = "-"
     legacyId = 102
     font = "Agency Regular"
@@ -209,9 +209,9 @@ GuiText {
     pageKey = "game.mcl_gamerules"
     role = "text"
     layer = "text"
-    rect = "130,232,290,32"
-    controlRect = "130,232,290,32"
-    textRect = "130,232,290,32"
+    rect = "130,220,290,32"
+    controlRect = "130,220,290,32"
+    textRect = "130,220,290,32"
     visibleText = "RULE 3"
     font = "Agency Regular"
     fontSize = 17
@@ -228,10 +228,10 @@ GuiButton {
     pageKey = "game.mcl_gamerules"
     role = "button"
     layer = "control"
-    rect = "440,232,230,32"
-    controlRect = "440,232,230,32"
-    hitRect = "440,232,230,32"
-    textRect = "440,232,230,32"
+    rect = "440,220,230,32"
+    controlRect = "440,220,230,32"
+    hitRect = "440,220,230,32"
+    textRect = "440,220,230,32"
     visibleText = "-"
     legacyId = 103
     font = "Agency Regular"
@@ -255,9 +255,9 @@ GuiText {
     pageKey = "game.mcl_gamerules"
     role = "text"
     layer = "text"
-    rect = "130,272,290,32"
-    controlRect = "130,272,290,32"
-    textRect = "130,272,290,32"
+    rect = "130,256,290,32"
+    controlRect = "130,256,290,32"
+    textRect = "130,256,290,32"
     visibleText = "RULE 4"
     font = "Agency Regular"
     fontSize = 17
@@ -274,10 +274,10 @@ GuiButton {
     pageKey = "game.mcl_gamerules"
     role = "button"
     layer = "control"
-    rect = "440,272,230,32"
-    controlRect = "440,272,230,32"
-    hitRect = "440,272,230,32"
-    textRect = "440,272,230,32"
+    rect = "440,256,230,32"
+    controlRect = "440,256,230,32"
+    hitRect = "440,256,230,32"
+    textRect = "440,256,230,32"
     visibleText = "-"
     legacyId = 104
     font = "Agency Regular"
@@ -301,9 +301,9 @@ GuiText {
     pageKey = "game.mcl_gamerules"
     role = "text"
     layer = "text"
-    rect = "130,312,290,32"
-    controlRect = "130,312,290,32"
-    textRect = "130,312,290,32"
+    rect = "130,292,290,32"
+    controlRect = "130,292,290,32"
+    textRect = "130,292,290,32"
     visibleText = "RULE 5"
     font = "Agency Regular"
     fontSize = 17
@@ -320,10 +320,10 @@ GuiButton {
     pageKey = "game.mcl_gamerules"
     role = "button"
     layer = "control"
-    rect = "440,312,230,32"
-    controlRect = "440,312,230,32"
-    hitRect = "440,312,230,32"
-    textRect = "440,312,230,32"
+    rect = "440,292,230,32"
+    controlRect = "440,292,230,32"
+    hitRect = "440,292,230,32"
+    textRect = "440,292,230,32"
     visibleText = "-"
     legacyId = 105
     font = "Agency Regular"
@@ -347,9 +347,9 @@ GuiText {
     pageKey = "game.mcl_gamerules"
     role = "text"
     layer = "text"
-    rect = "130,352,290,32"
-    controlRect = "130,352,290,32"
-    textRect = "130,352,290,32"
+    rect = "130,328,290,32"
+    controlRect = "130,328,290,32"
+    textRect = "130,328,290,32"
     visibleText = "RULE 6"
     font = "Agency Regular"
     fontSize = 17
@@ -366,10 +366,10 @@ GuiButton {
     pageKey = "game.mcl_gamerules"
     role = "button"
     layer = "control"
-    rect = "440,352,230,32"
-    controlRect = "440,352,230,32"
-    hitRect = "440,352,230,32"
-    textRect = "440,352,230,32"
+    rect = "440,328,230,32"
+    controlRect = "440,328,230,32"
+    hitRect = "440,328,230,32"
+    textRect = "440,328,230,32"
     visibleText = "-"
     legacyId = 106
     font = "Agency Regular"
@@ -393,9 +393,9 @@ GuiText {
     pageKey = "game.mcl_gamerules"
     role = "text"
     layer = "text"
-    rect = "130,392,290,32"
-    controlRect = "130,392,290,32"
-    textRect = "130,392,290,32"
+    rect = "130,364,290,32"
+    controlRect = "130,364,290,32"
+    textRect = "130,364,290,32"
     visibleText = "RULE 7"
     font = "Agency Regular"
     fontSize = 17
@@ -412,10 +412,10 @@ GuiButton {
     pageKey = "game.mcl_gamerules"
     role = "button"
     layer = "control"
-    rect = "440,392,230,32"
-    controlRect = "440,392,230,32"
-    hitRect = "440,392,230,32"
-    textRect = "440,392,230,32"
+    rect = "440,364,230,32"
+    controlRect = "440,364,230,32"
+    hitRect = "440,364,230,32"
+    textRect = "440,364,230,32"
     visibleText = "-"
     legacyId = 107
     font = "Agency Regular"
@@ -439,9 +439,9 @@ GuiText {
     pageKey = "game.mcl_gamerules"
     role = "text"
     layer = "text"
-    rect = "130,432,290,32"
-    controlRect = "130,432,290,32"
-    textRect = "130,432,290,32"
+    rect = "130,400,290,32"
+    controlRect = "130,400,290,32"
+    textRect = "130,400,290,32"
     visibleText = "RULE 8"
     font = "Agency Regular"
     fontSize = 17
@@ -458,10 +458,10 @@ GuiButton {
     pageKey = "game.mcl_gamerules"
     role = "button"
     layer = "control"
-    rect = "440,432,230,32"
-    controlRect = "440,432,230,32"
-    hitRect = "440,432,230,32"
-    textRect = "440,432,230,32"
+    rect = "440,400,230,32"
+    controlRect = "440,400,230,32"
+    hitRect = "440,400,230,32"
+    textRect = "440,400,230,32"
     visibleText = "-"
     legacyId = 108
     font = "Agency Regular"
@@ -622,7 +622,7 @@ GuiText {
 GuiSlider {
     key = "game.mcl_gamerules.slider.row1"
     pageKey = "game.mcl_gamerules"
-    rect = "440,158,150,20"
+    rect = "440,154,150,20"
     maxValue = 1000
     fillColorArgb = "0xff10242e"
     colorArgb = "0xff5C96C2"
@@ -635,9 +635,9 @@ GuiText {
     pageKey = "game.mcl_gamerules"
     role = "text"
     layer = "text"
-    rect = "598,152,72,32"
-    controlRect = "598,152,72,32"
-    textRect = "598,152,72,32"
+    rect = "598,148,72,32"
+    controlRect = "598,148,72,32"
+    textRect = "598,148,72,32"
     visibleText = "-"
     font = "Agency Regular"
     fontSize = 17
@@ -653,7 +653,7 @@ GuiText {
 GuiSlider {
     key = "game.mcl_gamerules.slider.row2"
     pageKey = "game.mcl_gamerules"
-    rect = "440,198,150,20"
+    rect = "440,190,150,20"
     maxValue = 1000
     fillColorArgb = "0xff10242e"
     colorArgb = "0xff5C96C2"
@@ -666,9 +666,9 @@ GuiText {
     pageKey = "game.mcl_gamerules"
     role = "text"
     layer = "text"
-    rect = "598,192,72,32"
-    controlRect = "598,192,72,32"
-    textRect = "598,192,72,32"
+    rect = "598,184,72,32"
+    controlRect = "598,184,72,32"
+    textRect = "598,184,72,32"
     visibleText = "-"
     font = "Agency Regular"
     fontSize = 17
@@ -684,7 +684,7 @@ GuiText {
 GuiSlider {
     key = "game.mcl_gamerules.slider.row3"
     pageKey = "game.mcl_gamerules"
-    rect = "440,238,150,20"
+    rect = "440,226,150,20"
     maxValue = 1000
     fillColorArgb = "0xff10242e"
     colorArgb = "0xff5C96C2"
@@ -697,9 +697,9 @@ GuiText {
     pageKey = "game.mcl_gamerules"
     role = "text"
     layer = "text"
-    rect = "598,232,72,32"
-    controlRect = "598,232,72,32"
-    textRect = "598,232,72,32"
+    rect = "598,220,72,32"
+    controlRect = "598,220,72,32"
+    textRect = "598,220,72,32"
     visibleText = "-"
     font = "Agency Regular"
     fontSize = 17
@@ -715,7 +715,7 @@ GuiText {
 GuiSlider {
     key = "game.mcl_gamerules.slider.row4"
     pageKey = "game.mcl_gamerules"
-    rect = "440,278,150,20"
+    rect = "440,262,150,20"
     maxValue = 1000
     fillColorArgb = "0xff10242e"
     colorArgb = "0xff5C96C2"
@@ -728,9 +728,9 @@ GuiText {
     pageKey = "game.mcl_gamerules"
     role = "text"
     layer = "text"
-    rect = "598,272,72,32"
-    controlRect = "598,272,72,32"
-    textRect = "598,272,72,32"
+    rect = "598,256,72,32"
+    controlRect = "598,256,72,32"
+    textRect = "598,256,72,32"
     visibleText = "-"
     font = "Agency Regular"
     fontSize = 17
@@ -746,7 +746,7 @@ GuiText {
 GuiSlider {
     key = "game.mcl_gamerules.slider.row5"
     pageKey = "game.mcl_gamerules"
-    rect = "440,318,150,20"
+    rect = "440,298,150,20"
     maxValue = 1000
     fillColorArgb = "0xff10242e"
     colorArgb = "0xff5C96C2"
@@ -759,9 +759,9 @@ GuiText {
     pageKey = "game.mcl_gamerules"
     role = "text"
     layer = "text"
-    rect = "598,312,72,32"
-    controlRect = "598,312,72,32"
-    textRect = "598,312,72,32"
+    rect = "598,292,72,32"
+    controlRect = "598,292,72,32"
+    textRect = "598,292,72,32"
     visibleText = "-"
     font = "Agency Regular"
     fontSize = 17
@@ -777,7 +777,7 @@ GuiText {
 GuiSlider {
     key = "game.mcl_gamerules.slider.row6"
     pageKey = "game.mcl_gamerules"
-    rect = "440,358,150,20"
+    rect = "440,334,150,20"
     maxValue = 1000
     fillColorArgb = "0xff10242e"
     colorArgb = "0xff5C96C2"
@@ -790,9 +790,9 @@ GuiText {
     pageKey = "game.mcl_gamerules"
     role = "text"
     layer = "text"
-    rect = "598,352,72,32"
-    controlRect = "598,352,72,32"
-    textRect = "598,352,72,32"
+    rect = "598,328,72,32"
+    controlRect = "598,328,72,32"
+    textRect = "598,328,72,32"
     visibleText = "-"
     font = "Agency Regular"
     fontSize = 17
@@ -808,7 +808,7 @@ GuiText {
 GuiSlider {
     key = "game.mcl_gamerules.slider.row7"
     pageKey = "game.mcl_gamerules"
-    rect = "440,398,150,20"
+    rect = "440,370,150,20"
     maxValue = 1000
     fillColorArgb = "0xff10242e"
     colorArgb = "0xff5C96C2"
@@ -821,9 +821,9 @@ GuiText {
     pageKey = "game.mcl_gamerules"
     role = "text"
     layer = "text"
-    rect = "598,392,72,32"
-    controlRect = "598,392,72,32"
-    textRect = "598,392,72,32"
+    rect = "598,364,72,32"
+    controlRect = "598,364,72,32"
+    textRect = "598,364,72,32"
     visibleText = "-"
     font = "Agency Regular"
     fontSize = 17
@@ -839,7 +839,7 @@ GuiText {
 GuiSlider {
     key = "game.mcl_gamerules.slider.row8"
     pageKey = "game.mcl_gamerules"
-    rect = "440,438,150,20"
+    rect = "440,406,150,20"
     maxValue = 1000
     fillColorArgb = "0xff10242e"
     colorArgb = "0xff5C96C2"
@@ -852,9 +852,87 @@ GuiText {
     pageKey = "game.mcl_gamerules"
     role = "text"
     layer = "text"
-    rect = "598,432,72,32"
-    controlRect = "598,432,72,32"
-    textRect = "598,432,72,32"
+    rect = "598,400,72,32"
+    controlRect = "598,400,72,32"
+    textRect = "598,400,72,32"
+    visibleText = "-"
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "left"
+    textAnchor = "left"
+    wrapText = false
+    colorArgb = "0xff5C96C2"
+    legacyColor = 0
+    outline = "FALSE"
+    visible = false
+}
+
+
+GuiText {
+    key = "game.mcl_gamerules.text.row9"
+    pageKey = "game.mcl_gamerules"
+    role = "text"
+    layer = "text"
+    rect = "130,436,290,32"
+    controlRect = "130,436,290,32"
+    textRect = "130,436,290,32"
+    visibleText = "RULE 9"
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "left"
+    textAnchor = "left"
+    wrapText = false
+    colorArgb = "0xffc66600"
+    legacyColor = 0
+    outline = "FALSE"
+}
+
+GuiButton {
+    key = "game.mcl_gamerules.button.row9"
+    pageKey = "game.mcl_gamerules"
+    role = "button"
+    layer = "control"
+    rect = "440,436,230,32"
+    controlRect = "440,436,230,32"
+    hitRect = "440,436,230,32"
+    textRect = "440,436,230,32"
+    visibleText = "-"
+    legacyId = 109
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = false
+    normalTextColorArgb = "0xff5C96C2"
+    colorArgb = "0xff5C96C2"
+    pressedTextColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    fillColorArgb = "0xff101c28"
+    borderColorArgb = "0xff005392"
+    legacyAnimateBmp = false
+    legacyAnimateText = false
+}
+
+GuiSlider {
+    key = "game.mcl_gamerules.slider.row9"
+    pageKey = "game.mcl_gamerules"
+    rect = "440,442,150,20"
+    maxValue = 1000
+    fillColorArgb = "0xff10242e"
+    colorArgb = "0xff5C96C2"
+    highlightColorArgb = "0xffc66600"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcl_gamerules.text.value9"
+    pageKey = "game.mcl_gamerules"
+    role = "text"
+    layer = "text"
+    rect = "598,436,72,32"
+    controlRect = "598,436,72,32"
+    textRect = "598,436,72,32"
     visibleText = "-"
     font = "Agency Regular"
     fontSize = 17

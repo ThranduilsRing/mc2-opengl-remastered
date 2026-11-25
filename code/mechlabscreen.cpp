@@ -2312,9 +2312,11 @@ void gatherPanelItems(LogisticsVariant* v, int panel, std::vector<LocItem>& out)
 	std::vector<LogisticsComponent*> comps;
 	gatherPlaced(v,placed,comps);
 	const auto record = v->locationRecord();
+	const auto& layout = v->getChassis()->getLocationLayout();
+	const bool authored = pc && layout.has_value();
 	int used = 0;
 	for (size_t i=0; i<placed.size(); ++i) {
-		const bool here = pc ? ri >= 0 && placed[i].x >= 0 && pc->regions[ri].contains(placed[i].x,placed[i].y)
+		const bool here = pc && !authored ? ri >= 0 && placed[i].x >= 0 && pc->regions[ri].contains(placed[i].x,placed[i].y)
 			: i < record.items.size() && record.items[i].location == panel;
 		if (!here) continue;
 		used += placed[i].w * placed[i].h;
@@ -2324,7 +2326,9 @@ void gatherPanelItems(LogisticsVariant* v, int panel, std::vector<LocItem>& out)
 	static constexpr const char* fixed[8][2] = {{"Cockpit","Life support"},{"Engine","Gyro"},{nullptr,nullptr},{nullptr,nullptr},
 		{"Shoulder","Arm actuator"},{"Shoulder","Arm actuator"},{"Hip","Leg actuator"},{"Hip","Leg actuator"}};
 	for (const char* name : fixed[panel]) if (name) out.push_back({nullptr,-1,-1,name});
-	if (ri >= 0) for (int empty=used; empty<pc->regions[ri].w*pc->regions[ri].h; ++empty)
+	const int capacity = authored ? std::min(12, layout->locations[panel].slots) : ri >= 0 ? pc->regions[ri].w*pc->regions[ri].h : 0;
+	if (authored) used = static_cast<int>(out.size());
+	for (int empty=used; empty<capacity; ++empty)
 		out.push_back({nullptr,-1,-1,"- empty -"});
 }void refreshLocationVerdicts(LogisticsVariant* v, LogisticsComponent* cand)
 {
@@ -2681,10 +2685,23 @@ void MechLabScreen::drawLocationView(float tbSx, float tbSy, float tbOx, float t
 		std::vector<LocItem> items; gatherPanelItems(pVariant,p,items);
 		const int count = static_cast<int>(items.size());
 		const int first = ml::clampScroll(count,s_locView.scroll[p],p);
-		text({r.x+3,r.y+ml::equipmentY(p)-10,50,10},"EQUIPPED",0xffa0b0c0,7);
+		const int empty = static_cast<int>(std::count_if(items.begin(), items.end(), [](const auto& item) { return item.label && std::string_view(item.label) == "- empty -"; }));
+		const std::string equipment = pc && pVariant->getChassis()->getLocationLayout()
+			? std::format("SLOTS {}/{}", count-empty, count) : "EQUIPPED";
+		text({r.x+3,r.y+ml::equipmentY(p)-10,50,10},equipment,0xffa0b0c0,7);
 		// Existing package mount assignment, displayed in the equipment header.
 		float bx = r.x+53;
-		if (pc) for (size_t k=0; k<pc->hardpoints.size() && bx<r.x+r.w-25; ++k) {
+		const auto& layout = pVariant->getChassis()->getLocationLayout();
+		if (pc && layout) for (const auto& hp : layout->locations[p].hardpoints) {
+			if (bx >= r.x+r.w-25) break;
+			const bool used = std::any_of(layoutRecord.items.begin(), layoutRecord.items.end(), [&](const auto& item) {
+				return item.location == p && item.hardpoint == hp.key;
+			});
+			fill({bx,r.y+ml::equipmentY(p)-10,8,8},used ? 0xffb07020 : 0xff2a7a4a);
+			const char* letter = hp.mask & mc2pkg::Energy ? "E" : hp.mask & mc2pkg::Ballistic ? "B" : "M";
+			text({bx,r.y+ml::equipmentY(p)-10,8,8},letter,0xffffffff,7,2); bx+=9;
+		}
+		else if (pc) for (size_t k=0; k<pc->hardpoints.size() && bx<r.x+r.w-25; ++k) {
 			if (pc->hardpoints[k].location != ml::panelName(p)) continue;
 			const bool used = std::find(mountOf.begin(),mountOf.end(),static_cast<int>(k)) != mountOf.end();
 			fill({bx,r.y+ml::equipmentY(p)-10,8,8},used ? 0xffb07020 : 0xff2a7a4a);

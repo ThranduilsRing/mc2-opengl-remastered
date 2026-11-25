@@ -13,6 +13,114 @@ from tools.mw5_mechs.ue_basis import psa_pos_to_gltf, psa_quat_to_gltf
 from tools.mw5_mechs.verify_basis import angle, fk, world_rotation_delta
 
 
+def test_built_packs_do_not_override_stock_units():
+    import csv
+    import io
+    import os
+    import re
+    from tools.mc2x_import import fst
+    root = os.environ.get('MW5_STANDALONE_INSTALL')
+    if not root:
+        pytest.skip('requires the generated private packs')
+    inst = Path(root)
+    stock_paths, stock_ids = set(), set()
+    for archive in inst.glob('*.fst'):
+        for off, comp, real, name, lz, data in fst.fst_entries(archive):
+            stock_paths.add(name.lower())
+            if name.startswith('data/objects/') and name.endswith('.csv'):
+                rows = list(csv.reader(io.StringIO(fst.decompress_entry(off, comp, real, lz, data).decode('latin-1'), newline='')))
+                if rows and rows[0][0] == 'BaseChassisInfo':
+                    stock_ids.update(r[1] for r in rows[4:8] if len(r)>1 and r[1].isdigit())
+    stock_paths.update(p.relative_to(inst).as_posix().lower() for p in (inst/'data/objects').glob('*'))
+    identities = set()
+    for pack in (inst/'mods/mw5_mechs', inst/'mods/mw5-vehicles'):
+        assert not [p for p in pack.rglob('*') if p.is_file() and p.relative_to(pack).as_posix().lower() in stock_paths]
+        for fit in (pack/'data/defs/chassis').rglob('chassisdef.fit'):
+            text = fit.read_text()
+            identity = re.search(r'ChassisId\s*=\s*"([^"]+)"', text)[1]
+            assert identity.startswith('mw5:') and identity not in identities
+            identities.add(identity)
+            stem = re.search(r'Stem\s*=\s*"([^"]+)"', text)[1]
+            rows = list(csv.reader((pack/'data/objects'/f'{stem}.csv').open()))
+            assert rows[2][1] == rows[22][1] and rows[2][1].startswith('MW5 ') and ' / ' not in rows[22][1]
+            assert not stock_ids.intersection((rows[4][1], rows[5][1]))
+            assert (pack/'data/tgl'/f'{stem}.ini').is_file()
+            assert (pack/'data/art/mechicons'/f'{stem}.png').is_file()
+        registry = pack/'data/model_overrides/models.json'
+        if registry.exists():
+            assert all(r['replaces'].startswith('vehicle:mw5_') for r in json.loads(registry.read_text())['overrides'])
+    assert len(identities) == 71
+
+
+@pytest.mark.parametrize('family,host,donor', [('atlas', 'atlas', 'atlas'), ('archer', 'archer', 'thor')])
+def test_logistics_keeps_donor_loadout_and_registers_new_chassis(tmp_path, monkeypatch, family, host, donor):
+    import csv
+    import io
+    from tools.mw5_mechs import build_pack as P
+    from tools.mc2x_import import fst
+    from tools.bt2018_mechs import render_icons as R
+    recipe = json.loads((Path(P.__file__).with_name('recipes') / (family + '.json')).read_text())
+    stem = recipe['mc2']['stem']
+    rows = [[''] * 15 for _ in range(116)]
+    rows[0][0] = 'BaseChassisInfo'
+    rows[2][3:5] = ['Tonnage', '100' if donor == 'atlas' else '70']
+    rows[12][1], rows[13][1] = '6', '5'
+    rows[22][:2] = ['VariantName', 'Donor Prime']
+    rows[25][:6] = ['Item0MasterId', '0', '1', '2', '99', 'Laser']
+    rows[16][1:9] = ['3', '11', '11', '15', '15', '22', '15', '15']
+    rows[17][1:12] = ['9', '13', '13', '16', '16', '19', '15', '15', '4', '4', '6']
+    rows[100][:9] = ['ComponentPlacement', 'Head', 'LeftArm', 'RightArm', 'LeftTorso', 'RightTorso', 'CenterTorso', 'LeftLeg', 'RightLeg']
+    rows[101][2] = '0'
+    rows += [r[:] for r in rows[19:116]]
+    rows[119][1] = 'Donor Elite'
+    buf = io.StringIO()
+    csv.writer(buf).writerows(rows)
+    data = buf.getvalue().encode()
+    monkeypatch.setattr(fst, 'fst_entries', lambda p: [(0, len(data), len(data), f'data/objects/{donor}.csv', False, data),
+                                                       (0, 0, 0, 'data/objects/compbas.csv', False,
+                                                        ('Component Table,Type,Name,x,x,x,Weight\n' +
+                                                         ','.join(['99', 'EnergyWeapon', 'Laser', '1', '1', '1', '60'] + [''] * 20 + ['1', '1']) + '\n').encode())])
+    monkeypatch.setattr(fst, 'decompress_entry', lambda off, comp, real, lz, data: data)
+    monkeypatch.setattr(P, 'load_glb', lambda p: ({'extras': {'mw5Attachments': []}}, b''))
+    monkeypatch.setattr(P, 'package_nodes', lambda *a: ({'weapon_0': 'j_Spine2'}, {'weapon_0': '0 0 0'}, {}, 12))
+    icons = []
+    monkeypatch.setattr(R, 'build_icons', lambda *a: icons.append(a))
+    out = tmp_path / 'pack'
+    tgl = out / 'data/tgl'
+    tgl.mkdir(parents=True)
+    (tgl / (host + '.ini')).write_text('FITini\nFITend\n')
+    (tgl / (stem + '.package.json')).write_text('{}')
+    P.logistics(recipe, tmp_path, out)
+    target = out / 'data/objects' / (stem + '.csv')
+    result = list(csv.reader(io.StringIO(target.read_text())))
+    assert result[25] == rows[25]
+    assert len(result) == 116
+    assert result[22][1] == result[2][1] == 'MW5 ' + family.title()
+    assert not (out / 'data/objects' / (donor + '.csv')).exists()
+    assert not (out / 'data/objects' / (host + '.csv')).exists()
+    assert ' / ' not in (out / 'data/defs/text/en_us' / (stem + '.fit')).read_text()
+    assert result[8][1] == stem and result[10][1] == stem + '_bay'
+    assert result[2][4] == rows[2][4]
+    assert icons[0][1] == stem
+    report = json.loads((out / 'content' / (stem + '.json')).read_text())
+    assert report['donor'] == donor
+    fits = list((out / 'data/defs/chassis').rglob('chassisdef.fit'))
+    assert len(fits) == 1
+    if host != donor:
+        assert 'b Purchasable = TRUE' in fits[0].read_text()
+        assert 'st Socket = "weapon_0"' in fits[0].read_text()
+        assert 'f Payload = 60.0' in fits[0].read_text()
+        assert 'f EmptyMass = 21.0' in fits[0].read_text()
+        text = fits[0].read_text()
+        assert 'st Source = "mc2-donor:thor"' in text
+        assert '[Location.Head]\nl Slots = 6' in text
+        assert '[Location.CenterTorso]\nl Slots = 12' in text
+        assert '[Location.LeftLeg]\nl Slots = 6' in text
+        arm = text.split('[Location.LeftArm]')[1].split('[Location.RightArm]')[0]
+        assert 'l HardpointCount = 1' in arm and 'st Socket0 = "weapon_2"' in arm
+        assert 'l ArmorPool = 130' in text
+
+
 def chunk(name, size, records):
     return struct.pack("<20sIII", name.encode(), 0, size, len(records)) + b"".join(records)
 
@@ -307,6 +415,7 @@ def test_attachment_requires_resolved_bone(fixture, tmp_path):
 
 def test_recipe_entry_point_and_maps(fixture, tmp_path, monkeypatch):
     from tools.mw5_mechs import build_pack as P
+    monkeypatch.setattr(P, 'logistics', lambda *a: None)
     skm = fixture[0]
     recipe = B.load_recipe()
     recipe["mc2"]["stem"] = "fixture_mech"
@@ -334,7 +443,8 @@ def test_recipe_entry_point_and_maps(fixture, tmp_path, monkeypatch):
     assert "fixture_foot" in [n["name"] for n in doc["nodes"]]
     assert [a["name"] for a in doc["animations"]] == ["fixture_idle", "fixture_hold"]
     assert all(doc["accessors"][s["output"]]["count"] == 1 for s in doc["animations"][1]["samplers"])
-    assert 'st AnimHost = "fixture_host"' in (tgl / "fixture_host.ini").read_text()
+    assert 'st AnimHost = "fixture_host"' in (tgl / "fixture_mech.ini").read_text()
+    assert not (tgl / "fixture_host.ini").exists()
     pkg = json.loads((tgl / "fixture_mech.package.json").read_text())
     assert pkg["sourceGlb"] == "fixture_mech.glb"
     recipe["clips"]["Missing"] = "fixture_missing"
@@ -403,3 +513,53 @@ def test_empty_native_hold_channel_names_source(fixture, tmp_path):
     recipe.update(clips={}, hold_clips={'empty_hold': ['Stand', -1]})
     with pytest.raises(ValueError, match='TBR_Stand_ANI.*Root.*empty'):
         B.build(native, None, tmp_path / 'bad.glb', 'albedo.png', recipe=recipe)
+
+
+def test_purchase_unlock_table_matches_all_stock_missions():
+    import csv
+    import hashlib
+    import os
+    import re
+    from tools.mc2x_import.fst import fst_entries, decompress_entry
+    from tools.pak_dump import read_packets, decode_packet
+    root = os.environ.get('MW5_STANDALONE_INSTALL')
+    if not root:
+        pytest.skip('requires stock FSTs and generated private packs')
+    inst = Path(root)
+    text = (Path(__file__).resolve().parents[2] / 'data/defs/purchase/unlocks.fit').read_text()
+    table = dict((s, int(n)) for s, n in re.findall(r'st Unit\d+ = "([^"]+)"\s+l Mission\d+ = (\d+)', text))
+    clan = set('direwolf executioner gargoyle kitfox maddog madcat puma shadowcat stormcrow summoner timberwolf warhawk clan_elemental'.split())
+    def milestone(tons):
+        return 1 if tons <= 35 else 3 if tons <= 55 else 6 if tons <= 75 else 9
+    expected = {}
+    for pack in ('mw5_mechs', 'mw5-vehicles'):
+        for p in (inst/'mods'/pack/'data/objects').glob('*.csv'):
+            rows = list(csv.reader(p.open(encoding='latin1')))
+            tons = float(rows[2][4])
+            expected[p.stem] = (18 if tons <= 55 else 19 if tons <= 75 else 22) if p.stem.removeprefix('mw5_') in clan else milestone(tons)
+    packets = read_packets(inst/'data/objects/object2.pak')
+    entries = fst_entries(inst/'art.fst')
+    buildings = next(decompress_entry(o,c,r,l,d).decode('latin1') for o,c,r,n,l,d in entries if n.lower().endswith('/buildings.csv'))
+    for row in csv.reader(buildings.splitlines()):
+        if len(row) > 4 and row[3] == 'VEHICLE':
+            fit = decode_packet(packets[int(row[4])]).decode('latin1')
+            tons = float(re.search(r'CurTonnage\s*=\s*([\d.]+)', fit)[1])
+            expected[row[0].lower()] = 18 if row[0].lower() == 'swarmlrmc' else milestone(tons)
+    csvs = {Path(n).stem: decompress_entry(o,c,r,l,d).decode('latin1')
+            for o,c,r,n,l,d in fst_entries(inst/'misc.fst') if n.lower().endswith('.csv')}
+    for row in csv.reader(buildings.splitlines()):
+        if len(row) > 5 and row[3] == 'MECH' and row[5] == 'HELICOPTER':
+            expected[row[0].lower()] = milestone(float(list(csv.reader(csvs[row[0].lower()].splitlines()))[2][4]))
+    assert len(expected) == 106
+    assert table == expected
+    stock = {}
+    for o,c,r,n,l,d in fst_entries(inst/'mission.fst'):
+        if re.search(r'/purchase\d\d.fit$', n):
+            stock[int(n[-6:-4])] = set(re.findall(r'st Mech\d+\s*=\s*"([^"]+)"', decompress_entry(o,c,r,l,d).decode('latin1')))
+    fingerprints = '19656e7c86ca 19656e7c86ca 1cac7d5d3373 efbf4ab1c0a6 a6a08811d35a a7e83723af3f a7e83723af3f a7e83723af3f 5cb34d144c62 faaa5c0f6dd2 b3b6dac31e6d b3b6dac31e6d a97d2d5040e6 993d25ada087 993d25ada087 993d25ada087 993d25ada087 b7070d511ac4 2a7c1ace822a 2a7c1ace822a 2a7c1ace822a 9549e1c32ffb 9549e1c32ffb 9549e1c32ffb'.split()
+    for mission in range(1, 25):
+        assert hashlib.sha256(','.join(sorted(stock[mission])).encode()).hexdigest()[:12] == fingerprints[mission-1]
+        unlocked = stock[mission] | {s for s,n in table.items() if n <= mission}
+        assert unlocked == stock[mission] | {s for s,n in expected.items() if n <= mission}
+        assert ('mw5_direwolf' in unlocked) == (mission >= 22)
+        assert ('hunter' in unlocked)

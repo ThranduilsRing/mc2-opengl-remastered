@@ -139,6 +139,17 @@
     "bone": "j_COCKPIT",
     "glass": {"tile": [1596, 1161, 24], "albedo_linear": [0.006, 0.012, 0.016], "roughness": 0.05, "metallic": 0.7}
   },
+  "logistics_loadout": [
+    {"node": "weapon_0", "mesh": "Weapon_Mech_TBR_Shoulder_Left_MH1_Missile15_SKM", "bone": "Torso_Pitch", "type": 1, "fires": ["Fire00"]},
+    {"node": "weapon_1", "mesh": "Weapon_Mech_TBR_Torso_Left_EH1_Laser_SKM", "bone": "Torso_Pitch", "type": 4, "fires": ["Fire00"]},
+    {"node": "weapon_2", "mesh": "Weapon_Mech_TBR_Shoulder_Right_MH1_Missile15_SKM", "bone": "Torso_Pitch", "type": 1, "fires": ["Fire00"]},
+    {"node": "weapon_3", "mesh": "Weapon_Mech_TBR_Torso_Right_BH2_MG_SKM", "bone": "Torso_Pitch", "type": 2, "fires": ["Fire00"]},
+    {"node": "weapon_4", "mesh": "Weapon_Mech_TBR_Torso_Center_BH1_MG_SKM", "bone": "Torso_Pitch", "type": 2, "fires": ["Fire00"]},
+    {"node": "weapon_5", "mesh": "Weapon_Mech_TBR_Forearm_Left_EH1_Laser_SKM", "bone": "Forearm_Left", "type": 4, "fires": ["Fire00"]},
+    {"node": "weapon_6", "mesh": "Weapon_Mech_TBR_Forearm_Left_EH2_Laser_SKM", "bone": "Forearm_Left", "type": 4, "fires": ["Fire00"]},
+    {"node": "weapon_7", "mesh": "Weapon_Mech_TBR_Forearm_Right_EH1_Laser_SKM", "bone": "Forearm_Right", "type": 4, "fires": ["Fire00"]},
+    {"node": "weapon_8", "mesh": "Weapon_Mech_TBR_Forearm_Right_EH2_Laser_SKM", "bone": "Forearm_Right", "type": 4, "fires": ["Fire00"]}
+  ],
   "mod": {
     "id": "mw5_mechs",
     "name": "MechWarrior 5 Mad Cat (personal use)",

@@ -59,8 +59,24 @@ auto loadInventoryVariant(File& file, Range& variants, Source source) {
     return fallback;
 }
 
-inline bool available(bool campaignUnlocked, std::string_view source) {
-    return campaignUnlocked || !source.empty();
+struct Unlock {
+    std::string chassis;
+    long mission = 0;
+};
+
+inline int missionNumber(std::string_view path) {
+    const auto slash = path.find_last_of("/\\");
+    path.remove_prefix(slash == path.npos ? 0 : slash + 1);
+    if (path.size() != 14 || path.substr(0, 8) != "purchase" || path.substr(10) != ".fit" ||
+        path[8] < '0' || path[8] > '9' || path[9] < '0' || path[9] > '9') return 0;
+    const int n = (path[8] - '0') * 10 + path[9] - '0';
+    return n >= 1 && n <= 24 ? n : 0;
+}
+
+inline bool unlocked(std::string_view chassis, int mission, const std::vector<Unlock>& table) {
+    return std::any_of(table.begin(), table.end(), [&](const Unlock& row) {
+        return row.chassis == chassis && mission >= row.mission && row.mission > 0;
+    });
 }
 
 
@@ -72,11 +88,20 @@ inline std::string source(std::string_view package, std::string_view csvOwner) {
 struct Item {
     std::string source, name;
     float tonnage = 0;
+    bool vehicle = false;
 };
+inline bool purchasable(bool vehicle, bool purchaseVehicles) {
+    return !vehicle || purchaseVehicles;
+}
+
+inline long vehiclePrice(long ratedPrice, float tons, long perTon, long minimum) {
+    return ratedPrice > 0 ? ratedPrice : std::max(minimum, static_cast<long>(tons * perTon));
+}
 struct Group {
     std::string source;
     std::vector<std::size_t> items;
     bool open = false;
+    bool vehicle = false;
 };
 
 // Index validation is independent of openness (F7 also visits closed groups).
@@ -91,15 +116,16 @@ inline std::vector<Group> group(const std::vector<Item>& items, std::string_view
     std::vector<Group> groups;
     for (std::size_t i = 0; i < items.size(); ++i) {
         auto g = std::find_if(groups.begin(), groups.end(), [&](const Group& candidate) {
-            return candidate.source == items[i].source;
+            return candidate.source == items[i].source && candidate.vehicle == items[i].vehicle;
         });
         if (g == groups.end()) {
-            groups.push_back({items[i].source, {}, items[i].source == campaignSource});
+            groups.push_back({items[i].source, {}, items[i].source == campaignSource, items[i].vehicle});
             g = groups.end() - 1;
         }
         g->items.push_back(i);
     }
     std::stable_sort(groups.begin(), groups.end(), [](const Group& a, const Group& b) {
+        if (a.vehicle != b.vehicle) return a.vehicle < b.vehicle;
         return a.source < b.source;
     });
     for (auto& g : groups)

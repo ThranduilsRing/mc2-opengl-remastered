@@ -335,11 +335,15 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 	if (packageType) {
 		File fitFile;
 		const bool opened = fitFile.open(packageType->fitPath.c_str()) == NO_ERR;
-		auto packageMechType = std::make_unique<BattleMechType>();
-		packageMechType->setObjTypeNum(objTypeNum);
-		if (opened && packageMechType->init(&fitFile, fitFile.fileSize()) == NO_ERR) {
-			objType = std::move(packageMechType);
-			objectTypeNum = BATTLEMECH_TYPE;
+		std::unique_ptr<ObjectType> packageObject;
+		if (packageType->objectType == VEHICLE_TYPE)
+			packageObject = std::make_unique<GroundVehicleType>();
+		else
+			packageObject = std::make_unique<BattleMechType>();
+		packageObject->setObjTypeNum(objTypeNum);
+		if (opened && packageObject->init(&fitFile, fitFile.fileSize()) == NO_ERR) {
+			objType = std::move(packageObject);
+			objectTypeNum = packageType->objectType;
 		} else
 			mc2::content::error(mc2::content::Kind::ObjectType, packageType->fitPath, "invalid package chassis; terrain placeholder");
 		fitFile.close();
@@ -410,6 +414,8 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 			}
 			break;
 		case VEHICLE_TYPE: {
+			if (objType)
+				break;
 			objType = std::make_unique<GroundVehicleType>();
 			objType->setObjTypeNum(objTypeNum);
 			if (objType->init(objectFile,objectFile->getPacketSize()) != NO_ERR)

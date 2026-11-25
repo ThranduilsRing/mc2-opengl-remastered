@@ -173,7 +173,11 @@ void LogisticsMechDisplay::setMech( LogisticsMech* pMech, bool bFromLB )
 				attributeMeters[2].setValue( pCurMech->getJumpRange() * 25 / MAX_JUMP_RANGE);
 
 				
-				mechCamera.setMech( mc2::str::file_stem( pMech->getFileName() ).c_str(), prefs.baseColor, prefs.highlightColor, prefs.highlightColor );	
+				const auto* chassis = pMech->getVariant()->getChassis();
+				if (chassis->isVehicle() && !chassis->getPackage())
+					mechCamera.setVehicle(mc2::str::file_stem(pMech->getFileName()).c_str(), prefs.baseColor, prefs.highlightColor, prefs.highlightColor);
+				else
+					mechCamera.setMech(mc2::str::file_stem(pMech->getFileName()).c_str(), prefs.baseColor, prefs.highlightColor, prefs.highlightColor);
 				mechCamera.setScale( pMech->getVariant()->getChassis()->getScale() );
 				
 				componentListBox.setMech( pCurMech->getVariant() );
