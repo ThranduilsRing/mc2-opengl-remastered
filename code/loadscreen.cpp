@@ -30,6 +30,13 @@ struct DDSURFACEDESC2 {
 #include "gos_render.h"
 #include "gos_screenshot.h"
 #include "../GameOS/gameos/utils/mc2log.h"
+#include <algorithm>
+#include <cstdint>
+#include <cstdio>
+#include "loading_detail.h"
+#include "Gates/render_options.h"
+#include "../GuiRuntime/GuiRuntime.h"
+#include "../GameOS/gameos/gpu_memory_report.h"
 float loadProgress = 0.0f;
 
 long LoadScreen::xProgressLoc = 0;
@@ -44,6 +51,90 @@ TGAFileHeader* LoadScreen::mergedTexture = nullptr;
 TGAFileHeader* LoadScreen::waitingForPlayersMemory = nullptr;
 // Owners of the raw TGA buffers the pointers above alias (the header + pixels live in one char block).
 static std::unique_ptr<char[]> s_progressBackgroundBuf, s_progressTextureBuf, s_mergedTextureBuf, s_waitingForPlayersBuf;
+
+static void systemRam( std::uint64_t& used, std::uint64_t& total )
+{
+	used = total = 0;
+#ifdef _WIN32
+	MEMORYSTATUSEX status;
+	status.dwLength = sizeof( status );
+	if ( GlobalMemoryStatusEx( &status ) )
+	{
+		total = status.ullTotalPhys;
+		used = total - std::min<std::uint64_t>( total, status.ullAvailPhys );
+	}
+#else
+	if ( FILE* file = std::fopen( "/proc/meminfo", "r" ) )
+	{
+		char line[128];
+		unsigned long totalKb = 0, availableKb = 0;
+		while ( std::fgets( line, sizeof( line ), file ) )
+			if ( std::sscanf( line, "MemTotal: %lu", &totalKb ) == 1 )
+				continue;
+			else if ( std::sscanf( line, "MemAvailable: %lu", &availableKb ) == 1 )
+				break;
+		std::fclose( file );
+		total = static_cast<std::uint64_t>( totalKb ) * 1024;
+		used = static_cast<std::uint64_t>( totalKb - std::min( totalKb, availableKb ) ) * 1024;
+	}
+#endif
+}
+
+static std::string loadingDetail()
+{
+	mc2::loaddetail::Info info;
+	info.stage = graphics::loading_label( graphics::loading_phase() );
+	info.hasProgress = loadProgress > 0.f && loadProgress < 100.f;
+	info.progress = loadProgress;
+	systemRam( info.ramUsed, info.ramTotal );
+	const mc2::gpumem::Snapshot memory = mc2::gpumem::take();
+	info.vramUsed = memory.vkUsageBytes;
+	info.vramBudget = memory.vkBudgetBytes;
+	float drawableWidth = 0.f, drawableHeight = 0.f;
+	if ( GuiRuntime::GetDisplaySize( drawableWidth, drawableHeight ) )
+	{
+		info.width = static_cast<int>( drawableWidth );
+		info.height = static_cast<int>( drawableHeight );
+	}
+	const mc2::options::RenderOptions& options = mc2::options::current();
+	info.quality = options.baseQuality;
+	info.shadows = options.shadowQuality;
+	info.textures = mc2::options::textureTier();
+	info.antiAliasing = options.spatialAA;
+	return mc2::loaddetail::format( info );
+}
+
+static bool renderMenuFontText( aText& label, int boxX, int boxY, int boxWidth, std::string_view text,
+                                std::string_view detail )
+{
+	const std::string string( text );
+	if ( !GuiRuntime::IsReadyForUiText() )
+		return false;
+	float sx = 1.f, sy = 1.f, ox = 0.f, oy = 0.f;
+	aObject::getCanvasTransform( sx, sy, ox, oy );
+	DWORD width = 0, height = 0;
+	label.font.getSize( width, height, "Ag" );
+	const int fontSize = std::max( 8, static_cast<int>( static_cast<float>( height ? height : 8 ) * sy + 0.5f ) );
+	const int align = std::clamp( static_cast<int>( label.alignment ), 0, 2 );
+	const float x = boxX * sx + ox, y = boxY * sy + oy, w = boxWidth * sx, h = fontSize * 1.3f;
+	const std::uint32_t color = static_cast<std::uint32_t>( label.getColor() );
+	if ( !GuiRuntime::DrawUiText( x, y, w, h, text.c_str(), color, fontSize, align, "Agency Regular" ) )
+		return false;
+	const int detailSize = std::max( 10, fontSize * 2 / 3 );
+	const float line = detailSize * 1.3f;
+	std::size_t begin = 0, index = 0;
+	for ( ; begin < detail.size(); ++begin, ++index )
+	{
+		const std::size_t end = detail.find( '\n', begin );
+		const std::string part = detail.substr( begin, end == std::string::npos ? end : end - begin );
+		GuiRuntime::DrawUiText( x, y + h + static_cast<float>( index ) * line, w, line, part.c_str(),
+		                        ( color & 0x00ffffff ) | 0xc0000000, detailSize, align, "Agency Regular" );
+		if ( end == std::string::npos )
+			break;
+		begin = end;
+	}
+	return true;
+}
 static LoadScreen* s_loadingScreen = nullptr;
 
 std::unique_ptr<LoadScreen> LoadScreenWrapper::enterScreen = nullptr;
@@ -584,8 +675,19 @@ void LoadScreen::update()
 void LoadScreen::render( int x, int y )
 {
 	//ignoring animation information...
+	// The label is redrawn below in the menu font: stand down the legacy pass's own copy of its block.
+	aText* duplicate = nullptr;
+	if ( GuiRuntime::IsReadyForUiText() )
+		for ( long i = 0; i < textCount; i++ )
+			if ( textObjects[i].isShowing() && textObjects[i].x() == text.x() && textObjects[i].y() == text.y() &&
+			     textObjects[i].width() == text.width() && textObjects[i].height() == text.height() )
+				duplicate = textObjects + i;
+	if ( duplicate )
+		duplicate->showGUIWindow( false );
 	if (graphics::loading_phase().empty()) LogisticsScreen::render();
 	else LogisticsScreen::renderLegacy();
+	if ( duplicate )
+		duplicate->showGUIWindow( true );
 
 	// MCO's mcl_loadingscreen.fit has no AnimObjects: animObjects is null, so no slide offset.
 	int curX = animObjectsCount ? static_cast<int>(animObjects[0].animInfo.getXDelta()) : 0;
@@ -593,7 +695,7 @@ void LoadScreen::render( int x, int y )
 	const auto phase = graphics::loading_phase();
 	if (!phase.empty()) curX = curY = 0;
 	text.move( x + curX, y + curY );
-	// Keep the stock localized label, font and colour; only the trailing dots vary with wall time.
+	// Keep the stock localized label and colour; only the trailing dots vary with wall time.
 	std::string label = text.text;
 	while (!label.empty() && (label.back() == '.' || label.back() == ' ')) label.pop_back();
 	label += " " + std::string(graphics::loading_dots(SDL_GetTicks64()), '.');
@@ -602,10 +704,14 @@ void LoadScreen::render( int x, int y )
 	                          std::max(0, Environment.screenWidth - boxWidth));
 	const int lineHeight = static_cast<int>(text.font.height()) + 2;
 	const int boxY = std::min(static_cast<int>(text.y()), Environment.screenHeight - 2 * lineHeight);
-	text.font.render(label.c_str(), boxX, boxY, boxWidth, lineHeight, text.getColor(), false, text.alignment);
+	if (!renderMenuFontText(text, boxX, boxY, boxWidth, label, phase.empty() ? std::string() : loadingDetail())) {
+		text.font.render(label.c_str(), boxX, boxY, boxWidth, lineHeight, text.getColor(), false, text.alignment);
+		if (!phase.empty()) {
+			const auto stage = graphics::loading_label(phase);
+			text.font.render(stage.data(), boxX, boxY + lineHeight, boxWidth, lineHeight, text.getColor(), false, text.alignment);
+		}
+	}
 	if (!phase.empty()) {
-		const auto stage = graphics::loading_label(phase);
-		text.font.render(stage.data(), boxX, boxY + lineHeight, boxWidth, lineHeight, text.getColor(), false, text.alignment);
 		// Reuse the existing multi-frame loading capture option; captures are actual presented frames.
 		if (mc2::gate::get<"MC2_SCREENSHOT_AT_FRAME">() == -5) {
 			static Uint64 lastShot = 0;
