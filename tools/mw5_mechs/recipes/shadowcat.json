@@ -159,7 +159,7 @@
   },
   "cockpit": {
     "bone": "j_COCKPIT",
-    "drop_glass": true,
+    "drop_glass": false,
     "glass": {
       "tile": "auto",
       "albedo_linear": [

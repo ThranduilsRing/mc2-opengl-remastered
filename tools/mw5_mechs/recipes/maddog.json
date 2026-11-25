@@ -33,7 +33,8 @@
       "wear": "/Game/DLC7/Objects/Mechs/CLANS/Maddog/Model/Body/Textures/Maddog_Body_Wear_MSK.Maddog_Body_Wear_MSK"
     },
     "cockpit": {
-      "hull": "/Game/DLC7/Objects/Mechs/CLANS/Maddog/Model/Body/MDD_TP_Cockpit_DM0_STM"
+      "hull": "/Game/DLC7/Objects/Mechs/CLANS/Maddog/Model/Body/MDD_TP_Cockpit_DM0_STM",
+      "glass": "/Game/DLC7/Objects/Mechs/CLANS/Maddog/Model/Cockpit/maddog_CockpitGlass_STM"
     },
     "weapons": {
       "Weapon_Mech_MDD_Forearm_Right_EH1_PPC_SKM": "/Game/DLC7/Objects/Mechs/CLANS/Maddog/Model/Weapons/Weapon_Mech_MDD_Forearm_Right_EH1_PPC_SKM",
@@ -158,7 +159,7 @@
   },
   "cockpit": {
     "bone": "j_COCKPIT",
-    "drop_glass": true,
+    "drop_glass": false,
     "glass": {
       "tile": "auto",
       "albedo_linear": [

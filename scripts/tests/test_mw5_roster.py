@@ -52,6 +52,20 @@ def test_material_params_later_entries_win():
     assert make_mech.material_params(chain, defaults)["scalars"][key] == 0.75
 
 
+def test_urbanmech_includes_both_separate_arm_meshes():
+    recipe = json.loads((TOOLS / "recipes/urbanmech.json").read_text())
+    attachments = make_mech.weapon_attachments(recipe, Path("work"))
+    for side in ("Left", "Right"):
+        assert any(f"Urbanmech_{side}_Arm_SKM.gltf=Forearm_{side}" in a for a in attachments)
+
+
+@pytest.mark.parametrize("family", ["shadowcat", "maddog"])
+def test_clan_cockpit_glass_is_built(family):
+    recipe = json.loads((TOOLS / f"recipes/{family}.json").read_text())
+    assert recipe["extraction"]["cockpit"]["glass"].endswith("_CockpitGlass_STM")
+    assert not recipe["cockpit"]["drop_glass"]
+
+
 def test_free_tile_stays_inside_atlas_and_avoids_coverage(tmp_path, monkeypatch):
     uv = np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]])
     tris = np.array([[0, 1, 2]])  # lower-left half covered

@@ -118,6 +118,7 @@ def extract(recipe, work):
             "--ue", "4.26", "--request", request, "--out", native, ok=(0, 2))  # 2 = assets left on the bridge
     work.joinpath("hull.gltf").write_text(json.dumps(from_native.convert(native), allow_nan=False))
     objects = [ex["cockpit"]["hull"]] + ([ex["cockpit"]["glass"]] if ex["cockpit"].get("glass") else []) + list(ex["weapons"].values())
+    objects += [row["source"] for row in recipe["mc2"]["model"]["attachments"]]
     for path in objects:
         if not (work / "ex" / (path.lstrip("/") + ".gltf")).is_file():
             # umodel takes one exact object per call; a wildcard silently exports nothing
@@ -133,6 +134,8 @@ def weapon_attachments(recipe, work):
             continue
         seen.add((row["mesh"], row["bone"]))
         out.append(f"{work / 'ex' / (ex['weapons'][row['mesh']].lstrip('/') + '.gltf')}={row['bone']}")
+    for row in recipe["mc2"]["model"]["attachments"]:
+        out.append(f"{work / 'ex' / (row['source'].lstrip('/') + '.gltf')}={row['bone']}")
     return out
 
 
