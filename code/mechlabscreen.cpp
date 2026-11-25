@@ -2312,7 +2312,7 @@ void gatherPanelItems(LogisticsVariant* v, int panel, std::vector<LocItem>& out)
 	std::vector<LogisticsComponent*> comps;
 	gatherPlaced(v,placed,comps);
 	const auto record = v->locationRecord();
-	const auto& layout = v->getChassis()->layoutCache;
+	const auto& layout = v->getChassis()->getLocationLayout();
 	const bool authored = pc && layout.has_value();
 	int used = 0;
 	for (size_t i=0; i<placed.size(); ++i) {
@@ -2688,7 +2688,7 @@ void MechLabScreen::drawLocationView(float tbSx, float tbSy, float tbOx, float t
 		text({r.x+3,r.y+ml::equipmentY(p)-10,50,10},"EQUIPPED",0xffa0b0c0,7);
 		// Existing package mount assignment, displayed in the equipment header.
 		float bx = r.x+53;
-		const auto& layout = pVariant->getChassis()->layoutCache;
+		const auto& layout = pVariant->getChassis()->getLocationLayout();
 		if (pc && layout) for (const auto& hp : layout->locations[p].hardpoints) {
 			if (bx >= r.x+r.w-25) break;
 			const bool used = std::any_of(layoutRecord.items.begin(), layoutRecord.items.end(), [&](const auto& item) {

@@ -48,6 +48,7 @@ public:
 	int				getNameID() const { return static_cast<int>(( uiNameIDOverride != -1 ? uiNameIDOverride : chassisNameID )); }
 	int				getEncyclopediaID() const { return static_cast<int>(( uiEncyclopediaIDOverride != -1 ? uiEncyclopediaIDOverride : encyclopediaID )); }
 	const std::string& getFileName() const { return fileName; }
+	const std::optional<mc2pkg::ChassisLayout>& getLocationLayout() const { return layoutCache; }
 	// The name lists, titles and headers show: string table, then the authored free-text name, then the variant, then the file stem.
 	std::string		getDisplayName( const LogisticsVariant* variant = nullptr ) const;
 	void			setAuthoredName( std::string name ) { authoredName = std::move( name ); }
