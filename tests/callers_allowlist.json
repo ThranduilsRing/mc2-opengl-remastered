@@ -2,6 +2,8 @@
   "tools/content_pipeline/cook_actor_pbr.py": "Run by deploy_payload.ensure_actor_pbr through the ACTOR_PBR_COOK path constant (subprocess, like the tree upscale cook).",
   "tools/bt2018_extract/recon.py": "Operator-run read-only BT2018 extractor recon helper (extractor kit phase 0); no repo caller by design.",
   "tools/mw5_mechs/__init__.py": "Operator-run MW5 mech pack tool (owner-run extractor kit, M-series lanes); no repo caller by design.",
+  "tools/mw5_mechs/assemble_vehicles.py": "Operator-run Blender vehicle assembly and offline rendering entry point; Blender supplies bpy.",
+  "tools/mw5_mechs/test_vehicle_pack.py": "Pytest-discovered vehicle recipe and GLB buffer preservation tests.",
   "tools/mw5_mechs/bake_albedo.py": "Operator-run MW5 mech pack tool (owner-run extractor kit, M-series lanes); no repo caller by design.",
   "tools/mw5_mechs/build_pack.py": "Operator-run MW5 mech pack tool (owner-run extractor kit, M-series lanes); no repo caller by design.",
   "scripts/bake_colormap_ktx2.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
