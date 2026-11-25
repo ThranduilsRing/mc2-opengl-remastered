@@ -833,8 +833,7 @@ void Terrain::reloadVisualHeightWithPassability(MissionMap* gm) {
 	mc2::fmt::print_out("[RAVINE_WEATHER v1] blocked={:d}/{:d} cells\n", mc2::fmt::as_size(nb), mc2::fmt::as_size(s_ravineBlocked.size()));
 	const auto t0 = std::chrono::steady_clock::now();
 	lodVisualHeight(lf);
-	mc2::fmt::print_out("[RAVINE_WEATHER v1] reload took {:.1f} ms
-", std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count());
+	mc2::fmt::print_out("[RAVINE_WEATHER v1] reload took {:.1f} ms\n", std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count());
 	s_ravineCells = 0;
 	s_ravineBlocked.clear();
 }
@@ -886,8 +885,7 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 			const auto synthT0 = std::chrono::steady_clock::now();
 			if (!vf) synthVh = mc2terrain::buildSmoothedVisualHeight(elev.data(), mapSide, Terrain::waterElevation,
 			                                                         s_ravineCells > 0 ? &s_ravineBlocked : nullptr, s_ravineCells);
-			if (synthVh) mc2::fmt::print_out("[VISUAL_HEIGHT v1] synthesized V={:d} in {:.1f} ms (ravines {})
-", mc2::fmt::as_i32(V), std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - synthT0).count(), s_ravineCells > 0 ? "on" : "off");
+			if (synthVh) mc2::fmt::print_out("[VISUAL_HEIGHT v1] synthesized V={:d} in {:.1f} ms (ravines {})\n", mc2::fmt::as_i32(V), std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - synthT0).count(), s_ravineCells > 0 ? "on" : "off");
 			const bool synth = synthVh.has_value();
 			s_visualHeightSynth = synth;
 			if (!vf && !synth)
