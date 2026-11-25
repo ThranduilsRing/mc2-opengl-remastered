@@ -24,6 +24,8 @@ from scipy import ndimage
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parents[1]))
+sys.path.insert(0, str(HERE.parents[1] / "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each)
 import add_cockpit  # noqa: E402
 import bake_extras  # noqa: E402
 import bake_material  # noqa: E402
@@ -54,7 +56,7 @@ def env(name):
 def run(*cmd, ok=(0,)):
     print("+", " ".join(str(c) for c in cmd))
     argv = [sys.executable, IDLE, *map(str, cmd)] if Path(IDLE).is_file() else list(map(str, cmd))
-    if subprocess.run(argv).returncode not in ok:
+    if subprocess.run(argv, **console_child.child_kwargs()).returncode not in ok:
         raise SystemExit(f"failed: {cmd[0]}")
 
 
