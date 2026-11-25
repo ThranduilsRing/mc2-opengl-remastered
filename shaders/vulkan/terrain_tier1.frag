@@ -577,6 +577,24 @@ void main() {
             float nzc        = clamp(abs(macroN.z), 0.0, 0.9995);
             float sinSlope   = max(sqrt(max(1.0 - nzc * nzc, 1e-6)), 0.03);
             float horizDist  = max(aboveWater, 0.0) * (nzc / sinSlope);
+            // Coastal look (owner refs 1/4/6): a pale sand beach above the swash that continues under the shallows, where
+            // the Beer-Lambert below turns it jade; gentle slopes only, so cliffs and quays keep their own colour.
+            // Close up (ref 6) a dark wet strip follows the swash, and a lacy white swash sheet runs up the sand.
+            float beachFw = length(fwidth(v_worldPos.xy));
+            if (uT.shorelineOn == 2 && horizDist < 110.0 && aboveWater > -40.0) {
+                float lumR = clamp(dot(lit, vec3(0.299, 0.587, 0.114)) / max(dot(baseColor, vec3(0.299, 0.587, 0.114)), 0.04), 0.0, 2.5);
+                float mask = smoothstep(0.93, 0.975, nzc) * (cementHit ? 0.0 : 1.0) * (1.0 - F3pc) * (1.0 - materialSnow);
+                float beach = (1.0 - smoothstep(35.0, 80.0, horizDist + fbm(v_worldPos.xy * 0.011, 2) * 30.0))
+                            * (1.0 - smoothstep(4.0, 40.0, -aboveWater)) * mask;
+                lit = mix(lit, vec3(0.97, 0.92, 0.79) * lumR, beach * 0.8);
+                float above = smoothstep(0.0, 0.3, aboveWater) * mask, near = 1.0 - smoothstep(1.5, 5.0, beachFw);
+                float run = mix(8.0, 24.0, near) + 7.0 * sin(uT.shorelineTime * 1.05 + dot(v_worldPos.xy, vec2(0.003, 0.002)) - 0.9);
+                float lace = fbm(v_worldPos.xy * 0.15 + uT.shorelineTime * vec2(0.12, 0.05), 2);
+                lit *= 1.0 - mix(0.15, 0.4, near) * above * (1.0 - smoothstep(run, run + 10.0, horizDist + fbm(v_worldPos.xy * 0.04, 2) * 5.0));
+                float swash = (1.0 - smoothstep(run * 0.75, run * 0.75 + 2.0, horizDist + lace * 8.0)) * smoothstep(-0.3, 0.1, lace)
+                            * above * near;
+                lit = mix(lit, vec3(0.90, 0.93, 0.92) * lumR, swash * 0.85);
+            }
             // Both bands are zero outside (0, reach): aboveFade is 0 at the waterline and the smoothsteps are 0 past the runs, and
             // |fbm(.., 2)| <= 0.75, so the jittered run cannot re-enter. Skipping there is exact and saves the noise on most pixels.
             float shoreReach = max(uT.shorelineWetRun, uT.shorelineFoamRun) + abs(uT.shorelineEdgeJitter);
@@ -648,7 +666,7 @@ void main() {
         float reef = smoothstep(0.1, 0.4, fbm(v_worldPos.xy / 380.0 + 7.3, 3)) * smoothstep(3.0, 9.0, wd) * (1.0 - smoothstep(45.0, 90.0, wd));
         lit *= mix(vec3(1.0), vec3(0.42, 0.52, 0.46), reef * 0.75)   // darker reef/weed patches inside the shallows (owner refs)
              * (1.0 + 1.2 * caustic * exp(-0.05 * wd))
-             * exp(-vec3(0.105, 0.022, 0.012) * wd * (1.0 + 1.0 / max(abs(eyeA.z), 0.25)));
+             * exp(-vec3(0.07, 0.022, 0.024) * wd * (1.0 + 1.0 / max(abs(eyeA.z), 0.25)));
     }
 
     // Shade the receiver before compositing the authored road shoulder. Keeping

@@ -620,13 +620,13 @@ void main(void)
     float rippleCrest = 0.0;
     if (shorelineLook == 1 && debugMode != 3) {
         waveSlope *= 0.3; waveVar *= 0.09;
-        for (int i = 0; i < 8; ++i) {
+        for (int i = 0; i < 10; ++i) {   // trains 8-9 (L 6.6-4.5) break the near glint into sparkle
             float L = 90.0 * pow(0.69, float(i)), k = 6.2831853 / L, s = 0.055 * pow(0.84, float(i)) * (RIPPLE_GAIN / 0.22);
             vec2  d = vec2(cos(0.7 + 2.39996 * float(i)), sin(0.7 + 2.39996 * float(i)));
             float keep = smoothstep(2.0, 6.0, L / max(footprint, 1e-3));
             float ph = k * dot(d, WorldPos.xy + float(i) * vec2(31.0, 17.0)) - sqrt(WAVE_G * k) * time;
             waveSlope += d * (s * keep * cos(ph));
-            rippleCrest += s * k * keep * sin(ph);   // -Laplacian: crest convexity
+            if (i < 8) rippleCrest += s * k * keep * sin(ph);   // -Laplacian: crest convexity
             waveVar += 0.5 * s * s * (1.0 - keep * keep);
         }
         rippleCrest /= 0.0675 * max(RIPPLE_GAIN / 0.22, 1e-3);   // sum of s*k over the trains: 1 where every crest meets
@@ -651,6 +651,7 @@ void main(void)
     float specAlpha2 = clamp(alpha0 * alpha0
                              + 2.0 * (waveVar + RIPPLE_SLOPE_VAR * (1.0 - waveLOD) * (RIPPLE_GAIN / 0.22))
                              + min(2.0 * kernelVar, 0.18), 0.0, 0.36);
+    if (shorelineLook == 1) specAlpha2 = max(specAlpha2, 0.008);   // coastal: no mirror-sharp blobs on the long trains
     PREC float trans   = clamp(exp(-tintThick * ABSORPTION_DENSITY), 0.0, 1.0);
     PREC vec3  waterCol = mix(DEEP_COLOR, SHALLOW_COLOR, trans);
     if (shorelineLook > 0) {
@@ -660,8 +661,8 @@ void main(void)
     // Coastal look: the terrain absorbs the seabed per channel (terrain_tier1.frag); the water adds only the light the
     // column scatters back, jade over the shelf turning navy offshore (owner refs E:/mc2-ref/refs/water).
     if (shorelineLook == 1)
-        waterCol = mix(vec3(0.03, 0.20, 0.17), vec3(0.012, 0.05, 0.11), smoothstep(20.0, 110.0, tintThick))
-                 * (1.0 - exp(-vec3(0.105, 0.022, 0.012) * tintThick * (1.0 + 1.0 / max(vdir.z, 0.25))));
+        waterCol = mix(vec3(0.03, 0.26, 0.24), vec3(0.008, 0.075, 0.17), smoothstep(16.0, 90.0, tintThick))
+                 * (1.0 - exp(-vec3(0.07, 0.022, 0.024) * tintThick * (1.0 + 1.0 / max(vdir.z, 0.25))));
 
     PREC float shoreBlend = max(alphaDepth, 1.0);
     PREC float shore = smoothstep(-shoreBlend * 0.5, shoreBlend, WaterThickness);
@@ -739,15 +740,16 @@ void main(void)
                 // Coastal look (owner refs): sparse, thin foam. A bright lacy line at the waterline, and breakers only on
                 // the shelf edge offshore, in alongshore sections and wave sets, never a ring around every shore.
                 // Close up (refs 5/6) the line widens into a swash band whose ragged edge the lace texture cuts.
-                float swashW = mix(5.0, 20.0, 1.0 - smoothstep(1.0, 4.0, footprint)) * (0.8 + 0.2 * sin(swashPhase));
-                float edge = (1.0 - smoothstep(0.5 * swashW, swashW + foamAA, shoreDistance + (lace - 0.5) * 0.6 * swashW))
+                float swashW = mix(5.0, 34.0, 1.0 - smoothstep(1.5, 6.0, footprint)) * (0.8 + 0.2 * sin(swashPhase));
+                float edge = (1.0 - smoothstep(0.5 * swashW, swashW + foamAA, shoreDistance + (lace - 0.5) * 0.9 * swashW))
                            * (0.6 + 0.4 * smoothstep(0.25, 0.7, 0.5 + 0.5 * sin(shoreDistance * 0.6 - time * 1.5 + lace * 3.0)));
                 float breakDist = shelfBreak / shoreSlope;
-                float sets = smoothstep(-0.2, 0.8, sin(time * 0.55 + dot(WorldPos.xy, vec2(0.0021, 0.0013))))
-                           * smoothstep(0.42, 0.68, vnoise(WorldPos.xy / 240.0 + vec2(0.0, 0.02 * time)));
-                float reef = (1.0 - smoothstep(1.5, 5.0 + foamAA, abs(shoreDistance - breakDist + 3.0 * sin(brokenPhase)) * min(shoreSlope / 0.08, 1.0)))
+                float sets = (0.45 + 0.55 * smoothstep(-0.2, 0.8, sin(time * 0.55 + dot(WorldPos.xy, vec2(0.0021, 0.0013)))))
+                           * smoothstep(0.46, 0.60, vnoise(WorldPos.xy / 240.0 + vec2(0.0, 0.02 * time)));   // alongshore sections
+                float reef = (1.0 - smoothstep(2.5, 4.0 + 1.5 * foamAA, abs(shoreDistance - breakDist + 3.0 * sin(brokenPhase)) * min(shoreSlope / 0.08, 1.0)))
                            + 0.35 * smoothstep(0.0, 4.0, breakDist - shoreDistance) * exp(-max(breakDist - shoreDistance, 0.0) / 14.0);
-                foamMix = clamp((edge * (0.5 + 0.8 * vnoise(WorldPos.xy / 160.0)) + reef * sets) * holes * max(coastWeight, smoothstep(0.03, 0.07, length(shoreGrad)) * step(abs(shoreDepth - shelfBreak), 6.0)), 0.0, 0.94);
+                reef *= smoothstep(50.0, 110.0, breakDist);   // only wide shelves break offshore: steep islands get no ring
+                foamMix = clamp((edge * (0.5 + 0.8 * vnoise(WorldPos.xy / 160.0))) * holes * coastWeight + reef * sets * mix(holes, 1.0, 0.6) * max(coastWeight, smoothstep(0.03, 0.07, length(shoreGrad)) * step(abs(shoreDepth - shelfBreak), 6.0)), 0.0, 0.94);
             }
         }
         if (shorelineLook == 1 && rippleCrest > 0.65) {   // tiny scattered whitecaps where the ripple crests pile up
@@ -811,6 +813,7 @@ void main(void)
         PREC float grazeW = pow(1.0 - max(vdir.z, 0.0), GRAZE_SKY_EXP);
         skyReflCol = mix(skyReflCol, F.f9.xyz, GRAZE_SKY_PULL * grazeW) * nightSky;
         skyReflCol *= 1.0 + NEAR_SKY_LIFT * nearGloss;   // WATER-GLOSS-NEAR: nearGloss is 0 at night
+        if (shorelineLook == 1) skyReflCol *= vec3(0.80, 0.95, 1.03);   // coastal: deep water reads blue, not grey (owner refs)
         reflectCol = skyReflCol;   // default reflection = sky (fallback/base)
         //PORT-END:waterReflSetup
         vec4 geometry=vec4(0);
@@ -859,7 +862,7 @@ void main(void)
             vec3 f3 = vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);
             col = mix(col, f3 / max(max(f3.r, max(f3.g, f3.b)), 1e-3) * 0.95, 1.0 - exp(-F.debug.w * sg));
         } else
-        col += min(sunRad * (SUN_SPEC_GAIN * glintScale * sunVis * waterGgxSpec(waveN, vdir, Ls, specAlpha2)), vec3(4.0));
+        col += min(sunRad * (SUN_SPEC_GAIN * glintScale * sunVis * waterGgxSpec(waveN, vdir, Ls, specAlpha2)), vec3(shorelineLook == 1 ? 1.6 : 4.0));
         // The lamp specular and the flat pool term come from one light walk (waterPoolLights), added right after the sun glint.
         if (F.debug.y < 0.5 && uT.numPoolLights > 0 && nightSky < 1.0) {
             vec3 lampSpec;
