@@ -1141,6 +1141,7 @@ int main(int argc, char** argv)
     if (!headless) mc2vk::present_thread::start();
 #endif
     bool presentJoinPending = false;
+    crashbundle_session_open();   // closed below with EXIT_REASON; left open, the next launch records an unclean exit
     while( !g_exit ) {
         ZoneScopedN("Frame");
         mc2::battlebench::beginFrame();
@@ -1339,6 +1340,7 @@ int main(int argc, char** argv)
         if (n > 0 && n < static_cast<int>(sizeof why)) mc2_diag::writeEvent("EXIT_REASON", 1, g_mc2FrameCounter.load(std::memory_order_relaxed), why);
         mc2_diag::flush();
     }
+    crashbundle_session_close();
     mc2vk::present_thread::stop();
     if (presentJoinPending) mc2::overlap::joinTail();
     mc2::overlap::shutdownWorker();   // the sim worker is joined before engine and static teardown
