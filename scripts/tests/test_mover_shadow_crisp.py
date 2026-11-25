@@ -25,7 +25,7 @@ def _code(path):
 def test_mover_sun_cone_is_narrower_than_the_bake():
     mover = _constant(FIT, "kMoverSunAngularRadiusDeg")
     assert 0.0 < mover <= 0.75 < _constant(BAKE, "kSunAngularRadiusDeg")
-    assert re.search(r"sun\[3\]\s*=\s*std::tan\(\s*kMoverSunAngularRadiusDeg", _code(STATE))
+    assert re.search(r"sun\[3\]\s*=\s*std::tan\(\s*moverSunAngularRadiusDeg\(", _code(STATE))
 
 
 def test_mover_receiver_has_no_short_blocker_lift_or_distance_fade():
