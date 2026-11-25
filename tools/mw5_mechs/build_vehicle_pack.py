@@ -139,7 +139,7 @@ def build(recipe, assemblies, stock, out):
                           intact=str(path), frame='gltf', wu_per_unit=10,
                           classes={m['name']: 'painted_metal' for m in doc.get('materials', [])}))
     try:
-        cook(dict(mod_id='mw5-vehicles', name='MW5 vehicles, infantry and Elemental', assets=specs), out,
+        cook(dict(mod_id='mw5-vehicles', name='Vehicles, infantry and Elemental', assets=specs), out,
              compress=False)
     finally:
         for path in static_copies:
