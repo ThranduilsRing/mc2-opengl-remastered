@@ -61,6 +61,7 @@ void main(uint3 group : SV_GroupID, uint lane : SV_GroupIndex) {
         Spectrum v; v.h=H[lane]/64.0; v.x=X[lane]/64.0; v.y=Y[lane]/64.0;
         rows[base+group.x*64+lane]=v;
     } else {
-        displacement[base+lane*64+group.x]=float4(X[lane].x,Y[lane].x,H[lane].x,0)/64.0;
+        // Negative choppiness compresses crests, rather than the wave troughs.
+        displacement[base+lane*64+group.x]=float4(-X[lane].x,-Y[lane].x,H[lane].x,0)/64.0;
     }
 }
