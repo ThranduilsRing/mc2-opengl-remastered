@@ -13,6 +13,40 @@ from tools.mw5_mechs.ue_basis import psa_pos_to_gltf, psa_quat_to_gltf
 from tools.mw5_mechs.verify_basis import angle, fk, world_rotation_delta
 
 
+@pytest.mark.parametrize('recipe', sorted((Path(B.__file__).parent / 'recipes').glob('*.json')))
+def test_mw5_forward_matches_movement(recipe):
+    from tools.mw5_mechs.build_pack import face_movement
+    r = json.loads(recipe.read_text())
+    chassis = r.get('vehicles', [r])
+    for _ in chassis:
+        doc = {'nodes': [{'name': 'hull'}], 'scenes': [{'nodes': [0]}]}
+        face_movement(doc)
+        # UE +X survives both native and ActorX conversion; MC2 expects glTF +Z.
+        root = doc['nodes'][doc['scenes'][0]['nodes'][0]]
+        np.testing.assert_allclose(B.trs_mat(root) @ [1, 0, 0, 0], [0, 0, 1, 0], atol=1e-7)
+        face_movement(doc)
+        assert len(doc['nodes']) == 2 and root['children'] == [0]
+
+
+def test_built_mw5_mechs_face_movement():
+    import os
+    from tools.mw5_mechs.sockets import load_glb
+    root = os.environ.get('MW5_STANDALONE_INSTALL')
+    if not root:
+        pytest.skip('requires the generated private packs')
+    recipes = [p for p in (Path(B.__file__).parent / 'recipes').glob('*.json') if p.stem != 'vehicles']
+    for path in recipes:
+        r = json.loads(path.read_text())
+        doc, _ = load_glb(Path(root) / 'mods/mw5_mechs/data/tgl' / (r['mc2']['stem'] + '.glb'))
+        # Cockpit position is not an axis: Dragon's cockpit sits behind its pelvis.
+        # Check the authored UE +X basis at the actual exported scene boundary.
+        for scene in doc['scenes']:
+            node = doc['nodes'][scene['nodes'][0]]
+            assert node['name'] == 'mw5_forward', r['chassis_id']
+            np.testing.assert_allclose(B.trs_mat(node) @ [1, 0, 0, 0],
+                                       [0, 0, 1, 0], atol=1e-7)
+
+
 def test_built_packs_do_not_override_stock_units():
     import csv
     import io
