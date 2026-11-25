@@ -221,6 +221,9 @@ struct TerrainIsland : mc2vk::IslandState {
     mc2vk::OwnedBuffer      heightBuf;
     VkDeviceSize  heightCapBytes = 0;
     uint64_t      heightVersionCopied = UINT64_MAX; // last snapshotted feed version
+    // Terrain-shape AO bake of the mission's field, reused across height patches (craters) while the sampled field key matches.
+    std::vector<float> groundAo;
+    uint64_t      groundAoKey = 0;
 
     // VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): VK-owned snapshot of the GL 4x visual
     // heightfield bake (GL binding 26 -> here binding 10). Version-gated mission-load

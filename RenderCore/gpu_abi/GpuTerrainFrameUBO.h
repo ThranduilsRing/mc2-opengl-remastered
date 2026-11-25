@@ -176,7 +176,11 @@ struct TerrainFrameUBO {
     float normalCliffStrength;
     float normalCementPeriod;
     float normalCementStrength;
-    int32_t _pad[31];  // @cpp_only slot tail padding to the 1024B stride
+    // Ground AO strengths over the ambient share only (0 = off). Shape = baked heightfield horizon AO, material = detail-normal cavity.
+    float groundAoShape;
+    float groundAoMaterial;
+    float groundAoSource;  // 0..1: material AO from the detail-normal cavity proxy (0) to the cooked source AO where a layer carries it (1)
+    int32_t _pad[28];  // @cpp_only slot tail padding to the 1024B stride
 };
 
 #include "GpuTerrainFrameUBO.layout.gen.h"

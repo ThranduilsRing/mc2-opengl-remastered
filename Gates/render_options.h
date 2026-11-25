@@ -71,6 +71,8 @@ struct RenderOptions {
     int drawDistance = 0;
     // Analytic atmosphere (distance extinction + height fog, HG sun in-scatter): 0 Off, 1 Low (extinction only), 2 High.
     int atmosphereQuality = 2;
+    // Ground ambient occlusion: terrain-shape AO (baked once per mission from the heightfield) and the ground material cavity; ambient only. A player setting; ships ON.
+    bool groundAo = true;
     bool operator==(const RenderOptions&) const = default;
 };
 
@@ -123,6 +125,7 @@ inline constexpr Option kOptions[] = {
     detail::longOpt ("DrawDistance",                  &RenderOptions::drawDistance, 0, 3),
     detail::longOpt ("AtmosphereQuality",             &RenderOptions::atmosphereQuality, 0, 2),
     detail::longOpt ("CameraView",                    &RenderOptions::cameraView, 0, 2),
+    detail::boolOpt ("GroundAo",                      &RenderOptions::groundAo),
 };
 
 inline constexpr std::size_t kOptionCount = sizeof(kOptions) / sizeof(kOptions[0]);

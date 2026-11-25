@@ -37,6 +37,20 @@ void draw() {
         ImGui::TextUnformatted("Saved automatically; applies live.");
         if (saveFailed) ImGui::TextUnformatted("Could not save water quality.");
     }
+    if (ImGui::CollapsingHeader("Ground lighting", ImGuiTreeNodeFlags_DefaultOpen)) {
+        auto opts = mc2::options::current();
+        const char* aoNames[] = {"Off", "On"};
+        int ao = opts.groundAo ? 1 : 0;
+        static bool aoSaveFailed = false;
+        if (ImGui::Combo("Ground AO", &ao, aoNames, 2)) {
+            opts.groundAo = ao != 0;
+            aoSaveFailed = !PlayerFrontEnd::saveRenderOptions || !PlayerFrontEnd::saveRenderOptions(opts);
+            if (!aoSaveFailed) mc2::options::publish(opts);
+        }
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Darkens the ambient light in hollows, gullies and ground crevices. Never affects direct sun. Applies live.");
+        if (aoSaveFailed) ImGui::TextUnformatted("Could not save Ground AO.");
+    }
     PlayerFrontEnd::drawOptions();
     if (ImGui::CollapsingHeader("Post-Process")) {
         gosPostProcess* pp = getGosPostProcess();

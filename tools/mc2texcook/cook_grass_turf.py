@@ -34,6 +34,7 @@ SIZE = 2048
 OUT_NAME = "grass_turf_normal.ktx2"
 BLADE_SOURCE = "sparse_grass/textures/sparse_grass_nor_gl_2k.jpg"
 DIRT_SOURCE = "dry_ground_01/textures/dry_ground_01_nor_gl_2k.jpg"
+BLADE_AO_SOURCE = "sparse_grass/textures/sparse_grass_arm_2k.jpg"   # glTF ARM pack: R = ambient occlusion
 SEED = 20261110
 # Tussock radii (texels) and their share of the clump count; one grass tile is 384 wu, 5.33 texels per wu.
 TUSSOCKS = ((14.0, 0.50), (22.0, 0.32), (36.0, 0.18))
@@ -100,8 +101,21 @@ def _normal_slopes(rgb, size):
     return n[..., 0] / z, n[..., 1] / z
 
 
-def turf_texels(blade_rgb, dirt_rgb, seed=SEED, size=SIZE):
-    """HxWx4 uint8: RGB = GL tangent normal of tufts + dirt gaps + swards, A = turf height."""
+AO_MEAN = 0.9        # the cooked AO is mean-normalised so enabling it shifts the ground's overall tone little
+GAP_AO = 0.92        # bare dirt has no AO source (dry_ground_01 ships none): near-open, the tussock edges below still shade it
+
+
+def source_ao(blade_ao, tus, gap, size):
+    """Tileable 0..1 occlusion: the Poly Haven sparse_grass AO (arm.R) inside the tufts, shaded further by the tussock domes' valleys."""
+    if blade_ao.shape != (size, size):
+        blade_ao = np.asarray(Image.fromarray(np.rint(blade_ao * 255.0).astype(np.uint8)).resize((size, size), Image.LANCZOS)) / 255.0
+    ao = (1.0 - gap) * blade_ao * (0.75 + 0.25 * tus) + gap * GAP_AO * (0.85 + 0.15 * tus)
+    return np.clip(ao * (AO_MEAN / max(float(ao.mean()), 1e-6)), 0.0, 1.0)
+
+
+def turf_texels(blade_rgb, dirt_rgb, seed=SEED, size=SIZE, blade_ao=None):
+    """HxWx4 uint8: RG = GL tangent normal x,y of tufts + dirt gaps + swards, B = source ambient occlusion (the shader rebuilds z; B = normal z
+    when no AO source is given), A = turf height."""
     rng = np.random.default_rng(seed)
     gap = gap_mask(rng, size)
     grass = 1.0 - gap
@@ -120,7 +134,9 @@ def turf_texels(blade_rgb, dirt_rgb, seed=SEED, size=SIZE):
     n = np.stack([nx * inv, ny * inv, inv], -1)
     out = np.empty((size, size, 4), np.uint8)
     out[..., :3] = np.clip(np.rint((n + 1.0) * 127.5), 0, 255)
-    h = (height - height.min()) / max(np.ptp(height), 1e-9)
+    if blade_ao is not None:
+        out[..., 2] = np.clip(np.rint(source_ao(blade_ao, tus, gap, size) * 255.0), 0, 255)
+    h =(height - height.min()) / max(np.ptp(height), 1e-9)
     out[..., 3] = np.clip(np.rint(h * 255.0), 0, 255)
     return out
 
@@ -129,8 +145,14 @@ def load_sources(src_dir):
     return tuple(np.asarray(Image.open(os.path.join(src_dir, p)).convert("RGB")) for p in (BLADE_SOURCE, DIRT_SOURCE))
 
 
+def load_blade_ao(src_dir):
+    """The sparse_grass AO (float 0..1), or None when the pack has no ARM map."""
+    p = os.path.join(src_dir, BLADE_AO_SOURCE)
+    return np.asarray(Image.open(p).convert("RGB"))[..., 0].astype(np.float64) / 255.0 if os.path.isfile(p) else None
+
+
 def cook(src_dir, out_dir, preview=None):
-    texels = turf_texels(*load_sources(src_dir))
+    texels = turf_texels(*load_sources(src_dir), blade_ao=load_blade_ao(src_dir))
     os.makedirs(out_dir, exist_ok=True)
     dst = os.path.join(out_dir, OUT_NAME)
     staged = dst + ".tmp"

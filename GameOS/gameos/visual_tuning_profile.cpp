@@ -78,6 +78,7 @@ std::map<std::string, float> engineDefaults() {
         {"terrainNormalSlopePeriod",320}, {"terrainNormalSlopeStrength",1},
         {"terrainNormalCliffPeriod",320}, {"terrainNormalCliffStrength",1},
         {"terrainNormalCementPeriod",48}, {"terrainNormalCementStrength",1},
+        {"terrainGroundAoShape",1}, {"terrainGroundAoMaterial",1}, {"terrainGroundAoSource",1},
         {"terrainClassGrassGmRLo",-0.02f}, {"terrainClassGrassGmRHi",0.06f},
         {"terrainClassGrassBrLo",0.22f}, {"terrainClassGrassBrHi",0.40f},
         {"terrainClassDirtRmGLo",-0.02f}, {"terrainClassDirtRmGHi",0.06f},
@@ -103,6 +104,8 @@ bool validValue(std::string_view key, double value) {
     else if (key == "atmoHeightFalloff") hi = 0.01f;
     else if (key == "atmoAnisotropy") hi = 0.95f;
     else if (key == "atmoSunScatter") hi = 4;
+    else if (key == "terrainGroundAoShape" || key == "terrainGroundAoMaterial") hi = 4;
+    else if (key == "terrainGroundAoSource") hi = 1;
     else if (key.find("terrainNormal") == 0) {
         if (key.substr(key.size() - 6) == "Period") { lo = 16; hi = 4096; }
         else hi = 4;
@@ -393,7 +396,7 @@ static void applyKey(mc2::czstring key, float val, int& count) {
         float a, b, c, d;
         gos_GetTerrainClassDirt(&a, &b, &c, &d);
         gos_SetTerrainClassDirt(a, b, c, val); count++;
-    } else if (strncmp(key, "terrainNormal", 13) == 0) {
+    } else if (strncmp(key, "terrainNormal", 13) == 0 || strncmp(key, "terrainGroundAo", 15) == 0) {
         // Vulkan consumes the resolved values directly in fill_frame_ubo.
         count++;
     } else {

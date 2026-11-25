@@ -524,6 +524,17 @@ void main() {
         float normalSize = float(textureSize(u_matNormalArray, 0).x);
         float lampLod = resolveLampNormal ? 0.5 * log2(max(max(dot(detailUvDx, detailUvDx), dot(detailUvDy, detailUvDy))
                                                        * normalSize * normalSize, 1e-12)) : 0.0;
+        // GROUND-AO-1: occlusion of the ambient/sky share only. The prelit colour carries ambient and sun together, so the sun's
+        // share (the cliff split, zero in shadow) is exempt. Shape = the per-mission baked horizon AO (macro-gradient texture, .b);
+        // material = the cooked source AO where the layer carries it (grass turf, normal-texel B), else a cavity proxy from the detail-normal tilt (the stock sets have no AO map).
+        if (uT.groundAoShape > 0.0 || uT.groundAoMaterial > 0.0) {
+            vec2 aoCell = vec2(v_worldPos.x + uT.halfMap, uT.halfMap - v_worldPos.y) / 128.0;
+            float aoShape = textureLod(u_macroGradient, (aoCell + 1.5) / float(uT.mapSide + 2), 0.0).b;
+            float aoMat = 1.0 - 0.45 * clamp(length(dbgDN.xy * uT.detailStrength) * 1.2, 0.0, 1.0);
+            aoMat = mix(aoMat, mix(aoMat, mv_srcAoSum / max(mv_srcAoW, 1e-4), clamp(mv_srcAoW, 0.0, 1.0)), uT.groundAoSource);
+            float aoAll = clamp(mix(1.0, aoShape, uT.groundAoShape), 0.0, 1.0) * clamp(mix(1.0, aoMat, uT.groundAoMaterial), 0.0, 1.0);
+            g_groundAoMul = mix(1.0, aoAll, 1.0 - cliffSun * shadow);
+        }
         lit = shadeGround(baseColor, N, normalLight, shadow, pureConcrete ? 1.0 : 0.0, v_worldPos, macroN, resolveLampNormal, lampLod);
         lit = max(lit + cdSpec * shadow, vec3(0.0));
 

@@ -41,6 +41,7 @@ struct MaterialNormalArray {
     std::shared_ptr<const RenderCore::KtxImage> image;
     uint32_t layers = 0;
     uint64_t version = 0;
+    bool grassSourceAo = false;   // grass layer is the cooked turf, whose normal-texel B channel holds source AO
 };
 
 enum class WaterShoreHeightKind : int32_t {
@@ -110,6 +111,7 @@ public:
     // Every layer must be BC7 UNORM, square, the same size and mip-complete; otherwise the previous array is cleared.
     bool setMaterialNormals(std::span<const RenderCore::KtxImage> layers);
     const MaterialNormalArray& materialNormals() const { return materialNormals_; }
+    void setGrassSourceAo(bool on) { materialNormals_.grassSourceAo = on && static_cast<bool>(materialNormals_.image); }
 
     bool setSurfaceAsset(SurfaceAsset asset, uint64_t expectedSource);
     bool loadSurfaceAsset(std::span<const uint8_t> bytes, uint64_t expectedSource);

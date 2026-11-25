@@ -668,6 +668,7 @@ long TerrainColorMap::init (char *fileName)
 				},
 				[&](std::span<const RenderCore::KtxImage> layers) { return fields->setMaterialNormals(layers); });
 			if (!usedCooked) fields->setMaterialNormals({});
+			fields->setGrassSourceAo(usedCooked && turf);
 			mc2::fmt::print_out("[SPLATTING] cooked detail normals: {}{}\n", usedCooked ? "cooked sidecars" : "absent, TGA import",
 				usedCooked && turf ? ", grass layer = grass_turf_normal" : "");
 		}
