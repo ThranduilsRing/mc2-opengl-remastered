@@ -526,7 +526,7 @@ def capture_argv(install, bookmarks, out, env_extra, hud=False, allow_asset_drif
 
 def run_capture(install, bookmarks, out, env_extra, hud=False, allow_asset_drift=False):
     cmd = capture_argv(install, bookmarks, out, env_extra, hud, allow_asset_drift)
-    print("[ab] " + " ".join(cmd), flush=True)
+    print("[ab] " + " ".join(map(str, cmd)), flush=True)
     # background-launch: allow streams capture.py progress to the caller's console; inherits it (no new window when the parent has one)
     proc = subprocess.Popen(cmd, env=dict(os.environ, MC2_CURSOR_NO_PARK="1"))  # background-launch: allow same console stream as the subprocess.call it replaces
     try:

@@ -18,13 +18,12 @@ def test_frag_normal_layer_indices_match_header():
         assert header.get(name) == idx, f"{name}: frag {idx} vs header {header.get(name)}"
 
 
-def test_every_live_widget_option_is_in_the_front_end_skip_list():
-    window = (ROOT / "GuiRuntime/GraphicsOptionsWindow.cpp").read_text(encoding="utf-8")
-    fields = set(re.findall(r"opts\.(\w+)\s*=[^=]", window)) | set(re.findall(r"&opts\.(\w+)", window))
-    fields.add("spatialAA")  # saved through mc2::options::saveSpatialAA, not opts
-    keys = {f: k for k, f in re.findall(r'"(\w+)",\s*&RenderOptions::(\w+)', (ROOT / "Gates/render_options.h").read_text(encoding="utf-8"))}
-    need = {keys[f] for f in fields}
-    assert {"GroundAo", "WaterDetail", "ReflectionQuality", "TextureQuality"} <= need
+def test_front_end_edits_persisted_options_without_a_stale_draft():
     front = (ROOT / "GuiRuntime/PlayerFrontEnd.cpp").read_text(encoding="utf-8")
-    listed = set(re.findall(r'"(\w+)"', re.search(r"k_liveWidgetKeys\[\]\s*=\s*\{([^}]*)\}", front).group(1)))
-    assert need <= listed, f"live-widget options missing from k_liveWidgetKeys: {sorted(need - listed)}"
+    options = front.split("void drawOptions() {", 1)[1].split("int restartIfRequested", 1)[0]
+    assert "static mc2::options::RenderOptions" not in options
+    assert "cfg::loadFromText(draft, cfg)" in options
+    assert "isLiveWidgetKey" not in front
+    assert "mc2::options::current()" not in options  # excludes test overrides from Save
+    assert 'ImGui::Button("Save player settings") || changed' in options
+    assert "saveRenderOptions(draft)" in options and "mc2::options::publish(draft)" in options
