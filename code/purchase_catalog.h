@@ -65,10 +65,11 @@ struct Unlock {
 };
 
 inline int missionNumber(std::string_view path) {
+    // Custom campaigns keep their authored stock lists and get the starting additions.
     const auto slash = path.find_last_of("/\\");
     path.remove_prefix(slash == path.npos ? 0 : slash + 1);
     if (path.size() != 14 || path.substr(0, 8) != "purchase" || path.substr(10) != ".fit" ||
-        path[8] < '0' || path[8] > '9' || path[9] < '0' || path[9] > '9') return 0;
+        path[8] < '0' || path[8] > '9' || path[9] < '0' || path[9] > '9') return 1;
     const int n = (path[8] - '0') * 10 + path[9] - '0';
     return n >= 1 && n <= 24 ? n : 0;
 }
@@ -119,7 +120,7 @@ inline std::vector<Group> group(const std::vector<Item>& items, std::string_view
             return candidate.source == items[i].source && candidate.vehicle == items[i].vehicle;
         });
         if (g == groups.end()) {
-            groups.push_back({items[i].source, {}, items[i].source == campaignSource, items[i].vehicle});
+            groups.push_back({items[i].source, {}, !items[i].vehicle || items[i].source == campaignSource, items[i].vehicle});
             g = groups.end() - 1;
         }
         g->items.push_back(i);
