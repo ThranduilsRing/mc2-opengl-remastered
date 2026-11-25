@@ -85,7 +85,8 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz, vec2
             const mat2 kGrassMacroRot = mat2(0.8, 0.6, -0.6, 0.8) * 0.29;
             vec2 gmDx = kGrassMacroRot * (uvDx * MATV_TILING.y), gmDy = kGrassMacroRot * (uvDy * MATV_TILING.y);
             float fwGrassMacro = clamp(1.0 - (length(uvWidth * MATV_TILING.y * 0.29) - 0.5) * 2.0, 0.0, 1.0);
-            vec2 gm = mv_detailDecode(textureGrad(u_matNormalArray, vec3(kGrassMacroRot * uvGrass, float(MAT_LAYER_GRASS)), gmDx, gmDy).rgb).xy;
+            // The restored flat-soil relief must untile its macro and fine taps too.
+            vec2 gm = mv_detailDecode(hexTileGrad(u_matNormalArray, float(MAT_LAYER_GRASS), kGrassMacroRot * uvGrass, gmDx, gmDy, 1.0, true, vec4(0.5)).rgb).xy;
             // Rotate the sampled slope back into terrain space.
             dN.xy += w.y * MATV_NORMAL_BOOST.y * 0.6 * fwGrassMacro * dfGrassMac * (transpose(mat2(0.8, 0.6, -0.6, 0.8)) * gm);
         }
@@ -102,14 +103,14 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz, vec2
         float dfDirtFine  = mv_detailFade(mv_detailTexelGM * MATV_TILING.z * kFine);
         if (w.y > 0.01 && dfGrassFine > 0.0) {
             float fwFine = clamp(1.0 - (length(uvWidth * MATV_TILING.y * kFine) - 0.5) * 2.0, 0.0, 1.0);
-            vec2 g = mv_detailDecode(textureGrad(u_matNormalArray, vec3(kFineRot * uvGrass, float(MAT_LAYER_GRASS)),
-                                 kFineRot * (uvDx * MATV_TILING.y), kFineRot * (uvDy * MATV_TILING.y)).rgb).xy;
+            vec2 g = mv_detailDecode(hexTileGrad(u_matNormalArray, float(MAT_LAYER_GRASS), kFineRot * uvGrass,
+                                 kFineRot * (uvDx * MATV_TILING.y), kFineRot * (uvDy * MATV_TILING.y), 1.0, true, vec4(0.5)).rgb).xy;
             dN.xy += w.y * MATV_NORMAL_BOOST.y * 0.8 * fwFine * dfGrassFine * (kFineBack * g);
         }
         if (w.z > 0.01 && dfDirtFine > 0.0) {
             float fwFine = clamp(1.0 - (length(uvWidth * MATV_TILING.z * kFine) - 0.5) * 2.0, 0.0, 1.0);
-            vec2 g = mv_detailDecode(textureGrad(u_matNormalArray, vec3(kFineRot * uvDirt, float(MAT_LAYER_DIRT)),
-                                 kFineRot * (uvDx * MATV_TILING.z), kFineRot * (uvDy * MATV_TILING.z)).rgb).xy;
+            vec2 g = mv_detailDecode(hexTileGrad(u_matNormalArray, float(MAT_LAYER_DIRT), kFineRot * uvDirt,
+                                 kFineRot * (uvDx * MATV_TILING.z), kFineRot * (uvDy * MATV_TILING.z), 1.0, true, vec4(0.5)).rgb).xy;
             dN.xy += w.z * MATV_NORMAL_BOOST.z * 0.8 * fwFine * dfDirtFine * (kFineBack * g);
         }
     }
@@ -120,8 +121,8 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz, vec2
         const mat2 kDirtMacroUnit = mat2(0.6, 0.8, -0.8, 0.6);
         const mat2 kDirtMacroRot = kDirtMacroUnit * 0.31;
         float fwDirtMacro = clamp(1.0 - (length(uvWidth * MATV_TILING.z * 0.31) - 0.5) * 2.0, 0.0, 1.0);
-        vec2 dm = mv_detailDecode(textureGrad(u_matNormalArray, vec3(kDirtMacroRot * uvDirt, float(MAT_LAYER_DIRT)),
-                                  kDirtMacroRot * (uvDx * MATV_TILING.z), kDirtMacroRot * (uvDy * MATV_TILING.z)).rgb).xy;
+        vec2 dm = mv_detailDecode(hexTileGrad(u_matNormalArray, float(MAT_LAYER_DIRT), kDirtMacroRot * uvDirt,
+                                  kDirtMacroRot * (uvDx * MATV_TILING.z), kDirtMacroRot * (uvDy * MATV_TILING.z), 1.0, true, vec4(0.5)).rgb).xy;
         dN.xy += w.z * MATV_NORMAL_BOOST.z * 0.6 * fwDirtMacro * dfDirtMac * (transpose(kDirtMacroUnit) * dm);
     }
     if (w.z > 0.01 && fwDirt != 0.0 && dfDirt > 0.0) {
