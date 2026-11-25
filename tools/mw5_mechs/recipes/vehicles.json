@@ -1,0 +1,141 @@
+{
+  "schema": "mw5-vehicle-assembly/1",
+  "material_decoder": "G:/mc2-assets/tools/mw5_extract/render.py",
+  "exports": {
+    "tanks": "E:\\mc2-archive-2026-10\\proofs\\mw5-props-inventory-1\\exports\\tanks",
+    "vtol": "E:\\mc2-archive-2026-10\\proofs\\mw5-props-inventory-1\\exports\\vtol",
+    "weapons": "E:\\mc2-archive-2026-10\\proofs\\mw5-vehicles-1\\weapons",
+    "fancy": "E:\\mc2-archive-2026-10\\proofs\\mw5-vehicles-1\\fancy-warrior",
+    "infantry": "E:\\mc2-archive-2026-10\\proofs\\mw5-vehicles-1\\infantry",
+    "elemental": "E:\\mc2-archive-2026-10\\proofs\\mw5-vehicles-1\\elemental-source",
+    "riverjack": "E:\\mc2-archive-2026-10\\proofs\\mw5-vehicles-1\\riverjack-source",
+    "riverjack_turret": "E:\\mc2-archive-2026-10\\proofs\\mw5-vehicles-1\\riverjack-native\\meshes"
+  },
+  "vehicles": [
+    {"id": "manticore", "family": "tracked", "replaces": "vehicle:centipede", "components": [
+      {"mesh": "Manticore_SKM", "node": "hull", "export": "tanks"},
+      {"mesh": "PointDefense_ManticoreTurret_Twist_STM", "node": "Centipede_turret", "export": "tanks", "at": "hull:Mount_NoPitch_Top", "parent": "hull", "animated": true, "sockets_cm": {"Mount_Top": [-220.27934, -5.3880685e-06, 180.79364], "Mount_Right": [-220.27934, 231.11737, 118.80543], "Mount_Front": [239.76947, -1.3398315, 74.28878]}},
+      {"mesh": "PointDefense_Manticore_MainGun_STM", "node": "mw5_barrel", "export": "tanks", "parent": "Centipede_turret", "at": "Centipede_turret:Mount_Front", "animated": true, "sockets_cm": {"Mount_Front": [299.99887, -0.0, -4.218567]}},
+      {"mesh": "Weapon_Light_PPC_SKM", "node": "ppc", "export": "weapons", "parent": "mw5_barrel", "at": "mw5_barrel:Mount_Front"},
+      {"mesh": "Weapon_SRM6_Box_SureShot_SKM", "node": "side_srm", "export": "weapons", "parent": "Centipede_turret", "at": "Centipede_turret:Mount_Right"},
+      {"mesh": "Weapon_Box_FarFire_LRM10_SKM", "node": "top_lrm", "export": "weapons", "parent": "Centipede_turret", "at": "Centipede_turret:Mount_Top"},
+      {"mesh": "Weapon_Medium_Laser_SKM", "node": "hull_laser", "export": "weapons", "parent": "hull", "offset_cm": [461.3957, 243.89093, 270.13046]}
+    ]},
+    {"id": "jedgar", "family": "hover", "replaces": "vehicle:drillson", "components": [
+      {"mesh": "Jedgar_SKM", "node": "hull", "export": "tanks"},
+      {"mesh": "Jedgar_Turret_Twist_STM", "node": "TF_Turret", "export": "tanks", "at": "hull:Mount_NoPitch_Top", "parent": "hull", "animated": true, "sockets_cm": {"Mount_Right": [65.809204, 106.84284, 37.41797], "Mount_Left": [65.80917, -106.84289, 37.41794], "Mount_Front": [103.02969, -1.1444092e-05, 28.847595]}},
+      {"mesh": "Jedgar_MediumLaser_SKM", "node": "mw5_barrel", "export": "tanks", "at": "TF_Turret:Mount_Front", "parent": "TF_Turret", "animated": true},
+      {"mesh": "Jedgar_SRM2_Left_SKM", "node": "srm_left", "export": "tanks", "at": "TF_Turret:Mount_Left", "parent": "TF_Turret"},
+      {"mesh": "Jedgar_SRM2_Right_SKM", "node": "srm_right", "export": "tanks", "at": "TF_Turret:Mount_Right", "parent": "TF_Turret"}
+    ]},
+    {"id": "missile_carrier", "family": "tracked", "replaces": "vehicle:lrmc", "components": [
+      {"mesh": "MissileCarrier_SKM", "node": "hull", "export": "tanks"},
+      {"mesh": "MissileCarrier_60_Turret_STM", "node": "lrmc_turret", "export": "tanks", "at": "hull:Mount_NoPitch_Top", "parent": "hull", "animated": true}
+    ]},
+    {"id": "riverjack_a", "family": "wheeled", "replaces": "vehicle:apc", "components": [
+      {"mesh": "Riverjack_A_STM", "node": "body", "export": "tanks"}
+    ]},
+    {"id": "riverjack_b", "family": "wheeled", "replaces": "vehicle:repairtruck", "components": [
+      {"mesh": "Riverjack_B_STM", "node": "body", "export": "tanks"}
+    ]},
+    {"id": "riverjack_c", "family": "wheeled", "replaces": "vehicle:minelayer", "components": [
+      {"mesh": "Riverjack_C_STM", "node": "body", "export": "tanks"}
+    ]},
+    {"id": "riverjack_d", "family": "wheeled", "replaces": "vehicle:cargotruck", "components": [
+      {"mesh": "Riverjack_D_STM", "node": "body", "export": "tanks"}
+    ]},
+    {"id": "demolisher", "family": "tracked", "replaces": "vehicle:legion", "components": [
+      {"mesh": "Manticore_SKM", "node": "hull", "export": "tanks"},
+      {"mesh": "PointDefense_ManticoreTurret_Twist_STM", "node": "mw5_yaw", "export": "tanks", "at": "hull:Mount_NoPitch_Top", "parent": "hull", "animated": true, "scale": [1, 1, 1.25]},
+      {"mesh": "PointDefense_Manticore_MainGun_STM", "node": "mw5_barrel", "export": "tanks", "parent": "mw5_yaw", "animated": true, "offset_cm": [231.52747, 0.0007043649, 74.81836], "rotation_deg": [0, 0, 0], "scale": [1, 1, 1]},
+      {"mesh": "Weapon_Light_AC10_SKM", "node": "gun", "export": "weapons", "parent": "mw5_barrel", "offset_cm": [290.79132, 0.00011884479, -9.750098], "scale": [1.0, 0.8, 0.8]},
+      {"mesh": "PointDefense_Manticore_MainGun_STM", "node": "second_barrel", "export": "tanks", "parent": "mw5_yaw", "animated": true, "offset_cm": [-28.472534, 115.0007, 62.81836], "rotation_deg": [0, 0, 0], "scale": [1, 1, 1]},
+      {"mesh": "Weapon_Light_AC10_SKM", "node": "second_ac20", "export": "weapons", "parent": "second_barrel", "offset_cm": [290.79132, 0.00011884479, -9.750098], "rotation_deg": [0, 0, 0], "scale": [1.0, 0.8, 0.8]}
+    ]},
+    {"id": "patton", "family": "tracked", "replaces": "vehicle:storm", "components": [
+      {"mesh": "Manticore_SKM", "node": "hull", "export": "tanks"},
+      {"mesh": "PointDefense_ManticoreTurret_Twist_STM", "node": "mw5_yaw", "export": "tanks", "at": "hull:Mount_NoPitch_Top", "parent": "hull", "animated": true},
+      {"mesh": "PointDefense_Manticore_MainGun_STM", "node": "mw5_barrel", "export": "tanks", "parent": "mw5_yaw", "animated": true, "offset_cm": [239.76947, -1.3398315, 74.28878], "rotation_deg": [0, 0, 0], "scale": [0.9999998, 0.9999998, 0.9999998]},
+      {"mesh": "Weapon_Light_AC10_SKM", "node": "gun", "export": "weapons", "parent": "mw5_barrel", "offset_cm": [299.99887, 0.0, -9.218567], "scale": [1.0, 0.9, 0.9]},
+      {"mesh": "Weapon_SRM6_Box_SureShot_SKM", "node": "side_lrm5", "export": "weapons", "parent": "mw5_yaw", "offset_cm": [160.726611, 120.411704, 82.987768]},
+      {"mesh": "Weapon_Light_Flamer_SKM", "node": "hull_flamer", "export": "weapons", "parent": "hull", "offset_cm": [551.3957, -241.10907, 235.13046], "rotation_deg": [0, 0, 0], "scale": [0.75000006, 0.75000006, 0.75000006]},
+      {"mesh": null, "node": "hull_laser_mount", "export": "tanks", "parent": "hull", "offset_cm": [461.3957, 243.89093, 265.13046], "rotation_deg": [0, 0, 0], "scale": [0.75000006, 0.75000006, 0.75000006]},
+      {"mesh": "Weapon_Medium_Laser_SKM", "node": "hull_laser", "export": "weapons", "parent": "hull_laser_mount", "rotation_deg": [0, 90, 0]}
+    ]},
+    {"id": "scorpion", "family": "tracked", "replaces": "vehicle:vedette", "components": [
+      {"mesh": "Manticore_SKM", "node": "hull", "export": "tanks"},
+      {"mesh": "PointDefense_ManticoreTurret_Twist_STM", "node": "mw5_yaw", "export": "tanks", "at": "hull:Mount_NoPitch_Top", "parent": "hull", "animated": true},
+      {"mesh": "PointDefense_Manticore_MainGun_STM", "node": "mw5_barrel", "export": "tanks", "parent": "mw5_yaw", "animated": true, "offset_cm": [221.5275, 0.00019836426, 67.81836], "rotation_deg": [0, 0, 0], "scale": [1.2, 1.2, 1.2]},
+      {"mesh": "Weapon_Assaut_AC5_SKM", "node": "gun", "export": "weapons", "parent": "mw5_barrel", "offset_cm": [195.13205, -0.00012207031, -12.812378], "scale": [1.3333334, 1.3333334, 1.3333334]},
+      {"mesh": "Weapon_Assaut_IS_MG_SKM", "node": "hull_mg", "export": "weapons", "parent": "hull", "offset_cm": [494.4004, 243.50398, 256.36566], "rotation_deg": [0.0, 0.0, 1.7075469e-06], "scale": [0.99999976, 0.99999976, 0.99999976]}
+    ]},
+    {"id": "partisan", "family": "tracked", "replaces": "vehicle:partisan", "components": [
+      {"mesh": "Manticore_SKM", "node": "hull", "export": "tanks"},
+      {"mesh": "PointDefense_ManticoreTurret_Twist_STM", "node": "mw5_yaw", "export": "tanks", "at": "hull:Mount_NoPitch_Top", "parent": "hull", "animated": true},
+      {"mesh": null, "node": "mw5_barrel", "export": "tanks", "parent": "mw5_yaw", "animated": true, "offset_cm": [240.56401, 0.00080285996, 55.090485], "rotation_deg": [0.0, 0.0, -0.00015258786], "scale": [0.9, 0.85714287, 0.74999994]},
+      {"mesh": "PointDefense_Manticore_MainGun_STM", "node": "collar_A", "export": "tanks", "parent": "mw5_barrel", "offset_cm": [-131.91035, -115.0, -45.0], "rotation_deg": [0.0, 0.0, 180.0], "scale": [1, 1, 1]},
+      {"mesh": "Weapon_Light_AC5_SKM", "node": "ac5_A", "export": "weapons", "parent": "collar_A", "offset_cm": [300.0, 0.0, -7.812378], "rotation_deg": [0, 0, 0], "scale": [2.0, 1.0, 1.0]},
+      {"mesh": "PointDefense_Manticore_MainGun_STM", "node": "collar_B", "export": "tanks", "parent": "mw5_barrel", "offset_cm": [-131.91035, -115.0, 40.0], "rotation_deg": [0, 0, 0], "scale": [1, 1, 1]},
+      {"mesh": "Weapon_Light_AC5_SKM", "node": "ac5_B", "export": "weapons", "parent": "collar_B", "offset_cm": [300.0, 0.0, -7.812378], "rotation_deg": [0, 0, 0], "scale": [2.0, 1.0, 1.0]},
+      {"mesh": "PointDefense_Manticore_MainGun_STM", "node": "collar_C", "export": "tanks", "parent": "mw5_barrel", "offset_cm": [-131.90999, 115.0, 40.0], "rotation_deg": [0, 0, 0], "scale": [1, 1, 1]},
+      {"mesh": "Weapon_Light_AC5_SKM", "node": "ac5_C", "export": "weapons", "parent": "collar_C", "offset_cm": [300.0, 0.0, -7.812378], "rotation_deg": [0, 0, 0], "scale": [2.0, 1.0, 1.0]},
+      {"mesh": "PointDefense_Manticore_MainGun_STM", "node": "collar_D", "export": "tanks", "parent": "mw5_barrel", "offset_cm": [-131.91035, 115.0, -45.0], "rotation_deg": [0.0, 0.0, 180.0], "scale": [1, 1, 1]},
+      {"mesh": "Weapon_Light_AC5_SKM", "node": "ac5_D", "export": "weapons", "parent": "collar_D", "offset_cm": [300.0, 0.0, -7.812378], "rotation_deg": [0, 0, 0], "scale": [2.0, 1.0, 1.0]},
+      {"mesh": "Weapon_Light_IS_MG_SKM", "node": "hull_mg_0", "export": "weapons", "parent": "hull", "offset_cm": [510, -145, 235], "scale": [0.75, 0.75, 0.75]},
+      {"mesh": "Weapon_Light_IS_MG_SKM", "node": "hull_mg_1", "export": "weapons", "parent": "hull", "offset_cm": [510, 145, 235], "scale": [0.75, 0.75, 0.75]}
+    ]},
+    {"id": "harasser", "family": "hover", "replaces": "vehicle:harasser", "components": [
+      {"mesh": "Jedgar_SKM", "node": "hull", "export": "tanks"},
+      {"mesh": "Jedgar_Turret_Twist_STM", "node": "mw5_yaw", "export": "tanks", "at": "hull:Mount_NoPitch_Top", "parent": "hull", "animated": true},
+      {"mesh": "Jedgar_MediumLaser_SKM", "node": "laser_left", "export": "tanks", "parent": "mw5_yaw", "offset_cm": [43.029694, -110, 38.847595]},
+      {"mesh": "Jedgar_MediumLaser_SKM", "node": "laser_right", "export": "tanks", "parent": "mw5_yaw", "offset_cm": [43.029694, 110, 38.847595]}
+    ]},
+    {"id": "srm_carrier", "family": "tracked", "replaces": "vehicle:swarmlrmc", "components": [
+      {"mesh": "MissileCarrier_SKM", "node": "hull", "export": "tanks"},
+      {"mesh": "MissileCarrier_60_Turret_STM", "node": "mw5_yaw", "export": "tanks", "at": "hull:Mount_NoPitch_Top", "parent": "hull", "animated": true}
+    ]},
+    {"id": "convoy_vehicle", "family": "tracked", "replaces": "vehicle:trooptransport", "components": [
+      {"mesh": "MissileCarrier_SKM", "node": "hull", "export": "tanks"},
+      {"mesh": "MissileCarrier_60_Turret_STM", "node": "mw5_yaw", "export": "tanks", "at": "hull:Mount_NoPitch_Top", "parent": "hull", "animated": true}
+    ]},
+    {"id": "infantry_gunner", "family": "infantry", "replaces": "vehicle:infantry", "material_maps": {"Infantry_MTL": {"1_CLR": "Infantry_CLR", "1_NRM": "Infantry_NRM"}}, "components": [
+      {"mesh": "Infantry_Gunner_New_STM", "node": "body", "export": "infantry"}
+    ]},
+    {"id": "infantry_srm", "family": "infantry", "replaces": "vehicle:infantry", "variant_of": "infantry_gunner", "material_maps": {"Infantry_MTL": {"1_CLR": "Infantry_CLR", "1_NRM": "Infantry_NRM"}}, "components": [
+      {"mesh": "Infantry_SRM_Newest_STM", "node": "body", "export": "infantry"}
+    ]},
+    {"id": "warrior", "family": "vtol", "replaces": "vehicle:lightcopter", "kind": "mech", "flight_clip": "E:\\mc2-archive-2026-10\\proofs\\mw5-props-inventory-1\\animations\\Game\\Objects\\VTOL\\Warrior\\Animations\\Warrior_Flight_ANI.psa", "components": [
+      {"mesh": "Warrior_SKM", "node": "hull", "export": "vtol", "rotors": {"RotorA": "mw5_rotor_a", "RotorB": "mw5_rotor_b"}},
+      {"mesh": "PointDefense_VTOL_Warrior_BottomFront_Twist_STM", "node": "mw5_yaw", "export": "vtol", "at": "hull:Mount_Front", "parent": "hull", "animated": true, "sockets_cm": {"Mount_Bottom": [0.0, 4.7683716e-07, -17.50688]}},
+      {"mesh": "PointDefense_VTOL_Warrior_BottomFront_Pitch_STM", "node": "mw5_barrel", "export": "vtol", "at": "mw5_yaw:Mount_Bottom", "parent": "mw5_yaw", "animated": true, "sockets_cm": {"Mount_Front": [77.62912, -3.867999e-07, -8.848951]}},
+      {"mesh": "Weapon_Light_Laser_SKM", "node": "front_laser", "export": "weapons", "at": "mw5_barrel:Mount_Front", "parent": "mw5_barrel", "rotation_deg": [0, 90, 0]},
+      {"mesh": "WingMounted_Missile2_SKM", "node": "srm_left", "export": "weapons", "at": "hull:Mount_LeftWing", "parent": "hull"},
+      {"mesh": "WingMounted_Missile2_SKM", "node": "srm_right", "export": "weapons", "at": "hull:Mount_RightWing", "parent": "hull"}
+    ]},
+    {"id": "fancy_warrior", "family": "vtol", "replaces": "vehicle:mediumcopter", "kind": "mech", "components": [
+      {"mesh": "Fancy_Warrior_SKM", "node": "hull", "export": "fancy", "rotors": {}},
+      {"mesh": "PointDefense_VTOL_Warrior_BottomFront_Twist_STM", "node": "mw5_yaw", "export": "vtol", "at": "hull:Mount_Front", "parent": "hull", "animated": true, "sockets_cm": {"Mount_Bottom": [0.0, 4.7683716e-07, -17.50688]}},
+      {"mesh": "PointDefense_VTOL_Warrior_BottomFront_Pitch_STM", "node": "mw5_barrel", "export": "vtol", "at": "mw5_yaw:Mount_Bottom", "parent": "mw5_yaw", "animated": true, "sockets_cm": {"Mount_Front": [77.62912, -3.867999e-07, -8.848951]}},
+      {"mesh": "Weapon_Light_Laser_SKM", "node": "front_laser", "export": "weapons", "at": "mw5_barrel:Mount_Front", "parent": "mw5_barrel", "rotation_deg": [0, 90, 0]},
+      {"mesh": "WingMounted_Missile2_SKM", "node": "srm_left", "export": "weapons", "at": "hull:Mount_LeftWing", "parent": "hull"},
+      {"mesh": "WingMounted_Missile2_SKM", "node": "srm_right", "export": "weapons", "at": "hull:Mount_RightWing", "parent": "hull"}
+    ]},
+    {"id": "igor", "family": "vtol", "replaces": "vehicle:heavycopter", "kind": "mech", "components": [
+      {"mesh": "Igor_SKM", "node": "hull", "export": "vtol"}
+    ]},
+    {"id": "igor_attack", "family": "vtol", "replaces": "vehicle:assaultcopter", "kind": "mech", "components": [
+      {"mesh": "Igor_Attack_STM", "node": "hull", "export": "vtol"}
+    ]},
+    {"id": "igor_lifter", "family": "vtol", "replaces": "vehicle:scoutcopter", "kind": "mech", "components": [
+      {"mesh": "Igor_Lifter_STM", "node": "hull", "export": "vtol"}
+    ]},
+    {"id": "clan_elemental", "family": "powered_armor", "replaces": "vehicle:poweredarmor", "components": [
+      {"mesh": "SKM_ClanElemental", "node": "body", "export": "elemental"}
+    ]},
+    {"id": "riverjack_armed", "family": "tracked", "replaces": "vehicle:hunter", "components": [
+      {"mesh": "Riverjack_SKM", "node": "hull", "export": "riverjack"},
+      {"mesh": "Riverjack_Turret_STM", "node": "mw5_yaw", "export": "riverjack_turret", "parent": "hull", "at": "hull:Mount_NoPitch_Top", "animated": true},
+      {"mesh": "Weapon_MachineGun_Riverjack_SKM", "node": "mw5_barrel", "export": "riverjack", "parent": "mw5_yaw", "animated": true, "offset_cm": [-15.006895, 15.492032, 77.101166], "rotation_deg": [0, -90, 0]}
+    ]}
+  ]
+}

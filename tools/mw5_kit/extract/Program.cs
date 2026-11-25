@@ -18,7 +18,7 @@ using SkiaSharp;
 
 namespace Mw5Extract;
 
-public record Request(string mesh, string[]? clips, string[]? materials, string[]? loadouts, string[]? textures);
+public record Request(string mesh, string[]? clips, string[]? materials, string[]? loadouts, string[]? textures, string[]? packages = null);
 public static class Program
 {
     static float[] V(FVector v) => [v.X,v.Y,v.Z];
@@ -96,7 +96,12 @@ public static class Program
         {
             try
             {
-                Attempt("skeletal_mesh",r.mesh,()=>Mesh(provider.LoadPackageObject<USkeletalMesh>(r.mesh)));
+                if (!string.IsNullOrEmpty(r.mesh))
+                    Attempt("skeletal_mesh",r.mesh,()=>Mesh(provider.LoadPackageObject<USkeletalMesh>(r.mesh)));
+                foreach (var path in r.packages ?? []) Attempt("package",path,()=> {
+                    var exports = provider.LoadPackage(path).GetExports().ToList();
+                    Save(Path.GetFileNameWithoutExtension(path) + ".exports.json", exports);
+                });
                 foreach (var path in r.clips ?? []) Attempt("animation",path,()=>Animation(provider.LoadPackageObject<UAnimSequence>(path)));
                 foreach (var path in r.materials ?? []) Attempt("material",path,()=>Material(provider.LoadPackageObject(path)));
                 var loadouts = new List<object>();
@@ -115,8 +120,8 @@ public static class Program
         USkeletalMesh? mesh;
         void Mesh(USkeletalMesh m)
         {
-            if (!m.TryConvert(out var converted) || converted.LODs.Count == 0 || m.LODModels![0].SkipLod)
-                throw new InvalidDataException("LOD0 unavailable");
+            if (!m.TryConvert(out var converted) || converted.LODs.Count == 0)
+                throw new InvalidDataException("No readable mesh LOD");
             var sk = m.ReferenceSkeleton;
             var bones = sk.FinalRefBoneInfo.Select((b,i)=>new Bone(b.Name.Text,b.ParentIndex,
                 Local(sk.FinalRefBonePose[i].Translation,sk.GetBoneScale(sk.FinalRefBonePose,i)),
@@ -127,7 +132,7 @@ public static class Program
             {
                 var lod = converted.LODs[i];
                 int sourceLod = sourceLods[i].index;
-                string file = sourceLod == 0 ? "mesh.bin" : $"mesh.lod{sourceLod}.bin";
+                string file = i == 0 ? "mesh.bin" : $"mesh.lod{sourceLod}.bin";
                 var vertices = lod.Verts.Select(v=>new Vertex(V(v.Position),[v.Normal.X,v.Normal.Y,v.Normal.Z],
                     [v.UV.U,v.UV.V],v.Influences.Select(b=>new Influence((uint)b.Bone,b.Weight)).ToArray())).ToArray();
                 var ib = lod.Indices.Value;
