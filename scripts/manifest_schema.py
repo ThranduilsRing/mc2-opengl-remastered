@@ -70,6 +70,7 @@ that reads the header passes while measuring the wrong binary.
 """
 from __future__ import annotations
 
+import csv
 import datetime
 import hashlib
 import os
@@ -197,6 +198,20 @@ def git_block(repo_root: str | os.PathLike | None) -> dict[str, Any]:
     }
 
 
+def shader_dirty(exe_path):
+    """Capture the deployed shader hashes that no longer belong to the binary's commit."""
+    if exe_path is None:
+        return None
+    path = Path(exe_path).parent / ".deployed_manifest.csv"
+    if not path.exists():
+        return None
+    with path.open(newline="", encoding="utf-8") as f:
+        shaders = {row[0]: row[1] for row in csv.reader(f)
+                   if len(row) >= 4 and row[0].startswith("shaders/")
+                   and row[3].endswith("-shader-dirty")}
+    return {"state": "shader-dirty", "shaders": shaders} if shaders else None
+
+
 def exe_block(exe_path: str | os.PathLike | None) -> dict[str, Any] | None:
     """{path, sha256, mtime_iso, size_bytes, embedded_fingerprint}.
 
@@ -243,6 +258,7 @@ def exe_block(exe_path: str | os.PathLike | None) -> dict[str, Any] | None:
         "mtime_iso": mtime_iso,
         "size_bytes": size,
         "embedded_fingerprint": fp,
+        "shader_dirty": shader_dirty(p),
     }
 
 
@@ -257,6 +273,7 @@ def binary_provenance(exe_blk: Mapping[str, Any] | None,
 
     verdict:
       reconciled            binary commit and source HEAD agree
+      shader-dirty          installed shaders were pushed independently of the binary
       SOURCE-HEAD-MISMATCH  they disagree; the source HEAD is not what ran
       unknown               the binary carries no usable stamp, or the source
                             HEAD is unavailable, so nothing can be concluded
@@ -283,13 +300,15 @@ def binary_provenance(exe_blk: Mapping[str, Any] | None,
         "commit_source": "exe-embedded-build-fingerprint",
         "available": True,
         "dirty": fp.get("dirty"),
+        "shader_dirty": (exe_blk or {}).get("shader_dirty"),
         "dirty_describes": ("uncommitted TRACKED modifications in the worktree "
                             "the BINARY was compiled from, at compile time"),
         "branch": fp.get("branch"),
         "built_utc": fp.get("built"),
         "built_from_worktree": fp.get("src"),
         "method": fp.get("method"),
-        "verdict": ("reconciled" if agrees is True
+        "verdict": ("shader-dirty" if (exe_blk or {}).get("shader_dirty")
+                    else "reconciled" if agrees is True
                     else "SOURCE-HEAD-MISMATCH" if agrees is False
                     else "unknown"),
         "source_head_matches_binary": agrees,

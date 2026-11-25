@@ -3,6 +3,8 @@
 
 Use these before grepping blind. Route by question:
 
+Shader iteration: `py -3 scripts/deploy_payload.py <lane-install> --ninja --allow-new-target --shaders-only` rebuilds only Vulkan shaders, verifies copies, preserves unrelated manifest rows, and tags smoke/capture provenance `shader-dirty` until a full committed build/deploy.
+
 - literal string, env key or filename: `rg`
 - C++ declaration, references, types, overloads: clangd (LSP plugin; compile DB from `py -3 scripts/configure_analysis.py`, re-run after CMake changes)
 - how subsystems connect: graphify

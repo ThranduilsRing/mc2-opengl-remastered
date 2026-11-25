@@ -2882,6 +2882,70 @@ def intentional_payload(src_root, target, store, dry_run=False):
     return items
 
 
+def deploy_shaders_only(src_root, build_dir, target, exe_name):
+    """Rebake Vulkan shaders without relinking; preserve every unrelated manifest row."""
+    target = Path(target)
+    manifest = target / MANIFEST_NAME
+    rows = read_manifest(target)
+    if exe_name not in rows or sha256_file(target / exe_name) != rows[exe_name][0]:
+        fail("--shaders-only needs an existing, manifest-verified executable")
+    if not (Path(build_dir) / "build.ninja").is_file():
+        fail("--shaders-only requires an existing Ninja build; pass --ninja or --build-dir")
+    tree = Path(build_dir).resolve().relative_to(Path(src_root).resolve())
+    subprocess.run([sys.executable, str(Path(src_root) / "scripts/ninja_build.py"), "mc2_vulkan_shaders"],
+                   cwd=src_root, env=dict(os.environ, MC2_NINJA_TREE=str(tree)), check=True,
+                   **console_child.child_kwargs(redirected=True))
+    items = [(str(p), "shaders/vulkan/" + p.name, "shader") for p in baked_spv_files(build_dir)]
+    if not items or {rel for _, rel, _ in items} != {
+            rel for rel in rows if rel.startswith("shaders/vulkan/") and rel.endswith(".spv")}:
+        fail("--shaders-only requires the existing shader inventory; full deploy first")
+    check_hardlink_isolation(items + [(None, MANIFEST_NAME, "manifest")], str(target))
+    hashes = {}
+    for src, rel, _ in items:
+        dst = target / rel
+        if sha256_file(dst) != rows[rel][0]:
+            fail(f"shader differs from manifest: {rel}; full deploy first")
+        digest = sha256_file(src)
+        if digest == rows[rel][0]:
+            continue
+        pending = None
+        try:
+            with tempfile.NamedTemporaryFile(dir=dst.parent, delete=False) as f:
+                pending = f.name
+            shutil.copyfile(src, pending)
+            if sha256_file(pending) != digest:
+                fail(f"shader copy failed verification: {rel}")
+            replace_file(pending, dst)
+        finally:
+            if pending and os.path.exists(pending):
+                os.unlink(pending)
+        got, size, stamp = hash_with_stamp(dst, sha256_file)
+        if got != digest:
+            fail(f"deployed shader failed verification: {rel}")
+        hashes[rel] = (got, size, os.stat(src).st_mtime_ns, stamp)
+    if not hashes:
+        log("shaders unchanged; manifest retained")
+        return
+    with manifest.open(newline="", encoding="utf-8") as f:
+        csv_rows = list(csv.reader(f))
+    head = git_head(src_root) + "-shader-dirty"
+    now = datetime.datetime.now().isoformat(timespec="seconds")
+    for row in csv_rows[2:]:
+        if row and row[0] in hashes:
+            h, size, src_stamp, dst_stamp = hashes[row[0]]
+            row[:] = [row[0], h, str(size), head, now, str(src_stamp or ""), str(dst_stamp or "")]
+    pending = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", dir=target, newline="", delete=False) as f:
+            pending = f.name
+            csv.writer(f).writerows(csv_rows)
+        replace_file(pending, manifest)
+    finally:
+        if pending and os.path.exists(pending):
+            os.unlink(pending)
+    log(f"[DEPLOY_FINGERPRINT] shader-dirty source={head} shaders={len(hashes)} exe=unchanged")
+
+
 def main():
     ap = argparse.ArgumentParser(
         description=__doc__.splitlines()[0],
@@ -2921,6 +2985,8 @@ def main():
                     "configured by scripts/configure_ninja.py) instead of the VS "
                     "tree. Equivalent to --build-dir <src>/build64-ninja for "
                     "--target game. An explicit --build-dir wins.")
+    ap.add_argument("--shaders-only", action="store_true",
+                    help="compile/deploy Vulkan shaders only; tag captures shader-dirty (no commit or exe build)")
     ap.add_argument("--build64-root", default=None,
                     help="explicit build64-family root that holds engine outputs "
                     "and mc2.dir (e.g. an absolute path to build64_island). Default: "
@@ -2990,6 +3056,10 @@ def main():
     asset_mode.add_argument("--dry-run", action="store_true",
                            help="audit intentional assets only; resolve missing/stale declarations without writes or build")
     args = ap.parse_args()
+    if args.shaders_only and (args.target or args.from_payload or args.bootstrap_from or args.require_clean
+                             or args.verify_only or args.write_manifest_only or args.check_only
+                             or args.seed_owner_test or args.from_install or args.dry_run):
+        ap.error("--shaders-only requires an existing lane install and cannot combine with other deploy modes")
     preset_target = TARGET_PRESETS.get(args.target, {}).get("target_dir")
     refuse_golden_target(args.target_dir or preset_target)
     import quiet_output
@@ -3113,6 +3183,8 @@ def main():
                                                                 text=True, **console_child.child_kwargs(redirected=True)).strip()
             with deploy_phase("published payload", 600):
                 deploy_from_payload(args.from_payload, target, src_root, head)
+        elif args.shaders_only:
+            deploy_shaders_only(src_root, build_dir, target, exe_name)
         else:
             run_deploy(args, src_root, build_dir, target, exe_name, pdb_name)
         import seed_parity  # a v0.4 publish moves the parity reference: refresh the lane seed and its snapshot, or print the command

@@ -427,6 +427,9 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
 
     log_path = out_dir / f"{mission_token}_capture.log"
     log_fp = open(log_path, "w", encoding="utf-8", errors="replace")
+    if ms.shader_dirty(exe):
+        log_fp.write("[DEPLOY_FINGERPRINT] shader-dirty; binary stamp covers exe only\n")
+        log_fp.flush()
 
     # The render options are an input of the capture like the drawable size: the install's options.cfg plus MC2_OPTIONS_OVERRIDE.
     options_rec = render_options_pin.record(exe.parent, env)
