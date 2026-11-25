@@ -164,9 +164,19 @@ void main() {
     uint thinFlags = trec.ctrl.y;
     WaterRecipe rec = recipes[recipeIdx];
 
+    // Preserve the original triangles offshore, including their interpolation.
+    if (divisions > 1u && U.p3.z > 1.0) {
+        vec2 diagonal = cornerXY(rec, 2u) - cornerXY(rec, 0u);
+        vec2 center = cornerXY(rec, 0u) + diagonal * 0.5;
+        vec2 gradient = vec2(shoreBed(center+vec2(32,0))-shoreBed(center-vec2(32,0)),
+                             shoreBed(center+vec2(0,32))-shoreBed(center-vec2(0,32))) / 64.0;
+        float distance = max(waterElevation-shoreBed(center), 0.0) / max(length(gradient), 0.08);
+        if (distance > 100.0 + length(diagonal)) divisions = 1u;
+    }
+
     uint pzValid = (triIdx == 0u) ? (thinFlags & kPzTri1ValidBit)
                                   : (thinFlags & kPzTri2ValidBit);
-    if (pzValid == 0u) {
+    if (pzValid == 0u || (divisions == 1u && subTriangle != 0u)) {
         gl_Position    = vec4(0.0, 0.0, -2.0, 1.0);
         Color          = vec4(0.0);
         Texcoord       = vec2(0.0);
