@@ -1891,6 +1891,7 @@
   },
   "code/mechpurchasescreen.h": {},
   "code/media_cue_archive.h": {},
+  "code/missile_presentation.h": {},
   "code/mission.cpp": {
    "LG03": 9,
    "LG05": 3
@@ -3488,7 +3489,7 @@
    "LG20": 1
   }
  },
- "head": "b4ffc41df",
+ "head": "796a5634f",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
