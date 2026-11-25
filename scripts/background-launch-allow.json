@@ -40,6 +40,7 @@
     "tools/bt2018_mechs/stack_weapons_atlas.py": "Runs only the ktx texture tool to completion with captured stdio; never the game.",
     "scripts/run_mp_pair_linux.py": "Linux headless peers under slot.sh --game; only owned PIDs are stopped",
     "tools/farm/mod_smoke.py": "Runs only sys.executable scripts/run_smoke.py with console_child; that harness owns offscreen launch, leases and game PID cleanup.",
+    "tools/mw5_mechs/make_mech.py": "Offline mech-pack builder: runs only dotnet extraction, umodel export and its own pipeline scripts (Blender, cook, pack) via idle_run.py with console_child; never the game.",
     "tools/import_campaign.py":"Runs only innoextract --extract with console_child and captured stdio; never executes the supplied installer or the game.",
     "scripts/tests/test_campaign_marker_selection.py": "Runs only the compiled mission-selection input fixture and its C++ compiler through console_child with captured stdio; never the game or a visible window.",
     "scripts/tests/test_font_shutdown_lifetime.py": "Runs only the compiled renderer lifetime unit fixture through console_child.child_kwargs; never the game or a visible window.",
