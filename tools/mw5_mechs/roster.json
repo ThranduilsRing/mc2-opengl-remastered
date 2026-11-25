@@ -151,7 +151,7 @@
    "campaign_uses": 27,
    "mw5": "summoner",
    "mw5_object": "/Game/DLC7/Objects/Mechs/CLANS/Summoner/Model/Body/Summoner_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "urbanmech",
@@ -159,7 +159,7 @@
    "campaign_uses": 27,
    "mw5": "urbanmech",
    "mw5_object": "/Game/Objects/Mechs/Urbanmech/Model/Body/Urbanmech_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "ryoken",
@@ -167,7 +167,7 @@
    "campaign_uses": 25,
    "mw5": "stormcrow",
    "mw5_object": "/Game/DLC7/Objects/Mechs/CLANS/Stormcrow/Model/Body/Stormcrow_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "vulture",
@@ -175,7 +175,7 @@
    "campaign_uses": 24,
    "mw5": "maddog",
    "mw5_object": "/Game/DLC7/Objects/Mechs/CLANS/Maddog/Model/Body/Maddog_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "shootist",
@@ -191,7 +191,7 @@
    "campaign_uses": 22,
    "mw5": "atlas",
    "mw5_object": "/Game/Objects/Mechs/Atlas/Model/Body/Atlas_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "jaegermech",
@@ -199,7 +199,7 @@
    "campaign_uses": 20,
    "mw5": "jagermech",
    "mw5_object": "/Game/Objects/Mechs/Jagermech/Model/Body/Jagermech_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "shadowcat",
@@ -207,7 +207,7 @@
    "campaign_uses": 16,
    "mw5": "shadowcat",
    "mw5_object": "/Game/DLC7/Objects/Mechs/CLANS/ShadowCat/Model/Body/Shadowcat_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "wolfhound",
@@ -215,7 +215,7 @@
    "campaign_uses": 13,
    "mw5": "wolfhound",
    "mw5_object": "/Game/Objects/Mechs/Wolfhound/Model/Body/Wolfhound_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "heavycopter",
@@ -239,7 +239,7 @@
    "campaign_uses": 3,
    "mw5": "cyclops",
    "mw5_object": "/Game/Objects/Mechs/Cyclops/Model/Body/Cyclops_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "anihilator",
@@ -759,7 +759,7 @@
    "campaign_uses": 0,
    "mw5": "maddog",
    "mw5_object": "/Game/DLC7/Objects/Mechs/CLANS/Maddog/Model/Body/Maddog_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "marauder",

@@ -341,7 +341,9 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None, attachments=(), 
                  "TEXCOORD_0": add(p[2], 5126, "VEC2", 34962),
                  "JOINTS_0": add(np.zeros((nv, 4), np.uint16), 5123, "VEC4", 34962),
                  "WEIGHTS_0": add(np.tile(np.array([1, 0, 0, 0], np.float32), (nv, 1)), 5126, "VEC4", 34962)}
-        mname = part_names.get(b, nm(jn).replace("_DM0", ""))
+        mname = part_names.get(b, nm(jn).replace("_DM0", "").replace("_DM1", "D1"))
+        while mname in {m["name"] for m in meshes}:   # a _DM0 part and a same-named bone part strip to one name; node names must be unique
+            mname += "B"
         primitives = [{"attributes": attrs, "indices": add(np.concatenate(indices).astype(np.uint32).ravel(), 5125, "SCALAR", 34963), "material": mat}
                       for mat, indices in sorted(material_indices.items())]
         meshes.append({"name": mname, "primitives": primitives})
