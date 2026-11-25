@@ -42,7 +42,7 @@ def test_built_packs_do_not_override_stock_units():
             identities.add(identity)
             stem = re.search(r'Stem\s*=\s*"([^"]+)"', text)[1]
             rows = list(csv.reader((pack/'data/objects'/f'{stem}.csv').open()))
-            assert rows[2][1] == rows[22][1] and 'MW5' not in rows[2][1] and ' / ' not in rows[22][1]
+            assert rows[2][1] == rows[22][1] and rows[2][1].startswith('MW5 ') and ' / ' not in rows[22][1]
             assert not stock_ids.intersection((rows[4][1], rows[5][1]))
             assert (pack/'data/tgl'/f'{stem}.ini').is_file()
             assert (pack/'data/art/mechicons'/f'{stem}.png').is_file()
@@ -95,10 +95,10 @@ def test_logistics_keeps_donor_loadout_and_registers_new_chassis(tmp_path, monke
     result = list(csv.reader(io.StringIO(target.read_text())))
     assert result[25] == rows[25]
     assert len(result) == 116
-    assert result[22][1] == result[2][1] == family.title()
+    assert result[22][1] == result[2][1] == 'MW5 ' + family.title()
     assert not (out / 'data/objects' / (donor + '.csv')).exists()
     assert not (out / 'data/objects' / (host + '.csv')).exists()
-    assert 'MW5' not in (out / 'data/defs/text/en_us' / (stem + '.fit')).read_text()
+    assert ' / ' not in (out / 'data/defs/text/en_us' / (stem + '.fit')).read_text()
     assert result[8][1] == stem and result[10][1] == stem + '_bay'
     assert result[2][4] == rows[2][4]
     assert icons[0][1] == stem

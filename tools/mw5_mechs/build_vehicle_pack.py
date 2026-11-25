@@ -62,6 +62,7 @@ def logistics(vehicles, stock, out, assemblies):
         stem, host = 'mw5_'+v['id'], v['replaces'].split(':')[1]
         donor = definitions['heavycopter' if host == 'assaultcopter' else host]
         name = names.get(v['id'], 'Riverjack' if v['id'].startswith('riverjack') else v['id'].replace('_', ' ').title())
+        name = 'MW5 ' + name  # Same MW5 tag as the mech pack.
         sid = 62000 + index * 2
         rows = [r[:] for r in tables.get(host, tables['lightcopter'])[:116]]
         ground = v.get('kind') != 'mech'

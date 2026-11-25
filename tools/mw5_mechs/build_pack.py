@@ -76,6 +76,7 @@ def logistics(recipe, inst, out, loadout=None):
                      'shadowhawk': 'Shadow Hawk', 'shadowcat': 'Shadow Cat',
                      'blackknight': 'Black Knight', 'urbanmech': 'UrbanMech',
                      'bushwacker': 'Bushwacker'}.get(host, family.title())
+    name = 'MW5 ' + name  # Owner 11-25: keep the MW5 tag so imports read apart from stock; never a donor variant name.
     rows[2][1], rows[8][1], rows[9][1], rows[10][1] = name, stem, stem + 'walk', stem + '_bay'
     # Stable pack string range, separate from the BT2018 range.
     index = sorted(p.stem for p in Path(__file__).with_name('recipes').glob('*.json') if p.stem != 'madcat_alt').index('timberwolf' if family == 'madcat' else family)
