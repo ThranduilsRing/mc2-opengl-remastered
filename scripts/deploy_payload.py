@@ -639,7 +639,7 @@ def cook_mod_visual_heights(src_root, target):
         sig = sidecar.with_name("gameplay_height.sig")
         expected_sig = height_sig(extract_layers(side, blocks, 0.0)["elev"])
         if (sidecar.is_file() and sidecar.stat().st_size == ((side - 1) * 4 + 1) ** 2 * 4
-                and sig.is_file() and sig.read_text(encoding="ascii").strip() == expected_sig):
+                and (not sig.is_file() or sig.read_text(encoding="ascii").strip() == expected_sig)):
             continue
         try:
             subprocess.run([sys.executable, str(cook), pak.stem, "--missions-dir", str(pak.parent),

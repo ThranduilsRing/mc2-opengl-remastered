@@ -175,6 +175,30 @@ def test_crease_energy_metric_sane():
     ridge = np.abs(np.arange(32, dtype=np.float64) - 16)[None, :].repeat(32, axis=0)
     assert _crease_energy(ridge) > 0.0
 
+@pytest.mark.parametrize("error,violations,corr,offshore,expected", [
+    (0.05, 0, 1.0, 1.0, False), (0.051, 0, 1.0, 1.0, True),
+    (14.5, 0, 0.8, 0.99, True), (14.501, 0, 1.0, 1.0, False),
+    (1.0, 1, 1.0, 1.0, False), (1.0, 0, 1.0, 0.989, False),
+    (1.0, 0, 0.99, None, True), (1.0, 0, 0.989, None, False),
+])
+def test_reauth_quality_gate(error, violations, corr, offshore, expected):
+    from visual_heightfield import quality_passes
+    ra = {"extrema": {"violations": violations}, "landform_correlation": corr,
+          "effective_max_drift_wu": 10, "shore": {"bank_adjust_wu": {"max": 2}}}
+    if offshore is not None:
+        ra["landform_correlation_off_shore"] = offshore
+    assert quality_passes({"reauth": ra, "max_corner_error_wu": error}, False, 0, 24) == expected
+
+
+@pytest.mark.parametrize("reshape,clamp,error,expected", [
+    (False, 10, 0.0001, True), (False, 10, 0.0002, False),
+    (True, 2, 2.0001, True), (True, 2, 2.0002, False),
+])
+def test_pinned_quality_gate(reshape, clamp, error, expected):
+    from visual_heightfield import quality_passes
+    assert quality_passes({"max_corner_error_wu": error}, reshape, clamp, 24) == expected
+
+
 def test_bake_publishes_only_after_quality_and_complete_writes(tmp_path, monkeypatch):
     import visual_heightfield as vh
     elev = np.arange(9, dtype=float).reshape(3, 3)
