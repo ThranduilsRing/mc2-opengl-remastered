@@ -4,6 +4,8 @@ import sys
 from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(SCRIPTS))
+import console_child  # noqa: E402
 
 CODE = (
     "import sys; sys.path.insert(0, sys.argv[1])\n"
@@ -14,6 +16,7 @@ CODE = (
 
 
 def test_check_fingerprint_with_scripts_dir_only_on_path():
-    r = subprocess.run([sys.executable, "-I", "-c", CODE, str(SCRIPTS)], capture_output=True, text=True)
+    r = subprocess.run([sys.executable, "-I", "-c", CODE, str(SCRIPTS)], capture_output=True, text=True,
+                       **console_child.child_kwargs(redirected=True))
     assert r.returncode == 0, r.stderr
     assert "absent" in r.stdout
