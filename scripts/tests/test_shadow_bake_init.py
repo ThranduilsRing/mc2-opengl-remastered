@@ -385,7 +385,7 @@ def test_planar_images_share_residents_without_reimport(tmp_path):
     helper = terrain[terrain.index('static bool borrow_terrain_images'):terrain.index('static int run_terrain')]
     importer = props.split('bool cp_import_albedo_array(', 1)[1]
     branch = importer.split('    if (const auto* main = s->imageSource) {', 1)[1].split('    const bool compressed', 1)[0]
-    images = 'colormapTexture macroGradientTexture cementTexture shoreMaskTexture materialTexture matNormalTexture concreteDetailTexture'.split()
+    images = 'colormapTexture macroGradientTexture cementTexture shoreMaskTexture materialTexture matNormalTexture concreteDetailTexture forestMaskTexture'.split()
     flags = 'colormapReady colormapBreakup cementReady shoreMaskReady matNormalReady concreteDetailReady cliffRockPresent'.split()
     probe = r'''
 #include <array>
