@@ -132,13 +132,13 @@ static bool renderMenuFontText( aText& label, int boxX, int boxY, int boxWidth, 
 	const std::uint32_t color = static_cast<std::uint32_t>( label.getColor() );
 	if ( !GuiRuntime::DrawUiText( x, y, w, h, string.c_str(), color, fontSize, align, "Agency Regular" ) )
 		return false;
-	const int detailSize = std::max( 10, fontSize * 2 / 3 );
+	// The label's layout rectangle follows the loading frame through fitToWindow.
+	// Keep the detail block in that rectangle's column, rather than the full viewport.
+	const int detailSize = std::max( 1, static_cast<int>(label.height() * sy / 6.f) );
 	const float line = detailSize * 1.3f;
-	float displayWidth = 0.f, displayHeight = 0.f;
-	GuiRuntime::GetDisplaySize(displayWidth, displayHeight);
-	const float detailWidth = displayWidth - 32.f;
-	const float detailX = std::clamp(x + (w - detailWidth) * 0.5f, 16.f, std::max(16.f, displayWidth - detailWidth - 16.f));
-	const float detailY = std::min(y + h, displayHeight - 5.f * line - 16.f);
+	const float detailWidth = w;
+	const float detailX = x;
+	const float detailY = y + h;
 	std::size_t begin = 0, index = 0;
 	for ( ; begin < detail.size(); ++begin, ++index )
 	{
