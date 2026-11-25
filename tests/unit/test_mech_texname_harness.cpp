@@ -13,6 +13,22 @@
 namespace {
 namespace mt = mech_texname;
 
+TEST_CASE("Imported ORM package selection and loaded texture flags") {
+    const auto name = mt::importedOrmName(R"({"materials":{"ao":{"tga":"ao.tga"},"orm":{"tga":"synthetic_orm.tga"},"normal":{"tga":"normal.tga"}}})");
+    CHECK(name == "synthetic_orm.tga");
+    CHECK(mt::importedOrmName(R"({"materials":{"ao":{"tga":"ao.tga"},"normal":{"tga":"normal.tga"}}})").empty());
+    CHECK(mt::importedOrmName(R"({"materials":{"orm":{},"normal":{"tga":"normal.tga"}}})").empty());
+    CHECK(mt::importedOrmName(R"({"materials":{},"orm":{"tga":"outside.tga"}})").empty());
+    CHECK(mt::importedOrmName(R"({"materials":{"orm":{"tga":""}}})").empty());
+    CHECK(mt::importedOrmName(R"({"materials":{"orm":{"tga":null},"normal":{"tga":"normal.tga"}}})").empty());
+    for (bool stock : {false, true})
+        for (bool loaded : {false, true})
+            for (bool declared : {false, true})
+                CHECK(mt::useOrm(stock, loaded, declared) == (stock || (loaded && declared)));
+    CHECK_FALSE(mt::useOrm(false, true, false)); // Legacy AO stays grayscale.
+    CHECK_FALSE(mt::useOrm(false, false, true)); // Missing ORM stays unbound.
+}
+
 TEST_CASE("mech_texname_harness/strip_path_and_ext") {
     CHECK((mt::deriveName("textures/MadCat_Body.png", false) == "madcat_body.tga"));
     CHECK((mt::deriveName("C:\\art\\Foo.PNG", false) == "foo.tga"));

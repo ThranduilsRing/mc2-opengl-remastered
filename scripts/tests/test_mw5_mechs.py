@@ -337,6 +337,10 @@ def test_recipe_entry_point_and_maps(fixture, tmp_path, monkeypatch):
     assert 'st AnimHost = "fixture_host"' in (tgl / "fixture_host.ini").read_text()
     pkg = json.loads((tgl / "fixture_mech.package.json").read_text())
     assert pkg["sourceGlb"] == "fixture_mech.glb"
+    recipe["clips"]["Missing"] = "fixture_missing"
+    recipe_path.write_text(json.dumps(recipe))
+    with pytest.raises(ValueError, match="fixture_missing"):
+        P.main()
 
 
 def test_missile_attachment_type(fixture, tmp_path):

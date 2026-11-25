@@ -24,6 +24,8 @@
 #include <cmath>
 #include <string_view>
 #include <vector>
+#include <map>
+#include <string>
 
 namespace mc2clip {
 
@@ -195,6 +197,21 @@ inline float onceRate(std::string_view clip, float duration, float gestureFrames
 inline bool proneClip(std::string_view clip) {
     return clip.starts_with("atlas_downed") || clip.starts_with("atlas_death") ||
            clip == "atlas_hitReactKnockdownInpl";
+}
+
+// Package roles override the legacy BT clip convention, including explicit exclusions.
+inline std::string_view groundingRole(const std::map<std::string, std::string>& roles, std::string_view clip) {
+    for (const auto& [name, role] : roles)
+        if (name == clip) return role;
+    if (!roles.empty()) return "none";
+    return proneClip(clip) ? "body" : clip.starts_with("atlas_moveCore") ? "feet" : "none";
+}
+
+// Whether the draw lift follows the pose's lowest point every frame instead of the static rest lift: fallen bodies, and
+// walking clips of a rig whose legs the per-leg solver cannot resolve (it then leaves the authored root bob in, which
+// floats the mech by up to a stride's height).
+inline bool liftFollowsPose(std::string_view role, bool legsSolved) {
+    return role == "body" || (role == "feet" && !legsSolved);
 }
 
 inline float fadeDuration(std::string_view previous, std::string_view next) {

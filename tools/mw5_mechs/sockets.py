@@ -35,6 +35,10 @@ def package_nodes(glb, loadout, recipe=None):
     for row in loadout:
         if not row.get('node'):
             continue
+        if row.get('copy_of'):  # extra MC2 node on an existing hardpoint: same joint and muzzle
+            src = row['copy_of']
+            nodes[row['node']], offsets[row['node']], types[row['node']] = nodes[src], offsets[src], int(row['type'])
+            continue
         name, mesh = row['node'], row['mesh']
         if name in nodes or len(name) > 24:
             raise ValueError(f'duplicate or overlong weapon node: {name}')

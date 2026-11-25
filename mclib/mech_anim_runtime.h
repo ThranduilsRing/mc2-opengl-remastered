@@ -105,6 +105,8 @@ void CopyImportedActorPose(const void* source, const void* destination,
 // AO-1: imported mech's AO texture name (materials.ao.tga from the package), or nullptr
 // if not imported / no AO declared. Caller loads it + binds on texture unit 6.
 const char* ImportedMechAoTexName(const void* typeKey);
+// Packed linear ORM replaces AO in slot 6 when declared; nullptr otherwise.
+const char* ImportedMechOrmTexName(const void* typeKey);
 
 // NORMALS-1: imported mech's normal-map texture name (materials.normal.tga from the
 // package), or nullptr if not imported / no normal declared. Caller loads it + binds on

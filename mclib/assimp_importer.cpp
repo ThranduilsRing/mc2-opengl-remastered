@@ -889,10 +889,12 @@ struct ImportedAnimEntry {
     std::string         pinnedClip;        // MC2_MECH_IMPORT_FORCE_CLIP (empty = 1C dynamic)
     std::string         initialClip;       // clip seeded into each new actor state
     std::string         showcaseClip;      // optional package clips.showcase
+    std::map<std::string, std::string> groundingRoles; // package clip -> feet/body/none
     std::map<std::string, float> strideSpeed;  // P9: locomotion clip -> planted-foot speed (world units/s)
     std::map<std::string, std::string> nodeManifest;  // 1A: MC2 node name -> source joint
     std::map<std::string, aiVector3D> socketOffsets;  // P10: socket name -> point in its joint's local frame
                                             // (from bt2018_mech_package.json "nodes").
+    std::string ormTexName;                 // materials.orm.tga: linear R=AO, G=roughness, B=metal.
     std::string aoTexName;                  // AO-1: materials.ao.tga (deriveName stem +
                                             // .tga); empty = no AO. Loaded -> unit 6.
     std::string normalTexName;              // NORMALS-1: materials.normal.tga; empty = no
@@ -1113,9 +1115,10 @@ bool PackageDeclaresAtlasStack(mc2::czstring glbPath) {
 // <stem>.package.json. Minimal flat-map scan (no JSON dependency; the generator
 // controls the format). Leaves the map empty (→ legacy node lookup) if absent.
 void LoadMechPackage(mc2::czstring glbPath, std::map<std::string, std::string>& out,
-                     std::string& aoOut, std::string& normalOut,
+                     std::string& aoOut, std::string& normalOut, std::string& ormOut,
                      std::map<std::string, aiVector3D>* socketOut = nullptr,
-                     std::string* showcaseOut = nullptr) {
+                     std::string* showcaseOut = nullptr,
+                     std::map<std::string, std::string>* groundingOut = nullptr) {
     if (!glbPath) return;
     std::string p(glbPath);
     size_t dot = p.rfind(".glb");
@@ -1141,8 +1144,9 @@ void LoadMechPackage(mc2::czstring glbPath, std::map<std::string, std::string>& 
             if (v1 < end) *showcaseOut = buf.substr(v0 + 1, v1 - v0 - 1);
         }
     }
-    // "nodes" flat map
-    size_t b = buf.find("\"nodes\"");
+    // Both package maps contain flat string pairs.
+    auto readMap = [&](std::string_view key, std::map<std::string, std::string>& values) {
+    size_t b = buf.find(key);
     if (b != std::string::npos) {
         b = buf.find('{', b);
         size_t end = (b == std::string::npos) ? std::string::npos : buf.find('}', b);
@@ -1154,11 +1158,14 @@ void LoadMechPackage(mc2::czstring glbPath, std::map<std::string, std::string>& 
                 size_t colon = buf.find(':', k1 + 1); if (colon == std::string::npos || colon >= end) break;
                 size_t v0 = buf.find('"', colon + 1); if (v0 == std::string::npos || v0 >= end) break;
                 size_t v1 = buf.find('"', v0 + 1); if (v1 == std::string::npos || v1 > end) break;
-                out[buf.substr(k0 + 1, k1 - k0 - 1)] = buf.substr(v0 + 1, v1 - v0 - 1);
+                values[buf.substr(k0 + 1, k1 - k0 - 1)] = buf.substr(v0 + 1, v1 - v0 - 1);
                 i = v1 + 1;
             }
         }
     }
+    };
+    readMap("\"nodes\"", out);
+    if (groundingOut) readMap("\"grounding\"", *groundingOut);
     // P10: "socketOffsets" flat map, socket -> "x y z" in the joint's local frame
     // (tools/bt2018_mechs/sockets.py). Muzzles sit on the geometry, not at joint centres.
     if (socketOut) {
@@ -1176,6 +1183,7 @@ void LoadMechPackage(mc2::czstring glbPath, std::map<std::string, std::string>& 
             i = v1 + 1;
         }
     }
+    ormOut = mech_texname::importedOrmName(buf);
     // AO-1: materials.ao.tga (runtime texture name; .ktx2 sidecar resolves it).
     size_t mat = buf.find("\"materials\"");
     if (mat != std::string::npos) {
@@ -1222,7 +1230,7 @@ void RegisterImportedAnim(mc2::czstring path, TG_TypeMultiShape* out, const Skel
     e.names = bake.names;
     e.plan = mc2skel::BuildPlan(scene, e.names);
     e.torsoTwist = mc2skel::ResolveTorsoTwist(*e.plan);
-    LoadMechPackage(path, e.nodeManifest, e.aoTexName, e.normalTexName, &e.socketOffsets, &e.showcaseClip);
+    LoadMechPackage(path, e.nodeManifest, e.aoTexName, e.normalTexName, e.ormTexName, &e.socketOffsets, &e.showcaseClip, &e.groundingRoles);
     if (!e.showcaseClip.empty() && !clipDurationSec(scene, e.showcaseClip)) {
         if (mc2_diag::tagRequested("MECH_IMPORT"))
             mc2::fmt::print_err("[MECH_IMPORT] unknown showcase clip '{}' in '{}'; using fallback\n", e.showcaseClip, path);
@@ -1416,7 +1424,7 @@ namespace {
 void groundActorPose(const ImportedAnimEntry& e, const ActorAnimState& s,
                      std::vector<mc2skel::GpuBone>& globals, unsigned frameStamp,
                      const mc2mechanim::VisualGround* ground = nullptr) {
-    if (s.activeClip.starts_with("atlas_moveCore")) {
+    if (mc2clip::groundingRole(e.groundingRoles, s.activeClip) == "feet") {
         std::vector<glm::mat4> pose(globals.size());
         for (size_t b = 0; b < globals.size(); ++b)
             for (int r = 0; r < 4; ++r)
@@ -1452,8 +1460,7 @@ void groundActorPose(const ImportedAnimEntry& e, const ActorAnimState& s,
 // stays on or above the visual surface under itself, against the surface under the root.
 float fallenPoseLift(const ImportedAnimEntry& e, const ActorAnimState& s,
                      const std::vector<mc2skel::GpuBone>& globals, const mc2mechanim::VisualGround& ground) {
-    const std::string_view clip = s.activeClip;
-    if (!clip.starts_with("atlas_death") && !clip.starts_with("atlas_downed") && clip != "atlas_hitReactKnockdownInpl") return 0.0f;
+    if (mc2clip::groundingRole(e.groundingRoles, s.activeClip) != "body") return 0.0f;
     aiVector3D low[4];
     int count = 0;
     groundLift(e, globals, low, 4, &count);
@@ -1535,9 +1542,15 @@ float mc2mechanim::ImportedGpuLift(const void* actorKey) {
 
 int mc2mechanim::ImportedGpuLiftAxis() { return mechImportGpuLiftAxis(); }
 
-// AO-1: the imported mech's AO texture name (materials.ao.tga from the package), or
-// nullptr if this type isn't imported / declares no AO. The caller (mech3d
-// resetPaintScheme) loads it via mc2::textures::ready() and binds it on unit 6.
+// ORM replaces the imported grayscale AO in slot 6 when declared.
+const char* mc2mechanim::ImportedMechOrmTexName(const void* typeKey) {
+    for (const ImportedAnimEntry& e : g_importedAnims)
+        if (static_cast<const void*>(e.multi) == typeKey)
+            return e.ormTexName.empty() ? nullptr : e.ormTexName.c_str();
+    return nullptr;
+}
+
+// Legacy AO-only packages retain their existing slot-6 texture and flags.
 const char* mc2mechanim::ImportedMechAoTexName(const void* typeKey) {
     for (const ImportedAnimEntry& e : g_importedAnims)
         if (static_cast<const void*>(e.multi) == typeKey)
@@ -1759,10 +1772,9 @@ void buildGpuModelDelta(const ImportedAnimEntry& e, ActorAnimState& s,
     // Upright clips keep the static rest lift (a per-frame lowest point bobs each step).
     // Falls are played rotation-only, which drops their pelvis descent, so they are
     // grounded per frame instead: BT lowers the pelvis at runtime with GrounderIK too.
-    const std::string_view clip = s.activeClip;
-    const bool fallen = clip.starts_with("atlas_death") || clip.starts_with("atlas_downed") ||
-                        clip == "atlas_hitReactKnockdownInpl";
-    s.gpuLift = fallen ? groundLift(e, globals) : e.restLift;
+    const bool legsSolved = !e.grounding.legs[0].sole.empty() && !e.grounding.legs[1].sole.empty();
+    const bool perFrame = mc2clip::liftFollowsPose(mc2clip::groundingRole(e.groundingRoles, s.activeClip), legsSolved);
+    s.gpuLift = perFrame ? groundLift(e, globals) : e.restLift;
 }
 } // namespace
 

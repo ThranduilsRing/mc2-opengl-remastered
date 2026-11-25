@@ -24,6 +24,45 @@
 
 namespace mech_texname {
 
+// Package generators emit flat texture objects. Bound each lookup to its object
+// so a missing ORM/tga never borrows a neighbouring material's texture name.
+inline std::string_view packageObject(std::string_view text, std::string_view key) {
+    const auto at = text.find(key);
+    if (at == std::string_view::npos) return {};
+    const auto colon = text.find(':', at + key.size());
+    if (colon == std::string_view::npos) return {};
+    const auto begin = text.find_first_not_of(" \t\r\n", colon + 1);
+    if (begin == std::string_view::npos || text[begin] != '{') return {};
+    int depth = 0;
+    bool quoted = false;
+    for (auto i = begin; i < text.size(); ++i) {
+        switch (text[i]) {
+        case '\\': if (quoted) { ++i; continue; } break;
+        case '"': quoted = !quoted; break;
+        default: break;
+        }
+        if (quoted) continue;
+        if (text[i] == '{') ++depth;
+        if (text[i] == '}' && --depth == 0) return text.substr(begin, i - begin + 1);
+    }
+    return {};
+}
+inline std::string importedOrmName(std::string_view package) {
+    const auto orm = packageObject(packageObject(package, "\"materials\""), "\"orm\"");
+    const auto key = orm.find("\"tga\"");
+    if (key == std::string_view::npos) return {};
+    const auto colon = orm.find(':', key + 5);
+    if (colon == std::string_view::npos) return {};
+    const auto begin = orm.find_first_not_of(" \t\r\n", colon + 1);
+    if (begin == std::string_view::npos || orm[begin] != '"') return {};
+    const auto end = orm.find('"', begin + 1);
+    if (end == std::string_view::npos) return {};
+    return std::string(orm.substr(begin + 1, end - begin - 1));
+}
+inline bool useOrm(bool stockOrm, bool importedLoaded, bool importedOrmDeclared) {
+    return stockOrm || (importedLoaded && importedOrmDeclared);
+}
+
 // Strip directory to the basename (last '/' or '\\'). Replica of StripPath.
 inline std::string stripPath(std::string_view p) {
     const size_t s1 = p.rfind('/');
