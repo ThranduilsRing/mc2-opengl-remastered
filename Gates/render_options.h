@@ -43,7 +43,7 @@ struct RenderOptions {
     int waterReflections = 2; // 0 Off, 1 Sky only, 2 Half-res; spatial, no history
     int reflectionQuality = 3; // 0 sky only, 1 Low and 2 Medium baked reflection, 3 High live full-res planar
     int waterDetail = 1; // 0 cheap fallback, 1 current material
-    int shorelineLook = int(ShorelineLook::Current); // owner-review candidates; current remains the default
+    int shorelineLook = 0; // ShorelineLook::Current; numeric default also read by capture tools
     bool cpuPhongRetire          = true;    // gameplay elevation follows the drawn terrain surface
 
     // Static prop lighting.
