@@ -163,6 +163,12 @@ def check_fingerprint(fp: Optional[dict], expected_sha: Optional[str],
     references require that exact clean commit; exe references compare bytes.
     """
     lines: list[str] = []
+    from scripts.manifest_schema import shader_dirty
+    shaders = shader_dirty(exe_path)
+    if shaders:
+        lines.append(f"[DEPLOY_FINGERPRINT] shader-dirty shaders={len(shaders['shaders'])}; binary stamp covers exe only")
+        if reference is not None and reference["mode"] == "commit":
+            return lines + ["[DEPLOY_FINGERPRINT] MISMATCH: shader-dirty install cannot match a committed build"], True
     if fp is None:
         lines.append("[DEPLOY_FINGERPRINT] fingerprint absent (pre-fingerprint exe)")
         return lines, True
@@ -173,7 +179,7 @@ def check_fingerprint(fp: Optional[dict], expected_sha: Optional[str],
             return [f"[DEPLOY_FINGERPRINT] MISMATCH: cannot hash deployed exe: {exc}"], True
         expected = reference["sha256"]
         ok = actual == expected
-        return [f"[DEPLOY_FINGERPRINT] {'OK' if ok else 'MISMATCH'}: "
+        return lines + [f"[DEPLOY_FINGERPRINT] {'OK' if ok else 'MISMATCH'}: "
                 f"exe sha256={actual} expected={expected} against "
                 f"{describe_reference(reference)}"], not ok
     if reference is not None:
