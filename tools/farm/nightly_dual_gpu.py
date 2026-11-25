@@ -53,11 +53,14 @@ def grade(text, gpu):
     return problems, peak, refusals, errors
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+from smoke_lib.paths import PROOF_ROOT
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--exe", type=Path, required=True)
     parser.add_argument("--out", type=Path, default=Path(os.environ.get(
-        "MC2_FARM_RESULT_DIR", "E:/mc2-archive-2026-10/proofs/nightly-dual-gpu")))
+        "MC2_FARM_RESULT_DIR", (PROOF_ROOT + '/nightly-dual-gpu'))))
     args = parser.parse_args()
     output = args.out / datetime.now().strftime("%Y%m%d-%H%M%S")
     output.mkdir(parents=True, exist_ok=False)

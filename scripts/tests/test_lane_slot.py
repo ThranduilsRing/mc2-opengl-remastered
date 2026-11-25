@@ -40,13 +40,13 @@ def test_release_refuses_dirty_and_non_slot(monkeypatch):
 
 
 def test_install_dirs_never_protected():
-    assert lane_slot.install_dirs("claude/foo") == ["E:/mc2-installs/claude/foo", "E:/mc2-installs/foo"]
+    assert lane_slot.install_dirs("claude/foo") == ["G:/mc2-installs/claude/foo", "G:/mc2-installs/foo"]
     assert lane_slot.install_dirs("owner-test-1") == []
 
 
 def test_install_is_keyed_by_slot_number():
-    assert lane_slot.slot_install("A:/Games/mc2-slot02") == "E:/mc2-installs/pc-lane-02"
-    assert lane_slot.slot_install("A:\\Games\\mc2-slot12") == "E:/mc2-installs/pc-lane-12"
+    assert lane_slot.slot_install("A:/Games/mc2-slot02") == "G:/mc2-installs/pc-lane-02"
+    assert lane_slot.slot_install("A:\\Games\\mc2-slot12") == "G:/mc2-installs/pc-lane-12"
 
 
 def test_slot_info_merge_rules(monkeypatch, tmp_path):
@@ -62,7 +62,7 @@ def test_slot_info_merge_rules(monkeypatch, tmp_path):
 
 def test_fixed_root_list():
     r = configure_ninja.SCCACHE_FIXED_ROOTS
-    assert "A:/Games/mc2-main" in r and "E:/mc2-installs/_precheck/tree" in r
+    assert "A:/Games/mc2-main" in r and "G:/mc2-installs/_precheck/tree" in r
     assert all(f"A:/Games/mc2-slot{n:02d}" in r for n in range(1, 13))
     env = configure_ninja.compile_cache_env("A:/Games/mc2-whatever")
     assert env["SCCACHE_BASEDIRS"].split(";") == r  # constant, independent of the root

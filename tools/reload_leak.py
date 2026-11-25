@@ -20,8 +20,8 @@ cycles give one quicksave and N-1 reload pairs.
 
 WHERE IT WRITES: the proof build goes to build64-battery/ (a gitignored sibling of
 build64/; --build-tree overrides). The staged install is a fresh copy under
-E:/mc2-installs/reload_leak-stage/<stamp>/ -- data is copied, never hardlinked, because G: is
-a different volume and a staged copy must not share writable state with an install.
+G:/mc2-installs/reload_leak-stage/<stamp>/ -- data is copied, never hardlinked, so a staged copy
+must not share writable state with an install.
 The install named by --install is only read; this tool never deploys into it.
 
 VERDICT: PASS when every reload's post live count and byte total are back at that
@@ -46,7 +46,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 import console_child  # noqa: E402  (windowless console children that still print)
-import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)
+import stage_root as stages  # noqa: E402  (default staging roots on G:, free-space preflight)
 from configure_ninja import NINJA, find_cmake, under_vcvars  # noqa: E402
 from bootstrap_worktree_build import cache_args  # noqa: E402
 

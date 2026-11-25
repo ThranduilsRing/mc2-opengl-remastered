@@ -40,13 +40,15 @@ def set_output(path, frame=None):
     return text
 
 
+from smoke_lib.paths import INSTALL_ROOT
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--bookmarks", required=True, help="bookmark file stem under tests/visual/bookmarks")
     ap.add_argument("--pose", required=True)
     ap.add_argument("--mission", required=True)
     ap.add_argument("--out", required=True, type=Path)
-    ap.add_argument("--exe", type=Path, default=Path("E:/mc2-installs/lane8/mc2.exe"))
+    ap.add_argument("--exe", type=Path, default=Path((INSTALL_ROOT + '/lane8/mc2.exe')))
     ap.add_argument("--width", type=int, default=1920)
     ap.add_argument("--height", type=int, default=1080)
     ap.add_argument("--frame", type=int, default=1500, help="Panel auto-capture (Frame mode) at this frame index; no hotkey, no input injection")

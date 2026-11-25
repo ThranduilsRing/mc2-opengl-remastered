@@ -20,7 +20,7 @@ Checks run by default only for touched logic: `scripts/contracts-cache-inputs.tx
 - The gate runs runtime rows concurrently with the offline stages, and a runtime row is reused when the hash of the engine-domain input tree and the exe fingerprint are unchanged (unknown paths count as engine). An offline red fixed by a tests-only commit is re-proved by rerunning that one row, not the whole gate.
 - The editor stage and the player-path row (except front-end, campaign, video and save diffs) are nightly. No merge-install smoke-lite: gate tier1 covers it. The doctest runs once, in the gate harness tree.
 - v0.4 promotion: re-check owner state right before the deploy; `py -3 scripts/deploy_payload.py --target game --ninja --verdict <slot>/build64-ninja/gate-verdict.json`; then one smoke-lite with gate priority: `MC2_IN_GATE=1 py -3 scripts/run_smoke.py --lite --keep-logs --exe A:/Games/mc2-opengl/mc2-win64-v0.4/mc2.exe`. No lane exclusive or Tracy capture until it ends.
-- The gate install is the persistent `E:/mc2-installs/merge-gate`, reseeded weekly (private save dirs per window).
+- The gate install is the persistent `G:/mc2-installs/merge-gate`, reseeded weekly (private save dirs per window).
 - Dirty README.md (owner edits) never blocks the clean-tree check.
 
 ## Publishing to v0.4 (`deploy_payload.py --target game`)
@@ -31,7 +31,7 @@ lane's cooked bytes with `py -3 scripts/deploy_payload.py --from-install <lane-i
 This reads the install and checkout, accepting only bytes matching HEAD's declarations,
 and atomically saves each blob as `<store>/<sha256>`. Missing inputs are listed so
 multiple seed installs can contribute; a deployment requires every declaration to resolve.
-The default store is `E:/mc2-asset-store`; `--asset-store <dir>` or `MC2_ASSET_STORE`
+The default store is `G:/mc2-asset-store`; `--asset-store <dir>` or `MC2_ASSET_STORE`
 selects another store. Keep the store when deleting lane installs.
 Retain blobs referenced by any kept candidate or rollback commit; prune only
 unreferenced blobs after those commits and installs are retired. Hash receipts
@@ -45,7 +45,7 @@ recorded in the deploy manifest; absent or corrupt content fails with its path a
 it lists missing/mismatched paths, verifies available bytes and fails on unresolved hashes.
 It never cooks, builds, takes a lease or writes to the target or store; it does not
 certify executable freshness or the rest of the deployment. Seed once from
-`E:/mc2-archive-2026-10/assets/conifer-cooks-1122o` and `E:/mc2-installs/merge-gate`
+`E:/mc2-archive-2026-10/assets/conifer-cooks-1122o` and `G:/mc2-installs/merge-gate`
 using separate `--from-install` invocations.
 
 The publish refuses an exe that is not the one the newest gate PASSed for HEAD. By default it reads `<src>/build64-ninja/gate-verdict.json`; a PASS from a stage or lane tree is passed explicitly with `--verdict <path>/gate-verdict.json`. It is accepted only if `verdict` is PASS, its `head` equals the deploying tree's HEAD and `artifacts.exe_sha256` equals the sha256 of the exe being deployed; anything else refuses. The gate keys on the resolved target (the v0.4 preset dir with a game exe), so `--target game`, `--target game --allow-new-target` and the positional v0.4 path are all gated, and a v0.4 publish always implies `--require-clean`. The refusal says to deploy the exe the gate tested or pass `--verdict`; `--allow-unverified-exe` stays in `--help` but on v0.4 it logs a WARNING and writes `.deployed_manifest.unverified.json` beside the manifest. Install DLLs that are hardlinks into the shared pool are never written through: when the replace of such a file is refused (an open handle with delete sharing on this install's own path) the old entry is renamed aside to `<name>.old-<pid>-<n>` and a private copy takes its place. An aside that cannot be deleted is listed in `<install>/.deploy-asides.json`; every deploy into that install deletes the listed ones right after taking the folder lease and again before releasing it (so failed deploys are covered). Only paths matching `.old-<pid>[-<n>]` inside the install are deleted; other `*.old-*` files are never touched. If even the rename fails the deploy stops naming the file as hardlinked and in use by another process.
@@ -64,7 +64,7 @@ The publish refuses an exe that is not the one the newest gate PASSed for HEAD. 
 The PC task `scripts/nightly_gate.task.xml` (daily 04:30) launches `py -3 tools/laptop_gate.py nightly`; Sundays select weekly.
 The PC only provisions inputs and pulls results: the farm laptop builds published nifty and runs contracts (including nightly rows), deploy and the tier's game stages. The six mod-battery overlays are seeded once from read-only PC mod inputs; their data, assets and mission archives stay outside git on the laptop.
 Stock `.pak`/`.fit` bytes are verified on the PC, copied once by hash into `C:/mc2gate/stock-missions`, and passed through `MC2_STOCK_MISSIONS_DIR` to every laptop gate row.
-Verdicts land under `E:/mc2-archive-2026-10/proofs/merge-gate/nightly-<date>/` (`--isolated-verdict`); reruns with an existing verdict append a time suffix. No nightly payload is packed, and window evidence is untouched.
+Verdicts land under `G:/mc2-proofs/merge-gate/nightly-<date>/` (`--isolated-verdict`); reruns with an existing verdict append a time suffix. No nightly payload is packed, and window evidence is untouched.
 The detached job in `G:/mc2-tmp/jobs` and the laptop farm queue serialize runs; `<window> -- --nightly` also selects this dated nightly path. Only the orchestrator registers the task:
 
 ```

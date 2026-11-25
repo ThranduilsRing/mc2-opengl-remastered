@@ -8,7 +8,7 @@
 Steps (each timed, summary printed at the end): lock a GPU, git-bundle HEAD to the box mirror, clang build in
 /workspace/lanes/box-lane-NN/src (worktree slot, reused across branches), install = hardlink copy of the golden install
 (big immutable data linked, the rest copied) + deploy_payload, run the rows, copy reports back to
-E:/mc2-archive-2026-10/proofs/box/<worktree>/<sha8>/ (MC2_BOX_PROOFS), print the DEPLOY_FINGERPRINT line, release the lock.
+G:/mc2-proofs/box/<worktree>/<sha8>/ (MC2_BOX_PROOFS), print the DEPLOY_FINGERPRINT line, release the lock.
 
 Rows: ab:<before-ref> (day + night A/B against HEAD, plus the gpu-passes ratio table) | gpu-passes (per-pass GPU table, mc2_01/mc2_10/mc2_24; refuses a dirty worktree) | smoke-lite | smoke-tier1 | valsum (Khronos sync + best-practices summary, 4 x 300 s) | syncval[:aa_off|aa_fxaa|aa_cmaa|cold_bake|imgui|resize|nowater|gpuav|canary] | capture:<mission>:<bookmark-stem> | screen:<id>[@N] (logistics, campaign_missions, mechbay: front-end screenshot) | determinism:<mission>[:audit] | saveload[:<mission>] | unit | unit-san (doctests under ASan+UBSan, CPU-only) | build | lint | cpu:<command> | sh:<command> (no GPU lock) | gpu:<command> (takes the lock)
 (sh runs in the lane src dir with $INSTALL, $OUT, $GPU_ENV set). Merge gates share the discovered GPUs.
@@ -593,9 +593,11 @@ def pick_gpu():
     return min(ids, key=lambda g: (load.get(g, 99), int(g)))
 
 
+from smoke_lib.paths import PROOF_ROOT
+
 def local_reports(repo, sha8):
     """Where the fetched reports land: the proofs archive, never the worktree (a copy under <repo>/proofs gets committed)."""
-    return Path(os.environ.get("MC2_BOX_PROOFS", "E:/mc2-archive-2026-10/proofs/box")) / Path(repo).resolve().name / sha8
+    return Path(os.environ.get("MC2_BOX_PROOFS", (PROOF_ROOT + '/box'))) / Path(repo).resolve().name / sha8
 
 
 def fetch_back(out_remote, local_out):

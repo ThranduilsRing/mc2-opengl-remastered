@@ -326,3 +326,28 @@ def test_acquire_refuses_when_registration_fails(slot, monkeypatch):
     monkeypatch.setattr(lane_registry, "register_lane", lambda *a, **k: (_ for _ in ()).throw(OSError("registry unavailable")))
     with pytest.raises(SystemExit, match="registration failed"):
         lane_slot.acquire("claude/lane-z", no_warm=True)
+
+
+def test_gc_tolerates_evidence_disappearing_during_move(slot, gc_setup, monkeypatch):
+    install = gc_setup / "lane-x"
+    install.mkdir()
+    (install / "fault.dmp").write_bytes(b"evidence")
+
+    def vanished(src, dst):
+        Path(src).unlink()
+        raise FileNotFoundError(src)
+
+    monkeypatch.setattr(lane_slot.shutil, "move", vanished)
+    lane_slot.gc()
+    assert not install.exists()
+
+
+def test_gc_missing_archive_destination_preserves_evidence(slot, gc_setup, monkeypatch):
+    install = gc_setup / "lane-x"
+    install.mkdir()
+    evidence = install / "fault.dmp"
+    evidence.write_bytes(b"evidence")
+    monkeypatch.setattr(lane_slot.shutil, "move", lambda *a: (_ for _ in ()).throw(FileNotFoundError("destination")))
+    with pytest.raises(FileNotFoundError, match="destination"):
+        lane_slot.gc()
+    assert evidence.read_bytes() == b"evidence"

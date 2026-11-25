@@ -17,8 +17,8 @@ def test_sim_rows_strip_allow_owner_install(monkeypatch):
         return subprocess.CompletedProcess(command, 0, stdout="")
 
     monkeypatch.setattr(lsr, "stale_install", lambda *a, **k: "")
-    verdicts = lsr.run_sim_rows(str(ROOT), "0" * 40, "E:/mc2-installs/lane-x", runner=runner, quiet=lambda: "")
+    verdicts = lsr.run_sim_rows(str(ROOT), "0" * 40, "G:/mc2-installs/lane-x", runner=runner, quiet=lambda: "")
     assert seen, verdicts
     for cmd in seen:
         assert "--allow-owner-install" not in cmd
-        assert cmd[cmd.index("--install") + 1] == "E:/mc2-installs/lane-x"
+        assert cmd[cmd.index("--install") + 1] == "G:/mc2-installs/lane-x"

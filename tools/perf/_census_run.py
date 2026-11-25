@@ -7,8 +7,10 @@ import mission_cpu_profile as mcp
 import run_battle_bench as battle
 from smoke_lib import host_lease, runner
 
-EXE = Path("E:/mc2-installs/claude-perf-counters/mc2.exe")
-OUT = Path("E:/mc2-archive-2026-10/proofs/census2")
+from smoke_lib.paths import INSTALL_ROOT, PROOF_ROOT
+
+EXE = Path((INSTALL_ROOT + '/claude-perf-counters/mc2.exe'))
+OUT = Path((PROOF_ROOT + '/census2'))
 VIEWS = {"mc2_01": "sun_facing_low", "mc2_10": "sun_facing_low", "mc2_24": "low_horizon_0"}
 
 

@@ -7,7 +7,7 @@ Scheduled runs build nifty, publish dated isolated verdicts, and never pack a pr
   1. push claude/stage-W (and nifty) to the persistent laptop clone  C:/mc2gate/drv/A/Games/mc2-main
   2. over ssh: build there (warm Ninja tree, cold the first time), run merge_gate.py --full against the laptop install
   3. pull gate-verdict.json, gate.log, summary.json and the payload delta (tar of every manifest file that differs from
-     the PC's published v0.4) with sha256 checks into E:/mc2-archive-2026-10/proofs/laptop-gate/W/
+     the PC's published v0.4) with sha256 checks into G:/mc2-proofs/laptop-gate/W/
 Then, on PASS (orchestrator only):
   py -3 tools/lane_merge.py --promote W --verdict <pulled>/gate-verdict.json
   py -3 scripts/deploy_payload.py --target game --from-payload <pulled>/payload
@@ -50,9 +50,11 @@ G = "C:/mc2gate"
 REPO = G + "/drv/A/Games/mc2-main"
 INSTALL = G + "/install"
 PC_V04 = Path("A:/Games/mc2-opengl/mc2-win64-v0.4")
-PC_SEED = Path("E:/mc2-installs/_lean-seed")
+if "--remote" not in sys.argv:  # remote helpers run without the repository package tree
+    from smoke_lib.paths import INSTALL_ROOT, PROOF_ROOT
+    PC_SEED = Path(INSTALL_ROOT) / "_lean-seed"
+    PROOFS = Path(PROOF_ROOT) / "laptop-gate"
 PC_STOCK = Path("G:/mc2-assets/out/scifi-kit/round2/stock")
-PROOFS = Path("E:/mc2-archive-2026-10/proofs/laptop-gate")
 PC_REF = Path("E:/mc2-ref")
 PC_TMP = Path(os.environ.get("MC2_LANE_SCRATCH", "G:/mc2-tmp/gatelaptop"))
 STOCK_MISSIONS = G + "/stock-missions"

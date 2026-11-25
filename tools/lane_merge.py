@@ -13,7 +13,7 @@ Usage:
       per-stage seconds table; runs in a disposable clone under G:/mc2-tmp, never inside the main worktree.
       No native build: --batch --verify full and the gate still build everything. --with-link additionally links
       mc2, mc2fx, mc2fx_preview incrementally in a persistent warm worktree ($MC2_PRECHECK_TREE, default
-      E:/mc2-installs/_precheck/tree, exclusive lock; the first run is a one-time cold build).
+      G:/mc2-installs/_precheck/tree, exclusive lock; the first run is a one-time cold build).
   py -3 tools/lane_merge.py <sha-or-branch> [--message "..."] [--dry-run]
   py -3 tools/lane_merge.py --batch A B C [--dry-run]   check each tip, tighten/regenerate once after the batch,
                                                         the build + doctest verify (step e) once at the end
@@ -892,12 +892,14 @@ def require_clean_generator_inputs(root):
                        + "\n  ".join(path for _, path in dirty))
 
 
+from smoke_lib.paths import MERGE_GATE_INSTALL, PROOF_ROOT
+
 def regenerate_all(root, *, dry_run=False, base=None):
     """Regenerate the committed tree in isolation for dry runs; never bless preexisting edits."""
     if dry_run:
         # A disposable local clone lets every generator use its normal paths and
         # git inventory. No generator writes into the caller's checkout.
-        proof_root = "E:/mc2-archive-2026-10/proofs" if os.path.isdir("E:/mc2-archive-2026-10/proofs") else None
+        proof_root = PROOF_ROOT if os.path.isdir(PROOF_ROOT) else None
         with tempfile.TemporaryDirectory(prefix="regen-", dir=proof_root) as scratch:
             snapshot = os.path.join(scratch, "tree")
             r = run(root, ["git", *SCRATCH_CLONE_ARGS, os.path.abspath(root), snapshot])
@@ -1058,7 +1060,7 @@ def merge_target(root: str, base: str | None = None) -> str:
 
 def lint(root: str, ref: str, runner=None, base: str | None = None, *, stale_paths=None) -> int:
     """One host slot per lint run (granted FIFO by LintSlots), after sweeping dead lints' scratch."""
-    sweep_stale_scratch([precheck_scratch_base(root), "E:/mc2-archive-2026-10/proofs"])
+    sweep_stale_scratch([precheck_scratch_base(root), PROOF_ROOT])
     hold = LintSlots().acquire()   # host-wide JOBS cap across all `--lint` processes, released when this run ends
     try:
         return _lint_locked(root, ref, runner, base, **({"stale_paths": stale_paths} if stale_paths is not None else {}))
@@ -1328,14 +1330,14 @@ def recorded_data_fingerprint(root: str) -> dict | None:
 
 
 def candidate_data_fingerprint(root: str, install: str | None = None) -> tuple[dict | None, str]:
-    """The data fingerprint for the selected install (default E:/mc2-installs/merge-gate)
+    """The data fingerprint for the selected install (default G:/mc2-installs/merge-gate)
     read with the candidate tree's declared overlay manifest (its tests/smoke/sim_determinism/
     data_overlay.json). -> (fingerprint, skip_reason): fingerprint is None, with a one-line reason, when there is no stock
     install to read. Read-only: it walks and hashes the install but never writes to it. The stock parts are gitignored and
     absent from a source tree, so the source tree itself can never be fingerprinted -- only the install the gate deploys to."""
     import sim_determinism as sd
     default_install = not install
-    install = install or "E:/mc2-installs/merge-gate"
+    install = install or MERGE_GATE_INSTALL
     if not os.path.isdir(install):
         if default_install:
             print(f"WARN: default pre-gate install missing: {install}; data fingerprint unchecked. "
@@ -1542,12 +1544,12 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--base", help="--lint/--precheck merge target (default: active/documented play branch, then nifty)")
     ap.add_argument("--with-link", action="store_true",
                     help="with --precheck: also link mc2, mc2fx, mc2fx_preview incrementally in the warm tree "
-                         "($MC2_PRECHECK_TREE, default E:/mc2-installs/_precheck/tree; first use is a one-time cold build)")
+                         "($MC2_PRECHECK_TREE, default G:/mc2-installs/_precheck/tree; first use is a one-time cold build)")
     ap.add_argument("--no-receipt-check", action="store_true", help="compatibility no-op; precheck receipts are informational")
     ap.add_argument("--no-link", action="store_true", help="with --precheck: skip the link even when the tip changes compiled inputs")
     ap.add_argument("--no-sim-rows", action="store_true", help="compatibility no-op; precheck never runs games")
     ap.add_argument("--sim-install", help="compatibility no-op; precheck never runs games")
-    ap.add_argument("--install", help="with --pre-gate: read-only install to fingerprint (default E:/mc2-installs/merge-gate)")
+    ap.add_argument("--install", help="with --pre-gate: read-only install to fingerprint (default G:/mc2-installs/merge-gate)")
     ap.add_argument("--pre-gate", action="store_true",
                     help="at the merged HEAD run the real regenerate-all (lists the changed files; commit them once), "
                          "check-background-launch, gate_gen --check and cxx17; all run, one PRE-GATE PASS/FAIL line; --root picks the tree")

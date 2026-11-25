@@ -82,7 +82,7 @@ def main(argv=None, ops=OPS, root=ROOT):
         if extra:
             body += extra + '\n'
         body += ('DISK CLEANUP IS PART OF THIS WINDOW (owner 2026-10-26, hard rule): after the gate, for EVERY tip you merged, '
-                 'delete its lane install E:/mc2-installs/<branch with / -> -> (plus any <name>-* / .partial siblings) and the build dirs '
+                 'delete its lane install G:/mc2-installs/<branch with / -> -> (plus any <name>-* / .partial siblings) and the build dirs '
                  '(build64-ninja, build64, build64-tests) of its worktree if that worktree is not running another lane (check '
                  'A:/Games/mc2-ops/LANES), and every temporary stage/snapshot you created. Report the GB freed per item and the free space '
                  'on A:, C: and E: before/after. If a delete is refused by policy, list the exact paths for the orchestrator.\n')

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Lane installs must carry the v0.4 install's assets (owner 2026-11-11).
 
-A lane install deployed with --skip-kit (E:/mc2-installs/quiet-A) was missing 800 MB / 16,254 v0.4 data
+A lane install deployed with --skip-kit (G:/mc2-installs/quiet-A) was missing 800 MB / 16,254 v0.4 data
 files and had 2,354 textures of a different size; its captures showed stock concrete. Every lane deploy
 now compares data/, assets/ and the root *.fst archives with the v0.4 install by path and size, plus
 sha256 for a sampled subset, SYNCS missing or different files from v0.4 (read only), and deletes
@@ -11,8 +11,8 @@ reports unowned extras without deleting them. With
 The one-line `[ASSET_PARITY] OK|SYNCED|FAIL|SKIPPED ...` verdict is printed by deploy_payload and
 run_smoke; the capture tools refuse a drifted install unless --allow-asset-drift is given.
 
-  py -3 scripts/asset_parity.py --check E:/mc2-installs/<lane>    # counts only, no copy
-  py -3 scripts/asset_parity.py --sync  E:/mc2-installs/<lane>
+  py -3 scripts/asset_parity.py --check G:/mc2-installs/<lane>    # counts only, no copy
+  py -3 scripts/asset_parity.py --sync  G:/mc2-installs/<lane>
 """
 from __future__ import annotations
 

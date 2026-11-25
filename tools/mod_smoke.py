@@ -2,7 +2,7 @@
 'Smoke every supported mod against the current mc2.exe: py -3 tools/mod_smoke.py --battery'
 #
 # Uses isolated disposable installs and persistent, incrementally updated payload
-# layers under E:/mc2-installs/mod_smoke-stage. One host lease is held for the whole battery.
+# layers under G:/mc2-installs/mod_smoke-stage. One host lease is held for the whole battery.
 #
 #     py -3 tools/mod_smoke.py --battery [--mod NAME[,NAME]] [--mission STEM]
 #
@@ -46,7 +46,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parent.parent / "scripts"))
 import console_child  # noqa: E402  (windowless console children)
 from smoke_lib import host_lease, nofocus  # noqa: E402
-import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)
+import stage_root as stages  # noqa: E402  (default staging roots on G:, free-space preflight)
 
 try:
     from tools import fs_links
@@ -68,7 +68,7 @@ BATTERY = (
     ('MechCommanderOmnitech', 'MechCommanderOmnitech', None),
     ('MCO-Carver5', 'MCO-Carver5', 'MechCommanderOmnitech'),
 )
-# Counts from E:/mc2-installs/mod_smoke-stage/20261029-141617-498123/artifacts.
+# Counts from G:/mc2-installs/mod_smoke-stage/20261029-141617-498123/artifacts.
 # Budgets are per mission; extending coverage does not grant extra warnings.
 WARNING_BUDGET = Path(__file__).with_name('mod_warning_budget.json')
 CAMPAIGNS = {

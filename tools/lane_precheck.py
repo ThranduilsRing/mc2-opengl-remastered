@@ -88,7 +88,10 @@ def base_rot(root, base, label, command, result, runner, env=None):
         return not unmatched
 
 
-PRECHECK_TREE = os.environ.get("MC2_PRECHECK_TREE", "E:/mc2-installs/_precheck/tree")
+from pathlib import Path
+from smoke_lib.paths import INSTALL_ROOT
+
+PRECHECK_TREE = os.environ.get("MC2_PRECHECK_TREE", (INSTALL_ROOT + '/_precheck/tree'))
 
 
 def _inside(path: str, root: str) -> bool:

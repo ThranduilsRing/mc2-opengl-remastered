@@ -5,7 +5,7 @@ Every per-mech fact lives in recipes/<family>.json (object paths, clip names, ha
 Game bytes stay in --work (outside git); the pack is written to <install>/mods/<mod id>/.
 
   py -3 tools/mw5_mechs/make_mech.py --recipe recipes/hunchback.json --work G:/mc2-tmp/x/hunchback \
-      --install E:/mc2-installs/mw5-poc [--steps extract,glb,bake,pack] [--mod-id mw5_mechs]
+      --install G:/mc2-installs/mw5-poc [--steps extract,glb,bake,pack] [--mod-id mw5_mechs]
 
 Environment: MW5_INSTALL (game root), MW5_EXTRACT_DLL (Mw5Extract.dll), UMODEL (umodel_64.exe), KTX (ktx.exe),
 MW5_MATERIAL_DEFAULTS (json of the shared painted-metal material's default parameters).
