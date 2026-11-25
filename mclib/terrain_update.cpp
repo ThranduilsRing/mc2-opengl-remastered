@@ -40,13 +40,15 @@ static const BlockErrors* blockLevelErrors(const TerrainBlockMeta& bm)
     static uint64_t cachedVersion = 0, cachedVisualVersion = 0;
     static int cachedSide = 0;
     static bool cachedBake = false;
+    static float cachedWater = 0.0f;
     static std::vector<BlockErrors> errors;
     const auto* store = gos_TerrainFieldStore();
     if (!store || !store->heightVersion()) return nullptr;
     const int side = store->mapSide();
     const bool bake = !store->visualHeight().empty() && store->visualSide() > 1;
     const int blockSide = (side - 1 + 19) / 20;
-    if (cachedVersion != store->heightVersion() || cachedSide != side || cachedBake != bake
+    const float water = Terrain::waterElevation;   // levels that move the coastline never pass (mclib/terrain_lod_rules.h)
+    if (cachedVersion != store->heightVersion() || cachedSide != side || cachedBake != bake || cachedWater != water
         || (bake && cachedVisualVersion != store->visualHeightVersion())) {
         errors.assign(static_cast<size_t>(blockSide) * blockSide, BlockErrors{});
         const float* ref = bake ? store->visualHeight().data() : store->height().data();
@@ -54,9 +56,10 @@ static const BlockErrors* blockLevelErrors(const TerrainBlockMeta& bm)
         for (int y = 0; y < blockSide; ++y) for (int x = 0; x < blockSide; ++x) {
             const int qx = std::min(20, side - 1 - x * 20);
             const int qy = std::min(20, side - 1 - y * 20);
-            errors[x + y * blockSide] = {mc2lod::levelErrors(ref, refSide, bake ? 4 : 1, x * 20, y * 20, qx, qy),
-                                         mc2lod::edgeErrors(ref, refSide, bake ? 4 : 1, x * 20, y * 20, qx, qy)};
+            errors[x + y * blockSide] = {mc2lod::levelErrors(ref, refSide, bake ? 4 : 1, x * 20, y * 20, qx, qy, water),
+                                         mc2lod::edgeErrors(ref, refSide, bake ? 4 : 1, x * 20, y * 20, qx, qy, water)};
         }
+        cachedWater = water;
         cachedVersion = store->heightVersion();
         cachedVisualVersion = store->visualHeightVersion();
         cachedSide = side;

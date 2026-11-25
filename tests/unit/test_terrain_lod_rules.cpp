@@ -354,6 +354,28 @@ TEST_CASE("terrain SSE: level errors are zero on a plane, monotone, and see the 
     for (float e : epp) CHECK(e < 1e-3f);
 }
 
+TEST_CASE("terrain SSE: a level that moves the coastline never passes, dry blocks are unchanged") {
+    // Lakebed rising 1 wu per cell with a 0.6 wu lift on odd rows, water at 10.5: stride 2 drops the lift across the plane.
+    std::vector<float> shore(41 * 41), pit(41 * 41, 20.0f), edgePond(41 * 41, 20.0f), plane(41 * 41);
+    for (int y = 0; y < 41; ++y) for (int x = 0; x < 41; ++x) {
+        shore[x + y * 41] = static_cast<float>(x) + (y % 2) * 0.6f;
+        plane[x + y * 41] = static_cast<float>(x);
+    }
+    pit[7 + 7 * 41] = 5.0f;   // an interior pond the coarse levels skip
+    edgePond[7] = 5.0f;       // the same pond on the north edge
+    const LevelErrors dry = levelErrors(shore.data(), 41, 1, 0, 0, 20, 20);
+    const LevelErrors wet = levelErrors(shore.data(), 41, 1, 0, 0, 20, 20, 10.5f);
+    CHECK(std::isfinite(dry[5]));
+    CHECK(wet[0] == 0.0f);
+    CHECK(std::isinf(wet[1]));
+    CHECK(std::isinf(levelErrors(pit.data(), 41, 1, 0, 0, 20, 20, 10.0f)[1]));
+    for (float e : levelErrors(plane.data(), 41, 1, 0, 0, 20, 20, 9.5f)) CHECK(e < 1e-3f);   // exact coast: no penalty
+    CHECK(levelErrors(shore.data(), 41, 1, 0, 0, 20, 20, -100.0f) == dry);                   // water below the block
+    CHECK(std::isfinite(edgeErrors(pit.data(), 41, 1, 0, 0, 20, 20, 10.0f)[0][1]));
+    CHECK(std::isinf(edgeErrors(edgePond.data(), 41, 1, 0, 0, 20, 20, 10.0f)[0][1]));
+    CHECK(chooseSseLevel(wet, 0, 1.0f, 1.0f, 1e9f, 0.0f).level == 0);   // at any distance
+}
+
 TEST_CASE("terrain SSE: chooser goes coarser with distance, has hysteresis, and keeps morph error in the bound") {
     const LevelErrors e{0.0f, 1.0f, 2.0f, 4.0f, 8.0f, 16.0f};
     const float num = 1000.0f;

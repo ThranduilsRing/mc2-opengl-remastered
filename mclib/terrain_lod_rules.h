@@ -121,10 +121,19 @@ constexpr float kSseCoarsenRatio = 0.9f;          // hysteresis: coarsen only be
 
 using LevelErrors = std::array<float, kLodStepCount>;
 
+// The flat water plane turns a small vertical error into a large coastline shift on a gentle shore (owner 11-25, mc2_02 at high
+// RTS: coarse levels lifted the lakebed above the water in stride-sized stair steps). A level that puts any reference sample on
+// the other side of the water plane is never within tolerance. NaN waterElev = no water.
+inline float waterCoverageError(float reference, float drawn, float waterElev, float verticalError)
+{
+    return (reference < waterElev) != (drawn < waterElev) ? std::numeric_limits<float>::infinity() : verticalError;
+}
+
 // Per-level error of one block. ref is refSide x refSide; refPerCoarse reference samples per coarse cell (4 = bake, 1 = coarse
 // heights). Level k draws coarse vertices at stride kLodSteps[k] (plus the block's far edge) with the TL-BR diagonal, the mode
 // 0/2 triangulation. Level 0 is the reference itself. The result is made non-decreasing so "coarser" never means "better".
-inline LevelErrors levelErrors(const float* ref, int refSide, int refPerCoarse, int originX, int originY, int qcX, int qcY)
+inline LevelErrors levelErrors(const float* ref, int refSide, int refPerCoarse, int originX, int originY, int qcX, int qcY,
+                               float waterElev = std::numeric_limits<float>::quiet_NaN())
 {
     LevelErrors e{};
     if (!ref || refSide <= 1 || refPerCoarse <= 0 || qcX <= 0 || qcY <= 0)
@@ -150,7 +159,7 @@ inline LevelErrors levelErrors(const float* ref, int refSide, int refPerCoarse, 
                 const float u = static_cast<float>(fx - x0 * r) / static_cast<float>((x1 - x0) * r);
                 const float tl = at(x0 * r, y0 * r), tr = at(x1 * r, y0 * r), bl = at(x0 * r, y1 * r), br = at(x1 * r, y1 * r);
                 const float c = (u >= v) ? tl + u * (tr - tl) + v * (br - tr) : tl + v * (bl - tl) + u * (br - bl);
-                err = std::max(err, std::fabs(at(fx, fy) - c));
+                err = std::max(err, waterCoverageError(at(fx, fy), c, waterElev, std::fabs(at(fx, fy) - c)));
             }
         }
         e[k] = std::max(err, e[k - 1]);
@@ -162,7 +171,8 @@ inline LevelErrors levelErrors(const float* ref, int refSide, int refPerCoarse, 
 // along the edge and the edge drawn at stride kLodSteps[k] (multiples of the stride plus the edge end, mc2lod::edgeHeight).
 // A stitched edge is exactly such a polyline, so these bound the stitch error.
 using EdgeErrors = std::array<LevelErrors, 4>;
-inline EdgeErrors edgeErrors(const float* ref, int refSide, int refPerCoarse, int originX, int originY, int qcX, int qcY)
+inline EdgeErrors edgeErrors(const float* ref, int refSide, int refPerCoarse, int originX, int originY, int qcX, int qcY,
+                             float waterElev = std::numeric_limits<float>::quiet_NaN())
 {
     EdgeErrors out{};
     if (!ref || refSide <= 1 || refPerCoarse <= 0 || qcX <= 0 || qcY <= 0)
@@ -185,7 +195,8 @@ inline EdgeErrors edgeErrors(const float* ref, int refSide, int refPerCoarse, in
                 if (c0 >= ext) c0 = ((ext - 1) / s) * s;
                 const int c1 = std::min(c0 + s, ext);
                 const float t = static_cast<float>(f - c0 * r) / static_cast<float>((c1 - c0) * r);
-                err = std::max(err, std::fabs(h(f) - (h(c0 * r) * (1.0f - t) + h(c1 * r) * t)));
+                const float drawn = h(c0 * r) * (1.0f - t) + h(c1 * r) * t;
+                err = std::max(err, waterCoverageError(h(f), drawn, waterElev, std::fabs(h(f) - drawn)));
             }
             out[edge][k] = std::max(err, out[edge][k - 1]);
         }
