@@ -32,6 +32,7 @@ import build_pack  # noqa: E402
 import cook_textures  # noqa: E402
 import from_native  # noqa: E402
 import prone_pose  # noqa: E402
+from scripts import console_child  # noqa: E402
 from sockets import load_glb  # noqa: E402
 
 IDLE = "A:/Games/mc2-ops/idle_run.py"
@@ -54,13 +55,13 @@ def env(name):
 def run(*cmd, ok=(0,)):
     print("+", " ".join(str(c) for c in cmd))
     argv = [sys.executable, IDLE, *map(str, cmd)] if Path(IDLE).is_file() else list(map(str, cmd))
-    if subprocess.run(argv).returncode not in ok:
+    if subprocess.run(argv, **console_child.child_kwargs()).returncode not in ok:
         raise SystemExit(f"failed: {cmd[0]}")
 
 
 def native_request(recipe):
     ex = recipe["extraction"]
-    return {"mesh": ex["mesh"], "clips": list(ex["clips"].values()), "materials": ex["materials"],
+    return {"mesh": ex["mesh"], "clips": [v for k, v in ex["clips"].items() if k != "Crouch"], "materials": ex["materials"],
             "loadouts": [], "textures": list(ex["textures"].values())}
 
 
@@ -139,8 +140,23 @@ def weapon_attachments(recipe, work):
     return out
 
 
+def select_base_clips(recipe, available):
+    sources = [s for s in recipe["extraction"]["clips"] if recipe["clip_pattern"].format(source=s) in available]
+    if "Stand" not in sources:
+        raise ValueError("no base Stand animation")
+    for source, gesture in build_glb.CLIPS.items():
+        if gesture not in recipe["clips"].values():
+            recipe["hold_clips"].setdefault(gesture, [source, 0])
+    for gesture, (source, frame) in list(recipe["hold_clips"].items()):
+        if source not in sources:
+            fallback = next(s for s in ("Stand", "WalkForward_Straight", "RunForward_Straight") if s in sources)
+            recipe["hold_clips"][gesture] = [fallback, 0]
+            print(f"fallback_hold {gesture} source={source} -> {fallback} frame=0")
+
+
 def hull_glb(recipe, work):
     ex, stem = recipe["extraction"], recipe["mc2"]["stem"]
+    select_base_clips(recipe, {a["name"] for a in json.loads((work / "hull.gltf").read_text())["animations"]})
     base = work / "base.glb"
     build_glb.build(work / "hull.gltf", None, base, f"{stem}_alb.png", attachments=weapon_attachments(recipe, work), recipe=recipe)
     cockpit = ex["cockpit"]

@@ -62,7 +62,8 @@ def test_urbanmech_includes_both_separate_arm_meshes():
 @pytest.mark.parametrize("family", ["shadowcat", "maddog"])
 def test_clan_cockpit_glass_is_built(family):
     recipe = json.loads((TOOLS / f"recipes/{family}.json").read_text())
-    assert recipe["extraction"]["cockpit"]["glass"].endswith("_CockpitGlass_STM")
+    assert "glass" not in recipe["extraction"]["cockpit"]  # first-person canopy has a different origin
+    assert recipe["extraction"]["cockpit"]["hull"].endswith("_TP_Cockpit_DM0_STM")
     assert not recipe["cockpit"]["drop_glass"]
 
 
@@ -73,3 +74,15 @@ def test_free_tile_stays_inside_atlas_and_avoids_coverage(tmp_path, monkeypatch)
     x, y, size = make_mech.free_tile("unused.glb", extra_uvs=[(uv, tris)])
     assert 0 <= x and 0 <= y and x + size <= 2048 and y + size <= 2048
     assert (x + size / 2) / 2048 + (y + size / 2) / 2048 > 1.0, "tile centre lies in the uncovered half"
+
+
+def test_additive_hold_uses_existing_base_pose(capsys):
+    r = json.loads((TOOLS / "recipes/atlas.json").read_text())
+    available = {r["clip_pattern"].format(source=s) for s in r["extraction"]["clips"] if s != "Crouch"}
+    make_mech.select_base_clips(r, available)
+    assert r["hold_clips"]["atlas_moveJumpUpStart"] == ["Stand", 0]
+    assert r["hold_clips"]["atlas_moveJumpDownLand"] == ["Stand", 0]
+    assert r["hold_clips"]["atlas_deathIdle"] == ["Falling", -1]
+    assert "Crouch" not in str(make_mech.native_request(r)["clips"])
+    assert "source=Crouch -> Stand" in capsys.readouterr().out
+    assert r["hold_clips"]["atlas_moveJumpUpIdle"] == ["Stand", 0]
