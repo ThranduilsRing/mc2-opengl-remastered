@@ -65,6 +65,11 @@ def import_part(path, parent, prefix, moving):
         targets = set(owners.values())
         for target in sorted(targets, key=str):
             mesh = ob.data.copy()
+            if path.stem in ('SKM_ClanElemental', 'Riverjack_SKM'):
+                # Native exports have inward triangle winding but outward authored normals.
+                normals = [v.normal.copy() for v in mesh.vertices]
+                mesh.flip_normals()
+                mesh.normals_split_custom_set_from_vertices(normals)
             bm = bmesh.new()
             bm.from_mesh(mesh)
             bm.verts.ensure_lookup_table()
@@ -169,6 +174,36 @@ def render(out, meshes):
     return [list(lo), list(hi)]
 
 
+def carrier_albedo(params, colors, out):
+    # This hull has no CLR image: its authored paint and wear masks are the colour source.
+    def pixels(path):
+        image = bpy.data.images.load(path, check_existing=False)
+        image.colorspace_settings.name = 'Non-Color'
+        rgba = np.empty(len(image.pixels), dtype=np.float32)
+        image.pixels.foreach_get(rgba)
+        return image.size[:], rgba.reshape(-1, 4)
+    size, mask = pixels(params['RGBPaintMask'])
+    wear_size, wear = pixels(params['(R)Scratch(R)(G)Dirt(G)(B)Grime(B)'])
+    if size != wear_size:
+        # The carrier uses Flat_Red_MSK to select primary paint everywhere.
+        mask = np.broadcast_to(mask[0], wear.shape)
+    colour = np.broadcast_to(colors['MetalColorMultiplier'][:3], (len(wear), 3)).copy()
+    exposed = np.clip((wear[:, :1] - (1 - 1 / .695238)) * 4, 0, 1)
+    for channel, zone in enumerate(('PaintColorPrimary', 'PaintColorSecondary', 'PaintColorTertiary')):
+        weight = mask[:, channel:channel+1] * (1 - exposed)
+        colour = colour * (1 - weight) + np.array(colors[zone][:3]) * weight
+    for weight, tint in ((wear[:, 1:2], colors['DirtColor']),
+                         (np.clip(wear[:, 2:3] * 2.5, 0, 1), colors['GrimeColor'])):
+        colour = colour * (1 - weight) + np.array(tint[:3]) * weight
+    rgba = np.column_stack((np.clip(colour, 0, 1), np.ones(len(wear))))
+    image = bpy.data.images.new('MissileCarrier_baked_albedo', *wear_size)
+    image.pixels.foreach_set(rgba.astype(np.float32).ravel())
+    image.filepath_raw = str(out / 'MissileCarrier_baked_albedo.png')
+    image.file_format = 'PNG'
+    image.save()
+    return image.filepath_raw
+
+
 def main(recipe, output):
     recipe = json.loads(Path(recipe).read_text())
     output = Path(output)
@@ -206,8 +241,23 @@ def main(recipe, output):
                 sources.append(str(path))
         for mat in list(bpy.data.materials):
             name = re.sub(r'\.\d{3}$', '', mat.name)
+            if vehicle['id'] == 'fancy_warrior':
+                # Source SkeletalMaterials names survive even where Material is null.
+                name = {'dummy_material_0': 'Warrior_Solid_MTI',
+                        'dummy_material_2': 'WarriorGlass_Opaque_Black_MTI'}.get(name, name)
+            # Native conversions already contain decoded albedo/ORM/OpenGL normals.
+            # Re-decoding their hashed textures loses the maps and their shader inputs.
+            if vehicle['id'] in ('clan_elemental', 'riverjack_armed') and any(
+                    n.type == 'TEX_IMAGE' for n in mat.node_tree.nodes):
+                continue
             params = dec['material_maps'](name, props, pngs)
             params.update({k: str(pngs[v]) for k, v in vehicle.get('material_maps', {}).get(name, {}).items()})
+            colors = dec['material_colors'](name, props)
+            if name == 'MissileCarrier_MTI':
+                params['1_CLR'] = carrier_albedo(params, colors, output)
+            if name == 'Weapons_Generic_MTI':
+                # Color is the HDR Fresnel glow; the solid weapon uses MetalColorMultiplier.
+                colors['Color'] = colors['MetalColorMultiplier']
             # These are unbound master-material placeholders, not vehicle maps.
             # glTF cannot express the decoder's layered paint mix. Exporting
             # its RGB mask as albedo exposes red/green/blue editor channels.
@@ -218,7 +268,7 @@ def main(recipe, output):
             # their blue channel as metallic made painted turrets mirror chrome.
             # Keep the resolved base colour/normal and use a matte finish.
             params = {k: v for k, v in params.items() if 'orm' not in k.lower()}
-            maps = dec['build_material'](mat, params, pngs, dec['material_colors'](name, props))
+            maps = dec['build_material'](mat, params, pngs, colors)
             if maps['normal']:
                 # Reconstruct BC5 Z and flip DirectX Y, as the mech texture cooker
                 # does. A direct texture -> Normal Map link also survives glTF export.
