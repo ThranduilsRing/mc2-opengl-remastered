@@ -11,7 +11,7 @@ The tool also counts the recovery lines: `[VK_PRESENT] present failure treated a
 `[VK_PRESENT] deferred init recovered` (the re-init). It reports both counts but requires neither, because a minimize that
 the swapchain rebuild absorbs is a pass too.
 
-    py -3 tools/window_cycle.py --install E:/mc2-installs/<lane> [--mission mc2_01] [--out G:/mc2-tmp/<lane>/window_cycle]
+    py -3 tools/window_cycle.py --install G:/mc2-installs/<lane> [--mission mc2_01] [--out G:/mc2-tmp/<lane>/window_cycle]
 """
 from __future__ import annotations
 
@@ -78,7 +78,7 @@ def wait_for(pred, timeout_s: float, step_s: float = 0.25) -> bool:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--install", required=True, help="install dir holding mc2.exe (a lane's own E:/mc2-installs/<branch>)")
+    ap.add_argument("--install", required=True, help="install dir holding mc2.exe (a lane's own G:/mc2-installs/<branch>)")  # drive-path: ok PC path in user-facing help
     ap.add_argument("--mission", default="mc2_01")
     ap.add_argument("--duration", type=int, default=40, help="engine --duration seconds")
     ap.add_argument("--settle", type=float, default=12.0, help="seconds after the window appears before the first cycle")

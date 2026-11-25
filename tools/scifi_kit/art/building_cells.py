@@ -14,9 +14,14 @@ import topdown
 SWEEP = 'E:/mc2-ref/scifi-kit/art/intent-pass/footprint-sweep.json'
 
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
+from smoke_lib.paths import SCIFI_OUTPUT_ROOT
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--out', default='E:/mc2-ref/scifi-kit/art/intent-pass/building-cells.json')
+    ap.add_argument('--out', default=(SCIFI_OUTPUT_ROOT + '/art/intent-pass/building-cells.json'))
     a = ap.parse_args()
     rows = json.load(open(SWEEP))
     out = {}

@@ -79,11 +79,11 @@ def test_candidate_fingerprint_no_stock_install_skips(tmp_path, monkeypatch):
 
 def test_missing_default_install_warns_loudly(tmp_path, monkeypatch, capsys):
     isdir = lm.os.path.isdir
-    monkeypatch.setattr(lm.os.path, 'isdir', lambda path: False if path == 'E:/mc2-installs/merge-gate' else isdir(path))
+    monkeypatch.setattr(lm.os.path, 'isdir', lambda path: False if path == 'G:/mc2-installs/merge-gate' else isdir(path))
     verdict, reason = lm.data_fingerprint_check(str(tmp_path))
     assert verdict == 'SKIPPED' and 'no stock reference install' in reason
     out = capsys.readouterr().out
-    assert 'WARN: default pre-gate install missing: E:/mc2-installs/merge-gate' in out
+    assert 'WARN: default pre-gate install missing: G:/mc2-installs/merge-gate' in out
     assert 'data fingerprint unchecked' in out and '--install' in out
 
 

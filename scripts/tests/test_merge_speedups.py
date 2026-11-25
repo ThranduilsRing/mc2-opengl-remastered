@@ -374,6 +374,10 @@ def test_gate_reports_all_failed_stages(monkeypatch, capsys, tmp_path):
 @pytest.mark.parametrize("failed", ["contracts", "harnesses"])
 def test_gate_offline_failure_still_fails_overlapped_gate(monkeypatch, failed):
     import merge_gate as gate
+    from contextlib import nullcontext
+    from smoke_lib import host_lease
+    monkeypatch.setattr(gate, "game_batch", lambda: nullcontext({}))
+    monkeypatch.setattr(host_lease, "gate_capture_lease", lambda *a: nullcontext())
     monkeypatch.setattr(gate, "check_capture_commit", lambda *a: None)
     calls = []
     def runner(command, **kw):
@@ -1387,7 +1391,7 @@ def test_failed_deploy_holds_every_exe_row_as_not_run(monkeypatch):
     names = ["contracts", "deploy", "tier1", "player-path", "determinism-mc2_24", "saveload-mc2_01"]
     steps = [(n, [n], {}) for n in names]
     assert gate.execute_parallel(steps, "head", keep_going=True) == 1
-    assert calls == ["contracts", "deploy"]
+    assert sorted(calls) == ["contracts", "deploy"]  # independent rows may start in either order
     for n in names[2:]:
         status = gate.ROW_RESULTS[n]["status"]
         assert "NOT_RUN(deploy failed)" in status and not gate.stage_passed(status), (n, status)
@@ -1397,8 +1401,8 @@ def test_gate_children_get_a_private_lane_scratch(monkeypatch):
     import merge_gate as gate
     monkeypatch.delenv("MC2_LANE_SCRATCH", raising=False)
     assert gate.gate_env("tier1")["MC2_LANE_SCRATCH"].replace("\\", "/").endswith("build64-ninja/gate-scratch")
-    monkeypatch.setenv("MC2_LANE_SCRATCH", "E:/mc2-tmp/slot06")
-    assert gate.gate_env("tier1")["MC2_LANE_SCRATCH"] == "E:/mc2-tmp/slot06"
+    monkeypatch.setenv("MC2_LANE_SCRATCH", "G:/mc2-tmp/slot06")
+    assert gate.gate_env("tier1")["MC2_LANE_SCRATCH"] == "G:/mc2-tmp/slot06"
 
 
 def test_serial_batch_path_holds_exe_rows_after_failed_deploy(monkeypatch):

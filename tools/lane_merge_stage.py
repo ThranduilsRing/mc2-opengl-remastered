@@ -127,7 +127,10 @@ def stage(root: str, window: str, tips: list[str]) -> dict:
     return state
 
 
-NIGHTLY_PROOFS = "E:/mc2-archive-2026-10/proofs/merge-gate"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+from smoke_lib.paths import PROOF_ROOT
+
+NIGHTLY_PROOFS = (PROOF_ROOT + '/merge-gate')
 
 
 def nightly_unmet(verdict: dict) -> list[str]:

@@ -31,8 +31,9 @@ import console_child
 import gate_reuse
 
 ROOT = Path(__file__).resolve().parents[1]
-#: Drive holding installs/proofs/mod sources. E: on the PC; tools/laptop_gate.py points it at a folder on the farm laptop, whose E: is a card reader.
-EROOT = os.environ.get("MC2_GATE_EROOT", "E:").rstrip("/\\")
+#: Drive holding installs and proofs. The laptop gate overrides this with a local folder.
+from smoke_lib.paths import ASSET_STORE_ROOT, WRITE_DRIVE
+EROOT = os.environ.get("MC2_GATE_EROOT", WRITE_DRIVE).rstrip("/\\")
 #: The one determinism row that keeps a window and a GPU (a guard for the windowed path); the others run headless.
 WINDOWED_DETERMINISM = "mc2_10"
 HEADLESS_SAVELOAD = ("mc2_16", "mc2_24")
@@ -384,7 +385,7 @@ def preflight(head, install, window, steps, seed=Path(EROOT + "/mc2-installs/_le
               f'py -3 scripts/make-isolated-deploy.py --from "{Path(seed).as_posix()}" --to "{install.as_posix()}"', flush=True)
         return 1
     try:
-        intentional_payload(ROOT, install, os.environ.get('MC2_ASSET_STORE', 'E:/mc2-asset-store'), dry_run=True)
+        intentional_payload(ROOT, install, os.environ.get('MC2_ASSET_STORE', ASSET_STORE_ROOT), dry_run=True)
     except (OSError, ValueError, SystemExit) as exc:
         errors.append(f'intentional assets unresolved: {exc}; fix: restore the declared sha256 bytes in the checkout, '
                       'MC2_ASSET_STORE, or selected install')
@@ -725,7 +726,7 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
         raise ValueError("--capture-before-runs must be positive")
     py = sys.executable
     install = "A:/Games/mc2-opengl/mc2-win64-v0.4"
-    proof = Path(proof_dir or EROOT + "/mc2-archive-2026-10/proofs/merge-gate")
+    proof = Path(proof_dir or EROOT + "/mc2-proofs/merge-gate")
     capture = [py, "tools/visual_verify/capture.py", "--install", install,
                "--bookmarks", "mc2_01_saved_205644,mc2_10_saved_204523", "--clean"]
     steps = [
@@ -1273,7 +1274,7 @@ CANDIDATE_MARK = "build64-ninja/kept-candidate.json"
 CANDIDATE_MODS = ("MechCommanderOmnitech", "mco-compat")
 # Persistent source that lane cleanup never touches (E:/mc2-ref is reference storage, not a lane folder). Must hold one folder per name
 # in CANDIDATE_MODS, each with data/. Missing source fails the keep step loudly (CANDIDATE_ERROR); the gate verdict is unaffected.
-CANDIDATE_MODS_SOURCE = Path(os.environ.get("MC2_GATE_MODS_SOURCE", EROOT + "/mc2-ref/campaign-mods"))
+CANDIDATE_MODS_SOURCE = Path(os.environ.get("MC2_GATE_MODS_SOURCE", os.environ.get("MC2_GATE_EROOT", "E:").rstrip("/\\") + "/mc2-ref/campaign-mods"))
 CANDIDATE_SEED = Path(EROOT + "/mc2-installs/_lean-seed")
 CANDIDATE_ERRORS = []
 
@@ -2218,10 +2219,10 @@ def build_parser():
     ap.add_argument("--clean-output", action="store_true", help="with --preflight --resume, remove only failed determinism output; preserve receipts and passing evidence")
     ap.add_argument("--farm-determinism", action=argparse.BooleanOptionalAction, default=False, help="offer determinism to the farm (default OFF; --no-farm-determinism keeps it local); an unreachable farm or a job no live worker claims within the probe window runs on this PC, and each row logs its host")
     ap.add_argument("--publish", action="store_true", help="after viewing the montage: deploy the verified build to v0.4 (needs a complete green gate for HEAD)")
-    ap.add_argument("--keep-candidate", action="store_true", help="leave the deployed candidate (with MechCommanderOmnitech + mco-compat mods) at E:/mc2-installs/merge-gate-candidate for campaign walks; --publish or --drop-candidate removes it")
+    ap.add_argument("--keep-candidate", action="store_true", help="leave the deployed candidate (with MechCommanderOmnitech + mco-compat mods) at G:/mc2-installs/merge-gate-candidate for campaign walks; --publish or --drop-candidate removes it")  # drive-path: ok PC path in user-facing help
     ap.add_argument("--drop-candidate", action="store_true", help="remove the kept candidate install and exit")
     ap.add_argument("--declared-view", action="append", default=[], help="NAME[=maxMAD]: bookmark whose pixels are expected to change; flagged only above maxMAD (default 0.5) and still needs a numeric row")
-    ap.add_argument("--install", type=Path, help="explicit lane-owned E:/mc2-installs target for a real rehearsal")
+    ap.add_argument("--install", type=Path, help="explicit lane-owned G:/mc2-installs target for a real rehearsal")  # drive-path: ok PC path in user-facing help
     ap.add_argument("--dry-run", action="store_true", help="print commands only; no builds, deploys, or game launches")
     ap.add_argument("--capture-before-runs", type=int, default=1,
                     help="pre-deploy capture sweeps; extra runs are compared with the first to measure noise")
@@ -2302,7 +2303,7 @@ def main(argv=None):
     resumed_proof = None
     if args.resume and state_path.exists():
         resumed_proof = Path(json.loads(state_path.read_text(encoding="utf-8"))["artefact_dir"])
-    proof = args.proofs_dir or resumed_proof or Path(EROOT + "/mc2-archive-2026-10/proofs/merge-gate") / time.strftime("%Y%m%d-%H%M%S")
+    proof = args.proofs_dir or resumed_proof or Path(EROOT + "/mc2-proofs/merge-gate") / time.strftime("%Y%m%d-%H%M%S")
     own_marks = not args.install and not args.isolated_verdict
     if not args.dry_run and own_marks:
         (ROOT / GREEN_MARK).unlink(missing_ok=True)  # cleared at start too, so a crashed run cannot publish an older green
@@ -2385,7 +2386,7 @@ def main(argv=None):
         install = args.install.resolve()
         allowed = Path(EROOT + "/mc2-installs").resolve()
         if install.parent != allowed or install.name.lower() in ("v0.4", "mc2-win64-v0.4", "lane2", "lane3"):
-            ap.error("--install must be a dedicated lane directory directly under E:/mc2-installs")
+            ap.error("--install must be a dedicated lane directory directly under G:/mc2-installs")  # drive-path: ok PC path in user-facing help
         steps = install_plan(steps, install)
     for name, command, env in steps:
         # Rows with no output folder of their own write smoke artefacts here, so --resume has evidence to hash.

@@ -7,11 +7,15 @@ from pathlib import Path
 import intent
 
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
+from smoke_lib.paths import SCIFI_OUTPUT_ROOT
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('command', choices=['check', 'bake'])
     ap.add_argument('asset', choices=sorted(intent.ASSETS))
-    ap.add_argument('--output-root', type=Path, default=Path('E:/mc2-ref/scifi-kit/art/intent-tools'))
+    ap.add_argument('--output-root', type=Path, default=Path((SCIFI_OUTPUT_ROOT + '/art/intent-tools')))
     a = ap.parse_args()
     if a.command == 'check':
         result = intent.check(a.asset)

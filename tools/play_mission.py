@@ -8,7 +8,10 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_INSTALL = "E:/mc2-installs/claude-player-brain-l1"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+from smoke_lib.paths import INSTALL_ROOT
+
+DEFAULT_INSTALL = (INSTALL_ROOT + '/claude-player-brain-l1')
 
 
 def parse_report(text):

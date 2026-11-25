@@ -3,7 +3,7 @@
     py -3 scripts/nightly_gate.py [--dry-run] [--weekly]
 
 The PC invokes tools/laptop_gate.py nightly (Sundays: --weekly) and only provisions/pulls.
-Results: E:/mc2-archive-2026-10/proofs/merge-gate/nightly-<date>/gate-verdict.json.
+Results: G:/mc2-proofs/merge-gate/nightly-<date>/gate-verdict.json.
 Planning/receipt helpers remain available to the laptop and existing receipt readers.
 """
 import argparse
@@ -19,7 +19,9 @@ ROOT = NIGHTLY_ROOT   # where merge_gate.py / gate_wait.py / the build run
 sys.path.insert(0, HERE)
 import console_child  # noqa: E402  (BELOW_NORMAL + CREATE_NO_WINDOW for every child)
 
-PROOF_ROOT = "E:/mc2-archive-2026-10/proofs/merge-gate"
+from smoke_lib.paths import PROOF_ROOT
+
+PROOF_ROOT = (PROOF_ROOT + '/merge-gate')
 NIFTY = "claude/nifty-mendeleev"
 TMP_DIR = "G:/mc2-tmp"
 LEASE_WAIT_S = 60 * 60

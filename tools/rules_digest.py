@@ -44,7 +44,7 @@ _LAPTOP = ("6", "Laptop (GTX 1050 Ti)")
 _STARTUP = ("6", "At the first startup timeout")
 _C7 = [("7", p) for p in ("| C++, not sim", "| Sim-visible", "| Shader", "| Pixels change", "| Windows-only", "| Shared header")]
 _ROWS7 = _C7 + [("7", p) for p in ("| Docs |", "| Tooling", "| Data / art |", "| Change |", "|---|")]
-_SEC5 = [("5", p) for p in ("Worktree:", "Install:", "One install per lane", "Proofs:")]
+_SEC5 = [("5", p) for p in ("Worktree:", "Install (", "One install per lane", "Drives (")]
 _SEC6 = [_PC, _AB, _LAPTOP, _STARTUP]
 _REPORT = ("9", "At most 12 summary lines")
 # Detailed procedure stays available through the generated section pointers.

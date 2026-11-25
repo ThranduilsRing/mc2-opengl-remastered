@@ -15,7 +15,7 @@ import sys
 
 NINJA = "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe"
 
-# A path that looks like a checkout of this project: A:/Games/mc2-main, A:/Games/mc2-slotNN, G:/mc2-wt/<x>, E:/mc2-installs/...
+# A path that looks like a checkout of this project: A:/Games/mc2-main, A:/Games/mc2-slotNN, G:/mc2-wt/<x>, G:/mc2-installs/...
 # System/SDK/vcpkg paths (C:/Program Files, vcpkg trees, ...) never match.
 _PROJECT = re.compile(r"^[a-z]:/(?:games/)?mc2[-_]", re.I)
 

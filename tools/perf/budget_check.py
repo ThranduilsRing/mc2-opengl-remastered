@@ -10,7 +10,10 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 BUDGET = ROOT / "docs/perf-budget.json"
-OUT = Path("E:/mc2-archive-2026-10/proofs/perf-report")
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+from smoke_lib.paths import PROOF_ROOT
+
+OUT = Path((PROOF_ROOT + '/perf-report'))
 MISSIONS = {"mc2_01", "mc2_03", "mc2_10", "mc2_24", "battle"}
 METRICS = {"cpu_frame_ms", "draw_screen_ms", "gpu_frame_ms", "mover_tick_ms"}
 CAMERA_MISSIONS = {"mc2_01", "mc2_10", "mc2_24"}

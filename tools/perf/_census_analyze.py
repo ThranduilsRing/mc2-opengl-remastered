@@ -3,7 +3,10 @@ from pathlib import Path
 sys.path.insert(0, "A:/Games/mc2-lane10/tools/perf")
 import main_busy as mb
 
-OUT = Path("E:/mc2-archive-2026-10/proofs/census2")
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+from smoke_lib.paths import PROOF_ROOT
+
+OUT = Path((PROOF_ROOT + '/census2'))
 
 
 def rows_of(d):

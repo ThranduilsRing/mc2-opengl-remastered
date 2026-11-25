@@ -25,7 +25,10 @@ from tools.mc2x_import.fst import decompress_entry  # noqa: E402
 
 CATALOG = Path('E:/mc2-archive-2026-10/asset-modernize/docs/assets/catalog.json')
 INSTALL = Path('A:/Games/mc2-opengl/mc2-win64-v0.4')
-OUT = Path('E:/mc2-ref/scifi-kit/mapping')
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
+from smoke_lib.paths import SCIFI_OUTPUT_ROOT
+
+OUT = Path((SCIFI_OUTPUT_ROOT + '/mapping'))
 REF = Path('G:/mc2-assets/ref/buildings')
 STYLE = Path('G:/mc2-assets/ref/style/MW5 and MWO')
 THUMBS = CATALOG.parent / 'sheets/thumbs'

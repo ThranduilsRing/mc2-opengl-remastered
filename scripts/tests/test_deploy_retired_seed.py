@@ -56,7 +56,7 @@ def test_retired_seed_hashes_match_real_blobs():
     import hashlib
     import subprocess
     repo = Path(__file__).resolve().parents[2]
-    seed = Path("E:/mc2-installs/_lean-seed")
+    seed = Path("G:/mc2-installs/_lean-seed")
     checked = 0
     for rel, digest in dp.RETIRED_SEED_PAYLOAD.items():
         known = set()

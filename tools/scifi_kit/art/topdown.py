@@ -3,7 +3,7 @@
 outline drawn over the remake.
 
   py -3 tools/scifi_kit/art/topdown.py s_spotlightcontrol,l_spotlightcontrol [--out DIR]
-Writes <out>/<name>_topdown.png (default: E:/mc2-ref/scifi-kit/art/intent-pass/<name>/) and prints the footprint
+Writes <out>/<name>_topdown.png (default: G:/mc2-proofs/scifi-kit/art/intent-pass/<name>/) and prints the footprint
 overlap (IoU of the covered plan cells above 0.5 m).
 """
 import argparse
@@ -14,7 +14,11 @@ from PIL import Image, ImageDraw
 
 import analyze
 
-OUT = Path('E:/mc2-ref/scifi-kit/art/intent-pass')
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
+from smoke_lib.paths import SCIFI_OUTPUT_ROOT
+
+OUT = Path((SCIFI_OUTPUT_ROOT + '/art/intent-pass'))
 PX = 8.0          # pixels per metre
 
 

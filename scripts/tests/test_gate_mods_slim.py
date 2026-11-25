@@ -49,7 +49,7 @@ def test_slim_command_is_short_with_cold_grace_and_exe_reference():
     exe = cmd[cmd.index("--exe") + 1]
     assert cmd[cmd.index("--ref-exe") + 1] == exe
     assert int(cmd[cmd.index("--duration") + 1]) <= 10 and "--no-front-end" in cmd and int(cmd[cmd.index("--grace-s") + 1]) >= 300
-    staged = dict((n, c) for n, c, _ in gate.install_plan([("mods-slim", cmd, {})], Path("E:/mc2-installs/x")))["mods-slim"]
+    staged = dict((n, c) for n, c, _ in gate.install_plan([("mods-slim", cmd, {})], Path("G:/mc2-installs/x")))["mods-slim"]
     assert "--stage-root" in staged and staged.count("--duration") == 1
 
 

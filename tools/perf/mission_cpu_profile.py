@@ -28,7 +28,9 @@ import run_battle_bench as battle
 from smoke_lib import child_registry, host_lease, nofocus, runner
 
 DEFAULT_MISSIONS = ["mc2_01", "mc2_03", "mc2_10", "mc2_24", "battle"]
-OUT = Path("E:/mc2-archive-2026-10/proofs/cpu-profile")
+from smoke_lib.paths import PROOF_ROOT
+
+OUT = Path((PROOF_ROOT + '/cpu-profile'))
 # Sibling scopes in gameosmain.cpp / gameosmain_frame.cpp. GameLogic includes
 # 0..N fixed simulation ticks and dispatch/wait when sim overlap is enabled.
 SPLIT = {"sim tick/logic": "GameLogic", "render": "DrawScreen", "present": "SwapWindow"}

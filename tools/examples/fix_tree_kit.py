@@ -11,9 +11,12 @@ from tools.content_pipeline import gltf_io, ir, package, texcook
 from tools.content_pipeline.frontends import gltf_file
 from tools.neural_mat.export_nmat import _dds_bc7
 ROOT = Path(__file__).resolve().parents[2]
-WORK = Path('E:/mc2-tmp/slot02/trees-play-1')  # drive-path: ok assigned PC prototype scratch
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+from smoke_lib.paths import INSTALL_ROOT, SCRATCH_ROOT
+
+WORK = Path((SCRATCH_ROOT + '/slot02/trees-play-1'))  # drive-path: ok assigned PC prototype scratch
 OUT = WORK / 'package-tga'
-INSTALL = Path('E:/mc2-installs/trees-play-1')  # drive-path: ok assigned isolated PC prototype install
+INSTALL = Path((INSTALL_ROOT + '/trees-play-1'))  # drive-path: ok assigned isolated PC prototype install
 SOURCE = Path('C:/Users/Joe/Downloads/GameAsset')
 PACK = SOURCE / 'Trees/treepack1'
 _, w, h, levels = texcook.read_ktx2((INSTALL / 'data/tgl/128/a_treeclump1.ktx2').read_bytes())
