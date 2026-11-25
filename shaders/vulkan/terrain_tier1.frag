@@ -580,13 +580,15 @@ void main() {
             // Coastal look (owner refs 1/4/6): a pale sand beach above the swash that continues under the shallows, where
             // the Beer-Lambert below turns it jade; gentle slopes only, so cliffs and quays keep their own colour.
             // Close up (ref 6) a dark wet strip follows the swash, and a lacy white swash sheet runs up the sand.
-            float beachFw = length(fwidth(v_worldPos.xy));
+            // Night (scene light below 1, day exactly 1): a gentle cool-grey sand strip, no wet strip, a dim swash.
+            float beachFw = length(fwidth(v_worldPos.xy)), beachNight = clamp((1.0 - uEnv.sceneLight.x) * 2.5, 0.0, 1.0);
             if (uT.shorelineOn == 2 && horizDist < 110.0 && aboveWater > -40.0) {
                 float lumR = clamp(dot(lit, vec3(0.299, 0.587, 0.114)) / max(dot(baseColor, vec3(0.299, 0.587, 0.114)), 0.04), 0.0, 2.5);
                 float mask = smoothstep(0.93, 0.975, nzc) * (cementHit ? 0.0 : 1.0) * (1.0 - F3pc) * (1.0 - materialSnow);
                 float beach = (1.0 - smoothstep(35.0, 80.0, horizDist + fbm(v_worldPos.xy * 0.011, 2) * 30.0))
                             * (1.0 - smoothstep(4.0, 40.0, -aboveWater)) * mask;
-                lit = mix(lit, vec3(0.97, 0.92, 0.79) * lumR, beach * 0.8);
+                lit = mix(lit, mix(vec3(0.97, 0.92, 0.79), vec3(0.74, 0.77, 0.80), beachNight) * lumR, beach * mix(0.8, 0.4, beachNight));
+                mask *= 1.0 - beachNight;
                 float above = smoothstep(0.0, 0.3, aboveWater) * mask, near = 1.0 - smoothstep(1.5, 5.0, beachFw);
                 float run = mix(8.0, 24.0, near) + 7.0 * sin(uT.shorelineTime * 1.05 + dot(v_worldPos.xy, vec2(0.003, 0.002)) - 0.9);
                 float lace = fbm(v_worldPos.xy * 0.15 + uT.shorelineTime * vec2(0.12, 0.05), 2);
@@ -664,9 +666,12 @@ void main() {
                                    * sin(cp.y * 6.0 + cos(cp.x * 4.0 - uT.shorelineTime) * 1.2)), 9.0)
                       * (1.0 - smoothstep(0.6, 2.0, causticFw));
         float reef = smoothstep(0.1, 0.4, fbm(v_worldPos.xy / 380.0 + 7.3, 3)) * smoothstep(3.0, 9.0, wd) * (1.0 - smoothstep(45.0, 90.0, wd));
+        // Night: little light reaches the seabed and back; no caustics, a dim, mostly desaturated cool teal-green.
+        float seaNight = clamp((1.0 - uEnv.sceneLight.x) * 2.5, 0.0, 1.0);
         lit *= mix(vec3(1.0), vec3(0.42, 0.52, 0.46), reef * 0.75)   // darker reef/weed patches inside the shallows (owner refs)
-             * (1.0 + 1.2 * caustic * exp(-0.05 * wd))
+             * (1.0 + 1.2 * (1.0 - seaNight) * caustic * exp(-0.05 * wd))
              * exp(-vec3(0.07, 0.022, 0.024) * wd * (1.0 + 1.0 / max(abs(eyeA.z), 0.25)));
+        lit = mix(lit, dot(lit, vec3(0.299, 0.587, 0.114)) * vec3(0.80, 0.98, 1.0) * 0.6, 0.75 * seaNight);
     }
 
     // Shade the receiver before compositing the authored road shoulder. Keeping

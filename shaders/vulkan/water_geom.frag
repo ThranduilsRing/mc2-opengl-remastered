@@ -651,7 +651,9 @@ void main(void)
     float specAlpha2 = clamp(alpha0 * alpha0
                              + 2.0 * (waveVar + RIPPLE_SLOPE_VAR * (1.0 - waveLOD) * (RIPPLE_GAIN / 0.22))
                              + min(2.0 * kernelVar, 0.18), 0.0, 0.36);
-    if (shorelineLook == 1) specAlpha2 = max(specAlpha2, 0.008);   // coastal: no mirror-sharp blobs on the long trains
+    // Coastal night (f3.z: the mission night dim, 0 by day): moonlight, a soft moon path, a dim desaturated column, faint foam.
+    float coastNight = shorelineLook == 1 ? clamp(F.f3.z / 0.6, 0.0, 1.0) : 0.0;
+    if (shorelineLook == 1) specAlpha2 = max(specAlpha2, mix(0.008, 0.04, coastNight));   // coastal: no mirror-sharp blobs on the long trains
     PREC float trans   = clamp(exp(-tintThick * ABSORPTION_DENSITY), 0.0, 1.0);
     PREC vec3  waterCol = mix(DEEP_COLOR, SHALLOW_COLOR, trans);
     if (shorelineLook > 0) {
@@ -662,7 +664,9 @@ void main(void)
     // column scatters back, jade over the shelf turning navy offshore (owner refs E:/mc2-ref/refs/water).
     if (shorelineLook == 1)
         waterCol = mix(vec3(0.03, 0.26, 0.24), vec3(0.008, 0.075, 0.17), smoothstep(16.0, 90.0, tintThick))
-                 * (1.0 - exp(-vec3(0.07, 0.022, 0.024) * tintThick * (1.0 + 1.0 / max(vdir.z, 0.25))));
+                 * (1.0 - exp(-vec3(0.07, 0.022, 0.024) * tintThick * (1.0 + 1.0 / max(vdir.z, 0.25))))
+                 * (1.0 - 0.4 * coastNight);
+    if (shorelineLook == 1) waterCol = mix(waterCol, dot(waterCol, vec3(0.2126, 0.7152, 0.0722)) * vec3(0.6, 0.9, 1.4), 0.6 * coastNight);
 
     PREC float shoreBlend = max(alphaDepth, 1.0);
     PREC float shore = smoothstep(-shoreBlend * 0.5, shoreBlend, WaterThickness);
@@ -752,7 +756,7 @@ void main(void)
                 foamMix = clamp((edge * (0.5 + 0.8 * vnoise(WorldPos.xy / 160.0))) * holes * coastWeight + reef * sets * mix(holes, 1.0, 0.6) * max(coastWeight, smoothstep(0.03, 0.07, length(shoreGrad)) * step(abs(shoreDepth - shelfBreak), 6.0)), 0.0, 0.94);
             }
         }
-        if (shorelineLook == 1 && rippleCrest > 0.65) {   // tiny scattered whitecaps where the ripple crests pile up
+        if (shorelineLook == 1 && rippleCrest > 0.65 && coastNight < 0.5) {   // tiny scattered whitecaps where the ripple crests pile up
             float cap = textureGrad(u_shoreFoam, fract(q * 3.1), foamDx * 3.1, foamDy * 3.1).r;
             foamMix = max(foamMix, 0.5 * smoothstep(0.65, 0.95, rippleCrest) * smoothstep(0.55, 0.8, cap)
                                  * smoothstep(0.55, 0.75, vnoise(WorldPos.xy / 900.0)) * (1.0 - coastWeight));
@@ -862,12 +866,12 @@ void main(void)
             vec3 f3 = vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);
             col = mix(col, f3 / max(max(f3.r, max(f3.g, f3.b)), 1e-3) * 0.95, 1.0 - exp(-F.debug.w * sg));
         } else
-        col += min(sunRad * (SUN_SPEC_GAIN * glintScale * sunVis * waterGgxSpec(waveN, vdir, Ls, specAlpha2)), vec3(shorelineLook == 1 ? 1.6 : 4.0));
+        col += min(sunRad * (SUN_SPEC_GAIN * glintScale * sunVis * waterGgxSpec(waveN, vdir, Ls, specAlpha2)), vec3(shorelineLook == 1 ? mix(1.6, 0.4, coastNight) : 4.0));
         // The lamp specular and the flat pool term come from one light walk (waterPoolLights), added right after the sun glint.
         if (F.debug.y < 0.5 && uT.numPoolLights > 0 && nightSky < 1.0) {
             vec3 lampSpec;
             vec3 poolTerm = waterPoolLights(WorldPos, waveN, vdir, specAlpha2, lampSpec);
-            col += min(lampSpec * (LAMP_SPEC_GAIN * glintScale), vec3(4.0));
+            col += min(lampSpec * (LAMP_SPEC_GAIN * glintScale), vec3(shorelineLook == 1 ? 0.25 : 4.0));   // coastal: no lamp flecks on the fine ripples
             col += poolTerm;
         }
     }
@@ -881,10 +885,10 @@ void main(void)
     if (shorelineLook == 1) {
         // Coastal look: col is premultiplied radiance (in-scatter + reflection + glints) over the absorbed seabed; only
         // the reflected share hides it. Foam covers both; fog scales the added light by its own coverage.
-        float foamA = clamp(foamMix, 0.0, 1.0) * shore, fogT = 1.0;
+        float foamA = clamp(foamMix, 0.0, 1.0) * shore * (1.0 - 0.65 * coastNight), fogT = 1.0;
         if (F.fog_color.x > 0.0 || F.fog_color.y > 0.0 || F.fog_color.z > 0.0 || F.fog_color.w > 0.0) fogT = FogValue;
         float wa = shore * reflAmount * (1.0 - foamA) + foamA;
-        vec3 premul = (col * shore * (1.0 - foamA) + vec3(0.86, 0.90, 0.88) * foamLight * foamA) * fogT
+        vec3 premul = (col * shore * (1.0 - foamA) + mix(vec3(0.86, 0.90, 0.88), vec3(0.62, 0.66, 0.70), coastNight) * foamLight * foamA) * fogT
                     + F.fog_color.rgb * (1.0 - fogT) * wa;
         if (F.f8.x != 0.0 && F.f8.z > 0.0) {
             float hz = clamp(edgeHazeAmount(WorldPos.xy, F.f8.z) * F.f8.y, 0.0, 1.0);
