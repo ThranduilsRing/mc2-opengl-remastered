@@ -205,7 +205,7 @@ void GVAppearanceType::init (mc2::czstring fileName)
 	if (!importSourceBase[0])
 	if (const auto* ov = ModelOverrideRegistry::instance().resolve("vehicle", fileName))
 	{
-		const std::string manifestPath = ov->manifestDir + "/models.json";
+		const std::string manifestPath = (std::filesystem::path(ov->manifestDir) / "models.json").generic_string();
 		const auto* overrideOwner = LookupModOwner(manifestPath.c_str());
 		if (!userIni || (iniOwner && overrideOwner && strcmp(iniOwner, overrideOwner) == 0))
 		{
