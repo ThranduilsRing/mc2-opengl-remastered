@@ -5,8 +5,6 @@ from pathlib import Path
 from scripts import console_child
 
 SCRIPTS = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(SCRIPTS))
-import console_child  # noqa: E402
 
 CODE = (
     "import sys; sys.path.insert(0, sys.argv[1])\n"
