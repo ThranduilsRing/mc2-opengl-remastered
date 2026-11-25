@@ -15,11 +15,12 @@ TEST_CASE("loading detail: stage, memory and settings lines") {
     i.vramBudget = 2ull << 30;
     i.width = 3840;
     i.height = 2160;
+    i.preset = "High";
     CHECK(format(i) ==
           "Terrain textures 48%\n"
           "RAM   9.8 / 32.0 GB\n"
           "VRAM  1.5 / 2.0 GB\n"
-          "3840x2160  Quality High  Shadows High  Textures Ultra  AA SMAA 1x");
+          "3840x2160  Preset High\nQuality High  Shadows High  Textures Ultra  AA SMAA 1x");
 }
 
 TEST_CASE("loading detail: unknown values read n/a and a level past its table falls back to the first") {
@@ -32,7 +33,7 @@ TEST_CASE("loading detail: unknown values read n/a and a level past its table fa
           "Mission\n"
           "RAM   n/a\n"
           "VRAM  n/a\n"
-          "Quality Potato  Shadows Potato  Textures Low  AA FSR 3.1");
+          "Preset Custom\nQuality Potato  Shadows Potato  Textures Low  AA FSR 3.1");
     i.hasProgress = true;
     i.progress = 250.f;
     CHECK(format(i).substr(0, 13) == "Mission 100%\n");

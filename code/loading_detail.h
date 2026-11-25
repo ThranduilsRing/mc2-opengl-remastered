@@ -9,6 +9,7 @@ namespace mc2::loaddetail {
 
 struct Info {
     std::string_view stage;                      // display label of the load phase; empty = none
+    std::string_view preset = "Custom";
     bool hasProgress = false;                    // the coarse 0..100 load percent is known
     float progress = 0.f;
     std::uint64_t ramUsed = 0, ramTotal = 0;     // system RAM, bytes; a zero total = unavailable
@@ -33,7 +34,7 @@ inline std::string gib(std::int64_t bytes) {
     return text;
 }
 
-// Four lines: stage and percent, RAM, VRAM, resolution and the main graphics options.
+// Five lines: stage, RAM, VRAM, resolution/preset and graphics options.
 inline std::string format(const Info& i) {
     std::string out = i.stage.empty() ? "Mission" : std::string(i.stage);
     if (i.hasProgress) {
@@ -54,7 +55,7 @@ inline std::string format(const Info& i) {
         std::snprintf(resolution, sizeof(resolution), "%dx%d  ", i.width, i.height);
         out += resolution;
     }
-    out += "Quality " + pick(i.quality, kQuality) + "  Shadows " + pick(i.shadows, kShadows) +
+    out += "Preset " + std::string(i.preset) + "\nQuality " + pick(i.quality, kQuality) + "  Shadows " + pick(i.shadows, kShadows) +
            "  Textures " + pick(i.textures, kTextures) + "  AA " + pick(i.antiAliasing, kAntiAliasing);
     return out;
 }
