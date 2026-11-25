@@ -11,6 +11,14 @@ namespace mc2shadow {
 // Mover penumbra cone: half the static bake's 1.5 degree radius, so mech shadows stay crisp further from the feet
 // (owner 2026-11-09) while the penumbra still grows with blocker distance.
 inline constexpr float kMoverSunAngularRadiusDeg = 0.75f;
+// Mover shadow sharpness, 0..3 (visual_tuning.json "moverShadowSharpness"): 0 = the old soft look, 1 sharp, 2 sharper, 3 razor.
+// Linear between the listed steps; sets the penumbra cone half-angle (the shader derives its filter-radius floors from the same value).
+inline float moverSunAngularRadiusDeg(float sharpness) {
+    constexpr float deg[4] = {kMoverSunAngularRadiusDeg, 0.4f, 0.2f, 0.05f};
+    const float s = (std::clamp)(sharpness, 0.0f, 3.0f);
+    const int i = (std::min)(static_cast<int>(s), 2);
+    return deg[i] + (deg[i + 1] - deg[i]) * (s - static_cast<float>(i));
+}
 struct MoverSphere { Vec3 center; float radius; };
 // Coverage grid side. shaders/vulkan/include/mover_shadow.glsl hardcodes 120 / 119 / 120.0 and uvec4 coverage[900] (= side^2 / 16 uvec4);
 // scripts/tests/test_mover_shadow_crisp.py pins those literals to this constant, so change all together.

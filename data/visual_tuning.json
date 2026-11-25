@@ -6,6 +6,7 @@
     "buildingSpillIntensityScale": 1.0,
     "exposure": 1.0,
     "shadowSoftness": 0.9,
+    "moverShadowSharpness": 3.0,
     "staticPropIblStrength": 0.55,
     "waterSkyTintStrength": 0.0,
     "vfxBrightness": 1.0,

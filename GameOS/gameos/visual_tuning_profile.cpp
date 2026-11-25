@@ -58,6 +58,7 @@ std::string s_profilePath = "data/visual_tuning.json";
 bool s_hasFile = false;
 int s_appliedKeys = 0;
 
+float g_moverShadowSharpness = 3.0f;
 constexpr float kSunAbsent = -1000.0f;  // sun* keys: absent = keep the mission's own sun
 
 std::map<std::string, float> engineDefaults() {
@@ -68,7 +69,7 @@ std::map<std::string, float> engineDefaults() {
         {"vignette",0}, {"topWarmthStrength",0},
         {"sunPitch",kSunAbsent}, {"sunYaw",kSunAbsent}, {"sunColorR",kSunAbsent}, {"sunColorG",kSunAbsent}, {"sunColorB",kSunAbsent}, {"sunAmbientScale",kSunAbsent},
         {"unitAmbientScale",1.2f}, {"buildingSpillIntensityScale",1.0f},
-        {"exposure",1}, {"shadowSoftness",2.5f}, {"staticPropIblStrength",0.5f},
+        {"exposure",1}, {"shadowSoftness",2.5f}, {"staticPropIblStrength",0.5f}, {"moverShadowSharpness",3.0f},
         {"waterSkyTintStrength",0}, {"waterGlintWarm",0}, {"waterWaveBreakup",0}, {"waterReflections",static_cast<float>(mc2::options::current().waterReflections)},
         {"vfxBrightness",1}, {"vfxAdditiveBrightness",1},
         {"vfxLitStrength",0.7f}, {"mechSpecularStrength",0.05f},
@@ -97,7 +98,7 @@ bool validValue(std::string_view key, double value) {
     else if (key == "vignette" || key == "topWarmthStrength") hi = 1;
     else if (key.starts_with("grade") || key.starts_with("topWarmth")) hi = 2;
     else if (key == "unitAmbientScale" || key == "buildingSpillIntensityScale") hi = 2;
-    else if (key == "staticPropIblStrength") hi = 3;
+    else if (key == "staticPropIblStrength" || key == "moverShadowSharpness") hi = 3;
     else if (key == "mechSpecularStrength") hi = 4;
     else if (key == "vfxBrightness" || key == "vfxAdditiveBrightness") hi = 8;
     else if (key == "vfxLitStrength" || key == "cloudStrength" || key == "cloudCoverage" || key == "cloudSoftness" || key == "cloudWaterScale") hi = 1;
@@ -305,6 +306,9 @@ static void applyKey(mc2::czstring key, float val, int& count) {
         // every mission load and replaces the batcher's pre-mission fallback.
         g_iblShStrength = val < 0.0f ? 0.0f : (val > 3.0f ? 3.0f : val);
         count++;
+    } else if (strcmp(key, "moverShadowSharpness") == 0) {
+        g_moverShadowSharpness = val < 0.0f ? 0.0f : (val > 3.0f ? 3.0f : val);
+        count++;
     } else if (strcmp(key, "waterReflections") == 0) {
         if (val >= 0 && val <= 2 && std::floor(val) == val) {
             gos_SetWaterReflectionQuality(static_cast<int>(val));
@@ -447,6 +451,8 @@ std::optional<float> visualTuning_sunValue(std::string_view key) {
     const float v = tuning.contains(k) ? tuning.at(k) : kSunAbsent;
     return v > kSunAbsent ? std::optional<float>(v) : std::nullopt;
 }
+
+float visualTuning_moverShadowSharpness() { return g_moverShadowSharpness; }
 
 const std::string& visualTuning_timeOfDay() { return s_environment.timeOfDay; }
 
