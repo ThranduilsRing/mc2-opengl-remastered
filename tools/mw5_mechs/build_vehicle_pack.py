@@ -87,7 +87,7 @@ def build(recipe, assemblies, stock, out):
         names = {m['name']: m for m in cooked.get('materials', [])}
         doc, buffers, _ = load_document(assemblies/v['id']/'assembled.glb')
         for mat in doc.get('materials', []):
-            c = names.get(mat['name'], {})
+            c = names.get(mat['name']) or names.get(re.sub(r'\.\d{3}$', '', mat['name']), {})
             info = c.get('pbrMetallicRoughness', {}).get('baseColorTexture')
             if info is None:
                 continue
