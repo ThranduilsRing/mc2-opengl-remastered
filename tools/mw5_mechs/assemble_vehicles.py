@@ -50,7 +50,7 @@ def import_part(path, parent, prefix, moving):
     sockets = {n['name']: basis @ world(i) @ basis.inverted()
                for i, n in enumerate(nodes) if 'mesh' not in n}
     helpers = {b.custom_shape for o in added if o.type == 'ARMATURE' for b in o.pose.bones if b.custom_shape}
-    helper_name = re.compile(r'(^|[_. ])(icosphere|socket|helper|collision|ucx|ubx|usp|dummy)([_. ]|$)', re.I)
+    helper_name = re.compile(r'(^|[_. ])(icosphere|socket|helper|collision|ucx|ubx|usp)([_. ]|$)', re.I)
     meshes = [o for o in added if o.type == 'MESH' and o not in helpers
               and not helper_name.search(o.name)]
     result = []
