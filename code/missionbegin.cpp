@@ -1304,7 +1304,7 @@ void MissionBegin::updateSoakAutoPurchase() {
 								break;
 							}
 
-							if ( !ld->addMechToForceGroup( mech, slot ) )
+							if ( !ld->canAddMechToForceGroup( mech ) || !ld->addMechToForceGroup( mech, slot ) )
 							{
 								mc2::log::event<"SOAK", -1>(mc2::log::Stream::Out,"lance-add slot={:d} REJECTED addMechToForceGroup mech={}",
 								    mc2::fmt::as_i32(slot), variant->getName().c_str());
