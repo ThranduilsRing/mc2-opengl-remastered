@@ -6,14 +6,14 @@
   "specializationParams": [],
   "artifact": "mech.frag.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "1abe44567623f7b1af3a1d7bac62323552f271f9248914b221b210604e1bb083",
-  "spirv_sha256": "fba78c1742c2a30784f96d58f9429a379718609beefa2a1709c473ba308f0abb",
+  "source_sha256": "c38a34a05417ef02c7ffa166ec62813d3285505ab0f3875bebd780bf338025ec",
+  "spirv_sha256": "55d9adccfa538adb9334b29f3f589afc0a068ea8dbbb1f5a2ea7f979b0ca1b6c",
   "bindings": {
     "ubos": [
       {
         "type": "_782",
         "name": "TerrainFrameUBO",
-        "block_size": 900,
+        "block_size": 912,
         "set": 1,
         "binding": 0
       },
@@ -859,6 +859,21 @@
           "name": "normalCementStrength",
           "type": "float",
           "offset": 896
+        },
+        {
+          "name": "groundAoShape",
+          "type": "float",
+          "offset": 900
+        },
+        {
+          "name": "groundAoMaterial",
+          "type": "float",
+          "offset": 904
+        },
+        {
+          "name": "groundAoSource",
+          "type": "float",
+          "offset": 908
         }
       ]
     },

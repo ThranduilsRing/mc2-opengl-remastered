@@ -8380,6 +8380,15 @@
    "count": 1
   },
   {
+   "tag": "RAVINE_WEATHER",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "blocked"
+   ],
+   "count": 1
+  },
+  {
    "tag": "RDOC",
    "ver": 1,
    "stream": "stderr",

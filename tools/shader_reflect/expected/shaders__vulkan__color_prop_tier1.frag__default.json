@@ -40,7 +40,7 @@
           "matrix_stride": null,
           "name": "poolLights",
           "offset": 0,
-          "type": "_1288"
+          "type": "_1290"
         }
       ],
       "name": "TerrainLightPoolVK"
@@ -53,7 +53,7 @@
           "matrix_stride": null,
           "name": "materials",
           "offset": 0,
-          "type": "_1973"
+          "type": "_1975"
         }
       ],
       "name": "PropMaterials"
@@ -1102,6 +1102,27 @@
           "matrix_stride": null,
           "name": "normalCementStrength",
           "offset": 896,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "groundAoShape",
+          "offset": 900,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "groundAoMaterial",
+          "offset": 904,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "groundAoSource",
+          "offset": 908,
           "type": "float"
         }
       ],

@@ -743,6 +743,7 @@
    "LG17": 1
   },
   "GameOS/gameos/terrain_fine_height_bake.h": {},
+  "GameOS/gameos/terrain_forest_mask.h": {},
   "GameOS/gameos/terrain_material_lib.cpp": {},
   "GameOS/gameos/terrain_material_lib.h": {},
   "GameOS/gameos/terrain_record_cache.h": {},
@@ -3487,7 +3488,7 @@
    "LG20": 1
   }
  },
- "head": "f9bd7feb6",
+ "head": "dd020055f",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
