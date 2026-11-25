@@ -778,16 +778,21 @@ void graphics::redraw_loading_screen()
                             pp ? pp->getHeight() : Environment.drawableHeight);
     gos_RendererBeginFrame();
     gos_SetRenderState(gos_State_IsHUD, 1);
+    const bool resumeUiFrame = GuiRuntime::FrameActive();
+    if (!resumeUiFrame) GuiRuntime::NewFrame();
     g_loadingDraw();
     gos_SetRenderState(gos_State_IsHUD, 0);
     gos_RendererEndFrame();
     if (pp) pp->endScene();
     gos_RendererFlushHUDBatch();
+    // Menu fonts are ImGui draws; synchronous loading presents need that pass too.
+    GuiRuntime::Render();
     // The present owns a frame boundary; retain the ordinary host clocks and handle retirement.
     gos::host::advanceFrameCounter();
     gos::host::presentOrSwap(g_loadingWindow, g_mc2RenderFrame);
     mc2vk::present_thread::waitSealed();
     gos::host::retirePresentHandles(g_mc2RenderFrame);
+    if (resumeUiFrame) GuiRuntime::NewFrame();
     drawing = false;
 }
 
