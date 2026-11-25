@@ -23,6 +23,22 @@ def write_glb(path, doc, binary):
                      + struct.pack('<II', len(binary), 0x004e4942) + binary)
 
 
+def air_variant(out, vehicle, base):
+    # AssaultCopter has an appearance INI but no stock object2 slot. Offer the
+    # attack Igor on the real HeavyCopter role while retaining the base pack.
+    variant = out/'variants'/('mw5-'+vehicle['id'].replace('_','-'))
+    tgl = variant/'data/tgl'
+    tgl.mkdir(parents=True, exist_ok=True)
+    source, host = vehicle['replaces'].split(':')[1], base['replaces'].split(':')[1]
+    ini = (out/'data/tgl'/f'{source}.ini').read_text(encoding='latin-1')
+    ini = ini.replace(f'AnimHost = "{source}"', f'AnimHost = "{host}"')
+    (tgl/f'{host}.ini').write_text(ini, encoding='latin-1')
+    (variant/'mod.json').write_text(json.dumps(dict(schema='mc2-mod/1', id=variant.name,
+        name='MW5 attack Igor', version='0.1.0', dependencies=['mw5-vehicles'], type='assets'), indent=2)+'\n')
+    (variant/'COPY.txt').write_text('Copy this folder beside mw5-vehicles in <MC2>/mods. Select mw5-igor-attack.\n'
+                                  'The mw5-vehicles dependency retains all other appearances; HeavyCopter uses the attack Igor.\n')
+
+
 def build(recipe, assemblies, stock, out):
     recipe = json.loads(Path(recipe).read_text())
     assemblies, stock, out = map(Path, (assemblies, stock, out))
@@ -110,6 +126,7 @@ def build(recipe, assemblies, stock, out):
     (out/'COPY.txt').write_text(
         'Personal-use assets extracted from the owner\'s MW5 installations. Do not redistribute.\n'
         'Copy this folder to <MC2 install>/mods/mw5-vehicles and select mw5-vehicles.\n'
+        'Optional folders under variants can be copied beside the base mod and selected separately.\n'
         'Ground appearances replace nearest stock roles; VTOLs use the existing imported-mech path.\n'
         'Stock missions, movement, weapons and collision remain the gameplay source.\n'
         'Source layered materials are approximated. Human infantry VAT gait and Elemental skeletal\n'
@@ -127,8 +144,14 @@ def build(recipe, assemblies, stock, out):
                     classes={m['name']: 'painted_metal' for m in doc.get('materials', [])})
         variant = out/'variants'/('mw5-'+v['id'].replace('_','-'))
         cook(dict(mod_id=variant.name, name='MW5 '+v['id'], assets=[spec]), variant, compress=False)
-        (variant/'COPY.txt').write_text('Copy this folder to <MC2>/mods and select it instead of mw5-vehicles\n'
-                                     'to use the SRM infantry appearance. Source VAT gait is not translated.\n')
+        manifest = variant/'mod.json'
+        mod = json.loads(manifest.read_text()); mod['dependencies'] = ['mw5-vehicles']
+        manifest.write_text(json.dumps(mod, indent=2)+'\n')
+        (variant/'COPY.txt').write_text('Copy this folder beside mw5-vehicles in <MC2>/mods and select it\n'
+                                     'to use SRM infantry. The base pack remains a dependency. Source VAT gait is not translated.\n')
+    for v in vehicles:
+        if v.get('host_variant_of'):
+            air_variant(out, v, next(b for b in vehicles if b['id'] == v['host_variant_of']))
     print(f'PACK {len(vehicles)} appearances: {out}')
 
 

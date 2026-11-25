@@ -123,7 +123,7 @@
     {"id": "igor", "family": "vtol", "replaces": "vehicle:heavycopter", "kind": "mech", "components": [
       {"mesh": "Igor_SKM", "node": "hull", "export": "vtol"}
     ]},
-    {"id": "igor_attack", "family": "vtol", "replaces": "vehicle:assaultcopter", "kind": "mech", "components": [
+    {"id": "igor_attack", "family": "vtol", "replaces": "vehicle:assaultcopter", "kind": "mech", "host_variant_of": "igor", "components": [
       {"mesh": "Igor_Attack_STM", "node": "hull", "export": "vtol"}
     ]},
     {"id": "igor_lifter", "family": "vtol", "replaces": "vehicle:scoutcopter", "kind": "mech", "components": [
@@ -132,7 +132,7 @@
     {"id": "clan_elemental", "family": "powered_armor", "replaces": "vehicle:poweredarmor", "components": [
       {"mesh": "SKM_ClanElemental", "node": "body", "export": "elemental"}
     ]},
-    {"id": "riverjack_armed", "family": "tracked", "replaces": "vehicle:hunter", "components": [
+    {"id": "riverjack_armed", "family": "wheeled", "replaces": "vehicle:hunter", "components": [
       {"mesh": "Riverjack_SKM", "node": "hull", "export": "riverjack"},
       {"mesh": "Riverjack_Turret_STM", "node": "mw5_yaw", "export": "riverjack_turret", "parent": "hull", "at": "hull:Mount_NoPitch_Top", "animated": true},
       {"mesh": "Weapon_MachineGun_Riverjack_SKM", "node": "mw5_barrel", "export": "riverjack", "parent": "mw5_yaw", "animated": true, "offset_cm": [-15.006895, 15.492032, 77.101166], "rotation_deg": [0, -90, 0]}
