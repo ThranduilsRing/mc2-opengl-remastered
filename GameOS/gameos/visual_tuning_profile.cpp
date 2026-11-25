@@ -58,7 +58,7 @@ std::string s_profilePath = "data/visual_tuning.json";
 bool s_hasFile = false;
 int s_appliedKeys = 0;
 
-float g_moverShadowSharpness = 2.0f;
+float g_moverShadowSharpness = 3.0f;
 constexpr float kSunAbsent = -1000.0f;  // sun* keys: absent = keep the mission's own sun
 
 std::map<std::string, float> engineDefaults() {
@@ -69,7 +69,7 @@ std::map<std::string, float> engineDefaults() {
         {"vignette",0}, {"topWarmthStrength",0},
         {"sunPitch",kSunAbsent}, {"sunYaw",kSunAbsent}, {"sunColorR",kSunAbsent}, {"sunColorG",kSunAbsent}, {"sunColorB",kSunAbsent}, {"sunAmbientScale",kSunAbsent},
         {"unitAmbientScale",1.2f}, {"buildingSpillIntensityScale",1.0f},
-        {"exposure",1}, {"shadowSoftness",2.5f}, {"staticPropIblStrength",0.5f}, {"moverShadowSharpness",2.0f},
+        {"exposure",1}, {"shadowSoftness",2.5f}, {"staticPropIblStrength",0.5f}, {"moverShadowSharpness",3.0f},
         {"waterSkyTintStrength",0}, {"waterGlintWarm",0}, {"waterWaveBreakup",0}, {"waterReflections",static_cast<float>(mc2::options::current().waterReflections)},
         {"vfxBrightness",1}, {"vfxAdditiveBrightness",1},
         {"vfxLitStrength",0.7f}, {"mechSpecularStrength",0.05f},
