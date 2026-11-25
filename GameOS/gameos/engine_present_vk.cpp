@@ -551,6 +551,15 @@ bool ensurePresentSampler(EnginePresentVk::Impl& s) {
 
 bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
     if (!s.ctx) return false;
+    const auto generation = mc2SharedSceneColorGeneration();
+    if (s.compositeSceneGeneration != generation) {
+        // Scene resize destroys the views cached in the composite descriptors.
+        // Retire prior composites before replacing their reconstruction target.
+        s.ctx->waitIdle("composite_scene_resize");
+        s.spatialAA.reset();
+        destroyCompositeFramebuffer(s);
+        s.compositeSceneGeneration = generation;
+    }
     if (s.compositePipe.get() && s.compositeFramebuffer.get()) return true;
     if (s.compositeVkFailed || !s.dev || !s.sharedImg.view || s.imgW == 0 || s.imgH == 0)
         return false;
@@ -2094,6 +2103,12 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     if (needsObjectId && (!objectId || !objectIdDirectChain))
         return false;
     if (!scene)
+        return false;
+    // Present resize runs after scene recording. Defer this transition frame
+    // rather than recording with a framebuffer/AA target of the previous size.
+    const double scale = mc2::gate::get<"MC2_RENDER_SCALE">();
+    if (scene->w != static_cast<uint32_t>((std::max)(1L, std::lround(s.imgW * scale))) ||
+        scene->h != static_cast<uint32_t>((std::max)(1L, std::lround(s.imgH * scale))))
         return false;
     if (!ensureCompositeObjects(s))
         return false;
