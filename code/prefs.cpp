@@ -47,6 +47,7 @@ int CPrefs::applyPrefs(bool applyRes) {
 		const bool report = !s_logged;
 		s_logged = true;
 		const std::string overrideSpec = mc2::gate::str<"MC2_OPTIONS_OVERRIDE">();
+		mc2::options::g_activeOverrides = overrideSpec;
 		if (!overrideSpec.empty()) {
 			std::vector<mc2::options::Reject> rejects;
 			const int accepted = mc2::options::applyOverrides(effective, overrideSpec, rejects);

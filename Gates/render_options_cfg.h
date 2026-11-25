@@ -17,6 +17,12 @@
 
 namespace mc2::options::cfg {
 
+inline bool editCommitted(bool changed, bool active, bool& wasActive) {
+    const bool commit = !active && (changed || wasActive);
+    wasActive = active;
+    return commit;
+}
+
 namespace opt_detail = mc2::options::detail;   // trim / equalsNoCase of the options table; cfg::detail below would otherwise hide them
 
 namespace detail {

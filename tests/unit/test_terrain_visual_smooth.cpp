@@ -55,6 +55,7 @@ TEST_CASE("ravine weathering: only blocked cells move, passable cell centres kee
         }
     const std::vector<unsigned char> maskBefore = blocked;
     const auto plain = mc2terrain::buildSmoothedVisualHeight(e.data(), N, -1.0e9f);
+    CHECK(mc2terrain::buildSmoothedVisualHeight(e.data(), N, -1.0e9f, nullptr, -1) == plain); // missing/non-square MOVE fallback
     const auto carved = mc2terrain::buildSmoothedVisualHeight(e.data(), N, -1.0e9f, &blocked, C);
     REQUIRE(plain.has_value());
     REQUIRE(carved.has_value());

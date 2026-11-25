@@ -86,6 +86,7 @@ constexpr uint32_t mipExtent(uint32_t size, uint32_t level) {
 // this box; a CPU copy of the chain built with it lets a backend without GL upload the same texels.
 // Empty when `src` is not width * height * 4 bytes or an edge is 0 or above RenderCore::kKtxMaxEdge.
 std::vector<uint8_t> boxDownsampleRgba8(const std::vector<uint8_t>& src, uint32_t width, uint32_t height);
+std::vector<uint8_t> boxDownsampleR8(const std::vector<uint8_t>& src, uint32_t width, uint32_t height);
 // Same box for R8G8B8A8_SRGB data: rgb averages in linear light (decode, average, re-encode), alpha is a plain average.
 std::vector<uint8_t> boxDownsampleRgba8Srgb(const std::vector<uint8_t>& src, uint32_t width, uint32_t height);
 

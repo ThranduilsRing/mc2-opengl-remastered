@@ -747,11 +747,15 @@ void drawMainMenu(bool showCredits) {
 
 void drawOptions() {
     if (!ImGui::CollapsingHeader("Player settings (saved; restart required)", ImGuiTreeNodeFlags_DefaultOpen)) return;
-    // Both options screens save immediately. Reload the persisted values each frame so a live
-    // edit cannot be reverted by an older draft, and MC2_OPTIONS_OVERRIDE is never copied to disk.
-    mc2::options::RenderOptions draft;
-    const auto cfg = mc2::options::cfg::readTextFile("options.cfg");
-    mc2::options::cfg::loadFromText(draft, cfg);
+    static mc2::options::RenderOptions draft;
+    static std::optional<mc2::options::RenderOptions> seen;
+    static bool dirty = false;
+    static bool wasEditing = false;
+    if (!seen || (!dirty && *seen != mc2::options::current())) {
+        draft = {};
+        mc2::options::cfg::loadFromText(draft, mc2::options::cfg::readTextFile("options.cfg"));
+        seen = mc2::options::current();
+    }
     bool changed = false;
     for (const auto& preset : k_gfxPresets) {
         if (ImGui::Button(preset.label)) {
@@ -810,10 +814,14 @@ void drawOptions() {
         }
         ImGui::TreePop();
     }
-    if (ImGui::Button("Save player settings") || changed) {
+    dirty |= changed;
+    const bool committed = mc2::options::cfg::editCommitted(changed, ImGui::IsAnyItemActive(), wasEditing);
+    if (ImGui::Button("Save player settings") || (dirty && committed)) {
         if (!saveRenderOptions || !saveRenderOptions(draft)) error = "Could not save options.cfg.";
         else {
             mc2::options::publish(draft);
+            seen = mc2::options::current();
+            dirty = false;
             if (saveSettings()) { settingsChanged = true; error = "Saved. Restart the game to apply player settings."; }
         }
     }
