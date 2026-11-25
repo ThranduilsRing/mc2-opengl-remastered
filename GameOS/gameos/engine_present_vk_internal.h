@@ -105,6 +105,7 @@ struct EnginePresentVk::Impl {
     std::vector<mc2vk::OwnedFramebuffer> encodeFrames;
     VkImageResource sharedImg{};
     VkImageResource scaledComposite{};
+    unsigned long long compositeSceneGeneration = 0;
     mc2vk::OwnedFramebuffer scaledCompositeFramebuffer;
     VkDescriptorSet upscaleSet = VK_NULL_HANDLE;
     SpatialAA spatialAA;

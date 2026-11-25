@@ -20,6 +20,7 @@
 #include "crash_content.h"
 #ifdef _WIN32
 #include "crash_content_writer.h"
+#include "crash_session_sentinel.h"
 #endif
 #include "Gates/gate.h"
 #include "build_identity.h"  // Stable build identity declarations
@@ -41,6 +42,9 @@ void crashbundle_mod(std::string_view, int) {}
 void crashbundle_save_point(std::string_view, std::string_view) {}
 extern "C" void crashbundle_device_lost(void) {}
 void crashbundle_fatal(std::string_view) {}
+void crashbundle_session_open() {}
+void crashbundle_session_close() {}
+void crashbundle_guard_thread_stack() {}
 extern "C" void crashbundle_trigger_test_crash(void) {
     volatile int* p = nullptr;
     *p = 0xDEADC0DE;
@@ -609,6 +613,113 @@ static void show_crash_dialog(mc2::czstring crash_txt_path,
 // ---------------------------------------------------------------------------
 // The SEH filter
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Session sentinel (crash_session_sentinel.h): no exit without a record
+// ---------------------------------------------------------------------------
+static std::filesystem::path g_sentinel;
+static bool g_sentinelOpen = false;
+
+static uint64_t process_created(HANDLE process)
+{
+    FILETIME created{}, exited{}, kernel{}, user{};
+    if (!GetProcessTimes(process, &created, &exited, &kernel, &user)) return 0;
+    return (static_cast<uint64_t>(created.dwHighDateTime) << 32) | created.dwLowDateTime;
+}
+
+// A crash folder holding crash.txt = header + `body`, plus the ring; `ep` adds the stack of the caller.
+static void write_exit_record(std::string_view body, EXCEPTION_POINTERS* ep)
+{
+    build_crash_folder();
+    static char txt[32 * 1024];
+    size_t n = 0;
+    if (ep) n = format_crash_txt(ep, txt, sizeof txt);
+    else sbuff(txt, sizeof txt, &n, "MC2 Remastered Crash Report\nFingerprint: %s\n", MC2_BUILD_FP_LITERAL);
+    sbuff(txt, sizeof txt, &n, "%.*s\n", static_cast<int>(body.size()), body.data());
+    write_file_all(g_crash_txtA, txt, static_cast<DWORD>(n));
+    if (ep) write_ring_snapshot();   // the ring is this process's: it belongs only to an exit seen live
+    mc2::fmt::print_err("[CRASHBUNDLE] {} bundle={}\n", body.substr(0, body.find('\n')), mc2::fmt::safe(g_crash_folderA));
+    fflush(stderr);
+}
+
+// Previous sessions of this install whose process is gone without closing their sentinel died silently: record each once.
+static void record_orphaned_sessions(const std::filesystem::path& dir)
+{
+    std::error_code ec;
+    for (const auto& entry : std::filesystem::directory_iterator(dir, ec)) {
+        const auto& path = entry.path();
+        if (path.extension() != ".open") continue;
+        std::string text;
+        if (FILE* f = _wfopen(path.c_str(), L"rb")) {
+            char buf[512];
+            text.assign(buf, fread(buf, 1, sizeof buf, f));
+            fclose(f);
+        }
+        const auto s = mc2::crash::parseSentinel(text);
+        bool alive = false;
+        uint64_t created = 0;
+        if (s) {
+            if (HANDLE h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, s->pid)) {
+                DWORD code = 0;
+                alive = GetExitCodeProcess(h, &code) && code == STILL_ACTIVE;
+                created = process_created(h);
+                CloseHandle(h);
+            }
+            if (!mc2::crash::sentinelOrphaned(*s, alive, created)) continue;
+            const std::string body = "Reason: unclean exit: session pid " + std::to_string(s->pid) +
+                " ended with no exit record and no crash bundle (no handler ran: external kill, stack overflow inside the handler, "
+                "or fast-fail)\nSession build: " + s->build + "\nSee debug_state/diagnostic_trace.jsonl for that pid's last events.";
+            write_exit_record(body, nullptr);
+        }
+        std::filesystem::remove(path, ec);
+    }
+}
+
+// exit() while the frame loop still runs bypasses the loop's EXIT_REASON: record it with the caller's stack.
+static void session_exit_check()
+{
+    if (!g_sentinelOpen) return;
+    CONTEXT ctx;
+    RtlCaptureContext(&ctx);
+    EXCEPTION_RECORD rec{};
+    rec.ExceptionCode = 0xE0004D45u;   // private "MC2 exit" code
+#if defined(_M_X64)
+    rec.ExceptionAddress = reinterpret_cast<PVOID>(ctx.Rip);
+#endif
+    EXCEPTION_POINTERS ep{&rec, &ctx};
+    write_exit_record("Reason: exit() called while the frame loop was running (no EXIT_REASON)", &ep);
+    crashbundle_session_close();
+}
+
+void crashbundle_session_open()
+{
+    if (!g_cfg.initialized || g_sentinelOpen) return;
+    try {
+        g_sentinel = std::filesystem::path(g_cfg.exe_dir) / "debug_state" / ("session_" + std::to_string(GetCurrentProcessId()) + ".open");
+        const std::string text = mc2::crash::formatSentinel({GetCurrentProcessId(), process_created(GetCurrentProcess()), MC2_BUILD_FP_LITERAL});
+        if (FILE* f = _wfopen(g_sentinel.c_str(), L"wb")) {
+            g_sentinelOpen = fwrite(text.data(), 1, text.size(), f) == text.size();
+            fclose(f);
+        }
+    } catch (...) { return; }
+    static const bool registered = (std::atexit(session_exit_check), true);
+    (void)registered;
+}
+
+void crashbundle_session_close()
+{
+    if (!g_sentinelOpen) return;
+    g_sentinelOpen = false;
+    std::error_code ec;
+    std::filesystem::remove(g_sentinel, ec);
+}
+
+void crashbundle_guard_thread_stack()
+{
+    // A stack overflow runs the filter on what is left of the stack; without a reserve the filter faults and the process dies silently.
+    ULONG reserve = 64 * 1024;
+    SetThreadStackGuarantee(&reserve);
+}
+
 static volatile LONG g_in_filter = 0;
 
 static LONG WINAPI crashbundle_filter(EXCEPTION_POINTERS* ep)
@@ -631,6 +742,7 @@ static LONG WINAPI crashbundle_filter(EXCEPTION_POINTERS* ep)
 
         // 2) Write crash.txt
         write_file_all(g_crash_txtA, crashtxt, static_cast<DWORD>(n));
+        crashbundle_session_close();   // this bundle is the session's record
 
         // 3) Write last_trace.txt
         write_ring_snapshot();
@@ -690,6 +802,7 @@ extern "C" void crashbundle_device_lost(void)
     char reason[2048];
     const int bytes = mc2::fmt::to_buf(reason, "Reason: Vulkan device lost\nFingerprint: {}\n", mc2::fmt::safe(MC2_BUILD_FP_LITERAL));
     if (bytes > 0) write_file_all(g_crash_txtA, reason, DWORD(bytes));
+    crashbundle_session_close();
     write_ring_snapshot();
     g_content.snapshot(g_crash_folderA);
     write_profile_json();
@@ -773,7 +886,9 @@ extern "C" void crashbundle_init(void)
         std::filesystem::create_directories(journalDir, journalEc);
         if (g_content.init((journalDir / "crash_content.jsonl").string()))
             g_content.mod("base", -1);
+        record_orphaned_sessions(journalDir);
     } catch (...) {}
+    crashbundle_guard_thread_stack();
     mc2_log_set_crash_sink(crashbundle_append);
     // Order matters: crashpad installs its unhandled-exception filter first, ours goes on top and calls it
     // (write_minidump) for the out-of-process dump, so the two never compete for the same exception.

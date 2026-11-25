@@ -127,7 +127,17 @@ struct ScriptPlayer {
         else if (v == "move" && n >= 3) { nx = static_cast<float>(atof(a)) / 800.f; ny = static_cast<float>(atof(b)) / 600.f; mouseSet = true; }
         else if (v == "down") btn[n >= 2 ? btn_idx(a[0]) : 0] = true;
         else if (v == "up") btn[n >= 2 ? btn_idx(a[0]) : 0] = false;
-        else if (v == "focus" && n >= 2) applyInputFocus(std::string_view(a) == "gained");
+        else if (v == "focus" && n >= 2) {
+            // Also queue the SDL window event, so the off-screen proof runs the same focus handler an alt-tab runs (process_events).
+            const bool gained = std::string_view(a) == "gained";
+            applyInputFocus(gained);
+            extern SDL_Window* g_sdl_window;
+            SDL_Event event = {};
+            event.type = SDL_WINDOWEVENT;
+            event.window.event = gained ? SDL_WINDOWEVENT_FOCUS_GAINED : SDL_WINDOWEVENT_FOCUS_LOST;
+            event.window.windowID = g_sdl_window ? SDL_GetWindowID(g_sdl_window) : 0;
+            SDL_PushEvent(&event);
+        }
         else if (v == "wheel" && n >= 2) {
             SDL_Event event = {};
             event.type = SDL_MOUSEWHEEL;
