@@ -578,18 +578,19 @@ GRASS_TURF_SRC = "G:/mc2-assets/pbr/dl-2026-10-23/ground"  # drive-path: ok PC-o
 GRASS_TURF_REL = "data/terrain_layers/grass_turf_normal.ktx2"
 
 
-def _ensure_cooked_normal(src_root, cook, rel, what, cooker):
+def _ensure_cooked_normal(src_root, cook, rel, what, cooker, src=None):
     """Cook a data/terrain_layers detail normal when missing or stale (soft: the slot keeps its base layer without it)."""
     dst = os.path.join(src_root, rel)
     script = os.path.join(src_root, cook)
     if os.path.isfile(dst) and (not os.path.isfile(script) or os.path.getmtime(dst) >= os.path.getmtime(script)):
         return
-    if not os.path.isdir(GRASS_TURF_SRC):
-        log(f"[DEPLOY] WARN: {what} absent and no cook source at {GRASS_TURF_SRC}: the slot keeps the base layer")
+    src = src or GRASS_TURF_SRC   # each cook is gated on its OWN source dir
+    if not os.path.isdir(src):
+        log(f"[DEPLOY] WARN: {what} absent and no cook source at {src}: the slot keeps the base layer")
         return
     log(f"{what} absent or stale: cooking it")
     try:
-        r = cooker([sys.executable, script, "--src", GRASS_TURF_SRC, "--out", os.path.dirname(dst)],
+        r = cooker([sys.executable, script, "--src", src, "--out", os.path.dirname(dst)],
                    capture_output=True, text=True, timeout=300, env=dict(os.environ, OMP_NUM_THREADS="1"), **console_child.child_kwargs(redirected=True))
     except subprocess.TimeoutExpired:
         log(f"[DEPLOY] WARN: {what} cook timed out after 300 s (skipped)")
@@ -616,8 +617,11 @@ FOREST_FLOOR_COOK = "tools/mc2texcook/cook_forest_floor.py"
 FOREST_FLOOR_REL = "data/terrain_layers/forest_floor_normal.ktx2"
 
 
+FOREST_FLOOR_SRC = "E:/mc2-ref/terrain-normals-2026-11-24"  # drive-path: ok PC-only cook source; mirrors cook_forest_floor.SOURCE_DIR
+
+
 def ensure_forest_floor(src_root, cooker=subprocess.run):
-    _ensure_cooked_normal(src_root, FOREST_FLOOR_COOK, FOREST_FLOOR_REL, "forest floor normal", cooker)
+    _ensure_cooked_normal(src_root, FOREST_FLOOR_COOK, FOREST_FLOOR_REL, "forest floor normal", cooker, FOREST_FLOOR_SRC)
 
 # EXAMPLE-MODS-1: worked example checkbox mods, source-tracked under
 # examples/mods/. Ship to <target>/mods/<id>/ so the launcher enumerates them

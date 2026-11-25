@@ -406,15 +406,20 @@ void import_forest_mask(TerrainIsland* s) {
     const auto* fields = gos_TerrainFieldStore();
     if (!fields || !(s->colormapCookParams[2] > 0.0f)) return;
     const std::array<float, 3> params{s->colormapCookParams[0], s->colormapCookParams[1], s->colormapCookParams[2]};
-    if (fields->treeVersion() == s->forestTreeVersionImported && params == s->forestParamsImported && s->forestMaskTexture) return;
-    constexpr int kEdge = 1024;
+    if (fields->treeVersion() == s->forestTreeVersionImported && params == s->forestParamsImported) return;
     constexpr float kCanopyRadius = 70.0f;   // wu
+    // A texel stays <= half the canopy radius on any map side: power-of-two edge covering the atlas extent, 1024..4096.
+    const float extentWu = 1.0f / params[2];
+    int kEdge = 1024;
+    while (kEdge < 4096 && extentWu / static_cast<float>(kEdge) > kCanopyRadius * 0.5f) kEdge *= 2;
     std::vector<uint8_t> density;
     mc2terrain::splatForestMask(fields->treePositions(), params[0], params[1], 1.0f / params[2], kEdge, kEdge, kCanopyRadius, density);
     std::vector<uint8_t> rgba(density.size() * 4);
     for (size_t i = 0; i < density.size(); ++i) { rgba[4*i] = rgba[4*i+1] = rgba[4*i+2] = density[i]; rgba[4*i+3] = 255; }
     if (!upload_sampled_image(s, s->forestMaskTexture, VK_FORMAT_R8G8B8A8_UNORM, kEdge, kEdge, rgba.data(), rgba.size())) {
         vlog("FOREST_MASK: upload failed; no forest floor this mission.");
+        s->forestTreeVersionImported = fields->treeVersion();   // latch: no per-frame retry or log spam until the trees or atlas change
+        s->forestParamsImported = params;
         return;
     }
     s->forestTreeVersionImported = fields->treeVersion();

@@ -184,3 +184,22 @@ def test_engine_normal_sidecars_are_cooked_only_when_absent_or_stale(tmp_path):
     (tex / "engine_normals.cookver").write_text("1\n")    # an older cook meaning recooks everything
     dp.ensure_engine_normal_cooks(str(tmp_path), cooker)
     assert len(calls) == 3 and calls[2][-1] == "--force"
+
+
+def test_forest_floor_cook_is_gated_on_its_own_source(tmp_path, monkeypatch, capsys):
+    ground, forest = tmp_path / "ground", tmp_path / "forest"
+    ground.mkdir()
+    monkeypatch.setattr(dp, "GRASS_TURF_SRC", str(ground))
+    monkeypatch.setattr(dp, "FOREST_FLOOR_SRC", str(tmp_path / "missing"))
+    script = tmp_path / dp.FOREST_FLOOR_COOK
+    script.parent.mkdir(parents=True)
+    script.write_text("#")
+    calls = []
+    cooker = lambda cmd, **kw: (calls.append(cmd), type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})())[1]
+    dp.ensure_forest_floor(str(tmp_path), cooker)       # ground dir exists but the forest source does not: no cook
+    assert not calls and "[DEPLOY] WARN" in capsys.readouterr().out
+    forest.mkdir()
+    monkeypatch.setattr(dp, "GRASS_TURF_SRC", str(tmp_path / "nope"))
+    monkeypatch.setattr(dp, "FOREST_FLOOR_SRC", str(forest))
+    dp.ensure_forest_floor(str(tmp_path), cooker)       # ground dir absent but the forest source exists: cooks from it
+    assert len(calls) == 1 and calls[0][calls[0].index("--src") + 1] == str(forest)
