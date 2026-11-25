@@ -987,6 +987,15 @@ set_source_files_properties(test_terrain_dirty_queue.cpp PROPERTIES INCLUDE_DIRE
 # Header-only economy rule helpers (code/economy_rules.h); before the selected-tier snapshot below so `--only` can select it.
 target_sources(mc2_tests PRIVATE test_economy_rules.cpp test_screen_layer_order.cpp)
 
+# Campaign guards: LogisticsMissionInfo init rejection and null-groups accessors (the class TUs, game-free).
+target_sources(mc2_tests PRIVATE
+    test_logistics_mission_info_guards.cpp
+    test_game_rules.cpp
+    ${MC2_WORKTREE_ROOT}/code/logisticsmissioninfo.cpp
+    ${MC2_WORKTREE_ROOT}/code/logisticsmissioninfo_progress.cpp
+    ${MC2_WORKTREE_ROOT}/code/logisticsmissioninfo_query.cpp
+)
+
 # Keep all production objects in the full tier; scoped links extract only needed
 # objects from the same archive. Stubs (including allocation overrides) are
 # object-linked so the CRT cannot silently replace the allocation probe.
@@ -1052,12 +1061,3 @@ if(MC2_UNIT_ONLY_SOURCES)
 endif()
 
 target_sources(mc2_tests PRIVATE test_veg_population_cache.cpp)
-
-# Campaign guards: LogisticsMissionInfo init rejection and null-groups accessors (the class TUs, game-free).
-target_sources(mc2_tests PRIVATE
-    test_logistics_mission_info_guards.cpp
-    test_game_rules.cpp
-    ${MC2_WORKTREE_ROOT}/code/logisticsmissioninfo.cpp
-    ${MC2_WORKTREE_ROOT}/code/logisticsmissioninfo_progress.cpp
-    ${MC2_WORKTREE_ROOT}/code/logisticsmissioninfo_query.cpp
-)

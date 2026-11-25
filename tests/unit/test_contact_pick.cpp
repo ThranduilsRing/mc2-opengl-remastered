@@ -53,6 +53,21 @@ TEST_CASE("contact visibility: resolved quality and visual overrides share one t
     CHECK(state.sensorLevel() == 0);
 }
 
+TEST_CASE("contact visibility: display holds visual contact for one second without altering LOS")
+{
+    mc2::DisplayContactHold hold;
+    const auto none = mc2::contactVisibility(CONTACT_NONE);
+    CHECK_FALSE(hold.update(none, 0.0f).model);
+    CHECK(hold.update(mc2::contactVisibility(CONTACT_VISUAL), 2.0f).model);
+    CHECK(hold.update(none, 2.99f).model);
+    CHECK_FALSE(none.model);
+    CHECK_FALSE(hold.update(none, 3.0f).model);
+    CHECK(hold.update(mc2::contactVisibility(CONTACT_VISUAL), 4.0f).model);
+    CHECK(hold.update(mc2::contactVisibility(CONTACT_VISUAL), 4.9f).model);
+    CHECK(hold.update(none, 5.8f).shadow);
+    CHECK_FALSE(hold.update(none, 0.0f).model); // mission clock reset
+}
+
 TEST_CASE("contact visibility: production consumers read the shared snapshot")
 {
     const auto root = std::filesystem::path(MC2_REPO_ROOT);

@@ -668,6 +668,10 @@ void GroundVehicle::applyAppearancePush (void)
 			relationship = 2;
 		}
 
+		int row, col;
+		land->worldToCell(position, row, col);
+		const bool wet = GameMap->getDeepWater(row, col) || GameMap->getShallowWater(row, col);
+		visualSinkDepth = mc2::waterreactive::wreckSinkDepth(visualSinkDepth, isDestroyed(), wet, frameLength, getExtentRadius());
 		appearance->setObjectParameters(position, rotation, TacticalOverview::maskWorldBars(drawFlags), teamId,relationship);
 		appearance->setMoverParameters(turretRotation,gvPush.pitch,gvPush.roll,!pathLocks);
 	}
@@ -713,6 +717,7 @@ void GroundVehicle::extractRenderView (mc2::render_view::RenderView& view)
 	contactView = mc2::contactVisibility(getContactStatus(Team::home->getId(), true), getTeamId() == Team::home->getId()
 		|| isDestroyed() || isDisabled() || ShowMovers
 		|| (MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]));
+	contactView = displayContactHold.update(contactView, scenarioTime);
 	view.contact = contactView;
 	if (!Terrain::IsGameSelectTerrainPosition(position))
 		return;

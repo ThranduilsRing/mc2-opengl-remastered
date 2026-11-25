@@ -671,6 +671,9 @@ std::optional<long> SoundSystem::playDigitalStream (mc2::czstring streamName)
         return std::nullopt;
     }
     mc2::overlap::assertMainThread("SoundSystem::playDigitalStream");
+    // Mission-one ABL tutorial calls share speech time with Renard's BIK.
+    if (isPlayingVoiceOver() || isChannelPlaying(RADIO_CHANNEL) ||
+        isChannelPlaying(BETTY_CHANNEL) || isChannelPlaying(SUPPORT_CHANNEL)) return std::nullopt;
 	const char* accepted = "disabled";
 	std::string resourcePath;
 	bool resourceAccepted = false;
@@ -722,7 +725,8 @@ long SoundSystem::playBettySample (unsigned long bettySampleId)
 {
     const bool queued = mc2::tick::defer(mc2::tick::Queue::Sound, [this, bettySampleId] { playBettySample(bettySampleId); });
     if (!queued) mc2::overlap::assertMainThread("SoundSystem::playBettySample");
-	if (!queued && (useSound && bettySoundBite.empty()))	//Playing Betty takes precedence
+	if (!queued && useSound && bettySoundBite.empty() && !isPlayingVoiceOver() &&
+		!isChannelPlaying(RADIO_CHANNEL) && !isChannelPlaying(SUPPORT_CHANNEL))
 	{
 
 		if (bettySampleId >= numBettySamples)
@@ -781,7 +785,8 @@ long SoundSystem::playSupportSample (unsigned long supportSampleId, mc2::czstrin
         mc2::tick::defer(mc2::tick::Queue::Sound, [this, supportSampleId, name, named] { playSupportSample(supportSampleId, named ? name.c_str() : nullptr); });
     }
     if (!queued) mc2::overlap::assertMainThread("SoundSystem::playSupportSample");
-	if (!queued && useSound && !supportHandle)		//Playing Support takes precedence
+	if (!queued && useSound && !supportHandle && !isPlayingVoiceOver() &&
+		!isChannelPlaying(RADIO_CHANNEL) && !isChannelPlaying(BETTY_CHANNEL))
 	{
 		if (!fileName)
 		{
@@ -1243,6 +1248,12 @@ bool SoundSystem::beginVideoPCMStream(int rate, int channels)
     Mix_HookMusic(videoMixHook, nullptr);
     Mix_ResumeMusic();
     g_va.active = true;
+    // A briefing may start after a hint: stop all other speech before its PCM is pushed.
+    for (int channel : {RADIO_CHANNEL, BETTY_CHANNEL, SUPPORT_CHANNEL, STREAM3CHANNEL})
+        gosAudio_SetChannelPlayMode(channel, gosAudio_Stop);
+    gosAudio_DestroyResource(&stream3Handle);
+    stream3Handle = nullptr;
+    stream3Active = false;
     return true;
 }
 

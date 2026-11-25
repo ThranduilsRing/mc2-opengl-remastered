@@ -311,6 +311,7 @@ class GroundVehicle : public Mover {
 			bool				visible = false;
 		};
 		GVPush				gvPush;
+		float visualSinkDepth = 0.0f; // presentation only, not saved
 
 		// Presentation phase: applies appearancePush / gvPush to the draw side of the appearance.
 		void applyAppearancePush (void);

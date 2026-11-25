@@ -7,7 +7,7 @@
 
 namespace {
 constexpr bool TRUE = true, FALSE = false;
-constexpr int RADIO_CHANNEL = 0, BUZZER1 = 1;
+constexpr int RADIO_CHANNEL = 0, BUZZER1 = 1, BETTY_CHANNEL = 2, SUPPORT_CHANNEL = 3;
 constexpr float ALARM_TIME = 5;
 bool useSound = true, GeneralAlarm = false;
 float frameLength = 1.0f / 30;
@@ -31,6 +31,8 @@ struct RadioData {
 struct { std::atomic<bool> active{false}; } g_va;
 struct SoundSystem {
     void* stream3Handle = nullptr;
+    bool otherSpeech = false;
+    bool isChannelPlaying(int channel) { return channel != RADIO_CHANNEL && otherSpeech; }
     void update() {}
     bool isPlayingVoiceOver();
 };
@@ -60,6 +62,29 @@ struct GameSoundSystem : SoundSystem {
 #define VIEWER
 #include "radio_playback.inc"
 #undef VIEWER
+}
+
+TEST_CASE("MissionAudio/briefing and tutorial speech hold pilot radio in its queue") {
+    for (bool video : {false, true}) {
+        channelMode = gosAudio_Stop;
+        GameSoundSystem sound;
+        sound.queued = std::make_unique<RadioData>();
+        sound.queued->data[0].cue = 7;
+        sound.messagesInQueue = 1;
+        g_va.active = video;
+        sound.stream3Handle = video ? nullptr : &sound;
+        sound.update();
+        CHECK(sound.plays.empty());
+        CHECK(sound.messagesInQueue == 1);
+        g_va.active = false;
+        sound.stream3Handle = nullptr;
+        sound.otherSpeech = true;
+        sound.update();
+        CHECK(sound.plays.empty());
+        sound.otherSpeech = false;
+        sound.update();
+        CHECK(sound.plays == std::vector<int>{7});
+    }
 }
 
 TEST_CASE("MissionAudio/radio cues play once with and without opening static and a slow load") {

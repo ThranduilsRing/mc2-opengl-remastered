@@ -565,6 +565,7 @@ void GroundVehicle::handleStaticCollision (void)
 //---------------------------------------------------------------------------
 
 void GroundVehicle::init (bool create) {
+	visualSinkDepth = 0.0f;
 
 	longName[0] = 0;
 

@@ -932,6 +932,7 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		{ ZoneScopedN("GVAppearance.init.SensorTex");
 		sensorTriangleShapeOwner_.reset(GVAppearanceType::SensorTriangleShape->CreateFrom());
 		sensorTriangleShape = sensorTriangleShapeOwner_.get();
+		sensorTriangleShape->SetIsHudElement();
 		//-------------------------------------------------
 		// Load the texture and store its handle.
 		for (int i=0;i<sensorTriangleShape->GetNumTextures();i++)
@@ -969,6 +970,7 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
  		
 		sensorCircleShapeOwner_.reset(GVAppearanceType::SensorCircleShape->CreateFrom());
 		sensorCircleShape = sensorCircleShapeOwner_.get();
+		sensorCircleShape->SetIsHudElement();
  		//-------------------------------------------------
 		// Load the texture and store its handle.
 		for (int i=0;i<sensorCircleShape->GetNumTextures();i++)

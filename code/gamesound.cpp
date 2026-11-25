@@ -337,7 +337,8 @@ void GameSoundSystem::update (void)
 		generalAlarmTimer += frameLength;
 	}
 
-	if (useSound && currentMessage && (gosAudio_GetChannelPlayMode(RADIO_CHANNEL) != gosAudio_PlayOnce))
+	const bool speechBusy = isPlayingVoiceOver() || isChannelPlaying(BETTY_CHANNEL) || isChannelPlaying(SUPPORT_CHANNEL);
+	if (useSound && currentMessage && !speechBusy && (gosAudio_GetChannelPlayMode(RADIO_CHANNEL) != gosAudio_PlayOnce))
 	{
 		if (radioHandle)
 		{
@@ -387,7 +388,7 @@ void GameSoundSystem::update (void)
 		}
 	}
 		
-	if (useSound && messagesInQueue && wholeMsgDone)
+	if (useSound && messagesInQueue && wholeMsgDone && !speechBusy)
 	{
 		if (radioHandle)
 		{
