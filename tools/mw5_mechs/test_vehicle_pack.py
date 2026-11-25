@@ -3,7 +3,7 @@ import json
 import struct
 
 from tools.content_pipeline.gltf_io import load_document
-from tools.mw5_mechs.build_vehicle_pack import air_variant, write_glb
+from tools.mw5_mechs.build_vehicle_pack import air_variant, material_aliases, write_glb
 
 
 def test_vtol_rewrite_retains_animation_and_unaligned_binary(tmp_path):
@@ -46,3 +46,12 @@ def test_attack_igor_uses_a_real_stock_role_and_retains_base_pack(tmp_path):
     assert 'Source = "mw5_igor_attack"' in ini
     assert 'AnimHost = "heavycopter"' in ini
     assert json.loads((variant/'mod.json').read_text())['dependencies'] == ['mw5-vehicles']
+
+
+def test_material_aliases_follow_authored_inputs_instead_of_names():
+    from tools.content_pipeline.ir import Material
+    materials = [Material.for_class('dummy_material_0', 'painted_metal'),
+                 Material.for_class('Warrior_Solid_MTI.001', 'painted_metal'),
+                 Material.for_class('different_finish', 'painted_metal', roughness=.2)]
+    assert material_aliases(materials) == {'dummy_material_0': 'dummy_material_0',
+        'Warrior_Solid_MTI.001': 'dummy_material_0', 'different_finish': 'different_finish'}

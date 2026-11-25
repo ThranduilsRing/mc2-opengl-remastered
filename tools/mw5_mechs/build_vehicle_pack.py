@@ -10,6 +10,8 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.content_pipeline.cook import cook
+from tools.content_pipeline import ir
+from tools.content_pipeline.frontends import gltf_file
 from tools.content_pipeline.gltf_io import load_document
 from tools.mw5_mechs.build_pack import emit_ini
 
@@ -21,6 +23,18 @@ def write_glb(path, doc, binary):
     path.write_bytes(struct.pack('<III', 0x46546c67, 2, 28 + len(text) + len(binary))
                      + struct.pack('<II', len(text), 0x4e4f534a) + text
                      + struct.pack('<II', len(binary), 0x004e4942) + binary)
+
+
+def material_aliases(materials):
+    # Match the static cooker's authored-input deduplication. Different names
+    # can share a cooked slot, including names that have no common prefix.
+    seen, aliases = {}, {}
+    for material in materials:
+        values = {k: ([v.sha256, v.role, v.passthrough] if isinstance(v, ir.TextureRef) else v)
+                  for k, v in material.__dict__.items() if k not in ('name', 'review_note')}
+        key = json.dumps(values, sort_keys=True)
+        aliases[material.name] = seen.setdefault(key, material.name)
+    return aliases
 
 
 def air_variant(out, vehicle, base):
@@ -86,8 +100,13 @@ def build(recipe, assemblies, stock, out):
         cooked, _, _ = load_document(out/'data/model_overrides'/record['source'])
         names = {m['name']: m for m in cooked.get('materials', [])}
         doc, buffers, _ = load_document(assemblies/v['id']/'assembled.glb')
+        with tempfile.TemporaryDirectory(prefix='mw5-air-materials-') as work:
+            original = gltf_file.to_ir(stem, v['replaces'], assemblies/v['id']/'assembled.glb', kind='prop',
+                classes={m['name']: 'painted_metal' for m in doc.get('materials', [])},
+                meta={'frame': 'gltf', 'wu_per_unit': 10}, work_dir=Path(work), allow_skin=True)
+            aliases = material_aliases(original.materials)
         for mat in doc.get('materials', []):
-            c = names.get(mat['name']) or names.get(re.sub(r'\.\d{3}$', '', mat['name']), {})
+            c = names[aliases[mat['name']]]
             info = c.get('pbrMetallicRoughness', {}).get('baseColorTexture')
             if info is None:
                 continue
