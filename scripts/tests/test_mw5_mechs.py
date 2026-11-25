@@ -559,7 +559,7 @@ def test_purchase_unlock_table_matches_all_stock_missions():
     fingerprints = '19656e7c86ca 19656e7c86ca 1cac7d5d3373 efbf4ab1c0a6 a6a08811d35a a7e83723af3f a7e83723af3f a7e83723af3f 5cb34d144c62 faaa5c0f6dd2 b3b6dac31e6d b3b6dac31e6d a97d2d5040e6 993d25ada087 993d25ada087 993d25ada087 993d25ada087 b7070d511ac4 2a7c1ace822a 2a7c1ace822a 2a7c1ace822a 9549e1c32ffb 9549e1c32ffb 9549e1c32ffb'.split()
     for mission in range(1, 25):
         assert hashlib.sha256(','.join(sorted(stock[mission])).encode()).hexdigest()[:12] == fingerprints[mission-1]
-        unlocked = stock[mission] | {s for s,n in table.items() if n <= mission}
-        assert unlocked == stock[mission] | {s for s,n in expected.items() if n <= mission}
-        assert ('mw5_direwolf' in unlocked) == (mission >= 22)
+        unlocked = stock[mission] | {s for s,n in table.items() if s.startswith('mw5_') or n <= mission}
+        assert unlocked == stock[mission] | {s for s,n in expected.items() if s.startswith('mw5_') or n <= mission}
+        assert 'mw5_direwolf' in unlocked
         assert ('hunter' in unlocked)

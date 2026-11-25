@@ -104,18 +104,19 @@ TEST_CASE("purchase_catalog/installed assets mount without selecting a campaign"
 }
 
 TEST_CASE("purchase_catalog/availability preserves stock progression") {
-    const std::vector<mc2purchase::Unlock> table{{"hunter", 1}, {"mw5_atlas", 9}, {"mw5_direwolf", 22}};
+    const std::vector<mc2purchase::Unlock> table{{"hunter", 1}, {"vedette", 3}, {"mw5_atlas", 9}, {"mw5_direwolf", 22}};
     for (int mission = 1; mission <= 24; ++mission) {
         CHECK(mc2purchase::unlocked("hunter", mission, table));
-        CHECK(mc2purchase::unlocked("mw5_atlas", mission, table) == (mission >= 9));
-        CHECK(mc2purchase::unlocked("mw5_direwolf", mission, table) == (mission >= 22));
+        CHECK(mc2purchase::unlocked("vedette", mission, table) == (mission >= 3));
+        CHECK(mc2purchase::unlocked("mw5_atlas", mission, table));
+        CHECK(mc2purchase::unlocked("mw5_direwolf", mission, table));
         CHECK_FALSE(mc2purchase::unlocked("unknown_pack", mission, table));
         const auto path = "data/missions/purchase" + std::string(mission < 10 ? "0" : "") + std::to_string(mission) + ".fit";
         CHECK(mc2purchase::missionNumber(path) == mission);
     }
     CHECK(mc2purchase::missionNumber("data/missions/purchase_all.fit") == 1);
     CHECK(mc2purchase::unlocked("hunter", mc2purchase::missionNumber("data/missions/purchaseKVe.fit"), table));
-    CHECK_FALSE(mc2purchase::unlocked("mw5_atlas", mc2purchase::missionNumber("purchaseKVe.fit"), table));
+    CHECK(mc2purchase::unlocked("mw5_atlas", mc2purchase::missionNumber("purchaseKVe.fit"), table));
     CHECK(mc2purchase::missionNumber("purchase00.fit") == 0);
     CHECK(mc2purchase::missionNumber("purchase25.fit") == 0);
     CHECK_FALSE(mc2purchase::unlocked("hunter", 0, table));
@@ -124,23 +125,24 @@ TEST_CASE("purchase_catalog/availability preserves stock progression") {
     CHECK(mc2purchase::source("", "").empty());
 }
 
-TEST_CASE("purchase_catalog/normal custom campaign gets ten starting MW5 mechs") {
+TEST_CASE("purchase_catalog/mission one and custom campaigns list every MW5 chassis") {
     FitIniFile file;
     REQUIRE(file.open((std::string(MC2_REPO_ROOT) + "/data/defs/purchase/unlocks.fit").c_str()) == NO_ERR);
     REQUIRE(file.seekBlock("Unlocks") == NO_ERR);
     std::vector<mc2purchase::Unlock> table;
-    for (int i = 0; i < 48; ++i) {
+    for (int i = 0; ; ++i) {
         char stem[256];
         long mission = 0;
-        REQUIRE(file.readIdString(("Unit" + std::to_string(i)).c_str(), stem, sizeof(stem)) == NO_ERR);
+        if (file.readIdString(("Unit" + std::to_string(i)).c_str(), stem, sizeof(stem)) != NO_ERR) break;
         REQUIRE(file.readIdLong(("Mission" + std::to_string(i)).c_str(), mission) == NO_ERR);
         table.push_back({stem, mission});
     }
     for (const auto* purchase : {"purchase01.fit", "purchase02.fit", "purchaseKVe.fit"}) {
         const int mission = mc2purchase::missionNumber(purchase);
-        CHECK(std::count_if(table.begin(), table.end(), [&](const auto& row) {
-            return mc2purchase::unlocked(row.chassis, mission, table);
-        }) == 10);
+        for (const auto& row : table)
+            CHECK(mc2purchase::unlocked(row.chassis, mission, table) ==
+                (row.chassis.substr(0, 4) == "mw5_" || mission >= row.mission));
+        CHECK(mc2purchase::unlocked("mw5_future_chassis", mission, {}));
     }
 }
 

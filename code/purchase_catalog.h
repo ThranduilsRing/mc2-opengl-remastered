@@ -75,6 +75,8 @@ inline int missionNumber(std::string_view path) {
 }
 
 inline bool unlocked(std::string_view chassis, int mission, const std::vector<Unlock>& table) {
+    // Every installed MW5 chassis is purchasable from the start, including vehicles.
+    if (chassis.substr(0, 4) == "mw5_") return true;
     return std::any_of(table.begin(), table.end(), [&](const Unlock& row) {
         return row.chassis == chassis && mission >= row.mission && row.mission > 0;
     });
