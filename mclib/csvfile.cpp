@@ -915,11 +915,17 @@ long CSVFile::copyString (char *dest, char *src, unsigned long bufLen)
 }
 
 //---------------------------------------------------------------------------
-long CSVFile::readString (DWORD row, DWORD col, char *result, unsigned long bufferSize)
+long CSVFile::readString (DWORD row, DWORD col, char *result, unsigned long bufferSize, bool keepQuotes)
 {
 	long res = seekRowCol(row,col);
 	if (res == NO_ERR)
 	{
+		if (keepQuotes) {
+			const auto length = strlen(dataBuffer);
+			if (length >= bufferSize) return -2;
+			memcpy(result, dataBuffer, length + 1);
+			return NO_ERR;
+		}
 		long errorCode = copyString(result,dataBuffer,bufferSize);
 		if (errorCode != NO_ERR)
 			return(errorCode);

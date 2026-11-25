@@ -51,6 +51,26 @@ void gos_GetTerrainClassGrass(float* a,float* b,float* c,float* d) { *a=grass[0]
 void gos_SetTerrainClassDirt(float a,float b,float c,float d) { dirt={a,b,c,d}; }
 void gos_GetTerrainClassDirt(float* a,float* b,float* c,float* d) { *a=dirt[0];*b=dirt[1];*c=dirt[2];*d=dirt[3]; }
 
+TEST_CASE("MissionEnvironment/material normal classes resolve and reject invalid controls") {
+    const auto profile = source(R"({"defaults":{"terrainNormalFlatPeriod":384,"terrainNormalFlatStrength":1.5,"terrainNormalSlopePeriod":240,"terrainNormalSlopeStrength":2,"terrainNormalCliffPeriod":256,"terrainNormalCliffStrength":1.2,"terrainNormalCementPeriod":64,"terrainNormalCementStrength":0.8},"missions":{"bad":{"terrainNormalFlatPeriod":0,"terrainNormalSlopeStrength":5},"override":{"terrainNormalFlatPeriod":512}}})");
+    const auto env = visualTuning_resolve("override", {profile});
+    CHECK(env.legacyTuning.at("terrainNormalFlatPeriod") == 512);
+    CHECK(env.legacyTuning.at("terrainNormalFlatStrength") == 1.5f);
+    CHECK(env.legacyTuning.at("terrainNormalSlopePeriod") == 240);
+    CHECK(env.legacyTuning.at("terrainNormalSlopeStrength") == 2);
+    CHECK(env.legacyTuning.at("terrainNormalCliffPeriod") == 256);
+    CHECK(env.legacyTuning.at("terrainNormalCliffStrength") == 1.2f);
+    CHECK(env.legacyTuning.at("terrainNormalCementPeriod") == 64);
+    CHECK(env.legacyTuning.at("terrainNormalCementStrength") == 0.8f);
+    const auto bad = visualTuning_resolve("bad", {profile});
+    CHECK(bad.legacyTuning.at("terrainNormalFlatPeriod") == 384);
+    CHECK(bad.legacyTuning.at("terrainNormalSlopeStrength") == 2);
+    CHECK(bad.diagnostics.size() == 2);
+    const auto reset = visualTuning_resolve("other", {});
+    CHECK(reset.legacyTuning.at("terrainNormalFlatPeriod") == 768);
+    CHECK(reset.legacyTuning.at("terrainNormalSlopeStrength") == 1);
+}
+
 TEST_CASE("MissionEnvironment/unit fill and building spill profile bounds and mission reset") {
     const auto profile = source(R"({"defaults":{"unitAmbientScale":1.2,"buildingSpillIntensityScale":1},"missions":{"a":{"unitAmbientScale":1.4,"buildingSpillIntensityScale":0.5},"invalid":{"unitAmbientScale":2.1,"buildingSpillIntensityScale":-1}}})");
     const auto a = visualTuning_resolve("a", {profile});

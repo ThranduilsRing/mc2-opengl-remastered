@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 294,
+    "glsl_blocks_with_binding": 295,
     "native_pairs": 4,
     "fails": 0,
     "warns": 1
@@ -947,7 +947,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 96,
+        "line": 101,
         "role": "TerrainVisualHeightBuf",
         "std": "std430",
         "type": "buffer",
@@ -1651,6 +1651,18 @@
         "std": "std430",
         "type": "buffer",
         "source": "shaders/vulkan/water_reflection_mask.comp",
+        "branch": {}
+      }
+    ],
+    "set0:binding20": [
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/terrain_tier1.frag",
+        "line": 72,
+        "role": "u_forestMask",
+        "std": null,
+        "type": "sampler2D",
+        "source": "shaders/vulkan/terrain_tier1.frag",
         "branch": {}
       }
     ],

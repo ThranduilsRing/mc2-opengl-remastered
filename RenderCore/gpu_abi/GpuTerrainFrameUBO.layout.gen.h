@@ -111,4 +111,15 @@ static_assert(offsetof(TerrainFrameUBO, shoreFieldBoundsH) == 852, "shoreFieldBo
 static_assert(offsetof(TerrainFrameUBO, concreteDetail) == 856, "concreteDetail offset");
 static_assert(offsetof(TerrainFrameUBO, concreteDetailStrength) == 860, "concreteDetailStrength offset");
 static_assert(offsetof(TerrainFrameUBO, groundMottleOn) == 864, "groundMottleOn offset");
-static_assert(offsetof(TerrainFrameUBO, _pad) == 868, "_pad offset");
+static_assert(offsetof(TerrainFrameUBO, normalFlatPeriod) == 868, "normalFlatPeriod offset");
+static_assert(offsetof(TerrainFrameUBO, normalFlatStrength) == 872, "normalFlatStrength offset");
+static_assert(offsetof(TerrainFrameUBO, normalSlopePeriod) == 876, "normalSlopePeriod offset");
+static_assert(offsetof(TerrainFrameUBO, normalSlopeStrength) == 880, "normalSlopeStrength offset");
+static_assert(offsetof(TerrainFrameUBO, normalCliffPeriod) == 884, "normalCliffPeriod offset");
+static_assert(offsetof(TerrainFrameUBO, normalCliffStrength) == 888, "normalCliffStrength offset");
+static_assert(offsetof(TerrainFrameUBO, normalCementPeriod) == 892, "normalCementPeriod offset");
+static_assert(offsetof(TerrainFrameUBO, normalCementStrength) == 896, "normalCementStrength offset");
+static_assert(offsetof(TerrainFrameUBO, groundAoShape) == 900, "groundAoShape offset");
+static_assert(offsetof(TerrainFrameUBO, groundAoMaterial) == 904, "groundAoMaterial offset");
+static_assert(offsetof(TerrainFrameUBO, groundAoSource) == 908, "groundAoSource offset");
+static_assert(offsetof(TerrainFrameUBO, _pad) == 912, "_pad offset");

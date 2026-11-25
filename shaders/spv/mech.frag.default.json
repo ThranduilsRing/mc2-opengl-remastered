@@ -6,14 +6,14 @@
   "specializationParams": [],
   "artifact": "mech.frag.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "14feb624b6979d776697169ef3851f64a214dd56f5d60638c2c28531dbacb473",
-  "spirv_sha256": "10f13b9ec622338b15f5d7cfc55556c589d4417c5a66f1755ed9933676578fca",
+  "source_sha256": "861f2dc0f9da5c562c30fde830ffe0b42dfa05c1012a57dd93b7a3319c386a8b",
+  "spirv_sha256": "55d9adccfa538adb9334b29f3f589afc0a068ea8dbbb1f5a2ea7f979b0ca1b6c",
   "bindings": {
     "ubos": [
       {
         "type": "_782",
         "name": "TerrainFrameUBO",
-        "block_size": 868,
+        "block_size": 912,
         "set": 1,
         "binding": 0
       },
@@ -819,6 +819,61 @@
           "name": "groundMottleOn",
           "type": "int",
           "offset": 864
+        },
+        {
+          "name": "normalFlatPeriod",
+          "type": "float",
+          "offset": 868
+        },
+        {
+          "name": "normalFlatStrength",
+          "type": "float",
+          "offset": 872
+        },
+        {
+          "name": "normalSlopePeriod",
+          "type": "float",
+          "offset": 876
+        },
+        {
+          "name": "normalSlopeStrength",
+          "type": "float",
+          "offset": 880
+        },
+        {
+          "name": "normalCliffPeriod",
+          "type": "float",
+          "offset": 884
+        },
+        {
+          "name": "normalCliffStrength",
+          "type": "float",
+          "offset": 888
+        },
+        {
+          "name": "normalCementPeriod",
+          "type": "float",
+          "offset": 892
+        },
+        {
+          "name": "normalCementStrength",
+          "type": "float",
+          "offset": 896
+        },
+        {
+          "name": "groundAoShape",
+          "type": "float",
+          "offset": 900
+        },
+        {
+          "name": "groundAoMaterial",
+          "type": "float",
+          "offset": 904
+        },
+        {
+          "name": "groundAoSource",
+          "type": "float",
+          "offset": 908
         }
       ]
     },

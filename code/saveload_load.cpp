@@ -157,6 +157,7 @@ void Mission::loadMovement(MissionLoadFrame& f) {
 				 .areas = f.sections.find(mc2::save::tagMapAreas) != nullptr,
 				 .doors = f.sections.find(mc2::save::tagMapDoors) != nullptr,
 				 .links = f.sections.find(mc2::save::tagDoorLinks) != nullptr});
+			if (land) land->reloadVisualHeightWithPassability(GameMap);
 			if (GlobalMoveMap[0]->badLoad)
 				STOP((" Mission.Load: old version of move data In-Mission Save Obsolete."));
 
@@ -828,7 +829,10 @@ void Mission::loadActivateAndFinalize() {
 	ObjectManager->extractRenderSnapshots();
 	// activate() re-centres on the first mover; a resumed game keeps the camera it was saved with.
 	const glm::vec3 savedCameraPosition = eye->getPosition();
+	glm::vec3 savedCameraView = eye->getRotation();
+	savedCameraView.z = eye->getCameraAltitude();
 	eye->activate();
+	eye->restoreSavedView(savedCameraView);
 	eye->setPosition(savedCameraPosition,false);
 	eye->update();
 	loadProgress = 100.f;

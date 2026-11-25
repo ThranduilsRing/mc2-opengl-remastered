@@ -468,7 +468,9 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
         # The in-mission budget starts at the first presented frame, not at spawn: a slow or contended load (31 s measured at 4K, 74 s on a
         # busy host) used to eat the whole budget and kill the engine before any bookmark was requested, which then read as
         # "no sidecar or no backend/readback_source".
-        load_cap = 300
+        # The cap is a hang detector, not a perf budget: a cold content-cook cache (fresh seed install, the gate's base arm) under the
+        # gate's parallel stages measured 259 s for mc2_01 and passed 300 s on mc2_10 (window 1124b), killing a healthy load.
+        load_cap = 600
         ready_t = None
         deadline = t0 + load_cap
         done_early = False

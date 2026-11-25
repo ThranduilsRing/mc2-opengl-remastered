@@ -146,9 +146,9 @@ void TextureResidency::beginFrame(uint64_t frame, uint32_t frameSlot) {
 std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCore::KtxImage& image, bool useMips, Upload* async, uint32_t layers, bool arrayView, bool vegetation) {
     ZoneScopedN("TextureResidency.Upload");
     ZoneValue(image.pixels.size());
-    const bool rgba=image.vkFormat==37 || image.vkFormat==43;
-    const bool floating=image.vkFormat==97 || image.vkFormat==100 || image.vkFormat==VK_FORMAT_R32G32_SFLOAT;
-    const size_t stride=(image.vkFormat==97 || image.vkFormat==VK_FORMAT_R32G32_SFLOAT) ? 8u : 4u;
+    const bool rgba=image.vkFormat==37 || image.vkFormat==43 || image.vkFormat==VK_FORMAT_R8_UNORM;
+    const bool floating=image.vkFormat==97 || image.vkFormat==100 || image.vkFormat==VK_FORMAT_R32G32_SFLOAT || image.vkFormat==VK_FORMAT_R32G32B32A32_SFLOAT;
+    const size_t stride=image.vkFormat==VK_FORMAT_R8_UNORM ? 1u : image.vkFormat==VK_FORMAT_R32G32B32A32_SFLOAT ? 16u : (image.vkFormat==97 || image.vkFormat==VK_FORMAT_R32G32_SFLOAT) ? 8u : 4u;
     const bool bc1=image.vkFormat>=131 && image.vkFormat<=134;
     const bool blocks=bc1 || image.vkFormat==137 || image.vkFormat==138 || image.vkFormat==141 || (image.vkFormat>=143 && image.vkFormat<=146);
     if ((!rgba && !floating && !blocks) || image.isCompressed!=blocks || (blocks && image.blockSizeBytes!=(bc1?8u:16u))) return {};
@@ -405,7 +405,7 @@ ResidentTextureRef TextureResidency::acquirePixels(uint32_t width,uint32_t heigh
     const bool compressed=format>=131 && format<=146;
     const bool bc7Chain=mipCount>1 && layers==1 && (format==VK_FORMAT_BC7_UNORM_BLOCK || format==VK_FORMAT_BC7_SRGB_BLOCK);
     const size_t expected=bc7Chain ? mc2tex::bc7ChainBytes(width,height,mipCount) :
-        (compressed ? static_cast<size_t>((width+3)/4)*((height+3)/4)*(format<=134?8u:16u) : static_cast<size_t>(width)*height*((format==VK_FORMAT_R16G16B16A16_SFLOAT || format==VK_FORMAT_R32G32_SFLOAT) ? 8u : 4u))*layers;
+        (compressed ? static_cast<size_t>((width+3)/4)*((height+3)/4)*(format<=134?8u:16u) : static_cast<size_t>(width)*height*(format==VK_FORMAT_R8_UNORM ? 1u : format==VK_FORMAT_R32G32B32A32_SFLOAT ? 16u : (format==VK_FORMAT_R16G16B16A16_SFLOAT || format==VK_FORMAT_R32G32_SFLOAT) ? 8u : 4u))*layers;
     if (count!=expected) return {};
     RenderCore::TextureKey key;
     key.source=RenderCore::legacyCpuTextureSource(width,height,layers,arrayView,RenderCore::textureContentHash(static_cast<const uint8_t*>(bytes),count));

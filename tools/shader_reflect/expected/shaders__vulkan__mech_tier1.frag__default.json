@@ -1097,6 +1097,83 @@
           "name": "groundMottleOn",
           "offset": 864,
           "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "normalFlatPeriod",
+          "offset": 868,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "normalFlatStrength",
+          "offset": 872,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "normalSlopePeriod",
+          "offset": 876,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "normalSlopeStrength",
+          "offset": 880,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "normalCliffPeriod",
+          "offset": 884,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "normalCliffStrength",
+          "offset": 888,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "normalCementPeriod",
+          "offset": 892,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "normalCementStrength",
+          "offset": 896,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "groundAoShape",
+          "offset": 900,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "groundAoMaterial",
+          "offset": 904,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "groundAoSource",
+          "offset": 908,
+          "type": "float"
         }
       ],
       "name": "TerrainFrameUBO"

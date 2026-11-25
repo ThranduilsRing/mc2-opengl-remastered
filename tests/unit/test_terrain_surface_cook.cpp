@@ -74,6 +74,23 @@ TEST_CASE("surface materials: muted sand follows semantic dirt, not hue") {
     CHECK(edited[0] == 255); CHECK(edited[1] == 0);
 }
 
+TEST_CASE("surface materials: dark greens and browns carry grass, grey stays rock, bright sand stays dirt") {
+    const auto weights = [](std::array<float, 3> rgb) {
+        mc2terrain::SurfaceAsset surface;
+        surface.width = surface.height = 1; surface.sourceHash = 1;
+        surface.macroColor = {{rgb[0], rgb[1], rgb[2], 0.5f}};
+        return mc2terrain::cookSurfaceMaterials(surface, {}, 0, {}, 0, 1, 1);
+    };
+    const auto darkGreen = weights({0.05f, 0.10f, 0.04f});
+    CHECK(darkGreen[0] > 150);                       // grass (the old classifier gave rock)
+    const auto darkBrown = weights({0.20f, 0.15f, 0.10f});
+    CHECK(darkBrown[0] > 40); CHECK(darkBrown[1] > 40);   // grass and dirt mix
+    const auto grey = weights({0.30f, 0.30f, 0.30f});
+    CHECK(grey[0] < 20); CHECK(grey[1] < 20);        // rock
+    const auto sand = weights({0.70f, 0.62f, 0.45f});
+    CHECK(sand[1] > 200); CHECK(sand[0] == 0);       // bright sand: dirt as before
+}
+
 TEST_CASE("surface materials: snow and unknown mod ground retain import fallback") {
     mc2terrain::SurfaceAsset surface;
     surface.width = surface.height = 1; surface.sourceHash = 1;
@@ -599,4 +616,25 @@ TEST_CASE("surface cook cache: roundtrip, stale key, corrupt and truncated files
     for (const auto& e : fs::directory_iterator(dir)) CHECK(e.path().extension() == ".tsf");
     CHECK_FALSE(mc2terrain::loadCachedSurfaceAsset("", key));
     fs::remove_all(dir);
+}
+
+TEST_CASE("terrain shape AO: flat and uniform slope stay open, a bowl darkens its centre, bounds hold") {
+    constexpr uint32_t side = 41;
+    const auto at = [&](const mc2terrain::SurfaceGradients& g, uint32_t x, uint32_t y) { return g.ao[size_t(y + 1) * g.side + x + 1]; };
+    std::vector<float> flat(side * side, 100.0f), slope(side * side), bowl(side * side);
+    for (uint32_t y = 0; y < side; ++y) for (uint32_t x = 0; x < side; ++x) {
+        slope[y * side + x] = 40.0f * float(x);   // 40 wu rise per 128 wu cell
+        const float dx = float(x) - 20.0f, dy = float(y) - 20.0f;
+        bowl[y * side + x] = 30.0f * (dx * dx + dy * dy);   // a pit: centre low, rim high
+    }
+    const auto f = mc2terrain::cookSurfaceGradients(flat, side), s = mc2terrain::cookSurfaceGradients(slope, side),
+               b = mc2terrain::cookSurfaceGradients(bowl, side);
+    REQUIRE((f && s && b));
+    REQUIRE(f->ao.size() == f->texels.size());
+    for (float v : f->ao) CHECK(v == doctest::Approx(1.0f));
+    CHECK(at(*s, 20, 20) == doctest::Approx(1.0f).epsilon(0.02));   // an unbroken slope is not occluded
+    CHECK(at(*b, 20, 20) < 0.6f);                                   // the pit floor is darkest
+    CHECK(at(*b, 20, 20) < at(*b, 12, 20));
+    for (float v : b->ao) { CHECK(v >= 0.0f); CHECK(v <= 1.0f); }
+    CHECK(mc2terrain::cookSurfaceGradients(bowl, side, false)->ao.empty());   // a height patch keeps the mission's earlier bake
 }

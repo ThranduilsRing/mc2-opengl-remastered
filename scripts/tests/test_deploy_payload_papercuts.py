@@ -235,7 +235,7 @@ def test_run_deploy_logs_stock_receipts_and_kit_cook(tmp_path, monkeypatch, caps
     target.mkdir()
     (build / "mc2").write_bytes(b"exe")
     for name in ("seed_build_dlls", "check_exe_fresh", "check_free_space_for_payload", "check_hardlink_isolation",
-                 "ensure_engine_normal_cooks", "write_manifest"):
+                 "ensure_engine_normal_cooks", "cook_mod_visual_heights", "write_manifest"):
         monkeypatch.setattr(dp, name, lambda *a, **kw: None)
     monkeypatch.setattr(dp, "git_head", lambda *a: "head")
     monkeypatch.setattr(dp, "deploy_inputs", lambda *a: {})

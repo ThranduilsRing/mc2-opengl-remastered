@@ -27,3 +27,7 @@ shaders/gos_terrain.vert
 # The water depth-lift guard rejects near-zero perspective denominators.
 # Its depth division keeps signed clipL.w; no screen-coordinate round trip.
 shaders/vulkan/water_geom.vert:            if (abs(clipL.w) > 1e-5)
+
+# HZB leaf cull pads the side-plane test by a pixel margin scaled with the corner's clip magnitude; a corner behind the eye
+# (clip.w < 0, near-straddling box) must still add a positive pad. Not a screen-coordinate round trip of the unified projection.
+shaders/vulkan/hzb_cull.comp:            float pw = abs(clip.w) + swayPad.w;

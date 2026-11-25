@@ -6758,7 +6758,9 @@
     "mask_ready",
     "props_total",
     "casters_total",
-    "movers_in_view"
+    "movers_in_view",
+    "texel_wu",
+    "sharp"
    ],
    "count": 1
   },
@@ -8376,6 +8378,22 @@
     "quadsSkipped",
     "waterCandidates",
     "pickingCarveout"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RAVINE_WEATHER",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "RAVINE_WEATHER",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "blocked"
    ],
    "count": 1
   },
@@ -11825,6 +11843,15 @@
     "out"
    ],
    "count": 2
+  },
+  {
+   "tag": "VISUAL_HEIGHT",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "V"
+   ],
+   "count": 1
   },
   {
    "tag": "VISUAL_HEIGHT",

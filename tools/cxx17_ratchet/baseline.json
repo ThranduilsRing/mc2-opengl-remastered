@@ -743,6 +743,7 @@
    "LG17": 1
   },
   "GameOS/gameos/terrain_fine_height_bake.h": {},
+  "GameOS/gameos/terrain_forest_mask.h": {},
   "GameOS/gameos/terrain_material_lib.cpp": {},
   "GameOS/gameos/terrain_material_lib.h": {},
   "GameOS/gameos/terrain_record_cache.h": {},
@@ -2649,6 +2650,7 @@
   "mclib/fit_number.h": {},
   "mclib/floathelp.cpp": {},
   "mclib/floathelp.h": {},
+  "mclib/foot_grounding.h": {},
   "mclib/footprints.cpp": {},
   "mclib/footprints.h": {},
   "mclib/fst_hash.cpp": {
@@ -3486,7 +3488,7 @@
    "LG20": 1
   }
  },
- "head": "b8815fde5",
+ "head": "fc64cf414",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

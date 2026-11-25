@@ -1,5 +1,6 @@
 #include "vulkan_mover_shadow.h"
 #include "shadow_quality.h"
+#include "visual_tuning_profile.h"
 #include "vulkan_context.h"
 #include "vk_barrier_batch_vk.h"
 #include "Gates/gate.h"
@@ -197,7 +198,9 @@ bool MoverShadowState::prepare(uint64_t epoch, int mapSide, const float cameraRo
     frame_={};
     frame_.flags[0]=spheres_.empty()?0:1; frame_.flags[1]=shadowQuality().level==0?0:1; frame_.flags[2]=shadowQuality().level; frame_.flags[3]=1;
     frame_.sun[0]=sun.x; frame_.sun[1]=sun.y; frame_.sun[2]=sun.z;
-    frame_.sun[3]=std::tan(kMoverSunAngularRadiusDeg * 0.01745329252f);
+    const float sharp=visualTuning_moverShadowSharpness();
+    frame_.sun[3]=std::tan(moverSunAngularRadiusDeg(sharp) * 0.01745329252f);
+    frame_.light[3]=sharp;
     frame_.light[0]=nightShadowFade(); frame_.light[2]=moverShadowFade();
     frame_.light[1]=static_cast<float>(mc2::gate::get<"MC2_SHADOW_MOVER_SAMPLES">());
     int side=0; float halfMap=0; gos_GetTerrainChunkGridInfo(&side,&halfMap);
@@ -217,9 +220,10 @@ bool MoverShadowState::prepare(uint64_t epoch, int mapSide, const float cameraRo
     std::memcpy(active_.ptr,&frame_,sizeof(frame_)); // the engine ring is host coherent
     activeFrame_=ctx.frameContext().frame;
     if (activeFrame_%120==0 && mc2_diag::tagRequested("MOVER_SHADOW"))   // MC2_DIAG_TAGS=MOVER_SHADOW
-        mc2::fmt::print_err("[MOVER_SHADOW] frame={} mask_ready={} props_total={} casters_total={} movers_in_view={}\n",
+        mc2::fmt::print_err("[MOVER_SHADOW] frame={} mask_ready={} props_total={} casters_total={} movers_in_view={} texel_wu={:.3f} sharp={:.1f}\n",
             activeFrame_,maskReady?1:0,props.size(),casters,
-            std::count_if(mech_.actors.begin(),mech_.actors.end(),[](const mc2shadow::MechActorTable::Actor& a){ return a.inView; }));
+            std::count_if(mech_.actors.begin(),mech_.actors.end(),[](const mc2shadow::MechActorTable::Actor& a){ return a.inView; }),
+            frame_.params[0],sharp);
     return true;
 }
 

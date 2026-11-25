@@ -31,13 +31,13 @@ struct MaterialDetail {
 // Cell-wise UV, luminance and roughness jumps made flat pads read as large polygons.
 // `dx`/`dy` are the screen derivatives of the world XY, taken in uniform control flow by the caller (this runs in divergent branches).
 MaterialDetail cdEval(int layer, vec2 wp, vec2 dx, vec2 dy) {
-    const float kScale = 1.0 / 48.0;
+    float kScale = 1.0 / uT.normalCementPeriod;
     vec2 uv = wp * kScale;
     float lod = log2(max(max(dot(dx, dx), dot(dy, dy)), 1e-8)) * 0.5 + log2(kScale * 0.5 * float(textureSize(u_concreteDetail, 0).x));
     vec4 a = textureLod(u_concreteDetail, vec3(uv, float(layer)), max(lod, 0.0));
     // Image rows run top-down while world v runs north, so the GL-convention green channel is negated.
     float strength = layer == CD_LAYER_PAD ? CD_CONCRETE_RELIEF_STRENGTH : uT.concreteDetailStrength;
-    vec2 nxy = vec2(a.x * 2.0 - 1.0, -(a.y * 2.0 - 1.0)) * strength;
+    vec2 nxy = vec2(a.x * 2.0 - 1.0, -(a.y * 2.0 - 1.0)) * strength * uT.normalCementStrength;
     MaterialDetail d;
     d.n = normalize(vec3(nxy, 1.0));
     d.roughness = clamp(a.z, 0.05, 1.0);

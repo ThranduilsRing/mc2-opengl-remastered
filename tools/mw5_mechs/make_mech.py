@@ -24,6 +24,8 @@ from scipy import ndimage
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parents[1]))
+sys.path.insert(0, str(HERE.parents[1] / "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each)
 import add_cockpit  # noqa: E402
 import bake_extras  # noqa: E402
 import bake_material  # noqa: E402

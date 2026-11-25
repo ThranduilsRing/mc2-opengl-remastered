@@ -6,12 +6,16 @@
 #include "texture_decode.h"
 #include "load_scope.h"
 #include "terrain_field_store.h"
+#include "terrain_forest_mask.h"
 #include "cement_layers.h"
 #include "terrain_fine_height_bake.h"
 #include "gameos.hpp"
 #include "gos_render.h"
+#include <algorithm>
 #include <array>
 #include <bit>
+#include <chrono>
+#include <span>
 #include <filesystem>
 #include <string>
 #include <string_view>
@@ -41,17 +45,34 @@ namespace vk_terrain_detail {
 bool snapshot_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if (feed.heightVersion == s->heightVersionCopied) return true; // unchanged
     if (!feed.heightCpu || feed.heightBytes == 0) return false;
-    const auto gradients = mc2terrain::cookSurfaceGradients(
-        {feed.heightCpu, static_cast<size_t>(feed.heightBytes) / sizeof(float)}, static_cast<uint32_t>(feed.mapSide));
+    // The AO bake is per mission: a strided fingerprint of the field tells a new map from a crater patch on the same one.
+    const std::span<const float> heights{feed.heightCpu, static_cast<size_t>(feed.heightBytes) / sizeof(float)};
+    const uint32_t side = static_cast<uint32_t>(feed.mapSide);
+    uint64_t aoKey = 14695981039346656037ull ^ side;
+    for (size_t i = 0, stride = std::max<size_t>(1, heights.size() / 4099) | 1; i < heights.size(); i += stride)
+        aoKey = (aoKey ^ std::bit_cast<uint32_t>(heights[i])) * 1099511628211ull;
+    const bool reuseAo = !s->groundAo.empty() && s->groundAoKey == aoKey && s->groundAo.size() == static_cast<size_t>(side + 2) * (side + 2);
+    const auto t0 = std::chrono::steady_clock::now();
+    auto gradients = mc2terrain::cookSurfaceGradients(heights, side, !reuseAo);
     if (!gradients) return false;
+    if (reuseAo) gradients->ao = s->groundAo;
+    else {
+        s->groundAo = gradients->ao; s->groundAoKey = aoKey;
+        vlog("GROUND-AO: baked terrain-shape AO side=%u in %.1f ms (gradients included).", side,
+             std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count());
+    }
+    // Texel = (gradient x, gradient y, terrain-shape AO, 1): binding 16, sampled bilinearly by the ground shader.
+    std::vector<std::array<float, 4>> packed(gradients->texels.size());
+    for (size_t i = 0; i < packed.size(); ++i)
+        packed[i] = {gradients->texels[i][0], gradients->texels[i][1], gradients->ao.empty() ? 1.0f : gradients->ao[i], 1.0f};
     if (!ensure_height_capacity(s, static_cast<VkDeviceSize>(feed.heightBytes))) return false;
     // The height SSBO is version-gated (rare rewrite: mission load / crater deform) and a prior terrain submit may still read it.
     // A rewrite (crater deform) replaces the buffer instead: the old one retires on the open-frame ticket and the descriptors repoint lazily per parity.
     if (s->heightVersionCopied != UINT64_MAX &&
         !replace_host_buffer(s, s->heightBuf, s->heightCapBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "terrain.heightBuf")) return false;
     if (!create_colormap_sampler(s) || !upload_sampled_image(s, s->macroGradientTexture,
-            VK_FORMAT_R32G32_SFLOAT, gradients->side, gradients->side, gradients->texels.data(),
-            gradients->texels.size() * sizeof(gradients->texels[0]))) return false;
+            VK_FORMAT_R32G32B32A32_SFLOAT, gradients->side, gradients->side, packed.data(),
+            packed.size() * sizeof(packed[0]))) return false;
     write_descriptors(s);
     void* p = nullptr;
     if (vmaMapMemory(s->allocator, s->heightBuf.allocation(), &p) != VK_SUCCESS) return false;
@@ -369,6 +390,40 @@ bool ensure_dummy_materials(TerrainIsland* s) {
     if (s->materialTexture) return true;
     const uint8_t rock[4] = {};
     return upload_sampled_image(s, s->materialTexture, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, rock, sizeof(rock));
+}
+
+// Binding 20 is always a valid descriptor; the dummy (no canopy) reads as no forest floor anywhere.
+bool ensure_dummy_forest_mask(TerrainIsland* s) {
+    if (!create_colormap_sampler(s)) return false;
+    if (s->forestMaskTexture) return true;
+    const uint8_t zero[1] = {};
+    return upload_sampled_image(s, s->forestMaskTexture, VK_FORMAT_R8_UNORM, 1, 1, zero, sizeof(zero));
+}
+
+// Splat the mission's tree placements into the canopy-density mask (R8) over the colormap atlas extent; rebuilt when the
+// trees or the atlas extent change. Canopy radius and grid are fixed: the mask is a soft blob field, not a per-tree footprint.
+void import_forest_mask(TerrainIsland* s) {
+    const auto* fields = gos_TerrainFieldStore();
+    if (!fields || !(s->colormapCookParams[2] > 0.0f)) return;
+    const std::array<float, 3> params{s->colormapCookParams[0], s->colormapCookParams[1], s->colormapCookParams[2]};
+    if (fields->treeVersion() == s->forestTreeVersionImported && params == s->forestParamsImported) return;
+    constexpr float kCanopyRadius = 70.0f;   // wu
+    // A texel stays <= half the canopy radius on any map side: power-of-two edge covering the atlas extent, 1024..4096.
+    const float extentWu = 1.0f / params[2];
+    int kEdge = 1024;
+    while (kEdge < 4096 && extentWu / static_cast<float>(kEdge) > kCanopyRadius * 0.5f) kEdge *= 2;
+    std::vector<uint8_t> density;
+    mc2terrain::splatForestMask(fields->treePositions(), params[0], params[1], 1.0f / params[2], kEdge, kEdge, kCanopyRadius, density);
+    if (!upload_sampled_image(s, s->forestMaskTexture, VK_FORMAT_R8_UNORM, kEdge, kEdge, density.data(), density.size())) {
+        vlog("FOREST_MASK: upload failed; no forest floor this mission.");
+        s->forestTreeVersionImported = fields->treeVersion();   // latch: no per-frame retry or log spam until the trees or atlas change
+        s->forestParamsImported = params;
+        return;
+    }
+    s->forestTreeVersionImported = fields->treeVersion();
+    s->forestParamsImported = params;
+    vlog("FOREST_MASK: %zu trees splatted into %dx%d (canopy %.0f wu).", fields->treePositions().size() / 2, kEdge, kEdge, kCanopyRadius);
+    write_descriptors(s);
 }
 
 void import_materials(TerrainIsland* s) {

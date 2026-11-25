@@ -3,6 +3,7 @@
 // VK terrain island: the extern C entry points: enabled / ready / prepare, the frame UBO and light-pool staging, and the per-frame run.
 // Declared in the class headers; shared names in vulkan_terrain_island_internal.h.
 #include "vulkan_terrain_island_internal.h"
+#include "terrain_field_store.h"
 #include "vulkan_mover_shadow.h"
 #include "../../RenderCore/TemporalInputs.h"
 #include "hitch_stats.h"
@@ -137,6 +138,7 @@ extern "C" int mc2_vk_terrain_island_prewarm(int w, int h) {
     snapshot_cement(s, feed);
     import_shore_mask(s, feed);
     import_materials(s);
+    import_forest_mask(s);
     import_concrete_detail(s);
     import_matnormal(s, feed);
     if (feed.visualHeightCpu) snapshot_visual_height(s, feed);
@@ -238,6 +240,24 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     u.concreteDetailStrength = 0.15f;   // normal gain over the cooked 2K sets; tuned in a viewed RTS-zoom montage
     u.detailTiling   = feed.detailTiling;
     u.detailStrength = feed.detailStrength;
+    // Same resolved profile (defaults, mission, session) as the CPU environment.
+    static const auto normalDefaults = visualTuning_resolve("", {}).legacyTuning;
+    const auto& resolved = visualTuning_environment().legacyTuning;
+    const auto& normalTuning = resolved.empty() ? normalDefaults : resolved;
+    u.normalFlatPeriod = normalTuning.at("terrainNormalFlatPeriod");
+    u.normalFlatStrength = normalTuning.at("terrainNormalFlatStrength");
+    u.normalSlopePeriod = normalTuning.at("terrainNormalSlopePeriod");
+    u.normalSlopeStrength = normalTuning.at("terrainNormalSlopeStrength");
+    u.normalCliffPeriod = normalTuning.at("terrainNormalCliffPeriod");
+    u.normalCliffStrength = normalTuning.at("terrainNormalCliffStrength");
+    u.normalCementPeriod = normalTuning.at("terrainNormalCementPeriod");
+    u.normalCementStrength = normalTuning.at("terrainNormalCementStrength");
+    // Ground AO: the player option scales both layers to zero; the shape layer is also off while its bake is the neutral dummy.
+    const bool groundAo = mc2::options::current().groundAo && detail;
+    u.groundAoShape = groundAo ? normalTuning.at("terrainGroundAoShape") : 0.0f;
+    u.groundAoMaterial = groundAo ? normalTuning.at("terrainGroundAoMaterial") : 0.0f;
+    const auto* aoFields = gos_TerrainFieldStore();
+    u.groundAoSource = aoFields && aoFields->materialNormals().grassSourceAo ? normalTuning.at("terrainGroundAoSource") : 0.0f;
     // VK-TERRAIN-LODFADE: camera pos + gate, precondition-chained on detail
     // being enabled (fading an already-off detail term is a no-op).
     u.cameraPosMC2[0] = feed.cameraPosMC2[0];
@@ -589,6 +609,7 @@ static bool borrow_terrain_images(TerrainIsland* s) {
     borrow(s->cementTexture, main->cementTexture);
     borrow(s->shoreMaskTexture, main->shoreMaskTexture);
     borrow(s->materialTexture, main->materialTexture);
+    borrow(s->forestMaskTexture, main->forestMaskTexture);
     borrow(s->matNormalTexture, main->matNormalTexture);
     borrow(s->concreteDetailTexture, main->concreteDetailTexture);
     s->colormapReady = main->colormapReady;
@@ -670,6 +691,7 @@ static int run_terrain(int w, int h, TerrainIsland* supplied = nullptr,
         import_cement(s, feed);
         import_shore_mask(s, feed);
         import_materials(s);
+        import_forest_mask(s);
         import_concrete_detail(s);
         import_matnormal(s, feed);
     }

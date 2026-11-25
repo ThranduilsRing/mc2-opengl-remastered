@@ -390,6 +390,8 @@ TERRAIN_LAYER_PAYLOAD = [
     "data/terrain_layers/cliff_rock_ah.ktx2",          # TERRAIN-CLIFF-ROCK (cook_cliff_rock.py --select riverbed)
     "data/terrain_layers/cliff_rock_nra.ktx2",
     "data/terrain_layers/grass_turf_normal.ktx2",      # GRASS-GROUND-NORMAL (cook_grass_turf.py), detail-normal layer 1
+    "data/terrain_layers/dirt_sand_normal.ktx2",       # TERRAIN-NORMAL-UNIFORM (cook_dirt_sand.py), detail-normal layer 2
+    "data/terrain_layers/forest_floor_normal.ktx2",    # TERRAIN-NORMAL-UNIFORM (cook_forest_floor.py), optional detail-normal layer 6
 ]
 
 # The two concrete/road detail KTX2s are generated, not tracked (about 1.4 MB each): cooked on demand at deploy time when absent.
@@ -576,24 +578,67 @@ GRASS_TURF_SRC = "G:/mc2-assets/pbr/dl-2026-10-23/ground"  # drive-path: ok PC-o
 GRASS_TURF_REL = "data/terrain_layers/grass_turf_normal.ktx2"
 
 
-def ensure_grass_turf(src_root, cooker=subprocess.run):
-    """Cook data/terrain_layers/grass_turf_normal.ktx2 when missing or stale (soft: grass keeps the base layer without it)."""
-    dst = os.path.join(src_root, GRASS_TURF_REL)
-    script = os.path.join(src_root, GRASS_TURF_COOK)
+def _ensure_cooked_normal(src_root, cook, rel, what, cooker, src=None):
+    """Cook a data/terrain_layers detail normal when missing or stale (soft: the slot keeps its base layer without it)."""
+    dst = os.path.join(src_root, rel)
+    script = os.path.join(src_root, cook)
     if os.path.isfile(dst) and (not os.path.isfile(script) or os.path.getmtime(dst) >= os.path.getmtime(script)):
         return
-    if not os.path.isdir(GRASS_TURF_SRC):
-        log(f"[DEPLOY] WARN: grass turf normal absent and no cook source at {GRASS_TURF_SRC}: grass keeps the base layer")
+    src = src or GRASS_TURF_SRC   # each cook is gated on its OWN source dir
+    if not os.path.isdir(src):
+        log(f"[DEPLOY] WARN: {what} absent and no cook source at {src}: the slot keeps the base layer")
         return
-    log("grass turf normal absent or stale: cooking it")
+    log(f"{what} absent or stale: cooking it")
     try:
-        r = cooker([sys.executable, script, "--src", GRASS_TURF_SRC, "--out", os.path.dirname(dst)],
+        r = cooker([sys.executable, script, "--src", src, "--out", os.path.dirname(dst)],
                    capture_output=True, text=True, timeout=300, env=dict(os.environ, OMP_NUM_THREADS="1"), **console_child.child_kwargs(redirected=True))
     except subprocess.TimeoutExpired:
-        log("[DEPLOY] WARN: grass turf cook timed out after 300 s (skipped)")
+        log(f"[DEPLOY] WARN: {what} cook timed out after 300 s (skipped)")
         return
     if r.returncode:
-        log("[DEPLOY] WARN: grass turf cook failed (skipped): " + (r.stdout + r.stderr).strip()[-300:])
+        log(f"[DEPLOY] WARN: {what} cook failed (skipped): " + (r.stdout + r.stderr).strip()[-300:])
+
+
+def ensure_grass_turf(src_root, cooker=subprocess.run):
+    _ensure_cooked_normal(src_root, GRASS_TURF_COOK, GRASS_TURF_REL, "grass turf normal", cooker)
+
+
+# TERRAIN-NORMAL-UNIFORM: the sand/gravel normal that replaces detail-normal layer 2 (dirt), from CC0 Poly Haven sand_01 + dry_ground_01.
+DIRT_SAND_COOK = "tools/mc2texcook/cook_dirt_sand.py"
+DIRT_SAND_REL = "data/terrain_layers/dirt_sand_normal.ktx2"
+
+
+def ensure_dirt_sand(src_root, cooker=subprocess.run):
+    _ensure_cooked_normal(src_root, DIRT_SAND_COOK, DIRT_SAND_REL, "dirt sand normal", cooker)
+
+
+# Under-forest ground (detail-normal array layer 6) from CC0 Poly Haven forest_ground_04.
+FOREST_FLOOR_COOK = "tools/mc2texcook/cook_forest_floor.py"
+FOREST_FLOOR_REL = "data/terrain_layers/forest_floor_normal.ktx2"
+
+
+FOREST_FLOOR_SRC = "E:/mc2-ref/terrain-normals-2026-11-24"  # drive-path: ok PC-only cook source; mirrors cook_forest_floor.SOURCE_DIR
+
+
+def cook_mod_visual_heights(src_root, target):
+    """Reuse the offline sidecar cook for installed mod maps; retain authored bakes."""
+    cook = Path(src_root) / "tools/terrain_beautify/visual_heightfield.py"
+    sys.path.insert(0, str(cook.parent))
+    from mission_terrain_analyzer import locate_mapdata, read_packets
+    for pak in sorted((Path(target) / "mods").glob("*/data/missions/*.pak")):
+        sidecar = pak.parent / (pak.stem + ".beauty") / "visual_height_4x.r32"
+        if sidecar.is_file():
+            continue
+        if locate_mapdata(read_packets(pak)) is None:
+            log(f"mod visual height: {pak.name} has no terrain MapData; skipping")
+            continue
+        subprocess.run([sys.executable, str(cook), pak.stem, "--missions-dir", str(pak.parent),
+                        "--out", str(pak.parent), "--allow-nonstock", "--reauth", "--reauth-passes", "4", "--cliff-drift", "56",
+                        "--cliff-melt-passes", "4"], check=True, **console_child.child_kwargs())
+
+
+def ensure_forest_floor(src_root, cooker=subprocess.run):
+    _ensure_cooked_normal(src_root, FOREST_FLOOR_COOK, FOREST_FLOOR_REL, "forest floor normal", cooker, FOREST_FLOOR_SRC)
 
 # EXAMPLE-MODS-1: worked example checkbox mods, source-tracked under
 # examples/mods/. Ship to <target>/mods/<id>/ so the launcher enumerates them
@@ -1702,6 +1747,8 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
         if os.path.isfile(p):
             items.append((p, rel, "support"))
     ensure_grass_turf(src_root)
+    ensure_dirt_sand(src_root)
+    ensure_forest_floor(src_root)
     for rel in TERRAIN_LAYER_PAYLOAD:
         p = os.path.join(src_root, rel)
         if not os.path.isfile(p):
@@ -3740,6 +3787,8 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
         fail(f"asset parity: {len(drift.missing)} missing, {len(drift.size)} size-different, "
              f"{len(drift.content)} content-different, {len(drift.extra)} extra file(s) vs {asset_parity.default_ref()} "
              f"(missing e.g. {', '.join(drift.missing[:5])}); rerun without --no-asset-sync to copy them from v0.4", 8)
+    with deploy_phase("mod visual height cook", 900):
+        cook_mod_visual_heights(src_root, target)
     if not reuse and (Path(target) / "data/model_overrides/models.json").is_file():
         try:
             with deploy_phase("tree cook", 900):

@@ -10,7 +10,7 @@
   "MC2_BOOT_QUICKLOAD_AT": "1400"
  },
  "exe": {
-  "sha": "6f6377da1a45",
+  "sha": "280f99ad965b",
   "dirty": 0
  },
  "comparison": {
@@ -51,7 +51,7 @@
  "judged": "first-save-only",
  "resave_present": true,
  "packets": 20000,
- "overall": "e87583b172a020e0",
+ "overall": "5c47349173844478",
  "resave_identical": true,
  "resave_matches_policy": true,
  "runs": [
@@ -67,7 +67,7 @@
    2,
    1,
    39091,
-   "13b1146d1416a8ca"
+   "9e1b1a44805ecafa"
   ],
   [
    "data",
@@ -172,7 +172,7 @@
    3587,
    25,
    56462,
-   "57b67f4286882c8e"
+   "34e15677109362e5"
   ],
   [
    "StaticMechWarriorData",
@@ -221,7 +221,7 @@
    3874,
    147,
    536295,
-   "160642ab7f634489"
+   "2eaaab8478e082b9"
   ],
   [
    "GroundVehicleData",
@@ -753,7 +753,7 @@
    6807,
    100,
    57700,
-   "7cf66e8f1cf865aa"
+   "3a05942a9b4e1ac1"
   ],
   [
    "CarnageData",

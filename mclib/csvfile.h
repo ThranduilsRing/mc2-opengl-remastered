@@ -115,7 +115,7 @@ class CSVFile : public File
 		long readChar (DWORD row, DWORD col, char &value);
 		long readUChar (DWORD row, DWORD col, unsigned char &value);
 		
-		long readString (DWORD row, DWORD col, char *result, unsigned long bufferSize);
+		long readString (DWORD row, DWORD col, char *result, unsigned long bufferSize, bool keepQuotes = false);
 };
 
 //---------------------------------------------------------------------------

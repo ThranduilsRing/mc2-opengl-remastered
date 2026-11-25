@@ -58,6 +58,7 @@ std::string s_profilePath = "data/visual_tuning.json";
 bool s_hasFile = false;
 int s_appliedKeys = 0;
 
+float g_moverShadowSharpness = 3.0f;
 constexpr float kSunAbsent = -1000.0f;  // sun* keys: absent = keep the mission's own sun
 
 std::map<std::string, float> engineDefaults() {
@@ -68,11 +69,17 @@ std::map<std::string, float> engineDefaults() {
         {"vignette",0}, {"topWarmthStrength",0},
         {"sunPitch",kSunAbsent}, {"sunYaw",kSunAbsent}, {"sunColorR",kSunAbsent}, {"sunColorG",kSunAbsent}, {"sunColorB",kSunAbsent}, {"sunAmbientScale",kSunAbsent},
         {"unitAmbientScale",1.2f}, {"buildingSpillIntensityScale",1.0f},
-        {"exposure",1}, {"shadowSoftness",2.5f}, {"staticPropIblStrength",0.5f},
+        {"exposure",1}, {"shadowSoftness",2.5f}, {"staticPropIblStrength",0.5f}, {"moverShadowSharpness",3.0f},
         {"waterSkyTintStrength",0}, {"waterGlintWarm",0}, {"waterWaveBreakup",0}, {"waterReflections",static_cast<float>(mc2::options::current().waterReflections)},
         {"vfxBrightness",1}, {"vfxAdditiveBrightness",1},
         {"vfxLitStrength",0.7f}, {"mechSpecularStrength",0.05f},
         {"cloudStrength",0.30f}, {"cloudCoverage",0.20f}, {"cloudSoftness",0.12f}, {"cloudWaterScale",0.5f},
+        {"atmoDensity",1.0f}, {"atmoHeightFalloff",8e-4f}, {"atmoSunScatter",0.35f}, {"atmoAnisotropy",0.55f},
+        {"terrainNormalFlatPeriod",768}, {"terrainNormalFlatStrength",1},
+        {"terrainNormalSlopePeriod",320}, {"terrainNormalSlopeStrength",1},
+        {"terrainNormalCliffPeriod",320}, {"terrainNormalCliffStrength",1},
+        {"terrainNormalCementPeriod",48}, {"terrainNormalCementStrength",1},
+        {"terrainGroundAoShape",1}, {"terrainGroundAoMaterial",1}, {"terrainGroundAoSource",1},
         {"terrainClassGrassGmRLo",-0.02f}, {"terrainClassGrassGmRHi",0.06f},
         {"terrainClassGrassBrLo",0.22f}, {"terrainClassGrassBrHi",0.40f},
         {"terrainClassDirtRmGLo",-0.02f}, {"terrainClassDirtRmGHi",0.06f},
@@ -91,10 +98,19 @@ bool validValue(std::string_view key, double value) {
     else if (key == "vignette" || key == "topWarmthStrength") hi = 1;
     else if (key.starts_with("grade") || key.starts_with("topWarmth")) hi = 2;
     else if (key == "unitAmbientScale" || key == "buildingSpillIntensityScale") hi = 2;
-    else if (key == "staticPropIblStrength") hi = 3;
+    else if (key == "staticPropIblStrength" || key == "moverShadowSharpness") hi = 3;
     else if (key == "mechSpecularStrength") hi = 4;
     else if (key == "vfxBrightness" || key == "vfxAdditiveBrightness") hi = 8;
     else if (key == "vfxLitStrength" || key == "cloudStrength" || key == "cloudCoverage" || key == "cloudSoftness" || key == "cloudWaterScale") hi = 1;
+    else if (key == "atmoHeightFalloff") hi = 0.01f;
+    else if (key == "atmoAnisotropy") hi = 0.95f;
+    else if (key == "atmoSunScatter") hi = 4;
+    else if (key == "terrainGroundAoShape" || key == "terrainGroundAoMaterial") hi = 4;
+    else if (key == "terrainGroundAoSource") hi = 1;
+    else if (key.find("terrainNormal") == 0) {
+        if (key.substr(key.size() - 6) == "Period") { lo = 16; hi = 4096; }
+        else hi = 4;
+    }
     else if (key.find("terrainClass") == 0) {
         hi = 1;
         if (key.find("GmR") != std::string::npos || key.find("RmG") != std::string::npos) lo = -1;
@@ -290,6 +306,9 @@ static void applyKey(mc2::czstring key, float val, int& count) {
         // every mission load and replaces the batcher's pre-mission fallback.
         g_iblShStrength = val < 0.0f ? 0.0f : (val > 3.0f ? 3.0f : val);
         count++;
+    } else if (strcmp(key, "moverShadowSharpness") == 0) {
+        g_moverShadowSharpness = val < 0.0f ? 0.0f : (val > 3.0f ? 3.0f : val);
+        count++;
     } else if (strcmp(key, "waterReflections") == 0) {
         if (val >= 0 && val <= 2 && std::floor(val) == val) {
             gos_SetWaterReflectionQuality(static_cast<int>(val));
@@ -340,6 +359,14 @@ static void applyKey(mc2::czstring key, float val, int& count) {
     } else if (strcmp(key, "cloudWaterScale") == 0) {
         mc2SetCloudWaterScale(val);
         count++;
+    } else if (strncmp(key, "atmo", 4) == 0) {
+        if (gosPostProcess* pp = getGosPostProcess()) {
+            if (strcmp(key, "atmoDensity") == 0) pp->atmoDensity_ = val;
+            else if (strcmp(key, "atmoHeightFalloff") == 0) pp->atmoFalloff_ = val;
+            else if (strcmp(key, "atmoSunScatter") == 0) pp->atmoSunScatter_ = val;
+            else if (strcmp(key, "atmoAnisotropy") == 0) pp->atmoAnisotropy_ = val;
+        }
+        count++;
     // TERRAIN-CLASSIFY-TUNING-1: per-mission RGB classifier thresholds.
     } else if (strcmp(key, "terrainClassGrassGmRLo") == 0) {
         float a, b, c, d;
@@ -373,6 +400,9 @@ static void applyKey(mc2::czstring key, float val, int& count) {
         float a, b, c, d;
         gos_GetTerrainClassDirt(&a, &b, &c, &d);
         gos_SetTerrainClassDirt(a, b, c, val); count++;
+    } else if (strncmp(key, "terrainNormal", 13) == 0 || strncmp(key, "terrainGroundAo", 15) == 0) {
+        // Vulkan consumes the resolved values directly in fill_frame_ubo.
+        count++;
     } else {
         static std::map<std::string,bool> s_warned;
         if (!s_warned[key]) {
@@ -421,6 +451,8 @@ std::optional<float> visualTuning_sunValue(std::string_view key) {
     const float v = tuning.contains(k) ? tuning.at(k) : kSunAbsent;
     return v > kSunAbsent ? std::optional<float>(v) : std::nullopt;
 }
+
+float visualTuning_moverShadowSharpness() { return g_moverShadowSharpness; }
 
 const std::string& visualTuning_timeOfDay() { return s_environment.timeOfDay; }
 

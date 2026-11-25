@@ -300,7 +300,64 @@ float evaluateSurfaceBreakup(float worldX, float worldY) {
     return mix(low, high, 0.55f);
 }
 
-std::optional<SurfaceGradients> cookSurfaceGradients(std::span<const float> heights, uint32_t side) {
+// Horizon-based hemisphere occlusion of one height lattice, baked once per height version (never per frame, no history).
+// Per cell, 8 azimuths march kSteps outward (cell units, 128 world units each); the occlusion of an azimuth is the horizon rise
+// above the local surface tangent in that direction, so a plane and a uniform slope stay 1.0 and a bowl darkens its centre.
+std::vector<float> cookTerrainShapeAo(std::span<const float> heights, uint32_t side, float cellWorld) {
+    constexpr int kDirs = 8;
+    constexpr int kSteps[] = {1, 2, 3, 4, 6, 8, 12, 16};
+    constexpr float kRadius = 16.0f;
+    const int n = static_cast<int>(side);
+    const auto height = [&](int x, int y) {
+        return heights[static_cast<size_t>(std::clamp(y, 0, n - 1)) * side + static_cast<size_t>(std::clamp(x, 0, n - 1))];
+    };
+    const uint32_t out = side + 2;
+    std::vector<float> ao(static_cast<size_t>(out) * out, 1.0f);
+    float dirX[kDirs], dirY[kDirs];
+    for (int k = 0; k < kDirs; ++k) {
+        const float a = static_cast<float>(k) * (6.2831853f / kDirs);
+        dirX[k] = std::cos(a); dirY[k] = std::sin(a);
+    }
+    const auto rows = [&](int first, int last) {
+        for (int y = first; y < last; ++y) for (int x = -1; x <= n; ++x) {
+            const int cx = std::clamp(x, 0, n - 1), cy = std::clamp(y, 0, n - 1);
+            const float h0 = height(cx, cy);
+            float occlusion = 0.0f;
+            for (int k = 0; k < kDirs; ++k) {
+                // Tangent elevation from the central slope along the azimuth (bilinear between lattice cells).
+                const auto at = [&](float d) {
+                    const float fx = static_cast<float>(cx) + dirX[k] * d, fy = static_cast<float>(cy) + dirY[k] * d;
+                    const int ix = static_cast<int>(std::floor(fx)), iy = static_cast<int>(std::floor(fy));
+                    const float tx = fx - static_cast<float>(ix), ty = fy - static_cast<float>(iy);
+                    return (height(ix, iy) * (1 - tx) + height(ix + 1, iy) * tx) * (1 - ty) +
+                           (height(ix, iy + 1) * (1 - tx) + height(ix + 1, iy + 1) * tx) * ty;
+                };
+                const float tangent = (at(1.0f) - at(-1.0f)) / (2.0f * cellWorld);
+                float over = 0.0f;
+                const float tangentAngle = std::atan(tangent);
+                for (int step : kSteps) {
+                    const float d = static_cast<float>(step);
+                    const float rise = (at(d) - h0) / (d * cellWorld);
+                    const float fall = 1.0f - (d / kRadius) * (d / kRadius) * 0.5f;   // far occluders count for less
+                    over = std::max(over, (std::atan(rise) - tangentAngle) * fall);
+                }
+                occlusion += std::sin(std::clamp(over, 0.0f, 1.5707963f));
+            }
+            ao[static_cast<size_t>(y + 1) * out + static_cast<size_t>(x + 1)] = 1.0f - occlusion / static_cast<float>(kDirs);
+        }
+    };
+    const unsigned workers = std::clamp(std::thread::hardware_concurrency() / 4u, 1u, 4u);
+    if (side >= 256 && workers > 1) {
+        std::vector<std::jthread> pool;
+        const int band = (n + 2 + static_cast<int>(workers) - 1) / static_cast<int>(workers);
+        for (unsigned w = 1; w < workers; ++w)
+            pool.emplace_back(rows, -1 + static_cast<int>(w) * band, std::min(-1 + static_cast<int>(w + 1) * band, n + 1));
+        rows(-1, std::min(-1 + band, n + 1));
+    } else rows(-1, n + 1);
+    return ao;
+}
+
+std::optional<SurfaceGradients> cookSurfaceGradients(std::span<const float> heights, uint32_t side, bool bakeAo) {
     if (side < 2 || side > 4097 || heights.size() != static_cast<uint64_t>(side) * side) return {};
     for (float h : heights) if (!std::isfinite(h)) return {};
     SurfaceGradients result;
@@ -313,6 +370,7 @@ std::optional<SurfaceGradients> cookSurfaceGradients(std::span<const float> heig
         result.texels[static_cast<size_t>(y + 1) * result.side + static_cast<size_t>(x + 1)] = {
             -(height(x + 1, y) - height(x - 1, y)) / 256.0f,
              (height(x, y + 1) - height(x, y - 1)) / 256.0f};
+    if (bakeAo) result.ao = cookTerrainShapeAo(heights, side, 128.0f);
     return result;
 }
 
@@ -382,6 +440,11 @@ std::vector<uint8_t> cookSurfaceMaterials(const SurfaceAsset& surface,
         // Color is an import fallback for older maps, never fragment work.
         float grass = smooth(-0.02f, 0.06f, c[1] - c[0]) * smooth(0.22f, 0.40f, c[1]);
         float dirt = smooth(-0.02f, 0.06f, c[0] - c[1]) * smooth(0.22f, 0.45f, c[0]);
+        // TERRAIN-NORMAL-UNIFORM: soft classes for dark ground. Green hue at any brightness is grass (the bright-only gate above
+        // sent dark greens to rock); dark brown is a grass/dirt mix; grey and desaturated pixels stay rock. Only ever raises the weights.
+        const float darkBrown = smooth(0.0f, 0.06f, c[0] - c[1]) * smooth(0.05f, 0.12f, bright) * (1.0f - smooth(0.16f, 0.34f, bright));
+        grass = std::max({grass, smooth(0.0f, 0.05f, c[1] - c[0]) * smooth(0.04f, 0.14f, c[1]), 0.5f * darkBrown});
+        dirt = std::max(dirt, 0.5f * darkBrown);
         float rock = 1.0f - std::max(grass, dirt);
         const float water = smooth(0.0f, 0.08f, std::min(c[1], c[2]) - c[0]);
         rock += water; grass *= 1.0f - water; dirt *= 1.0f - water;

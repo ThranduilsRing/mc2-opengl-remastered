@@ -1308,6 +1308,8 @@ def bake(mission: str, missions_dir: Path, out_root: Path, factor: int,
 
     beauty = out_root / f"{mission}.beauty"
     beauty.mkdir(parents=True, exist_ok=True)
+    from height_sig import height_sig
+    (beauty / "gameplay_height.sig").write_text(height_sig(elev) + "\n", encoding="ascii")
     visual.astype("<f4").tofile(beauty / f"visual_height_{factor}x.r32")
     if mips:
         mm["blob"].astype("<f4").tofile(beauty / "visual_height_mips.r32")
@@ -1447,13 +1449,15 @@ def main() -> int:
             # allow 25% headroom over the EFFECTIVE drift (cliff smoothing: the
             # cliff mask allows cliff_drift; flats keep max_drift).
             eff = float(ra.get("effective_max_drift_wu", args.max_drift))
+            # Shore smoothing runs after reauthoring and has its own bounded corner adjustment.
+            corner_cap = eff * 1.25 + float((ra.get("shore") or {}).get("bank_adjust_wu", {}).get("max", 0.0))
             # Gate on the off-shore correlation when the
             # shore stage ran (== global when it didn't).
             corr_gate = float(ra.get("landform_correlation_off_shore",
                                      ra["landform_correlation"]))
             ok = (ra["extrema"]["violations"] == 0
                   and corr_gate >= 0.99
-                  and rep["max_corner_error_wu"] <= eff * 1.25
+                  and rep["max_corner_error_wu"] <= corner_cap
                   and rep["max_corner_error_wu"] > 0.05)
             ce = ra["facet_crease_energy"]
             n_enf = ra["extrema"].get("enforced", ra["extrema"]["count"])

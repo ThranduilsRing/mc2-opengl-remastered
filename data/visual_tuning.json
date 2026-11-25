@@ -6,11 +6,27 @@
     "buildingSpillIntensityScale": 1.0,
     "exposure": 1.0,
     "shadowSoftness": 0.9,
+    "moverShadowSharpness": 3.0,
     "staticPropIblStrength": 0.55,
     "waterSkyTintStrength": 0.0,
     "vfxBrightness": 1.0,
     "vfxAdditiveBrightness": 1.0,
-    "mechSpecularStrength": 0.05
+    "mechSpecularStrength": 0.05,
+    "atmoDensity": 1.0,
+    "atmoHeightFalloff": 0.0008,
+    "atmoSunScatter": 0.35,
+    "atmoAnisotropy": 0.55,
+    "terrainNormalFlatPeriod": 384.0,
+    "terrainNormalFlatStrength": 1.75,
+    "terrainNormalSlopePeriod": 160.0,
+    "terrainNormalSlopeStrength": 1.75,
+    "terrainNormalCliffPeriod": 320.0,
+    "terrainNormalCliffStrength": 1.0,
+    "terrainNormalCementPeriod": 48.0,
+    "terrainNormalCementStrength": 1.0,
+    "terrainGroundAoShape": 1.0,
+    "terrainGroundAoMaterial": 1.0,
+    "terrainGroundAoSource": 1.0
   },
   "missions": {
     "mc2_01": {

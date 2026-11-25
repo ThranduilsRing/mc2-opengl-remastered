@@ -69,6 +69,7 @@ layout(set = 0, binding = 1, std430) readonly buffer TerrainHeightBuf {
 } uH;
 // TERRAIN-SHORELINE-V3: optional mask sidecar (G wet, B foam, A valid); read only while TS_shorelineHasMask != 0.
 layout(set = 0, binding = 14) uniform sampler2D u_shorelineMask;
+layout(set = 0, binding = 20) uniform sampler2D u_forestMask;   // tree-canopy density (R8) over the colormap atlas extent
 
 // Material layer indices (mirror shaders/include/terrain_mat_layers.hglsl).
 #define MAT_LAYER_ROCK     0
@@ -76,13 +77,17 @@ layout(set = 0, binding = 14) uniform sampler2D u_shorelineMask;
 #define MAT_LAYER_DIRT     2
 #define MAT_LAYER_CONCRETE 3
 #define MAT_LAYER_SNOW     4
+#define MAT_LAYER_FOREST   6   // optional 7th layer: under-forest ground (forest_floor_normal.ktx2); absent -> array depth 6
 #define MAT_LAYER_MARBLE_CLIFF 5   // mat5_normal.tga: RGB = marble microsurface normal, A = the cooked cliff displacement
 
-// GL default tuning (terrain_lod_chunk.frag uniforms; ImGui-driven, values are the
-// gameos_graphics.cpp member defaults). Baked const for the parity oracle.
-const vec4  MATV_NORMAL_BOOST = vec4(0.9, 0.5, 1.1, CD_CONCRETE_RELIEF_STRENGTH);  // rock,grass,dirt,conc
-const vec4  MATV_TILING       = vec4(3.0, 2.0, 1.0, 6.0);  // rock,grass,dirt,conc
-const float MATV_TILING_SNOW  = 1.0;
+// Profile class controls preserve each texture's authored relative density.
+// Flat reference: dirt/snow 768 wu; slope reference: triplanar rock 320 wu;
+// cement reference: pad detail 48 wu. Legacy top-down rock remains 2.4x slope.
+// TERRAIN-NORMAL-UNIFORM: grass and dirt 0.5: the cooked turf and sand sources have the same fine relief (rms slope
+// ~0.27), so flat ground carries ~0.13 slope like the rock band (rock 0.9/3 x 0.3 x crNavigable 0.4/0.3). Dirt was 1.1 on a near-flat source.
+#define MATV_NORMAL_BOOST (vec4(0.9, 0.5, 0.5, CD_CONCRETE_RELIEF_STRENGTH) * vec4(uT.normalSlopeStrength, uT.normalFlatStrength, uT.normalFlatStrength, uT.normalCementStrength))
+#define MATV_TILING vec4(3.0 * 320.0 / uT.normalSlopePeriod, 2.0 * 768.0 / uT.normalFlatPeriod, 768.0 / uT.normalFlatPeriod, 6.0 * 48.0 / uT.normalCementPeriod)
+#define MATV_TILING_SNOW (768.0 / uT.normalFlatPeriod)
 const float GM_STRENGTH       = 0.9;   // ground mottle (world_patch_noise.glsl) blend on full natural ground
 const float GM_LUMA_KEEP      = 0.25;   // share of the colormap brightness the mottle keeps (dark soil keeps all of it)
 const float GM_BEACH_WU       = 40.0;   // horizontal run above the waterline that stays clean beach (~10 m)
@@ -187,7 +192,7 @@ vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod) {
     vec4 w = vec4(max(1.0 - m.x - m.y - m.w, 0.0), m.x, m.y, m.w);
     // Keep the lamp consumer small: one XY-only tap with explicit isotropic
     // LOD, no sun/POM/anti-tile call graph inside the light loop.
-    const vec4 tiling = vec4(MATV_TILING.x / 3.0, MATV_TILING.yzw);
+    vec4 tiling = vec4(MATV_TILING.x / 3.0, MATV_TILING.yzw);
     vec4 fade = vec4(mv_detailFade(mv_detailTexelGM * tiling.x), mv_detailFade(mv_detailTexelGM * tiling.y),
                      mv_detailFade(mv_detailTexelGM * tiling.z), mv_detailFade(mv_detailTexelGM * tiling.w));
     vec4 strength = w * MATV_NORMAL_BOOST * vec4(1.0 / 3.0, 1, 1, 1) * fade;
@@ -198,11 +203,11 @@ vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod) {
     if (strength.w > strength[layer]) layer = 3;
     float scale = tiling[layer];
     float amount = strength[layer];
-    float snow = m.z * 0.9 * mv_detailFade(mv_detailTexelGM * MATV_TILING_SNOW);
+    float snow = m.z * 0.9 * uT.normalFlatStrength * mv_detailFade(mv_detailTexelGM * MATV_TILING_SNOW);
     if (snow > amount) { layer = MAT_LAYER_SNOW; scale = MATV_TILING_SNOW; amount = snow; }
     if (amount <= 0.0) return macroN;
     vec2 detailUV = wp.xy * (uT.detailTiling / MATV_WU_PER_TILE) * scale;
-    vec2 dN = amount * (textureLod(u_matNormalArray, vec3(detailUV, float(layer)), lod + log2(scale)).xy * 2.0 - 1.0);
+    vec2 dN = amount * mv_detailDecode(textureLod(u_matNormalArray, vec3(detailUV, float(layer)), lod + log2(scale)).rgb).xy;
     return normalize(vec3(macroN.xy / max(macroN.z, 0.2) + dN * uT.detailStrength, 1.0));
 }
 
@@ -389,6 +394,9 @@ void main() {
         if (cliffBlend > 0.01) {
             float luma = dot(baseColor, vec3(0.299, 0.587, 0.114));
             vec3  cliffColor = mix(vec3(luma), vec3(uT.tintRockR, uT.tintRockG, uT.tintRockB), 0.6) * 1.0;   // was 0.8: darkened the slope skirt into a halo around cliffs
+            // RAVINE-WEATHER-1: horizontal strata on the wall faces (banded by world height, gently warped in plan).
+            float sz = v_worldPos.z + 7.0 * sin(v_worldPos.x * 0.009 + 1.3) + 5.0 * sin(v_worldPos.y * 0.012 + v_worldPos.x * 0.004);
+            cliffColor *= 1.0 + 0.18 * (0.55 * sin(sz * 0.17) + 0.3 * sin(sz * 0.43 + 1.7) + 0.15 * sin(sz * 1.07 + 0.4));
             baseColor = mix(baseColor, cliffColor, cliffBlend * 0.7 * (1.0 - F3pc));
         }
         // World-space two-octave break-up noise (non-snow, non-concrete).
@@ -459,6 +467,11 @@ void main() {
             vec3 dN    = vec3(0.0);
             if ((kPlanarReflection == 0 || kReflectCutDetail == 0) && TS_detailReady != 0 && uT.detailStrength != 0.0) {
                 if (mv_needDetail(baseN, lightDir, materialW, materialSnow, v_worldPos, normalLightFloor)) {
+                    // Under-forest ground: the tree-canopy density mask (splatted from tree placements at mission load), same atlas UV as
+                    // the macro colour. Needs the 7th array layer.
+                    mv_forestMix = (TS_colormapReady != 0 && textureSize(u_matNormalArray, 0).z > MAT_LAYER_FOREST)
+                        ? textureLod(u_forestMask, vec2((v_worldPos.x - uT.atlasTopLeftX) * uT.atlasOneOverWorldUnits,
+                                                        (uT.atlasTopLeftY - v_worldPos.y) * uT.atlasOneOverWorldUnits), 0.0).r : 0.0;
                     dN = mv_detailNormal(materialW, materialSnow, v_worldPos.xy, baseN.z, detailUvDx, detailUvDy);
                 } else {
                     resolveLampNormal = true;
@@ -515,14 +528,26 @@ void main() {
         else if (kCsmDebugMode == 8) { fragColor = vec4(N * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }   // surface normal (GL ...=normal)
         else if (kCsmDebugMode == 9) { fragColor = vec4(dbgBaseN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
         else if (kCsmDebugMode == 10) { fragColor = vec4(dbgDN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
+        else if (kCsmDebugMode == 13) { vec2 rel = N.xy / max(N.z, 0.2) - dbgBaseN.xy / max(dbgBaseN.z, 0.2); fragColor = vec4(vec3(clamp(length(rel) * 4.0, 0.0, 1.0)), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }   // total detail relief (all classes + rock) over the macro slope, x4
         else if (kCsmDebugMode == 12) { fragColor = vec4(prelitBase, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; } // raw prelit before material/lighting
-        // Material weights false colour: rock grey, grass green, dirt red, concrete blue, snow white.
-        else if (kCsmDebugMode == 11) { fragColor = vec4(materialW.x * vec3(0.35) + materialW.y * vec3(0.1, 0.9, 0.1) + materialW.z * vec3(0.9, 0.2, 0.1) +
+        // Material weights false colour: rock grey, grass green (forest-floor share yellow), dirt red, concrete blue, snow white.
+        else if (kCsmDebugMode == 11) { fragColor = vec4(materialW.x * (1.0 - mv_forestMix * smoothstep(0.75, 0.95, dbgBaseN.z)) * vec3(0.35) + (materialW.y + materialW.z + materialW.x * smoothstep(0.75, 0.95, dbgBaseN.z)) * mv_forestMix * vec3(1.0, 0.9, 0.0) + (1.0 - mv_forestMix) * (materialW.y * vec3(0.1, 0.9, 0.1) + materialW.z * vec3(0.9, 0.2, 0.1)) +
                                                          materialW.w * vec3(0.1, 0.3, 1.0) + vec3(materialSnow), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
 
         float normalSize = float(textureSize(u_matNormalArray, 0).x);
         float lampLod = resolveLampNormal ? 0.5 * log2(max(max(dot(detailUvDx, detailUvDx), dot(detailUvDy, detailUvDy))
                                                        * normalSize * normalSize, 1e-12)) : 0.0;
+        // GROUND-AO-1: occlusion of the ambient/sky share only. The prelit colour carries ambient and sun together, so the sun's
+        // share (the cliff split, zero in shadow) is exempt. Shape = the per-mission baked horizon AO (macro-gradient texture, .b);
+        // material = the cooked source AO where the layer carries it (grass turf, normal-texel B), else a cavity proxy from the detail-normal tilt (the stock sets have no AO map).
+        if (uT.groundAoShape > 0.0 || uT.groundAoMaterial > 0.0) {
+            vec2 aoCell = vec2(v_worldPos.x + uT.halfMap, uT.halfMap - v_worldPos.y) / 128.0;
+            float aoShape = textureLod(u_macroGradient, (aoCell + 1.5) / float(uT.mapSide + 2), 0.0).b;
+            float aoMat = 1.0 - 0.45 * clamp(length(dbgDN.xy * uT.detailStrength) * 1.2, 0.0, 1.0);
+            aoMat = mix(aoMat, mix(aoMat, mv_srcAoSum / max(mv_srcAoW, 1e-4), clamp(mv_srcAoW, 0.0, 1.0)), uT.groundAoSource);
+            float aoAll = clamp(mix(1.0, aoShape, uT.groundAoShape), 0.0, 1.0) * clamp(mix(1.0, aoMat, uT.groundAoMaterial), 0.0, 1.0);
+            g_groundAoMul = mix(1.0, aoAll, 1.0 - cliffSun * shadow);
+        }
         lit = shadeGround(baseColor, N, normalLight, shadow, pureConcrete ? 1.0 : 0.0, v_worldPos, macroN, resolveLampNormal, lampLod);
         lit = max(lit + cdSpec * shadow, vec3(0.0));
 

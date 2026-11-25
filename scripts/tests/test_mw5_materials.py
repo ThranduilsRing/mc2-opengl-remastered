@@ -176,7 +176,7 @@ def test_bake_material_channels(monkeypatch):
 def test_pack_texture_references_resolve():
     """Every texture a built pack's package.json names exists in both size tiers as a 2048 BC7 KTX2."""
     import os
-    pack = Path(os.environ.get("MW5_PACK_DIR", "E:/mc2-installs/mods-fix-ready/mw5-madcat/mods/mw5_mechs/data/tgl"))
+    pack = Path(os.environ.get("MW5_PACK_DIR", "mw5-pack-not-set"))
     if not (pack / "mw5_madcat.package.json").is_file():
         pytest.skip("no built MW5 pack here")
     pkg = json.loads((pack / "mw5_madcat.package.json").read_text())
@@ -258,7 +258,7 @@ def test_glass_stamp_fills_only_the_tile(tmp_path):
     assert orm[1] < 30 and orm[2] > 150  # glossy and reflective
 
 
-READY_GLB = Path("E:/mc2-installs/mods-fix-ready/mw5-madcat/mods/mw5_mechs/data/tgl/mw5_madcat.glb")
+READY_GLB = Path(__import__("os").environ.get("MW5_PACK_DIR", "mw5-pack-not-set")) / "mw5_madcat.glb"
 
 
 @pytest.mark.skipif(not READY_GLB.is_file(), reason="owner pack not built here")

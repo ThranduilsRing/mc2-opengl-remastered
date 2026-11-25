@@ -35,6 +35,7 @@
 #include "../shaders/include/fog_policy.hglsl"
 #include <string>
 #include "Gates/gate.h"
+#include "Gates/render_options.h"
 #include "spotlight_diag.h"
 namespace mc2_cpu_proj_cost {
     extern bool g_cpuProjEnabled;
@@ -390,6 +391,15 @@ class Camera
 		static float			AltitudeMaximumHi;
 		static float            AltitudeTight;
 		static float            AltitudeDefault;
+		// Coupled FOV / altitude / pitch looks (fid-1): 0 stock, 1 closer-wider, 2 BT-like. Altitude and pitch scale with the FOV
+		// so the subject keeps a similar size. The preset applies at mission load (a quickload keeps the saved camera).
+		static constexpr int    kPresetCount = 3;
+		static float            DefaultFov;				//horizontal degrees
+		static float            DefaultPitchDelta;
+		static void				applyPreset (int preset);
+		static float            presetFov (int preset);
+		static float            presetAltScale (int preset);
+		static float            presetPitchDelta (int preset);
 		static float			MaxLetterBoxTime;
 
 		static float			MIN_PERSPECTIVE;
@@ -1747,7 +1757,7 @@ class Camera
 		{
 			camera_fov = fov;
 		}
-		
+
 		float getFieldOfView (void)
 		{
 			return camera_fov;
@@ -1812,6 +1822,14 @@ class Camera
 			newScaleFactor = 1.0f - ((cameraAltitude - AltitudeMinimum) / testMax);
 		}
 		
+		// Quickload: put back the saved pose after activate() reset it to the preset (pitch, rotation, altitude held, no easing).
+		void restoreSavedView (glm::vec3 rot)
+		{
+			setRotation(rot);
+			cameraAltitudeDesired = cameraAltitude;
+			pitchActive = false;
+		}
+
 		// VK-FIRST-BOOKMARK-POSE-1 (ported for CAMERA-PARK-1): neutralize every
 		// scripted camera-override source so a hard-set pose survives the NEXT
 		// Camera::update() byte-unchanged. Camera::update() re-asserts the

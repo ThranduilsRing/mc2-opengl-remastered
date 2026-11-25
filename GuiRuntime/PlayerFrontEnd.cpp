@@ -746,20 +746,17 @@ void drawMainMenu(bool showCredits) {
 }
 
 void drawOptions() {
-    static mc2::options::RenderOptions draft;
-    static std::string loadedCfg;
-    static int lastFrame = -2;
     if (!ImGui::CollapsingHeader("Player settings (saved; restart required)", ImGuiTreeNodeFlags_DefaultOpen)) return;
+    // Both options screens save immediately. Reload the persisted values each frame so a live
+    // edit cannot be reverted by an older draft, and MC2_OPTIONS_OVERRIDE is never copied to disk.
+    mc2::options::RenderOptions draft;
     const auto cfg = mc2::options::cfg::readTextFile("options.cfg");
-    if (lastFrame != ImGui::GetFrameCount() - 1 || ImGui::IsWindowAppearing() || cfg != loadedCfg) {
-        draft = {};
-        mc2::options::cfg::loadFromText(draft, cfg);
-        loadedCfg = cfg;
-    }
-    lastFrame = ImGui::GetFrameCount();
+    mc2::options::cfg::loadFromText(draft, cfg);
+    bool changed = false;
     for (const auto& preset : k_gfxPresets) {
         if (ImGui::Button(preset.label)) {
             preset.apply(draft);
+            changed = true;
             for (int i = 0; i < 6; ++i) settings[k_presetKeys[i]] = preset.values[i];
         }
         ImGui::SameLine();
@@ -770,23 +767,23 @@ void drawOptions() {
         256 + 96 + 8 + shadowMB[std::clamp(draft.shadowQuality, 0, 2)]);
     for (const auto& option : mc2::options::kOptions) {
         const char* label = std::string_view(option.key) == "RemasteredBuildings" ? "Remastered buildings (off: Classic)" : std::string_view(option.key) == "MechLabLocations" ? "Mech lab: Locations view (off: Classic grid)" : option.key;
-        if (option.kind == mc2::options::Kind::Bool) ImGui::Checkbox(label, &(draft.*option.b));
+        if (option.kind == mc2::options::Kind::Bool) changed |= ImGui::Checkbox(label, &(draft.*option.b));
         else if (option.kind == mc2::options::Kind::Long) {
-            if (std::string_view(option.key) == "SpatialAA") {
-                const char* labels[] = {"Off", "SMAA 1x", "FXAA", "CMAA2", "FSR 3.1 native AA"};
-                ImGui::Combo("Anti-aliasing", &(draft.*option.l), labels, IM_ARRAYSIZE(labels));
-            } else if (std::string_view(option.key) == "WaterReflections") {
+            if (std::string_view(option.key) == "WaterReflections") {
                 continue; // Legacy material/profile switch; player budget controls follow.
-            } else if (std::string_view(option.key) == "ReflectionQuality") {
-                continue; // The live Water quality section owns these controls.
-            } else if (std::string_view(option.key) == "WaterDetail" || std::string_view(option.key) == "DrawDistance") {
+            } else if (std::string_view(option.key) == "CameraView") {
+                const char* labels[] = {"Stock", "Closer", "Wide"};
+                changed |= ImGui::Combo("Camera view (next mission)", &(draft.*option.l), labels, IM_ARRAYSIZE(labels));
+            } else if (std::string_view(option.key) == "AtmosphereQuality") {
+                const char* labels[] = {"Off", "Low", "High"};
+                changed |= ImGui::Combo("Atmosphere (fog and sun haze)", &(draft.*option.l), labels, IM_ARRAYSIZE(labels));
+            } else if (std::string_view(option.key) == "DrawDistance") {
                 continue; // DrawDistance GUI row is a later lane
-            } else if (std::string_view(option.key) == "TextureQuality") {
-                const char* labels[] = {"Auto (by VRAM)", "Low", "Medium", "High", "Ultra"};
-                int idx = std::clamp(static_cast<int>(draft.*option.l) + 1, 0, 4);
-                if (ImGui::Combo("Texture quality", &idx, labels, 5)) draft.*option.l = idx - 1;
-            } else ImGui::SliderInt(label, &(draft.*option.l), static_cast<int>(option.lo), static_cast<int>(option.hi));
-        } else ImGui::SliderFloat(label, &(draft.*option.f), static_cast<float>(option.lo), static_cast<float>(option.hi));
+            } else if (std::string_view(option.key) == "SpatialAA") {
+                const char* labels[] = {"Off", "SMAA 1x", "FXAA", "CMAA2", "FSR 3.1 native AA"};
+                changed |= ImGui::Combo("Anti-aliasing", &(draft.*option.l), labels, IM_ARRAYSIZE(labels));
+            } else changed |= ImGui::SliderInt(label, &(draft.*option.l), static_cast<int>(option.lo), static_cast<int>(option.hi));
+        } else changed |= ImGui::SliderFloat(label, &(draft.*option.f), static_cast<float>(option.lo), static_cast<float>(option.hi));
     }
     if (ImGui::TreeNode("Engine and display options")) {
         for (const auto& row : k_envVars) {
@@ -813,12 +810,12 @@ void drawOptions() {
         }
         ImGui::TreePop();
     }
-    if (ImGui::Button("Save player settings")) {
-        // Do not overwrite live water edits with this section's older draft.
-        draft.reflectionQuality = mc2::options::current().reflectionQuality;
-        draft.waterDetail = mc2::options::current().waterDetail;
+    if (ImGui::Button("Save player settings") || changed) {
         if (!saveRenderOptions || !saveRenderOptions(draft)) error = "Could not save options.cfg.";
-        else if (saveSettings()) { settingsChanged = true; error = "Saved. Restart the game to apply player settings."; }
+        else {
+            mc2::options::publish(draft);
+            if (saveSettings()) { settingsChanged = true; error = "Saved. Restart the game to apply player settings."; }
+        }
     }
     ImGui::TextWrapped("SMAA 1x is the default, without history or jitter. FSR 3.1 native AA is an optional temporal mode.");
     if (!error.empty()) ImGui::TextWrapped("%s", error.c_str());

@@ -20,6 +20,7 @@
 #include "../GameOS/gameos/height_sig.h"
 #include "../GameOS/gameos/terrain_visual_smooth.h"
 #include "../GameOS/gameos/load_scope.h"
+#include "move.h"
 
 
 //---------------------------------------------------------------------------
@@ -59,6 +60,7 @@ BeautySigVerdict computeBeautySig(std::string_view terrainName, int mapSide, con
 		if (slash != std::string::npos) stem.erase(0, slash + 1);
 		if (const auto dot = stem.find_last_of('.'); dot != std::string::npos) stem.erase(dot);
 		sigPath = "data/missions/" + stem + ".beauty/gameplay_height.sig";
+		if (const auto modPath = LookupModAbsolutePath(sigPath)) sigPath = modPath;
 	}
 	if (FILE* sg = fopen(sigPath.c_str(), "rb"))   // path-audit: loose-only (sidecar beside the beauty bake)
 	{
@@ -809,10 +811,39 @@ void Terrain::lodWaterShore() {
 	}
 }
 
+// The pathing grid loads after the terrain. Defer fallback synthesis until passability is known
+// so weathering moves only blocked cells and the whole synthesis runs once.
+static std::vector<unsigned char> s_ravineBlocked;
+static int s_ravineCells = 0;
+// True when the last lodVisualHeight synthesized the bake (no sidecar): only then does the passability change its result.
+static bool s_visualHeightSynth = false;
+void Terrain::reloadVisualHeightWithPassability(MissionMap* gm) {
+	if (!s_visualHeightSynth) return;   // a baked visual_height_4x sidecar (or no bake) does not depend on the pathing grid
+	const int mapSide = static_cast<int>(realVerticesMapSide);
+	if (!gm || !mapData || gm->height != gm->width || gm->height <= 0 || mapSide < 3) return;
+	s_ravineCells = gm->height;
+	s_ravineBlocked.assign(static_cast<size_t>(s_ravineCells) * s_ravineCells, 0);
+	size_t nb = 0;
+	for (int r = 0; r < s_ravineCells; ++r)
+		for (int c = 0; c < s_ravineCells; ++c)
+			if (!gm->map[static_cast<size_t>(r) * gm->width + c].getPassable()) { s_ravineBlocked[static_cast<size_t>(r) * s_ravineCells + c] = 1; ++nb; }
+	TerrainLodInitFrame lf;
+	lf.elev.resize(static_cast<size_t>(mapSide) * mapSide);
+	const PostcompVertex* blks = mapData->getBlocks();
+	for (size_t i = 0; i < lf.elev.size(); ++i) lf.elev[i] = blks[i].elevation;
+	mc2::fmt::print_out("[RAVINE_WEATHER v1] blocked={:d}/{:d} cells\n", mc2::fmt::as_size(nb), mc2::fmt::as_size(s_ravineBlocked.size()));
+	const auto t0 = std::chrono::steady_clock::now();
+	lodVisualHeight(lf);
+	mc2::fmt::print_out("[RAVINE_WEATHER v1] reload took {:.1f} ms\n", std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count());
+	s_ravineCells = 0;
+	s_ravineBlocked.clear();
+}
+
 // LOD chunk: load the 4x visual heightfield bake when its gate is on.
 void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 	auto& elev = lf.elev;
 	TerrainRuntime::setCpuVisualHeight(nullptr, 0);
+	s_visualHeightSynth = false;
 	gos_TerrainLodChunk_ClearVisualHeight();   // a rejected or missing bake must not draw the previous mission's relief
 	// TERRAIN-VISUAL-HEIGHT-SAMPLE-1 Stage 1 (loader, log-only). Gate
 	// MC2_TERRAIN_VISUAL_HEIGHT default-OFF -> no load, no SSBO
@@ -842,6 +873,8 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 				const std::string stemStr = std::filesystem::path(nm).stem().string();
 				const char* stem = stemStr.c_str();
 				mc2::fmt::to_buf(vhPath, "data/missions/{}.beauty/visual_height_4x.r32", mc2::fmt::safe(stem));
+				if (const auto modPath = LookupModAbsolutePath(vhPath))
+					mc2::fmt::to_buf(vhPath, "{}", mc2::fmt::safe(modPath));
 			}
 			if (s_beautySig.state == 2)   // one verdict gates the bake: no read, no damp, no mover stamp, no LOADED line
 				{
@@ -850,10 +883,18 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 					return;
 				}
 				FILE* vf = fopen(vhPath, "rb");
-			// TERRAIN-VALLEY-SMOOTH-1: no baked sidecar (mod / new map) -> synthesize the visual height at load.
+			if (!vf && s_ravineCells == 0) {
+				s_visualHeightSynth = true; // pending: reloadVisualHeightWithPassability finishes this load
+				return;
+			}
+			// No baked sidecar: synthesize once, with the mission's passability.
 			std::optional<std::vector<float>> synthVh;
-			if (!vf) synthVh = mc2terrain::buildSmoothedVisualHeight(elev.data(), mapSide, Terrain::waterElevation);
+			const auto synthT0 = std::chrono::steady_clock::now();
+			if (!vf) synthVh = mc2terrain::buildSmoothedVisualHeight(elev.data(), mapSide, Terrain::waterElevation,
+			                                                         s_ravineCells > 0 ? &s_ravineBlocked : nullptr, s_ravineCells);
+			if (synthVh) mc2::fmt::print_out("[VISUAL_HEIGHT v1] synthesized V={:d} in {:.1f} ms (ravines {})\n", mc2::fmt::as_i32(V), std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - synthT0).count(), s_ravineCells > 0 ? "on" : "off");
 			const bool synth = synthVh.has_value();
+			s_visualHeightSynth = synth;
 			if (!vf && !synth)
 			{
 				mc2::fmt::print_out("[VISUAL_HEIGHT v1] bake NOT FOUND path={} (gate on, V={:d} mapSide={:d})\n", mc2::fmt::safe(vhPath), mc2::fmt::as_i32(V), mc2::fmt::as_i32(mapSide));

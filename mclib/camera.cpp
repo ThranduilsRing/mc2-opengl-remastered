@@ -101,6 +101,29 @@ float Camera::AltitudeMaximumHi = 6400.0f;
 float Camera::AltitudeDefault = 1200.0f;
 float Camera::AltitudeTight = 800.0f;
 
+namespace {
+struct CameraPresetRow { float fov, altScale, pitchDelta; };
+constexpr CameraPresetRow kCameraPresets[Camera::kPresetCount] = {
+	{40.0f, 1.0f, 0.0f},    // stock
+	{55.0f, 0.62f, -3.0f},  // closer-wider
+	{65.0f, 0.50f, -5.0f},  // BT-like: wide lens, lower and closer; keep the horizon covered
+};
+constexpr float kStockAltitudeDefault = 1200.0f;
+int clampPreset(int p) { return p < 0 ? 0 : (p >= Camera::kPresetCount ? Camera::kPresetCount - 1 : p); }
+}
+float Camera::DefaultFov = 40.0f;
+float Camera::DefaultPitchDelta = 0.0f;
+float Camera::presetFov (int preset) { return kCameraPresets[clampPreset(preset)].fov; }
+float Camera::presetAltScale (int preset) { return kCameraPresets[clampPreset(preset)].altScale; }
+float Camera::presetPitchDelta (int preset) { return kCameraPresets[clampPreset(preset)].pitchDelta; }
+void Camera::applyPreset (int preset)
+{
+	const CameraPresetRow& row = kCameraPresets[clampPreset(preset)];
+	DefaultFov = row.fov;
+	DefaultPitchDelta = row.pitchDelta;
+	AltitudeDefault = kStockAltitudeDefault * row.altScale;
+}
+
 float Camera::globalScaleFactor = 1.0;
 
 float Camera::MaxClipDistance	= 50000.0f;
@@ -394,10 +417,12 @@ long Camera::init (FitIniFilePtr cameraFile )
 		lightDirection.z = sin(lightPitch * DEGREES_TO_RADS);
 	}
 
+	bool cameraFromSave = false;
 	{
 		// A save's camera block already carries the scaled colours (Camera::save marks it).
 		bool profileApplied = false;
 		const bool fromSave = cameraFile->readIdBoolean("NightProfileApplied", profileApplied) == NO_ERR;
+		cameraFromSave = fromSave;
 		if (!fromSave)
 			profileApplied = false;
 		applyMissionLightProfile(*this, profileApplied);
@@ -474,6 +499,7 @@ long Camera::init (FitIniFilePtr cameraFile )
 
 	result = cameraFile->readIdFloat("NewScale",newScaleFactor);
 	gosASSERT(result == NO_ERR);
+	const float fileNewScale = newScaleFactor;
 
 	float startRotation = 0.0;
 	result = cameraFile->readIdFloat("StartRotation",startRotation);
@@ -587,13 +613,21 @@ long Camera::init (FitIniFilePtr cameraFile )
 	//-------------------------------------------
 	// To get it working again.
 	usePerspective = true;
-	camera_fov = 40.0f;
+	applyPreset(mc2::options::current().cameraView);
+	camera_fov = DefaultFov;
 	cosHalfFOV = cos(camera_fov * 0.7071f * DEGREES_TO_RADS);				//Cosine of half the FOV for view cone.
 	
 	float anglePercent = (projectionAngle - MIN_PERSPECTIVE) / (MAX_PERSPECTIVE - MIN_PERSPECTIVE);
 	float testMax = Camera::AltitudeMaximumLo + ((Camera::AltitudeMaximumHi - Camera::AltitudeMaximumLo) * anglePercent);
 
 	newScaleFactor = 1.0f - ((cameraAltitude - AltitudeMinimum) / testMax);
+	if (cameraFromSave)
+	{
+		// A save holds the zoom as NewScale only; rebuild the altitude that produced it so the resumed camera re-saves the same bytes.
+		cameraAltitude = AltitudeMinimum + (1.0f - fileNewScale) * testMax;
+		cameraAltitudeDesired = cameraAltitude;
+		newScaleFactor = fileNewScale;
+	}
 
 	terrainLightNight = false;
 	terrainLightCalc = true;

@@ -217,7 +217,7 @@ void write_descriptors(TerrainIsland* s, int parity) {
     }
     for (VkBuffer& b : s->ringBound[i]) b = VK_NULL_HANDLE;
     VkDescriptorBufferInfo hInfo{ s->heightBuf.get(), 0, VK_WHOLE_SIZE };
-    VkWriteDescriptorSet w[20]{};
+    VkWriteDescriptorSet w[24]{};
     uint32_t n = 0;
     w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
     w[n].dstBinding = 1; w[n].descriptorCount = 1;
@@ -303,6 +303,15 @@ void write_descriptors(TerrainIsland* s, int parity) {
     w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
     w[n].dstBinding = 19; w[n].descriptorCount = 1;
     w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &localShadowInfo; ++n;
+    // Binding 20: forest-floor canopy density (dummy until a mission has trees).
+    VkDescriptorImageInfo fmInfo{};
+    if (s->forestMaskTexture && s->colormapSamp) {
+        fmInfo.sampler = s->colormapSamp.get(); fmInfo.imageView = s->forestMaskTexture.view();
+        fmInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
+        w[n].dstBinding = 20; w[n].descriptorCount = 1;
+        w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &fmInfo; ++n;
+    }
     VkDescriptorImageInfo cdInfo{};
     if (s->concreteDetailTexture && s->concreteDetailSamp) {
         cdInfo.sampler = s->concreteDetailSamp.get(); cdInfo.imageView = s->concreteDetailTexture.view();
@@ -537,8 +546,8 @@ bool init_island(TerrainIsland* s, int w, int h) {
     visibilitySampler.maxLod = VK_LOD_CLAMP_NONE;
     visibilitySampler.addressModeU = visibilitySampler.addressModeV = visibilitySampler.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     if (!mc2vk::create(s->staticVisibilitySampler,s->device,[&](auto* h){return vkCreateSampler(s->device,&visibilitySampler,nullptr,h);})) return false;
-    const float flatGradient[2] = {0, 0};
-    if (!upload_sampled_image(s, s->macroGradientTexture, VK_FORMAT_R32G32_SFLOAT, 1, 1, flatGradient, sizeof(flatGradient))) {
+    const float flatGradient[4] = {0, 0, 1, 1};   // zero slope, no terrain-shape occlusion
+    if (!upload_sampled_image(s, s->macroGradientTexture, VK_FORMAT_R32G32B32A32_SFLOAT, 1, 1, flatGradient, sizeof(flatGradient))) {
         setFallback("macro_gradient_dummy_failed"); return false;
     }
     // CEMENT: dummy cement atlas (binding 3) + dummy cement-word SSBO (binding 4) so both
@@ -547,6 +556,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
     if (!ensure_dummy_cement(s)) { setFallback("cement_dummy_failed"); return false; }
     if (!ensure_dummy_shore_mask(s)) { setFallback("shore_mask_dummy_failed"); return false; }
     if (!ensure_dummy_materials(s)) { setFallback("material_dummy_failed"); return false; }
+    if (!ensure_dummy_forest_mask(s)) { setFallback("forest_mask_dummy_failed"); return false; }
     if (!s->cementBuf) {
         if (!make_buffer(s, s->cementBuf, 16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "terrain.cementBuf")) {
             setFallback("cement_dummy_ssbo_failed"); return false;
@@ -577,7 +587,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
 
     // ---- Descriptor layout: binding0 dynamic UBO (VS+FS), binding1 height SSBO (VS). ----
     {
-        VkDescriptorSetLayoutBinding b[19]{};
+        VkDescriptorSetLayoutBinding b[20]{};
         b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         // VK-TERRAIN-DETAIL: binding 1 (height SSBO) is now ALSO read by the FS
@@ -633,9 +643,11 @@ bool init_island(TerrainIsland* s, int w, int h) {
         // U1: binding 26 = the per-frame mission environment (EnvironmentUBO), read by vertex and fragment stages.
         b[18].binding = 26; b[18].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         b[18].descriptorCount = 1; b[18].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        b[19].binding = 20; b[19].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[19].descriptorCount = 1; b[19].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 19; lci.pBindings = b;
+        lci.bindingCount = 20; lci.pBindings = b;
         if (!mc2vk::create(s->dsl, s->device, [&](auto* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); })) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }
@@ -645,7 +657,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
         sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;          sizes[1].descriptorCount = 3 * mc2vk::kMaxFramesInFlight;  // (height + cement + visual-height) x2
         // Image samplers per set: colormap, cement, static shadow, matNormalArray, dyn shadow, csm array, csm full map,
         // shoreline mask, shore field; two sets.
-        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;  sizes[2].descriptorCount = 13 * mc2vk::kMaxFramesInFlight;   // + local shadow atlas x2
+        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;  sizes[2].descriptorCount = 14 * mc2vk::kMaxFramesInFlight;   // + local shadow atlas, forest mask
         sizes[3].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;  sizes[3].descriptorCount = 3 * mc2vk::kMaxFramesInFlight;  // light pool + grid header + grid indices, x2
         sizes[4].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[4].descriptorCount = 2 * mc2vk::kMaxFramesInFlight;   // mover shadow frame (25) + environment (26)
         VkDescriptorPoolCreateInfo pci{};

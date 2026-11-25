@@ -3,7 +3,7 @@ FITini
 FITini 
 
 [Cameras]
-f ProjectionAngle = 35.000000
+f ProjectionAngle = 30.000000
 f PositionX = -1130.666382
 f PositionY = -6250.667480
 f PositionZ = 0.000000
@@ -54,7 +54,7 @@ f LightDirPitch = 75.000000
 f DayLightPitch = 75.000000
 f DayToNightTime = -1.000000
 f LightDirYaw = 300.000000
-f NewScale = 0.816496
+f NewScale = 0.912829
 f StartRotation = -170.000000
 f[3] LODScales = 1.00, 0.50, 0.30,
 f ElevationAdjustFactor = 150.000000
