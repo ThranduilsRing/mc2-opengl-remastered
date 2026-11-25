@@ -209,7 +209,11 @@ def main(recipe, output):
             params = dec['material_maps'](name, props, pngs)
             params.update({k: str(pngs[v]) for k, v in vehicle.get('material_maps', {}).get(name, {}).items()})
             # These are unbound master-material placeholders, not vehicle maps.
-            params = {k: v for k, v in params.items() if Path(v).stem not in ('Noise_VeryStrong_NRM', 'Flat_White')}
+            # glTF cannot express the decoder's layered paint mix. Exporting
+            # its RGB mask as albedo exposes red/green/blue editor channels.
+            params = {k: v for k, v in params.items()
+                      if k not in ('RGBPaintMask', 'RGBColourMask', 'RGBColorMask')
+                      and Path(v).stem not in ('Noise_VeryStrong_NRM', 'Flat_White')}
             # Vehicle RGH maps are scalar roughness, not packed ORM. Reading
             # their blue channel as metallic made painted turrets mirror chrome.
             # Keep the resolved base colour/normal and use a matte finish.
