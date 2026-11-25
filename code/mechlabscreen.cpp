@@ -2685,7 +2685,10 @@ void MechLabScreen::drawLocationView(float tbSx, float tbSy, float tbOx, float t
 		std::vector<LocItem> items; gatherPanelItems(pVariant,p,items);
 		const int count = static_cast<int>(items.size());
 		const int first = ml::clampScroll(count,s_locView.scroll[p],p);
-		text({r.x+3,r.y+ml::equipmentY(p)-10,50,10},"EQUIPPED",0xffa0b0c0,7);
+		const int empty = static_cast<int>(std::count_if(items.begin(), items.end(), [](const auto& item) { return item.label && std::string_view(item.label) == "- empty -"; }));
+		const std::string equipment = pc && pVariant->getChassis()->getLocationLayout()
+			? std::format("SLOTS {}/{}", count-empty, count) : "EQUIPPED";
+		text({r.x+3,r.y+ml::equipmentY(p)-10,50,10},equipment,0xffa0b0c0,7);
 		// Existing package mount assignment, displayed in the equipment header.
 		float bx = r.x+53;
 		const auto& layout = pVariant->getChassis()->getLocationLayout();
