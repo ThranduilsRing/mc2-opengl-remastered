@@ -3,7 +3,7 @@ FITini
 // Additions to stock purchase01..24.fit; stock mech/component lists stay authoritative.
 // IS and stock vehicles: <=35t mission 1, <=55t 3, <=75t 6, assault 9.
 // Clan: <=55t mission 18, <=75t 19, assault 22; Swarm LRM is late tech.
-// Other campaigns use authored purchase lists; MC2_PURCHASE_ALL unlocks everything.
+// Custom purchase filenames get the starting additions alongside their authored lists.
 [Unlocks]
 st Unit0 = "mw5_archer"
 l Mission0 = 6

@@ -372,9 +372,10 @@ void MechBayScreen::update()
 		{
 			const auto* chassis = pCurMech->getVariant()->getChassis();
 			getButton( MB_MSG_CHANGE_LOADOUT )->disable(chassis->isVehicle() && !chassis->getPackage());
-			mechCamera->update();
 		}
 	}
+	if (pCurMech)
+		mechCamera->update();
 
 
 
