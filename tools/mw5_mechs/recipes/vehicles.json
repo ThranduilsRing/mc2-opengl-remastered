@@ -9,7 +9,8 @@
     "infantry": "E:\\mc2-archive-2026-10\\proofs\\mw5-vehicles-1\\infantry",
     "elemental": "E:\\mc2-archive-2026-10\\proofs\\mw5-vehicles-1\\elemental-source",
     "riverjack": "E:\\mc2-archive-2026-10\\proofs\\mw5-vehicles-1\\riverjack-source",
-    "riverjack_turret": "E:\\mc2-archive-2026-10\\proofs\\mw5-vehicles-1\\riverjack-native\\meshes"
+    "riverjack_turret": "E:\\mc2-archive-2026-10\\proofs\\mw5-vehicles-1\\riverjack-native\\meshes",
+    "igor_gun": "E:/mc2-archive-2026-10/proofs/mw5-vehicles-1/igor-gun-meshes"
   },
   "vehicles": [
     {"id": "manticore", "family": "tracked", "replaces": "vehicle:centipede", "components": [
@@ -121,7 +122,11 @@
       {"mesh": "WingMounted_Missile2_SKM", "node": "srm_right", "export": "weapons", "at": "hull:Mount_RightWing", "parent": "hull"}
     ]},
     {"id": "igor", "family": "vtol", "replaces": "vehicle:heavycopter", "kind": "mech", "components": [
-      {"mesh": "Igor_SKM", "node": "hull", "export": "vtol"}
+      {"mesh": "Igor_SKM", "node": "hull", "export": "vtol"},
+      {"mesh": "PointDefense_Small_BaseRing_STM", "node": "mw5_yaw", "export": "igor_gun", "parent": "hull", "offset_cm": [-210.83185, 1.9073494e-05, 3.0386658], "rotation_deg": [0, 0, -179.99997], "scale": [1.4, 1.4, 1.4], "animated": true},
+      {"mesh": "PointDefense_Small_Ballistic_2X2_STM", "node": "mw5_barrel", "export": "igor_gun", "parent": "mw5_yaw", "offset_cm": [0, 0, 164.30008], "animated": true},
+      {"mesh": "Weapon_Assaut_AC5_SKM", "node": "ac5_0", "export": "weapons", "parent": "mw5_barrel", "offset_cm": [49.13611, -121.166595, 108.02598]},
+      {"mesh": "Weapon_Assaut_AC5_SKM", "node": "ac5_1", "export": "weapons", "parent": "mw5_barrel", "offset_cm": [49.13614, 121.16658, 109.04385]}
     ]},
     {"id": "igor_attack", "family": "vtol", "replaces": "vehicle:assaultcopter", "kind": "mech", "host_variant_of": "igor", "components": [
       {"mesh": "Igor_Attack_STM", "node": "hull", "export": "vtol"}

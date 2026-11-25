@@ -86,13 +86,23 @@ def build(recipe, assemblies, stock, out):
         ini = (stock/'data/tgl'/f'{host}.ini').read_text(encoding='latin-1')
         yaw = next((c['node'] for c in v['components'] if c.get('animated')), None)
         if v.get('kind') != 'mech':
-            if yaw:
-                if re.search(r'\bst AnimationNodeId\s*=', ini, re.I):
-                    ini = re.sub(r'(\bst AnimationNodeId\s*=\s*)"[^"]*"',
-                                 lambda m: m[1] + '"' + yaw + '"', ini, flags=re.I)
-                else:
-                    ini = ini.replace('FITend', f'[AnimationNode]\nst AnimationNodeId = "{yaw}"\n\nFITend')
-            (tgl/f'{host}.ini').write_text(ini, encoding='latin-1')
+            # A mod-owned INI deliberately bypasses render overrides. Retain the
+            # stock INI and bind our yaw pivot to its existing animation node.
+            record = next(r for r in models['overrides'] if r['replaces'] == v['replaces'])
+            ground_path = out/'data/model_overrides'/record['source']
+            ground, buffers, _ = load_document(ground_path)
+            stock_yaw = re.search(r'\bst AnimationNodeId\s*=\s*"([^"]*)"', ini, re.I)
+            if yaw and stock_yaw:
+                target = stock_yaw[1]
+                if target.lower() == 'sc_turret':
+                    target = 'Centipede_turret'
+                for node in ground.get('nodes', []):
+                    if node.get('name') == yaw:
+                        node['name'] = target
+                write_glb(ground_path, ground, buffers[0])
+            # The vehicle renderer requires three complete slots. Reuse the
+            # complete source mesh at each distance rather than falling to stock.
+            record['lods'] = [dict(lod=i, source=record['source'], distance=i*500) for i in (1, 2)]
             continue
         # VTOLs are stock Mech3DAppearances, so use the existing imported-mech
         # path. Keep the source animation hierarchy and metre/Y-up frame.
