@@ -12,6 +12,14 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ab  # noqa: E402
 
 
+def test_run_capture_accepts_path_install(tmp_path, monkeypatch):
+    class Completed:
+        def wait(self):
+            return 0
+    monkeypatch.setattr(ab.subprocess, "Popen", lambda *args, **kwargs: Completed())
+    ab.run_capture(tmp_path, "bm1", tmp_path / "out", [])
+
+
 def test_capture_argv_keeps_clean_by_default():
     cmd = ab.capture_argv("A:/inst", "bm1,bm2", Path("out/a"), [])
     assert "--clean" in cmd
