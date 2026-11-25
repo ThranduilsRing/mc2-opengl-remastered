@@ -23,7 +23,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/run_editor_smoke.py` | 1194 | `nofocus.spawn` | offscreen |
 | `scripts/run_editor_smoke.py` | 1720 | `nofocus.spawn` | offscreen |
 | `scripts/run_mp_loopback_proof.py` | 139 | `nofocus.spawn` | offscreen |
-| `scripts/run_player_path.py` | 148 | `nofocus.spawn` | offscreen |
+| `scripts/run_player_path.py` | 150 | `nofocus.spawn` | offscreen |
 | `scripts/run_smoke.py` | 419 | `nofocus.spawn` | offscreen |
 | `scripts/run_smoke_asan.py` | 203 | `nofocus.spawn` | offscreen |
 | `scripts/run_tool_capture.py` | 108 | `nofocus.spawn` | offscreen |
@@ -59,10 +59,10 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `tools/import_campaign.py` | 310 | `subprocess.run` **raw, allowed:** innoextract console archive reader only; never runs the installer or engine | offscreen |
 | `tools/menu_oracle.py` | 110 | `nofocus.spawn` | desktop-composite |
 | `tools/mod_smoke.py` | 1064 | `nofocus.run` | offscreen |
-| `tools/perf/mission_cpu_profile.py` | 224 | `subprocess.Popen` **raw, allowed:** Tracy console recorder, never an engine. | offscreen |
-| `tools/perf/mission_cpu_profile.py` | 260 | `subprocess.Popen` **raw, allowed:** Tracy CSV console exporter, never an engine. | offscreen |
-| `tools/perf/rgp_capture.py` | 66 | `subprocess.Popen` **raw, allowed:** RDS console service, never an engine. | offscreen |
-| `tools/perf/rgp_capture.py` | 70 | `subprocess.Popen` **raw, allowed:** minimized no-activate profiler panel, never an engine. | offscreen |
+| `tools/perf/mission_cpu_profile.py` | 226 | `subprocess.Popen` **raw, allowed:** Tracy console recorder, never an engine. | offscreen |
+| `tools/perf/mission_cpu_profile.py` | 262 | `subprocess.Popen` **raw, allowed:** Tracy CSV console exporter, never an engine. | offscreen |
+| `tools/perf/rgp_capture.py` | 68 | `subprocess.Popen` **raw, allowed:** RDS console service, never an engine. | offscreen |
+| `tools/perf/rgp_capture.py` | 72 | `subprocess.Popen` **raw, allowed:** minimized no-activate profiler panel, never an engine. | offscreen |
 | `tools/renderdoc/capture.py` | 144 | `nofocus.run` | offscreen |
 | `tools/tracy_capture_compare.py` | 407 | `subprocess.run` **raw, allowed:** windowless Tracy csvexport console tool. | offscreen |
 | `tools/tracy_capture_compare.py` | 476 | `subprocess.Popen` **raw, allowed:** Tracy console recorder, never an engine. | offscreen |
