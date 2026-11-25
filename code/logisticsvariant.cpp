@@ -170,7 +170,7 @@ int LogisticsChassis::init( CSVFile* file, int chassisID )
 	//  (2) rotor/air units (scoutcopter etc.) reuse the mech chassis layout verbatim, so the
 	//      only logistics-visible tell is the chassis filename token "copter".
 	{
-		bool isVeh = chassisCsvHasVehicleComponent( *file );  // Item rows 26..48, name in col 6
+		bool isVeh = (package && package->vehicle) || chassisCsvHasVehicleComponent( *file );
 		if ( !isVeh && fileName.find( "copter" ) != std::string::npos )
 			isVeh = true;
 		bIsVehicle = isVeh;

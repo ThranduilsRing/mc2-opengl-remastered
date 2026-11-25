@@ -1,5 +1,7 @@
 """Cook assembled MW5 vehicles into ground overrides and imported VTOL appearances."""
 import argparse
+import csv
+import io
 import json
 from pathlib import Path
 import re
@@ -13,7 +15,7 @@ from tools.content_pipeline.cook import cook
 from tools.content_pipeline import ir
 from tools.content_pipeline.frontends import gltf_file
 from tools.content_pipeline.gltf_io import load_document
-from tools.mw5_mechs.build_pack import emit_ini
+from tools.mw5_mechs.build_pack import emit_ini, blocks
 
 
 def write_glb(path, doc, binary):
@@ -37,26 +39,91 @@ def material_aliases(materials):
     return aliases
 
 
-def air_variant(out, vehicle, base):
-    # AssaultCopter has an appearance INI but no stock object2 slot. Offer the
-    # attack Igor on the real HeavyCopter role while retaining the base pack.
-    variant = out/'variants'/('mw5-'+vehicle['id'].replace('_','-'))
-    tgl = variant/'data/tgl'
-    tgl.mkdir(parents=True, exist_ok=True)
-    source, host = vehicle['replaces'].split(':')[1], base['replaces'].split(':')[1]
-    ini = (out/'data/tgl'/f'{source}.ini').read_text(encoding='latin-1')
-    ini = ini.replace(f'AnimHost = "{source}"', f'AnimHost = "{host}"')
-    (tgl/f'{host}.ini').write_text(ini, encoding='latin-1')
-    (variant/'mod.json').write_text(json.dumps(dict(schema='mc2-mod/1', id=variant.name,
-        name='MW5 attack Igor', version='0.1.0', dependencies=['mw5-vehicles'], type='assets'), indent=2)+'\n')
-    (variant/'COPY.txt').write_text('Copy this folder beside mw5-vehicles in <MC2>/mods. Select mw5-igor-attack.\n'
-                                  'The mw5-vehicles dependency retains all other appearances; HeavyCopter uses the attack Igor.\n')
+def logistics(vehicles, stock, out, assemblies):
+    from tools.pak_dump import read_packets, decode_packet
+    from tools.mc2x_import import fst
+    from tools.bt2018_mechs.compile import emit_chassis_fit
+    from tools.bt2018_mechs.render_icons import build_icons
+    names = dict(jedgar='J. Edgar', missile_carrier='LRM Carrier', srm_carrier='SRM Carrier',
+                 clan_elemental='Elemental', infantry_gunner='Infantry', infantry_srm='SRM Infantry',
+                 fancy_warrior='Warrior', igor_attack='Igor', igor_lifter='Igor')
+    definitions = {}
+    for packet in read_packets(stock/'data/objects/object2.pak'):
+        text = (decode_packet(packet) or b'').decode('latin-1')
+        appearance = re.search(r'\bAppearanceName\s*=\s*"([^"]+)"', text, re.I)
+        if appearance:
+            definitions.setdefault(appearance[1].lower(), text.replace('\r', ''))
+    tables = {}
+    for off, comp, real, name, lz, data in fst.fst_entries(stock/'misc.fst'):
+        if name.startswith('data/objects/') and name.endswith('.csv'):
+            tables[Path(name).stem] = list(csv.reader(io.StringIO(fst.decompress_entry(off, comp, real, lz, data).decode('latin-1'), newline='')))
+    components = {r[0]: r for r in tables['compbas'][1:] if len(r) > 6}
+    for index, v in enumerate(vehicles):
+        stem, host = 'mw5_'+v['id'], v['replaces'].split(':')[1]
+        donor = definitions['heavycopter' if host == 'assaultcopter' else host]
+        name = names.get(v['id'], 'Riverjack' if v['id'].startswith('riverjack') else v['id'].replace('_', ' ').title())
+        sid = 62000 + index * 2
+        rows = [r[:] for r in tables.get(host, tables['lightcopter'])[:116]]
+        ground = v.get('kind') != 'mech'
+        if ground:
+            values = dict(blocks(donor))
+            def number(key, default=0):
+                match = re.search(r'\b'+key+r'\s*=\s*([\d.]+)', donor, re.I)
+                return float(match[1]) if match else default
+            rows[2][4] = str(number('CurTonnage', 15))
+            for r in rows[25:97]:
+                if len(r) > 5: r[1:6] = ['0', '0', '0', '', '']
+            inventory = [(block, body) for block, body in values.items() if block.startswith('Item:')]
+            for i, (_, body) in enumerate(inventory):
+                master = re.search(r'\bMasterID\s*=\s*(\d+)', '\n'.join(body))
+                if master and i < 72:
+                    cid = master[1]
+                    rows[25+i][1:6] = ['1', str(i % 6), str(i // 6), cid, components[cid][1]]
+            rows[10][4] = str(int(number('BattleRating', 25)*100))
+        rows[2][1], rows[4][1], rows[5][1] = name, str(sid), str(sid+1)
+        rows[7][1] = str(sid+1)
+        rows[8][1], rows[9][1], rows[10][1] = stem, stem+'walk', stem+'_bay'
+        for r in rows:
+            if r and r[0] == 'VariantName': r[1] = name
+        target = out/'data/objects'/f'{stem}.csv'
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with target.open('w', newline='', encoding='latin-1') as f:
+            csv.writer(f, lineterminator='\n').writerows(rows)
+        tons = float(rows[2][4])
+        payload = max(1, sum(float(components[r[4]][6] or 0) for r in rows[25:97] if len(r)>4 and r[4] in components))
+        node = v['components'][0]['node']
+        hardpoints = [dict(id=f'CenterTorso.{i}', location='CenterTorso', mount=mount, socket=node)
+                      for i,r in enumerate(rows[25:97]) if len(r)>4 and r[4] in components
+                      for mount in [components[r[4]][1].removesuffix('Weapon')]
+                      if mount in ('Energy', 'Ballistic', 'Missile')]
+        profile = dict(chassis_id='mw5:'+v['id'], stem=stem, family=v['id'], balance_profile='mc2-donor:'+host,
+                       hardpoints=hardpoints, mc2=dict(tonnage=tons, empty_mass=0, payload=payload,
+                       layout_rev=1, regions={'CenterTorso': [0,0,6,5]}, ap_ordinals=[]))
+        fit = emit_chassis_fit(profile, {})
+        chassis = fit[fit.index('[Chassis]'):].replace('b Purchasable = TRUE', 'b Purchasable = TRUE\nb Vehicle = TRUE')
+        donor = re.sub(r'(\b(?:Name|AppearanceName|ProfileName)\s*=\s*)"[^"]*"', lambda m: m[1]+'"'+stem+'"', donor)
+        donor = re.sub(r'(\bDescIndex\s*=\s*)\d+', lambda m: m[1]+str(sid), donor)
+        path = out/'data/defs/chassis/mw5'/v['id']/'chassisdef.fit'
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(re.sub(r'(?i)FITend\s*$', '', donor)+chassis, encoding='latin-1')
+        strings = out/'data/defs/text/en_us'/f'{stem}.fit'
+        strings.parent.mkdir(parents=True, exist_ok=True)
+        strings.write_text('\n'.join(f'String {{\n key = "mw5.{v["id"]}.{key}"\n text = "{name}"\n legacyId = {lid}\n source = "mw5-vehicles"\n category = "units"\n}}' for key,lid in [('name',sid),('details',sid+1)]))
+        # Vehicle meshes have no BattleMech limb names. Render their complete
+        # silhouette as one body region without changing the source assembly.
+        doc, buffers, _ = load_document(assemblies/v['id']/'assembled.glb')
+        for n in doc['nodes']:
+            if 'mesh' in n: n['name'] = n.get('name', '') + '_body'
+        with tempfile.TemporaryDirectory(prefix='mw5-icons-') as work:
+            icon = Path(work)/'icon.glb'
+            write_glb(icon, doc, buffers[0])
+            build_icons(icon, stem, out/'data/art')
 
 
 def build(recipe, assemblies, stock, out):
     recipe = json.loads(Path(recipe).read_text())
     assemblies, stock, out = map(Path, (assemblies, stock, out))
-    vehicles = [v for v in recipe['vehicles'] if not v.get('variant_of')]
+    vehicles = recipe['vehicles']
     specs = []
     static_copies = []
     for v in vehicles:
@@ -68,7 +135,7 @@ def build(recipe, assemblies, stock, out):
                 path = Path(tmp.name)
             write_glb(path, doc, buffers[0])
             static_copies.append(path)
-        specs.append(dict(frontend='gltf', id='mw5_'+v['id'], replaces=v['replaces'], kind='prop',
+        specs.append(dict(frontend='gltf', id='mw5_'+v['id'], replaces='vehicle:mw5_'+v['id'], kind='prop',
                           intact=str(path), frame='gltf', wu_per_unit=10,
                           classes={m['name']: 'painted_metal' for m in doc.get('materials', [])}))
     try:
@@ -88,7 +155,7 @@ def build(recipe, assemblies, stock, out):
         if v.get('kind') != 'mech':
             # A mod-owned INI deliberately bypasses render overrides. Retain the
             # stock INI and bind our yaw pivot to its existing animation node.
-            record = next(r for r in models['overrides'] if r['replaces'] == v['replaces'])
+            record = next(r for r in models['overrides'] if r['replaces'] == 'vehicle:'+stem)
             ground_path = out/'data/model_overrides'/record['source']
             ground, buffers, _ = load_document(ground_path)
             stock_yaw = re.search(r'\bst AnimationNodeId\s*=\s*"([^"]*)"', ini, re.I)
@@ -103,10 +170,11 @@ def build(recipe, assemblies, stock, out):
             # The vehicle renderer requires three complete slots. Reuse the
             # complete source mesh at each distance rather than falling to stock.
             record['lods'] = [dict(lod=i, source=record['source'], distance=i*500) for i in (1, 2)]
+            (tgl/f'{stem}.ini').write_text(ini, encoding='latin-1')
             continue
         # VTOLs are stock Mech3DAppearances, so use the existing imported-mech
         # path. Keep the source animation hierarchy and metre/Y-up frame.
-        record = next(r for r in models['overrides'] if r['replaces'] == v['replaces'])
+        record = next(r for r in models['overrides'] if r['replaces'] == 'vehicle:'+stem)
         cooked, _, _ = load_document(out/'data/model_overrides'/record['source'])
         names = {m['name']: m for m in cooked.get('materials', [])}
         doc, buffers, _ = load_document(assemblies/v['id']/'assembled.glb')
@@ -144,8 +212,8 @@ def build(recipe, assemblies, stock, out):
         (tgl/f'{stem}.package.json').write_text(json.dumps(package, indent=2)+'\n')
         imported = emit_ini(ini, {}, {'mc2': {'stem': stem, 'model': {'host_ini': host}}})
         imported = imported.replace('MW5 Timber Wolf appearance for the stock Mad Cat', 'MW5 '+v['id']+' appearance')
-        (tgl/f'{host}.ini').write_text(imported, encoding='latin-1')
-    air = {v['replaces'] for v in vehicles if v.get('kind') == 'mech'}
+        (tgl/f'{stem}.ini').write_text(imported, encoding='latin-1')
+    air = {'vehicle:mw5_'+v['id'] for v in vehicles if v.get('kind') == 'mech'}
     models['overrides'] = [r for r in models['overrides'] if r['replaces'] not in air]
     registry.write_text(json.dumps(models, indent=2)+'\n')
     manifest = out/'mod.json'
@@ -155,40 +223,18 @@ def build(recipe, assemblies, stock, out):
     (out/'COPY.txt').write_text(
         'Personal-use assets extracted from the owner\'s MW5 installations. Do not redistribute.\n'
         'Copy this folder to <MC2 install>/mods/mw5-vehicles and select mw5-vehicles.\n'
-        'Optional folders under variants can be copied beside the base mod and selected separately.\n'
-        'Ground appearances replace nearest stock roles; VTOLs use the existing imported-mech path.\n'
+        'Select the base pack to enable all imported vehicles.\n'
+        'Every unit is a separate chassis alongside the stock roster.\n'
         'Stock missions, movement, weapons and collision remain the gameplay source.\n'
         'Socket/helper meshes are excluded; carrier paint/wear is baked and weapon glow is not albedo.\n'
         'Native Elemental and armed Riverjack textures are retained. Other unresolved materials use a matte fallback.\n'
-        'A different loose vehicle INI takes priority over this pack; restore stock INIs to use it.\n'
+        'Stock unit files and appearances are not overridden.\n'
         'Human infantry VAT gait and Elemental skeletal\n'
         'animation are not translated; these appearances retain their source bind pose.\n'
         'Turret yaw and barrel pitch are separate nodes; stock vehicle code controls yaw only.\n'
         'Look acceptance is pending owner review. See the assembly receipts and family sheets.\n')
     shutil.copyfile(assemblies/'assembly-receipt.json', out/'assembly-receipt.json')
-    for v in recipe['vehicles']:
-        if not v.get('variant_of'):
-            continue
-        spec = next(s for s in specs if s['id'] == 'mw5_'+v['variant_of']).copy()
-        path = assemblies/v['id']/'assembled.glb'
-        doc, _, _ = load_document(path)
-        spec.update(id='mw5_'+v['id'], intact=str(path),
-                    classes={m['name']: 'painted_metal' for m in doc.get('materials', [])})
-        variant = out/'variants'/('mw5-'+v['id'].replace('_','-'))
-        cook(dict(mod_id=variant.name, name='MW5 '+v['id'], assets=[spec]), variant, compress=False)
-        registry = variant/'data/model_overrides/models.json'
-        models = json.loads(registry.read_text())
-        for record in models['overrides']:
-            record['lods'] = [dict(lod=i, source=record['source'], distance=i*500) for i in (1, 2)]
-        registry.write_text(json.dumps(models, indent=2)+'\n')
-        manifest = variant/'mod.json'
-        mod = json.loads(manifest.read_text()); mod['dependencies'] = ['mw5-vehicles']
-        manifest.write_text(json.dumps(mod, indent=2)+'\n')
-        (variant/'COPY.txt').write_text('Copy this folder beside mw5-vehicles in <MC2>/mods and select it\n'
-                                     'to use SRM infantry. The base pack remains a dependency. Source VAT gait is not translated.\n')
-    for v in vehicles:
-        if v.get('host_variant_of'):
-            air_variant(out, v, next(b for b in vehicles if b['id'] == v['host_variant_of']))
+    logistics(vehicles, stock, out, assemblies)
     print(f'PACK {len(vehicles)} appearances: {out}')
 
 

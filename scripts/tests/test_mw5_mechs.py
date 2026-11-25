@@ -13,6 +13,45 @@ from tools.mw5_mechs.ue_basis import psa_pos_to_gltf, psa_quat_to_gltf
 from tools.mw5_mechs.verify_basis import angle, fk, world_rotation_delta
 
 
+def test_built_packs_do_not_override_stock_units():
+    import csv
+    import io
+    import os
+    import re
+    from tools.mc2x_import import fst
+    root = os.environ.get('MW5_STANDALONE_INSTALL')
+    if not root:
+        pytest.skip('requires the generated private packs')
+    inst = Path(root)
+    stock_paths, stock_ids = set(), set()
+    for archive in inst.glob('*.fst'):
+        for off, comp, real, name, lz, data in fst.fst_entries(archive):
+            stock_paths.add(name.lower())
+            if name.startswith('data/objects/') and name.endswith('.csv'):
+                rows = list(csv.reader(io.StringIO(fst.decompress_entry(off, comp, real, lz, data).decode('latin-1'), newline='')))
+                if rows and rows[0][0] == 'BaseChassisInfo':
+                    stock_ids.update(r[1] for r in rows[4:8] if len(r)>1 and r[1].isdigit())
+    stock_paths.update(p.relative_to(inst).as_posix().lower() for p in (inst/'data/objects').glob('*'))
+    identities = set()
+    for pack in (inst/'mods/mw5_mechs', inst/'mods/mw5-vehicles'):
+        assert not [p for p in pack.rglob('*') if p.is_file() and p.relative_to(pack).as_posix().lower() in stock_paths]
+        for fit in (pack/'data/defs/chassis').rglob('chassisdef.fit'):
+            text = fit.read_text()
+            identity = re.search(r'ChassisId\s*=\s*"([^"]+)"', text)[1]
+            assert identity.startswith('mw5:') and identity not in identities
+            identities.add(identity)
+            stem = re.search(r'Stem\s*=\s*"([^"]+)"', text)[1]
+            rows = list(csv.reader((pack/'data/objects'/f'{stem}.csv').open()))
+            assert rows[2][1] == rows[22][1] and 'MW5' not in rows[2][1] and ' / ' not in rows[22][1]
+            assert not stock_ids.intersection((rows[4][1], rows[5][1]))
+            assert (pack/'data/tgl'/f'{stem}.ini').is_file()
+            assert (pack/'data/art/mechicons'/f'{stem}.png').is_file()
+        registry = pack/'data/model_overrides/models.json'
+        if registry.exists():
+            assert all(r['replaces'].startswith('vehicle:mw5_') for r in json.loads(registry.read_text())['overrides'])
+    assert len(identities) == 71
+
+
 @pytest.mark.parametrize('family,host,donor', [('atlas', 'atlas', 'atlas'), ('archer', 'archer', 'thor')])
 def test_logistics_keeps_donor_loadout_and_registers_new_chassis(tmp_path, monkeypatch, family, host, donor):
     import csv
@@ -52,19 +91,22 @@ def test_logistics_keeps_donor_loadout_and_registers_new_chassis(tmp_path, monke
     (tgl / (host + '.ini')).write_text('FITini\nFITend\n')
     (tgl / (stem + '.package.json')).write_text('{}')
     P.logistics(recipe, tmp_path, out)
-    target = out / 'data/objects' / ((host if host == donor else stem) + '.csv')
+    target = out / 'data/objects' / (stem + '.csv')
     result = list(csv.reader(io.StringIO(target.read_text())))
     assert result[25] == rows[25]
-    assert len(result) == (213 if host == donor else 116)
-    assert result[22][1].startswith('MW5 ') if host != donor else result[22][1] == 'Donor Prime'
+    assert len(result) == 116
+    assert result[22][1] == result[2][1] == family.title()
+    assert not (out / 'data/objects' / (donor + '.csv')).exists()
+    assert not (out / 'data/objects' / (host + '.csv')).exists()
+    assert 'MW5' not in (out / 'data/defs/text/en_us' / (stem + '.fit')).read_text()
     assert result[8][1] == stem and result[10][1] == stem + '_bay'
     assert result[2][4] == rows[2][4]
     assert icons[0][1] == stem
     report = json.loads((out / 'content' / (stem + '.json')).read_text())
     assert report['donor'] == donor
     fits = list((out / 'data/defs/chassis').rglob('chassisdef.fit'))
-    assert len(fits) == (host != donor)
-    if fits:
+    assert len(fits) == 1
+    if host != donor:
         assert 'b Purchasable = TRUE' in fits[0].read_text()
         assert 'st Socket = "weapon_0"' in fits[0].read_text()
         assert 'f Payload = 60.0' in fits[0].read_text()
@@ -401,7 +443,8 @@ def test_recipe_entry_point_and_maps(fixture, tmp_path, monkeypatch):
     assert "fixture_foot" in [n["name"] for n in doc["nodes"]]
     assert [a["name"] for a in doc["animations"]] == ["fixture_idle", "fixture_hold"]
     assert all(doc["accessors"][s["output"]]["count"] == 1 for s in doc["animations"][1]["samplers"])
-    assert 'st AnimHost = "fixture_host"' in (tgl / "fixture_host.ini").read_text()
+    assert 'st AnimHost = "fixture_host"' in (tgl / "fixture_mech.ini").read_text()
+    assert not (tgl / "fixture_host.ini").exists()
     pkg = json.loads((tgl / "fixture_mech.package.json").read_text())
     assert pkg["sourceGlb"] == "fixture_mech.glb"
     recipe["clips"]["Missing"] = "fixture_missing"

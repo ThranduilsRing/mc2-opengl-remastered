@@ -112,9 +112,14 @@ TEST_CASE("package chassis: auto-place probing finds a region with a free compat
 
 TEST_CASE("package chassis: object-type numbers follow the legacy packets and respect the table limit") {
     std::vector<PackageChassis> v(3);
+    v[1].objectType = 3;
+    v[1].vehicle = true;
     CHECK(allocateTypeNums(v, 1188, kPackageTypeLimit) == 3);
     CHECK(v[0].objTypeNum == 1188);
     CHECK(v[2].objTypeNum == 1190);
+    CHECK(v[1].objTypeNum == 1189);
+    CHECK(v[0].objectType == 2);
+    CHECK(v[1].objectType == 3);
     std::vector<PackageChassis> full(2);
     CHECK(allocateTypeNums(full, kPackageTypeLimit - 1, kPackageTypeLimit) == 1);
     CHECK(full[1].objTypeNum == -1);

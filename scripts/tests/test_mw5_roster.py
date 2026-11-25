@@ -10,7 +10,7 @@ TOOLS = Path(__file__).resolve().parents[2] / "tools" / "mw5_mechs"
 sys.path.insert(0, str(TOOLS))
 import make_mech  # noqa: E402
 
-RECIPES = sorted((TOOLS / "recipes").glob("*.json"))
+RECIPES = sorted(p for p in (TOOLS / "recipes").glob("*.json") if p.name != "vehicles.json")
 
 
 @pytest.mark.parametrize("path", RECIPES, ids=lambda p: p.stem)

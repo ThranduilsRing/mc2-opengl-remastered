@@ -2,8 +2,8 @@
 """Build the personal-use MW5 Mad Cat appearance pack (a mod) from the owner's own extracted files.
 
 Same shape as tools/bt2018_mechs/build_pack.py: the GLB, BC7 maps and sidecar are COPIED into <install>/mods/<mod-id>/;
-nothing in the install's base data is modified. The pack overrides the stock Mad Cat appearance INI
-(data/tgl/madcat.ini) so the stock chassis shows the MW5 Timber Wolf model. Never commit the generated pack.
+nothing in the install's base data is modified. Each imported chassis owns a separate CSV,
+appearance and package definition. Never commit the generated pack.
 
   py -3 tools/mw5_mechs/build_pack.py --recipe <owner recipe.json> --install <lane-install>
 Mount with MC2_MOD_DEPS=mw5_mechs.
@@ -68,26 +68,32 @@ def logistics(recipe, inst, out, loadout=None):
         tons = table.get(family, [float(stock[host][2][4]) if host in stock else 0])[0]
     donor = host if host in stock else DONORS[host]
     rows = [r[:] for r in stock[donor]]
-    if host not in stock:
-        rows = rows[:116]  # One recorded MC2 Prime adaptation; keep stock chassis variants intact.
-    name = 'MW5 ' + {'madcat': 'Timber Wolf', 'uller': 'Kit Fox', 'ryoken': 'Stormcrow',
+    rows = rows[:116]  # One donor loadout, with the imported chassis' own identity.
+    name = {'madcat': 'Timber Wolf', 'uller': 'Kit Fox', 'ryoken': 'Stormcrow',
                      'thor': 'Summoner', 'vulture': 'Mad Dog', 'puma': 'Adder',
-                     'jaegermech': 'JagerMech'}.get(host, family.title())
+                     'jaegermech': 'JagerMech', 'direwolf': 'Dire Wolf',
+                     'maddog': 'Mad Dog', 'timberwolf': 'Timber Wolf',
+                     'shadowhawk': 'Shadow Hawk', 'shadowcat': 'Shadow Cat',
+                     'blackknight': 'Black Knight', 'urbanmech': 'UrbanMech',
+                     'bushwacker': 'Bushwacker'}.get(host, family.title())
     rows[2][1], rows[8][1], rows[9][1], rows[10][1] = name, stem, stem + 'walk', stem + '_bay'
     # Stable pack string range, separate from the BT2018 range.
     index = sorted(p.stem for p in Path(__file__).with_name('recipes').glob('*.json') if p.stem != 'madcat_alt').index('timberwolf' if family == 'madcat' else family)
     sid = 61000 + index * 2
     rows[4][1], rows[5][1] = str(sid), str(sid + 1)
+    rows[7][1] = str(sid + 1)
     for r in rows:
-        if r and r[0] == 'VariantName' and host not in stock:
-            r[1] = name + ' / ' + r[1]
-    target = out / 'data/objects' / ((host if host in stock else stem) + '.csv')
+        if r and r[0] == 'VariantName':
+            r[1] = name
+    target = out / 'data/objects' / (stem + '.csv')
     target.parent.mkdir(parents=True, exist_ok=True)
+    if host != stem:
+        (target.parent / (host + '.csv')).unlink(missing_ok=True)
+        (out / 'data/tgl' / (host + '.ini')).unlink(missing_ok=True)
     text = io.StringIO(newline='')
     csv.writer(text, lineterminator='\n').writerows(rows)
     target.write_text(text.getvalue(), encoding='latin-1')
     tgl = out / 'data/tgl'
-    (tgl / (stem + '.ini')).write_bytes((tgl / (host + '.ini')).read_bytes())
     pkg_path = tgl / (stem + '.package.json')
     pkg = json.loads(pkg_path.read_text())
     nodes, offsets, _, _ = package_nodes(tgl / (stem + '.glb'), loadout, recipe)
@@ -106,66 +112,65 @@ def logistics(recipe, inst, out, loadout=None):
     pkg['firePointSources'] = sources
     pkg['clips'] = {'showcase': recipe['clips']['Stand']}
     pkg_path.write_text(json.dumps(pkg, indent=2) + '\n')
-    if host not in stock:
-        # Keep the donor's rectangular lab and loadout; physical muzzle sockets remain
-        # attached to their real arm/torso bones in the appearance sidecar.
-        sockets = [k for k in pkg['nodes'] if k.startswith('weapon_')]
-        if not sockets:
-            raise ValueError(f'{stem}: no weapon sockets')
-        # MC2 deliberately ignores component mass when fitting legacy variants.
-        # Preserve that donor's complete loadout under the package payload rule.
-        payload = max(.8 * float(rows[2][4]) - 7,
-                      sum(weights.get(r[4], 0) for r in rows[25:96] if len(r) > 4))
-        hardpoints = []
-        for mount, types in [('Energy', (4, 5)), ('Ballistic', (2,)), ('Missile', (1,))]:
-            compatible = [r['node'] for r in loadout if r.get('node') and r['type'] in types]
-            required = max(sum(components.get(r[4]) == mount for r in rows[start+6:start+78] if len(r) > 4)
-                           for start in range(19, len(rows)-96, 97))
-            for i in range(max(required, len(compatible))):
-                socket = (compatible or sockets)[i % len(compatible or sockets)]
-                hardpoints.append(dict(id=f'CenterTorso.{mount}.{i}', location='CenterTorso', mount=mount, socket=socket))
-        profile = dict(chassis_id=recipe['chassis_id'], stem=stem, family=family,
-                       balance_profile='mc2-donor:' + donor, hardpoints=hardpoints,
-                       mc2=dict(tonnage=float(rows[2][4]), empty_mass=.2*float(rows[2][4])+7, payload=payload, layout_rev=1,
-                                regions={'CenterTorso': [0, 0, int(rows[12][1]), int(rows[13][1])]}, ap_ordinals=[]))
-        fit = out / 'data/defs/chassis/mw5' / family / 'chassisdef.fit'
-        fit.parent.mkdir(parents=True, exist_ok=True)
-        # The classic rectangle is a packing surface, not the physical critical
-        # table. Retain the donor's eight locations for the record-sheet lab.
-        locations = ['Head', 'LeftArm', 'RightArm', 'LeftTorso', 'RightTorso', 'CenterTorso', 'LeftLeg', 'RightLeg']
-        placement = next(i for i, r in enumerate(rows) if r and r[0] == 'ComponentPlacement')
-        layout = ['[Layout]', f'st ChassisId = "{recipe["chassis_id"]}"', 'l Version = 1',
-                  f'st Source = "mc2-donor:{donor}"', f'f Payload = {payload}',
-                  f'l ArmorPool = {sum(int(v) for v in rows[17][1:12] if v.strip())}', '']
-        for col, loc in enumerate(locations, 1):
-            indices = list(dict.fromkeys(int(r[col]) for r in rows[placement+1:placement+13]
-                                        if len(r) > col and r[col].strip()))
-            items = [component_rows.get(rows[25+i][4]) for i in indices if 25+i < placement]
-            items = [r for r in items if r and float(r[27] or 0) > 0 and float(r[28] or 0) > 0]
-            mounts = [components[r[0]] for r in items if r[0] in components]
-            # Legacy MC2 donor designs can exceed the nominal critical-size
-            # budget (e.g. Thor's AC20 plus ammo); keep that authored loadout.
-            slots = max(6 if loc in ('Head', 'LeftLeg', 'RightLeg') else 12,
-                        sum(int(float(r[3])) for r in items))
-            rear = {'LeftTorso': 9, 'RightTorso': 10, 'CenterTorso': 11}.get(loc)
-            structure = int(rows[16][col])
-            layout += [f'[Location.{loc}]', f'l Slots = {slots}', f'l Structure = {structure}',
-                       f'l ArmorMax = {2*structure if loc != "Head" else 9}',
-                       f'l ArmorRearMax = {2*structure if rear else 0}', f'l HardpointCount = {len(mounts)}']
-            for i, mount in enumerate(mounts):
-                compatible = [h['socket'] for h in hardpoints if h['mount'] == mount]
-                layout += [f'st Hardpoint{i} = "{mount}"', f'st Socket{i} = "{compatible[i % len(compatible)]}"']
-            layout.append('')
-        fit.write_text(emit_chassis_fit(profile, recipe).replace('FITend', '\n'.join(layout) + '\nFITend'))
+    # Keep the donor's rectangular lab and loadout; physical muzzle sockets remain
+    # attached to their real arm/torso bones in the appearance sidecar.
+    sockets = [k for k in pkg['nodes'] if k.startswith('weapon_')]
+    if not sockets:
+        raise ValueError(f'{stem}: no weapon sockets')
+    # MC2 deliberately ignores component mass when fitting legacy variants.
+    # Preserve that donor's complete loadout under the package payload rule.
+    payload = max(.8 * float(rows[2][4]) - 7,
+                  sum(weights.get(r[4], 0) for r in rows[25:96] if len(r) > 4))
+    hardpoints = []
+    for mount, types in [('Energy', (4, 5)), ('Ballistic', (2,)), ('Missile', (1,))]:
+        compatible = [r['node'] for r in loadout if r.get('node') and r['type'] in types]
+        required = max(sum(components.get(r[4]) == mount for r in rows[start+6:start+78] if len(r) > 4)
+                       for start in range(19, len(rows)-96, 97))
+        for i in range(max(required, len(compatible))):
+            socket = (compatible or sockets)[i % len(compatible or sockets)]
+            hardpoints.append(dict(id=f'CenterTorso.{mount}.{i}', location='CenterTorso', mount=mount, socket=socket))
+    profile = dict(chassis_id=recipe['chassis_id'], stem=stem, family=family,
+                   balance_profile='mc2-donor:' + donor, hardpoints=hardpoints,
+                   mc2=dict(tonnage=float(rows[2][4]), empty_mass=.2*float(rows[2][4])+7, payload=payload, layout_rev=1,
+                            regions={'CenterTorso': [0, 0, int(rows[12][1]), int(rows[13][1])]}, ap_ordinals=[]))
+    fit = out / 'data/defs/chassis/mw5' / family / 'chassisdef.fit'
+    fit.parent.mkdir(parents=True, exist_ok=True)
+    # The classic rectangle is a packing surface, not the physical critical
+    # table. Retain the donor's eight locations for the record-sheet lab.
+    locations = ['Head', 'LeftArm', 'RightArm', 'LeftTorso', 'RightTorso', 'CenterTorso', 'LeftLeg', 'RightLeg']
+    placement = next(i for i, r in enumerate(rows) if r and r[0] == 'ComponentPlacement')
+    layout = ['[Layout]', f'st ChassisId = "{recipe["chassis_id"]}"', 'l Version = 1',
+              f'st Source = "mc2-donor:{donor}"', f'f Payload = {payload}',
+              f'l ArmorPool = {sum(int(v) for v in rows[17][1:12] if v.strip())}', '']
+    for col, loc in enumerate(locations, 1):
+        indices = list(dict.fromkeys(int(r[col]) for r in rows[placement+1:placement+13]
+                                    if len(r) > col and r[col].strip()))
+        items = [component_rows.get(rows[25+i][4]) for i in indices if 25+i < placement]
+        items = [r for r in items if r and float(r[27] or 0) > 0 and float(r[28] or 0) > 0]
+        mounts = [components[r[0]] for r in items if r[0] in components]
+        # Legacy MC2 donor designs can exceed the nominal critical-size
+        # budget (e.g. Thor's AC20 plus ammo); keep that authored loadout.
+        slots = max(6 if loc in ('Head', 'LeftLeg', 'RightLeg') else 12,
+                    sum(int(float(r[3])) for r in items))
+        rear = {'LeftTorso': 9, 'RightTorso': 10, 'CenterTorso': 11}.get(loc)
+        structure = int(rows[16][col])
+        layout += [f'[Location.{loc}]', f'l Slots = {slots}', f'l Structure = {structure}',
+                   f'l ArmorMax = {2*structure if loc != "Head" else 9}',
+                   f'l ArmorRearMax = {2*structure if rear else 0}', f'l HardpointCount = {len(mounts)}']
+        for i, mount in enumerate(mounts):
+            compatible = [h['socket'] for h in hardpoints if h['mount'] == mount]
+            layout += [f'st Hardpoint{i} = "{mount}"', f'st Socket{i} = "{compatible[i % len(compatible)]}"']
+        layout.append('')
+    fit.write_text(emit_chassis_fit(profile, recipe).replace('FITend', '\n'.join(layout) + '\nFITend'))
     strings = out / 'data/defs/text/en_us' / (stem + '.fit')
     strings.parent.mkdir(parents=True, exist_ok=True)
     strings.write_text('\n'.join('String {\n key = "mw5.' + family + '.' + key + '"\n text = "' + value + '"\n legacyId = ' + str(lid) + '\n source = "mw5_mechs"\n category = "units"\n}'
-                                 for key, value, lid in [('name', name, sid), ('details', name + '; MC2 stats from ' + donor, sid+1)]))
+                                 for key, value, lid in [('name', name, sid), ('details', name, sid+1)]))
     report = out / 'content' / (stem + '.json')
     report.parent.mkdir(parents=True, exist_ok=True)
     report.write_text(json.dumps(dict(chassis=recipe['chassis_id'], donor=donor, tonnage=tons,
                                      donor_tonnage=float(rows[2][4]), stats='stock' if host in stock else 'nearest-tonnage donor',
-                                     variants=[r[1] for r in stock[donor][:116 if host not in stock else len(stock[donor])] if r and r[0] == 'VariantName'],
+                                     variants=[name],
                                      fire_points=sources, layout='MC2 donor grid'), indent=2) + '\n')
     render_icons.build_icons(tgl / (stem + '.glb'), stem, out / 'data/art')
 
@@ -244,7 +249,7 @@ def main():
     loadout = Path(a.loadout) if a.loadout else source("loadout")
     a.mod_id = a.mod_id or recipe["mod"]["id"]
     inst = Path(a.install)
-    host = inst / "data" / "tgl" / f"{host_name}.ini"
+    host = inst / "data" / "tgl" / (dict(jaegermech='jaegermech3').get(host_name, host_name) + '.ini')
     if not host.is_file():
         sys.exit(f"stock {host_name}.ini not found as a loose file: {host}")
     out = inst / "mods" / a.mod_id
@@ -264,7 +269,7 @@ def main():
     if not clips or expected - clips:
         raise ValueError(f"missing animation clips: {sorted(expected - clips)}")
     nodes, offsets, weapon_nodes, height = package_nodes(glb, json.loads(loadout.read_text()), recipe)
-    (tgl / f"{host_name}.ini").write_bytes(emit_ini(host.read_text(encoding="latin-1"), weapon_nodes, recipe).encode("latin-1"))
+    (tgl / f"{stem}.ini").write_bytes(emit_ini(host.read_text(encoding="latin-1"), weapon_nodes, recipe).encode("latin-1"))
     tags = ["alb", "nrm"]
     if (textures / f"{stem}_orm.ktx2").is_file():
         tags.append("orm")
