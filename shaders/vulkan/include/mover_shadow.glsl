@@ -72,7 +72,9 @@ float moverVisibilityEx(vec3 worldPos, vec3 N, float slopeBias) {
     }
     if (found == 0.0) return 1.0;
     float meanD = sumD / found;
-    float radius = max(meanD * tanT, max(1.5 * moverFrame.params.x, 1.0));
+    // Floor of the filter radius shrinks with the sharpness knob (light.w 0..3): old 1.5 texel / 1 wu down to 0.5 texel / 0 wu.
+    float sharp = clamp(moverFrame.light.w / 3.0, 0.0, 1.0);
+    float radius = max(meanD * tanT, max(mix(1.5, 0.5, sharp) * moverFrame.params.x, mix(1.0, 0.0, sharp)));
     int count = min(moverFrame.flags.z == 0 ? 12 : 32, int(moverFrame.light.y));
     // World-anchored rotation breaks up repeated edge bands without a temporal
     // sequence or a camera-dependent pattern.

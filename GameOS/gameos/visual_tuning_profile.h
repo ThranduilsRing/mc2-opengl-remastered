@@ -22,6 +22,8 @@ bool visualTuning_saveCurrentToMission();  // write current slider state to JSON
 std::optional<float> visualTuning_sunValue(std::string_view key);
 // Optional per-mission timeOfDay{} block as JSON text; empty = none (the mission stays Fixed, bit-identical to stock).
 const std::string& visualTuning_timeOfDay();
+// Mover (mech/prop) shadow sharpness 0..3 from "moverShadowSharpness"; see shadow_mover_fit.h.
+float visualTuning_moverShadowSharpness();
 const char* visualTuning_getProfilePath();
 const char* visualTuning_getActiveMission();
 bool        visualTuning_hasProfileFile();
