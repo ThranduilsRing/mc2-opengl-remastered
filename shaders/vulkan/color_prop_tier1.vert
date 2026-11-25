@@ -181,7 +181,7 @@ void main() {
     uint canopyBase = inst.typeID * 3u;
     vec3 canopy = uFrame.hotTableReady != 0 && canopyBase + 2u < uint(uTypeHot.c.length())
         ? vec3(uTypeHot.c[canopyBase].w, uTypeHot.c[canopyBase+1u].w, uTypeHot.c[canopyBase+2u].w) : vec3(0);
-    bool tree = uFrame.poolF.w > 0.0 && canopy.y > 0.0 && (inst.flags & 2u) == 0u;
+    bool tree = canopy.y > 0.0 && (inst.flags & 2u) == 0u;
     vTree = vec4(1.0, tree ? 1.0 : 0.0, 1.0, 1.0);
     // Forest light bake (flags[8..31]): sun shadow-line height, crown-base and crown-top sky occlusion.
     // hn = vertex height in tree-top units (crown centre 0.65, crown top 1.0); crowns are lit above the shadow line.

@@ -105,8 +105,12 @@ void preloadDamageShapeTextures(TG_TypeMultiShape* shape, bool ktxFallback)
 		FullPathFileName textureName;
 		textureName.init(texturePath, txmName, "");
 		if (!(ktxFallback ? textureOrKtxSidecarExists(textureName) : textureTgaExistsMemo(textureName))) continue;
-		mc2::textures::load(textureName, S_strnicmp(txmName, "a_", 2) == 0 ? gos_Texture_Alpha : gos_Texture_Solid,
+		const bool alpha = S_strnicmp(txmName, "a_", 2) == 0;
+		const DWORD handle = mc2::textures::load(textureName, alpha ? gos_Texture_Alpha : gos_Texture_Solid,
 			gosHint_DisableMipmap | gosHint_DontShrink);
+		// Finalization reads the type, before any damaged instance can bind its textures.
+		shape->SetTextureHandle(i, handle);
+		shape->SetTextureAlpha(i, alpha);
 	}
 }
 
