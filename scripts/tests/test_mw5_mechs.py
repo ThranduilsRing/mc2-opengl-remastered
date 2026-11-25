@@ -513,3 +513,53 @@ def test_empty_native_hold_channel_names_source(fixture, tmp_path):
     recipe.update(clips={}, hold_clips={'empty_hold': ['Stand', -1]})
     with pytest.raises(ValueError, match='TBR_Stand_ANI.*Root.*empty'):
         B.build(native, None, tmp_path / 'bad.glb', 'albedo.png', recipe=recipe)
+
+
+def test_purchase_unlock_table_matches_all_stock_missions():
+    import csv
+    import hashlib
+    import os
+    import re
+    from tools.mc2x_import.fst import fst_entries, decompress_entry
+    from tools.pak_dump import read_packets, decode_packet
+    root = os.environ.get('MW5_STANDALONE_INSTALL')
+    if not root:
+        pytest.skip('requires stock FSTs and generated private packs')
+    inst = Path(root)
+    text = (Path(__file__).resolve().parents[2] / 'data/defs/purchase/unlocks.fit').read_text()
+    table = dict((s, int(n)) for s, n in re.findall(r'st Unit\d+ = "([^"]+)"\s+l Mission\d+ = (\d+)', text))
+    clan = set('direwolf executioner gargoyle kitfox maddog madcat puma shadowcat stormcrow summoner timberwolf warhawk clan_elemental'.split())
+    def milestone(tons):
+        return 1 if tons <= 35 else 3 if tons <= 55 else 6 if tons <= 75 else 9
+    expected = {}
+    for pack in ('mw5_mechs', 'mw5-vehicles'):
+        for p in (inst/'mods'/pack/'data/objects').glob('*.csv'):
+            rows = list(csv.reader(p.open(encoding='latin1')))
+            tons = float(rows[2][4])
+            expected[p.stem] = (18 if tons <= 55 else 19 if tons <= 75 else 22) if p.stem.removeprefix('mw5_') in clan else milestone(tons)
+    packets = read_packets(inst/'data/objects/object2.pak')
+    entries = fst_entries(inst/'art.fst')
+    buildings = next(decompress_entry(o,c,r,l,d).decode('latin1') for o,c,r,n,l,d in entries if n.lower().endswith('/buildings.csv'))
+    for row in csv.reader(buildings.splitlines()):
+        if len(row) > 4 and row[3] == 'VEHICLE':
+            fit = decode_packet(packets[int(row[4])]).decode('latin1')
+            tons = float(re.search(r'CurTonnage\s*=\s*([\d.]+)', fit)[1])
+            expected[row[0].lower()] = 18 if row[0].lower() == 'swarmlrmc' else milestone(tons)
+    csvs = {Path(n).stem: decompress_entry(o,c,r,l,d).decode('latin1')
+            for o,c,r,n,l,d in fst_entries(inst/'misc.fst') if n.lower().endswith('.csv')}
+    for row in csv.reader(buildings.splitlines()):
+        if len(row) > 5 and row[3] == 'MECH' and row[5] == 'HELICOPTER':
+            expected[row[0].lower()] = milestone(float(list(csv.reader(csvs[row[0].lower()].splitlines()))[2][4]))
+    assert len(expected) == 106
+    assert table == expected
+    stock = {}
+    for o,c,r,n,l,d in fst_entries(inst/'mission.fst'):
+        if re.search(r'/purchase\d\d.fit$', n):
+            stock[int(n[-6:-4])] = set(re.findall(r'st Mech\d+\s*=\s*"([^"]+)"', decompress_entry(o,c,r,l,d).decode('latin1')))
+    fingerprints = '19656e7c86ca 19656e7c86ca 1cac7d5d3373 efbf4ab1c0a6 a6a08811d35a a7e83723af3f a7e83723af3f a7e83723af3f 5cb34d144c62 faaa5c0f6dd2 b3b6dac31e6d b3b6dac31e6d a97d2d5040e6 993d25ada087 993d25ada087 993d25ada087 993d25ada087 b7070d511ac4 2a7c1ace822a 2a7c1ace822a 2a7c1ace822a 9549e1c32ffb 9549e1c32ffb 9549e1c32ffb'.split()
+    for mission in range(1, 25):
+        assert hashlib.sha256(','.join(sorted(stock[mission])).encode()).hexdigest()[:12] == fingerprints[mission-1]
+        unlocked = stock[mission] | {s for s,n in table.items() if n <= mission}
+        assert unlocked == stock[mission] | {s for s,n in expected.items() if n <= mission}
+        assert ('mw5_direwolf' in unlocked) == (mission >= 22)
+        assert ('hunter' in unlocked)

@@ -477,9 +477,9 @@ mc2::prewarm::Sequence LogisticsData::loadVariants()
 
 		if ( S_stricmp( tmpStr, "VEHICLE" ) == 0 )
 		{
-			float scale;
+			float scale = 1;
 			variantFile.readFloat( i, 11, scale );
-			if ( scale )
+			if (scale <= 0) scale = 1;
 			{
 				variantFile.readLong( i, 5, fitID );
 				char csvName[256] = "";
@@ -661,6 +661,11 @@ void LogisticsData::addVehicle( long fitID, PacketFile& objectFile, float scale,
 	pVehicle->setScale( scale );
 	if ( nameID ) pVehicle->setNameID( nameID );
 	if ( mc2::names::usable( freeName ) ) pVehicle->setAuthoredName( std::string( freeName ) );
+	pVehicle->setFitID(fitID);
+	pVehicle->ID = 32768 + static_cast<int>(vehicles.size());
+	pVehicle->fileName = std::string(objectPath) + mc2::str::ascii_lower(csvName) + ".csv";
+	// The purchase variant owns a separate chassis; the encyclopedia keeps this one.
+	variants.push_back(std::make_unique<LogisticsVariant>(*pVehicle, 32768 + static_cast<int>(vehicles.size())));
 	vehicles.push_back( std::move(pVehicle) );
 }
 

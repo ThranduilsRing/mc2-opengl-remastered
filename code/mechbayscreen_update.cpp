@@ -370,7 +370,8 @@ void MechBayScreen::update()
 			getButton( MB_MSG_CHANGE_LOADOUT )->disable( true );
 		else
 		{
-			getButton( MB_MSG_CHANGE_LOADOUT )->disable( false );
+			const auto* chassis = pCurMech->getVariant()->getChassis();
+			getButton( MB_MSG_CHANGE_LOADOUT )->disable(chassis->isVehicle() && !chassis->getPackage());
 			mechCamera->update();
 		}
 	}

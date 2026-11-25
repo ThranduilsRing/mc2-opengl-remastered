@@ -328,7 +328,7 @@ void MechPurchaseScreen::begin()
 		{
 			purchaseMechs.push_back(std::make_unique<LogisticsMech>(pVariants[i], -1));
 			catalog.push_back({mc2purchase::chassisSource(pVariants[i]->getFileName()),
-				pVariants[i]->getName(), pVariants[i]->getMaxWeight()});
+				pVariants[i]->getName(), pVariants[i]->getMaxWeight(), pVariants[i]->getChassis()->isVehicle()});
 		}
 	}
 	const char* campaignOwner = LookupModOwner(LogisticsData::instance->getCampaignName().c_str());
@@ -336,7 +336,7 @@ void MechPurchaseScreen::begin()
 	purchaseKeyboardGroup = 0;
 	purchaseGroupNames.clear();
 	for (const auto& group : purchaseGroups)
-		purchaseGroupNames.push_back(ModDisplayName(group.source));
+		purchaseGroupNames.push_back(ModDisplayName(group.source) + (group.vehicle ? " Vehicles" : " Mechs"));
 
 	if ( !pSelMech )
 	{
@@ -641,6 +641,7 @@ void MechPurchaseScreen::renderPurchaseGroups(int xOffset, int yOffset)
 		{
 			auto& group = purchaseGroups[g];
 			ImGui::PushID(group.source.c_str());
+			ImGui::PushID(group.vehicle ? 1 : 0);
 			ImGui::SetNextItemOpen(group.open, ImGuiCond_Always);
 			const std::string title = std::format("{}{} ({})", g == purchaseKeyboardGroup ? "> " : "", purchaseGroupNames[g], group.items.size());
 			group.open = ImGui::CollapsingHeader(title.c_str());
@@ -666,6 +667,7 @@ void MechPurchaseScreen::renderPurchaseGroups(int xOffset, int yOffset)
 				if (buyable && ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) beginDrag(mech);
 				ImGui::PopID();
 			}
+			ImGui::PopID();
 			ImGui::PopID();
 		}
 	}

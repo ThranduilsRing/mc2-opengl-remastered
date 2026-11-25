@@ -58,13 +58,34 @@ TEST_CASE("purchase_catalog/installed assets mount without selecting a campaign"
 }
 
 TEST_CASE("purchase_catalog/availability preserves stock progression") {
-    CHECK_FALSE(mc2purchase::available(false, ""));
-    CHECK(mc2purchase::available(true, ""));
-    CHECK(mc2purchase::available(false, "bt2018"));
-    CHECK(mc2purchase::available(false, "omnitech"));
+    const std::vector<mc2purchase::Unlock> table{{"hunter", 1}, {"mw5_atlas", 9}, {"mw5_direwolf", 22}};
+    for (int mission = 1; mission <= 24; ++mission) {
+        CHECK(mc2purchase::unlocked("hunter", mission, table));
+        CHECK(mc2purchase::unlocked("mw5_atlas", mission, table) == (mission >= 9));
+        CHECK(mc2purchase::unlocked("mw5_direwolf", mission, table) == (mission >= 22));
+        CHECK_FALSE(mc2purchase::unlocked("unknown_pack", mission, table));
+        const auto path = "data/missions/purchase" + std::string(mission < 10 ? "0" : "") + std::to_string(mission) + ".fit";
+        CHECK(mc2purchase::missionNumber(path) == mission);
+    }
+    CHECK(mc2purchase::missionNumber("data/missions/purchase_all.fit") == 0);
+    CHECK(mc2purchase::missionNumber("purchase00.fit") == 0);
+    CHECK(mc2purchase::missionNumber("purchase25.fit") == 0);
+    CHECK_FALSE(mc2purchase::unlocked("hunter", 0, table));
     CHECK(mc2purchase::source("bt2018", "skin") == "bt2018");
     CHECK(mc2purchase::source("", "desertfox") == "desertfox");
     CHECK(mc2purchase::source("", "").empty());
+}
+
+TEST_CASE("purchase_catalog/vehicles have separate stable dropdowns") {
+    const std::vector<mc2purchase::Item> items{{"", "Hunter", 25, true}, {"", "Atlas", 100},
+        {"mw5-vehicles", "MW5 Scorpion", 25, true}, {"", "Vedette", 50, true}};
+    const auto groups = mc2purchase::group(items, "");
+    REQUIRE(groups.size() == 3);
+    CHECK_FALSE(groups[0].vehicle);
+    CHECK(groups[1].vehicle);
+    CHECK(groups[1].items == std::vector<std::size_t>{3, 0});
+    CHECK(groups[2].vehicle);
+    CHECK(groups[2].source == "mw5-vehicles");
 }
 
 TEST_CASE("purchase_catalog/sections count sort and open only campaign source") {

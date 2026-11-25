@@ -118,7 +118,11 @@ void MechBayScreen::setMech( LogisticsMech* pMech,  bool bCommandFromLB )
 	{
 		loadoutListBox.setMech( pMech->getVariant() );
 
-		mechCamera->setMech( mc2::str::file_stem( pMech->getFileName() ).c_str(), prefs.baseColor, prefs.highlightColor, prefs.highlightColor );
+		const auto* chassis = pMech->getVariant()->getChassis();
+		if (chassis->isVehicle() && !chassis->getPackage())
+			mechCamera->setVehicle(mc2::str::file_stem(pMech->getFileName()).c_str(), prefs.baseColor, prefs.highlightColor, prefs.highlightColor);
+		else
+			mechCamera->setMech(mc2::str::file_stem(pMech->getFileName()).c_str(), prefs.baseColor, prefs.highlightColor, prefs.highlightColor);
 		mechCamera->setScale( pMech->getVariant()->getChassis()->getScale() );
 		if ( mechCamera->hasObject() )
 			mechCamera->setFramedPose( 0.9f, -35.f, 15.f );	// same fit-to-panel framing as the mech lab: any chassis is centred, never clipped

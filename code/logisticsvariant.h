@@ -156,6 +156,7 @@ protected:
 
 };
 
+class LogisticsVehicle;
 class LogisticsVariant
 {
 protected:
@@ -164,6 +165,7 @@ protected:
 
 		LogisticsVariant();
 		LogisticsVariant( const LogisticsChassis* pChassis, bool isDesignerMech );
+		LogisticsVariant( const LogisticsVehicle& vehicle, int chassisId );
 		LogisticsVariant( const LogisticsVariant&  ); // going to need copy c'tor
 		virtual ~LogisticsVariant();
 		
@@ -304,6 +306,7 @@ protected:
 
 class LogisticsVehicle : public LogisticsChassis
 {
+	friend class LogisticsVariant;
 
 public:
 	void init( FitIniFile& file );
