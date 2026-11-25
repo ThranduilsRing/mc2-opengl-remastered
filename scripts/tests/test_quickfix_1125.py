@@ -1,4 +1,5 @@
 """Offline wiring checks for speech exclusion and presentation-only fixes."""
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -6,8 +7,9 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def test_briefing_excludes_tutorial_and_other_speech():
     sound = (ROOT / "mclib/soundsys.cpp").read_text()
-    for name in ("playDigitalStream", "playBettySample", "playSupportSample"):
-        body = sound.split(f"SoundSystem::{name} (", 1)[1].split("//---------------------------------------------------------------------------", 1)[0]
+    # Objective speech is queued; the queue drain (updateDigitalStreams) holds the exclusion guards.
+    for name in ("updateDigitalStreams", "playBettySample", "playSupportSample"):
+        body = re.split(rf"\n\S[^\n]*SoundSystem::{name}\s*\(", sound, maxsplit=1)[1].split("//---------------------------------------------------------------------------", 1)[0]
         assert "isPlayingVoiceOver()" in body
         assert "isChannelPlaying(RADIO_CHANNEL)" in body
     video = sound.split("bool SoundSystem::beginVideoPCMStream", 1)[1].split("void SoundSystem::pushVideo", 1)[0]

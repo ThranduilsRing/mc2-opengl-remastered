@@ -13,7 +13,7 @@
 TEST_CASE("purchase_catalog/third party chassis outside the unlock table stay available") {
     const std::vector<mc2purchase::Unlock> table{{"mw5_atlas", 9}};
     CHECK(mc2purchase::supplementalAvailable("bt2018_marauder", true, 1, table));
-    CHECK_FALSE(mc2purchase::supplementalAvailable("mw5_atlas", true, 1, table));
+    CHECK(mc2purchase::supplementalAvailable("mw5_atlas", true, 1, table));  // every MW5 chassis is available from mission one
     CHECK(mc2purchase::supplementalAvailable("mw5_atlas", true, 9, table));
     CHECK_FALSE(mc2purchase::supplementalAvailable("atlas", false, 1, table));
 }
