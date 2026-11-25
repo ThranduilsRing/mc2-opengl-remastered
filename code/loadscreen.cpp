@@ -103,10 +103,10 @@ static std::string loadingDetail()
 	info.shadows = options.shadowQuality;
 	info.textures = mc2::options::textureTier();
 	info.antiAliasing = options.spatialAA;
-	const double values[] = { double(mc2::gate::get<"MC2_VEGETATION_MAX">()),
-		double(mc2::gate::get<"MC2_SHADOW_ENABLE">()), double(mc2::gate::get<"MC2_VK_POST_SCREENFX_SHADOW">()),
-		double(mc2::gate::get<"MC2_CLOUD_SHADOW">()), double(mc2::gate::get<"MC2_SHADOW_MOVER_SAMPLES">()),
-		double(mc2::gate::get<"MC2_RENDER_SCALE">()) };
+	const double values[] = { static_cast<double>(mc2::gate::get<"MC2_VEGETATION_MAX">()),
+		static_cast<double>(mc2::gate::get<"MC2_SHADOW_ENABLE">()), static_cast<double>(mc2::gate::get<"MC2_VK_POST_SCREENFX_SHADOW">()),
+		static_cast<double>(mc2::gate::get<"MC2_CLOUD_SHADOW">()), static_cast<double>(mc2::gate::get<"MC2_SHADOW_MOVER_SAMPLES">()),
+		static_cast<double>(mc2::gate::get<"MC2_RENDER_SCALE">()) };
 	for (const auto& preset : k_gfxPresets) {
 		bool matches = options.baseQuality == preset.baseQuality && options.shadowQuality == preset.shadQual &&
 			options.spatialAA == preset.aa;
@@ -136,7 +136,7 @@ static bool renderMenuFontText( aText& label, int boxX, int boxY, int boxWidth, 
 	const float line = detailSize * 1.3f;
 	float displayWidth = 0.f, displayHeight = 0.f;
 	GuiRuntime::GetDisplaySize(displayWidth, displayHeight);
-	const float detailWidth = std::min(displayWidth - 32.f, std::max(w, 600.f * sy));
+	const float detailWidth = displayWidth - 32.f;
 	const float detailX = std::clamp(x + (w - detailWidth) * 0.5f, 16.f, std::max(16.f, displayWidth - detailWidth - 16.f));
 	const float detailY = std::min(y + h, displayHeight - 5.f * line - 16.f);
 	std::size_t begin = 0, index = 0;
