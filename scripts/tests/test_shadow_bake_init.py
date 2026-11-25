@@ -14,6 +14,20 @@ import console_child
 from smoke_lib import nofocus
 
 
+def test_tree_shadow_and_lighting_keep_the_gameplay_recipe():
+    bake = (ROOT / "GameOS/gameos/vulkan_shadow_bake.cpp").read_text()
+    # The gameplay set supplies LOD0. Retyping it made the mask and live edits
+    # use far cards while the owner's nearby trees still displayed LOD0/LOD1.
+    assert "mc2_static_prop_retype_far_tier" not in bake
+    asset = (ROOT / "GameOS/gameos/shadow_mask_asset.h").read_text()
+    assert "kEvaluator = 2;" in asset  # Old far-tier masks must miss the disk cache.
+    for file in ("bdactor_tree_static.cpp", "bdactor_render.cpp"):
+        source = (ROOT / "mclib" / file).read_text()
+        words = [line for line in source.splitlines() if "packWord(" in line]
+        assert words
+        assert all("kSunOff" not in line for line in words)
+
+
 def test_cache_load_wait_respects_deadline_and_preserves_future(tmp_path):
     # Trigger: vulkan_shadow_bake.h and vulkan_shadow_island_live.cpp load barrier.
     header = (ROOT / "GameOS/gameos/vulkan_shadow_bake.h").read_text()

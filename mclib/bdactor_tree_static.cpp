@@ -254,7 +254,8 @@ void TreeAppearance::registerStatic() {
 		{ MC2_LOAD_SCOPE("cook.tree.transform"); lodShape->TransformMultiShape_BuildRecipe(&xlatPosition, &rot); }
 
 		std::vector<GpuStaticPropInstance> batch;
-		const uint32_t tintByte = mc2::prop_light::packWord(land && eye ? land->getTerrainLight(position) : 1.0f, mc2::prop_light::kSunOff);
+		// Vulkan trees receive directional sun even though the legacy CPU bake omits it.
+		const uint32_t tintByte = mc2::prop_light::packWord(land && eye ? land->getTerrainLight(position) : 1.0f, 0);
 		const int numShapes = static_cast<int>(lodShape->GetNumShapes());
 		batch.reserve(numShapes);
 		int t_diag_total=0,t_diag_skip_pm=0,t_diag_skip_h=0,t_diag_skip_unreg=0,t_diag_added=0;

@@ -684,7 +684,7 @@ long TreeAppearance::render (long depthFixup)
 
 				// Stage 2.C+: see BldgAppearance::render for callerName intent.
 				const char* callerName = (appearType ? appearType->name : nullptr);
-				const uint32_t tintByte = mc2::prop_light::packWord(land && eye ? land->getTerrainLight(position) : 1.0f, mc2::prop_light::kSunOff);
+				const uint32_t tintByte = mc2::prop_light::packWord(land && eye ? land->getTerrainLight(position) : 1.0f, 0);
 				submittedToGpu = GpuStaticPropBatcher::instance().submitMultiShape(
 					treeShape, GpuStaticPropPopulation::Tree, eye->lightContext(), callerName, tintByte);
 				// Slice 2 (object-offload) — Stage 2.B: see BldgAppearance::render
