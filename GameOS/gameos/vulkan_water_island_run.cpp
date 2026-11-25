@@ -445,6 +445,7 @@ extern "C" int mc2_vk_water_island_run(
         s->reflectionScissor={{pixels[0],pixels[1]},{static_cast<uint32_t>(pixels[2]-pixels[0]),static_cast<uint32_t>(pixels[3]-pixels[1])}};
         const auto* fields = gos_TerrainFieldStore();
         vsLocal.p3[1] = (shoreSdf || (fields && fields->visualSide() > 1)) ? 1.0f : 0.0f;
+        vsLocal.p3[2] = fields ? static_cast<float>(fields->visualSide()) : 0.0f;
         vsLocal.p3[3] = static_cast<float>(mc2::options::current().shorelineLook);
         std::memcpy(base, &vsLocal, sizeof(WaterVsParams));
         // RUNG-6.5 fail-soft: if the real HDRI bytes aren't imported (dummy

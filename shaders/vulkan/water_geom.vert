@@ -73,8 +73,18 @@ layout(set = 0, binding = 1, std140) uniform WaterFsParams {
     vec4 SHALLOW_COLOR;
     vec4 f4;
     vec4 f5;
+    vec4 f6;
+    vec4 f7;
 } F;
-layout(set = 0, binding = 3) uniform sampler2D u_shoreHeightTex;
+layout(set=0,binding=14,std430) readonly buffer WaterShoreSurface { float shoreSurface[]; };
+float shoreBed(vec2 p) {
+    int side=int(U.p3.z);
+    vec2 q=clamp(vec2(p.x+F.f7.w,F.f7.w-p.y)/32.0,vec2(0),vec2(side-1));
+    ivec2 a=min(ivec2(floor(q)),ivec2(side-2)); vec2 f=q-vec2(a);
+    int i=a.x+a.y*side;
+    return mix(mix(shoreSurface[i],shoreSurface[i+1],f.x),
+               mix(shoreSurface[i+side],shoreSurface[i+side+1],f.x),f.y);
+}
 
 // Output varyings -> water_geom.frag (base-layer subset of gos_terrain_water_mdi.frag).
 layout(location = 0) out vec4  Color;
@@ -223,14 +233,10 @@ void main() {
         wz += swell;
     }
     vec3 worldPos = vec3(vxy, kWaterDbgPhysical != 0 ? waterElevation : wz);
-    if (divisions > 1u && F.f4.y > 0.5) {
-        vec2 uv = vec2((vxy.x-F.f5.x)/F.f5.z, (F.f5.y-vxy.y)/F.f5.w);
-        vec2 du = 1.0 / vec2(textureSize(u_shoreHeightTex,0));
-        float bed = textureLod(u_shoreHeightTex,uv,0.0).r;
-        vec2 gradient = vec2(textureLod(u_shoreHeightTex,uv+vec2(du.x,0),0.0).r
-                            -textureLod(u_shoreHeightTex,uv-vec2(du.x,0),0.0).r,
-                             textureLod(u_shoreHeightTex,uv-vec2(0,du.y),0.0).r
-                            -textureLod(u_shoreHeightTex,uv+vec2(0,du.y),0.0).r)/(2.0*du*F.f5.zw);
+    if (divisions > 1u && U.p3.z > 1.0) {
+        float bed=shoreBed(vxy);
+        vec2 gradient=vec2(shoreBed(vxy+vec2(32,0))-shoreBed(vxy-vec2(32,0)),
+                           shoreBed(vxy+vec2(0,32))-shoreBed(vxy-vec2(0,32)))/64.0;
         float depth = waterElevation-bed;
         float distance = max(depth,0.0)/max(length(gradient),0.08);
         float weight = (1.0-smoothstep(36.0,100.0,distance))*smoothstep(0.04,0.08,length(gradient));
