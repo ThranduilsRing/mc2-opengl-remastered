@@ -4,6 +4,8 @@ import sys
 from pathlib import Path
 from scripts import console_child
 
+import console_child
+
 SCRIPTS = Path(__file__).resolve().parents[1]
 
 CODE = (
