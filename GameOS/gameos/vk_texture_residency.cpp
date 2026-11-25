@@ -146,9 +146,9 @@ void TextureResidency::beginFrame(uint64_t frame, uint32_t frameSlot) {
 std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCore::KtxImage& image, bool useMips, Upload* async, uint32_t layers, bool arrayView, bool vegetation) {
     ZoneScopedN("TextureResidency.Upload");
     ZoneValue(image.pixels.size());
-    const bool rgba=image.vkFormat==37 || image.vkFormat==43;
+    const bool rgba=image.vkFormat==37 || image.vkFormat==43 || image.vkFormat==VK_FORMAT_R8_UNORM;
     const bool floating=image.vkFormat==97 || image.vkFormat==100 || image.vkFormat==VK_FORMAT_R32G32_SFLOAT || image.vkFormat==VK_FORMAT_R32G32B32A32_SFLOAT;
-    const size_t stride=image.vkFormat==VK_FORMAT_R32G32B32A32_SFLOAT ? 16u : (image.vkFormat==97 || image.vkFormat==VK_FORMAT_R32G32_SFLOAT) ? 8u : 4u;
+    const size_t stride=image.vkFormat==VK_FORMAT_R8_UNORM ? 1u : image.vkFormat==VK_FORMAT_R32G32B32A32_SFLOAT ? 16u : (image.vkFormat==97 || image.vkFormat==VK_FORMAT_R32G32_SFLOAT) ? 8u : 4u;
     const bool bc1=image.vkFormat>=131 && image.vkFormat<=134;
     const bool blocks=bc1 || image.vkFormat==137 || image.vkFormat==138 || image.vkFormat==141 || (image.vkFormat>=143 && image.vkFormat<=146);
     if ((!rgba && !floating && !blocks) || image.isCompressed!=blocks || (blocks && image.blockSizeBytes!=(bc1?8u:16u))) return {};
