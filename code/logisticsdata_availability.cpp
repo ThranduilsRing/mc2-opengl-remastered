@@ -199,7 +199,7 @@ long LogisticsData::updateAvailability()
 		}
 	}
 
-	// Supplemental chassis follow the stock purchase-file mission, never the CSV provider.
+	// Stock additions follow the purchase-file mission; MW5 chassis are always available.
 	std::vector<mc2purchase::Unlock> unlocks;
 	FitIniFile unlockFile;
 	if (unlockFile.open("data/defs/purchase/unlocks.fit") == NO_ERR && unlockFile.seekBlock("Unlocks") == NO_ERR)
