@@ -113,7 +113,7 @@ def logistics(vehicles, stock, out, assemblies):
         # silhouette as one body region without changing the source assembly.
         doc, buffers, _ = load_document(assemblies/v['id']/'assembled.glb')
         for n in doc['nodes']:
-            if 'mesh' in n: n['name'] = n.get('name', '') + '_body'
+            if 'mesh' in n: n['name'] = n.get('name', '') + ('_left_leg' if ground else '_body')
         with tempfile.TemporaryDirectory(prefix='mw5-icons-') as work:
             icon = Path(work)/'icon.glb'
             write_glb(icon, doc, buffers[0])

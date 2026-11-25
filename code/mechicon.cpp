@@ -1059,8 +1059,9 @@ bool VehicleIcon::init( Mover* pMover )
     const auto textureHandle = unit_icons::damageTexture(damageIconIndex);
     TEXTUREPTR textureData = lockIconPage(textureHandle);
     if (!textureData.pTexture) return false;
-    unit_icons::blit(hudSheet(true), pMover->getIconPictureIndex(), false,
-                     reinterpret_cast<uint32_t*>(textureData.pTexture + rect.y * textureData.Width + rect.x),
+    auto* dest = reinterpret_cast<uint32_t*>(textureData.pTexture + rect.y * textureData.Width + rect.x);
+    if (!mechicon_package_hud::blit(pMover, unitIconX, unitIconY, false, dest, textureData.Width, static_cast<int>(unitIconX), static_cast<int>(unitIconY)))
+        unit_icons::blit(hudSheet(true), pMover->getIconPictureIndex(), false, dest,
                      textureData.Width, static_cast<int>(unitIconX), static_cast<int>(unitIconY), pMover->getObjectType()->getAppearanceTypeName());
     gos_UnLockTexture(textureHandle);
 	unit = pMover;
