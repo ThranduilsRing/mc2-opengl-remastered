@@ -141,7 +141,7 @@ def build(recipe, assemblies, stock, out):
                           classes={m['name']: 'painted_metal' for m in doc.get('materials', [])}))
     try:
         cook(dict(mod_id='mw5-vehicles', name='Vehicles, infantry and Elemental', assets=specs), out,
-             compress=False)
+             compress=False, overwrite=True)
     finally:
         for path in static_copies:
             path.unlink()
