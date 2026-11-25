@@ -609,6 +609,11 @@ void main(void)
                       * smoothstep(0.04, 0.08, length(shoreGrad));
     float swashPhase = time * 1.05 + dot(WorldPos.xy, vec2(0.003, 0.002));
     float swashFront = 18.0 + 14.0 * sin(swashPhase);
+    // Positive phase velocity moves each broken crest toward decreasing shore distance.
+    float breakerPhase = shoreDistance * (6.2831853 / 145.0) + swashPhase;
+    if (shorelineLook > 0 && debugMode != 3)
+        waveSlope += shoreGrad / max(length(shoreGrad), 1e-4) * cos(breakerPhase)
+                   * 0.10 * coastWeight * (1.0 - smoothstep(8.0, 24.0, footprint));
     float foldingFoam = 0.0;
     if (shorelineLook == 2 && debugMode != 3 && F.debug.y < 0.5) {
         vec3 dx=(fftShore(WorldPos.xy+vec2(1,0),shoreDepth)-fftShore(WorldPos.xy-vec2(1,0),shoreDepth))*0.5;
@@ -690,16 +695,19 @@ void main(void)
         shoreRipple = 0.0;
         {
             vec2 beachward = -shoreGrad / max(length(shoreGrad), 1e-4);
-            vec2 q = WorldPos.xy / 110.0 + beachward * (time * 0.018 + sin(swashPhase) * 0.035);
+            vec2 q = WorldPos.xy / 155.0 - beachward * time * 0.035;
             vec4 foamTex = textureGrad(u_shoreFoam, fract(q), dFdx(q), dFdy(q));
             float lace = textureGrad(u_shoreFoam, fract(q*2.31+0.37), dFdx(q*2.31), dFdy(q*2.31)).r;
-            float advancing = smoothstep(-0.35, 0.65, cos(swashPhase));
-            float front = 1.0 - smoothstep(8.0, 32.0 + foamAA, abs(shoreDistance - swashFront));
-            float k = 6.2831853 / kWaveTrain[0].z;
-            float crestPhase = k*dot(kWaveTrain[0].xy,WorldPos.xy)-sqrt(WAVE_G*k)*time;
-            float crest = shorelineLook == 2 ? foldingFoam : smoothstep(0.72, 0.98, sin(crestPhase));
-            float holes = smoothstep(0.18, 0.78, foamTex.r*0.75 + lace*0.25);
-            foamMix = max(front*mix(0.25,0.90,advancing),crest*0.55) * holes * coastWeight;
+            float brokenPhase = breakerPhase + (lace - 0.5) * 2.4;
+            float crest = smoothstep(0.15, 0.92, sin(brokenPhase));
+            if (shorelineLook == 2) crest = max(crest, foldingFoam);
+            // A long-lived tail behind each breaker collects in shallow pockets, then dissipates.
+            float age = fract((brokenPhase - 1.5707963) / 6.2831853);
+            float retention = exp(-age * 3.8) * (1.0 - smoothstep(8.0, 55.0, shoreDistance));
+            float contact = (1.0 - smoothstep(6.0, 26.0 + foamAA, shoreDistance))
+                          * (0.35 + 0.25 * sin(swashPhase - 0.8));
+            float holes = smoothstep(0.10, 0.64, foamTex.r * 0.72 + lace * 0.28);
+            foamMix = clamp((crest * 0.95 + retention * 0.65 + contact) * holes * coastWeight, 0.0, 0.94);
         }
     }
     vec3 foamLight = max(vertexLightRGB, vec3(SKY_AMBIENT * nightSky));

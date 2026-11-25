@@ -1510,10 +1510,10 @@ TEST_CASE("render option keys are unique and findable") {
     CHECK(mo::kOptionCount == 33);   // includes ShorelineLook review selector
 }
 
-TEST_CASE("shoreline candidates preserve current default and reject invalid selections") {
+TEST_CASE("shoreline candidates default to foam and reject invalid selections") {
     namespace mo = mc2::options;
     mo::RenderOptions o{};
-    CHECK(o.shorelineLook == int(mo::ShorelineLook::Current));
+    CHECK(o.shorelineLook == int(mo::ShorelineLook::FoamFirst));
     const auto& option = *mo::find("ShorelineLook");
     for (int look = 0; look <= 2; ++look) {
         CHECK(mo::setLong(o, option, look) == mo::Verdict::Ok);

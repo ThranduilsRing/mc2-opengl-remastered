@@ -232,11 +232,21 @@ void main() {
     // concrete is a SEPARATE dynamic map, still deferred here.)
     bool pureConcrete = false;
     bool cementHit = false;   // a solid cement atlas texel won (the shoreline wet band skips it, as GL)
+    // Bounded shallow refraction of the seabed material, fading to zero at the waterline.
+    // Displace texture reads only: terrain coverage, shadows and material classification stay fixed.
+    vec2 seabedOffset = vec2(0.0);
+    if (uT.shorelineOn > 1 && kPlanarReflection == 0) {
+        float depth = max(uT.shorelineWaterElev - v_worldPos.z, 0.0);
+        float phase = dot(v_worldPos.xy, vec2(0.003, 0.002)) + uT.shorelineTime * 1.05;
+        seabedOffset = vec2(sin(phase), cos(phase * 1.37)) * min(depth * 0.12, 4.0)
+                     * (1.0 - smoothstep(24.0, 80.0, depth));
+    }
     if (TS_colormapReady != 0) {
         // The shared cook already applied the original nine-tap blur and coast-color repair.
         vec2 uv = vec2((v_worldPos.x - uT.atlasTopLeftX) * uT.atlasOneOverWorldUnits,
                        (uT.atlasTopLeftY - v_worldPos.y) * uT.atlasOneOverWorldUnits);
-        vec4 macro = textureGrad(u_colormap, uv, dFdx(uv), dFdy(uv));   // mip chain; the weights below stay LOD 0
+        vec2 refractedUV = uv + seabedOffset * vec2(1.0, -1.0) * uT.atlasOneOverWorldUnits;
+        vec4 macro = textureGrad(u_colormap, refractedUV, dFdx(refractedUV), dFdy(refractedUV));   // mip chain; the weights below stay LOD 0
         base = macro.rgb;
         cookedBreakup = macro.a;
         materials = textureLod(u_materialWeights, uv, 0.0);
@@ -441,7 +451,7 @@ void main() {
     }
 
     // Uniform flow, close to use: avoid keeping the footprint live through cement/tint work.
-    vec2 detailUv = v_worldPos.xy * (uT.detailTiling / MATV_WU_PER_TILE);
+    vec2 detailUv = (v_worldPos.xy + seabedOffset) * (uT.detailTiling / MATV_WU_PER_TILE);
     vec2 detailUvDx = dFdx(detailUv), detailUvDy = dFdy(detailUv);
     mv_detailTexelGM = sqrt(abs(detailUvDx.x * detailUvDy.y - detailUvDx.y * detailUvDy.x)) * float(textureSize(u_matNormalArray, 0).x);
     // Continuous world derivatives, before any divergent material branch or POM.
@@ -472,7 +482,7 @@ void main() {
                     mv_forestMix = (TS_colormapReady != 0 && textureSize(u_matNormalArray, 0).z > MAT_LAYER_FOREST)
                         ? textureLod(u_forestMask, vec2((v_worldPos.x - uT.atlasTopLeftX) * uT.atlasOneOverWorldUnits,
                                                         (uT.atlasTopLeftY - v_worldPos.y) * uT.atlasOneOverWorldUnits), 0.0).r : 0.0;
-                    dN = mv_detailNormal(materialW, materialSnow, v_worldPos.xy, baseN.z, detailUvDx, detailUvDy);
+                    dN = mv_detailNormal(materialW, materialSnow, v_worldPos.xy + seabedOffset, baseN.z, detailUvDx, detailUvDy);
                 } else {
                     resolveLampNormal = true;
                 }
@@ -580,7 +590,8 @@ void main() {
                 bool reviewShore = uT.shorelineOn > 1;
                 if (reviewShore) {
                     float phase = uT.shorelineTime * 1.05 + dot(v_worldPos.xy, vec2(0.003, 0.002));
-                    float reach = 38.0 + 14.0 * sin(phase);
+                    // The wet tail lags the swash so dark sand remains exposed on retreat.
+                    float reach = 46.0 + 18.0 * sin(phase - 0.9);
                     slWet = (1.0 - smoothstep(reach, reach + 32.0, horizDistJ))
                           * smoothstep(0.0, 2.0, horizDist);
                     slFoam = 0.0;
@@ -605,6 +616,11 @@ void main() {
                     vec3 wetSand = reviewShore ? lit * vec3(0.62, 0.68, 0.70)
                                               : vec3(1.16, 1.06, 0.78) * (litLuma * 0.90);
                     lit = mix(lit, wetSand, clamp(wetAmt, 0.0, 1.0) * 0.85);
+                    if (reviewShore) {
+                        vec3 eye = normalize(mc2ToRender(uT.cameraPosMC2.xyz) - v_worldPos);
+                        float sheen = pow(1.0 - clamp(abs(dot(eye, macroN)), 0.0, 1.0), 5.0);
+                        lit += prelitBase * wetAmt * sheen * 0.28;
+                    }
                 }
                 if (slFoam > 0.001 && slopeAtten > 0.0 && shoreAffinity > 0.001) {
                     float foamScroll = fbm(v_worldPos.xy * 0.09 + uT.shorelineTime * 0.15, 3) * 0.5 + 0.5;
