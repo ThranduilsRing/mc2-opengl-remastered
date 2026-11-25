@@ -980,6 +980,7 @@ public:
 
 		int32_t             conStat;						//Contact status stored for this frame, for this machine
 		mc2::ContactVisibility contactView{}; // shared by this frame's draw, hover and minimap
+		mc2::DisplayContactHold displayContactHold; // not serialized or read by simulation
 		float				fadeTime;						//Time between fade from LOS to non-LOS
 		BYTE				alphaValue;						//Current Fade value;
 		int32_t             causeOfDeath;

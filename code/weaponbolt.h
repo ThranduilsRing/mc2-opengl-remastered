@@ -430,6 +430,7 @@ class WeaponBolt : public GameObject
         mc2::combat::RetireDeadline retireDeadline;
 		bool presentationStarted = false;
 		bool presentationImpactStarted = false;
+		glm::vec3 visualPosition = glm::vec3(0.0f);
         void armRetireDeadline();
         void traceRetireDeadline(std::string_view reason, std::string_view metadata);
         void traceCombat(std::string_view event, std::string_view reason = "",

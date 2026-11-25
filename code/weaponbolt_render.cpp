@@ -66,14 +66,16 @@ void WeaponBolt::extractFxPacket (mc2::render_view::RenderList& list)
 	view.flags |= mc2::render_view::Visible;
 	if (hitTarget)
 		view.flags |= mc2::render_view::HitTarget;
-	view.aux[0] = laserPosition;
+	view.aux[0] = visualPosition;
 	if (targetPosition)
 	{
 		view.aux[2] = *targetPosition;
 		view.aux[1] = boltTargetHotSpot(*targetPosition, targetWID, targetHotSpot);
 	}
 	// Draw with the same flight heading as Execute, not GameObject's base facing.
-	view.value[0] = targetPosition ? -world_angle_between(laserPosition, *targetPosition) : rotation;
+	const bool missile = weaponShot.masterId >= 0 &&
+		MasterComponent::masterList[weaponShot.masterId].getForm() == COMPONENT_FORM_WEAPON_MISSILE;
+	view.value[0] = targetPosition ? -world_angle_between(visualPosition, missile ? view.aux[1] : *targetPosition) : rotation;
 	GameObjectPtr myOwner = ObjectManager->getByWatchID(ownerWID);
 	view.value[1] = myOwner ? myOwner->getRotation() : 0.0f;
 	for (int i = 0; i < 4; i++)

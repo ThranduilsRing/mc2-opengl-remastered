@@ -797,6 +797,8 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 					glm::vec3 pos = vehicles[i]->getPosition();
 					float rot = vehicles[i]->getRotation();
 					presentationPose(vehicles[i], pos, rot);
+					if (vehicles[i]->visualSinkDepth > 0.0f)
+						pos.z = std::min(pos.z, Terrain::waterElevation) - vehicles[i]->visualSinkDepth;
 					bool selected = vehicles[i]->isSelected();
 					int teamID = vehicles[i]->getTeamId();
 					vehicles[i]->getAppearance()->setObjectParameters(pos, rot, vehicles[i]->drawFlags, teamID, Team::getRelation(teamID, Team::home->getId()));

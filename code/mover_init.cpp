@@ -545,6 +545,7 @@ void Mover::init (bool create) {
 	
 	conStat = 0;
 	fadeTime = 0.0f;
+	displayContactHold = {};
 	alphaValue = 0x0;
 	isOnGui = false;
 

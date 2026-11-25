@@ -8,6 +8,18 @@
 // no firing / damage / heat / ammo / timing is modeled here (nor could be -- pure).
 #include "doctest.h"
 #include "weapon_presentation_resolve.h"
+#include "missile_presentation.h"
+
+TEST_CASE("missile presentation: moving target correction leaves flight and timing unchanged") {
+    const glm::vec3 launch(0, 0, 10), aim(100, 0, 10), moved(100, 40, 20);
+    const glm::vec3 flight(50, 0, 30);
+    CHECK(missilePresentationPosition(launch, launch, aim, moved) == launch);
+    CHECK(missilePresentationPosition(flight, launch, aim, moved) == glm::vec3(50, 20, 35));
+    CHECK(missilePresentationPosition(aim, launch, aim, moved) == moved);
+    CHECK(missilePresentationPosition(flight, launch, aim, aim) == flight);
+    CHECK(flight == glm::vec3(50, 0, 30));
+    CHECK(missilePresentationPosition(launch, launch, launch, moved) == moved);
+}
 
 // ---- weaponPresentationAssetToEffectId: string -> effect id parse ----
 TEST_CASE("asset->effectId: empty and non-numeric -> absent; numeric -> value") {

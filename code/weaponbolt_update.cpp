@@ -9,6 +9,7 @@
 #include "../RenderCore/axis_convert.h"
 #include "Gates/gate.h"
 #include "impact_presentation.h"
+#include "missile_presentation.h"
 #include "tick_commit.h"
 #include "launcher_light_budget.h"
 
@@ -521,7 +522,17 @@ void WeaponBolt::updatePresentation()
 	const bool allowLight = !missile || (!hitTarget && budget.allow(g_mc2RenderFrame, ownerWID, 2));
 	auto* myOwner = ObjectManager->getByWatchID(ownerWID);
 	auto* target = ObjectManager->getByWatchID(targetWID);
-	glm::vec3 laserDirection = *targetPosition - (hitTarget ? position : laserPosition);
+	visualPosition = laserPosition;
+	glm::vec3 visualTarget = *targetPosition;
+	if (missile) {
+		if (target) visualTarget = target->isMech()
+			? (targetHotSpot ? target->appearance->getHitNodeLeft() : target->appearance->getHitNodeRight())
+			: target->getPositionFromHS(targetHotSpot);
+		visualPosition = hitTarget ? visualTarget
+			: missilePresentationPosition(laserPosition, position, *targetPosition, visualTarget);
+		visualPosition.z = std::max(visualPosition.z, TerrainRuntime::groundElevation(visualPosition) + 1.0f);
+	}
+	glm::vec3 laserDirection = visualTarget - (hitTarget ? position : visualPosition);
 	if (glm::length(laserDirection) > 0.0f) laserDirection = glm::normalize(laserDirection);
 	bool inView = true;
 	const auto start = [&](gosFX::EffectPtr& effect, const glm::vec3& at) {
@@ -534,7 +545,7 @@ void WeaponBolt::updatePresentation()
 	if (!presentationStarted) {
 		presentationStarted = true;
 		createPresentationResources();
-		start(gosEffect, laserPosition);
+		start(gosEffect, visualPosition);
 		start(muzzleEffect, position);
 	}
 	if (hitTarget && !presentationImpactStarted) {
@@ -543,7 +554,7 @@ void WeaponBolt::updatePresentation()
 		int row, col; land->worldToCell(*targetPosition, row, col);
 		const bool water = GameMap->getDeepWater(row, col) || GameMap->getShallowWater(row, col);
 		if (target) {
-			mc2::tick::releaseEffect(missEffect); mc2::tick::releaseEffect(waterMissEffect); start(hitEffect, laserPosition);
+			mc2::tick::releaseEffect(missEffect); mc2::tick::releaseEffect(waterMissEffect); start(hitEffect, visualPosition);
 		} else if (water) {
 			mc2::tick::releaseEffect(hitEffect); mc2::tick::releaseEffect(missEffect);
 			auto at = *targetPosition; at.z = Terrain::waterElevation; start(waterMissEffect, at);
@@ -566,7 +577,7 @@ void WeaponBolt::updatePresentation()
 		}
 		else
 		{
-			mc2ToRender(actualPosition, laserPosition);
+			mc2ToRender(actualPosition, visualPosition);
 		}
 	
 		glm::mat4 	shapeOrigin;
@@ -576,7 +587,7 @@ void WeaponBolt::updatePresentation()
 		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 		mc2::math::buildTranslation(shapeOrigin, actualPosition);
 		
-		const float rotation = -world_angle_between(laserPosition, *targetPosition);
+		const float rotation = -world_angle_between(visualPosition, visualTarget);
 		
 		glm::quat effectRot;
 		effectRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,rotation * DEGREES_TO_RADS,0.0f));
@@ -633,7 +644,7 @@ void WeaponBolt::updatePresentation()
 		// and laservertices[3] is the middle of the bulge.	
 		glm::vec3 lDir(laserDirection);
 		lDir *= (static_cast<WeaponBoltTypePtr>(getObjectType()))->bulgeLength;
-		laserVertices[0] = laserPosition + lDir;
+		laserVertices[0] = visualPosition + lDir;
 		laserVertices[1] = laserVertices[0];
 		laserVertices[3] = laserVertices[0];
 		
@@ -644,7 +655,7 @@ void WeaponBolt::updatePresentation()
 		laserVertices[0].y += laserDirection.x * (static_cast<WeaponBoltTypePtr>(getObjectType()))->bulgeWidth;
 	
 		laserDirection *= (static_cast<WeaponBoltTypePtr>(getObjectType()))->projLength;
-		laserVertices[2] = laserPosition + laserDirection;
+		laserVertices[2] = visualPosition + laserDirection;
 	
 		if (allowLight && (static_cast<WeaponBoltTypePtr>(getObjectType()))->lightSource && !pointLight && (lightId != -1))
 		{
@@ -722,7 +733,7 @@ void WeaponBolt::updatePresentation()
 			pointLight->SetFalloffDistances(4.0f, 65.0f);
 		}
 		glm::vec3 ourPosition;
-		mc2ToRender(ourPosition, laserPosition);
+		mc2ToRender(ourPosition, visualPosition);
 
 		pointLight->direction = ourPosition;
 
@@ -730,7 +741,7 @@ void WeaponBolt::updatePresentation()
 		mc2::math::buildTranslation(lightToWorldMatrix, ourPosition);
 		mc2::math::buildRotation(lightToWorldMatrix, mc2::math::Euler(0.0f,0.0f,0.0f));
 		pointLight->SetLightToWorld(&lightToWorldMatrix);
-		pointLight->SetPosition(&laserPosition);
+		pointLight->SetPosition(&visualPosition);
 	}
 		
  	if (hitTarget)
@@ -963,7 +974,7 @@ void WeaponBolt::updatePresentation()
 	if (gpu_trail_kind != mc2::particles::GpuTrailKind::None && !gosEffect && !hitTarget) {
 		// Trail positions belong to the projectile in render space, not the launcher hotspot.
 		glm::vec3 swapped;
-		mc2ToRender(swapped, laserPosition);
+		mc2ToRender(swapped, visualPosition);
 		trail_history[trail_head] = swapped;
 		trail_head = static_cast<uint8_t>((trail_head + 1) % kTrailHistoryMax);
 		if (trail_count < kTrailHistoryMax) ++trail_count;
