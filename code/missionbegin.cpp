@@ -1447,6 +1447,7 @@ void MissionBegin::updateSoakAutoPurchase() {
 						}
 						fflush( stdout );
 					}
+					screens[2][1]->begin();
 					s_autoPurchasedThisBay = true;
 				}
 			}
