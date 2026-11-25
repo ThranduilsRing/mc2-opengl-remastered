@@ -451,6 +451,7 @@ int LogisticsVariant::init( CSVFile* file, LogisticsChassis* pChassis, int Varia
 
 	// big-first (stock order); the package chassis solves the whole loadout in setLoadout.
 	std::vector<SavedComponent> saved;
+	std::vector<int> savedSources;
 	for ( int j = 4; j > 0; j-- )
 	{
 		for ( int k = 3; k >0; k-- )
@@ -462,8 +463,10 @@ int LogisticsVariant::init( CSVFile* file, LogisticsChassis* pChassis, int Varia
 				if ( pComponent && pComponent->getComponentWidth() == k
 					&& pComponent->getComponentHeight() == j )
 				{
-					if (chassis->getPackage())
+					if (chassis->getPackage()) {
 						saved.push_back({pComps[i]->getID(), xLocs[i], yLocs[i]});
+						savedSources.push_back(sourceItems[i]);
+					}
 					else
 				{
 					if ( !addComponent( pComps[i]->getID(), xLocs[i], yLocs[i] ) )
@@ -495,7 +498,23 @@ int LogisticsVariant::init( CSVFile* file, LogisticsChassis* pChassis, int Varia
 	LoadoutReport report;
 	if (chassis->getPackage()) {
 		setLoadout( saved, &report );
-		restoreLocationRecord(locationRecord());
+		auto record = locationRecord();
+		if (chassis->layoutCache && record.items.size() == savedSources.size()) {
+			// Package packing cells do not replace the donor's physical critical table.
+			static constexpr int locations[] = {0, 4, 5, 2, 3, 1, 6, 7};
+			for (size_t i = 0; i < record.items.size(); ++i) {
+				auto& item = record.items[i];
+				item.location = -1; item.slot = -1; item.hardpoint = 0;
+				for (int slot = 0; slot < 12 && item.location < 0; ++slot)
+					for (int loc = 0; loc < 8 && item.location < 0; ++loc) {
+						long index = -1;
+						if (file->readLong(offset + 102 + slot, 2 + loc, index) == NO_ERR && index == savedSources[i]) {
+							item.location = locations[loc]; item.slot = slot;
+						}
+					}
+			}
+		}
+		restoreLocationRecord(std::move(record));
 	}
 	for ( const DroppedComponent& d : report.dropped )   // a pack authoring error: designer variants are authored against their own layout
 		MC2_LOG(Core, Warn, "logistics: designer variant '{}' lost component {} ({}): {}", variantName, d.name, d.id, d.reason);

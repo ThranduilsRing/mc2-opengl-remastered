@@ -28,13 +28,19 @@ def test_logistics_keeps_donor_loadout_and_registers_new_chassis(tmp_path, monke
     rows[12][1], rows[13][1] = '6', '5'
     rows[22][:2] = ['VariantName', 'Donor Prime']
     rows[25][:6] = ['Item0MasterId', '0', '1', '2', '99', 'Laser']
+    rows[16][1:9] = ['3', '11', '11', '15', '15', '22', '15', '15']
+    rows[17][1:12] = ['9', '13', '13', '16', '16', '19', '15', '15', '4', '4', '6']
+    rows[100][:9] = ['ComponentPlacement', 'Head', 'LeftArm', 'RightArm', 'LeftTorso', 'RightTorso', 'CenterTorso', 'LeftLeg', 'RightLeg']
+    rows[101][2] = '0'
     rows += [r[:] for r in rows[19:116]]
     rows[119][1] = 'Donor Elite'
     buf = io.StringIO()
     csv.writer(buf).writerows(rows)
     data = buf.getvalue().encode()
     monkeypatch.setattr(fst, 'fst_entries', lambda p: [(0, len(data), len(data), f'data/objects/{donor}.csv', False, data),
-                                                       (0, 0, 0, 'data/objects/compbas.csv', False, b'Component Table,Type,Name,x,x,x,Weight\n99,EnergyWeapon,Laser,1,1,1,60\n')])
+                                                       (0, 0, 0, 'data/objects/compbas.csv', False,
+                                                        ('Component Table,Type,Name,x,x,x,Weight\n' +
+                                                         ','.join(['99', 'EnergyWeapon', 'Laser', '1', '1', '1', '60'] + [''] * 20 + ['1', '1']) + '\n').encode())])
     monkeypatch.setattr(fst, 'decompress_entry', lambda off, comp, real, lz, data: data)
     monkeypatch.setattr(P, 'load_glb', lambda p: ({'extras': {'mw5Attachments': []}}, b''))
     monkeypatch.setattr(P, 'package_nodes', lambda *a: ({'weapon_0': 'j_Spine2'}, {'weapon_0': '0 0 0'}, {}, 12))
@@ -63,6 +69,14 @@ def test_logistics_keeps_donor_loadout_and_registers_new_chassis(tmp_path, monke
         assert 'st Socket = "weapon_0"' in fits[0].read_text()
         assert 'f Payload = 60.0' in fits[0].read_text()
         assert 'f EmptyMass = 21.0' in fits[0].read_text()
+        text = fits[0].read_text()
+        assert 'st Source = "mc2-donor:thor"' in text
+        assert '[Location.Head]\nl Slots = 6' in text
+        assert '[Location.CenterTorso]\nl Slots = 12' in text
+        assert '[Location.LeftLeg]\nl Slots = 6' in text
+        arm = text.split('[Location.LeftArm]')[1].split('[Location.RightArm]')[0]
+        assert 'l HardpointCount = 1' in arm and 'st Socket0 = "weapon_2"' in arm
+        assert 'l ArmorPool = 130' in text
 
 
 def chunk(name, size, records):

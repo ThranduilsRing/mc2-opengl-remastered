@@ -47,10 +47,12 @@ def logistics(recipe, inst, out, loadout=None):
     stock = {}
     components = {}
     weights = {}
+    component_rows = {}
     for off, comp, real, name, lz, data in fst.fst_entries(inst / 'misc.fst'):
         if name.startswith('data/objects/') and name.endswith('.csv'):
             rows = list(csv.reader(io.StringIO(fst.decompress_entry(off, comp, real, lz, data).decode('latin-1'), newline='')))
             if name.endswith('/compbas.csv'):
+                component_rows = {r[0]: r for r in rows[1:] if len(r) > 28}
                 components = {r[0]: r[1].removesuffix('Weapon') for r in rows[1:] if len(r) > 1 and r[1].endswith('Weapon')}
                 weights = {r[0]: float(r[6]) for r in rows[1:] if len(r) > 6 and r[6].strip().replace('.', '', 1).isdigit()}
             if rows and rows[0][0] == 'BaseChassisInfo' and len(rows) > 22 and rows[2][3] == 'Tonnage':
@@ -128,7 +130,33 @@ def logistics(recipe, inst, out, loadout=None):
                                 regions={'CenterTorso': [0, 0, int(rows[12][1]), int(rows[13][1])]}, ap_ordinals=[]))
         fit = out / 'data/defs/chassis/mw5' / family / 'chassisdef.fit'
         fit.parent.mkdir(parents=True, exist_ok=True)
-        fit.write_text(emit_chassis_fit(profile, recipe))
+        # The classic rectangle is a packing surface, not the physical critical
+        # table. Retain the donor's eight locations for the record-sheet lab.
+        locations = ['Head', 'LeftArm', 'RightArm', 'LeftTorso', 'RightTorso', 'CenterTorso', 'LeftLeg', 'RightLeg']
+        placement = next(i for i, r in enumerate(rows) if r and r[0] == 'ComponentPlacement')
+        layout = ['[Layout]', f'st ChassisId = "{recipe["chassis_id"]}"', 'l Version = 1',
+                  f'st Source = "mc2-donor:{donor}"', f'f Payload = {payload}',
+                  f'l ArmorPool = {sum(int(v) for v in rows[17][1:12] if v.strip())}', '']
+        for col, loc in enumerate(locations, 1):
+            indices = list(dict.fromkeys(int(r[col]) for r in rows[placement+1:placement+13]
+                                        if len(r) > col and r[col].strip()))
+            items = [component_rows.get(rows[25+i][4]) for i in indices if 25+i < placement]
+            items = [r for r in items if r and float(r[27] or 0) > 0 and float(r[28] or 0) > 0]
+            mounts = [components[r[0]] for r in items if r[0] in components]
+            # Legacy MC2 donor designs can exceed the nominal critical-size
+            # budget (e.g. Thor's AC20 plus ammo); keep that authored loadout.
+            slots = max(6 if loc in ('Head', 'LeftLeg', 'RightLeg') else 12,
+                        sum(int(float(r[3])) for r in items))
+            rear = {'LeftTorso': 9, 'RightTorso': 10, 'CenterTorso': 11}.get(loc)
+            structure = int(rows[16][col])
+            layout += [f'[Location.{loc}]', f'l Slots = {slots}', f'l Structure = {structure}',
+                       f'l ArmorMax = {2*structure if loc != "Head" else 9}',
+                       f'l ArmorRearMax = {2*structure if rear else 0}', f'l HardpointCount = {len(mounts)}']
+            for i, mount in enumerate(mounts):
+                compatible = [h['socket'] for h in hardpoints if h['mount'] == mount]
+                layout += [f'st Hardpoint{i} = "{mount}"', f'st Socket{i} = "{compatible[i % len(compatible)]}"']
+            layout.append('')
+        fit.write_text(emit_chassis_fit(profile, recipe).replace('FITend', '\n'.join(layout) + '\nFITend'))
     strings = out / 'data/defs/text/en_us' / (stem + '.fit')
     strings.parent.mkdir(parents=True, exist_ok=True)
     strings.write_text('\n'.join('String {\n key = "mw5.' + family + '.' + key + '"\n text = "' + value + '"\n legacyId = ' + str(lid) + '\n source = "mw5_mechs"\n category = "units"\n}'
