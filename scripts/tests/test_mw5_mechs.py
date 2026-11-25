@@ -38,13 +38,13 @@ def test_built_mw5_mechs_face_movement():
     for path in recipes:
         r = json.loads(path.read_text())
         doc, _ = load_glb(Path(root) / 'mods/mw5_mechs/data/tgl' / (r['mc2']['stem'] + '.glb'))
-        parents = {c: i for i, n in enumerate(doc['nodes']) for c in n.get('children', [])}
-        def world(i):
-            return (world(parents[i]) if i in parents else np.eye(4)) @ B.trs_mat(doc['nodes'][i])
-        names = {n['name']: i for i, n in enumerate(doc['nodes'])}
-        forward = (world(names[r['mc2']['nodes']['cockpit']]) -
-                   world(names[r['bone_rename'].get('Pelvis', 'Pelvis')]))[:3, 3]
-        assert forward[2] > abs(forward[0]), (r['chassis_id'], forward)
+        # Cockpit position is not an axis: Dragon's cockpit sits behind its pelvis.
+        # Check the authored UE +X basis at the actual exported scene boundary.
+        for scene in doc['scenes']:
+            node = doc['nodes'][scene['nodes'][0]]
+            assert node['name'] == 'mw5_forward', r['chassis_id']
+            np.testing.assert_allclose(B.trs_mat(node) @ [1, 0, 0, 0],
+                                       [0, 0, 1, 0], atol=1e-7)
 
 
 def test_built_packs_do_not_override_stock_units():
