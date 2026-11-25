@@ -5,13 +5,55 @@
 #include <algorithm>
 #include "vk_one_shot.h"
 #include <filesystem>
+#include <fstream>
 #include "vulkan_terrain_island.h"
 #include "vk_barrier_batch_vk.h"
 #include "water_planar_view.h"
+#include "vk_gpu_profile.h"
 
 
 
 namespace vk_water_detail {
+
+bool prepare_shore_fft(WaterIsland* s, uint32_t par, VkBuffer ring) {
+    if (!s->fftCompute) {
+        if (!s->fftCompute.create(s->device, spv_dir()+"water_fft.comp.spv",
+                {{0,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},{1,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
+                 {2,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC},{3,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER}}, "water.fft") ||
+            !s->fftSets.create(s->device,s->fftCompute,2*mc2vk::kMaxFramesInFlight,"water.fft")) return false;
+        for (uint32_t axis=0;axis<2;++axis) {
+            const uint32_t p[4]{axis,0,0,0};
+            if (!s->fftPass[axis].createFilled(s->allocator,s->device,p,sizeof(p),VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,"water.fft.pass")) return false;
+        }
+        for (uint32_t i=0;i<mc2vk::kMaxFramesInFlight;++i) {
+            if (!s->fftRows[i].createDeviceLocal(s->allocator,s->device,8192*24,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,"water.fft.rows") ||
+                !s->fftSurface[i].createDeviceLocal(s->allocator,s->device,8192*16,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,"water.fft.surface")) return false;
+            for (uint32_t axis=0;axis<2;++axis) {
+                const uint32_t set=2*i+axis;
+                s->fftSets.write(s->device,set,0,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,s->fftRows[i].get());
+                s->fftSets.write(s->device,set,1,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,s->fftSurface[i].get());
+                s->fftSets.write(s->device,set,3,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,s->fftPass[axis].get());
+            }
+        }
+        write_descriptors(s);
+    }
+    for (uint32_t axis=0;axis<2;++axis)
+        s->fftSets.write(s->device,2*par+axis,2,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,ring,32);
+    return true;
+}
+
+void record_shore_fft(WaterIsland* s, VkCommandBuffer cb, uint32_t par, uint32_t frameOffset) {
+    MC2_VK_GPU_SCOPE(fftScope,cb,"VKIsl.Water.FFT");
+    mc2vk::cmdBarrier(cb,VK_PIPELINE_STAGE_HOST_BIT,VK_ACCESS_HOST_WRITE_BIT,
+                     VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_UNIFORM_READ_BIT);
+    for (uint32_t axis=0;axis<2;++axis) {
+        s->fftCompute.bind(cb,s->fftSets.set(2*par+axis),{&frameOffset,1});
+        s->fftCompute.dispatch(cb,64,2);
+        mc2vk::cmdBarrier(cb,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_WRITE_BIT,
+            axis==0 ? VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT : VK_PIPELINE_STAGE_VERTEX_SHADER_BIT|VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            VK_ACCESS_SHADER_READ_BIT);
+    }
+}
 
 bool ensure_shore_surface(WaterIsland* s) {
     const auto* fields = gos_TerrainFieldStore();
@@ -362,6 +404,15 @@ bool import_shore_tex(WaterIsland* s, const void* texels, int texelsW, int texel
 // gives both consumers references to the same content-addressed mask allocation.
 // Requires hdriSampler (created by ensure_hdri) -- shared linear/clamp sampler.
 bool ensure_shore(WaterIsland* s) {
+    if (!s->foamTexture) {
+        std::vector<uint8_t> pixels(512 * 512 * 4);
+        std::ifstream foam("shaders/shore_foam.rgba", std::ios::binary);
+        if (!foam.read(reinterpret_cast<char*>(pixels.data()), static_cast<std::streamsize>(pixels.size()))) return false;
+        s->foamTexture = mc2vk::getOrCreateEngineVulkanContext().textures().acquirePixels(
+            512, 512, VK_FORMAT_R8G8B8A8_UNORM, pixels.data(), pixels.size(), true);
+        if (!s->foamTexture) return false;
+        write_descriptors(s);
+    }
     const auto* store = gos_TerrainFieldStore();
     const uint64_t heightVersion = store ? store->waterShoreHeight().version : 0;
     const uint64_t maskVersion = store ? store->shorelineMask().version : 0;

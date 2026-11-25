@@ -207,6 +207,9 @@ struct WaterIsland : mc2vk::IslandState {
     mc2vk::OwnedBuffer shoreRaw, shoreSurface, shoreParams;
     mc2vk::ComputePipeline shoreCompute;
     mc2vk::ComputeSets shoreSets;
+    mc2vk::OwnedBuffer fftRows[mc2vk::kMaxFramesInFlight], fftSurface[mc2vk::kMaxFramesInFlight], fftPass[2];
+    mc2vk::ComputePipeline fftCompute;
+    mc2vk::ComputeSets fftSets;
     uint64_t shoreSurfaceVersion = UINT64_MAX;
     int shoreSurfaceSide = 0;
     mc2vk::OwnedBuffer thinBuf[mc2vk::kMaxFramesInFlight];
@@ -244,6 +247,7 @@ struct WaterIsland : mc2vk::IslandState {
     mc2vk::OwnedSampler   hdriSampler;
     float                 sampBias = 0.0f;   // mip bias hdriSampler was built with
     mc2vk::ResidentTextureRef shHTexture;
+    mc2vk::ResidentTextureRef foamTexture;
     mc2vk::ResidentTextureRef shMTexture;
     mc2vk::OwnedShaderModule vert, frag, fragEarly;
     mc2vk::OwnedPipelineLayout playout;
@@ -297,6 +301,8 @@ bool make_buffer(WaterIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkB
                  std::string_view name, int i0 = -1, int i1 = -1);
 void write_descriptors(WaterIsland* s, int only = -1);
 bool ensure_shore_surface(WaterIsland* s);
+bool prepare_shore_fft(WaterIsland* s, uint32_t par, VkBuffer ring);
+void record_shore_fft(WaterIsland* s, VkCommandBuffer cb, uint32_t par, uint32_t frameOffset);
 void refresh_hdri_sampler(WaterIsland* s);   // rebuild the mip-biased sampler when the effective resolve state changed
 bool ensure_thin_capacity(WaterIsland* s, uint32_t par, VkDeviceSize bytes);
 bool upload_recipes_device(WaterIsland* s, const void* recipes, uint32_t recipeCount);

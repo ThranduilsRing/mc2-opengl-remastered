@@ -146,6 +146,20 @@ void write_descriptors(WaterIsland* s, int only) {
             vkUpdateDescriptorSets(s->device, 1, &w4, 0, nullptr);
         }
         vkUpdateDescriptorSets(s->device, 2, w, 0, nullptr);
+        if (s->fftSurface[i]) {
+            const VkDescriptorBufferInfo fft{s->fftSurface[i].get(),0,VK_WHOLE_SIZE};
+            VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+            write.dstSet=s->set[i]; write.dstBinding=19; write.descriptorCount=1;
+            write.descriptorType=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; write.pBufferInfo=&fft;
+            vkUpdateDescriptorSets(s->device,1,&write,0,nullptr);
+        }
+        if (s->foamTexture && s->hdriSampler) {
+            const VkDescriptorImageInfo foam{s->hdriSampler.get(), s->foamTexture.view(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+            VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+            write.dstSet = s->set[i]; write.dstBinding = 18; write.descriptorCount = 1;
+            write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; write.pImageInfo = &foam;
+            vkUpdateDescriptorSets(s->device, 1, &write, 0, nullptr);
+        }
         const VkDescriptorBufferInfo surfaceInfo{s->shoreSurface ? s->shoreSurface.get() : s->recipeBuf.get(), 0, VK_WHOLE_SIZE};
         VkWriteDescriptorSet surfaceWrite{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
         surfaceWrite.dstSet = s->set[i]; surfaceWrite.dstBinding = 14;

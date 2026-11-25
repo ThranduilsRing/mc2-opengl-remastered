@@ -403,6 +403,9 @@ extern "C" int mc2_vk_water_island_run(
     bool shoreSurfOk;
     { ZoneScopedN("VKIsl.Water.ShoreSurface"); shoreSurfOk = ensure_shore_surface(s); }
     if (!shoreSurfOk) { setFallback("shore_surface_bake_failed"); s->disabled = true; return 0; }
+    if (!prepare_shore_fft(s,par,uboSpan.buffer)) {
+        setFallback("shore_fft_prepare_failed"); s->disabled=true; return 0;
+    }
 
     // Binding 6 of slot `par` must name the GPU-produced thin buffer (the island starts on the placeholder thinBuf until the native producers exist).
     if (!s->thinNative[par]) {
@@ -442,6 +445,7 @@ extern "C" int mc2_vk_water_island_run(
         s->reflectionScissor={{pixels[0],pixels[1]},{static_cast<uint32_t>(pixels[2]-pixels[0]),static_cast<uint32_t>(pixels[3]-pixels[1])}};
         const auto* fields = gos_TerrainFieldStore();
         vsLocal.p3[1] = (shoreSdf || (fields && fields->visualSide() > 1)) ? 1.0f : 0.0f;
+        vsLocal.p3[3] = static_cast<float>(mc2::options::current().shorelineLook);
         std::memcpy(base, &vsLocal, sizeof(WaterVsParams));
         // RUNG-6.5 fail-soft: if the real HDRI bytes aren't imported (dummy
         // bound), force u_waterHdriLod (f2.w, offset 60) to -1 so the FS
@@ -473,6 +477,9 @@ extern "C" int mc2_vk_water_island_run(
         const bool still = objectCamera && std::memcmp(camera,s->reflectionCamera,sizeof(camera))==0;
         const int divisor = 1;   // only High renders the live pass (full resolution); Low and Medium use the bake
         fsLocal.debug[1] = mc2::options::current().waterDetail == 0 ? 1.0f : 0.0f;
+        // f3.w: 0/1 retain current static/animated wash; 2/3/4 select the review candidates.
+        if (mc2::options::current().shorelineLook != 0)
+            fsLocal.f3[3] = static_cast<float>(1 + mc2::options::current().shorelineLook);
         // No cheap bake/content epoch: bound stale light, scene and leaf sway to four frames.
         const bool reuse = hold && still && s->reflectionValid && s->reflectionDivisor==divisor && s->nativeFrames%4!=0;
         std::memcpy(s->reflectionCamera,camera,sizeof(camera));
@@ -592,6 +599,8 @@ extern "C" int mc2_vk_water_island_run(
         bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
         vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_Water);
+        if (mc2::options::current().shorelineLook == 2)
+            record_shore_fft(s,cb,par,static_cast<uint32_t>(uboSpan.offset+fsUboOff));
 
         // STEP 3.4P: the native producers (terrain lighting, cull/pack, draw args) are recorded ahead of the render pass in this command buffer.
         {
@@ -601,6 +610,7 @@ extern "C" int mc2_vk_water_island_run(
             std::memcpy(wf.mvp, nat->mvp, sizeof(wf.mvp));
             wf.frameCos = nat->frameCos; wf.waterElevation = nat->waterElevation; wf.shoreExt = nat->shoreExt;
             wf.mapSide = nat->mapSide; wf.biasLegacy = nat->biasLegacy;
+            wf.waterVertices = mc2::options::current().shorelineLook == 2 ? 384 : 6;
             // D0 must include field-dry recipes: scene depth alone defines submersion.
             if (gos_GetWaterFsDebugMode() == 10) { wf.shoreExt = 1.0e9f; wf.frameCos = 0.0f; }
             if (reflectThisFrame) {

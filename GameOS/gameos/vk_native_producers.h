@@ -58,6 +58,7 @@ struct WaterCullFrame {
     float    shoreExt;
     uint32_t mapSide;
     int32_t  biasLegacy;
+    int32_t  waterVertices = 6;
 };
 
 // Result of one GL-vs-VK comparison (parity frames only).

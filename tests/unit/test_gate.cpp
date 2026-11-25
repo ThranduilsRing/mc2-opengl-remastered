@@ -1507,7 +1507,21 @@ TEST_CASE("render option keys are unique and findable") {
     CHECK(mo::find("NotAnOption") == nullptr);
     CHECK(mo::find("cpuphongretire") == mo::find("CpuPhongRetire"));   // keys are case-insensitive like options.cfg
     CHECK(mo::find("PostCAS") != mo::find("PostCASSharpness"));
-    CHECK(mo::kOptionCount == 32);   // includes CameraView, AtmosphereQuality and GroundAo
+    CHECK(mo::kOptionCount == 33);   // includes ShorelineLook review selector
+}
+
+TEST_CASE("shoreline candidates preserve current default and reject invalid selections") {
+    namespace mo = mc2::options;
+    mo::RenderOptions o{};
+    CHECK(o.shorelineLook == int(mo::ShorelineLook::Current));
+    const auto& option = *mo::find("ShorelineLook");
+    for (int look = 0; look <= 2; ++look) {
+        CHECK(mo::setLong(o, option, look) == mo::Verdict::Ok);
+        CHECK(o.shorelineLook == look);
+    }
+    CHECK(mo::setLong(o, option, -1) == mo::Verdict::OutOfRange);
+    CHECK(mo::setLong(o, option, 3) == mo::Verdict::OutOfRange);
+    CHECK(o.shorelineLook == 2);
 }
 
 TEST_CASE("render option values outside their bounds, NaN and garbage are rejected and change nothing") {

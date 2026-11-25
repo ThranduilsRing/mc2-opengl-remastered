@@ -577,6 +577,14 @@ void main() {
                 float aboveFade = smoothstep(0.0, 1.5, horizDist);
                 slWet  *= aboveFade;
                 slFoam *= aboveFade;
+                bool reviewShore = uT.shorelineOn > 1;
+                if (reviewShore) {
+                    float phase = uT.shorelineTime * 1.05 + dot(v_worldPos.xy, vec2(0.003, 0.002));
+                    float reach = 38.0 + 14.0 * sin(phase);
+                    slWet = (1.0 - smoothstep(reach, reach + 32.0, horizDistJ))
+                          * smoothstep(0.0, 2.0, horizDist);
+                    slFoam = 0.0;
+                }
                 if (TS_shorelineHasMask != 0) {
                     vec2 slUV = vec2((v_worldPos.x - uT.shorelineBoundsX) / max(uT.shorelineBoundsW, 1e-5),
                                      (uT.shorelineBoundsY - v_worldPos.y) / max(uT.shorelineBoundsH, 1e-5));
@@ -594,7 +602,9 @@ void main() {
                 float shoreAffinity = smoothstep(0.08, 0.26, litLuma) * clamp(1.0 - slW.x - slSnow, 0.0, 1.0);
                 if (slWet > 0.001 && !cementHit && slopeAtten > 0.0 && shoreAffinity > 0.001) {
                     float wetAmt = clamp(slWet, 0.0, 1.0) * (1.0 - F3pc) * slopeAtten * shoreAffinity * uT.shorelineStrength;
-                    lit = mix(lit, vec3(1.16, 1.06, 0.78) * (litLuma * 0.90), clamp(wetAmt, 0.0, 1.0) * 0.85);
+                    vec3 wetSand = reviewShore ? lit * vec3(0.62, 0.68, 0.70)
+                                              : vec3(1.16, 1.06, 0.78) * (litLuma * 0.90);
+                    lit = mix(lit, wetSand, clamp(wetAmt, 0.0, 1.0) * 0.85);
                 }
                 if (slFoam > 0.001 && slopeAtten > 0.0 && shoreAffinity > 0.001) {
                     float foamScroll = fbm(v_worldPos.xy * 0.09 + uT.shorelineTime * 0.15, 3) * 0.5 + 0.5;

@@ -334,13 +334,15 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     u.groundMottleOn = GosVegetation::isEnabled() && GosVegetation::instanceCount() != 0 ? 1 : 0;
     u.edgeFeatherStrength  = feed.edgeFeatherStrength;
     u.vegetationEnabled     = GosVegetation::isEnabled() ? 1 : 0;   // the green ground mottle is vegetation: off with it
-    u.shorelineOn           = feed.shorelineOn ? 1 : 0;
+    // Preserve zero/off and one/current; 2..4 carry the same look as water f3.w.
+    u.shorelineOn           = feed.shorelineOn ? 1 + mc2::options::current().shorelineLook : 0;
     u.shorelineHasMask      = s->shoreMaskReady ? 1 : 0;
     u.shorelineWaterElev    = feed.shorelineWaterElev;
     u.shorelineTime         = feed.shorelineTime;
     u.shorelineStrength     = feed.shorelineStrength;
     u.shorelineFoamStrength = feed.shorelineFoamStrength;
     u.shorelineWetRun       = feed.shorelineWetRun;
+    if (mc2::options::current().shorelineLook != 0) u.shorelineWetRun = 85.0f;
     u.shorelineFoamRun      = feed.shorelineFoamRun;
     u.shorelineEdgeJitter   = feed.shorelineEdgeJitter;
     u.shorelineBoundsX = feed.shorelineBounds[0]; u.shorelineBoundsY = feed.shorelineBounds[1];

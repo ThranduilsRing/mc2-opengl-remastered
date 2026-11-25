@@ -18,6 +18,8 @@
 
 namespace mc2::options {
 
+enum class ShorelineLook { Current, FoamFirst, RealWaves };
+
 // Defaults here ARE the shipped defaults: a missing key, a missing file, and a tool that never loads options.cfg all behave alike.
 struct RenderOptions {
     int cameraView = 2; // 0 Stock, 1 Closer, 2 Wide
@@ -41,6 +43,7 @@ struct RenderOptions {
     int waterReflections = 2; // 0 Off, 1 Sky only, 2 Half-res; spatial, no history
     int reflectionQuality = 3; // 0 sky only, 1 Low and 2 Medium baked reflection, 3 High live full-res planar
     int waterDetail = 1; // 0 cheap fallback, 1 current material
+    int shorelineLook = int(ShorelineLook::Current); // owner-review candidates; current remains the default
     bool cpuPhongRetire          = true;    // gameplay elevation follows the drawn terrain surface
 
     // Static prop lighting.
@@ -107,6 +110,7 @@ inline constexpr Option kOptions[] = {
     detail::longOpt ("WaterReflections", &RenderOptions::waterReflections, 0, 2),
     detail::longOpt ("ReflectionQuality", &RenderOptions::reflectionQuality, 0, 3),
     detail::longOpt ("WaterDetail", &RenderOptions::waterDetail, 0, 1),
+    detail::longOpt ("ShorelineLook", &RenderOptions::shorelineLook, 0, 2),
     detail::boolOpt ("ShorelineLegacySuppress",       &RenderOptions::shorelineLegacySuppress),
     detail::boolOpt ("CpuPhongRetire",                &RenderOptions::cpuPhongRetire),
     detail::boolOpt ("StaticPropAmbient",             &RenderOptions::staticPropAmbient),

@@ -194,6 +194,8 @@ layout(set = 0, binding = 7) uniform sampler2D u_staticMask;
 layout(set = 0, binding = 8) uniform sampler2D u_waterReflection;
 layout(set = 0, binding = 9) uniform sampler2D u_waterReflectHeight;
 layout(set = 0, binding = 17) uniform sampler2DArray u_wavePackets;
+layout(set = 0, binding = 18) uniform sampler2D u_shoreFoam;
+#include "../include/water_fft.hglsl"
 
 vec2 bakedReflectionUV(vec2 p) {
     return vec2(p.x + F.bake.y, F.bake.y - p.y) / F.bake.x;
@@ -602,6 +604,20 @@ void main(void)
     float      waveVar = 0.0;
     PREC vec2  waveSlope = vec2(0.0);
     if (debugMode != 3) waveSlope = waterWaveSlope(WorldPos.xy, time, footprint, RIPPLE_GAIN / 0.22, waveVar);
+    int shorelineLook = max(int(F.f3.w + 0.5) - 1, 0);
+    float coastWeight = (1.0 - smoothstep(36.0, 100.0, shoreDistance))
+                      * smoothstep(0.04, 0.08, length(shoreGrad));
+    float swashPhase = time * 1.05 + dot(WorldPos.xy, vec2(0.003, 0.002));
+    float swashFront = 18.0 + 14.0 * sin(swashPhase);
+    float foldingFoam = 0.0;
+    if (shorelineLook == 2 && debugMode != 3 && F.debug.y < 0.5) {
+        vec3 dx=(fftShore(WorldPos.xy+vec2(1,0),shoreDepth)-fftShore(WorldPos.xy-vec2(1,0),shoreDepth))*0.5;
+        vec3 dy=(fftShore(WorldPos.xy+vec2(0,1),shoreDepth)-fftShore(WorldPos.xy-vec2(0,1),shoreDepth))*0.5;
+        float jacobian=(1.0+dx.x)*(1.0+dy.y)-dx.y*dy.x;
+        foldingFoam=1.0-smoothstep(0.25,0.85,jacobian);
+        float resolved=1.0-smoothstep(3.0,12.0,footprint);
+        waveSlope=mix(waveSlope,waveSlope*0.6+vec2(dx.z,dy.z)*resolved,coastWeight);
+    }
     PREC vec3  waveN     = normalize(vec3(-waveSlope, 1.0));  // world-XZ wave trains only: no screen-space or noise gradient
     PREC vec3  vdir      = normalize(cameraPos.xyz - WorldPos);  // MC2 Z-up
     // Specular AA: the normal's own screen-space variance (Kaplanyan-Hoffman) on top of the unresolved train variance.
@@ -615,6 +631,10 @@ void main(void)
                              + min(2.0 * kernelVar, 0.18), 0.0, 0.36);
     PREC float trans   = clamp(exp(-tintThick * ABSORPTION_DENSITY), 0.0, 1.0);
     PREC vec3  waterCol = mix(DEEP_COLOR, SHALLOW_COLOR, trans);
+    if (shorelineLook > 0) {
+        vec3 lagoon = mix(vec3(0.055, 0.24, 0.23), SHALLOW_COLOR, smoothstep(0.0, 24.0, max(shoreDepth, 0.0)));
+        waterCol = mix(waterCol, lagoon, coastWeight * 0.65);
+    }
 
     PREC float shoreBlend = max(alphaDepth, 1.0);
     PREC float shore = smoothstep(-shoreBlend * 0.5, shoreBlend, WaterThickness);
@@ -652,7 +672,7 @@ void main(void)
     float washReach = 18.0;
     float shoreRipple = 0.0;
     float foamBreakup = 1.0;
-    if (F.f3.w > 0.5) {
+    if (F.f3.w > 0.5 && shorelineLook == 0) {
         float coastPhase = dot(WorldPos.xy, vec2(0.003, 0.002));
         washReach = 12.0 + 30.0 * (0.5 + 0.5 * sin(time * 1.25 + coastPhase));
         shoreRipple = sin(shoreDistance * 0.18 + time * 1.8 + coastPhase) * 0.045;
@@ -665,9 +685,26 @@ void main(void)
     float foam = 1.0 - smoothstep(2.0, 6.0 + foamAA, abs(shoreDistance - washReach));
     float wash = (1.0 - smoothstep(0.0, washReach + foamAA, shoreDistance)) * 0.10;
     float foamMix = (foam * 0.42 * foamBreakup + wash) * nearShore;
+    if (shorelineLook > 0) {
+        foamMix = 0.0;
+        shoreRipple = 0.0;
+        {
+            vec2 beachward = -shoreGrad / max(length(shoreGrad), 1e-4);
+            vec2 q = WorldPos.xy / 110.0 + beachward * (time * 0.018 + sin(swashPhase) * 0.035);
+            vec4 foamTex = textureGrad(u_shoreFoam, fract(q), dFdx(q), dFdy(q));
+            float lace = textureGrad(u_shoreFoam, fract(q*2.31+0.37), dFdx(q*2.31), dFdy(q*2.31)).r;
+            float advancing = smoothstep(-0.35, 0.65, cos(swashPhase));
+            float front = 1.0 - smoothstep(8.0, 32.0 + foamAA, abs(shoreDistance - swashFront));
+            float k = 6.2831853 / kWaveTrain[0].z;
+            float crestPhase = k*dot(kWaveTrain[0].xy,WorldPos.xy)-sqrt(WAVE_G*k)*time;
+            float crest = shorelineLook == 2 ? foldingFoam : smoothstep(0.72, 0.98, sin(crestPhase));
+            float holes = smoothstep(0.18, 0.78, foamTex.r*0.75 + lace*0.25);
+            foamMix = max(front*mix(0.25,0.90,advancing),crest*0.55) * holes * coastWeight;
+        }
+    }
     vec3 foamLight = max(vertexLightRGB, vec3(SKY_AMBIENT * nightSky));
     col *= 1.0 + shoreRipple * nearShore;
-    col = mix(col, vec3(0.72, 0.80, 0.78) * foamLight, foamMix);
+    if (shorelineLook == 0) col = mix(col, vec3(0.72, 0.80, 0.78) * foamLight, foamMix);
     col = mix(col, vec3(0.72, 0.80, 0.78) * foamLight, reactive.z);
     // Static shadow on the light the surface scatters and glints (the reflected sky is untouched), with the receivers' 0.4 floor.
     // sunVis carries the same shadows (no floor) to the sun specular.
@@ -777,6 +814,18 @@ void main(void)
 
     // WATER-SHALLOW-1: opacity follows the water column (shaders/include/water_shallow.hglsl); deep water is unchanged.
     PREC float waterA = shore * WATER_MAX_ALPHA * ws_column_veil(tintThick);
+    if (shorelineLook > 0) {
+        // Clear shallows reveal the terrain through the existing premultiplied composite.
+        float clearVeil = mix(0.10, 0.80, smoothstep(0.0, 24.0, max(shoreDepth, 0.0)));
+        float pulse = 1.0 - smoothstep(swashFront, swashFront + 16.0, shoreDistance);
+        clearVeil *= mix(1.0, 0.78, pulse);
+        waterA = mix(waterA, shore * WATER_MAX_ALPHA * clearVeil, coastWeight);
+        // Surface foam covers reflection and remains visible where the water column is clear.
+        float foamA = foamMix * shore;
+        col = (col * waterA * (1.0 - foamA) + vec3(0.78, 0.84, 0.80) * foamLight * foamA)
+            / max(waterA * (1.0 - foamA) + foamA, 1e-5);
+        waterA = waterA * (1.0 - foamA) + foamA;
+    }
     // WATER-EDGE-FEATHER-1 (default ON in GL): tint + dissolve the map-edge rim.
     if (F.f8.x != 0.0 && F.f8.z > 0.0) {
         float h = clamp(edgeHazeAmount(WorldPos.xy, F.f8.z) * F.f8.y, 0.0, 1.0);

@@ -1,0 +1,16 @@
+// Shared current-frame displacement, bilinear periodic sampling of both cascades.
+layout(set=0,binding=19,std430) readonly buffer ShoreFFT { vec4 shoreFFT[]; };
+vec3 fftCascade(vec2 p, uint cascade) {
+    vec2 q=fract(p/(cascade==0u?256.0:64.0))*64.0;
+    ivec2 a=ivec2(floor(q)); vec2 f=fract(q);
+    uint base=cascade*4096u;
+    return mix(mix(shoreFFT[base+uint(a.y&63)*64u+uint(a.x&63)].xyz,
+                   shoreFFT[base+uint(a.y&63)*64u+uint((a.x+1)&63)].xyz,f.x),
+               mix(shoreFFT[base+uint((a.y+1)&63)*64u+uint(a.x&63)].xyz,
+                   shoreFFT[base+uint((a.y+1)&63)*64u+uint((a.x+1)&63)].xyz,f.x),f.y);
+}
+vec3 fftShore(vec2 p,float depth) {
+    float shortening=mix(1.8,1.0,smoothstep(0.0,18.0,depth));
+    return (fftCascade(p*shortening,0u)+fftCascade(p*shortening,1u))
+          *smoothstep(0.0,6.0,depth);
+}

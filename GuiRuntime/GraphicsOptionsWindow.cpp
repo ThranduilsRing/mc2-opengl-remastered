@@ -29,6 +29,8 @@ void draw() {
         const char* detailNames[] = {"Low", "High"};
         bool changed = ImGui::Combo("Water reflections", &opts.reflectionQuality, reflectionNames, 4);
         changed |= ImGui::Combo("Water detail", &opts.waterDetail, detailNames, 2);
+        const char* shoreNames[] = {"Current", "A: Foam first", "B: Real waves"};
+        changed |= ImGui::Combo("Shoreline look", &opts.shorelineLook, shoreNames, 3);
         static bool saveFailed = false;
         if (changed) {
             saveFailed = !PlayerFrontEnd::saveRenderOptions || !PlayerFrontEnd::saveRenderOptions(opts);
