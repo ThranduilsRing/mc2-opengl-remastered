@@ -157,6 +157,7 @@ void Mission::loadMovement(MissionLoadFrame& f) {
 				 .areas = f.sections.find(mc2::save::tagMapAreas) != nullptr,
 				 .doors = f.sections.find(mc2::save::tagMapDoors) != nullptr,
 				 .links = f.sections.find(mc2::save::tagDoorLinks) != nullptr});
+			if (land) land->reloadVisualHeightWithPassability(GameMap);
 			if (GlobalMoveMap[0]->badLoad)
 				STOP((" Mission.Load: old version of move data In-Mission Save Obsolete."));
 

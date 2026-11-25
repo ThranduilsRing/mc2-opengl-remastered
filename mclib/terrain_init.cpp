@@ -20,6 +20,7 @@
 #include "../GameOS/gameos/height_sig.h"
 #include "../GameOS/gameos/terrain_visual_smooth.h"
 #include "../GameOS/gameos/load_scope.h"
+#include "move.h"
 
 
 //---------------------------------------------------------------------------
@@ -809,6 +810,29 @@ void Terrain::lodWaterShore() {
 	}
 }
 
+// RAVINE-WEATHER-1: the pathing grid loads after the terrain, so the synthesized visual height is rebuilt once the
+// passability is known; the weathering then moves only cells the pathing already blocks.
+static std::vector<unsigned char> s_ravineBlocked;
+static int s_ravineCells = 0;
+void Terrain::reloadVisualHeightWithPassability(MissionMap* gm) {
+	const int mapSide = static_cast<int>(realVerticesMapSide);
+	if (!gm || !mapData || gm->height != gm->width || gm->height <= 0 || mapSide < 3) return;
+	s_ravineCells = gm->height;
+	s_ravineBlocked.assign(static_cast<size_t>(s_ravineCells) * s_ravineCells, 0);
+	size_t nb = 0;
+	for (int r = 0; r < s_ravineCells; ++r)
+		for (int c = 0; c < s_ravineCells; ++c)
+			if (!gm->map[static_cast<size_t>(r) * gm->width + c].getPassable()) { s_ravineBlocked[static_cast<size_t>(r) * s_ravineCells + c] = 1; ++nb; }
+	TerrainLodInitFrame lf;
+	lf.elev.resize(static_cast<size_t>(mapSide) * mapSide);
+	const PostcompVertex* blks = mapData->getBlocks();
+	for (size_t i = 0; i < lf.elev.size(); ++i) lf.elev[i] = blks[i].elevation;
+	mc2::fmt::print_out("[RAVINE_WEATHER v1] blocked={:d}/{:d} cells\n", mc2::fmt::as_size(nb), mc2::fmt::as_size(s_ravineBlocked.size()));
+	lodVisualHeight(lf);
+	s_ravineCells = 0;
+	s_ravineBlocked.clear();
+}
+
 // LOD chunk: load the 4x visual heightfield bake when its gate is on.
 void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 	auto& elev = lf.elev;
@@ -852,7 +876,8 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 				FILE* vf = fopen(vhPath, "rb");
 			// TERRAIN-VALLEY-SMOOTH-1: no baked sidecar (mod / new map) -> synthesize the visual height at load.
 			std::optional<std::vector<float>> synthVh;
-			if (!vf) synthVh = mc2terrain::buildSmoothedVisualHeight(elev.data(), mapSide, Terrain::waterElevation);
+			if (!vf) synthVh = mc2terrain::buildSmoothedVisualHeight(elev.data(), mapSide, Terrain::waterElevation,
+			                                                         s_ravineCells > 0 ? &s_ravineBlocked : nullptr, s_ravineCells);
 			const bool synth = synthVh.has_value();
 			if (!vf && !synth)
 			{
