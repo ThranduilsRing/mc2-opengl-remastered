@@ -964,6 +964,10 @@ file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/radio_playback.inc" CONTENT "$
 mc2_height_slice(voiceover_playback mclib/soundsys.cpp
     "bool SoundSystem::isPlayingVoiceOver (void)" "bool SoundSystem::isDigitalMusicPlaying (void)")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/voiceover_playback.inc" CONTENT "${voiceover_playback}")
+mc2_height_slice(vehicle_recovery code/logisticsdata_save.cpp
+    "void LogisticsData::recoverDeployedVehicle(" "// A pilot already flying a live mech")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/vehicle_recovery.inc" CONTENT "${vehicle_recovery}")
+set_source_files_properties(test_file_inifile.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 target_sources(mc2_tests PRIVATE test_radio_playback.cpp)
 set_source_files_properties(test_radio_playback.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 # Mission-load exclusive accounting (standalone header).

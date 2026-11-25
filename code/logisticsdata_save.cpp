@@ -37,6 +37,7 @@ void LogisticsData::removeMechsInForceGroup()
 			DeployedMechSnapshot snap;
 			snap.variantName = (*si)->getName(); // a copy: variantName == LogisticsVariant::getName()
 			snap.pVariant    = (*si)->getVariant();
+			snap.fitID       = (*si)->getFitID();
 			deployedMechSnapshot.push_back( snap );
 		}
 	}
@@ -51,6 +52,20 @@ void LogisticsData::removeMechsInForceGroup()
 		{
 			iter = inventory.erase( iter );
 		}
+	}
+}
+
+void LogisticsData::recoverDeployedVehicle(long fitID, bool survives, int& forceGroup)
+{
+	for (auto& snap : deployedMechSnapshot)
+	{
+		if (snap.recovered || snap.fitID != fitID || !snap.pVariant ||
+			!snap.pVariant->getChassis()->isVehicle()) continue;
+		snap.recovered = true;
+		if (survives)
+			addMechToInventory(snap.pVariant, forceGroup++, getVehiclePilot(),
+				prefs.baseColor, prefs.highlightColor, prefs.highlightColor);
+		break;
 	}
 }
 
@@ -484,7 +499,12 @@ std::expected<void, long> LogisticsData::loadMech( FitIniFile& file, int& count 
 
 		if ( pilotKey )
 		{
-			for ( auto pIter = pilots.begin(); pIter != pilots.end(); ++pIter )
+			if (isVehicleUnit(pMech))
+			{
+				pMech->setPilot(getVehiclePilot());
+				if (++count > -1 && count < 13) pMech->setForceGroup(count);
+			}
+			else for ( auto pIter = pilots.begin(); pIter != pilots.end(); ++pIter )
 			{
 				if ( mc2::str::iequals( (*pIter).getFileName(), *pilotKey ) )
 				{
@@ -553,6 +573,9 @@ void	LogisticsData::setMissionCompleted( )
 		for ( int i = pTeam->getRosterSize() - 1; i > -1; i-- )
 		{
 			Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
+			if (pMover->isOnGUI() && pMover->getObjectType()->getObjectTypeClass() == GROUNDVEHICLE_TYPE &&
+				pMover->getCommanderId() == Commander::home->getId() && pMover->getMoveType() != MOVETYPE_AIR)
+				recoverDeployedVehicle(pMover->getTypeHandle(), !pMover->isDestroyed() && !pMover->isDisabled(), ForceGroupCount);
 
 			// Carry-over diagnostics distinguish filtering from inventory recovery failure.
 			{

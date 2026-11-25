@@ -143,6 +143,7 @@ static int musicSlotChannel (int slot)
 //---------------------------------------------------------------------------
 void SoundSystem::destroy (void)
 {
+	pendingStreams.clear();
     supportPreloadFile = nullptr;
     releaseSupportPlayback(supportHandle);
     for (auto& resource : supportResources) gosAudio_DestroyResource(&resource);
@@ -521,6 +522,7 @@ void SoundSystem::update (void)
 		}
 	}
 	
+	updateDigitalStreams();
 	if ((largestSensorContact > -1) && (sensorBeepUpdateTime > MAX_SENSOR_UPDATE_TIME))
 	{
 		playDigitalSample(SENSOR2);
@@ -671,9 +673,13 @@ std::optional<long> SoundSystem::playDigitalStream (mc2::czstring streamName)
         return std::nullopt;
     }
     mc2::overlap::assertMainThread("SoundSystem::playDigitalStream");
-    // Mission-one ABL tutorial calls share speech time with Renard's BIK.
-    if (isPlayingVoiceOver() || isChannelPlaying(RADIO_CHANNEL) ||
-        isChannelPlaying(BETTY_CHANNEL) || isChannelPlaying(SUPPORT_CHANNEL)) return std::nullopt;
+    if (useSound && streamName) pendingStreams.emplace_back(streamName);
+    updateDigitalStreams();
+    return NO_ERR;
+}
+
+std::optional<long> SoundSystem::startDigitalStream(mc2::czstring streamName)
+{
 	const char* accepted = "disabled";
 	std::string resourcePath;
 	bool resourceAccepted = false;
@@ -888,6 +894,15 @@ bool SoundSystem::isPlayingVoiceOver (void)
 }
 
 //---------------------------------------------------------------------------
+void SoundSystem::updateDigitalStreams()
+{
+    if (pendingStreams.empty() || isPlayingVoiceOver() || isChannelPlaying(RADIO_CHANNEL) ||
+        isChannelPlaying(BETTY_CHANNEL) || isChannelPlaying(SUPPORT_CHANNEL)) return;
+    const auto name = pendingStreams.front();
+    pendingStreams.erase(pendingStreams.begin());
+    startDigitalStream(name.c_str());
+}
+
 bool SoundSystem::isDigitalMusicPlaying (void)
 {
 	if (musicSlots[0].handle || musicSlots[1].handle)
@@ -1017,6 +1032,7 @@ void SoundSystem::stopSupportSample (void)
 {
     if (mc2::tick::defer(mc2::tick::Queue::Sound, [this] { stopSupportSample(); })) return;
     mc2::overlap::assertMainThread("SoundSystem::stopSupportSample");
+	pendingStreams.clear();
 	if (stream3Handle)
 	{
 		gosAudio_DestroyResource(&stream3Handle);

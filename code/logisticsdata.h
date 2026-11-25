@@ -312,8 +312,11 @@ private:
 	{
 		std::string			variantName;
 		LogisticsVariant*	pVariant = nullptr;
+		long fitID = 0;
+		bool recovered = false;
 	};
 	std::vector<DeployedMechSnapshot>				deployedMechSnapshot;
+	void recoverDeployedVehicle(long fitID, bool survives, int& forceGroup);
 	
 
 	LogisticsMech*									currentlyModifiedMech;

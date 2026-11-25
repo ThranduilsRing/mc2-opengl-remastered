@@ -10,6 +10,14 @@
 #include <fstream>
 #include <iterator>
 
+TEST_CASE("purchase_catalog/third party chassis outside the unlock table stay available") {
+    const std::vector<mc2purchase::Unlock> table{{"mw5_atlas", 9}};
+    CHECK(mc2purchase::supplementalAvailable("bt2018_marauder", true, 1, table));
+    CHECK_FALSE(mc2purchase::supplementalAvailable("mw5_atlas", true, 1, table));
+    CHECK(mc2purchase::supplementalAvailable("mw5_atlas", true, 9, table));
+    CHECK_FALSE(mc2purchase::supplementalAvailable("atlas", false, 1, table));
+}
+
 TEST_CASE("purchase_catalog/vehicle rule defaults on and filters every vehicle source") {
     mc2::rules::GameRules rules;
     CHECK(rules.purchaseVehicles);

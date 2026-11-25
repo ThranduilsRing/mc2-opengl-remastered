@@ -215,7 +215,8 @@ long LogisticsData::updateAvailability()
 	for (auto & variant : variants)
 	{
 		const auto stem = std::filesystem::path(variant->getFileName()).stem().string();
-		if ( variant->isAvailable() || !(s_purchaseAll || mc2purchase::unlocked(stem, purchaseMission, unlocks)) )
+		if ( variant->isAvailable() || !(s_purchaseAll || mc2purchase::supplementalAvailable(stem,
+			!mc2purchase::chassisSource(variant->getFileName()).empty(), purchaseMission, unlocks)) )
 			continue;
 		variant->setAvailable( true );
 		if ( !(variant->getID() >> 16) )
