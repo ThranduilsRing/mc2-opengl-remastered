@@ -817,3 +817,11 @@ TEST_CASE("texture decode: PNG memory and file preserve every RGBA byte") {
     CHECK_FALSE(image.loadPNG(static_cast<const char*>(nullptr)));
     CHECK(image.getPixels() == nullptr);
 }
+
+TEST_CASE("mip box filter R8: forest refusal preserves one byte per texel") {
+    CHECK(mc2tex::boxDownsampleR8({0, 10, 20, 30, 40, 50, 60, 70}, 4, 2) == std::vector<uint8_t>{25, 45});
+    CHECK(mc2tex::boxDownsampleR8({10, 20, 30, 40}, 1, 4) == std::vector<uint8_t>{15, 35});
+    CHECK(mc2tex::boxDownsampleR8({11}, 1, 1) == std::vector<uint8_t>{11});
+    CHECK(mc2tex::boxDownsampleR8({1}, 2, 2).empty());
+    CHECK(mc2tex::boxDownsampleR8({}, 0, 0).empty());
+}

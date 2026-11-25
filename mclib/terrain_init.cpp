@@ -820,9 +820,9 @@ static bool s_visualHeightSynth = false;
 void Terrain::reloadVisualHeightWithPassability(MissionMap* gm) {
 	if (!s_visualHeightSynth) return;   // a baked visual_height_4x sidecar (or no bake) does not depend on the pathing grid
 	const int mapSide = static_cast<int>(realVerticesMapSide);
-	if (!gm || !mapData || gm->height != gm->width || gm->height <= 0 || mapSide < 3) return;
-	s_ravineCells = gm->height;
-	s_ravineBlocked.assign(static_cast<size_t>(s_ravineCells) * s_ravineCells, 0);
+	if (!mapData || mapSide < 3) return;
+	s_ravineCells = gm && gm->height == gm->width && gm->height > 0 ? gm->height : -1;
+	s_ravineBlocked.assign(s_ravineCells > 0 ? static_cast<size_t>(s_ravineCells) * s_ravineCells : 0, 0);
 	size_t nb = 0;
 	for (int r = 0; r < s_ravineCells; ++r)
 		for (int c = 0; c < s_ravineCells; ++c)

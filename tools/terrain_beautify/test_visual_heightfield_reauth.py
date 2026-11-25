@@ -174,3 +174,26 @@ def test_crease_energy_metric_sane():
     assert _crease_energy(flat) == 0.0
     ridge = np.abs(np.arange(32, dtype=np.float64) - 16)[None, :].repeat(32, axis=0)
     assert _crease_energy(ridge) > 0.0
+
+def test_bake_publishes_only_after_quality_and_complete_writes(tmp_path, monkeypatch):
+    import visual_heightfield as vh
+    elev = np.arange(9, dtype=float).reshape(3, 3)
+    (tmp_path / "fixture.pak").touch()
+    monkeypatch.setattr(vh, "read_packets", lambda p: [])
+    monkeypatch.setattr(vh, "locate_mapdata", lambda p: (0, 3, b""))
+    monkeypatch.setattr(vh, "read_water_elevation", lambda p: 0)
+    monkeypatch.setattr(vh, "extract_layers", lambda *a: {"elev": elev})
+    out = tmp_path / "output"
+    vh.bake("fixture", tmp_path, out, 4, mips=False)
+    beauty = out / "fixture.beauty"
+    original = {p.name: p.read_bytes() for p in beauty.iterdir()}
+    def fail(*a):
+        raise OSError("interrupted preview")
+    monkeypatch.setattr(vh, "_save_gray", fail)
+    with pytest.raises(OSError):
+        vh.bake("fixture", tmp_path, out, 4, mips=False)
+    assert {p.name: p.read_bytes() for p in beauty.iterdir()} == original
+    monkeypatch.setattr(vh, "upsample_corner_pinned", lambda *a: np.full((9, 9), 100.0))
+    vh.bake("fixture", tmp_path, out, 4, mips=False)
+    assert {p.name: p.read_bytes() for p in beauty.iterdir()} == original
+    assert sorted(p.name for p in out.iterdir()) == ["fixture.beauty"]

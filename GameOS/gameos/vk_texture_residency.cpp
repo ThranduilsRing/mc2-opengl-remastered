@@ -216,7 +216,8 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
             for(uint32_t layer=0;layer<layers;++layer) {
                 if(rgba) {
                     std::vector<uint8_t> src(image.pixels.begin()+static_cast<size_t>(layer)*w*h*stride,image.pixels.begin()+static_cast<size_t>(layer+1)*w*h*stride);
-                    const auto down=mc2tex::boxDownsampleRgba8(src,w,h);
+                    const auto down=image.vkFormat==VK_FORMAT_R8_UNORM ? mc2tex::boxDownsampleR8(src,w,h) : mc2tex::boxDownsampleRgba8(src,w,h);
+                    if (down.size()!=layerBytes) return {};
                     std::memcpy(reduced.pixels.data()+layer*layerBytes,down.data(),layerBytes);
                 } else {
                     // Float data keeps its native format; nearest reduction preserves encoded gradients/heights.

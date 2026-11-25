@@ -37,3 +37,7 @@ def test_known_vector():
     # pins the byte layout the C++ side hashes: u32 side, then float32 LE rows
     assert height_sig(np.zeros((2, 2), dtype=np.float32)) == "2 " + format(
         __import__("height_sig").fnv1a64(b"\x02\x00\x00\x00" + b"\x00" * 16), "016x")
+
+def test_cpp_fixture():
+    elev = np.array([[0, 1.5, -2.25], [100, 3.75, 0.125], [7, 8, 9.5]])
+    assert height_sig(elev) == "3 08878b3b0a6edae3"

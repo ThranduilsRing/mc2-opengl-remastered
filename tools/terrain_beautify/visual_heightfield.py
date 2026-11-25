@@ -88,6 +88,7 @@ import argparse
 import hashlib
 import json
 import sys
+import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -1306,19 +1307,6 @@ def bake(mission: str, missions_dir: Path, out_root: Path, factor: int,
                      "self_check": selfck,
                      "levels": mm["stats"]}
 
-    beauty = out_root / f"{mission}.beauty"
-    beauty.mkdir(parents=True, exist_ok=True)
-    from height_sig import height_sig
-    (beauty / "gameplay_height.sig").write_text(height_sig(elev) + "\n", encoding="ascii")
-    visual.astype("<f4").tofile(beauty / f"visual_height_{factor}x.r32")
-    if mips:
-        mm["blob"].astype("<f4").tofile(beauty / "visual_height_mips.r32")
-    _save_gray(visual, beauty / "visual_height_preview.png")
-    _save_gray(np.abs(delta), beauty / "visual_delta_heatmap.png")
-    if damp is not None:
-        damp.astype("<f4").tofile(beauty / "visual_damp.r32")
-        _save_gray(damp, beauty / "visual_damp_preview.png")
-
     if reauth:
         note = ("REAUTH (TERRAIN-REAUTH-UNPIN-1): corner-UNpinned Taubin band-pass "
                 "smoothing; landform kept (extrema within shape_tolerance of local "
@@ -1361,7 +1349,36 @@ def bake(mission: str, missions_dir: Path, out_root: Path, factor: int,
         "max_mips": mips_info,
         "note": note,
     }
-    (beauty / "visual_height_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+    if reauth:
+        ra = reauth_info
+        cap = float(ra.get("effective_max_drift_wu", max_drift)) * 1.25 + float((ra.get("shore") or {}).get("bank_adjust_wu", {}).get("max", 0.0))
+        ok = (ra["extrema"]["violations"] == 0
+              and float(ra.get("landform_correlation_off_shore", ra["landform_correlation"])) >= 0.99
+              and 0.05 < max_corner_err <= cap)
+    else:
+        ok = max_corner_err <= (corner_clamp if reshape else 0.0) + 1e-4
+    if not ok:
+        return report
+    # Publish complete files only after the quality gate; signature is the commit marker.
+    out_root.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=out_root, suffix=".tmp") as stage:
+        beauty = Path(stage) / f"{mission}.beauty"
+        beauty.mkdir(parents=True, exist_ok=True)
+        from height_sig import height_sig
+        (beauty / "gameplay_height.sig").write_text(height_sig(elev) + "\n", encoding="ascii")
+        visual.astype("<f4").tofile(beauty / f"visual_height_{factor}x.r32")
+        if mips:
+            mm["blob"].astype("<f4").tofile(beauty / "visual_height_mips.r32")
+        _save_gray(visual, beauty / "visual_height_preview.png")
+        _save_gray(np.abs(delta), beauty / "visual_delta_heatmap.png")
+        if damp is not None:
+            damp.astype("<f4").tofile(beauty / "visual_damp.r32")
+            _save_gray(damp, beauty / "visual_damp_preview.png")
+        (beauty / "visual_height_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+        target = out_root / beauty.name
+        target.mkdir(parents=True, exist_ok=True)
+        for output in sorted(beauty.iterdir(), key=lambda p: p.name == "gameplay_height.sig"):
+            output.replace(target / output.name)
     return report
 
 
