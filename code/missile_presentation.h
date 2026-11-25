@@ -1,6 +1,6 @@
 #pragma once
 #include <algorithm>
-#include <glm/glm.hpp>
+#include "../mclib/math/glm_config.h"
 
 // Correct the locked simulation trajectory toward the live visual target.
 // Flight lifetime and damage remain owned by WeaponBolt::update.
