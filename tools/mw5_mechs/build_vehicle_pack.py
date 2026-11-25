@@ -173,6 +173,11 @@ def build(recipe, assemblies, stock, out):
                     classes={m['name']: 'painted_metal' for m in doc.get('materials', [])})
         variant = out/'variants'/('mw5-'+v['id'].replace('_','-'))
         cook(dict(mod_id=variant.name, name='MW5 '+v['id'], assets=[spec]), variant, compress=False)
+        registry = variant/'data/model_overrides/models.json'
+        models = json.loads(registry.read_text())
+        for record in models['overrides']:
+            record['lods'] = [dict(lod=i, source=record['source'], distance=i*500) for i in (1, 2)]
+        registry.write_text(json.dumps(models, indent=2)+'\n')
         manifest = variant/'mod.json'
         mod = json.loads(manifest.read_text()); mod['dependencies'] = ['mw5-vehicles']
         manifest.write_text(json.dumps(mod, indent=2)+'\n')
