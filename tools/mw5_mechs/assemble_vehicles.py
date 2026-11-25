@@ -50,7 +50,9 @@ def import_part(path, parent, prefix, moving):
     sockets = {n['name']: basis @ world(i) @ basis.inverted()
                for i, n in enumerate(nodes) if 'mesh' not in n}
     helpers = {b.custom_shape for o in added if o.type == 'ARMATURE' for b in o.pose.bones if b.custom_shape}
-    meshes = [o for o in added if o.type == 'MESH' and o not in helpers]
+    helper_name = re.compile(r'(^|[_. ])(icosphere|socket|helper|collision|ucx|ubx|usp|dummy)([_. ]|$)', re.I)
+    meshes = [o for o in added if o.type == 'MESH' and o not in helpers
+              and not helper_name.search(o.name)]
     result = []
     for ob in meshes:
         world = ob.matrix_world.copy()
@@ -66,7 +68,9 @@ def import_part(path, parent, prefix, moving):
             bm = bmesh.new()
             bm.from_mesh(mesh)
             bm.verts.ensure_lookup_table()
-            remove = [f for f in bm.faces if owners[f.verts[0].index] != target]
+            remove = [f for f in bm.faces if owners[f.verts[0].index] != target
+                      or (ob.data.materials and ob.data.materials[f.material_index]
+                          and helper_name.search(ob.data.materials[f.material_index].name))]
             bmesh.ops.delete(bm, geom=remove, context='FACES')
             bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context='VERTS')
             bm.to_mesh(mesh)
@@ -206,8 +210,10 @@ def main(recipe, output):
             params.update({k: str(pngs[v]) for k, v in vehicle.get('material_maps', {}).get(name, {}).items()})
             # These are unbound master-material placeholders, not vehicle maps.
             params = {k: v for k, v in params.items() if Path(v).stem not in ('Noise_VeryStrong_NRM', 'Flat_White')}
-            if not params:
-                continue
+            # Vehicle RGH maps are scalar roughness, not packed ORM. Reading
+            # their blue channel as metallic made painted turrets mirror chrome.
+            # Keep the resolved base colour/normal and use a matte finish.
+            params = {k: v for k, v in params.items() if 'orm' not in k.lower()}
             maps = dec['build_material'](mat, params, pngs, dec['material_colors'](name, props))
             if maps['normal']:
                 # Reconstruct BC5 Z and flip DirectX Y, as the mech texture cooker

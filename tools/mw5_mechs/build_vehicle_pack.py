@@ -158,7 +158,9 @@ def build(recipe, assemblies, stock, out):
         'Optional folders under variants can be copied beside the base mod and selected separately.\n'
         'Ground appearances replace nearest stock roles; VTOLs use the existing imported-mech path.\n'
         'Stock missions, movement, weapons and collision remain the gameplay source.\n'
-        'Source layered materials are approximated. Human infantry VAT gait and Elemental skeletal\n'
+        'Socket/helper meshes are excluded; unresolved layered materials use a matte fallback.\n'
+        'A different loose vehicle INI takes priority over this pack; restore stock INIs to use it.\n'
+        'Human infantry VAT gait and Elemental skeletal\n'
         'animation are not translated; these appearances retain their source bind pose.\n'
         'Turret yaw and barrel pitch are separate nodes; stock vehicle code controls yaw only.\n'
         'Look acceptance is pending owner review. See the assembly receipts and family sheets.\n')
