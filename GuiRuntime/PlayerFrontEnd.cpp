@@ -745,6 +745,14 @@ void drawMainMenu(bool showCredits) {
     popPickerStyle();
 }
 
+// Options with a dedicated live-saving widget in GraphicsOptionsWindow.cpp (pinned by
+// scripts/tests/test_live_widget_option_keys.py). drawOptions() draws no draft widget for them.
+static bool isLiveWidgetKey(std::string_view key) {
+    static constexpr std::string_view k_liveWidgetKeys[] = {"ReflectionQuality", "WaterDetail", "GroundAo", "TextureQuality", "SpatialAA"};
+    for (const auto k : k_liveWidgetKeys) if (k == key) return true;
+    return false;
+}
+
 void drawOptions() {
     static mc2::options::RenderOptions draft;
     static std::string loadedCfg;
@@ -769,28 +777,20 @@ void drawOptions() {
     ImGui::Text("Approximate fixed VRAM: %d MB (excludes mission textures/geometry)",
         256 + 96 + 8 + shadowMB[std::clamp(draft.shadowQuality, 0, 2)]);
     for (const auto& option : mc2::options::kOptions) {
+        if (isLiveWidgetKey(option.key)) continue; // The live window sections own these; a draft copy would revert them on Save.
         const char* label = std::string_view(option.key) == "RemasteredBuildings" ? "Remastered buildings (off: Classic)" : std::string_view(option.key) == "MechLabLocations" ? "Mech lab: Locations view (off: Classic grid)" : option.key;
         if (option.kind == mc2::options::Kind::Bool) ImGui::Checkbox(label, &(draft.*option.b));
         else if (option.kind == mc2::options::Kind::Long) {
-            if (std::string_view(option.key) == "SpatialAA") {
-                const char* labels[] = {"Off", "SMAA 1x", "FXAA", "CMAA2", "FSR 3.1 native AA"};
-                ImGui::Combo("Anti-aliasing", &(draft.*option.l), labels, IM_ARRAYSIZE(labels));
-            } else if (std::string_view(option.key) == "WaterReflections") {
+            if (std::string_view(option.key) == "WaterReflections") {
                 continue; // Legacy material/profile switch; player budget controls follow.
-            } else if (std::string_view(option.key) == "ReflectionQuality") {
-                continue; // The live Water quality section owns these controls.
             } else if (std::string_view(option.key) == "CameraView") {
                 const char* labels[] = {"Stock", "Closer", "Wide"};
                 ImGui::Combo("Camera view (next mission)", &(draft.*option.l), labels, IM_ARRAYSIZE(labels));
             } else if (std::string_view(option.key) == "AtmosphereQuality") {
                 const char* labels[] = {"Off", "Low", "High"};
                 ImGui::Combo("Atmosphere (fog and sun haze)", &(draft.*option.l), labels, IM_ARRAYSIZE(labels));
-            } else if (std::string_view(option.key) == "WaterDetail" || std::string_view(option.key) == "DrawDistance") {
+            } else if (std::string_view(option.key) == "DrawDistance") {
                 continue; // DrawDistance GUI row is a later lane
-            } else if (std::string_view(option.key) == "TextureQuality") {
-                const char* labels[] = {"Auto (by VRAM)", "Low", "Medium", "High", "Ultra"};
-                int idx = std::clamp(static_cast<int>(draft.*option.l) + 1, 0, 4);
-                if (ImGui::Combo("Texture quality", &idx, labels, 5)) draft.*option.l = idx - 1;
             } else ImGui::SliderInt(label, &(draft.*option.l), static_cast<int>(option.lo), static_cast<int>(option.hi));
         } else ImGui::SliderFloat(label, &(draft.*option.f), static_cast<float>(option.lo), static_cast<float>(option.hi));
     }
@@ -820,9 +820,14 @@ void drawOptions() {
         ImGui::TreePop();
     }
     if (ImGui::Button("Save player settings")) {
-        // Do not overwrite live water edits with this section's older draft.
-        draft.reflectionQuality = mc2::options::current().reflectionQuality;
-        draft.waterDetail = mc2::options::current().waterDetail;
+        // Never overwrite live-widget edits with this section's older draft.
+        const auto live = mc2::options::current();
+        for (const auto& option : mc2::options::kOptions) {
+            if (!isLiveWidgetKey(option.key)) continue;
+            if (option.kind == mc2::options::Kind::Bool) draft.*option.b = live.*option.b;
+            else if (option.kind == mc2::options::Kind::Long) draft.*option.l = live.*option.l;
+            else draft.*option.f = live.*option.f;
+        }
         if (!saveRenderOptions || !saveRenderOptions(draft)) error = "Could not save options.cfg.";
         else if (saveSettings()) { settingsChanged = true; error = "Saved. Restart the game to apply player settings."; }
     }

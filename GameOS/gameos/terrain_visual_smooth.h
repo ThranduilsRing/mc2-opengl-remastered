@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cmath>
 #include <optional>
+#include <thread>
 #include <vector>
 
 namespace mc2terrain {
@@ -28,6 +29,19 @@ inline float ravineNoise(float x, float y, unsigned seed)
     float u = x - i, v = y - j;
     u = u * u * (3 - 2 * u); v = v * v * (3 - 2 * v);
     return (hs(i, j) * (1 - u) + hs(i + 1, j) * u) * (1 - v) + (hs(i, j + 1) * (1 - u) + hs(i + 1, j + 1) * u) * v;
+}
+
+// Runs fn(firstRow, lastRow) over [0, rows) in contiguous bands on up to 4 threads. Each row is independent in every caller,
+// so the result is identical to the serial loop (deterministic, no ordering dependence).
+template <class Fn>
+inline void parallelBands(int rows, Fn fn)
+{
+    const unsigned workers = std::clamp(std::thread::hardware_concurrency() / 4u, 1u, 4u);
+    if (rows < 64 || workers < 2) { fn(0, rows); return; }
+    const int band = (rows + static_cast<int>(workers) - 1) / static_cast<int>(workers);
+    std::vector<std::jthread> pool;
+    for (unsigned w = 1; w < workers; ++w) pool.emplace_back([=] { fn(static_cast<int>(w) * band, std::min(static_cast<int>(w + 1) * band, rows)); });
+    fn(0, std::min(band, rows));
 }
 
 // RAVINE-WEATHER-1: horizontal weathering of cliff walls, only inside cells the pathing map already blocks.
@@ -61,8 +75,10 @@ inline void carveRavines(std::vector<float>& h, int V, const std::vector<unsigne
     };
     chamfer(d); chamfer(toImp);
     constexpr int R = 9;   // median radius in fine steps (288 wu): wider than the staircase period
-    std::vector<float> med = h, lo = h, hi = h, samp;
-    for (int y = 0; y < V; ++y)
+    std::vector<float> med = h, lo = h, hi = h;
+    parallelBands(V, [&](int rowFirst, int rowLast) {
+      std::vector<float> samp;
+      for (int y = rowFirst; y < rowLast; ++y)
         for (int x = 0; x < V; ++x) {
             const size_t i = static_cast<size_t>(x) + static_cast<size_t>(y) * V;
             if (toImp[i] > 7.0f) continue;   // only the band the warp can sample
@@ -76,6 +92,7 @@ inline void carveRavines(std::vector<float>& h, int V, const std::vector<unsigne
             const auto [mn, mx] = std::minmax_element(samp.begin(), samp.end());
             lo[i] = *mn; hi[i] = *mx;
         }
+    });
     auto at = [&](const std::vector<float>& f, float x, float y) {
         x = std::clamp(x, 0.0f, V - 1.001f); y = std::clamp(y, 0.0f, V - 1.001f);
         const int ix = static_cast<int>(x), iy = static_cast<int>(y);

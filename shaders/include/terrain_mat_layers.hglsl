@@ -12,3 +12,7 @@
 #define MAT_LAYER_ASPHALT       7   // mat7_normal.tga (clean_asphalt)
 #define MAT_LAYER_CONC_WALL     8   // mat8_normal.tga (concrete_wall_003)
 #define MAT_LAYER_COUNT         9
+// DETAIL-NORMAL array contract: layers 0-5 are the six required normal layers above (ROCK..MARBLE_CLIFF); the optional 7th
+// normal layer is the under-forest ground. Index 6 is therefore FOREST in the NORMAL array but PAINTED_CONC in the albedo
+// array: never use one array's index for the other. Pinned against terrain_tier1.frag by scripts/tests/test_terrain_layer_contract.py.
+#define MAT_LAYER_FOREST        6   // normal array only: forest_floor_normal.ktx2 (absent -> array depth 6)
