@@ -573,7 +573,7 @@ void	LogisticsData::setMissionCompleted( )
 		for ( int i = pTeam->getRosterSize() - 1; i > -1; i-- )
 		{
 			Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-			if (pMover->isOnGUI() && pMover->getObjectType()->getObjectTypeClass() == GROUNDVEHICLE_TYPE &&
+			if (pMover->isOnGUI() && pMover->getObjectType()->getObjectTypeClass() == VEHICLE_TYPE &&
 				pMover->getCommanderId() == Commander::home->getId() && pMover->getMoveType() != MOVETYPE_AIR)
 				recoverDeployedVehicle(pMover->getTypeHandle(), !pMover->isDestroyed() && !pMover->isDisabled(), ForceGroupCount);
 
