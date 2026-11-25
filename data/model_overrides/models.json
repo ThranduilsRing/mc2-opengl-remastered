@@ -409,7 +409,7 @@
     {
      "lod": 3,
      "source": "conifer_pine1/pristine_intact_lod3.glb",
-     "distance": 144.0
+     "distance": 576.0
     },
     {
      "lod": 4,
@@ -513,7 +513,7 @@
     {
      "lod": 3,
      "source": "conifer_pine2/pristine_intact_lod3.glb",
-     "distance": 231.5
+     "distance": 926.0
     },
     {
      "lod": 4,
@@ -617,7 +617,7 @@
     {
      "lod": 3,
      "source": "conifer_pine3/pristine_intact_lod3.glb",
-     "distance": 288.0
+     "distance": 1152.0
     },
     {
      "lod": 4,

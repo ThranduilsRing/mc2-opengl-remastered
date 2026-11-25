@@ -123,8 +123,6 @@ void mc2_static_prop_retype_far_tier(std::span<GpuStaticPropInstance> instances,
 }
 
 int mc2_static_prop_lod_skips_late(uint32_t typeID) {
-    // Tree mip edges retain partial coverage at every LOD, just as at LOD0.
-    if (typeID < s_types.size() && s_types[typeID].treeCanopy[1] > 0.0f) return 0;
     if (!s_lodMembers.contains(typeID)) return 0;
     const PropLodMember& m = s_lodMembers.at(typeID);
     return PropList::tierSkipsFringe(m.tier) ? 1 : 0;
