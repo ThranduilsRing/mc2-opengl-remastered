@@ -747,7 +747,7 @@ void drawMainMenu(bool showCredits) {
 
 // Options with a dedicated live-saving widget in GraphicsOptionsWindow.cpp (pinned by
 // scripts/tests/test_live_widget_option_keys.py). drawOptions() draws no draft widget for them.
-static bool isLiveWidgetKey(const char* key) {
+static bool isLiveWidgetKey(std::string_view key) {
     static constexpr std::string_view k_liveWidgetKeys[] = {"ReflectionQuality", "WaterDetail", "GroundAo", "TextureQuality", "SpatialAA"};
     for (const auto k : k_liveWidgetKeys) if (k == key) return true;
     return false;
