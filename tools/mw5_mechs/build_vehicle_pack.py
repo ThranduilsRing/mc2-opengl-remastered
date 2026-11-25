@@ -15,7 +15,7 @@ from tools.content_pipeline.cook import cook
 from tools.content_pipeline import ir
 from tools.content_pipeline.frontends import gltf_file
 from tools.content_pipeline.gltf_io import load_document
-from tools.mw5_mechs.build_pack import emit_ini, blocks
+from tools.mw5_mechs.build_pack import emit_ini, blocks, face_movement
 
 
 def write_glb(path, doc, binary):
@@ -137,7 +137,7 @@ def build(recipe, assemblies, stock, out):
             write_glb(path, doc, buffers[0])
             static_copies.append(path)
         specs.append(dict(frontend='gltf', id='mw5_'+v['id'], replaces='vehicle:mw5_'+v['id'], kind='prop',
-                          intact=str(path), frame='gltf', wu_per_unit=10,
+                          intact=str(path), frame='gltf', wu_per_unit=10, yaw_degrees=-90,
                           classes={m['name']: 'painted_metal' for m in doc.get('materials', [])}))
     try:
         cook(dict(mod_id='mw5-vehicles', name='Vehicles, infantry and Elemental', assets=specs), out,
@@ -203,6 +203,7 @@ def build(recipe, assemblies, stock, out):
                 'atlas_moveJumpUpIdle', 'atlas_moveCoreWalkBwd',
                 'atlas_moveCoreTurnLeftIdle', 'atlas_moveCoreTurnRightIdle',
                 'atlas_moveCoreWalkLimpFwdLeft', 'atlas_moveCoreWalkLimpFwdRight')]
+        face_movement(doc)
         write_glb(tgl/f'{stem}.glb', doc, buffers[0])
         node = v['components'][0]['node']
         bounds = receipts[v['id']]['bounds_m']
