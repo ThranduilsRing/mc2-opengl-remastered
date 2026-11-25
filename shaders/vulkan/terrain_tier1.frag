@@ -69,7 +69,7 @@ layout(set = 0, binding = 1, std430) readonly buffer TerrainHeightBuf {
 } uH;
 // TERRAIN-SHORELINE-V3: optional mask sidecar (G wet, B foam, A valid); read only while TS_shorelineHasMask != 0.
 layout(set = 0, binding = 14) uniform sampler2D u_shorelineMask;
-layout(set = 0, binding = 20) uniform sampler2D u_forestMask;   // tree-canopy density (RGBA8, density in R) over the colormap atlas extent
+layout(set = 0, binding = 20) uniform sampler2D u_forestMask;   // tree-canopy density (R8) over the colormap atlas extent
 
 // Material layer indices (mirror shaders/include/terrain_mat_layers.hglsl).
 #define MAT_LAYER_ROCK     0

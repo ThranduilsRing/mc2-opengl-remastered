@@ -171,6 +171,16 @@ TEST_CASE("player settings/preset application replaces every quality field") {
         CHECK(draft.baseQuality == to.baseQuality);
         CHECK(draft.shadowQuality == to.shadQual);
         CHECK(draft.spatialAA == to.aa);
+        std::string cfg = "[MechCommander2]\n";
+        for (const auto* key : {"BaseQuality", "ShadowQuality", "SpatialAA"}) {
+            const auto& option = *mc2::options::find(key);
+            cfg = mc2::options::cfg::set(cfg, option, std::to_string(draft.*option.l));
+        }
+        mc2::options::RenderOptions loaded;
+        mc2::options::cfg::loadFromText(loaded, cfg);
+        CHECK(loaded.baseQuality == draft.baseQuality);
+        CHECK(loaded.shadowQuality == draft.shadowQuality);
+        CHECK(loaded.spatialAA == draft.spatialAA);
     }
 }
 

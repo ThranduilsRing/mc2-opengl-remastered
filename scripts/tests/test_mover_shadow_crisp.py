@@ -28,6 +28,22 @@ def test_mover_sun_cone_is_narrower_than_the_bake():
     assert re.search(r"sun\[3\]\s*=\s*std::tan\(\s*moverSunAngularRadiusDeg\(", _code(STATE))
 
 
+def test_sharpness_table_and_cpu_shader_handoff():
+    fit = _code(FIT)
+    table = re.search(r"deg\[4\]\s*=\s*\{([^}]+)\}", fit).group(1)
+    degrees = [float(x.strip().removesuffix("f")) for x in table.replace(
+        "kMoverSunAngularRadiusDeg", str(_constant(FIT, "kMoverSunAngularRadiusDeg"))).split(",")]
+    assert degrees == [0.75, 0.4, 0.2, 0.05]
+    assert all(a > b for a, b in zip(degrees, degrees[1:]))
+    assert "(std::clamp)(sharpness, 0.0f, 3.0f)" in fit
+    assert "deg[i] + (deg[i + 1] - deg[i]) * (s - static_cast<float>(i))" in fit
+    profile = _code(ROOT / "GameOS/gameos/visual_tuning_profile.cpp")
+    assert "g_moverShadowSharpness = 3.0f" in profile
+    assert re.search(r"sharp\s*=\s*visualTuning_moverShadowSharpness\(\)", _code(STATE))
+    assert "frame_.light[3]=sharp;" in _code(STATE)
+    assert "clamp(moverFrame.light.w / 3.0, 0.0, 1.0)" in _code(SHADER)
+
+
 def test_mover_receiver_has_no_short_blocker_lift_or_distance_fade():
     code = _code(SHADER)
     assert "lift" not in code, "the short-blocker lift softens mech-height casters up to 3x"

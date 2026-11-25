@@ -620,6 +620,18 @@ FOREST_FLOOR_REL = "data/terrain_layers/forest_floor_normal.ktx2"
 FOREST_FLOOR_SRC = "E:/mc2-ref/terrain-normals-2026-11-24"  # drive-path: ok PC-only cook source; mirrors cook_forest_floor.SOURCE_DIR
 
 
+def cook_mod_visual_heights(src_root, target):
+    """Reuse the offline sidecar cook for installed mod maps; retain authored bakes."""
+    cook = Path(src_root) / "tools/terrain_beautify/visual_heightfield.py"
+    for pak in sorted((Path(target) / "mods").glob("*/data/missions/*.pak")):
+        sidecar = pak.parent / (pak.stem + ".beauty") / "visual_height_4x.r32"
+        if sidecar.is_file():
+            continue
+        subprocess.run([sys.executable, str(cook), pak.stem, "--missions-dir", str(pak.parent),
+                        "--out", str(pak.parent), "--allow-nonstock", "--reauth", "--cliff-drift", "56",
+                        "--cliff-melt-passes", "4"], check=True)
+
+
 def ensure_forest_floor(src_root, cooker=subprocess.run):
     _ensure_cooked_normal(src_root, FOREST_FLOOR_COOK, FOREST_FLOOR_REL, "forest floor normal", cooker, FOREST_FLOOR_SRC)
 
@@ -3770,6 +3782,8 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
         fail(f"asset parity: {len(drift.missing)} missing, {len(drift.size)} size-different, "
              f"{len(drift.content)} content-different, {len(drift.extra)} extra file(s) vs {asset_parity.default_ref()} "
              f"(missing e.g. {', '.join(drift.missing[:5])}); rerun without --no-asset-sync to copy them from v0.4", 8)
+    with deploy_phase("mod visual height cook", 900):
+        cook_mod_visual_heights(src_root, target)
     if not reuse and (Path(target) / "data/model_overrides/models.json").is_file():
         try:
             with deploy_phase("tree cook", 900):

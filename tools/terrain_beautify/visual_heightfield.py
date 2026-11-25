@@ -1308,6 +1308,8 @@ def bake(mission: str, missions_dir: Path, out_root: Path, factor: int,
 
     beauty = out_root / f"{mission}.beauty"
     beauty.mkdir(parents=True, exist_ok=True)
+    from height_sig import height_sig
+    (beauty / "gameplay_height.sig").write_text(height_sig(elev) + "\n", encoding="ascii")
     visual.astype("<f4").tofile(beauty / f"visual_height_{factor}x.r32")
     if mips:
         mm["blob"].astype("<f4").tofile(beauty / "visual_height_mips.r32")

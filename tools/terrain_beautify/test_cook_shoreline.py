@@ -187,6 +187,30 @@ def synthetic_island(tmp_path):
     return {"pak": pak, "fit": fit, "side": side, "elev": elev, "water_elev": water_elev}
 
 
+def test_deploy_cooks_mod_visual_height_and_retains_authored_bake(tmp_path):
+    import importlib.util
+    root = Path(__file__).resolve().parents[2]
+    sys.path.insert(0, str(root / "scripts"))
+    spec = importlib.util.spec_from_file_location("deploy_payload", root / "scripts/deploy_payload.py")
+    deploy = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(deploy)
+    missions = tmp_path / "mods/custom/data/missions"
+    missions.mkdir(parents=True)
+    _write_synthetic_pak(missions / "custom.pak", 60, 0, 15)
+    _write_fit(missions / "custom.fit", 0)
+    deploy.cook_mod_visual_heights(root, tmp_path)
+    sidecar = missions / "custom.beauty/visual_height_4x.r32"
+    assert sidecar.stat().st_size == ((60 - 1) * 4 + 1) ** 2 * 4
+    from height_sig import height_sig
+    from mission_terrain_analyzer import locate_mapdata, read_packets, extract_layers
+    _, side, blocks = locate_mapdata(read_packets(missions / "custom.pak"))
+    expected = height_sig(extract_layers(side, blocks, 0)["elev"])
+    assert (sidecar.parent / "gameplay_height.sig").read_text().strip() == expected
+    sidecar.write_bytes(b"authored bake")
+    deploy.cook_mod_visual_heights(root, tmp_path)
+    assert sidecar.read_bytes() == b"authored bake"
+
+
 # --- cook: end-to-end determinism -------------------------------------------
 def test_cook_deterministic(synthetic_island, tmp_path):
     out1 = tmp_path / "a.png"

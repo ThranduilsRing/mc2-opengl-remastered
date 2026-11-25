@@ -416,6 +416,12 @@ TEST_CASE("unit display: a NameID cell is a slot only when the whole cell is one
     CHECK(text[0] == 'x');
     mc2::names::readNameCell(master, 5, 3, id, text, sizeof(text));     // the file's last row
     CHECK(id == -7);
+    Ram quoted;
+    REQUIRE(quoted.load("Name,Type\n  \"Storm Crow Custom\"  ,MECH\n") == NO_ERR);
+    id = 0;
+    mc2::names::readNameCell(quoted, 2, 1, id, text, sizeof(text));
+    CHECK(id == 0);
+    CHECK(std::string(text) == "Storm Crow Custom");
 }
 
 }
