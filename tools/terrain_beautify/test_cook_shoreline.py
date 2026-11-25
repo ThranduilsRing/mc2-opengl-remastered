@@ -187,7 +187,8 @@ def synthetic_island(tmp_path):
     return {"pak": pak, "fit": fit, "side": side, "elev": elev, "water_elev": water_elev}
 
 
-def test_deploy_cooks_mod_visual_height_and_retains_authored_bake(tmp_path):
+@pytest.mark.parametrize("side", (60, 140, 160, 180))
+def test_deploy_cooks_mod_visual_height_and_retains_authored_bake(tmp_path, side):
     import importlib.util
     root = Path(__file__).resolve().parents[2]
     sys.path.insert(0, str(root / "scripts"))
@@ -196,13 +197,13 @@ def test_deploy_cooks_mod_visual_height_and_retains_authored_bake(tmp_path):
     spec.loader.exec_module(deploy)
     missions = tmp_path / "mods/custom/data/missions"
     missions.mkdir(parents=True)
-    _write_synthetic_pak(missions / "custom.pak", 60, 0, 15)
+    _write_synthetic_pak(missions / "custom.pak", side, 0, 15)
     _write_fit(missions / "custom.fit", 0)
     (missions / "scripts_only.pak").write_bytes(struct.pack("<II", 0xFEEDFACE, 8))
     deploy.cook_mod_visual_heights(root, tmp_path)
     assert not (missions / "scripts_only.beauty").exists()
     sidecar = missions / "custom.beauty/visual_height_4x.r32"
-    assert sidecar.stat().st_size == ((60 - 1) * 4 + 1) ** 2 * 4
+    assert sidecar.stat().st_size == ((side - 1) * 4 + 1) ** 2 * 4
     from height_sig import height_sig
     from mission_terrain_analyzer import locate_mapdata, read_packets, extract_layers
     _, side, blocks = locate_mapdata(read_packets(missions / "custom.pak"))

@@ -62,7 +62,7 @@ OFF_TEXDATA = 16
 OFF_TERRTYPE = 24
 OFF_WATER = 29
 WORLD_UNITS_PER_VERTEX = 128.0
-VALID_GRID_SIDES = (60, 80, 100, 120)
+VALID_GRID_SIDES = (60, 80, 100, 120, 140, 160, 180)
 
 # --- Terrain object record (code/objmgr.cpp countTerrainObjects) -------------
 OBJREC_SIZE = 40  # 10 * 4B: objTypeNum,x,y,z,rot,dmg,team,parent,pad,pad
