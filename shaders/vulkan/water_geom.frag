@@ -703,7 +703,8 @@ void main(void)
             if (shorelineLook == 2) crest = max(crest, foldingFoam);
             // A long-lived tail behind each breaker collects in shallow pockets, then dissipates.
             float age = fract((brokenPhase - 1.5707963) / 6.2831853);
-            float retention = exp(-age * 3.8) * (1.0 - smoothstep(8.0, 55.0, shoreDistance));
+            float retention = sin(3.14159265 * age) * exp(-age * 3.8) * 2.5
+                            * (1.0 - smoothstep(8.0, 55.0, shoreDistance));
             float contact = (1.0 - smoothstep(6.0, 26.0 + foamAA, shoreDistance))
                           * (0.35 + 0.25 * sin(swashPhase - 0.8));
             float holes = smoothstep(0.10, 0.64, foamTex.r * 0.72 + lace * 0.28);
