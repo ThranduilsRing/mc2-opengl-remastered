@@ -10,9 +10,9 @@ from pathlib import Path
 import numpy as np
 
 if __package__:
-    from .build_glb import load_recipe, trs_mat
+    from .build_glb import load_recipe, read_accessor, trs_mat
 else:
-    from build_glb import load_recipe, trs_mat
+    from build_glb import load_recipe, read_accessor, trs_mat
 
 
 def load_glb(path):
@@ -61,9 +61,9 @@ def package_nodes(glb, loadout, recipe=None):
             if np.linalg.norm(forward) < 1e-6:
                 raise ValueError('cannot resolve hull forward axis')
             forward /= np.linalg.norm(forward)
-            # Missing export sockets: place the muzzle just forward of the
-            # authored arm/torso bone, in metres, rather than guessing a barrel.
-            tip = world(joints[joint])[:3, 3] + forward * 0.4
+            verts = np.concatenate([read_accessor(g, buf, pr['attributes']['POSITION'])
+                                    for m in a['meshes'] for pr in g['meshes'][m]['primitives']])
+            tip = verts[np.argmax(verts @ forward)]
             local = (np.linalg.inv(world(joints[joint])) @ np.r_[tip, 1])[:3]
         if not np.all(np.isfinite(local)):
             raise ValueError(f'nonfinite muzzle: {name}')

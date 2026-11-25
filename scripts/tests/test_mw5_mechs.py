@@ -281,9 +281,10 @@ def test_attached_muzzle_in_rotated_joint_frame(fixture, tmp_path, authored):
     if authored:
         assert np.allclose(point, [2, 3, 30])
     else:
-        # Missing socket uses the owning bone and a 40 cm forward offset.
-        tip = frame[:3, 3] + np.array([0, 0, .4])
-        expected = (np.linalg.inv(frame) @ np.r_[tip, 1])[:3]
+        # Independent expected tip: transform every source vertex, select by +Z.
+        verts = np.arange(18).reshape(6, 3)
+        world = (np.c_[verts, np.ones(6)] @ frame.T)[:, :3]
+        expected = verts[np.argmax(world[:, 2])]
         assert np.allclose(point, expected, atol=1e-4)
     assert all(len(n['name']) <= 24 for n in doc['nodes'])
     assert all(not any(s in m['name'].lower() for s in ('_explode', '_dmg', 'blip', 'indc', 'uix'))
