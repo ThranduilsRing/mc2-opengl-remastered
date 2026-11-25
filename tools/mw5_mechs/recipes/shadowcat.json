@@ -33,8 +33,7 @@
       "wear": "/Game/DLC7/Objects/Mechs/CLANS/ShadowCat/Model/Body/Textures/ShadowCat_Body_Wear_MSK.ShadowCat_Body_Wear_MSK"
     },
     "cockpit": {
-      "hull": "/Game/DLC7/Objects/Mechs/CLANS/ShadowCat/Model/Body/SHC_TP_Cockpit_DM0_STM",
-      "glass": "/Game/DLC7/Objects/Mechs/CLANS/ShadowCat/Model/Cockpit/ShadowCat_CockpitGlass_STM"
+      "hull": "/Game/DLC7/Objects/Mechs/CLANS/ShadowCat/Model/Body/SHC_TP_Cockpit_DM0_STM"
     },
     "weapons": {
       "Weapon_Mech_SHC_Forearm_Right_EH1_Laser_SKM": "/Game/DLC7/Objects/Mechs/CLANS/ShadowCat/Model/Weapons/Weapon_Mech_SHC_Forearm_Right_EH1_Laser_SKM",
@@ -159,7 +158,7 @@
   },
   "cockpit": {
     "bone": "j_COCKPIT",
-    "drop_glass": true,
+    "drop_glass": false,
     "glass": {
       "tile": "auto",
       "albedo_linear": [

@@ -255,7 +255,7 @@
    "campaign_uses": 0,
    "mw5": "archer",
    "mw5_object": "/Game/Objects/Mechs/Archer/Model/Body/Archer_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "archer2",
@@ -279,7 +279,7 @@
    "campaign_uses": 0,
    "mw5": "assassin",
    "mw5_object": "/Game/Objects/Mechs/Assassin/Model/Body/Assassin_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "avatar",
@@ -295,7 +295,7 @@
    "campaign_uses": 0,
    "mw5": "awesome",
    "mw5_object": "/Game/Objects/Mechs/Awesome/Model/Body/Awesome_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "battlemaster",
@@ -311,7 +311,7 @@
    "campaign_uses": 0,
    "mw5": "blackjack",
    "mw5_object": "/Game/Objects/Mechs/Blackjack/Model/Body/Blackjack_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "bloodasp2",
@@ -343,7 +343,7 @@
    "campaign_uses": 0,
    "mw5": "centurion",
    "mw5_object": "/Game/Objects/Mechs/Centurion/Model/Body/Centurion_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "centurion1",
@@ -367,7 +367,7 @@
    "campaign_uses": 0,
    "mw5": "champion",
    "mw5_object": "/Game/DLC1/Objects/Mechs/Champion/Model/Body/Champion_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "chimera",
@@ -383,7 +383,7 @@
    "campaign_uses": 0,
    "mw5": "cicada",
    "mw5_object": "/Game/Objects/Mechs/Cicada/Model/Body/Cicada_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "commando",
@@ -391,7 +391,7 @@
    "campaign_uses": 0,
    "mw5": "commando",
    "mw5_object": "/Game/Objects/Mechs/Commando/Model/Body/Commando_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "commando2c",
@@ -423,7 +423,7 @@
    "campaign_uses": 0,
    "mw5": "crab",
    "mw5_object": "/Game/Objects/Mechs/Crab/Model/Body/Crab_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "crossbow",
@@ -439,7 +439,7 @@
    "campaign_uses": 0,
    "mw5": "crusader",
    "mw5_object": "/Game/DLC4/Objects/Mechs/Crusader/Model/Body/Crusader_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "dervish",
@@ -455,7 +455,7 @@
    "campaign_uses": 0,
    "mw5": "direwolf",
    "mw5_object": "/Game/DLC7/Objects/Mechs/CLANS/DireWolf/Model/Body/Direwolf_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "dragon",
@@ -463,7 +463,7 @@
    "campaign_uses": 0,
    "mw5": "dragon",
    "mw5_object": "/Game/Objects/Mechs/Dragon/Model/Body/Dragon_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "elemental",
@@ -487,7 +487,7 @@
    "campaign_uses": 0,
    "mw5": "executioner",
    "mw5_object": "/Game/DLC7/Objects/Mechs/CLANS/Executioner/Model/Body/Executioner_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "fafnir",
@@ -519,7 +519,7 @@
    "campaign_uses": 0,
    "mw5": "firestarter",
    "mw5_object": "/Game/Objects/Mechs/Firestarter/Model/Body/Firestarter_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "firewraith",
@@ -543,7 +543,7 @@
    "campaign_uses": 0,
    "mw5": "gargoyle",
    "mw5_object": "/Game/DLC7/Objects/Mechs/CLANS/Gargoyle/Model/Body/Gargoyle_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "gladiator",
@@ -663,7 +663,7 @@
    "campaign_uses": 0,
    "mw5": "javelin",
    "mw5_object": "/Game/Objects/Mechs/Javelin/Model/Body/Javelin_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "jenner",
@@ -671,7 +671,7 @@
    "campaign_uses": 0,
    "mw5": "jenner",
    "mw5_object": "/Game/Objects/Mechs/Jenner/Model/Body/Jenner_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "jenner2c",
@@ -703,7 +703,7 @@
    "campaign_uses": 0,
    "mw5": "locust",
    "mw5_object": "/Game/Objects/Mechs/Locust/Model/Body/Locust_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "locust2c",
@@ -727,7 +727,7 @@
    "campaign_uses": 0,
    "mw5": "longbow",
    "mw5_object": "/Game/DLC5/Objects/Mechs/Longbow/Model/Body/Longbow_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "lupus",
@@ -767,7 +767,7 @@
    "campaign_uses": 0,
    "mw5": "marauder",
    "mw5_object": "/Game/Objects/Mechs/Marauder/Model/Body/Marauder_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "marauder2c",
@@ -847,7 +847,7 @@
    "campaign_uses": 0,
    "mw5": "orion",
    "mw5_object": "/Game/Objects/Mechs/Orion/Model/Body/Orion_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "orion2c",
@@ -879,7 +879,7 @@
    "campaign_uses": 0,
    "mw5": "panther",
    "mw5_object": "/Game/Objects/Mechs/Panther/Model/Body/Panther_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "phantom",
@@ -895,7 +895,7 @@
    "campaign_uses": 0,
    "mw5": "adder",
    "mw5_object": "/Game/DLC7/Objects/Mechs/CLANS/Adder/Model/Body/Adder_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "quickdraw",
@@ -903,7 +903,7 @@
    "campaign_uses": 0,
    "mw5": "quickdraw",
    "mw5_object": "/Game/Objects/Mechs/Quickdraw/Model/Body/Quickdraw_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "ranger",
@@ -919,7 +919,7 @@
    "campaign_uses": 0,
    "mw5": "rifleman",
    "mw5_object": "/Game/Objects/Mechs/Rifleman/Model/Body/Rifleman_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "rifleman2c",
@@ -951,7 +951,7 @@
    "campaign_uses": 0,
    "mw5": "shadowhawk",
    "mw5_object": "/Game/Objects/Mechs/Shadowhawk/Model/Body/Shadowhawk_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "stalker",
@@ -1055,7 +1055,7 @@
    "campaign_uses": 0,
    "mw5": "victor",
    "mw5_object": "/Game/Objects/Mechs/Victor/Model/Body/Victor_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "viking",
@@ -1071,7 +1071,7 @@
    "campaign_uses": 0,
    "mw5": "vindicator",
    "mw5_object": "/Game/Objects/Mechs/Vindicator/Model/Body/Vindicator_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "vulcan",
@@ -1079,7 +1079,7 @@
    "campaign_uses": 0,
    "mw5": "vulcan",
    "mw5_object": "/Game/DLC1/Objects/Mechs/Vulcan/Model/Body/Vulcan_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "vulture1",
@@ -1095,7 +1095,7 @@
    "campaign_uses": 0,
    "mw5": "warhammer",
    "mw5_object": "/Game/Objects/Mechs/Warhammer/Model/Body/Warhammer_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "warhammer2c",
@@ -1111,7 +1111,7 @@
    "campaign_uses": 0,
    "mw5": "warhawk",
    "mw5_object": "/Game/DLC7/Objects/Mechs/CLANS/Warhawk/Model/Body/Warhawk_SKM",
-   "status": "recipe-needed"
+   "status": "done"
   },
   {
    "mc2": "waterwolf",

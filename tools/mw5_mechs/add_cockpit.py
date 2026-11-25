@@ -72,7 +72,9 @@ def add_cockpit(glb_in, glb_out, hull, glass, recipe=None):
     hull_parts = static_primitives(hull)
     glass_parts = hull_parts[1:] + (static_primitives(glass) if glass else [])  # window insets + canopy pane
     parts = {"cockpit_hull": [hull_parts[0]]}
-    if glass_parts:
+    if not glass:
+        parts["cockpit_hull"] = hull_parts  # authored window panes share the frame's node and skin
+    elif glass_parts:
         parts["cockpit_glass"] = glass_parts
     doc["materials"].append({"name": "mw5_glass", "pbrMetallicRoughness": {
         "baseColorTexture": {"index": 0}, "metallicFactor": cfg["glass"]["metallic"], "roughnessFactor": cfg["glass"]["roughness"]}})
@@ -81,7 +83,8 @@ def add_cockpit(glb_in, glb_out, hull, glass, recipe=None):
     for name, plist in parts.items():
         pos = np.concatenate([(np.c_[p, np.ones(len(p))] @ frame.T)[:, :3] for p, _, _, _ in plist]).astype(np.float32)
         nrm = np.concatenate([n @ frame[:3, :3].T for _, n, _, _ in plist]).astype(np.float32)
-        uv = np.concatenate([np.tile(tile_uv, (len(u), 1)) if name.endswith("glass") else u for _, _, u, _ in plist]).astype(np.float32)
+        uv = np.concatenate([np.tile(tile_uv, (len(u), 1)) if name.endswith("glass") or (not glass and i > 0) else u
+                             for i, (_, _, u, _) in enumerate(plist)]).astype(np.float32)
         base, idx = 0, []
         for p, _, _, t in plist:
             idx.append(t + base)
