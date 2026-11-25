@@ -619,12 +619,21 @@ void main(void)
     // wind streaks), each faded as its wavelength nears the pixel footprint; the faded slope goes to the GGX roughness.
     float rippleCrest = 0.0;
     if (shorelineLook == 1 && debugMode != 3) {
-        waveSlope *= 0.3; waveVar *= 0.09;
+        // Open water (owner refs 1-3): wind gusts roughen patches of tens to hundreds of metres (cat's paws) between
+        // glassy slicks, at two scales; a gentle domain warp bends the wavefronts so direction and wavelength vary.
+        // The coast band keeps the uniform field (shores unchanged).
+        float offshore = 1.0 - coastWeight;
+        vec2  gp = WorldPos.xy + vec2(0.0, 6.0) * time;
+        float gustBig = smoothstep(0.3, 0.7, vnoise(gp / 900.0 + 3.1)), gustSmall = smoothstep(0.25, 0.75, vnoise(gp / 260.0 + 11.7));
+        float gust = mix(1.0, mix(0.06, 1.6, gustBig * (0.35 + 0.65 * gustSmall)), offshore);
+        vec2  warpP = WorldPos.xy + offshore * 70.0 * (vec2(vnoise(WorldPos.xy / 650.0), vnoise(WorldPos.xy / 650.0 + 23.0)) - 0.5);
+        waveSlope *= 0.3 * gust; waveVar *= 0.09 * gust * gust;
         for (int i = 0; i < 10; ++i) {   // trains 8-9 (L 6.6-4.5) break the near glint into sparkle
-            float L = 90.0 * pow(0.69, float(i)), k = 6.2831853 / L, s = 0.055 * pow(0.84, float(i)) * (RIPPLE_GAIN / 0.22);
+            float L = 90.0 * pow(0.69, float(i)), k = 6.2831853 / L, s = 0.055 * pow(0.84, float(i)) * (RIPPLE_GAIN / 0.22)
+                    * mix(1.0, i < 3 ? mix(0.35, 1.4, gustBig) : gust, offshore);
             vec2  d = vec2(cos(0.7 + 2.39996 * float(i)), sin(0.7 + 2.39996 * float(i)));
             float keep = smoothstep(2.0, 6.0, L / max(footprint, 1e-3));
-            float ph = k * dot(d, WorldPos.xy + float(i) * vec2(31.0, 17.0)) - sqrt(WAVE_G * k) * time;
+            float ph = k * dot(d, warpP + float(i) * vec2(31.0, 17.0)) - sqrt(WAVE_G * k) * time;
             waveSlope += d * (s * keep * cos(ph));
             if (i < 8) rippleCrest += s * k * keep * sin(ph);   // -Laplacian: crest convexity
             waveVar += 0.5 * s * s * (1.0 - keep * keep);
@@ -817,7 +826,8 @@ void main(void)
         PREC float grazeW = pow(1.0 - max(vdir.z, 0.0), GRAZE_SKY_EXP);
         skyReflCol = mix(skyReflCol, F.f9.xyz, GRAZE_SKY_PULL * grazeW) * nightSky;
         skyReflCol *= 1.0 + NEAR_SKY_LIFT * nearGloss;   // WATER-GLOSS-NEAR: nearGloss is 0 at night
-        if (shorelineLook == 1) skyReflCol *= vec3(0.80, 0.95, 1.03);   // coastal: deep water reads blue, not grey (owner refs)
+        // Night: the pale horizon haze mirrored in grazing ripple facets read as white dashes; the moonlit sky reflects dim.
+        if (shorelineLook == 1) skyReflCol *= vec3(0.80, 0.95, 1.03) * (1.0 - 0.6 * coastNight);   // coastal: deep water reads blue, not grey (owner refs)
         reflectCol = skyReflCol;   // default reflection = sky (fallback/base)
         //PORT-END:waterReflSetup
         vec4 geometry=vec4(0);
