@@ -234,14 +234,14 @@ def check_albedo(rgba, stock):
     return metrics
 
 
-def build_prop(inst, prop, out, matidx, texcache):
+def build_prop(inst, prop, out, matidx, texcache, srcdata=None):
     """One prop package: per LOD one GLB with one baked texture set (albedo, normal, ORM) over all submeshes."""
     pid = prop["id"]
     pdir = out / pid
     pdir.mkdir(parents=True, exist_ok=True)
     lods, materials_doc, bounds = [], [], None
     from stock_props import stock_prims
-    stock = stock_prims(prop["replaces"][0].split(":", 1)[-1], None, out / "stock", textured=True)
+    stock = stock_prims(prop["replaces"][0].split(":", 1)[-1], srcdata, out / "stock", textured=True)
     stock_pos = np.concatenate([p["pos"] for p in stock])
     stock_size = stock_pos.max(0) - stock_pos.min(0)
     stock_tex = [p["tex"].reshape(-1, 3) for p in stock if p["tex"] is not None]
@@ -350,6 +350,7 @@ def build_recipe(manifests, out, catalog):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--install", default=DEFAULT_INSTALL)
+    ap.add_argument("--srcdata", type=Path, help="stock tgl dir (default stock_props.DEFAULT_SRCDATA)")
     ap.add_argument("--catalog", type=Path, default=Path(__file__).with_name("props_catalog.json"))
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--only", help="comma separated prop ids")
@@ -376,7 +377,7 @@ def main(argv=None):
         if wanted and prop["id"] not in wanted:
             continue
         try:
-            manifest = build_prop(inst, prop, args.out, matidx, texcache)
+            manifest = build_prop(inst, prop, args.out, matidx, texcache, args.srcdata)
         except ValueError as exc:
             print("DROP", prop["replaces"], str(exc))
             dropped.update({key: str(exc) for key in prop["replaces"]})

@@ -226,6 +226,33 @@ def test_prop_recipe_keeps_full_detail_atlas_and_scale_audit(tmp_path, monkeypat
     assert all(0.9 <= registry["stockFit"]["ratio"][axis] <= 1.0 for axis in (0, 2))
 
 
+def test_extract_srcdata_reaches_stock_loader(tmp_path, monkeypatch):
+    import extract_bt2018_props as ex
+    import stock_props
+    import json
+    from types import SimpleNamespace
+
+    catalog = tmp_path / "catalog.json"
+    catalog.write_text(json.dumps({"props": [{"id": "bt_a", "replaces": ["staticprop:a"]}]}))
+    monkeypatch.setattr(ex, "Install", lambda _: None)
+    monkeypatch.setattr(ex.bake_materials, "MaterialIndex", lambda *_: None)
+    monkeypatch.setattr(ex.bake_materials, "TexCache", lambda _: SimpleNamespace(full={}))
+    seen = []
+
+    def stock_prims(name, srcdata, work, textured=False):
+        seen.append((name, srcdata, work, textured))
+        raise ValueError("stop after stock lookup")
+
+    monkeypatch.setattr(stock_props, "stock_prims", stock_prims)
+    for override in (None, tmp_path / "custom-tgl"):
+        out = tmp_path / ("default" if override is None else "override")
+        argv = ["--catalog", str(catalog), "--out", str(out)]
+        if override is not None:
+            argv += ["--srcdata", str(override)]
+        assert ex.main(argv) == 0
+        assert seen[-1] == ("a", override, out / "stock", True)
+
+
 def test_check_ids_rejects_long_or_duplicate_ids():
     import match_stock_props as mp
     import pytest
