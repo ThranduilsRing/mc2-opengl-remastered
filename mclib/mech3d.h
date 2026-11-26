@@ -59,11 +59,11 @@ struct _GestureData
 //-------------------------------------------------------------------------------
 // Macro Definitions
 inline constexpr int GesturePark = 0;
-inline constexpr int GestureStandToPark = 1;
+inline constexpr int GestureStandToPark = 5;
 inline constexpr int GestureStand = 2;
 inline constexpr int GestureStandToWalk = 3;			//OBSOLETE!
 inline constexpr int GestureWalk = 4;
-inline constexpr int GestureParkToStand = 5;
+inline constexpr int GestureParkToStand = 1;
 inline constexpr int GestureWalkToRun = 6;			//OBSOLETE!
 inline constexpr int GestureRun = 7;
 inline constexpr int GestureRunToWalk = 8;			//OBSOLETE!
