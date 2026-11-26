@@ -1591,11 +1591,63 @@ GuiCombo {
     itemOffsetY = 2
 }
 GuiText {
+    key = "game.mcl_optionsgraphics.text.frame_limit"
+    pageKey = "game.mcl_optionsgraphics"
+    rect = "26,229,261,17"
+    mountOffset = "95,156"
+    visibleText = "Frame rate limit"
+    font = "Agency Regular"
+    fontSize = 11
+    colorArgb = "0xffc66600"
+}
+GuiText {
+    key = "game.mcl_optionsgraphics.text.vsync"
+    pageKey = "game.mcl_optionsgraphics"
+    rect = "304,229,261,17"
+    mountOffset = "95,156"
+    visibleText = "VSync"
+    font = "Agency Regular"
+    fontSize = 11
+    colorArgb = "0xffc66600"
+}
+GuiCombo {
+    key = "game.mcl_optionsgraphics.combo.frame_limit"
+    pageKey = "game.mcl_optionsgraphics"
+    rect = "26,247,261,20"
+    mountOffset = "95,156"
+    font = "Agency Regular"
+    fontSize = 11
+    colorArgb = "0xffc66600"
+    fillColorArgb = "0xff0a1424"
+    borderColorArgb = "0xffc66600"
+    highlightColorArgb = "0xff3a5f8a"
+    popupHeight = 126
+    itemHeight = 17
+    itemOffsetX = 4
+    itemOffsetY = 2
+}
+GuiCombo {
+    key = "game.mcl_optionsgraphics.combo.vsync"
+    pageKey = "game.mcl_optionsgraphics"
+    rect = "304,247,140,20"
+    mountOffset = "95,156"
+    font = "Agency Regular"
+    fontSize = 11
+    colorArgb = "0xffc66600"
+    fillColorArgb = "0xff0a1424"
+    borderColorArgb = "0xffc66600"
+    highlightColorArgb = "0xff3a5f8a"
+    popupHeight = 58
+    itemHeight = 17
+    itemOffsetX = 4
+    itemOffsetY = 2
+}
+GuiText {
     key = "game.mcl_optionsgraphics.text.water_status"
     pageKey = "game.mcl_optionsgraphics"
-    rect = "26,229,400,17"
+    rect = "26,277,400,17"
     mountOffset = "95,156"
-    visibleText = "Water settings are saved automatically and apply live."
+    visibleText = "Graphics settings are saved automatically and apply live."
     font = "Agency Regular"
     fontSize = 11
     colorArgb = "0xffc66600"

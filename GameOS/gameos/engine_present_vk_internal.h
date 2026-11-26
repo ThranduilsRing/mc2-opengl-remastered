@@ -52,6 +52,7 @@ struct EnginePresentVk::Impl {
     VkExtent2D               scExtent  = {0, 0};
     VkSurfaceTransformFlagBitsKHR scTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;   // preTransform the chain was built with
     VkPresentModeKHR         presentMode = VK_PRESENT_MODE_FIFO_KHR;
+    int requestedVsync = -1;
     std::vector<VkImage>     scImages;
     std::vector<mc2vk::OwnedSemaphore> renderSems;   // one per image (present-wait target)
 

@@ -286,3 +286,29 @@ TEST_CASE("campaign picker/saved import-source campaign resets to stock") {
     CHECK(validSavedCampaign(packs, "exodus-dca4afc8", hidden) == "exodus-dca4afc8");
     CHECK(validSavedCampaign(packs, "gone", hidden).empty());
 }
+
+TEST_CASE("frame pacing/options persist and caps resolve") {
+    using namespace mc2::options;
+    RenderOptions defaults;
+    CHECK(defaults.frameRateLimit == 0);
+    CHECK(defaults.vsync == 0);
+    for (int selection = 0; selection <= 6; ++selection) {
+        for (int vsync = 0; vsync <= 2; ++vsync) {
+            std::string text = "[MechCommander2]\n";
+            text = cfg::set(text, *find("FrameRateLimit"), std::to_string(selection));
+            text = cfg::set(text, *find("VSync"), std::to_string(vsync));
+            RenderOptions loaded;
+            CHECK(cfg::loadFromText(loaded, text) == 2);
+            CHECK(loaded.frameRateLimit == selection);
+            CHECK(loaded.vsync == vsync);
+            const int expected[] = {0, 60, 120, 144, 165, 240, 180};
+            CHECK(effectiveFrameCap(selection, 180, false, 0, true) == expected[selection]);
+            CHECK(effectiveFrameCap(selection, 180, false, 0, false) == 90);
+            CHECK(effectiveFrameCap(selection, 180, true, 0, true) == 0);
+            CHECK(effectiveFrameCap(selection, 180, true, 30, false) == 30);
+        }
+    }
+    CHECK(effectiveFrameCap(6, 0, false, 0, true) == 60);
+    CHECK(setFromText(defaults, *find("FrameRateLimit"), "7") != Verdict::Ok);
+    CHECK(setFromText(defaults, *find("VSync"), "3") != Verdict::Ok);
+}

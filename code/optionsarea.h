@@ -119,6 +119,8 @@ public:
 private:
 	int waterReflectionSelection = -1;
 	int waterDetailSelection = -1;
+	int frameLimitSelection = -1;
+	int vsyncSelection = -1;
 	aDropList		resolutionList;
 	aDropList		cardList;
 	bool			bExpanded;
