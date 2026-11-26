@@ -1766,6 +1766,12 @@ class Camera
 			return camera_frustum_math::sphereInCone(cosine, cosHalfFOV, radius, distance);
 		}
 
+		bool sphereInFrustum(const glm::vec3& center, float radius) const
+		{
+			const float p[3]={center.x,center.y,center.z};
+			return camera_frustum_math::sphereInFrustum(cachedFrustumPlanes_,p,radius);
+		}
+
 		void setFieldOfView (float fov)
 		{
 			camera_fov = std::clamp(fov, FOVMin, FOVMax);

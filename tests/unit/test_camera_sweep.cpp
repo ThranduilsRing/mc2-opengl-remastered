@@ -2,6 +2,7 @@
 #include "camera_frustum_math.h"
 #include "camera_elevation.h"
 #include "../../GameOS/gameos/shadow_mover_fit.h"
+#include "../../RenderCore/VisibilityHistory.h"
 #include "math/mc2_xform.h"
 #include "../../3rdparty/glm/glm/gtc/matrix_transform.hpp"
 
@@ -115,5 +116,23 @@ TEST_CASE("camera sweep: shadow footprint circle covers tilted views at every ya
                 CHECK(glm::length(glm::vec2(hit.x,hit.z))<=region.radius+0.1f);
             }
         }
+    }
+}
+
+TEST_CASE("camera sweep: light sphere and current actor survive an offscreen centre and lag") {
+    float planes[6][4]={{1,0,0,1},{-1,0,0,1},{0,1,0,1},{0,-1,0,1},{0,0,1,0},{0,0,-1,10}};
+    const float light[3]={2,0,5};
+    CHECK_FALSE(camera_frustum_math::sphereInFrustum(planes,light,0));
+    CHECK(camera_frustum_math::sphereInFrustum(planes,light,1.1f));
+    RenderCore::VisibilityHistory history(1);
+    history.consume([](uint32_t, auto& sample) { sample.count=1; sample.ids[0]=1; sample.bits[0]=0; return true; });
+    history.buildSnapshot(2,false);
+    REQUIRE_FALSE(history.isVisible(1));
+    // A yaw of 3 degrees per frame carries this point inside the live right plane.
+    for(int lag=1;lag<=2;++lag) {
+        const float angle=glm::radians(3.0f*lag);
+        planes[1][0]=-std::cos(angle); planes[1][2]=std::sin(angle);
+        const float actor[3]={1.05f,0,5};
+        CHECK((history.isVisible(1) || camera_frustum_math::sphereInFrustum(planes,actor,0.05f)));
     }
 }

@@ -525,6 +525,7 @@ void Camera::setCameraOrigin (void)
 		for (int r = 0; r < 4; ++r)
 			gosASSERT(std::isfinite(worldToClip[c][r]));
 	gosASSERT(std::fabs(NearPlaneDistance) < FarPlaneDistance);
+	cacheFrustumPlanes(); // Lights and CPU visibility consume this before terrain::geometry.
 	static bool reportedNearFocus = false;
 	const glm::vec3 focus(-position.x, cameraShiftZ, position.y);
 	if (!reportedNearFocus && usePerspective && glm::length(physicalPos - focus) <= std::fabs(NearPlaneDistance)) {

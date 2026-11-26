@@ -973,7 +973,7 @@ glm::vec3 GVAppearance::getNodeNamePosition (mc2::czstring nodeName)
 
 	// C3: route to GPU-lagged visibility when killswitch is enabled.
 	if (s_gpuCullLifecycle) {
-		if (!gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_)))
+		if (!gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_)) && !eye->sphereInFrustum(position,getRadius()))
 			return result;
 	} else {
 		if (!inView)
@@ -1013,7 +1013,7 @@ glm::vec3 GVAppearance::getNodeIdPosition (long nodeId)
 
 	// C3: route to GPU-lagged visibility when killswitch is enabled.
 	if (s_gpuCullLifecycle) {
-		if (!gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_)))
+		if (!gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_)) && !eye->sphereInFrustum(position,getRadius()))
 			return result;
 	} else {
 		if (!inView)

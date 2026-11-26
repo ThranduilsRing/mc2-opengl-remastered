@@ -33,6 +33,15 @@ inline float altitudeMaxForAngle(float angle, float minAngle, float maxAngle, fl
     return lo + (hi - lo) * t;
 }
 
+inline bool sphereInFrustum(const float planes[6][4], const float center[3], float radius) {
+    for (int p=0; p<6; ++p) {
+        const auto& n=planes[p];
+        const float length=std::sqrt(n[0]*n[0]+n[1]*n[1]+n[2]*n[2]);
+        if(n[0]*center[0]+n[1]*center[1]+n[2]*center[2]+n[3] < -radius*length) return false;
+    }
+    return true;
+}
+
 // Replica of mclib/mathfunc.h sign2: -1 for negative, 0 otherwise (NOT +1).
 inline float sign2f(float f) { return (f < 0.0f) ? -1.0f : 0.0f; }
 
