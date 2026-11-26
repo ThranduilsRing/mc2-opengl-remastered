@@ -21,6 +21,29 @@
 
 using namespace mc2clip;
 
+TEST_CASE("clip state: distance matching inverts nonlinear travel and wraps cycles") {
+    const DistanceCurve c{2, {0, 1, 4}};
+    REQUIRE(c.valid());
+    CHECK(c.advance(0, .5f) == doctest::Approx(.5f));
+    CHECK(c.advance(.5f, 2) == doctest::Approx(1.5f));
+    CHECK(c.advance(1.5f, 10) == doctest::Approx(.5f));
+    CHECK(c.advance(.75f, 0) == .75f);
+    CHECK_FALSE(DistanceCurve{2, {0, 1, 1}}.valid());
+    CHECK_FALSE(DistanceCurve{0, {0, 1}}.valid());
+}
+
+TEST_CASE("clip state: stopped locomotion gestures choose idle immediately") {
+    for (int gesture : {4, 7, 9, 11, 12}) {
+        Phase ph;
+        const auto c = select(gesture, 0, 0, 0, false, false, "atlas_moveCoreWalkFwd", ph);
+        CHECK(std::string(c.clip) == "atlas_moveCoreIdle");
+        CHECK_FALSE(c.locomotion);
+        CHECK(c.immediate);
+    }
+    CHECK(resolveClip("atlas_shutdownPwroff", "atlas_moveCoreWalkFwd",
+        [](std::string_view c) { return c == "atlas_moveCoreIdle"; }) == "atlas_moveCoreIdle");
+}
+
 TEST_CASE("clip grounding: package roles override naming and preserve legacy packs") {
     const std::map<std::string, std::string> roles{{"mw5_idle", "feet"}, {"mw5_walk", "feet"},
         {"mw5_death", "body"}, {"atlas_moveCoreIdle", "none"}};

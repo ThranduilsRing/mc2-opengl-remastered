@@ -38,6 +38,26 @@ struct StrideMeasurement {
     }
 };
 
+struct DistanceCurve {
+    float duration = 0;
+    std::vector<float> distance;
+    bool valid() const {
+        if (!std::isfinite(duration) || duration <= 0 || distance.size() < 2 || distance.front() != 0) return false;
+        for (size_t i = 1; i < distance.size(); ++i)
+            if (!std::isfinite(distance[i]) || distance[i] <= distance[i - 1]) return false;
+        return true;
+    }
+    float advance(float clipSec, float moved) const {
+        if (moved <= 0) return clipSec;
+        const float frame = std::fmod(std::max(clipSec, 0.0f), duration) / duration * (distance.size() - 1);
+        const size_t i = std::min(static_cast<size_t>(frame), distance.size() - 2);
+        const float d = std::fmod(distance[i] + (distance[i + 1] - distance[i]) * (frame - i) + moved, distance.back());
+        const auto hi = std::upper_bound(distance.begin(), distance.end(), d);
+        const size_t j = std::min(static_cast<size_t>(hi - distance.begin()), distance.size() - 1);
+        return (j - 1 + (d - distance[j - 1]) / (distance[j] - distance[j - 1])) * duration / (distance.size() - 1);
+    }
+};
+
 // Samples are unscaled Y-up joint globals at 30 Hz, before the GPU axis conversion.
 template<class Point>
 StrideMeasurement measureStride(const std::vector<Point> (&feet)[2], float duration) {
@@ -102,6 +122,8 @@ inline Choice loop(std::string_view c, bool loco = false) { Choice ch; ch.clip =
 // Missing mission bindings keep the actor's current clip, including its clock.
 template<class HasClip>
 std::string_view resolveClip(std::string_view requested, std::string_view active, HasClip hasClip) {
+    if (!hasClip(requested) && requested.substr(0, 14) == "atlas_shutdown" && hasClip("atlas_moveCoreIdle"))
+        return "atlas_moveCoreIdle";
     return hasClip(requested) ? requested : active;
 }
 
@@ -168,8 +190,8 @@ inline Choice select(int gesture, float speed, float turnRate, int turnStreak, b
         case kGestureRollover:
         case kGestureGetUp:
             return once("atlas_downedGetup");
-        case kGestureLimpLeft:  return loop("atlas_moveCoreWalkLimpFwdLeft", true);
-        case kGestureLimpRight: return loop("atlas_moveCoreWalkLimpFwdRight", true);
+        case kGestureLimpLeft:  if (speed > 1.0f) return loop("atlas_moveCoreWalkLimpFwdLeft", true); break;
+        case kGestureLimpRight: if (speed > 1.0f) return loop("atlas_moveCoreWalkLimpFwdRight", true); break;
         case kGestureJump: {
             ph.landing = false;
             const bool inStart = activeClip && std::strcmp(activeClip, "atlas_moveJumpUpStart") == 0;
@@ -190,6 +212,9 @@ inline Choice select(int gesture, float speed, float turnRate, int turnStreak, b
     const bool standing = (gesture != kGestureWalk && gesture != kGestureRun && gesture != kGestureReverse);
     if (standing && speed < MOVE_EPS && turnStreak >= 3)
         return loop(turnRate > 0.0f ? "atlas_moveCoreTurnLeftIdle" : "atlas_moveCoreTurnRightIdle");
+    if (speed <= MOVE_EPS) {
+        Choice c = loop("atlas_moveCoreIdle"); c.immediate = true; return c;
+    }
     switch (gesture) {
         case kGestureRun:     return loop("atlas_moveCoreRunFwd", true);
         case kGestureReverse: return loop("atlas_moveCoreWalkBwd", true);

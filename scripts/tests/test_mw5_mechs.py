@@ -547,6 +547,28 @@ def test_parity_sample_normalizes_short_arc():
     assert sample([0, 1], [[0, 2, 4], [2, 4, 6]], .5, False) == [1, 3, 5]
 
 
+def test_distance_curve_preserves_variable_planted_travel(monkeypatch):
+    from tools.mw5_mechs import parity as P
+    foot = [[x, 0, 0] for x in (0, -.1, -.4, -.9, -1, -.5, 0)]
+    monkeypatch.setattr(P, 'foot_tracks', lambda *a: ([foot, foot], 1))
+    asset = type('Asset', (), {'doc': {'animations': [{'name': 'atlas_moveCoreWalkFwd'}]}})()
+    duration, *distance = map(float, P.distance_curves(asset)['atlas_moveCoreWalkFwd'].split())
+    assert duration == 1
+    assert distance[:5] == pytest.approx([0, .1, .4, .9, 1])
+    assert all(b > a for a, b in zip(distance, distance[1:]))
+    assert np.all(np.diff(np.asarray(distance, dtype=np.float32)) > 0)
+
+
+def test_shutdown_fallback_holds_own_stand(fixture, tmp_path):
+    from tools.mw5_mechs.build_pack import bind_stationary
+    doc = B.build(fixture[0], tmp_path, tmp_path / 'stand.glb', 'a.png')
+    bind_stationary(doc)
+    for name in ('atlas_shutdownPwroff', 'atlas_shutdownIdle', 'atlas_shutdownPwron'):
+        clip = next(a for a in doc['animations'] if a['name'] == name)
+        assert clip['channels']
+        assert all(doc['accessors'][s[k]]['count'] == 1 for s in clip['samplers'] for k in ('input', 'output'))
+
+
 def test_empty_native_hold_channel_names_source(fixture, tmp_path):
     g = json.loads(fixture[0].read_text())
     g['extras'] = {'bridge': []}

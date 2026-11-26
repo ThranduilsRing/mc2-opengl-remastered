@@ -116,7 +116,8 @@ def foot_tracks(asset, clip):
         tracks[i, prop] = [t[0] for t in asset.values(s['input'])], asset.values(s['output'])
     duration = max(asset.values(s['input'])[-1][0] for s in anim['samplers'])
     result = [[], []]
-    for f in range(int(duration * 30) + 1):
+    frames = max(1, math.ceil(duration * 30))
+    for f in range(frames + 1):
         worlds = {}
         def world(i):
             if i not in worlds:
@@ -124,13 +125,47 @@ def foot_tracks(asset, clip):
                 for prop in ('translation', 'rotation', 'scale'):
                     if (i, prop) in tracks:
                         t, v = tracks[i, prop]
-                        node[prop] = sample(t, v, f / 30, prop == 'rotation')
+                        node[prop] = sample(t, v, f * duration / frames, prop == 'rotation')
                 local = matrix(node)
                 worlds[i] = multiply(world(parents[i]), local) if i in parents else local
             return worlds[i]
         for k, i in enumerate(feet):
             result[k].append([row[3] for row in world(i)[:3]])
     return result, duration
+
+
+def distance_curves(asset):
+    """Uniform-time cumulative ground travel, using each frame's backward mid-stance foot.
+
+    During flight/toe-off use the largest backward sweep. Overlapping contacts
+    share their mean travel; incompatible authored contacts cannot both be locked.
+    Values are source metres, with duration first, encoded for the flat package reader.
+    """
+    curves = {}
+    for anim in asset.doc.get('animations', []):
+        name = anim['name']
+        if not name.startswith(('atlas_moveCoreWalk', 'atlas_moveCoreRun', 'atlas_moveCoreSprint')):
+            continue
+        feet, duration = foot_tracks(asset, name)
+        axis = max((0, 2), key=lambda c: sum(max(p[c] for p in foot) - min(p[c] for p in foot) for foot in feet))
+        bounds = [(min(p[axis] for p in foot), max(p[axis] for p in foot)) for foot in feet]
+        direction = 1 if name.endswith('Bwd') else -1
+        distances = [0.0]
+        for f in range(len(feet[0]) - 1):
+            travel, planted = [], []
+            for foot, (lo, hi) in zip(feet, bounds):
+                p, q = foot[f][axis], foot[f + 1][axis]
+                delta = (q - p) * direction
+                travel.append(max(0.0, delta))
+                if delta > 0 and lo + .25 * (hi - lo) < (p + q) / 2 < lo + .75 * (hi - lo):
+                    planted.append(delta)
+            step = sum(planted) / len(planted) if planted else max(travel)
+            # Keep flight intervals strictly increasing after runtime float32 conversion.
+            distances.append(distances[-1] + max(step, 1e-5 * max(1.0, distances[-1])))
+        if duration <= 0 or distances[-1] <= 1e-5:
+            raise ValueError(f'no ground travel in {name}')
+        curves[name] = ' '.join(format(v, '.9g') for v in [duration, *distances])
+    return curves
 
 
 def stride_speeds(asset):
@@ -143,7 +178,7 @@ def stride_speeds(asset):
     for a in asset.doc.get('animations', []):
         if not a['name'].startswith(('atlas_moveCoreWalk', 'atlas_moveCoreRun', 'atlas_moveCoreSprint')):
             continue
-        feet, _ = foot_tracks(asset, a['name'])
+        feet, duration = foot_tracks(asset, a['name'])
         ranges = [[max(p[c] for p in foot) - min(p[c] for p in foot) for c in (0, 2)] for foot in feet]
         axis = 0 if sum(r[0] for r in ranges) > sum(r[1] for r in ranges) else 2
         direction = 1 if a['name'].endswith('Bwd') else -1
@@ -151,7 +186,7 @@ def stride_speeds(asset):
         for foot in feet:
             lo, hi = min(p[axis] for p in foot), max(p[axis] for p in foot)
             for p, q in zip(foot, foot[1:]):
-                v = (q[axis] - p[axis]) * 30 * direction
+                v = (q[axis] - p[axis]) * (len(foot) - 1) / duration * direction
                 if v > 0 and lo + .25 * (hi - lo) < (p[axis] + q[axis]) / 2 < lo + .75 * (hi - lo):
                     velocities.append(v)
         if not velocities:
