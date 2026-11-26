@@ -36,6 +36,7 @@
     "tools/tracy_capture_compare.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10"
   },
   "direct_spawn": {
+    "tools/import_mechs.py": "Runs only dotnet build/extraction, ktx, umodel and Python asset builders with console_child and redirected output; never launches the game.",
     "scripts/tests/test_hdr_ui_blend.py": "Offline HDR UI proof: runs only glslangValidator and spirv-val through shader_common.find_tool with hidden console children; never the game.",
     "tools/bt2018_mechs/stack_weapons_atlas.py": "Runs only the ktx texture tool to completion with captured stdio; never the game.",
     "scripts/run_mp_pair_linux.py": "Linux headless peers under slot.sh --game; only owned PIDs are stopped",

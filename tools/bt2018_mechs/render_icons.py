@@ -389,6 +389,11 @@ def _raster(parts, w, h, rear: bool):
         Y = h / 2 - (p[:, 1] - cy) * scale_y
         Z = p[:, 2] if not rear else -p[:, 2]
         for a, b, c in tris:
+            xs, ys = (X[a], X[b], X[c]), (Y[a], Y[b], Y[c])
+            x0, x1 = max(int(np.ceil(min(xs) - .5)), 0), min(int(np.floor(max(xs) - .5)), w - 1)
+            y0, y1 = max(int(np.ceil(min(ys) - .5)), 0), min(int(np.floor(max(ys) - .5)), h - 1)
+            if x0 > x1 or y0 > y1:
+                continue
             n = np.cross(p[b] - p[a], p[c] - p[a])
             nl = np.linalg.norm(n)
             if nl < 1e-12:
@@ -397,11 +402,6 @@ def _raster(parts, w, h, rear: bool):
             if n @ view < 0:
                 n = -n
             val = float(n @ light)
-            xs, ys = (X[a], X[b], X[c]), (Y[a], Y[b], Y[c])
-            x0, x1 = max(int(np.floor(min(xs))), 0), min(int(np.ceil(max(xs))), w - 1)
-            y0, y1 = max(int(np.floor(min(ys))), 0), min(int(np.ceil(max(ys))), h - 1)
-            if x0 > x1 or y0 > y1:
-                continue
             gx, gy = np.meshgrid(np.arange(x0, x1 + 1) + 0.5, np.arange(y0, y1 + 1) + 0.5)
             d = (ys[1] - ys[2]) * (xs[0] - xs[2]) + (xs[2] - xs[1]) * (ys[0] - ys[2])
             if abs(d) < 1e-12:
@@ -444,6 +444,11 @@ def render(parts, w, h, rear: bool, mode: str):
         Y = h / 2 - (p[:, up] - cy) * scale
         Z = p[:, 2] if not rear else -p[:, 2]
         for a, b, c in tris:
+            xs, ys = (X[a], X[b], X[c]), (Y[a], Y[b], Y[c])
+            x0, x1 = max(int(np.ceil(min(xs) - .5)), 0), min(int(np.floor(max(xs) - .5)), w - 1)
+            y0, y1 = max(int(np.ceil(min(ys) - .5)), 0), min(int(np.floor(max(ys) - .5)), h - 1)
+            if x0 > x1 or y0 > y1:
+                continue
             n = np.cross(p[b] - p[a], p[c] - p[a])
             nl = np.linalg.norm(n)
             if nl < 1e-12:
@@ -451,11 +456,6 @@ def render(parts, w, h, rear: bool, mode: str):
             n /= nl
             lam = abs(float(n @ light))
             shade = 0 if lam > 0.66 else (1 if lam > 0.33 else 2)
-            xs, ys = (X[a], X[b], X[c]), (Y[a], Y[b], Y[c])
-            x0, x1 = max(int(np.floor(min(xs))), 0), min(int(np.ceil(max(xs))), w - 1)
-            y0, y1 = max(int(np.floor(min(ys))), 0), min(int(np.ceil(max(ys))), h - 1)
-            if x0 > x1 or y0 > y1:
-                continue
             gx, gy = np.meshgrid(np.arange(x0, x1 + 1) + 0.5, np.arange(y0, y1 + 1) + 0.5)
             d = (ys[1] - ys[2]) * (xs[0] - xs[2]) + (xs[2] - xs[1]) * (ys[0] - ys[2])
             if abs(d) < 1e-12:

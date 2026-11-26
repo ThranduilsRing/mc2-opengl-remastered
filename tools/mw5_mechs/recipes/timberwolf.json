@@ -1,6 +1,7 @@
 {
   "schema": "mw5-mech-recipe/1",
   "family": "timberwolf",
+  "game": "clans",
   "chassis_id": "mw5:timberwolf",
   "requires_dlc": true,
   "extraction": {

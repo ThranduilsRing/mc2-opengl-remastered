@@ -135,6 +135,138 @@ def convert_one(fbx, btname, args):
     return {"btname": btname, "glb": f"{btname}.glb", "tga": tga_name}
 
 
+def convert_bundle(bundle, btname, out, dump):
+    """Read the intact base prefab directly; game bundles are never modified."""
+    import numpy as np
+    import UnityPy
+    import pygltflib as G
+    from pathlib import Path
+    from UnityPy.helpers.MeshHelper import MeshHandler
+    from tools.bt2018_import import bake_clips
+
+    assert UnityPy.__version__ == bake_clips.UNITYPY_VERSION
+    bundle = Path(bundle)
+    if not bundle.is_file():
+        for dlc in ('flashpoint', 'heavymetal', 'urbanwarfare'):
+            candidate = bundle.parent / dlc
+            if candidate.is_file():
+                probe = UnityPy.load(str(candidate))
+                if any(o.type.name == 'GameObject' and (o.peek_name() or '').lower() ==
+                       f'chrprfmech_{btname}base-001' for o in probe.objects):
+                    bundle = candidate
+                    break
+        else:
+            raise FileNotFoundError(f'{btname}: no base prefab bundle or DLC prefab in {bundle.parent}')
+    env = UnityPy.load(str(bundle))
+    transforms = {o.path_id: o.read() for o in env.objects if o.type.name == 'Transform'}
+    root = next(i for i, t in transforms.items()
+                if t.m_GameObject.read().m_Name.lower() == f'chrprfmech_{btname}base-001')
+    ids = []
+    def visit(i):
+        ids.append(i)
+        for child in transforms[i].m_Children:
+            visit(child.path_id)
+    visit(root)
+    indices = {i: n for n, i in enumerate(ids)}
+    gameobjects = {transforms[i].m_GameObject.path_id: i for i in ids}
+    g, blob = G.GLTF2(asset=G.Asset(version='2.0')), bytearray()
+    def put(values, dtype, kind, bounds=False):
+        a = np.asarray(values, dtype=dtype)
+        blob.extend(b'\0' * (-len(blob) % 4))
+        offset = len(blob)
+        blob.extend(a.tobytes())
+        view = len(g.bufferViews)
+        g.bufferViews.append(G.BufferView(buffer=0, byteOffset=offset, byteLength=a.nbytes))
+        acc = G.Accessor(bufferView=view, componentType={'<f4': 5126, '<u4': 5125, '<u2': 5123}[dtype],
+                         count=len(a), type=kind)
+        if bounds:
+            acc.min, acc.max = a.min(axis=0).tolist(), a.max(axis=0).tolist()
+        g.accessors.append(acc)
+        return len(g.accessors) - 1
+    for i in ids:
+        t = transforms[i]
+        p, q, s = t.m_LocalPosition, t.m_LocalRotation, t.m_LocalScale
+        g.nodes.append(G.Node(name=t.m_GameObject.read().m_Name,
+                              translation=[-p.x, p.y, p.z], rotation=[q.x, -q.y, -q.z, q.w],
+                              scale=[s.x, s.y, s.z], children=[indices[c.path_id] for c in t.m_Children]))
+    materials = {}
+    def material(ptr):
+        if ptr.path_id in materials:
+            return materials[ptr.path_id]
+        mat = ptr.read()
+        textures = dict(mat.m_SavedProperties.m_TexEnvs)
+        texture = textures['_MainTex'].m_Texture.read()
+        img = texture.image
+        png = io.BytesIO()
+        img.save(png, format='PNG')
+        data = png.getvalue()
+        blob.extend(b'\0' * (-len(blob) % 4))
+        g.bufferViews.append(G.BufferView(buffer=0, byteOffset=len(blob), byteLength=len(data)))
+        blob.extend(data)
+        g.images.append(G.Image(name=texture.m_Name, bufferView=len(g.bufferViews)-1, mimeType='image/png'))
+        g.textures.append(G.Texture(source=len(g.images)-1))
+        g.materials.append(G.Material(name=mat.m_Name, pbrMetallicRoughness=G.PbrMetallicRoughness(
+            baseColorTexture=G.TextureInfo(index=len(g.textures)-1), metallicFactor=0, roughnessFactor=1)))
+        materials[ptr.path_id] = len(g.materials)-1
+        texdir = Path(dump) / 'Texture2D'
+        texdir.mkdir(parents=True, exist_ok=True)
+        for key in ('_OcclusionMap', '_BumpMap'):
+            ref = textures.get(key)
+            if ref and ref.m_Texture.path_id:
+                tex = ref.m_Texture.read()
+                tex.image.save(texdir / (tex.m_Name + '.png'))
+        asset = Path(out) / btname
+        asset.mkdir(parents=True, exist_ok=True)
+        img.convert('RGBA').save(asset / derive_tga_name(texture.m_Name))
+        return materials[ptr.path_id]
+    for obj in env.objects:
+        if obj.type.name != 'SkinnedMeshRenderer':
+            continue
+        r = obj.read()
+        tid = gameobjects.get(r.m_GameObject.path_id)
+        if tid is None:
+            continue
+        chain, cur = [], tid
+        while cur in indices:
+            chain.append(transforms[cur].m_GameObject.read().m_Name.lower())
+            cur = transforms[cur].m_Father.path_id
+        if any('_dmg' in n or 'blip' in n for n in chain):
+            continue
+        mesh = r.m_Mesh.read()
+        h = MeshHandler(mesh)
+        h.process()
+        vertices = np.asarray(h.m_Vertices) * [-1, 1, 1]
+        normals = np.asarray(h.m_Normals) * [-1, 1, 1]
+        uv = np.asarray(h.m_UV0)[:, :2].copy()
+        uv[:, 1] = 1 - uv[:, 1]
+        attrs = G.Attributes(POSITION=put(vertices, '<f4', 'VEC3', True),
+                             NORMAL=put(normals, '<f4', 'VEC3'), TEXCOORD_0=put(uv, '<f4', 'VEC2'),
+                             JOINTS_0=put(h.m_BoneIndices, '<u2', 'VEC4'),
+                             WEIGHTS_0=put(h.m_BoneWeights, '<f4', 'VEC4'))
+        primitives = []
+        for slot, triangles in enumerate(h.get_triangles()):
+            tri = np.asarray(triangles)[:, [0, 2, 1]].reshape(-1)
+            primitives.append(G.Primitive(attributes=attrs, indices=put(tri, '<u4', 'SCALAR'),
+                                          material=material(r.m_Materials[slot])))
+        mirror = np.diag([-1, 1, 1, 1])
+        binds = [mirror @ np.array([[getattr(b, f'e{row}{col}') for col in range(4)]
+                                   for row in range(4)]) @ mirror for b in mesh.m_BindPose]
+        g.skins.append(G.Skin(joints=[indices[b.path_id] for b in r.m_Bones],
+                              inverseBindMatrices=put([b.T.reshape(-1) for b in binds], '<f4', 'MAT4')))
+        g.meshes.append(G.Mesh(name=mesh.m_Name, primitives=primitives))
+        node = g.nodes[indices[tid]]
+        node.mesh, node.skin = len(g.meshes)-1, len(g.skins)-1
+    if not g.meshes:
+        raise ValueError(f'{btname}: no intact skinned meshes in base prefab')
+    g.scenes, g.scene = [G.Scene(nodes=[indices[root]])], 0
+    g.buffers = [G.Buffer(byteLength=len(blob))]
+    g.set_binary_blob(bytes(blob))
+    dest = Path(out) / (btname + '.glb')
+    g.save(str(dest))
+    bake_clips.add_to_glb(str(dest), str(dest), bake_clips.native_clips(str(bundle), btname))
+    return {'btname': btname, 'glb': dest.name, 'tga': next((Path(out) / btname).glob('*.tga')).name}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--fbx2gltf", required=True)
