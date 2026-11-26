@@ -43,8 +43,19 @@ vec4 concreteSample(vec2 uv, ivec2 tile, int plane, vec2 dx, vec2 dy) {
     vec2 gradient = vec2(mix(b.a - a.a, d.a - c.a, f.y),
                          mix(c.a - a.a, d.a - b.a, f.x)) * float(side);
     float width = max(abs(dot(gradient, dx)) + abs(dot(gradient, dy)), 1.0 / 255.0);
+    // Erode only pad borders by a few native texels. World coordinates and
+    // joined mask taps keep the grass/soil intrusion continuous across tiles.
+    float cut = 0.5;
+    float grime = 0.0;
+    if (plane == 0 && mask.a > 0.0 && mask.a < 1.0) {
+        float texelSlope = max(length(gradient) / float(textureSize(u_cementArt, 0).x), 1e-5);
+        float noise = 0.5 + 0.5 * snoise(v_worldPos.xy * 0.65);
+        cut += texelSlope * (1.0 + 2.0 * noise);
+        width = max(width, texelSlope);
+        grime = (1.0 - smoothstep(cut, cut + 3.0 * texelSlope, mask.a)) * (0.10 + 0.15 * noise);
+    }
     // The atlas has black transparent texels: recover edge colour before coverage.
-    return vec4(mask.rgb / max(mask.a, 1e-4), smoothstep(0.5 - 0.5 * width, 0.5 + 0.5 * width, mask.a));
+    return vec4(mask.rgb / max(mask.a, 1e-4) * (1.0 - grime), smoothstep(cut - 0.5 * width, cut + 0.5 * width, mask.a));
 }
 
 // Permanent road art uses the former overlay's material response on the terrain

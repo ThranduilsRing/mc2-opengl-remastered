@@ -352,11 +352,10 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 for (int dr=-3; dr<=3; ++dr) for (int dc=-3; dc<=3; ++dc)
                     if (gameMap->inBounds(cr+dr,cc+dc) && gameMap->cellAt(cr+dr,cc+dc).getForest()) ++forestCells;
             }
-            bool clumpGated = false;
             if (fieldRecipe && biome != Biome::Snow && !single && gameMap) {
                 if (clumpRoll(col,row,seed,113) > understoryChance(forestCells)) {
                     for (int i=0; i<clump.count; ++i) woodyGated += clump.members[static_cast<size_t>(i)].woody ? 1 : 0;
-                    ++clumpsGated; clumpGated = true;
+                    ++clumpsGated; continue;
                 }
             }
             for (int i=0; i<clump.count; ++i) {
@@ -365,12 +364,6 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 const float instWx = wx+member.x, instWy = wy+member.y;
                 const glm::vec3 instPos(instWx,instWy,0);
                 ++instTriedTotal;
-                const float coverage = gos_terrain_indirect_HardSurfaceCoverage(instWx,instWy);
-                const bool padFringe = clumpPadFringe(instWx,instWy,member.woody,
-                    clumpRoll(col,row,seed,1200),gos_terrain_indirect_HardSurfaceCoverageReadOnly);
-                // Open-meadow thinning still owns shrubs; keep only the sparse
-                // grass members that creep into the pad's six-WU fringe.
-                if (clumpGated && !padFringe) continue;
                 int ir=0,ic=0,isr=0,isc=0;
                 land->worldToTileCell(instPos,ir,ic,isr,isc);
                 if (ir<0 || ic<0 || ir>=mapSide || ic>=mapSide) { ++instRejHard; continue; }
@@ -386,9 +379,9 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                     occupied = !gameMap->inBounds(cr,cc) ||
                         clumpStaticOccupied(gameMap->cellAt(cr,cc), fieldRecipe.has_value() && biome != Biome::Snow);
                 }
+                const float coverage = gos_terrain_indirect_HardSurfaceCoverage(instWx,instWy);
                 const float slope = land->getTerrainAngle(instPos,&normal);
-                if (!clumpSurfaceAllowed(true,elevation<=Terrain::waterElevation,occupied,
-                                         padFringe ? 0.0f : coverage,slope,member.woody)) {
+                if (!clumpSurfaceAllowed(true,elevation<=Terrain::waterElevation,occupied,coverage,slope,member.woody)) {
                     if (elevation<=Terrain::waterElevation) ++instRejWater;
                     else if (occupied || coverage>=0.15f) ++instRejOverlay;
                     else ++instRejSlope;

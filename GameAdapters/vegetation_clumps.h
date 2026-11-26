@@ -169,14 +169,6 @@ template<class Cell> inline bool clumpStaticOccupied(Cell cell, bool allowForest
     return cell.getOffMap() || !cell.getPassable() || (cell.getForest() && !allowForest) ||
            cell.getWall() || cell.getGate() || cell.getRoad();
 }
-// A few grass members can root just inside the pad, attached to an existing
-// clump. No interior weeds or woody growth: an open-ground tap must be within 6 WU.
-template<class Coverage> inline bool clumpPadFringe(float x, float y, bool woody,
-                                                   float roll, Coverage coverage) {
-    return !woody && roll < 0.28f && coverage(x,y) >= 0.15f &&
-        std::min({coverage(x-6.0f,y), coverage(x+6.0f,y),
-                  coverage(x,y-6.0f), coverage(x,y+6.0f)}) < 0.15f;
-}
 // The adapter samples these masks at every member, including offset skirts.
 inline bool clumpSurfaceAllowed(bool inBounds, bool water, bool occupied,
                                  float hardCoverage, float slope, bool woody) {
