@@ -522,6 +522,22 @@ def test_bridge_requires_animation_directory(fixture, tmp_path):
         B.build(fixture[0], None, tmp_path / 'bad.glb', 'albedo.png')
 
 
+def test_stride_uses_backward_midstance_instead_of_lower_swing_ankle(monkeypatch):
+    from tools.mw5_mechs import parity as P
+    # Both feet travel backwards at 4 u/s, then swing forwards at 12 u/s.
+    # The opposite ankle's height must not decide which part is stance.
+    foot = [[-4 * f / 30, f / 30, 0] for f in range(31)]
+    foot += [[-4 + 12 * f / 30, 0, 0] for f in range(1, 11)]
+    monkeypatch.setattr(P, 'foot_tracks', lambda *a: ([foot, foot], 4 / 3))
+    asset = type('Asset', (), {'doc': {'animations': [{'name': 'atlas_moveCoreWalkFwd'}]}})()
+    assert P.stride_speeds(asset)['atlas_moveCoreWalkFwd'] == pytest.approx(4)
+    asset.doc['animations'][0]['name'] = 'atlas_moveCoreWalkBwd'
+    assert P.stride_speeds(asset)['atlas_moveCoreWalkBwd'] == pytest.approx(12)
+    monkeypatch.setattr(P, 'foot_tracks', lambda *a: ([[[0, 0, 0]] * 3] * 2, 1))
+    with pytest.raises(ValueError, match='no planted-foot sweep'):
+        P.stride_speeds(asset)
+
+
 def test_parity_sample_normalizes_short_arc():
     from tools.mw5_mechs.parity import sample
     q = sample([0, 1], [[0, 0, 0, 1], [0, 0, -1, 0]], .5, True)

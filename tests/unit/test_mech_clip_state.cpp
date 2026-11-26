@@ -454,6 +454,10 @@ TEST_CASE("clip state: sim gesture change replaces a one-shot with idle or walk"
 }
 
 TEST_CASE("clip state: fades use longer prone transitions and advance outgoing clips") {
+    CHECK(locomotionPhase(1.5f, 2.0f, 0.8f) == doctest::Approx(0.6f));
+    CHECK(locomotionPhase(0.6f, 0.8f, 2.0f) == doctest::Approx(1.5f));
+    CHECK(locomotionPhase(2.0f, 2.0f, 0.8f) == 0);
+    CHECK(locomotionPhase(1.0f, 0, 0.8f) == 0);
     CHECK(fadeDuration("walk", "run") == 0.15f);
     for (auto prone : {"atlas_downedIdle", "atlas_downedGetup", "atlas_deathIdle", "atlas_deathKnockdown", "atlas_hitReactKnockdownInpl"}) {
         CHECK(fadeDuration("walk", prone) == 0.25f);

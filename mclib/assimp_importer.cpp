@@ -1074,6 +1074,11 @@ void measureClipStrides(ImportedAnimEntry& e) {
     }
     if (feet[0] < 0 || feet[1] < 0) return;
     for (const char* clip : kClips) {
+        // MW5 packs carry offline stance measurements in source glTF units/s.
+        if (e.strideSpeed.contains(clip)) {
+            e.strideSpeed[clip] *= e.scale;
+            continue;
+        }
         auto dur = clipDurationSec(e.scene, clip);
         if (!dur || *dur < 0.1f) continue;
         const int frames = static_cast<int>(*dur * 30.0f);
@@ -1118,7 +1123,8 @@ void LoadMechPackage(mc2::czstring glbPath, std::map<std::string, std::string>& 
                      std::string& aoOut, std::string& normalOut, std::string& ormOut,
                      std::map<std::string, aiVector3D>* socketOut = nullptr,
                      std::string* showcaseOut = nullptr,
-                     std::map<std::string, std::string>* groundingOut = nullptr) {
+                     std::map<std::string, std::string>* groundingOut = nullptr,
+                     std::map<std::string, float>* strideOut = nullptr) {
     if (!glbPath) return;
     std::string p(glbPath);
     size_t dot = p.rfind(".glb");
@@ -1166,6 +1172,23 @@ void LoadMechPackage(mc2::czstring glbPath, std::map<std::string, std::string>& 
     };
     readMap("\"nodes\"", out);
     if (groundingOut) readMap("\"grounding\"", *groundingOut);
+    if (strideOut) {
+        const size_t key = buf.find("\"strideSpeeds\"");
+        const size_t start = key == std::string::npos ? key : buf.find('{', key);
+        const size_t end = start == std::string::npos ? start : buf.find('}', start);
+        size_t i = start == std::string::npos ? start : start + 1;
+        while (i < end) {
+            const size_t k0 = buf.find('"', i);
+            const size_t k1 = k0 == std::string::npos ? k0 : buf.find('"', k0 + 1);
+            const size_t colon = k1 == std::string::npos ? k1 : buf.find(':', k1 + 1);
+            if (colon >= end) break;
+            float speed = 0;
+            if (sscanf(buf.c_str() + colon + 1, "%f", &speed) == 1 && std::isfinite(speed) && speed > 0)
+                (*strideOut)[buf.substr(k0 + 1, k1 - k0 - 1)] = speed;
+            const size_t comma = buf.find(',', colon + 1);
+            i = comma < end ? comma + 1 : end;
+        }
+    }
     // P10: "socketOffsets" flat map, socket -> "x y z" in the joint's local frame
     // (tools/bt2018_mechs/sockets.py). Muzzles sit on the geometry, not at joint centres.
     if (socketOut) {
@@ -1230,7 +1253,7 @@ void RegisterImportedAnim(mc2::czstring path, TG_TypeMultiShape* out, const Skel
     e.names = bake.names;
     e.plan = mc2skel::BuildPlan(scene, e.names);
     e.torsoTwist = mc2skel::ResolveTorsoTwist(*e.plan);
-    LoadMechPackage(path, e.nodeManifest, e.aoTexName, e.normalTexName, e.ormTexName, &e.socketOffsets, &e.showcaseClip, &e.groundingRoles);
+    LoadMechPackage(path, e.nodeManifest, e.aoTexName, e.normalTexName, e.ormTexName, &e.socketOffsets, &e.showcaseClip, &e.groundingRoles, &e.strideSpeed);
     if (!e.showcaseClip.empty() && !clipDurationSec(scene, e.showcaseClip)) {
         if (mc2_diag::tagRequested("MECH_IMPORT"))
             mc2::fmt::print_err("[MECH_IMPORT] unknown showcase clip '{}' in '{}'; using fallback\n", e.showcaseClip, path);
@@ -1708,6 +1731,8 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
             [&](std::string_view name) { return clipDurationSec(e.scene, std::string(name)).has_value(); }).data();
         auto adopt = [&](const mc2clip::Choice& c, bool restart) {
             if (auto nd = clipDurationSec(e.scene, c.clip)) {
+                const float nextTime = mc2clip::locomotionPhase(s.clipTimeSec, s.durationSec, *nd);
+                const bool keepPhase = s.locomotion && c.locomotion && !restart;
                 mc2skel::BeginActorClipFade(*e.plan, s);
                 adopted = true;
                 s.activeClip = c.clip;
@@ -1717,6 +1742,7 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
                 s.playRate = c.mode == mc2clip::Mode::Once
                     ? mc2clip::onceRate(c.clip, s.durationSec, motion.gestureFrames, motion.gestureRate) : 1.0f;
                 if (restart) s.clipTimeSec = 0.0f;
+                else if (keepPhase) s.clipTimeSec = nextTime;
             }
             s.pendingStreak = 0;
         };
@@ -1734,6 +1760,8 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
             s.playRate = 1.0f;
             if (e.strideSpeed.contains(s.activeClip))
                 s.playRate = mc2clip::strideRate(speed, e.strideSpeed.at(s.activeClip));
+            if (e.strideSpeed.contains(s.previousClip))
+                s.previousPlayRate = mc2clip::strideRate(speed, e.strideSpeed.at(s.previousClip));
             static unsigned strideLogTick = 0;
             if ((++strideLogTick % 120u) == 0 && mc2_diag::tagRequested("MECH_STRIDE"))
                 mc2::fmt::print_err("[MECH_STRIDE] clip={} speed={:.1f} stride={:.1f} rate={:.2f} dt={:.4f}\n", s.activeClip, speed,
