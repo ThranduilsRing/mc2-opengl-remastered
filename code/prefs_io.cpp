@@ -27,7 +27,7 @@ std::vector<mc2::options::PreferenceValue> CPrefs::snapshotValues() const {
     auto out = mc2::options::preferenceSnapshot(*this, render);
     // A rule key equal to the default is never added to options.cfg; a key already in the file stays tracked so a revert to the default
     // still rewrites the stored non-default value.
-    const auto defaults = mc2::rules::cfgEntries(mc2::rules::GameRules{});
+    const auto defaults = mc2::rules::cfgEntries(mc2::rules::newCampaignDefaults());
     const auto current = mc2::rules::cfgEntries(gameRules);
     for (std::size_t i = 0; i < current.size(); ++i) {
         if ((current[i].key != "GameRulesMods" || launcherModDefaults().empty()) && current[i].text == defaults[i].text && !mc2::options::cfg::get(sourceText_, current[i].key).has_value()) continue;
@@ -42,7 +42,7 @@ int CPrefs::load(mc2::czstring name) {
     const char* namePath = path;
     sourceText_ = mc2::options::cfg::readTextFile(mc2::net::userFile(namePath).c_str());
     static_cast<mc2::options::Preferences&>(*this) = mc2::options::Preferences{};
-    gameRules = mc2::rules::GameRules{};
+    gameRules = mc2::rules::newCampaignDefaults();   // no stored rules: a new campaign starts from the Magic packs
     FitIniFile file;
     if (!sourceText_.empty() && file.open(sourceText_.data(), static_cast<int>(sourceText_.size())) == NO_ERR) {
         mc2::options::loadPreferences(file, *this);
@@ -59,7 +59,11 @@ int CPrefs::load(mc2::czstring name) {
     mc2::options::cfg::loadFromText(render, sourceText_, &rejects);
     for (const auto& reject : rejects)
         mc2::options::logRejectedOption(reject.key, reject.text, reject.why, mc2::options::find(reject.key));
-    if (!mc2::options::cfg::get(sourceText_, "GameRulesMods") || mc2::gate::isSet<"MC2_LAUNCHED">()) gameRules.mods = launcherModDefaults();
+    if (!mc2::options::cfg::get(sourceText_, "GameRulesMods") || mc2::gate::isSet<"MC2_LAUNCHED">()) {
+        gameRules.mods = launcherModDefaults();   // the launcher's preselection, on top of the new-campaign defaults
+        for (const auto& id : mc2::mods::split(mc2::rules::newCampaignDefaults().mods))
+            if (!mc2::mods::selected(gameRules.mods, id)) mc2::mods::toggle(gameRules.mods, id);
+    }
     loadedValues_ = snapshotValues();
     // Startup reads these before SoundSystem exists; loading the defaults-screen draft must not publish it.
     if (this == &prefs) mc2::options::runtimePreferences() = static_cast<const mc2::options::Preferences&>(*this);

@@ -309,7 +309,7 @@ TEST_CASE("game rules: dialog page rows equal the descriptor table presets round
     for (std::size_t at = page.find(needle); at != std::string::npos; at = page.find(needle, at + 1)) ++buttons;
     CHECK(buttons == kRuleCount);
 
-    for (const GameRules& preset : {GameRules{}, battleTechPreset()}) {
+    for (const GameRules& preset : {GameRules{}, battleTechPreset(), newCampaignDefaults()}) {
         std::string text;
         for (const CfgEntry& e : cfgEntries(preset)) text += e.key + "=" + e.text + "\n";
         GameRules back;
@@ -412,6 +412,44 @@ TEST_CASE("game rules: campaign mods persist and override launcher choices") {
     publish(GameRules{});
     CHECK_FALSE(campaignToggle("@purchase-all", true));
     CHECK(rulesToPublish(true, chosen).mods.empty());
+}
+
+// Owner, 11-26 (saves study P1-1): a NEW campaign starts with both Magic gameplay packs on and the AI rule on Stock. Only the
+// new-campaign paths read newCampaignDefaults(); GameRules{} stays the old-save and networked baseline.
+TEST_CASE("game rules: new campaigns default to the Magic packs and old saves keep theirs") {
+    const GameRules fresh = newCampaignDefaults();
+    CHECK(mc2::mods::split(fresh.mods) == std::vector<std::string>({"magic-ballistic-weapons", "magic-gamesys-tweaks"}));
+    CHECK(fresh.ai == 0);
+    GameRules stock = fresh;
+    stock.mods.clear();
+    CHECK(stock == GameRules{});   // every rule value is the stock default
+    CHECK(GameRules{}.mods.empty());
+    CHECK(rulesToPublish(true, fresh) == GameRules{});   // a networked game never inherits the packs
+    CHECK(rulesToPublish(false, fresh) == fresh);
+
+    LogisticsMissionInfo info;
+    info.setRules(fresh);
+    const std::string path = saveToFile(info, "game_rules_new_campaign");
+    CHECK(hasRulesBlock(path));   // a new campaign records its packs
+    LogisticsMissionInfo loaded;
+    loaded.setRules(GameRules{});
+    FitIniFile in;
+    REQUIRE(in.open(path.c_str()) == NO_ERR);
+    CHECK(loaded.load(in).has_value());
+    in.close();
+    CHECK(loaded.getRules() == fresh);
+    std::remove(path.c_str());
+
+    // A save from before the Mods key (other rules, no packs) reads back exactly as saved.
+    GameRules older;
+    older.heat = kHeatHarsh;
+    info.setRules(older);
+    const std::string oldPath = saveToFile(info, "game_rules_no_mods_key");
+    FitIniFile old;
+    REQUIRE(old.open(oldPath.c_str()) == NO_ERR);
+    CHECK(readFit(old) == older);
+    old.close();
+    std::remove(oldPath.c_str());
 }
 
 TEST_CASE("game rules: campaign mod conflicts and campaign-only ladder selection") {

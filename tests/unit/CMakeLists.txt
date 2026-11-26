@@ -1001,6 +1001,18 @@ set_source_files_properties(test_terrain_dirty_queue.cpp PROPERTIES INCLUDE_DIRE
 # Header-only economy rule helpers (code/economy_rules.h); before the selected-tier snapshot below so `--only` can select it.
 target_sources(mc2_tests PRIVATE test_economy_rules.cpp test_screen_layer_order.cpp)
 
+# Campaign supply and vehicle salvage seams: verbatim slices of the production decisions (regenerated on source change); the
+# test's doubles supply only the logistics inventory.
+mc2_height_slice(weapon_supply code/logisticsdata_modify.cpp
+    "namespace {\nstd::map<long, long> weaponCounts(" "\n\n\nconst std::string& LogisticsData::getCurrentMission()")
+mc2_height_slice(vehicle_salvage code/logisticsdata_save.cpp
+    "\tmissionInfo->weaponSupply.bought.clear(); // a completed mission replenishes the purchase allowance"
+    "\n\t// Recover surviving pilots and their vehicles for the next mission.")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/weapon_supply.inc" CONTENT "${weapon_supply}")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/vehicle_salvage.inc" CONTENT "${vehicle_salvage}")
+set_source_files_properties(test_campaign_supply_seam.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
+target_sources(mc2_tests PRIVATE test_campaign_supply_seam.cpp)
+
 # Campaign guards: LogisticsMissionInfo init rejection and null-groups accessors (the class TUs, game-free).
 target_sources(mc2_tests PRIVATE
     test_dropweight_save.cpp

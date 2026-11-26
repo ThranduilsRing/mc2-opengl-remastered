@@ -62,6 +62,15 @@ inline GameRules battleTechPreset() {
     return r;
 }
 
+// What a NEW campaign starts from and what the dialog's DEFAULTS button returns to (owner, 11-26): the stock rules with the two Magic
+// gameplay packs on. The AI rule stays Stock until the smarter-AI mission sweep is green. Only the new-campaign paths use it: GameRules{}
+// stays the old-save and networked baseline, so an old save without a Mods key plays exactly as before.
+inline GameRules newCampaignDefaults() {
+    GameRules r;
+    r.mods = "magic-ballistic-weapons,magic-gamesys-tweaks";
+    return r;
+}
+
 enum class Kind { Bool, Enum, Int, Percent };
 
 struct Rule {

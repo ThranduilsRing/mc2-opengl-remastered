@@ -250,9 +250,7 @@ int GameRulesDialog::handleMessage( unsigned long, unsigned long who )
 	}
 	else if ( who == kDefaults )
 	{
-		auto mods = working.mods;
-		working = mc2::rules::GameRules{};
-		working.mods = std::move(mods);
+		working = mc2::rules::newCampaignDefaults();
 	}
 	else if ( who == kPreset )
 	{
