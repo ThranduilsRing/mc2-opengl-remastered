@@ -328,10 +328,9 @@ void main() {
         float forestSky = vTree.z;
         float vis = vTree.w < 1.0 ? treeVisibility(N) : 1.0;
         vec3 irradiance = max(ambient,vec3(0))*vTree.x*materialAO*forestSky + direct*(vTree.w*mix(vis, 1.0, vTree.w)); // above the baked shadow line the crown is lit
-        // Night moonlight/sky fill for foliage (zero by day): shape-giving hemisphere + leaf wrap, crown AO for form.
-        // A light, not brighter albedo; it sits outside the albedo exposure ceiling, which kept stock-dark leaves black.
-        vec3 nightFill = propFoliageNightAmbient(normalize(outputNormalStuff), foliage) * (vTree.x * materialAO * forestSky);
-        rgb = propEncodeColor(albedo * (irradiance / 3.14159265 + nightFill));
+        // Mission SH already carries the night sky. A second fixed fill overwhelms
+        // that dim ambient on lighter foliage, independently of the mission light.
+        rgb = propEncodeColor(albedo * (irradiance / 3.14159265));
         vec3 treePoolLight = vec3(0);
         if (any(notEqual(poolLight, vec3(0)))) treePoolLight = propEncodeColor(albedo) * poolLight;
         rgb += treePoolLight + vHighlight.rgb*vHighlight.a;
