@@ -54,7 +54,7 @@ static_assert(sizeof(GpuTerrainLight) == 48, "GpuTerrainLight must be 48 B std43
 static_assert(offsetof(GpuTerrainLight, intensity) == 44, "pool intensity must stay @44");
 
 // Presentation-owned beacon lights join the shared terrain/object cluster pool.
-void QueueBeaconLight(const GpuTerrainLight& light, long frame);
+void QueueBeaconLight(const GpuTerrainLight& light);
 static_assert(offsetof(GpuTerrainLight, color) == 16, "color vec3 must stay @16 — a field inserted before it breaks GLSL std430 lockstep");
 
 // LOCAL-LIGHTS-1: pack a coned light into GpuTerrainLight::lightType. Bit layout and

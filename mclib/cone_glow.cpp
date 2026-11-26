@@ -1012,7 +1012,7 @@ void QueueBeaconGlow(mc2::tgl::ViewUniforms view, TG_MultiShape* shape, float ni
         light.farDistance = radius;
         light.oneOverDistance = 1.0f / radius;
         light.intensity = peak / 70.0f;
-        gos_terrain_lighting::QueueBeaconLight(light, turn);
+        gos_terrain_lighting::QueueBeaconLight(light);
 
         // Project the node origin exactly the way the cone path does.
         glm::mat4 shapeToClip;
