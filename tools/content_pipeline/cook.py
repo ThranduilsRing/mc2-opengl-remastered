@@ -54,7 +54,7 @@ def build_asset(spec, recipe, work):
             dependencies.append(ir.Source.of("geometry_destroyed", source))
             scene, mats, _ = stock_ase.scene_from_ase(source, roots, work / spec["id"])
             destroyed = (scene, mats)
-        meta = {k: spec[k] for k in ("frame", "wu_per_unit", "yaw_degrees", "license", "source_url", "provider", "unclassified")
+        meta = {k: spec[k] for k in ("frame", "wu_per_unit", "yaw_degrees", "license", "source_url", "provider", "unclassified", "stock_fit")
                 if k in spec}
         meta["texture_roots"] = [str(r) for r in [Path(spec["intact"]).parent, *roots, *map(Path, spec.get("texture_roots", []))]]
         asset = gltf_file.to_ir(spec["id"], spec["replaces"], spec["intact"], kind=spec.get("kind", "building"),
