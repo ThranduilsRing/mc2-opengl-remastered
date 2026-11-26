@@ -257,7 +257,7 @@ void main() {
     // Bounded shallow refraction of the seabed material, fading to zero at the waterline.
     // Displace texture reads only: terrain coverage, shadows and material classification stay fixed.
     vec2 seabedOffset = vec2(0.0);
-    if (uT.shorelineOn > 1 && kPlanarReflection == 0) {
+    if (TS_shorelineOn > 1 && kPlanarReflection == 0) {
         float depth = max(uT.shorelineWaterElev - v_worldPos.z, 0.0);
         float phase = dot(v_worldPos.xy, vec2(0.003, 0.002)) + uT.shorelineTime * 1.05;
         seabedOffset = vec2(sin(phase), cos(phase * 1.37)) * min(depth * 0.12, 4.0)
@@ -614,7 +614,7 @@ void main() {
             // Close up (ref 6) a dark wet strip follows the swash, and a lacy white swash sheet runs up the sand.
             // Night (scene light below 1, day exactly 1): a gentle cool-grey sand strip, no wet strip, a dim swash.
             float beachFw = length(fwidth(v_worldPos.xy)), beachNight = clamp((1.0 - uEnv.sceneLight.x) * 2.5, 0.0, 1.0);
-            if (uT.shorelineOn == 2 && horizDist < 110.0 && aboveWater > -40.0) {
+            if (TS_shorelineOn == 2 && horizDist < 110.0 && aboveWater > -40.0) {
                 float lumR = clamp(dot(lit, vec3(0.299, 0.587, 0.114)) / max(dot(baseColor, vec3(0.299, 0.587, 0.114)), 0.04), 0.0, 2.5);
                 float mask = smoothstep(0.93, 0.975, nzc) * (cementHit ? 0.0 : 1.0) * (1.0 - F3pc) * (1.0 - materialSnow);
                 float beach = (1.0 - smoothstep(35.0, 80.0, horizDist + fbm(v_worldPos.xy * 0.011, 2) * 30.0))
@@ -639,7 +639,7 @@ void main() {
                 float aboveFade = smoothstep(0.0, 1.5, horizDist);
                 slWet  *= aboveFade;
                 slFoam *= aboveFade;
-                bool reviewShore = uT.shorelineOn > 1;
+                bool reviewShore = TS_shorelineOn > 1;
                 if (reviewShore) {
                     float phase = uT.shorelineTime * 1.05 + dot(v_worldPos.xy, vec2(0.003, 0.002));
                     // The wet tail lags the swash so dark sand remains exposed on retreat.
