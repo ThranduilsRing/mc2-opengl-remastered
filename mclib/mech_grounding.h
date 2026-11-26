@@ -152,11 +152,18 @@ inline PlantTrack buildPlants(const Rig& rig, const std::vector<std::vector<glm:
     }
     for (int side = 0; side < 2; ++side) {
         const auto& leg = rig.legs[side];
-        const float band = glm::length(glm::vec3(poses[0][leg.thigh][3]) - glm::vec3(poses[0][leg.foot][3])) * .02f;
-        // Low sole plus backward velocity identifies stance, including reverse/limp.
+        float floor = height[0][side], ceiling = floor;
+        for (int f = 1; f < n; ++f) {
+            floor = std::min(floor, height[f][side]);
+            ceiling = std::max(ceiling, height[f][side]);
+        }
+        const float band = std::max((ceiling - floor) * .2f,
+            glm::length(glm::vec3(poses[0][leg.thigh][3]) - glm::vec3(poses[0][leg.foot][3])) * .02f);
+        // Each foot has its own contact height: comparing the two feet mistakes
+        // the lower foot in a run's flight phase for a planted foot.
         for (int f = 0; f < n; ++f) {
             const int next = (f + 1) % n;
-            track.contact[f][side] = height[f][side] <= height[f][1 - side] + band &&
+            track.contact[f][side] = height[f][side] <= floor + band &&
                 direction * (poses[next][leg.foot][3].z - poses[f][leg.foot][3].z) < 0;
         }
     }
@@ -180,9 +187,30 @@ inline PlantTrack buildPlants(const Rig& rig, const std::vector<std::vector<glm:
             while (f < 3 * n && track.contact[f % n][side]) ++f;
             const int anchor = (start + f - 1) / 2;
             const auto travel = [&](int frame) { return distance[frame % n] + (frame / n) * distance.back(); };
+            auto fixed = original[anchor % n][side];
+            fixed.z += direction * travel(anchor);
+            // Choose a world-space anchor inside every stance frame's reachable
+            // disc. A midpoint ankle alone can exceed reach elsewhere in a limp.
+            for (int pass = 0; pass < 32; ++pass)
+                for (int k = start; k < f; ++k) {
+                    const auto& pose = poses[k % n];
+                    const auto& leg = rig.legs[side];
+                    glm::vec3 hip(pose[leg.thigh][3]);
+                    const glm::vec3 knee(pose[leg.calf][3]), ankle(pose[leg.foot][3]);
+                    const float reach = (glm::length(knee - hip) + glm::length(ankle - knee)) * .99999f;
+                    const float dy = original[k % n][side].y - hip.y;
+                    const float radius = std::sqrt(std::max(0.0f, reach * reach - dy * dy)) * .99f;
+                    hip.z += direction * travel(k);
+                    glm::vec3 delta(fixed.x - hip.x, 0, fixed.z - hip.z);
+                    const float length = glm::length(delta);
+                    if (length > radius && length > 1e-6f) {
+                        delta *= radius / length;
+                        fixed.x = hip.x + delta.x; fixed.z = hip.z + delta.z;
+                    }
+                }
             for (int k = start; k < f; ++k) {
-                auto target = original[anchor % n][side];
-                target.z += direction * (travel(anchor) - travel(k));
+                auto target = fixed;
+                target.z -= direction * travel(k);
                 correction[k] = target - original[k % n][side];
             }
         }

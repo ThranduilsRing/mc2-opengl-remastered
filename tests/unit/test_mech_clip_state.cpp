@@ -709,7 +709,7 @@ TEST_CASE("clip state: MW5 grounded stance drift at installed gesture speeds") {
                 poses.push_back(samplePose(float(f) * curve.duration / float(curve.distance.size() - 1)));
             const auto plants = mc2ground::buildPlants(rig, poses, curve.distance, gesture == kGestureReverse);
             REQUIRE_FALSE(plants.feet.empty());
-            float time = 0, world = 0, peak = 0, maxVelocity = 0;
+            float time = 0, world = 0, peak = 0, maxVelocity = 0, reachError = 0;
             float drift[2] = {}, previousWorld[2][2] = {};
             int previousContact[2] = {-1, -1}, contactFrames = 0;
             const float dt = 1.0f / 60, moved = speed * dt;
@@ -722,6 +722,10 @@ TEST_CASE("clip state: MW5 grounded stance drift at installed gesture speeds") {
                     const auto ankle = glm::vec3(pose[rig.legs[k].foot][3]);
                     const float x = ankle.x * scale, z = ankle.z * scale + world;
                     const bool contact = plants.contact[frame][k] && plants.contact[(frame + 1) % plants.feet.size()][k];
+                    if (contact) {
+                        const glm::vec2 error(ankle.x - targets[k].x, ankle.z - targets[k].z);
+                        reachError = std::max(reachError, glm::length(error) * scale / mc2mechscale::worldUnitsPerMetre);
+                    }
                     if (contact && previousContact[k] == 1) {
                         const float dx = x - previousWorld[k][0], dz = z - previousWorld[k][1];
                         const float step = std::sqrt(dx * dx + dz * dz) / mc2mechscale::worldUnitsPerMetre;
@@ -733,8 +737,8 @@ TEST_CASE("clip state: MW5 grounded stance drift at installed gesture speeds") {
                 time = curve.advanceWorld(time, moved, scale);
                 world += gesture == kGestureReverse ? -moved : moved;
             }
-            std::printf("MW5_CONTACT %s %s stance_cm=%.3f peak_cm_s=%.3f contact_frames=%d speed=%.3f\n",
-                asset.path().stem().string().c_str(), choice.clip, peak * 100, maxVelocity * 100, contactFrames, speed);
+            std::printf("MW5_CONTACT %s %s stance_cm=%.3f peak_cm_s=%.3f contact_frames=%d speed=%.3f reach_cm=%.3f\n",
+                asset.path().stem().string().c_str(), choice.clip, peak * 100, maxVelocity * 100, contactFrames, speed, reachError * 100);
             CHECK(contactFrames > 0);
             CHECK(peak < .02f);
         }
