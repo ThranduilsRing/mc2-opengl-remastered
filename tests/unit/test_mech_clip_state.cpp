@@ -615,12 +615,17 @@ TEST_CASE("clip state: world distance follows rendered chassis scale") {
     }
 }
 
-TEST_CASE("clip state: MW5 runtime distance slip at installed gesture speeds") {
+TEST_CASE("clip state: MW5 grounded stance drift at installed gesture speeds") {
     const char* root = std::getenv("MW5_TEST_TGL");
     if (!root) { WARN("set MW5_TEST_TGL to private installed pack"); return; }
     int chassis = 0;
-    for (const auto& asset : std::filesystem::directory_iterator(root)) {
-        if (asset.path().extension() != ".glb") continue;
+    std::vector<std::filesystem::directory_entry> assets;
+    for (const auto& asset : std::filesystem::directory_iterator(root))
+        if (asset.path().extension() == ".glb") assets.push_back(asset);
+    std::stable_sort(assets.begin(), assets.end(), [](const auto& a, const auto& b) {
+        return a.path().stem() == "mw5_kitfox" && b.path().stem() != "mw5_kitfox";
+    });
+    for (const auto& asset : assets) {
         auto package = asset.path(); package.replace_extension(".package.json");
         std::ifstream input(package); nlohmann::json pkg; input >> pkg;
         const float height = mc2mechscale::targetHeight(pkg.at("chassisId").get<std::string>());
@@ -638,7 +643,48 @@ TEST_CASE("clip state: MW5 runtime distance slip at installed gesture speeds") {
         auto ini = asset.path(); ini.replace_extension(".ini");
         std::ifstream iniInput(ini);
         const std::string text((std::istreambuf_iterator<char>(iniInput)), {});
-        const auto plan = mc2skel::BuildPlan(scene, {"j_LFoot", "j_RFoot"});
+        std::vector<std::string> names;
+        std::vector<int> parents;
+        const auto visit = [&](const auto& self, const aiNode* node, int parent) -> void {
+            const int index = static_cast<int>(names.size());
+            names.push_back(node->mName.C_Str()); parents.push_back(parent);
+            for (unsigned i = 0; i < node->mNumChildren; ++i) self(self, node->mChildren[i], index);
+        };
+        visit(visit, scene->mRootNode, -1);
+        const auto plan = mc2skel::BuildPlan(scene, names);
+        const auto matrix = [](const mc2skel::GpuBone& b) {
+            glm::mat4 m;
+            for (int r = 0; r < 4; ++r) for (int c = 0; c < 4; ++c) m[c][r] = b.m[r * 4 + c];
+            return m;
+        };
+        std::vector<mc2skel::GpuBone> rest;
+        mc2skel::EvaluateRestGpuBones(scene, names, rest);
+        mc2ground::Rig rig; rig.floor = 1e30f;
+        for (int side = 0; side < 2; ++side) {
+            auto& leg = rig.legs[side];
+            const std::string prefix = side ? "j_R" : "j_L";
+            auto index = [&](const std::string& name) { return static_cast<int>(std::find(names.begin(), names.end(), name) - names.begin()); };
+            leg.thigh = index(prefix + "Thigh"); leg.calf = index(prefix + "Calf"); leg.foot = index(prefix + "Foot");
+            REQUIRE(leg.foot < names.size());
+            leg.restFoot = matrix(rest[leg.foot]);
+            for (int b = 0; b < static_cast<int>(names.size()); ++b) {
+                int parent = b;
+                while (parent >= 0 && parent != leg.foot) parent = parents[parent];
+                if (parent == leg.foot && b != leg.foot) leg.children.push_back(b);
+            }
+            for (unsigned m = 0; m < scene->mNumMeshes; ++m) {
+                const auto* mesh = scene->mMeshes[m];
+                if (!mesh->mNumBones) continue;
+                const int b = index(mesh->mBones[0]->mName.C_Str());
+                if (b != leg.foot && std::find(leg.children.begin(), leg.children.end(), b) == leg.children.end()) continue;
+                for (unsigned v = 0; v < mesh->mNumVertices; ++v) {
+                    const auto p = mesh->mBones[0]->mOffsetMatrix * mesh->mVertices[v];
+                    leg.sole.push_back({b, {p.x, p.y, p.z}});
+                    rig.floor = std::min(rig.floor, (matrix(rest[b]) * glm::vec4(p.x, p.y, p.z, 1)).y);
+                }
+            }
+            REQUIRE_FALSE(leg.sole.empty());
+        }
         for (int gesture : {kGestureWalk, kGestureRun, kGestureReverse, kGestureLimpLeft, kGestureLimpRight}) {
             INFO(asset.path().stem().string(), " gesture=", gesture);
             std::smatch match;
@@ -651,32 +697,46 @@ TEST_CASE("clip state: MW5 runtime distance slip at installed gesture speeds") {
             DistanceCurve curve; encoded >> curve.duration;
             float d; while (encoded >> d) curve.distance.push_back(d);
             REQUIRE(curve.valid());
-            // Compare independent sampled foot travel to world travel through the runtime clock.
-            float lo[2] = {1e30f, 1e30f}, hi[2] = {-1e30f, -1e30f};
-            std::vector<mc2skel::GpuBone> bones;
-            for (int f = 0; f <= 120; ++f) {
-                REQUIRE(mc2skel::EvaluateClipGpuBones(*plan, choice.clip, f * curve.duration / 4, bones));
-                for (int k = 0; k < 2; ++k) { lo[k] = std::min(lo[k], bones[k].m[11]); hi[k] = std::max(hi[k], bones[k].m[11]); }
-            }
-            float time = 0, error = 0, travel = 0;
-            const float moved = speed / 240;
-            for (int f = 0; f < 2400; ++f) {
-                REQUIRE(mc2skel::EvaluateClipGpuBones(*plan, choice.clip, time * 30, bones));
-                const float before[2] = {bones[0].m[11], bones[1].m[11]};
-                const float next = curve.advanceWorld(time, moved, scale);
-                REQUIRE(mc2skel::EvaluateClipGpuBones(*plan, choice.clip, next * 30, bones));
+            std::vector<std::vector<glm::mat4>> poses;
+            const auto samplePose = [&](float time) {
+                std::vector<mc2skel::GpuBone> bones;
+                mc2skel::EvaluateClipGpuBones(*plan, choice.clip, time * 30, bones);
+                std::vector<glm::mat4> pose;
+                for (const auto& bone : bones) pose.push_back(matrix(bone));
+                return pose;
+            };
+            for (size_t f = 0; f < curve.distance.size(); ++f)
+                poses.push_back(samplePose(float(f) * curve.duration / float(curve.distance.size() - 1)));
+            const auto plants = mc2ground::buildPlants(rig, poses, curve.distance, gesture == kGestureReverse);
+            REQUIRE_FALSE(plants.feet.empty());
+            float time = 0, world = 0, peak = 0, maxVelocity = 0;
+            float drift[2] = {}, previousWorld[2][2] = {};
+            int previousContact[2] = {-1, -1}, contactFrames = 0;
+            const float dt = 1.0f / 60, moved = speed * dt;
+            for (int f = 0; f < 600; ++f) {
+                auto pose = samplePose(time);
+                const auto targets = plants.sample(time / curve.duration);
+                mc2ground::solve(rig, pose, nullptr, &targets);
+                const int frame = std::min(int(time / curve.duration * plants.feet.size()), int(plants.feet.size()) - 1);
                 for (int k = 0; k < 2; ++k) {
-                    const float after = bones[k].m[11], mid = (before[k] + after) / 2;
-                    const float delta = (after - before[k]) * (gesture == kGestureReverse ? 1 : -1);
-                    if (next > time && delta > 0 && mid > lo[k] + .25f * (hi[k] - lo[k]) && mid < lo[k] + .75f * (hi[k] - lo[k])) {
-                        error += std::abs(delta * scale - moved); travel += moved;
-                    }
+                    const auto ankle = glm::vec3(pose[rig.legs[k].foot][3]);
+                    const float x = ankle.x * scale, z = ankle.z * scale + world;
+                    const bool contact = plants.contact[frame][k] && plants.contact[(frame + 1) % plants.feet.size()][k];
+                    if (contact && previousContact[k] == 1) {
+                        const float dx = x - previousWorld[k][0], dz = z - previousWorld[k][1];
+                        const float step = std::sqrt(dx * dx + dz * dz) / mc2mechscale::worldUnitsPerMetre;
+                        drift[k] += step; peak = std::max(peak, drift[k]);
+                        maxVelocity = std::max(maxVelocity, step / dt); ++contactFrames;
+                    } else drift[k] = 0;
+                    previousWorld[k][0] = x; previousWorld[k][1] = z; previousContact[k] = contact ? 1 : 0;
                 }
-                time = next;
+                time = curve.advanceWorld(time, moved, scale);
+                world += gesture == kGestureReverse ? -moved : moved;
             }
-            REQUIRE(travel > 0);
-            std::printf("MW5_RUNTIME %s %s speed=%.3f scale=%.4f slip=%.3f%%\n", asset.path().stem().string().c_str(), choice.clip, speed, scale, 100 * error / travel);
-            if (gesture == kGestureWalk || gesture == kGestureRun) CHECK(error / travel < .05f);
+            std::printf("MW5_CONTACT %s %s stance_cm=%.3f peak_cm_s=%.3f contact_frames=%d speed=%.3f\n",
+                asset.path().stem().string().c_str(), choice.clip, peak * 100, maxVelocity * 100, contactFrames, speed);
+            CHECK(contactFrames > 0);
+            CHECK(peak < .02f);
         }
         ++chassis;
     }

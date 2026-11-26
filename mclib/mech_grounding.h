@@ -45,7 +45,8 @@ inline glm::mat4 moveBone(const glm::mat4& old, glm::vec3 pos, glm::quat rotatio
 
 // legLift[side] (clip units, optional): how far that leg's sole rides above the shared floor, so each foot rests on
 // the surface under itself (FOOT-GROUNDING-1). Limited to what the leg reaches.
-inline void solve(const Rig& rig, std::vector<glm::mat4>& pose, const float* legLift = nullptr) {
+inline void solve(const Rig& rig, std::vector<glm::mat4>& pose, const float* legLift = nullptr,
+                  const std::array<glm::vec3, 2>* planted = nullptr) {
     if (rig.legs[0].sole.empty() || rig.legs[1].sole.empty()) return;
     const auto original = pose;
     // Swing height is measured at the authored sole, not the ankle: a toe-down
@@ -84,6 +85,7 @@ inline void solve(const Rig& rig, std::vector<glm::mat4>& pose, const float* leg
         const float soleHeight = rig.floor + swing - soleY;
         const float lift = legLift ? std::clamp(legLift[side], -reach - (soleHeight - hip.y), reach - (soleHeight - hip.y)) : 0.0f;
         glm::vec3 target(ankle.x, soleHeight + lift, ankle.z);
+        if (planted) { target.x = (*planted)[side].x; target.z = (*planted)[side].z; }
         const float dy = target.y - hip.y;
         const float maxXZ = std::sqrt(std::max(0.0f, reach * reach - dy * dy));
         glm::vec3 xz(target.x - hip.x, 0, target.z - hip.z);
@@ -113,5 +115,89 @@ inline void solve(const Rig& rig, std::vector<glm::mat4>& pose, const float* leg
         const glm::mat4 correction = placed * invFoot;
         for (int child : leg.children) pose[child] = correction * original[child];
     }
+}
+
+// Clip-phase targets, shared by every instance. No previous-frame foot positions.
+// Build from the *grounded* pose: reach limiting can move an authored ankle.
+struct PlantTrack {
+    std::vector<std::array<glm::vec3, 2>> feet;
+    std::vector<std::array<bool, 2>> contact;
+    std::array<glm::vec3, 2> sample(float phase) const {
+        const float f = (phase - std::floor(phase)) * feet.size();
+        const size_t i = static_cast<size_t>(f) % feet.size(), j = (i + 1) % feet.size();
+        std::array<glm::vec3, 2> out;
+        for (int side = 0; side < 2; ++side) out[side] = glm::mix(feet[i][side], feet[j][side], f - std::floor(f));
+        return out;
+    }
+};
+
+inline PlantTrack buildPlants(const Rig& rig, const std::vector<std::vector<glm::mat4>>& poses,
+                              std::vector<float>& distance, bool reverse) {
+    PlantTrack track;
+    if (poses.size() < 3 || poses.size() != distance.size() ||
+        rig.legs[0].sole.empty() || rig.legs[1].sole.empty()) return track;
+    const int n = static_cast<int>(poses.size()) - 1;
+    track.feet.resize(n); track.contact.resize(n);
+    std::vector<std::array<glm::vec3, 2>> original(n);
+    std::vector<std::array<float, 2>> height(n);
+    const float direction = reverse ? -1.0f : 1.0f;
+    for (int f = 0; f < n; ++f) {
+        auto pose = poses[f]; solve(rig, pose);
+        for (int side = 0; side < 2; ++side) {
+            original[f][side] = glm::vec3(pose[rig.legs[side].foot][3]);
+            height[f][side] = 1e30f;
+            for (const auto& p : rig.legs[side].sole)
+                height[f][side] = std::min(height[f][side], (poses[f][p.bone] * glm::vec4(p.local, 1)).y);
+        }
+    }
+    for (int side = 0; side < 2; ++side) {
+        const auto& leg = rig.legs[side];
+        const float band = glm::length(glm::vec3(poses[0][leg.thigh][3]) - glm::vec3(poses[0][leg.foot][3])) * .02f;
+        // Low sole plus backward velocity identifies stance, including reverse/limp.
+        for (int f = 0; f < n; ++f) {
+            const int next = (f + 1) % n;
+            track.contact[f][side] = height[f][side] <= height[f][1 - side] + band &&
+                direction * (poses[next][leg.foot][3].z - poses[f][leg.foot][3].z) < 0;
+        }
+    }
+    // The existing curve used ungrounded ankles; match the feet that actually draw.
+    const auto authoredDistance = distance;
+    distance[0] = 0;
+    for (int f = 0; f < n; ++f) {
+        float travel = 0; int contacts = 0;
+        for (int side = 0; side < 2; ++side)
+            if (track.contact[f][side] && track.contact[(f + 1) % n][side]) {
+                travel += std::max(0.0f, direction * (original[f][side].z - original[(f + 1) % n][side].z));
+                ++contacts;
+            }
+        distance[f + 1] = distance[f] + std::max(1e-5f, contacts ? travel / contacts : authoredDistance[f + 1] - authoredDistance[f]);
+    }
+    for (int side = 0; side < 2; ++side) {
+        std::vector<glm::vec3> correction(3 * n);
+        for (int f = 0; f < 3 * n;) {
+            if (!track.contact[f % n][side]) { ++f; continue; }
+            const int start = f;
+            while (f < 3 * n && track.contact[f % n][side]) ++f;
+            const int anchor = (start + f - 1) / 2;
+            const auto travel = [&](int frame) { return distance[frame % n] + (frame / n) * distance.back(); };
+            for (int k = start; k < f; ++k) {
+                auto target = original[anchor % n][side];
+                target.z += direction * (travel(anchor) - travel(k));
+                correction[k] = target - original[k % n][side];
+            }
+        }
+        for (int f = n; f < 2 * n; ++f) {
+            auto delta = correction[f];
+            if (!track.contact[f % n][side]) {
+                int before = f, after = f;
+                while (before > 0 && !track.contact[before % n][side]) --before;
+                while (after < 3 * n - 1 && !track.contact[after % n][side]) ++after;
+                const float t = after > before ? static_cast<float>(f - before) / static_cast<float>(after - before) : 0;
+                delta = glm::mix(correction[before], correction[after], t * t * (3 - 2 * t));
+            }
+            track.feet[f % n][side] = original[f % n][side] + delta;
+        }
+    }
+    return track;
 }
 } // namespace mc2ground

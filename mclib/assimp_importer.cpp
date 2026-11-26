@@ -924,6 +924,7 @@ struct ImportedAnimEntry {
     std::vector<std::vector<aiVector3D>> boneSupport;
     float                      restLift = 0.0f;  // static ground lift from REST pose (steady torso)
     mc2ground::Rig              grounding;
+    std::map<std::string, mc2ground::PlantTrack> plants;
     // Per-frame state: GPU = one ActorAnimState per actor instance; CPU = one shared.
     std::map<const void*, ActorAnimState> actors;  // keyed by actor instance (mechShape*)
     ActorAnimState             cpuState;
@@ -1357,6 +1358,21 @@ void RegisterImportedAnim(mc2::czstring path, TG_TypeMultiShape* out, const Skel
     // Y-up, axis case 2). Per-frame model delta D_i = (A1·S·C_i)·(A2·S·R_i)^-1 maps the
     // Y-up rest vertex to the Z-up animated MODEL pose (A1 = case `gpuAxis`). The batcher
     // then composes the live shapeToWorld_root for placement.
+    // Reuse package travel, but lock the final grounded feet rather than raw ankles.
+    if (scene->mRootNode->FindNode("mw5_forward"))
+        for (auto& [clip, curve] : e.distanceCurves) {
+            std::vector<std::vector<glm::mat4>> poses;
+            for (size_t f = 0; f < curve.distance.size(); ++f) {
+                std::vector<mc2skel::GpuBone> bones;
+                mc2skel::EvaluateClipGpuBones(*e.plan, clip,
+                    static_cast<float>(f) * curve.duration * 30 / static_cast<float>(curve.distance.size() - 1), bones);
+                std::vector<glm::mat4> pose;
+                for (const auto& bone : bones) pose.push_back(matrix(bone));
+                poses.push_back(std::move(pose));
+            }
+            e.plants[clip] = mc2ground::buildPlants(e.grounding, poses, curve.distance,
+                                                   clip == "atlas_moveCoreWalkBwd");
+        }
     if (mechImportGpuEnabled() && !bake.rest.empty()) {
         e.gpuMode = true;
         aiMatrix4x4 S; S.a1 = S.b2 = S.c3 = bake.scale; S.d4 = 1.0f;
@@ -1515,7 +1531,22 @@ void groundActorPose(const ImportedAnimEntry& e, const ActorAnimState& s,
                 const aiVector3D model = e.AS1 * aiVector3D(ankle.x, ankle.y, ankle.z);
                 legLift[side] = ground->under(ground->ctx, &model.x) / e.scale;
             }
-        mc2ground::solve(e.grounding, pose, ground ? legLift : nullptr);
+        std::array<glm::vec3, 2> targets;
+        const auto plant = e.plants.find(s.activeClip);
+        const mc2ground::PlantTrack* track = nullptr;
+        if (plant != e.plants.end()) {
+            const auto& [clip, values] = *plant;
+            track = &values;
+        }
+        const bool locking = s.locomotion && track && !track->feet.empty();
+        if (locking) {
+            targets = track->sample(s.clipTimeSec / s.durationSec);
+            const float weight = s.previousClip.empty() ? 1.0f : std::clamp(s.fadeTimeSec /
+                mc2clip::fadeDuration(s.previousClip, s.activeClip), 0.0f, 1.0f);
+            for (int side = 0; side < 2; ++side)
+                targets[side] = glm::mix(glm::vec3(pose[e.grounding.legs[side].foot][3]), targets[side], weight);
+        }
+        mc2ground::solve(e.grounding, pose, ground ? legLift : nullptr, locking ? &targets : nullptr);
         if (s_mechSkelTrace && frameStamp % 6 == 0) {
             float soles[2] = {1e30f, 1e30f};
             for (int side = 0; side < 2; ++side)
