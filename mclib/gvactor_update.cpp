@@ -506,7 +506,9 @@ void GVAppearance::transformSensorShapes()
 	TG_MultiShape* marker = sensorLevel > 1 ? sensorCircleShape : sensorTriangleShape;
 	auto spin = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,sensorSpin * DEGREES_TO_RADS,0.0f));
 	marker->SetFogRGB(0xffffffff);
-	marker->TransformMultiShape_HierarchyOnly (&poseXlat_,&spin);
+	auto markerPosition = poseXlat_;
+	markerPosition.y = std::max(markerPosition.y, Terrain::waterElevation + 2.0f);
+	marker->TransformMultiShape_HierarchyOnly (&markerPosition,&spin);
 	marker->ReserveCpuDraw();
 }
 

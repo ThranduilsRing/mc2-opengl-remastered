@@ -971,6 +971,9 @@ set_source_files_properties(test_repair_deploy.cpp PROPERTIES INCLUDE_DIRECTORIE
 mc2_height_slice(radio_playback code/gamesound.cpp
     "void GameSoundSystem::playNoiseClip (void)" "// End of radio playback")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/radio_playback.inc" CONTENT "${radio_playback}")
+mc2_height_slice(radio_admission code/gamesound.cpp
+    "bool GameSoundSystem::checkMessage (" "void GameSoundSystem::moveFromQueueToPlaying(void)")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/radio_admission.inc" CONTENT "${radio_admission}")
 mc2_height_slice(voiceover_playback mclib/soundsys.cpp
     "bool SoundSystem::isPlayingVoiceOver (void)" "bool SoundSystem::isDigitalMusicPlaying (void)")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/voiceover_playback.inc" CONTENT "${voiceover_playback}")

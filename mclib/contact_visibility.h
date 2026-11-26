@@ -20,10 +20,15 @@ constexpr ContactVisibility contactVisibility(int quality, bool visualOverride =
 // Presentation only: contact/LOS and saved mover state remain authoritative.
 struct DisplayContactHold {
     float lastSeen = -2.0f;
+    float lastDetected = -2.0f;
+    ContactVisibility detected;
     ContactVisibility update(ContactVisibility contact, float now) {
         if (now < lastSeen) lastSeen = -2.0f;
+        if (now < lastDetected) lastDetected = -2.0f;
+        if (contact.blip) { lastDetected = now; detected = contact; }
         if (contact.model) lastSeen = now;
-        return now - lastSeen < 1.0f ? contactVisibility(CONTACT_VISUAL) : contact;
+        if (now - lastSeen < 1.0f) return contactVisibility(CONTACT_VISUAL);
+        return !contact.blip && now - lastDetected < 1.0f ? detected : contact;
     }
 };
 } // namespace mc2

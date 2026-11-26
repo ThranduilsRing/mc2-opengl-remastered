@@ -672,7 +672,9 @@ void GroundVehicle::applyAppearancePush (void)
 		land->worldToCell(position, row, col);
 		const bool wet = GameMap->getDeepWater(row, col) || GameMap->getShallowWater(row, col);
 		visualSinkDepth = mc2::waterreactive::wreckSinkDepth(visualSinkDepth, isDestroyed(), wet, frameLength, getExtentRadius());
-		appearance->setObjectParameters(position, rotation, TacticalOverview::maskWorldBars(drawFlags), teamId,relationship);
+		auto visualPosition = position;
+		visualPosition.z -= visualSinkDepth;
+		appearance->setObjectParameters(visualPosition, rotation, TacticalOverview::maskWorldBars(drawFlags), teamId,relationship);
 		appearance->setMoverParameters(turretRotation,gvPush.pitch,gvPush.roll,!pathLocks);
 	}
 	if (appearancePush.hasStatus)
@@ -783,6 +785,7 @@ void GroundVehicle::extractRenderView (mc2::render_view::RenderView& view)
 
 void GroundVehicle::renderView (const mc2::render_view::RenderView& view)
 {
+	if (visualSinkDepth >= std::max(32.0f, getExtentRadius() * 2.0f)) return;
 	appearance->contactView = view.contact;
 	appearance->setSensorLevel(view.contact.sensorLevel());
 	appearance->setAlphaValue(view.contact.model ? 0xff : 0);
