@@ -3,11 +3,30 @@
 
 #include "tgl_force_z.h"
 #include "ase_scan.h"
+#include "mech_import_scale.h"
 #include <algorithm>
 #include <numeric>
 #include <random>
 #include <string>
 #include <vector>
+
+TEST_CASE("mech_import_scale/qualified chassis preserve stock and MCO") {
+    using namespace mc2mechscale;
+    CHECK(targetHeight("atlas") == 0.0f);
+    CHECK(targetHeight("mco:atlas") == 0.0f);
+    CHECK(targetHeight("mw5:unknown") == 0.0f);
+    CHECK(targetHeight("") == 0.0f);
+    CHECK(targetHeight("mw5:atlas") == targetHeight("bt2018:atlas"));
+    CHECK(targetHeight("mw5:direwolf") > 1.9f * targetHeight("mw5:kitfox"));
+    CHECK(targetHeight("mw5:marauder") == doctest::Approx(12.0f * worldUnitsPerMetre));
+    for (const auto& row : heights) {
+        CHECK(row.metres > 0.0f);
+        CHECK(row.reference.find("https://www.sarna.net/wiki/") == 0);
+        const float modelHeight = 0.15f;
+        const float scale = targetHeight(std::string("mw5:") + std::string(row.chassis)) / modelHeight;
+        CHECK(modelHeight * scale == doctest::Approx(row.metres * worldUnitsPerMetre));
+    }
+}
 
 TEST_CASE("forceZ: front is near (reverse-Z 1), back is far") {
     CHECK(mc2_tgl::forceZClipDepth(0.0f) == doctest::Approx(1.0f));

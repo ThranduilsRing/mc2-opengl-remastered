@@ -117,6 +117,7 @@ static std::string ContentFloatKey(float value) {
 #include "mech_anim_preview.h"
 #include "mech_anim_runtime.h" // BT2018-SKEL-ENGINE-1B-RUNTIME: per-frame re-bake API
 #include "file.h"              // ModCapabilityMounted (package capability)
+#include "mech_import_scale.h"
 #include "mech_clip_state.h"   // P9: gesture -> clip state machine + stride matching
 #include "mech_grounding.h"
 #include "foot_grounding.h"
@@ -1103,7 +1104,7 @@ void measureClipStrides(ImportedAnimEntry& e) {
 }
 
 // True when the mech's <stem>.package.json declares "atlasStack" (stacked base + weapons atlas).
-bool PackageDeclaresAtlasStack(mc2::czstring glbPath) {
+bool PackageDeclaresAtlasStack(mc2::czstring glbPath, float& chassisHeight) {
     if (!glbPath) return false;
     std::string p(glbPath);
     const size_t dot = p.rfind(".glb");
@@ -1113,6 +1114,12 @@ bool PackageDeclaresAtlasStack(mc2::czstring glbPath) {
     std::string buf; char tmp[4096]; size_t n;
     while ((n = fread(tmp, 1, sizeof(tmp), f)) > 0) buf.append(tmp, n);
     fclose(f);
+    const size_t key = buf.find("\"chassisId\"");
+    const size_t colon = key == std::string::npos ? key : buf.find(':', key);
+    const size_t first = colon == std::string::npos ? colon : buf.find('"', colon + 1);
+    const size_t last = first == std::string::npos ? first : buf.find('"', first + 1);
+    if (last != std::string::npos)
+        chassisHeight = mc2mechscale::targetHeight(std::string_view(buf).substr(first + 1, last - first - 1));
     return buf.find("\"atlasStack\"") != std::string::npos;
 }
 
@@ -2047,19 +2054,17 @@ long ImportGeometryFromFile(mc2::czstring path, TG_TypeMultiShape* out, bool aut
 		}
 		for (size_t i = 0; i < bake.names.size(); ++i) bake.nameIdx[bake.names[i]] = static_cast<int>(i);
 		bake.active = !bake.names.empty();
-		bake.atlasStack = PackageDeclaresAtlasStack(path);
+		float chassisHeight = 0.0f;
+		bake.atlasStack = PackageDeclaresAtlasStack(path, chassisHeight);
 		// 1B-RUNTIME / 1C: opt-in gate enables per-frame animation. With a forced
 		// clip it loops that one clip (1B); without, the clip is chosen each frame
 		// from the mech's movement (1C). Gate off → static bind/posed bake stands.
 		animateImport = mechImportAnimateEnabled() || mechImportGpuEnabled();
 
-		// Auto-scale the assembled bind pose to MC2 mech size: the skinned GLB is
-		// authored at Unity scale (~0.15u tall); stock-equivalent mechs are ~25u.
-		// Measure the intact bind-pose extent (glTF space) and scale to target
-		// height (matches the Python fk_bake --target_height). Override via
-		// MC2_MECH_SKEL_HEIGHT. Single-pass measure over intact, bone-bound meshes.
+		// Qualified import packages use chassis heights and the vertical bind extent.
+		// The shared bake scale also drives sockets, skinning, grounding and bounds.
 		if (bake.active) {
-			const float targetH = mc2::gate::get<"MC2_MECH_SKEL_HEIGHT">();  // default 50 confirmed in-game (marauder)
+			const float targetH = chassisHeight > 0.0f ? chassisHeight : mc2::gate::get<"MC2_MECH_SKEL_HEIGHT">();
 			float lo[3] = {1e30f, 1e30f, 1e30f}, hi[3] = {-1e30f, -1e30f, -1e30f};
 			for (unsigned m = 0; m < scene->mNumMeshes; ++m) {
 				const aiMesh* me = scene->mMeshes[m];
@@ -2077,6 +2082,7 @@ long ImportGeometryFromFile(mc2::czstring path, TG_TypeMultiShape* out, bool aut
 			}
 			float ext = 0.0f;
 			for (int k = 0; k < 3; ++k) ext = (hi[k] - lo[k] > ext) ? (hi[k] - lo[k]) : ext;
+			if (chassisHeight > 0.0f) ext = hi[1] - lo[1]; // glTF Y-up, not weapon span
 			if (ext > 1e-6f) bake.scale = targetH / ext;
 			MECH_SKEL_TRACE("file='%s' SKINNED: bones=%zu bindExtent=%.4f scale=%.2f -> targetH=%.1f",
 			                path, bake.names.size(), ext, bake.scale, targetH);
