@@ -809,6 +809,18 @@ bool VulkanContext::init(bool wantPresent) {
     hdrMetadata_ = std::ranges::find(profile_.deviceExtensions, profile::kExtHdrMetadata) != profile_.deviceExtensions.end();
     if (caps.hasExtension(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME)) devExts.push_back(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
     if (caps.hasExtension(VK_AMD_BUFFER_MARKER_EXTENSION_NAME)) devExts.push_back(VK_AMD_BUFFER_MARKER_EXTENSION_NAME);
+    // VK_EXT_device_fault costs nothing until the device is lost; infra::deviceLost then reads the faulting address and the driver's report into the crash bundle.
+    VkPhysicalDeviceFaultFeaturesEXT enDf{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FAULT_FEATURES_EXT};
+    if (caps.hasExtension(VK_EXT_DEVICE_FAULT_EXTENSION_NAME)) {
+        VkPhysicalDeviceFaultFeaturesEXT qDf{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FAULT_FEATURES_EXT};
+        VkPhysicalDeviceFeatures2 qF{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+        qF.pNext = &qDf;
+        vkGetPhysicalDeviceFeatures2(phys_, &qF);
+        enDf.deviceFault = qDf.deviceFault;
+        enDf.deviceFaultVendorBinary = qDf.deviceFaultVendorBinary;
+    }
+    deviceFault_ = enDf.deviceFault == VK_TRUE;
+    if (deviceFault_) devExts.push_back(VK_EXT_DEVICE_FAULT_EXTENSION_NAME);
     // The FidelityFX VK backend fetches the KHR-suffixed memory-requirements entry points through vkGetDeviceProcAddr; the loader returns null for a
     // KHR name unless the extension is enabled (core 1.1 promotion does not alias it), and the backend calls the pointer unchecked.
     for (const char* e : {VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME, VK_KHR_BIND_MEMORY_2_EXTENSION_NAME, VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME})
@@ -903,6 +915,11 @@ bool VulkanContext::init(bool wantPresent) {
         chainRt(enAs);
         if (rtSel_.rayQuery) { enRq.rayQuery = VK_TRUE; chainRt(enRq); }
         if (rtSel_.rayPipeline) { enRp.rayTracingPipeline = VK_TRUE; chainRt(enRp); }
+    }
+    if (deviceFault_) {
+        VkBaseOutStructure* last = reinterpret_cast<VkBaseOutStructure*>(&enableFeatures);
+        while (last->pNext) last = last->pNext;
+        last->pNext = reinterpret_cast<VkBaseOutStructure*>(&enDf);
     }
 
     // Optional extension tier: one feature struct per selected part, chained after the RT structs with the bits the device reports for that part.
