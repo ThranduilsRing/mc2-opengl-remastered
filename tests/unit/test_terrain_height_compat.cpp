@@ -196,7 +196,7 @@ TEST_CASE("TerrainHeightCompat/visual bake and near plane ridge") {
     const glm::vec3 nearOffsets[4] = {{32, 32, -4}, {96, 32, -4}, {32, -32, 4}, {96, -32, 4}};
     TerrainRuntime::setCpuVisualHeight(nullptr, 0);
     CHECK(TerrainRuntime::sampleVisualHeight(eye) == 7.0f);
-    CHECK(TerrainRuntime::cameraClearanceHeight(eye, nearOffsets, 10) == 17.0f);
+    CHECK(TerrainRuntime::cameraClearanceHeight(eye, nearOffsets, 10) == 21.0f);
     float bake[16] = {0, 0, 0, 0, 0, 20, 80, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     TerrainRuntime::setCpuVisualHeight(bake, 4);
     const auto midpoint = origin + glm::vec3(48, -32, 0);
@@ -210,6 +210,22 @@ TEST_CASE("TerrainHeightCompat/visual bake and near plane ridge") {
     CHECK(floor == 94.0f);
     // The ridge at (64,-32) is between corners, and the plane slopes down 4 wu.
     CHECK(floor - 4 >= 80 + 10);
+    // Swept eye positions and conservative near-plane bounds at zoom/tilt
+    // extremes: every point of the near plane lies inside this bound.
+    for (float radius : {1.0f, 32.0f, 128.0f, 512.0f}) {
+        const glm::vec3 bounds[4] = {{-radius,-radius,-radius}, {radius,-radius,-radius},
+            {-radius,radius,-radius}, {radius,radius,-radius}};
+        for (int step = -4; step <= 12; ++step) {
+            const glm::vec3 p = origin + glm::vec3(step * 16, -32, 0);
+            const float z = TerrainRuntime::cameraClearanceHeight(p, bounds, 10);
+            for (int y = -2; y <= 2; ++y) for (int x = -2; x <= 2; ++x) {
+                auto q = p + glm::vec3(x * radius / 2, y * radius / 2, 0);
+                q.x = std::clamp(q.x, origin.x, origin.x + 96);
+                q.y = std::clamp(q.y, origin.y - 96, origin.y);
+                CHECK(z - radius >= TerrainRuntime::sampleVisibleGroundHeight(q) + 10);
+            }
+        }
+    }
     Terrain::waterElevation = 120;
     CHECK(TerrainRuntime::cameraClearanceHeight(eye, nearOffsets, 10) == 134.0f);
     Terrain::waterElevation = 0;

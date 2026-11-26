@@ -63,7 +63,7 @@ namespace TerrainRuntime
 	float decalElevation(const glm::vec3& worldPos);
 	float markerElevation(const glm::vec3& worldPos);
 	// Minimum eye Z covering the eye and near-plane footprint, including ridges
-	// between corners. No bake preserves the legacy eye-only sim/water clamp.
+	// between corners; includes filtered ground, map edges and the sim fallback.
 	float cameraClearanceHeight(const glm::vec3& eye, const glm::vec3 (&nearOffsets)[4], float minimum);
 
 	// Flat water plane level. == land->getWaterElevation() (position ignored today).
