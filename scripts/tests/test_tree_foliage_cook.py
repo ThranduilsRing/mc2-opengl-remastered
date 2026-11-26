@@ -107,3 +107,21 @@ def test_visibility_pruning_removes_occluded_cards_without_rescaling():
     assert c.tris(pruned['meshes']) == 2
     assert np.array_equal(pruned['meshes'][0]['attrs']['POSITION'], attrs['POSITION'])
     assert c.coverage_error(model, pruned, res=64, cache={})['mean'] == 0
+
+
+def test_coarse_crown_cannot_get_fuller_than_nearer_cards():
+    m = _leaf_mesh(n=8)
+    cards = c.card_hulls(m, TEX)
+    attrs, idx, _ = c.leaf_level(m, cards, np.arange(8), n_keep=8)
+    nearer = dict(doc={}, meshes=[dict(m, attrs=attrs, idx=idx)], tex={0: TEX})
+    coarse = c.copy.deepcopy(nearer)
+    p = coarse['meshes'][0]['attrs']['POSITION'].reshape(-1, 4, 3)
+    center = p.mean(1, keepdims=True)
+    p[:] = center + 1.5 * (p - center)
+    assert c.cap_crown_coverage(coarse, nearer, res=64) < 1
+    assert c.tris(coarse['meshes']) == c.tris(nearer['meshes'])
+    assert np.array_equal(coarse['meshes'][0]['attrs']['TEXCOORD_0'], attrs['TEXCOORD_0'])
+    center, half = c.window_of(nearer)
+    for az, el in c.VIEWS:
+        win = c.view_window(center, half, az, el)
+        assert c.rasterize(coarse, az, el, win, 64).sum() <= c.rasterize(nearer, az, el, win, 64).sum()
