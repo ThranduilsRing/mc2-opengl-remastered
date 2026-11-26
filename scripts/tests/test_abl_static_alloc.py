@@ -87,3 +87,40 @@ int main() {
     assert result.returncode == 0, result.stderr
     result = nofocus.run([str(exe)], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
+
+
+def test_returning_fatal_callback_always_unwinds(tmp_path):
+    source = (ROOT / 'mclib/ablerr.cpp').read_text()
+    start = source.index('void ABL_Fatal (')
+    body = source[start:source.index('\n}', start) + 2]
+    probe = r'''
+#include "ablerr.h"
+#include <cassert>
+#include <string_view>
+static int calls;
+static void returningCallback(long, mc2::czstring) { ++calls; }
+static auto ABLFatalCallback = returningCallback;
+''' + body + r'''
+int main() {
+    const char* messages[] = {"unsupported activation instruction", nullptr};
+    for (const char* message : messages) {
+        bool unwound = false;
+        try { ABL_Fatal(86, message); }
+        catch (const ABLRuntimeFailure& error) {
+            unwound = true;
+            assert(std::string_view(error.what()) == (message ? message : "ABL fatal error"));
+        }
+        assert(unwound);
+    }
+    assert(calls == 2);
+}
+'''
+    cpp = tmp_path / 'abl_fatal.cpp'
+    cpp.write_text(probe)
+    exe = tmp_path / 'abl_fatal.exe'
+    result = subprocess.run(['clang++', '-std=c++20', '-I' + str(ROOT / 'mclib'),
+                             '-I' + str(ROOT / 'GameOS/gameos/utils'), str(cpp), '-o', str(exe)],
+                            capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
+    assert result.returncode == 0, result.stderr
+    result = nofocus.run([str(exe)], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
