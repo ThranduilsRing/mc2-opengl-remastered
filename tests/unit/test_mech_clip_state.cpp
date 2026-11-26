@@ -18,6 +18,95 @@
 #include <cstdio>
 #include <string>
 #include <filesystem>
+#include <map>
+#include "mc2fmt.h"
+
+namespace imported_scale_test {
+struct ActorAnimState {
+    std::vector<mc2skel::GpuBone> lastGlobals;
+    float gpuLift = 0;
+};
+struct ImportedAnimEntry {
+    const void* multi = nullptr;
+    std::map<std::string, std::string> nodeManifest;
+    std::map<std::string, aiVector3D> socketOffsets;
+    std::vector<std::string> names;
+    std::map<const void*, ActorAnimState> actors;
+    ActorAnimState cpuState;
+    aiMatrix4x4 AS1, simAS1;
+    float restLift = 0, simRestLift = 0;
+};
+static std::vector<ImportedAnimEntry> g_importedAnims;
+namespace mc2mechanim {
+bool GetImportedNodeWorld(const void*, const void*, const char*, const float*, float*, bool = false);
+}
+#include "imported_node.inc"
+
+struct Appearance {
+    struct { bool ready = true; } pose;
+    decltype(pose)* simPose = &pose;
+    mc2::sim::UnitAnimState anim;
+    glm::vec3 socket{};
+    void settleSimPose() {}
+    long getLowestWeaponNode() { return 0; }
+    glm::vec3 getWeaponNodePosition(long) { return socket; }
+    auto simulationAnimation() { return &anim; }
+};
+struct Terrain { float getTerrainElevation(glm::vec3) { return 7; } };
+struct Mover {
+    Appearance* appearance;
+    Terrain* land;
+    glm::vec3 position{12, 23, 7};
+    bool isMech() { return true; }
+    glm::vec3 getLOSPosition();
+};
+#include "imported_los.inc"
+}
+
+TEST_CASE("clip state: imported calibration preserves simulation sockets and LOS") {
+    using namespace imported_scale_test;
+    const char* path = std::getenv("BT2018_TEST_CHASSIS");
+    if (!path) { WARN("set BT2018_TEST_CHASSIS for the imported chassis oracle"); return; }
+    Assimp::Importer importer;
+    const auto* scene = importer.ReadFile(path, 0);
+    REQUIRE(scene != nullptr);
+    const auto plan = mc2skel::BuildPlan(scene, {"j_RHand"});
+    REQUIRE(plan != nullptr);
+    g_importedAnims.assign(1, {});
+    auto& e = g_importedAnims.front();
+    e.multi = &e;
+    e.names = {"j_RHand"};
+    e.nodeManifest["weapon_rightarm"] = "j_RHand";
+    e.socketOffsets["weapon_rightarm"] = {0.2f, 0.3f, 0.4f};
+    e.simAS1.a1 = e.simAS1.b2 = e.simAS1.c3 = 10;
+    e.simAS1.b4 = 2;
+    e.simRestLift = 3;
+    const float root[12] = {0, 0, 1, -12, 0, 1, 0, 7, -1, 0, 0, 23};
+    Appearance appearance;
+    Terrain terrain;
+    Mover mover{&appearance, &terrain};
+    for (float frame : {0.0f, 7.0f, 19.0f}) {
+        REQUIRE(mc2skel::EvaluateClipGpuBones(*plan, "atlas_moveCoreWalkFwd", frame, e.cpuState.lastGlobals));
+        float baseline[3], scaled[3], rendered[3];
+        e.AS1 = e.simAS1;
+        e.restLift = e.simRestLift;
+        REQUIRE(imported_scale_test::mc2mechanim::GetImportedNodeWorld(nullptr, &e, "weapon_rightarm", root, baseline));
+        appearance.socket = {baseline[0], baseline[1], baseline[2]};
+        const auto los = mover.getLOSPosition();
+        for (float scale : {0.6f, 1.8f}) {
+            e.AS1 = e.simAS1;
+            e.AS1.a1 *= scale; e.AS1.b2 *= scale; e.AS1.c3 *= scale; e.AS1.b4 *= scale;
+            e.restLift = e.simRestLift * scale;
+            REQUIRE(imported_scale_test::mc2mechanim::GetImportedNodeWorld(nullptr, &e, "weapon_rightarm", root, scaled));
+            REQUIRE(imported_scale_test::mc2mechanim::GetImportedNodeWorld(nullptr, &e, "weapon_rightarm", root, rendered, true));
+            for (int k = 0; k < 3; ++k) CHECK(scaled[k] == baseline[k]);
+            CHECK(rendered[2] != baseline[2]);
+            appearance.socket = {scaled[0], scaled[1], scaled[2]};
+            CHECK(mover.getLOSPosition() == los);
+        }
+    }
+    g_importedAnims.clear();
+}
 
 using namespace mc2clip;
 

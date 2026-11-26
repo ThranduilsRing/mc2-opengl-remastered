@@ -479,7 +479,7 @@ glm::vec3 Mech3DAppearance::getHitNodeLeft (void)
 		const void* tKey = mechType ? static_cast<const void*>(mechType->mechShape[currentLOD].get()) : nullptr;
 		float wp[3];
 		if (mc2mechanim::GetImportedNodeWorld(static_cast<const void*>(mechShape), tKey, "hit_left",
-				static_cast<const float*>(glm::value_ptr(mechShape->GetShapeRec(0)->shapeToWorld)), wp)) {
+				static_cast<const float*>(glm::value_ptr(mechShape->GetShapeRec(0)->shapeToWorld)), wp, !pv_.sim)) {
 			result.x = wp[0]; result.y = wp[1]; result.z = wp[2] - pv_.lift;
 			return result;
 		}
@@ -527,7 +527,7 @@ glm::vec3 Mech3DAppearance::getHitNodeRight (void)
 		const void* tKey = mechType ? static_cast<const void*>(mechType->mechShape[currentLOD].get()) : nullptr;
 		float wp[3];
 		if (mc2mechanim::GetImportedNodeWorld(static_cast<const void*>(mechShape), tKey, "hit_right",
-				static_cast<const float*>(glm::value_ptr(mechShape->GetShapeRec(0)->shapeToWorld)), wp)) {
+				static_cast<const float*>(glm::value_ptr(mechShape->GetShapeRec(0)->shapeToWorld)), wp, !pv_.sim)) {
 			result.x = wp[0]; result.y = wp[1]; result.z = wp[2] - pv_.lift;
 			return result;
 		}

@@ -793,6 +793,12 @@ function(mc2_height_slice output source begin end)
     set(${output} "${body}" PARENT_SCOPE)
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${MC2_WORKTREE_ROOT}/${source}")
 endfunction()
+mc2_height_slice(imported_node mclib/assimp_importer.cpp "bool mc2mechanim::GetImportedNodeWorld(" "\nnamespace {\n// Advance")
+mc2_height_slice(imported_matrix mclib/assimp_importer.cpp "inline aiMatrix4x4 rowMajorToAi(" "inline void aiToRowMajor(")
+mc2_height_slice(imported_los code/mover_combat.cpp "    float height = 15.0f;" "long Mover::clearWeaponFireChunks")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/imported_node.inc" CONTENT "${imported_matrix}${imported_node}")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/imported_los.inc" CONTENT "glm::vec3 Mover::getLOSPosition() {\n${imported_los}")
+set_source_files_properties(test_mech_clip_state.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 mc2_height_slice(layout_flat code/logisticsvariant_stats.cpp
     "int\tLogisticsVariant::getComponents( long& count, long* array )"
     "std::expected<void, int> LogisticsVariant::removeComponent")

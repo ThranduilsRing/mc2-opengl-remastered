@@ -219,6 +219,9 @@ struct SkelBake {
     std::vector<mc2skel::GpuBone> rest;       // joint-global rest matrices, parallel to names
     std::map<std::string, int> nameIdx;
     float scale = 1.0f;                        // auto-scale bind pose to MC2 size
+    float simScale = 1.0f;                     // legacy maximum-extent scale, independent of calibration
+    std::vector<glm::vec3> simVertices;         // legacy rest VBO, for fixed socket grounding
+    float simGroundDy = 0.0f;
     // Package "atlasStack": the deployed albedo/AO/normal carry the base atlas in the top half and the
     // *_weapons atlas in the bottom half (tools/bt2018_mechs/stack_weapons_atlas.py), so weapon-material
     // parts sample their own art through the single mech skin slot.
@@ -771,16 +774,19 @@ long PopulateMergedSkinnedShape(const aiScene* scene, mc2::content::Asset& out, 
 			if (mn.find("weapons") != std::string::npos) vBias = 0.5f;
 		}
 
+		bake.simVertices.resize(verts.size());
 		for (unsigned v = 0; v < me->mNumVertices; ++v) {
 			aiVector3D p, n;
 			if (rm) {
-				p = applyRowMajor16(rm, off * me->mVertices[v]) * bake.scale;
+				p = applyRowMajor16(rm, off * me->mVertices[v]);
 				n = rotRowMajor16(rm, aiMatrix3x3(off) * me->mNormals[v]);
 			} else {
-				p = me->mVertices[v] * bake.scale;
+				p = me->mVertices[v];
 				n = me->mNormals[v];
 			}
 			n.Normalize();
+			bake.simVertices[vOff + v] = mechToMC2Pos(p * bake.simScale);
+			p *= bake.scale;
 			TG_TypeVertex& vt = verts[vOff + v];
 			vt.position  = mechToMC2Pos(p);   // fixed mech axis (== MC2_GLTF_AXIS=2)
 			vt.normal    = mechToMC2Vec(n);
@@ -910,6 +916,9 @@ struct ImportedAnimEntry {
     std::vector<unsigned char> perVertexBone;   // per type-vertex bone index (0..N-1)
     std::vector<aiMatrix4x4>   invMWrest;        // (A2·S·R_i)^-1 per bone (A2 = VBO axis)
     aiMatrix4x4                AS1;              // A1·S (Z-up clip-side axis · scale)
+    aiMatrix4x4                simAS1;           // legacy socket transform
+    float                      simScale = 1.0f;
+    float                      simRestLift = 0.0f;
     // Per-bone extreme rest VBO vertices along 26 directions (model space): the lowest
     // point of a rigid part under any rotation, for grounding fallen poses.
     std::vector<std::vector<aiVector3D>> boneSupport;
@@ -1078,7 +1087,7 @@ void measureClipStrides(ImportedAnimEntry& e) {
     for (const char* clip : kClips) {
         // MW5 packs carry offline stance measurements in source glTF units/s.
         if (e.strideSpeed.contains(clip)) {
-            e.strideSpeed[clip] *= e.scale;
+            e.strideSpeed[clip] *= e.simScale;
             continue;
         }
         auto dur = clipDurationSec(e.scene, clip);
@@ -1095,8 +1104,8 @@ void measureClipStrides(ImportedAnimEntry& e) {
             }
         }
         const auto stride = mc2clip::measureStride(pos, *dur);
-        if (stride.speed() * e.scale > 0.5f) {
-            e.strideSpeed[clip] = stride.speed() * e.scale;
+        if (stride.speed() * e.simScale > 0.5f) {
+            e.strideSpeed[clip] = stride.speed() * e.simScale;
             mc2::fmt::print_err("[MECH_IMPORT] stride '{}' planted={:.4f} estimate={:.4f} local u/s selected={:.2f} u/s (cycle {:.2f}s)\n",
                 clip, stride.planted, stride.estimate, e.strideSpeed[clip], *dur);
         }
@@ -1296,6 +1305,7 @@ void RegisterImportedAnim(mc2::czstring path, TG_TypeMultiShape* out, const Skel
         d = clipDurationSec(scene, e.initialClip);
     }
     e.scale = bake.scale;
+    e.simScale = bake.simScale;
     e.groundDy = groundDy;
     e.initialDuration = (d && *d > 1e-4f) ? *d : 1.0f;
     e.parts = parts;
@@ -1353,6 +1363,8 @@ void RegisterImportedAnim(mc2::czstring path, TG_TypeMultiShape* out, const Skel
         const aiMatrix4x4 A2 = buildAffineAxis(2, groundDy);                  // VBO axis (Y-up)
         const aiMatrix4x4 A1 = buildAffineAxis(mechImportGpuAxis(), groundDy); // clip axis (Z-up)
         e.AS1 = A1 * S;
+        aiMatrix4x4 simS; simS.a1 = simS.b2 = simS.c3 = e.simScale;
+        e.simAS1 = buildAffineAxis(mechImportGpuAxis(), bake.simGroundDy) * simS;
         const aiMatrix4x4 A2S = A2 * S;
         e.invMWrest.resize(bake.rest.size());
         for (size_t i = 0; i < bake.rest.size(); ++i) {
@@ -1399,6 +1411,21 @@ void RegisterImportedAnim(mc2::czstring path, TG_TypeMultiShape* out, const Skel
             // vertically steady — the per-frame lowest oscillates as legs articulate,
             // which caused a per-step "jack-in-a-box" bob. See buildGpuModelDelta.
             e.restLift = groundLift(e, bake.rest);
+            // Reproduce legacy rest grounding from legacy vertices, without deriving
+            // simulation coordinates from the calibrated VBO (or its rounding).
+            float simLowest = 1e30f;
+            for (size_t b = 0; b < bake.rest.size(); ++b) {
+                const auto rest = rowMajorToAi(bake.rest[b].m);
+                auto inv = buildAffineAxis(2, bake.simGroundDy) * simS * rest;
+                inv.Inverse();
+                const auto delta = (e.simAS1 * rest) * inv;
+                for (size_t v = 0; v < bake.simVertices.size(); ++v) {
+                    if (e.perVertexBone[v] != b) continue;
+                    const auto p = bake.simVertices[v] + glm::vec3(0, bake.simGroundDy, 0);
+                    simLowest = std::min(simLowest, (delta * aiVector3D(p.x, p.y, p.z)).y);
+                }
+            }
+            e.simRestLift = simLowest < 1e29f ? -simLowest : 0.0f;
         }
         measureClipStrides(e);
         MECH_SKEL_TRACE("file='%s' 1B-GPU registered joints=%zu verts=%d axis=%d (bbox y[%.2f..%.2f])",
@@ -1627,7 +1654,7 @@ const char* mc2mechanim::ImportedMechNormalTexName(const void* typeKey) {
 // manifest, the name is unmapped, or the joint/globals are absent.
 bool mc2mechanim::GetImportedNodeWorld(const void* actorKey, const void* typeKey,
                                        const char* mc2Name, const float* rootToWorld12,
-                                       float outXYZ[3]) {
+                                       float outXYZ[3], bool presentation) {
     if (!mc2Name || !rootToWorld12 || !outXYZ) return false;
     const bool diag = false;
     for (ImportedAnimEntry& e : g_importedAnims) {
@@ -1680,7 +1707,7 @@ bool mc2mechanim::GetImportedNodeWorld(const void* actorKey, const void* typeKey
         // an imported firepoint is in the identical frame callers (mover.cpp) consume
         // (.z = world elevation). Lift is applied in the pre-permute frame on the
         // liftAxis component, matching the batcher (F[3+4*liftAxis] += lift).
-        aiMatrix4x4 M = e.AS1 * rowMajorToAi(s->lastGlobals[idx].m);
+        aiMatrix4x4 M = (presentation ? e.AS1 : e.simAS1) * rowMajorToAi(s->lastGlobals[idx].m);
         float mx = M.a4, my = M.b4, mz = M.c4;
         // P10: a socket with an authored local point fires from actor x posed joint x point.
         if (e.socketOffsets.contains(mc2Name)) {
@@ -1691,7 +1718,7 @@ bool mc2mechanim::GetImportedNodeWorld(const void* actorKey, const void* typeKey
         float gx = w[0]*mx + w[1]*my + w[2]*mz  + w[3];
         float gy = w[4]*mx + w[5]*my + w[6]*mz  + w[7];
         float gz = w[8]*mx + w[9]*my + w[10]*mz + w[11];
-        gy += e.restLift; // gameplay sockets use fixed authored grounding, independent of visual lift settings
+        gy += presentation ? e.restLift : e.simRestLift;
         outXYZ[0] = -gx;   // result.x = -entries[3]
         outXYZ[1] =  gz;   // result.y =  entries[11]
         outXYZ[2] =  gy;   // result.z =  entries[7]  (world elevation)
@@ -1800,9 +1827,9 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
         // same pack scale as the skeleton. Both sides of a walk/run fade match it.
         const auto matchDistance = [&](std::string_view clip, float& time, float& rate) {
             const auto it = e.distanceCurves.find(std::string(clip));
-            if (it == e.distanceCurves.end() || e.scale <= 0) return;
+            if (it == e.distanceCurves.end() || e.simScale <= 0) return;
             const auto& [name, curve] = *it;
-            time = curve.advance(time, speed * dt / e.scale);
+            time = curve.advance(time, speed * dt / e.simScale);
             rate = 0;
         };
         if (s.locomotion) matchDistance(s.activeClip, s.clipTimeSec, s.playRate);
@@ -2062,7 +2089,7 @@ long ImportGeometryFromFile(mc2::czstring path, TG_TypeMultiShape* out, bool aut
 		animateImport = mechImportAnimateEnabled() || mechImportGpuEnabled();
 
 		// Qualified import packages use chassis heights and the vertical bind extent.
-		// The shared bake scale also drives sockets, skinning, grounding and bounds.
+		// Preserve the legacy scale for simulation sockets and animation clocks.
 		if (bake.active) {
 			const float targetH = chassisHeight > 0.0f ? chassisHeight : mc2::gate::get<"MC2_MECH_SKEL_HEIGHT">();
 			float lo[3] = {1e30f, 1e30f, 1e30f}, hi[3] = {-1e30f, -1e30f, -1e30f};
@@ -2082,6 +2109,7 @@ long ImportGeometryFromFile(mc2::czstring path, TG_TypeMultiShape* out, bool aut
 			}
 			float ext = 0.0f;
 			for (int k = 0; k < 3; ++k) ext = (hi[k] - lo[k] > ext) ? (hi[k] - lo[k]) : ext;
+			if (ext > 1e-6f) bake.simScale = mc2::gate::get<"MC2_MECH_SKEL_HEIGHT">() / ext;
 			if (chassisHeight > 0.0f) ext = hi[1] - lo[1]; // glTF Y-up, not weapon span
 			if (ext > 1e-6f) bake.scale = targetH / ext;
 			MECH_SKEL_TRACE("file='%s' SKINNED: bones=%zu bindExtent=%.4f scale=%.2f -> targetH=%.1f",
@@ -2233,6 +2261,11 @@ long ImportGeometryFromFile(mc2::czstring path, TG_TypeMultiShape* out, bool aut
 	}
 
 	if (out->BuildContentIR(std::move(asset), path, &groundDyApplied) != NO_ERR) return -1;
+	if (autoGround && !bake.simVertices.empty()) {
+		float minY = 1e30f;
+		for (const auto& p : bake.simVertices) minY = std::min(minY, p.y);
+		bake.simGroundDy = -minY;
+	}
 
 	// 1B-RUNTIME: register the merged skinned mech for per-frame re-bake. After
 	// auto-ground so the stored offset matches the static pose. Reuses the forced
