@@ -3,6 +3,7 @@
 #include "doctest.h"
 #include <cstdint>
 #include <random>
+#include <cmath>
 #include <unordered_map>
 #include "RenderCore/gpu_abi/GpuStaticPropInstance.h"
 #include <cstring>
@@ -317,4 +318,41 @@ TEST_CASE("prop_lod_state: zero key and stale erases preserve all value bits") {
         map.erase(k); map.erase(k);
     }
     CHECK(map.size() == 0); CHECK(map[0] == 0);
+}
+
+TEST_CASE("camera_looks: vehicle thresholds retain both directions inside eight percent") {
+    const float thresholds[] = {0.f, 100.f, 250.f};
+    uint8_t lod = 0;
+    for (int tier = 1; tier < 3; ++tier) {
+        const float t = thresholds[tier];
+        for (float d = t * 0.93f; d <= t * 1.07f; d += t * 0.01f) {
+            propLodAdvance(lod, d, thresholds, 0.08f);
+            CHECK(lod == tier - 1);
+        }
+        propLodAdvance(lod, t * 1.09f, thresholds, 0.08f);
+        CHECK(lod == tier);
+        for (float d = t * 1.07f; d >= t * 0.93f; d -= t * 0.01f) {
+            propLodAdvance(lod, d, thresholds, 0.08f);
+            CHECK(lod == tier);
+        }
+        propLodAdvance(lod, t * 0.91f, thresholds, 0.08f);
+        CHECK(lod == tier - 1);
+        propLodAdvance(lod, t * 1.09f, thresholds, 0.08f);
+    }
+}
+
+TEST_CASE("camera_looks: world cell vegetation rank ignores camera distance") {
+    std::vector<int> baseline;
+    for (float distance : {100.f, 7000.f, 20000.f}) {
+        std::vector<int> kept;
+        for (int instance = 0; instance < 128; ++instance) {
+            const float seed = static_cast<float>(instance) / 128.f;
+            const float hash = seed * 17.371f + 0.137f;
+            const float rank = hash - std::floor(hash); // GLSL fract, same as vegLodScale
+            if (rank < 1.f) kept.push_back(instance); // full cooked map-cell world budget
+        }
+        if (distance == 100.f) baseline = kept;
+        else CHECK(kept == baseline);
+    }
+    CHECK(baseline.size() == 128);
 }

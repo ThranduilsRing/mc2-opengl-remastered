@@ -485,8 +485,8 @@ vec3 waterPoolLights(vec3 wp, vec3 N, vec3 V, float alpha2, out vec3 spec){
         pool += plCol * falloff;
     }
     pool += poolMover;
-    if (uT.lightPoolCompress != 0) return lpa_dither(vec3(1.0) - exp(-1.6 * pool));
-    return lpa_dither(min(pool, vec3(1.0)));
+    if (uT.lightPoolCompress != 0) return lpa_dither(vec3(1.0) - exp(-1.6 * pool), wp);
+    return lpa_dither(min(pool, vec3(1.0)), wp);
 }
 
 void main(void)

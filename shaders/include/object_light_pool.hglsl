@@ -107,7 +107,7 @@ vec3 olp_objectPoolLight(vec3 worldPosMC2, int numPoolLights, int poolSoft,
         outPool = vec3(1.0) - exp(-1.6 * pool);
     else
         outPool = min(pool, vec3(1.0));
-    return lpa_dither(outPool * objScale);
+    return lpa_dither(outPool * objScale, worldPosMC2);
 }
 
 #endif // __OBJECT_LIGHT_POOL_HGLSL__

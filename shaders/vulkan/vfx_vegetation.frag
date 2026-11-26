@@ -61,7 +61,8 @@ void main() {
     float alphaLift = 1.0 + 0.30 * max(textureQueryLod(uAtlas, v_uv).x, 0.0);
     if (texel.a * alphaLift < 0.5) discard;
     // Spatial coverage fade: no history or frame-dependent noise, and no shrinking bushes.
-    float coverageRank = fract(52.9829189 * fract(dot(floor(gl_FragCoord.xy), vec2(0.06711056, 0.00583715))));
+    vec2 coverageKey = floor(v_rootPos.xy * 4.0) + floor(v_uv * 256.0);
+    float coverageRank = fract(52.9829189 * fract(dot(coverageKey, vec2(0.06711056, 0.00583715))));
     if (v_atlasLayer >= 4u && v_vegAux.x <= coverageRank) discard;
     if (kDepthOnly) return;
     vec3 macro = rootMacro();
@@ -115,13 +116,16 @@ void main() {
         albedo *= mix(vec3(0.85, 0.88, 0.82), mix(vec3(0.62, 0.68, 0.52), vec3(1.0), smoothstep(0.0, 0.55, tip)), bladeFade);   // root-to-tip gradient is sub-pixel far away: its mean
         albedo *= 1.0 + v_vegAux.y * (0.05 + 0.10 * tip);
         // Field wildflowers: white heads (a few yellow) on the tops of short stalks.
-        if ((v_flags & 12u) == 12u && tip > 0.70) {
+        if ((v_flags & 12u) == 12u) {
             float exposure = clamp(groundValue / kPaletteGround, 0.45, 1.6);
-            albedo = (pick < 0.15 ? vec3(0.78, 0.62, 0.16) : vec3(0.86, 0.86, 0.80)) * exposure;
+            vec3 flower = (pick < 0.15 ? vec3(0.78, 0.62, 0.16) : vec3(0.86, 0.86, 0.80)) * exposure;
+            // Sub-pixel heads settle to their population mean in the meadow tint.
+            vec3 flowerMean = mix(vec3(0.78, 0.62, 0.16), vec3(0.86, 0.86, 0.80), 0.85) * exposure;
+            albedo = mix(mix(albedo, flowerMean, 0.30), tip > 0.70 ? flower : albedo, bladeFade);
         }
     }
     vec3 rootN = rootNormal();
-    vec3 cardN = normalize(gl_FrontFacing ? v_cardNormal : -v_cardNormal);
+    vec3 cardN = normalize(dot(v_cardNormal, uEnv.sunDirLive.xyz) >= 0.0 ? v_cardNormal : -v_cardNormal);
     // Card facing (yaw/tilt) shades each blade differently; sub-pixel it aliases, so grass settles on the ground normal.
     vec3 N = normalize(mix(rootN, cardN, 0.30*(1.0-v_vegData.y)*bladeFade));
     float staticS = uT.enableShadows != 0 ? terrainStaticShadow(v_shadowWorld) : 1.0;

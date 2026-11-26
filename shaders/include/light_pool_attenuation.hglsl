@@ -32,14 +32,15 @@ bool lpa_falloff(vec3 delta, bool mover, float moverScale, int soft,
 // those tests on purpose and light only through these per-fragment loops.
 
 // LIGHTS-R3: the pool term's slow radial gradient quantised into concentric bands in the
-// 8-bit scene target. A screen-space triangular dither of +-1 LSB (two interleaved-gradient
+// 8-bit scene target. A world-space triangular dither of +-1 LSB (two interleaved-gradient
 // noise taps) breaks the bands; unlit fragments (no pool) are returned untouched.
-vec3 lpa_dither(vec3 c)
+vec3 lpa_dither(vec3 c, vec3 worldPos)
 {
     if (max(c.r, max(c.g, c.b)) <= 0.0) return c;
     const vec3 k = vec3(0.06711056, 0.00583715, 52.9829189);
-    float n1 = fract(k.z * fract(dot(gl_FragCoord.xy, k.xy)));
-    float n2 = fract(k.z * fract(dot(gl_FragCoord.xy + vec2(19.0, 47.0), k.xy)));
+    vec2 key = floor(worldPos.xy * 4.0);
+    float n1 = fract(k.z * fract(dot(key, k.xy)));
+    float n2 = fract(k.z * fract(dot(key + vec2(19.0, 47.0), k.xy)));
     return max(c + vec3((n1 + n2 - 1.0) * (1.0 / 255.0)), vec3(0.0));
 }
 

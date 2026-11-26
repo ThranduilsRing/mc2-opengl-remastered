@@ -100,6 +100,7 @@ layout(constant_id = 11) const int kTwoSided = 1;
 invariant gl_Position;
 layout(location = 18) out vec3 vBackNormalStuff;
 layout(location = 19) out vec3 vBackArgb;
+flat layout(location = 20) out float vLodBlend;
 
 // Per-type hot-colour magic: the emission colours of the three night tags (windows, outside building lights, building base lights), taken from the type's ini.
 // Three vec4 per type in the order pink, yellow, green; indexed by inst.typeID. Same table the GL prop shader reads.
@@ -258,6 +259,7 @@ void main() {
                                   hotOk ? uTypeHot.c[hotBase + 2u].rgb : vec3(0.0));
     // A window node carries only its hot-colour light: no ambient, sun or IBL (they would wash out the night glow and the by-day grey).
     vHighlight = inst.aRGBHighlight;
+    vLodBlend = inst.fogRGB.w;
     vMaterialSeed = seed;
     vMaterialAmbient = vec3(0);
     vMaterialSun = vec3(0);
