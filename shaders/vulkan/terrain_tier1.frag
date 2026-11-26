@@ -277,14 +277,12 @@ void main() {
             // Word bit23 => the atlas cell carries its own coverage in alpha; composite OVER base.
             bool cementOwnAlpha = (cw & 0x00800000u) != 0u;
             if (isTransition && cementOwnAlpha) {
-                // One-texel tent filter on coverage only; keep authored interior RGB.
-                vec2 texel = 1.0 / vec2(textureSize(u_cementArt, 0).xy);
-                float cOwnA = 0.5 * cementTexel.a;
-                const vec2 offsets[4] = vec2[4](vec2(-0.5, 0.0), vec2(0.5, 0.0), vec2(0.0, -0.5), vec2(0.0, 0.5));
-                for (int i = 0; i < 4; ++i) {
-                    vec2 uv = clamp(cTileUV + offsets[i] * texel, 0.5 * texel, 1.0 - 0.5 * texel);
-                    cOwnA += 0.125 * textureGrad(u_cementArt, vec3(uv, float(cLayerIdx)), cGx, cGy).a;
-                }
+                // Upscaled transition masks retain the original 64px coverage steps.
+                // Filter alpha at that grid, rather than half an upscaled texel; RGB stays sharp.
+                float side = float(textureSize(u_cementArt, 0).x);
+                float footprint = max(length(cGx), length(cGy)) * side;
+                float coverageLod = log2(max(max(footprint, side / 64.0), 1.0));
+                float cOwnA = textureLod(u_cementArt, vec3(cTileUV, float(cLayerIdx)), coverageLod).a;
                 base = mix(base, cementColor, cOwnA);
                 pureConcrete = cOwnA;
                 cementHit = cOwnA > 0.5;
