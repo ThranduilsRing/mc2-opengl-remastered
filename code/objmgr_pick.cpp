@@ -699,13 +699,16 @@ GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
     double origin[3], direction[3];
     if (!mc2::pickScreenRay(*eye, x, y, origin, direction)) return GameObjectPtr{};
     const double terrainT = pickTerrainDepth(origin, direction);
-    // PICK diag: why an enemy mover is not a candidate under this cursor (rect_miss is expected for most units).
+    // PICK diag: why a mover is not a candidate under this cursor (rect_miss is expected for most units).
     const bool pickTrace = mc2_diag::tagEnabled("PICK");
     const auto rejectEnemy = [&](GameObjectPtr o, std::string_view reason, double objectT = 0, double surfaceT = 0) {
-        if (!pickTrace || !o->isMover() || !o->isEnemy(Team::home)) return;
-        char payload[200];
-        mc2::fmt::to_buf(payload, "{{\"mouse\":[{},{}],\"reject\":\"{}\",\"part_id\":{},\"object_t\":{:.2f},\"terrain_t\":{:.2f},\"blip\":{},\"gui\":{}}}",
-            mc2::fmt::as_i32(x), mc2::fmt::as_i32(y), reason, o->getPartId(), objectT, surfaceT,
+        if (!pickTrace || !o->isMover()) return;
+        PickRect rect{};
+        const auto rectField = gameplayPickRect(o, rect) ? std::format(
+            ",\"rect\":[{},{},{},{}]", rect.left, rect.top, rect.right, rect.bottom) : std::string{};
+        char payload[384];
+        mc2::fmt::to_buf(payload, "{{\"mouse\":[{},{}],\"reject\":\"{}\",\"part_id\":{},\"team\":{}{},\"object_t\":{:.2f},\"terrain_t\":{:.2f},\"blip\":{},\"gui\":{}}}",
+            mc2::fmt::as_i32(x), mc2::fmt::as_i32(y), reason, o->getPartId(), o->getTeamId(), rectField, objectT, surfaceT,
             static_cast<Mover*>(o)->contactView.blip ? 1 : 0, o->isOnGUI() ? 1 : 0);
         mc2_diag::writeEvent("PICK", 1, 0, payload);
     };
