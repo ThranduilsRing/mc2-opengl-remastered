@@ -145,16 +145,13 @@ void QueueConeGlow(mc2::tgl::ViewUniforms view, TG_MultiShape* shape, long nodeI
 // LIGHT-REALISM-1 (beacon emission). User: the red/green/blue beacons "emit NO
 // light at all ... they're just bright unlit sprites floating on dark ground."
 //
-// Emits a SMALL, SOFT, colored additive ground disc under every beacon /
-// runway-light card on `shape` — the light a real beacon spills on its
-// immediate surroundings. Colour is taken from the beacon's own node name
+// Queues a short-radius point light and tiny emissive core for every beacon /
+// runway-light card on `shape`. Colour is taken from the beacon's own node name
 // (Red/Green/Blue beaconlight), matching the classification the GPU batcher
 // uses (TG_Shape::GetIsLightBillboard, node-name token "beaconlight").
 //
-// Deliberately NOT a registered TG_Light: beacons/runway lights number in the
-// dozens per map and would exhaust the 64-slot pool-light budget, starving the
-// real lamps. This rides the same additive MC2_ISSPOTLGT batch as the cone
-// glow (queued here, flushed by FlushFrame), so it costs no light slots.
+// Points join the shared clustered terrain/object pool without consuming legacy
+// world-light slots. Only the tiny core uses the additive MC2_ISSPOTLGT batch.
 //
 // Gated on MC2_LIGHT_REALISM (default ON since CONE-SPILL-POLICY-1; =0
 // reverts -> no-op). Call from the owner's

@@ -27,6 +27,7 @@
 #include "../../mclib/vertex.h"     // Vertex, PostcompVertex
 #include "../../mclib/camera.h"     // CameraPtr eye, getTerrainLight(), lightDirection, fogStart/fogFull
 #include "../../mclib/tgl.h"        // TG_Light, TG_LIGHT_* constants
+#include "../../mclib/timing.h"
 #include "../../mclib/spotlight_diag.h"  // NIGHT-LIGHT-POOLS-2a: mover-light slot tags
 #include "../../mclib/quad.h"       // TerrainQuad, TerrainQuad::rainLightLevel, ::lighteningLevel
 #include "gameos.hpp"  // gosEnvironment Environment (Environment.Renderer)
@@ -34,6 +35,16 @@
 // External globals needed for packing
 extern DWORD BaseVertexColor;  // defined in code/mechcmd2.cpp / code/logmain.cpp
 extern bool  useFog;           // defined in mclib/terrain.cpp
+
+namespace {
+std::vector<gos_terrain_lighting::GpuTerrainLight> s_beaconLights;
+long s_beaconFrame = -1;
+}
+
+void gos_terrain_lighting::QueueBeaconLight(const GpuTerrainLight& light, long frame) {
+    if (s_beaconFrame != frame) { s_beaconLights.clear(); s_beaconFrame = frame; }
+    s_beaconLights.push_back(light);
+}
 
 // Step 7 (VPL retirement): MC2_HAZE_PARITY probe — env-gated default-off.
 // Compares the inline-worldPos hazeFactor formula (CPU-recomputed from
@@ -441,6 +452,8 @@ void mission_init(uint32_t numVertices, uint32_t maxLights) {
 // mission_shutdown — per-mission teardown
 // ---------------------------------------------------------------------------
 void mission_shutdown() {
+    s_beaconLights.clear();
+    s_beaconFrame = -1;
     if (!s_initialized) return;
 
     s_lightGridDim         = 0;
@@ -742,6 +755,14 @@ void PackAndDispatch() {
                 gl.intensity      *= fixtureIntensity;
             }
             ++numLights;
+        }
+
+        if (s_beaconFrame == turn) {
+            for (const auto& light : s_beaconLights) {
+                ++poolWanted;
+                if (numLights >= s_maxLights) { ++poolDropped; continue; }
+                s_lightBuf[numLights++] = light;
+            }
         }
 
         // LIGHT-POOL-CAP-1: report peak demand + any starvation. Always-on but

@@ -338,7 +338,7 @@ long GenericAppearance::update (bool animate)
 		// props (runwaylight.tgl and friends) are GenericAppearance objects,
 		// NOT BldgAppearance children — a [BEACON_DIAG v1] sweep of every
 		// building shape at mc2_10 found billboards=0 across the board. Queue
-		// the soft colored ground disc here too; the classification, gating
+		// the physical point and emissive core here too; classification, gating
 		// (MC2_LIGHT_REALISM, default ON since CONE-SPILL-POLICY-1; =0
 		// reverts) and night check all live inside
 		// QueueBeaconGlow, so this is a no-op for every non-beacon prop.
