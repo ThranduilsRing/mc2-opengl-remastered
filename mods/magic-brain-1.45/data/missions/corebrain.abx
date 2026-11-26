@@ -1353,7 +1353,7 @@ order patrolDelayed (@PatrolState pState, @PatrolPath pPath, real startTime) : i
 
 	code
 
-		return(corePatrolDelayed(pState, pPath, startTime));//, 0));
+		return(corePatrolDelayed(pState, pPath, startTime, 0));
 
 endorder;
 

@@ -12,6 +12,12 @@ order coreAttack(integer target, integer tactic);
 """
 
 
+def test_profile_internal_calls_match_restored_signatures():
+    text = compat.read(compat.MAGIC_LIBRARY)
+    assert not compat.compile_errors({compat.COREBRAIN: text}, [compat.COREBRAIN],
+                                     compat.identity, compat.library(text), set(), set())
+
+
 def tree(tmp_path, brain):
     (tmp_path / "warriors").mkdir()
     (tmp_path / "corebrain.abx").write_text(STOCK)
