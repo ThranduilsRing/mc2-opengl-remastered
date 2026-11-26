@@ -1,4 +1,4 @@
-﻿#define LOGISTICSDATA_CPP
+#define LOGISTICSDATA_CPP
 /*************************************************************************************************\
 LogisticsData.cpp			: Implementation of the LogisticsData component.
 //---------------------------------------------------------------------------//

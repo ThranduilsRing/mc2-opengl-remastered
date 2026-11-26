@@ -1,5 +1,5 @@
 #include "game_rules.h"
-﻿#define MECHPURCHASESCREEN_CPP
+#define MECHPURCHASESCREEN_CPP
 /*************************************************************************************************\
 MechPurchaseScreen.cpp			: Implementation of the MechPurchaseScreen component.
 //---------------------------------------------------------------------------//

@@ -6,7 +6,8 @@
 namespace mc2::mods {
 inline std::set<std::string> files(const std::filesystem::path& root, std::string_view id, std::set<std::string>& visited) {
     std::set<std::string> result;
-    if (!visited.emplace(id).second) return result;
+    const auto [position, inserted] = visited.emplace(id);
+    if (!inserted) return result;
     const auto dir = root / id;
     std::ifstream stream(dir / "mod.json");
     auto json = nlohmann::json::parse(stream, nullptr, false);

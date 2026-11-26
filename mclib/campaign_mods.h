@@ -19,8 +19,12 @@ inline std::vector<std::string> split(std::string_view ids) {
     return out;
 }
 inline bool selected(std::string_view ids, std::string_view id) {
-    const auto list = split(ids);
-    return std::find(list.begin(), list.end(), id) != list.end();
+    while (!ids.empty()) {
+        const auto end = ids.find_first_of(",;");
+        if (ids.substr(0, end) == id) return true;
+        ids = end == std::string_view::npos ? std::string_view{} : ids.substr(end + 1);
+    }
+    return false;
 }
 inline void toggle(std::string& ids, std::string_view id) {
     auto list = split(ids);
@@ -45,7 +49,7 @@ inline std::string conflict(const Addon& candidate, const std::vector<Addon>& ad
 // Preserve graphics/base layers; gameplay layers are owned entirely by campaign rules.
 inline std::string dependencies(std::string_view mounted, std::string_view selection, const std::vector<Addon>& addons) {
     std::string result;
-    auto append = [&](const std::string& id) { if (!result.empty()) result += ','; result += id; };
+    auto append = [&](std::string_view id) { if (!result.empty()) result += ','; result += id; };
     for (const auto& id : split(selection)) if (!id.starts_with('@')) {
         if (!selected(result, id)) append(id);
         for (const auto& addon : addons) if (addon.id == id)

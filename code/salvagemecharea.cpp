@@ -1,5 +1,5 @@
 #include "game_rules.h"
-﻿#define SALVAGEMECHAREA_CPP
+#define SALVAGEMECHAREA_CPP
 /*************************************************************************************************\
 SalvageMechArea.cpp			: Implementation of the SalvageMechArea component.
 //---------------------------------------------------------------------------//
