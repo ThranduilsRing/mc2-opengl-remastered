@@ -89,7 +89,7 @@ long LogisticsData::getDropWeightPrice() const
 bool LogisticsData::buyDropWeight()
 {
 	const long price = getDropWeightPrice();
-	if ( !rules().dropWeightPurchase || missionInfo->getCBills() < price )
+	if ( !dropweight::purchaseAvailable( MPlayer != nullptr ) || missionInfo->getCBills() < price )
 		return false;
 	missionInfo->decrementCBills( static_cast<int>( price ) );
 	missionInfo->addDropWeightPurchase();

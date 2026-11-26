@@ -7,6 +7,9 @@
 
 namespace dropweight {
 
+// The lance weight warning is always active; offer its remedy in single-player.
+inline bool purchaseAvailable(bool multiplayer) { return !multiplayer; }
+
 inline constexpr int    kTonsPerPurchase = 5;       // drop weight added per purchase
 inline constexpr double kBasePrice       = 25000.0; // C-Bills for the first purchase
 inline constexpr double kLogK            = 0.75;    // growth: base * (1 + k * ln(1 + n))
