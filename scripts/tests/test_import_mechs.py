@@ -18,6 +18,35 @@ def test_incompatible_material_is_rejected_before_building():
         importer.check_material_defaults({"S": {"MetalRoughness": 0.4}, "V": {}})
 
 
+def test_material_defaults_extracts_palette_from_player_install(tmp_path):
+    def extract(_env, game, kind, request, out, work):
+        assert game == tmp_path / "game" and kind == "mw5"
+        assert any("ClanMech_PaintedMetal_MTL" in p for p in request["packages"])
+        out.mkdir()
+        for name, values in [("PaintedMetal_MTL", {"MetalRoughness": .1}),
+                             ("ClanMech_PaintedMetal_MTL", {m + " " + f: .7 for m in
+                              ("Base Metal", "Gun Metal", "Black Metal", "Steel", "Aluminum", "Matte", "Anodized", "Sensor")
+                              for f in ("Roughness", "Metallic")})]:
+            params = {"RuntimeEntries": {"ParameterInfos": [{"Name": k} for k in values]},
+                      "ScalarValues": list(values.values()), "RuntimeEntries[1]": {"ParameterInfos": []}, "VectorValues": []}
+            (out / (name + ".exports.json")).write_text(json.dumps([
+                {"Properties": {"CachedExpressionData": {"Parameters": params}}}]))
+    env = {}
+    with patch.object(importer, "extract", side_effect=extract):
+        importer.material_defaults(env, tmp_path / "game", tmp_path)
+    result = json.loads(Path(env["MW5_MATERIAL_DEFAULTS"]).read_text())
+    assert result["S"]["Base Metal Roughness"] == .7
+    assert result["S"]["MetalRoughness"] == .1
+
+
+def test_clans_without_mapping_skips_without_launching(tmp_path):
+    with patch.object(importer, "extract") as extract:
+        report = []
+        importer.clans(tmp_path, tmp_path, {}, [(Path("r.json"), {"family": "timberwolf"})], report)
+    extract.assert_not_called()
+    assert report[0][2] == "SKIP" and "MW5_USMAP" in report[0][3]
+
+
 def test_report_excludes_roster_metadata(tmp_path, monkeypatch, capsys):
     install = tmp_path / "install"
     (install / "data").mkdir(parents=True)

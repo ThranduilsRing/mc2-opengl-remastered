@@ -148,12 +148,20 @@ def material_defaults(env, game, work):
         return
     out = work / "defaults"
     extract(env, game, "mw5", {"mesh": "", "packages": [
-        "/Game/Objects/_common/Materials/PaintedMetals/PaintedMetal_MTL"]}, out, work)
+        "/Game/Objects/_common/Materials/PaintedMetals/PaintedMetal_MTL",
+        "/Game/DLC7/Objects/Mechs/CLANS/_Common/ClanMech_PaintedMetal_MTL"]}, out, work)
     params = json.loads((out / "PaintedMetal_MTL.exports.json").read_text())[0]["Properties"]["CachedExpressionData"]["Parameters"]
     scalars = dict(zip((p["Name"] for p in params["RuntimeEntries"]["ParameterInfos"]), params["ScalarValues"]))
     vectors = dict(zip((p["Name"] for p in params["RuntimeEntries[1]"]["ParameterInfos"]),
                        ([v[c] for c in "RGBA"] for v in params["VectorValues"])))
     defaults = {"S": scalars, "V": vectors}
+    # The common parent has one metal; the DLC7 parent supplies the eight-metal
+    # palette used by the cooker. Read those defaults from this player's game.
+    palette = out / "ClanMech_PaintedMetal_MTL.exports.json"
+    if palette.is_file():
+        params = json.loads(palette.read_text())[0]["Properties"]["CachedExpressionData"]["Parameters"]
+        for info, value in zip(params["RuntimeEntries"]["ParameterInfos"], params["ScalarValues"]):
+            defaults["S"].setdefault(info["Name"], value)
     check_material_defaults(defaults)
     path = work / "material-defaults.json"
     path.write_text(json.dumps(defaults))
@@ -216,6 +224,19 @@ def clans(game, work, env, recipes, report):
     # unverified bare model into a playable unit by guessing a recipe.
     name, recipe = next(((r["family"], r) for _, r in recipes if r["family"] == "timberwolf"),
                         (recipes[0][1]["family"], recipes[0][1]))
+    env = dict(env)
+    if not env.get("MW5_USMAP"):
+        mappings = list(game.rglob("*.usmap"))
+        if len(mappings) == 1:
+            env["MW5_USMAP"] = str(mappings[0])
+        else:
+            report.append(("clans", name, "SKIP",
+                "Missing matching UE5.5 .usmap for this Clans build. Set MW5_USMAP to a player-generated "
+                "Mappings.usmap: with a compatible UE4SS installed by the player, use Dumpers > Generate .usmap "
+                "(Ctrl+Numpad6), then copy the result outside the game. Instructions: "
+                "https://docs.ue4ss.com/feature-overview/dumpers.html . This importer never launches or injects "
+                "into Clans. Encrypted containers may additionally require MW5_AES."))
+            return
     try:
         extract(env, game, "clans", {"mesh": recipe["extraction"]["mesh"]}, work / "native", work)
         bridge = json.loads((work / "native/bridge.json").read_text())
@@ -227,38 +248,22 @@ def clans(game, work, env, recipes, report):
 
 
 def battletech(game, install, work, env, names, report):
-    # Existing conversion starts at AssetStudio's FBX export, not Unity bundles.
-    # Keep that prerequisite explicit rather than falling back to a dev install.
-    dump = Path(env.get("BT2018_DUMP", str(work / "bt-dump")))
-    fbx = tool("FBX2glTF", "FBX2GLTF", [Path.home() / "Downloads/FBX2glTF-windows-x64.exe"])
-    if not fbx or not list(dump.glob("Animator/chrPrfMech_*Base-001/*.fbx")):
-        raise RuntimeError(f"BT model exporter missing: export YOUR {game / LAYOUTS['bt']} with AssetStudio (https://github.com/Perfare/AssetStudio) as FBX + Texture2D PNG to {dump}; set BT2018_DUMP to that folder and FBX2GLTF to https://github.com/facebookincubator/FBX2glTF/releases executable. Bundle-to-skinned-GLB extraction is not implemented by the existing tools")
-    conv, tex = work / "conversions", work / "textures"
-    tex.mkdir()
-    # The Atlas reference is generated into scratch, never into the source dump.
-    atlas = next(dump.glob("Animator/chrPrfMech_atlasBase-001/*.fbx"))
-    ref = work / "atlas"
-    run([fbx, "-i", atlas, "-o", ref, "-b"], work / "atlas.log", env)
-    from tools.bt2018_import.convert_all_bt2018 import convert_one, btname_of
-    from types import SimpleNamespace
-    args = SimpleNamespace(out=str(conv), deploy=str(tex), fbx2gltf=fbx, force=False, atlas_ref=str(ref.with_suffix(".glb")))
+    from tools.bt2018_import.convert_all_bt2018 import convert_bundle
+    bundles = game / LAYOUTS["bt"]
+    dump, conv, tex = work / "bt-dump", work / "conversions", work / "textures"
     conv.mkdir()
+    tex.mkdir()
     rows = []
-    for source in sorted(dump.glob("Animator/chrPrfMech_*Base-001/*.fbx")):
-        name = btname_of(str(source)).lower()
-        if name not in names:
-            continue
+    for name in dict.fromkeys(["atlas", *names]):
         try:
-            row = convert_one(str(source), name, args)
-            if not row:
-                raise RuntimeError("FBX conversion failed")
-            rows.append(row)
+            bundle = bundles / f"chrprfmech_{name}base-001"
+            row = convert_bundle(bundle, name, conv, dump)
+            if name in names:
+                rows.append(row)
         except Exception as exc:
             report.append(("bt", name, "FAIL", str(exc)))
-    if not rows:
-        raise RuntimeError("No BT models converted")
-    # build_pack retargets from the Atlas reference; include it even for --only.
-    shutil.copyfile(ref.with_suffix(".glb"), conv / "atlas.glb")
+    if not rows or not (conv / "atlas.glb").is_file():
+        raise RuntimeError("No BT models converted, or Atlas reference missing")
     manifest = conv / "conversions_manifest.json"
     manifest.write_text(json.dumps(rows))
     common = ["--manifest", manifest, "--conversions", conv, "--deploy", tex]
@@ -270,7 +275,7 @@ def battletech(game, install, work, env, names, report):
     pack = work / "bt2018_mechs"
     run([sys.executable, ROOT / "tools/bt2018_mechs/build_pack.py", "--install", install,
          "--conversions", conv, "--texture-source", tex, "--bundles", game / LAYOUTS["bt"],
-         "--out", pack], work / "build.log", env)
+         "--out", pack, "--only", ",".join(row["btname"] for row in rows)], work / "build.log", env)
     validate(pack, dump)
     shutil.copytree(pack, install / "mods/bt2018_mechs", dirs_exist_ok=True)
     built = {row["btname"] for row in rows}
