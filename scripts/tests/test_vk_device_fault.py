@@ -8,7 +8,6 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 import console_child
-from smoke_lib import nofocus
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows crash bundle writer")
@@ -74,7 +73,8 @@ int main(int argc,char** argv) {
     for mode in range(4):
         folder = tmp_path / str(mode)
         folder.mkdir()
-        result = nofocus.run([str(exe), str(folder), str(mode)], capture_output=True, text=True, timeout=30)
+        result = subprocess.run([str(exe), str(folder), str(mode)], capture_output=True, text=True, timeout=30,
+                                **console_child.child_kwargs(redirected=True))
         assert result.returncode == 0, result.stderr
         report = (folder / "gpu_breadcrumbs.txt").read_text()
         if mode == 0:
