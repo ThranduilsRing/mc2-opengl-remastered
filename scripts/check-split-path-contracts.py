@@ -158,6 +158,7 @@ ISLANDS = {
     "shaders/vulkan/motion_vectors.frag": "Native Vulkan velocity prerequisite; no GL consumer or sibling. Default-path parity is checked by the merge gate day/night captures.",
     "shaders/vulkan/edge_fog.frag": "Native Vulkan fog; the GL twin was retired in s63.",
     "shaders/vulkan/fog_oob.frag": "Native Vulkan fog; the GL twin was retired in s63.",
+    "shaders/vulkan/valley_fog.frag": "Native Vulkan valley fog banks (ground-fog-4), drawn before edge_fog.frag in the fog pass; no GL twin, GL is being deleted.",
     "shaders/vulkan/edge_fog.vert":   "VK fullscreen-triangle VS for edge_fog; GL pass has no dedicated .vert sibling",
     "shaders/vulkan/fog_oob.vert":    "VK fullscreen-triangle VS for fog_oob; GL pass has no dedicated .vert sibling",
     "shaders/vulkan/impact_decal.vert": "Native Vulkan weapon impact box decals (docs/impact-damage-design.md); no GL twin, GL is being deleted.",
