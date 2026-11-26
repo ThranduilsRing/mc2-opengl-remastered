@@ -120,6 +120,7 @@ static std::string ContentFloatKey(float value) {
 #include "mech_import_scale.h"
 #include "mech_clip_state.h"   // P9: gesture -> clip state machine + stride matching
 #include "mech_grounding.h"
+#include "mw5_contact_passes.h"
 #include "foot_grounding.h"
 
 // BT2018-SKEL-ENGINE-1A — bind-pose bake trace (default OFF). MC2_MECH_SKEL_TRACE=1.
@@ -1361,6 +1362,7 @@ void RegisterImportedAnim(mc2::czstring path, TG_TypeMultiShape* out, const Skel
     // Reuse package travel, but lock the final grounded feet rather than raw ankles.
     if (scene->mRootNode->FindNode("mw5_forward"))
         for (auto& [clip, curve] : e.distanceCurves) {
+            if (!mc2ground::contactCurveAllowed(path, clip)) continue;
             std::vector<std::vector<glm::mat4>> poses;
             for (size_t f = 0; f < curve.distance.size(); ++f) {
                 std::vector<mc2skel::GpuBone> bones;

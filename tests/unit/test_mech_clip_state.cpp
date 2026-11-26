@@ -7,6 +7,7 @@
 #include "doctest.h"
 #include "mech_clip_state.h"
 #include "mech_grounding.h"
+#include "mw5_contact_passes.h"
 #include "foot_grounding.h"
 #include "mech_model_delta.h"
 #include "unit_anim_state.h"
@@ -613,6 +614,19 @@ TEST_CASE("clip state: world distance follows rendered chassis scale") {
         CHECK(curve.advanceWorld(0.75f, scale * 2, scale) == doctest::Approx(0.25f));
         CHECK(curve.advanceWorld(0.25f, 0, scale) == doctest::Approx(0.25f));
     }
+}
+
+TEST_CASE("clip state: MW5 contact allowlist keeps only measured passing pairs") {
+    unsigned count = 0;
+    for (const auto& row : mc2ground::contactPasses)
+        for (unsigned i = 0; i < 5; ++i) count += (row.gaits >> i) & 1u;
+    CHECK(std::size(mc2ground::contactPasses) == 48);
+    CHECK(count == 198);
+    CHECK(mc2ground::contactCurveAllowed("tgl/mw5_kitfox.glb", "atlas_moveCoreRunFwd"));
+    CHECK_FALSE(mc2ground::contactCurveAllowed("tgl/mw5_kitfox.glb", "atlas_moveCoreWalkLimpFwdRight"));
+    CHECK_FALSE(mc2ground::contactCurveAllowed("tgl/mw5_atlas.glb", "atlas_moveCoreRunFwd"));
+    CHECK_FALSE(mc2ground::contactCurveAllowed("tgl/mw5_archer.glb", "atlas_moveCoreRunFwd"));
+    CHECK_FALSE(mc2ground::contactCurveAllowed("tgl/unknown.glb", "atlas_moveCoreWalkFwd"));
 }
 
 TEST_CASE("clip state: MW5 grounded stance drift at installed gesture speeds") {
