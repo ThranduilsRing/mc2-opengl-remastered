@@ -14,6 +14,10 @@
 #include "game_rules.h"
 #include <expected>
 
+// The @ toggles and add-ons the launcher gates select (MC2_MOD_DEPS, the cheat and Faster Weapons gates). legacyCampaignMods() adds
+// every add-on the builds before campaign add-on selection auto-mounted: what a save without a Mods key ran with.
+namespace mc2::rules { std::string launcherModDefaults(); std::string legacyCampaignMods(); }
+
 
 class CPrefs : public mc2::options::Preferences {
 public:

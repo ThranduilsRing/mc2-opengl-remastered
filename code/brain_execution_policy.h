@@ -22,15 +22,29 @@
 
 namespace mc2::brainpolicy {
 
-// Input is a normalized relative ABL key. Empty means use the original asset.
-inline std::string magicAsset(std::string_view key, long ai) {
-	if (ai != 1 || key.find("..") != std::string_view::npos) return {};
-	if (key == "data/missions/corebrain.abx" ||
-		(key.starts_with("data/missions/warriors/") &&
-		 (key.ends_with(".abl") || key.ends_with(".abi"))))
-		return std::string("mods/magic-brain-1.45/").append(key);
-	return {};
+// The stock files the Magic profile replaces: its corebrain library and the warrior scripts it carries.
+inline bool profileKey(std::string_view key) {
+	return key == "data/missions/corebrain.abx" ||
+		(key.starts_with("data/missions/warriors/") && (key.ends_with(".abl") || key.ends_with(".abi")));
 }
+
+// Input is a normalized relative ABL key. Empty means use the original asset. Pure: the profile file the Smarter rule selects,
+// whether or not the install has it.
+inline std::string magicAsset(std::string_view key, long ai) {
+	if (ai != 1 || key.find("..") != std::string_view::npos || !profileKey(key)) return {};
+	return std::string("mods/magic-brain-1.45/").append(key);
+}
+
+// The same choice against the install's files (`exists` probes a profile path): empty unless the profile file is there, so an
+// install without the profile keeps the stock brain.
+template <class Exists>
+inline std::string magicAsset(std::string_view key, long ai, Exists&& exists) {
+	const auto profile = magicAsset(key, ai);
+	return profile.empty() || !exists(std::string_view(profile)) ? std::string{} : profile;
+}
+
+// True when the Magic profile is installed under `root` ("mods"): its manifest and its corebrain.
+bool profileInstalled(std::string_view root = "mods");
 
 enum class Policy : std::uint8_t { Legacy = 0, TechBrain = 1 };
 

@@ -167,6 +167,8 @@ class ABLModule {
 		StackItem				returnVal;
 		bool					initCalled;
 		bool runtimeFailed = false;
+		std::string lastRuntimeError;
+		unsigned runtimeErrorRepeats = 0;
 		long stopAfterRuntimeError(mc2::czstring message);
 		SymTableNodePtr			prevState;
 		SymTableNodePtr			state;

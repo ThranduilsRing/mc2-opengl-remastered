@@ -110,6 +110,8 @@ def evaluate(s: LogSummary, cfg: GateConfig, *,
         else:
             buckets.append("crash_silent")
 
+    if s.abl_failures > 0:
+        buckets.append("abl_failure"); details.append(f"{s.abl_failures} ABL failures")
     if s.pool_nulls > 0:
         buckets.append("pool_null"); details.append(f"{s.pool_nulls} NULLs")
     if s.asset_oob > 0 and not cfg.allow_asset_oob:

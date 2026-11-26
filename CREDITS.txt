@@ -375,3 +375,7 @@ Magic / MechCommander Omnitech: NOT FOUND (current files-page verification faile
 alariq: https://github.com/alariq/mc2 (README.md and alariq git remote).
 
 Free forever.
+
+Magic Brain Library (mods/magic-brain-1.45)
+FixABL 1.45 corebrain by Magic. Redistributed with attribution by permission
+from Magic (MCO author), Discord, 2026-11-15. Original source header retained.

@@ -341,7 +341,7 @@ std::expected<void, long> LogisticsMissionInfo::load( FitIniFile& file )
 	{
 		// A skirmish save (or an old one) names no campaign: nothing to restore here, the rest of the logistics data loads as before.
 		MC2_LOG(Io, Warn, "campaign save: the General block names no CampaignFile, the campaign is left as it is");
-		rules = mc2::rules::readFit( file );	// a skirmish save still carries its rules
+		rules = mc2::rules::readFit( file, mc2::rules::legacyCampaignMods );	// a skirmish save still carries its rules
 		return {};
 	}
 
@@ -454,7 +454,7 @@ std::expected<void, long> LogisticsMissionInfo::load( FitIniFile& file )
 
 	}
 
-	rules = mc2::rules::readFit( file );	// optional block: an older save has none and plays under today's rules
+	rules = mc2::rules::readFit( file, mc2::rules::legacyCampaignMods );	// optional block: an older save has none and plays under today's rules
 	return {};
 
 }

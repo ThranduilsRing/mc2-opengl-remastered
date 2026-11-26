@@ -43,6 +43,11 @@ namespace PlayerFrontEnd {
 namespace fs = std::filesystem;
 using Json = nlohmann::json;
 bool (*saveRenderOptions)(const mc2::options::RenderOptions&) = nullptr;
+void (*applyRuleToggles)(std::string_view) = nullptr;
+// The Cheats rows and Faster weapons are campaign toggles too: the @ ids (code/game_rules.h) their rows switch on.
+static const std::pair<const char*, const char*> kRuleRows[] = {{mc2::gate::name<"MC2_CHEAT_INFINITE_MONEY">(), "@infinite-money"},
+    {mc2::gate::name<"MC2_CHEAT_SALVAGE_ALL">(), "@salvage-all"}, {mc2::gate::name<"MC2_PURCHASE_ALL">(), "@purchase-all"},
+    {mc2::gate::name<"MC2_JUMPJETS_ALL">(), "@jumpjets-all"}, {"last_faster_weapons", "@faster-weapons"}};
 namespace {
 struct Pack {
     std::string id, name, description, credits, author, kind, group;
@@ -830,7 +835,12 @@ void drawOptions() {
             mc2::options::publish(draft);
             seen = mc2::options::current();
             dirty = false;
-            if (saveSettings()) { settingsChanged = true; error = "Saved. Restart the game to apply player settings."; }
+            if (saveSettings()) {
+                settingsChanged = true; error = "Saved. Restart the game to apply player settings.";
+                std::string ids;
+                for (const auto& [key, id] : kRuleRows) if (text(settings, key) == "1") { ids += id; ids += ','; }
+                if (applyRuleToggles) applyRuleToggles(ids);
+            }
         }
     }
     ImGui::TextWrapped("SMAA 1x is the default, without history or jitter. FSR 3.1 native AA is an optional temporal mode.");

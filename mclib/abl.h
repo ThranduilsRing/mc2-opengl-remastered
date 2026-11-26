@@ -106,6 +106,8 @@ void ABLi_saveEnvironment (ABLFile* ablFile, bool values = false);
 
 void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc, bool values = false);
 bool ABLi_environmentLoadFailed (void);   // the last ABLi_loadEnvironment hit a damaged or short value stream
+// `key` (a stock script key) is, or is no longer, compiled from the AI-rule profile: only such a module is quarantined on a runtime error.
+void ABLi_noteProfileSource (mc2::czstring key, bool on);
 
 void ABLi_close (void);
 

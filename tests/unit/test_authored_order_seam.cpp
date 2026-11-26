@@ -523,7 +523,7 @@ TEST_CASE("ABLSave/tagged values restore static variables and completed orders")
     CHECK(sizeof(ABLStackItem) == 16);
     CHECK(sizeof(StackFrameHeader) == 32);
     CHECK(sizeof(ModuleEntry) == 96);
-    CHECK(sizeof(ABLModule) == 88);
+    CHECK(sizeof(ABLModule) == 128); // Transient retry state is not part of the save format.
 #endif
     std::string image;
     Counts expected{};
@@ -1485,4 +1485,29 @@ TEST_CASE("StringOwnership/serialized length and payload stay byte identical") {
     MemoryStreamIO::Read(&stream, &loaded);
     CHECK(std::strcmp(static_cast<const char*>(loaded), "AbCd") == 0);
     CHECK(stream.GetPointer() == bytes.data() + expected.size());
+}
+
+
+TEST_CASE("ABLGuard/stock fatals return and profile warriors retry before quarantine") {
+    CompileFixture fixture(true);
+    fixture.sources["retry.abl"] = "module retry;\nvar\nstatic integer calls;\ncode\ncalls = calls + 1;\nfatal(86, \"angle gap\");\nendmodule.";
+    const int handle = ABLi_preProcess("retry.abl");
+    REQUIRE(handle >= 0);
+    ABLModule module;
+    REQUIRE(module.init(handle) == ABL_NO_ERR);
+    char calls[] = "calls";
+    CHECK_NOTHROW(module.execute());
+    CHECK_NOTHROW(module.execute());
+    CHECK(module.getStaticInteger(calls) == 2); // Stock/Mission never quarantine.
+    CHECK_FALSE(fixture.fatalMessage.empty());
+    ABLi_noteProfileSource("retry.abl", true);
+    ABLi_pushInteger(73); // Model the suspended outer frame during an alarm callback.
+    const auto* outerTop = g_ablExec->tos;
+    for (int i = 0; i < 4; ++i) {
+        CHECK_NOTHROW(module.execute());
+        CHECK(g_ablExec->tos == outerTop);
+        CHECK(g_ablExec->tos->integer == 73);
+    }
+    CHECK(module.getStaticInteger(calls) == 5); // Three repeated profile errors, then disabled.
+    ABLi_noteProfileSource("retry.abl", false);
 }

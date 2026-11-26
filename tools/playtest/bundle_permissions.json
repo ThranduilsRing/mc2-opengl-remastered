@@ -119,5 +119,12 @@
         ]
       }
     ]
+  },
+  "magic-brain-1.45": {
+    "permission_source": "Magic (MCO author), Discord, 2026-11-15",
+    "terms": "with attribution",
+    "author": "Magic",
+    "credits_file": "mods/magic-brain-1.45/data/missions/corebrain.abx",
+    "credits_sha256": "ebfc8cd01348af9dc5fb29b6d4e71f58491cf7b2579bb767cc44e3f6665541cf"
   }
 }

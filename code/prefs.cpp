@@ -18,6 +18,7 @@
 #include "Gates/gate_cold.h"
 #include "Gates/render_options_publish.h"
 #include "../GuiRuntime/PlayerFrontEnd.h"
+#include "logisticsdata.h"
 
 extern void gos_SetPostFxOptions(int casEnabled, float casSharpness, int tonemapMode);   // GameOS/gameos/gos_postprocess.cpp
 
@@ -63,6 +64,19 @@ int CPrefs::applyPrefs(bool applyRes) {
             prefs.render = options;
             if (!prefs.save()) { prefs.render = previous; return false; }
             return true;
+        };
+        // The in-game Options Cheats rows and Faster weapons write the campaign's @ toggles, so they keep working once rules are
+        // published; the environment gates only seed a campaign that has no selection yet.
+        PlayerFrontEnd::applyRuleToggles = [](std::string_view ids) {
+            auto rules = prefs.gameRules;
+            for (const auto& id : {"@faster-weapons", "@infinite-money", "@salvage-all", "@purchase-all", "@jumpjets-all"})
+                if (mc2::mods::selected(ids, id) != mc2::mods::selected(rules.mods, id)) mc2::mods::toggle(rules.mods, id);
+            if (rules.mods == prefs.gameRules.mods) return;
+            if (rules.mods.empty()) rules.mods = "-";   // the player's explicit empty selection
+            prefs.gameRules = rules;
+            if (LogisticsData::instance) LogisticsData::instance->setRules(rules);
+            mc2::rules::publish(rules);
+            (void)prefs.save();
         };
 		mc2::options::saveSpatialAA = [](int mode) {
 			const int previous = prefs.render.spatialAA;

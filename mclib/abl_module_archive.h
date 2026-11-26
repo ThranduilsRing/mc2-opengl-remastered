@@ -31,6 +31,5 @@ struct AblModuleRecord {
 // from numOrderCalls (words are values above); prevState/state: findState by
 // saved names; returnVal: next execute computes it; debugger managers and
 // trace/step/traceEntry/traceExit: fresh init/debugger setup, not simulation;
-// runtimeFailed: latch for an instance disabled after an ABL runtime error (logged
-// once); a reloaded module starts clean and re-latches if it fails again.
+// runtimeFailed, lastRuntimeError, runtimeErrorRepeats: transient retry/quarantine state; a reloaded module starts clean and re-latches if it fails again.
 }

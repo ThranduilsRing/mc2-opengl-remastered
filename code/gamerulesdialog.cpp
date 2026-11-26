@@ -1,4 +1,5 @@
 #include "../mclib/campaign_mod_catalogue.h"
+#include "brain_execution_policy.h"
 #define GAMERULESDIALOG_CPP
 // GameRulesDialog: see gamerulesdialog.h. Rows are generated from mc2::rules::kRules; the page (mcl_gamerules.fit) supplies kPageRows slots.
 #include "gamerulesdialog.h"
@@ -167,12 +168,12 @@ void GameRulesDialog::refreshRows()
 			setDefsElementText( valueKey( i ), std::to_string( v ) + ( r.kind == mc2::rules::Kind::Percent ? "%" : "" ) );
 			setDefsElementTextColor( valueKey( i ), ruleActive( r.key ) ? kActiveValueColor : kGreyColor );
 		}
-		const bool active = ruleActive( r.key );
+		const bool active = ruleActive( r.key ) && (r.key != "AI" || mc2::brainpolicy::profileInstalled());
 		setDefsElementText( rowKey( "text", i ), labelFor( r.key ) + ( active ? "" : "  (not yet active)" ) );
 		if ( !slider )	// setting text reveals an element, so a slider row's value button is never given any
 		{
 			// Upper case, like the labels: Agency's lower-case 'u' glyph renders a stray superscript ("est") over the letter.
-			std::string vt = valueText( working, r );
+			std::string vt = r.key == "AI" && !mc2::brainpolicy::profileInstalled() ? "Stock (Smarter AI profile not installed)" : valueText( working, r );
 			for ( char& c : vt ) c = static_cast<char>( std::toupper( static_cast<unsigned char>( c ) ) );
 			setDefsElementText( rowKey( "button", i ), vt );
 			setDefsElementTextColor( rowKey( "button", i ), active ? kActiveValueColor : kGreyColor );
@@ -230,6 +231,7 @@ void GameRulesDialog::cycleRow( std::size_t row )
 {
 	if ( row >= mc2::rules::kRuleCount ) return;
 	const mc2::rules::Rule& r = mc2::rules::kRules[row];
+	if (r.key == "AI" && !mc2::brainpolicy::profileInstalled()) return;
 	long v = mc2::rules::getLong( working, r );
 	long step = 1;
 	if ( r.kind == mc2::rules::Kind::Percent ) step = 25;
@@ -249,8 +251,8 @@ int GameRulesDialog::handleMessage( unsigned long, unsigned long who )
 	else if ( who == kDefaults )
 	{
 		auto mods = working.mods;
-		working = mc2::rules::GameRules{};
-		working.mods = std::move(mods);
+		working = editMods ? mc2::rules::newCampaignDefaults() : mc2::rules::GameRules{};
+		if (!editMods) working.mods = std::move(mods);
 	}
 	else if ( who == kPreset )
 	{
@@ -263,6 +265,8 @@ int GameRulesDialog::handleMessage( unsigned long, unsigned long who )
 		const auto addons = mc2::mods::catalogue("mods");
 		for ( const auto& addon : addons )
 			if ( mc2::mods::selected(working.mods, addon.id) && !mc2::mods::conflict(addon, addons, working.mods).empty() ) return 0;
+		// Mark an explicit empty choice so the next campaign does not substitute its defaults.
+		if ( working.mods.empty() ) working.mods = "-";
 		status = YES;
 		bDone = true;
 	}
@@ -340,7 +344,7 @@ void GameRulesDialog::update()
 		const int dir = gos_GetKeyStatus( KEY_LEFT ) == KEY_RELEASED ? -1 : ( gos_GetKeyStatus( KEY_RIGHT ) == KEY_RELEASED ? 1 : 0 );
 		if ( dir || gos_GetKeyStatus( KEY_UP ) == KEY_RELEASED || gos_GetKeyStatus( KEY_DOWN ) == KEY_RELEASED || gos_GetKeyStatus( KEY_TAB ) == KEY_RELEASED )
 			showFocus = true;
-		if ( dir )
+		if ( dir && (fr.key != "AI" || mc2::brainpolicy::profileInstalled()) )
 		{
 			mc2::rules::setLong( working, fr, mc2::rules::nudgeValue( fr, mc2::rules::getLong( working, fr ), dir ) );
 			soundSystem->playDigitalSample( LOG_MAINMENUBUTTON );

@@ -8,6 +8,8 @@
 namespace PlayerFrontEnd {
 // The game owns CPrefs; the shared UI also links into tools without CPrefs.
 extern bool (*saveRenderOptions)(const mc2::options::RenderOptions&);
+// The game writes the Options Cheats rows and Faster weapons into the campaign rules: `ids` lists the @ toggles that are on.
+extern void (*applyRuleToggles)(std::string_view ids);
 void loadSettings();
 bool prepareCampaignRules(const mc2::rules::GameRules& rules, std::string_view fit);
 void drawMainMenu(bool showCredits);

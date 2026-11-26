@@ -243,6 +243,7 @@ class LogSummary:
     pool_nulls: int = 0
     asset_oob: int = 0
     shader_errors: int = 0
+    abl_failures: int = 0
     content_errors: int = 0
     content_summaries: int = 0
     content_counts: dict = field(default_factory=dict)
@@ -397,6 +398,8 @@ def parse_log(text: str,
             if p.search(line): s.crash_handler_hit = True; break
         for p in SHADER_ERROR_PATTERNS:
             if p.search(line): s.shader_errors += 1; break
+        if "[ABL_FALLBACK]" in line or "[ABL_FATAL]" in line:
+            s.abl_failures += 1
         if "[CONTENT_SUMMARY]" in line:
             values = dict(re.findall(r"(\w+)=(\d+)", line))
             kinds = {"texture", "shape", "objtype", "ammo", "movetype", "sound", "missiondata"}

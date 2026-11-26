@@ -4,6 +4,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_set>
+#include <filesystem>
 
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
@@ -50,17 +51,23 @@ bool missionFitHasBrainBlock(std::string_view missionFitPath) {
 
 }  // namespace
 
+bool profileInstalled(std::string_view root) {
+	const std::filesystem::path base = std::filesystem::path(root) / "magic-brain-1.45";
+	return fileExists((base / "mod.json").string()) && fileExists((base / "data/missions/corebrain.abx").string());
+}
+
 void decide(std::string_view missionFitPath, std::string_view missionDir, std::string_view missionName) {
 	const char* why = "none";
 	Policy p = Policy::Legacy;
 	if (mc2::gate::is<"MC2_BRAIN_POLICY", "legacy">()) {
 		why = "forced-legacy";
-	} else if (mc2::gate::get<"MC2_PLAY_MISSION">()) {
+	} else if (mc2::gate::get<"MC2_PLAY_MISSION">() && mc2::rules::current().ai != 1) {
+		// A single-mission run honours the Smarter rule like a campaign mission does; the player-commander default yields to it.
 		p = Policy::TechBrain; why = "player-commander";
 	} else if (mc2::gate::is<"MC2_BRAIN_POLICY", "techbrain">()) {
 		p = Policy::TechBrain; why = "forced-techbrain";
 	} else if (mc2::rules::current().ai == 1) {
-		why = "player-smarter-magic-1.45";
+		why = profileInstalled("mods") ? "player-smarter-magic-1.45" : "player-smarter-magic-1.45 magic-profile-missing,stock-brain";
 		const std::string base = std::string(missionDir).append(missionName);
 		if (missionFitHasBrainBlock(missionFitPath))                    { p = Policy::TechBrain; why = "mission.fit Brain{}"; }
 		else if (overlayBrainFile(base + "_specials.fit"))              { p = Policy::TechBrain; why = "mod _specials.fit"; }

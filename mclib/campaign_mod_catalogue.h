@@ -32,6 +32,11 @@ inline std::vector<Addon> catalogue(const std::filesystem::path& root) {
     for (std::filesystem::directory_iterator it(root, ec), end; it != end && !ec; it.increment(ec)) {
         if (!it->is_directory(ec)) continue;
         const auto id = it->path().filename().string();
+        // Worked examples, compatibility dependencies, imported rosters and graphics
+        // are not player gameplay choices. Campaign dependencies mount automatically.
+        if (id.starts_with("sample_") || id == "mc2x-compat" || id == "mco-compat" ||
+            id == "mw5_mechs" || id == "mw5-vehicles" || id == "bt2018_mechs") continue;
+        if (id == "magic-brain-1.45") continue; // the AI rule owns the profile (vfs refuses to mount it as an add-on)
         if (split(id).size() != 1 || id.starts_with('.')) continue;
         std::ifstream stream(it->path() / "mod.json");
         const auto json = nlohmann::json::parse(stream, nullptr, false);

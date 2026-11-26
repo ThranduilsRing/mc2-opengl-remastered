@@ -45,6 +45,7 @@
 #endif
 #include "../GameOS/gameos/utils/mc2log.h"
 #include "mc2fmt.h"
+#include <exception>
 #include "abl_value_archive.h"
 #include "abl_module_archive.h"
 #include "abl_environment_archive.h"
@@ -987,23 +988,71 @@ static void ablReportSkippedErroredModule (long handle, mc2::czstring fileName, 
 	}
 }
 
-// Quarantine only this failed instance; existing tactical orders keep running.
+// Stock keys the game's file-open callback redirected to the AI-rule profile (ABLi_noteProfileSource). Only a module compiled
+// from the profile is quarantined: a stock mission or warrior script keeps the shipped path, so stock AI behaviour is unchanged.
+static std::set<std::string>& profileSources (void) {
+	static std::set<std::string> sources;
+	return sources;
+}
+
+void ABLi_noteProfileSource (mc2::czstring key, bool on) {
+	if (!key) return;
+	if (on) profileSources().emplace(key);
+	else profileSources().erase(key);
+}
+
+static bool profileSource (mc2::czstring fileName) {
+	return fileName && profileSources().contains(fileName);
+}
+
+// Marks an execute() frame. A profile frame makes its fatals unwind (g_ablProfileFrame) and, when it fails, the interpreter
+// returns to the state the frame was entered with, so a nested call (alarm callbacks re-enter brain->execute) leaves its
+// caller's stack alone.
+struct AblFrameScope {
+	decltype(g_ablExec->tos) tos = g_ablExec->tos, base = g_ablExec->stackFrameBasePtr;
+	decltype(g_ablExec->level) level = g_ablExec->level;
+	decltype(g_ablExec->CallStackLevel) callLevel = g_ablExec->CallStackLevel;
+	bool newState = g_ablExec->NewStateSet, autoReturn = g_ablExec->AutoReturnFromOrders,
+		exitReturn = g_ablExec->ExitWithReturn, exitOrder = g_ablExec->ExitFromTacOrder;
+	const int uncaught = std::uncaught_exceptions();
+	const bool profile, previous = g_ablProfileFrame;
+	StackItemPtr bottom = g_ablExec->ownStack.empty() ? stack + eternalOffset : g_ablExec->ownStack.data();
+	std::vector<StackItem> savedStack;
+	explicit AblFrameScope (mc2::czstring fileName) : profile(profileSource(fileName)) {
+		if (profile && tos >= bottom) savedStack.assign(bottom, tos + 1);
+		g_ablProfileFrame = profile;
+	}
+	~AblFrameScope () {
+		g_ablProfileFrame = previous;
+		if (profile && std::uncaught_exceptions() > uncaught) {
+			std::copy(savedStack.begin(), savedStack.end(), bottom);
+			g_ablExec->tos = tos;
+			g_ablExec->stackFrameBasePtr = base;
+			g_ablExec->level = level;
+			g_ablExec->CallStackLevel = callLevel;
+			g_ablExec->NewStateSet = newState;
+			g_ablExec->AutoReturnFromOrders = autoReturn;
+			g_ablExec->ExitWithReturn = exitReturn;
+			g_ablExec->ExitFromTacOrder = exitOrder;
+		}
+	}
+};
+
+// Quarantine only this failed instance; existing tactical orders keep running. The frame's AblFrameScope has already unwound it.
 long ABLModule::stopAfterRuntimeError(mc2::czstring message) {
-	mc2::fmt::print_err("[ABL_FALLBACK] module={} file={} line={} action=disable-instance retain-orders message={}\n",
-		getName(), getFileName(), g_ablExec->execLineNumber, message);
+	if (lastRuntimeError == message) ++runtimeErrorRepeats;
+	else { lastRuntimeError = message; runtimeErrorRepeats = 1; }
+	runtimeFailed = runtimeErrorRepeats >= 3;
+	mc2::fmt::print_err("[ABL_FALLBACK] module={} file={} line={} action={} retain-orders message={}\n",
+		getName(), getFileName(), g_ablExec->execLineNumber, runtimeFailed ? "disable-instance" : "retry-instance", message);
 	fflush(stderr);
-	runtimeFailed = true;
 	returnVal.integer = 1;
-	g_ablExec->resetStack();
-	g_ablExec->NewStateSet = false;
-	g_ablExec->AutoReturnFromOrders = false;
-	g_ablExec->ExitWithReturn = false;
-	g_ablExec->ExitFromTacOrder = false;
 	return 0;
 }
 
 long ABLModule::execute (ABLParamPtr paramList) try {
 	if (runtimeFailed) return 0;
+	AblFrameScope frame(ModuleRegistry[handle].fileName);
 
 	// Errored modules may contain malformed bytecode that underflows the VM stack.
 	if (ablSkipErroredModulesEnabled() && ModuleRegistry[handle].compileErrorCount > 0) {
@@ -1082,8 +1131,11 @@ long ABLModule::execute (ABLParamPtr paramList) try {
 
 	memcpy(&returnVal, &g_ablExec->returnValue, sizeof(StackItem));
 
+	runtimeErrorRepeats = 0;
 	return(g_ablExec->execStatementCount);	
 } catch (const ABLRuntimeFailure& error) {
+	// A stock script keeps the shipped path: only the base stack-overflow throw ever reaches here, and it propagates as before.
+	if (!profileSource(ModuleRegistry[handle].fileName)) throw;
 	return stopAfterRuntimeError(error.what());
 }
 
@@ -1091,6 +1143,7 @@ long ABLModule::execute (ABLParamPtr paramList) try {
 
 long ABLModule::execute (ABLParamPtr moduleParamList, SymTableNodePtr functionIdPtr) try {
 	if (runtimeFailed) return 0;
+	AblFrameScope frame(ModuleRegistry[handle].fileName);
 
 	// OMNITECH-ABL-EXECEXPRESSION-RECON-1: skip errored-compile modules (see overload above).
 	if (ablSkipErroredModulesEnabled() && ModuleRegistry[handle].compileErrorCount > 0) {
@@ -1230,8 +1283,11 @@ long ABLModule::execute (ABLParamPtr moduleParamList, SymTableNodePtr functionId
 
 	//-----------
 	// Summary...
+	runtimeErrorRepeats = 0;
 	return(g_ablExec->execStatementCount);	
 } catch (const ABLRuntimeFailure& error) {
+	// A stock script keeps the shipped path: only the base stack-overflow throw ever reaches here, and it propagates as before.
+	if (!profileSource(ModuleRegistry[handle].fileName)) throw;
 	return stopAfterRuntimeError(error.what());
 }
 

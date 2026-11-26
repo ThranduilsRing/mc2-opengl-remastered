@@ -962,8 +962,11 @@ def magic_brain_payload(src_root, target):
     sys.path.insert(0, str(src_root))
     from tools.mc2x_import.fst import fst_entries, decompress_entry
     profile = Path(src_root) / "mods/magic-brain-1.45"
-    items = [(str(p), p.relative_to(src_root).as_posix(), "support")
-             for p in profile.rglob("*") if p.is_file()]
+    tracked = subprocess.run(["git", "-C", str(src_root), "ls-files", "-z", "--",
+                              "mods/magic-brain-1.45"], check=True, capture_output=True,
+                             **console_child.child_kwargs(redirected=True)).stdout
+    items = [(str(Path(src_root) / name), name, "support")
+             for name in tracked.decode().split("\0") if name and (Path(src_root) / name).is_file()]
     generated = Path(src_root) / "build/magic-brain-1.45"
     try:
         stock_entries = list(fst_entries(str(Path(target) / "mission.fst")))

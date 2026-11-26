@@ -355,7 +355,8 @@ bool MainMenu::beginCampaignRules( std::string_view campaignFile )
 	introOver = true; // a relaunched campaign may open Rules before the splash animation finishes
 	bLoadCampaign = false;
 	bRulesDlg = true;
-	GameRulesDialog::instance()->begin( prefs.gameRules, true );
+	// A player who has never chosen starts a campaign from newCampaignDefaults (code/game_rules.h).
+	GameRulesDialog::instance()->begin( prefs.gameRules.mods.empty() ? mc2::rules::newCampaignDefaults() : prefs.gameRules, true );
 	return true;
 }
 

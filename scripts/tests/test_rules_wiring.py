@@ -96,3 +96,19 @@ def test_sim_determinism_opt_in_sets_the_runner_env(monkeypatch):
     assert sim.main(["check", "mc2_03", "--install", owner, "--allow-nondefault-rules"]) == sim.RC_OWNER_INSTALL
     assert __import__("os").environ["MC2_SMOKE_ALLOW_NONDEFAULT_RULES"] == "1"
     __import__("os").environ.pop("MC2_SMOKE_ALLOW_NONDEFAULT_RULES", None)  # sim.main set it directly; monkeypatch would restore "1"
+
+
+def test_legacy_selection_and_exclusions_are_preserved():
+    rules = _text("code/game_rules.h")
+    prefs = _text("code/prefs_io.cpp")
+    catalogue = _text("mclib/campaign_mod_catalogue.h")
+    migration = prefs.split("std::string mc2::rules::legacyCampaignMods()", 1)[1].split("extern int", 1)[0]
+    assert "launcherModDefaults()" in migration
+    assert "installedAddons()" in migration
+    assert "selected(mounted" not in migration
+    assert 'g.mods.empty()' in rules
+    for mod in ("magic-brain-1.45", "mc2x-compat", "mco-compat", "mw5_mechs", "mw5-vehicles", "bt2018_mechs", "sample_"):
+        assert mod in catalogue
+    defaults = rules.split("inline GameRules newCampaignDefaults()", 1)[1].split("enum class Kind", 1)[0]
+    assert 'r.ai = 1' in defaults
+    assert 'magic-ballistic-weapons,magic-gamesys-tweaks' in defaults
