@@ -10,6 +10,7 @@
 #ifndef ABLERR_H
 #define	ABLERR_H
 #include "mc2_czstring.h"
+#include <stdexcept>
 
 //***************************************************************************
 
@@ -109,9 +110,10 @@ using enum RuntimeErrorType;
 //***************************************************************************
 
 struct ABLSyntaxFailure {};
+struct ABLRuntimeFailure : std::runtime_error { using std::runtime_error::runtime_error; };
 [[noreturn]] void syntaxError (SyntaxErrorType errCode);
 void runtimeError (RuntimeErrorType errCode);
-void ABL_Fatal (long errCode, mc2::czstring s);
+[[noreturn]] void ABL_Fatal (long errCode, mc2::czstring s);
 void ABL_Assert (bool test, long errCode, mc2::czstring s);
 
 //***************************************************************************

@@ -152,6 +152,7 @@ extern DebuggerPtr debugger;
 void ABL_Fatal (long errCode, mc2::czstring s) {
 
 	ABLFatalCallback(errCode, s);
+	throw ABLRuntimeFailure(s ? s : "ABL fatal error");
 }
 
 //---------------------------------------------------------------------------
@@ -201,19 +202,17 @@ void runtimeError (RuntimeErrorType errCode) {
 
 	mc2::fmt::to_buf(message, "ABL RUNTIME ERROR {} [line {:d}] - (type {:d}) {}\n", mc2::fmt::safe((FileNumber > -1) ? g_ablExec->CurModule->getSourceFile(FileNumber) : "unavailable"), mc2::fmt::as_i32(g_ablExec->execLineNumber), mc2::fmt::as_i32(code), mc2::fmt::safe(runtimeErrorMessages[code]));
 	if (s_ablArgGuard && s_ablRuntimeSoftfail) {
-		// H3: log-and-continue, except when the stack has no room to continue.
+		// Keep the diagnostic, then unwind just as the normal fatal path does.
 		char softMsg[512];
 		const char* srcFile = (FileNumber > -1) ? g_ablExec->CurModule->getSourceFile(FileNumber) : "unavailable";
 		mc2::fmt::to_buf(softMsg, "[ABL_SOFTFAIL] func=(runtime) module={} file={} line={:d} errCode={:d} — {}", mc2::fmt::safe(g_ablExec->CurModule ? g_ablExec->CurModule->getName() : "(unknown)"), mc2::fmt::safe(srcFile), mc2::fmt::as_i32(g_ablExec->execLineNumber), mc2::fmt::as_i32(code), mc2::fmt::safe(runtimeErrorMessages[code]));
 		mc2::fmt::print_out("{}\n", mc2::fmt::safe(softMsg)); fflush(stdout);
-		if (errCode != ABL_ERR_RUNTIME_STACK_OVERFLOW)
-			return;
+
 	}
 	else
 		ABL_Fatal(-std::to_underlying(RuntimeErrorType::ABL_ERR_RUNTIME_ABORT), message);
-	// Neither soft-fail nor a returning fatal callback may resume a failed push.
-	if (errCode == ABL_ERR_RUNTIME_STACK_OVERFLOW)
-		throw std::runtime_error(message);
+	// A failed instruction must never resume at the same bytecode token.
+	throw ABLRuntimeFailure(message);
 }
 
 //***************************************************************************
