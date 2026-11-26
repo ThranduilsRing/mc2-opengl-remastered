@@ -18,20 +18,20 @@ TEST_CASE("purchase_catalog/third party chassis outside the unlock table stay av
     CHECK_FALSE(mc2purchase::supplementalAvailable("atlas", false, 1, table));
 }
 
-TEST_CASE("purchase_catalog/vehicle rule defaults on and filters every vehicle source") {
+TEST_CASE("purchase_catalog/vehicle rule defaults off and filters every vehicle source") {
     mc2::rules::GameRules rules;
-    CHECK(rules.purchaseVehicles);
+    CHECK_FALSE(rules.purchaseVehicles);
     for (bool vehicle : {false, true}) {
-        CHECK(mc2purchase::purchasable(vehicle, rules.purchaseVehicles));
         rules.purchaseVehicles = false;
         CHECK(mc2purchase::purchasable(vehicle, rules.purchaseVehicles) == !vehicle);
         rules.purchaseVehicles = true;
+        CHECK(mc2purchase::purchasable(vehicle, rules.purchaseVehicles));
     }
-    rules.purchaseVehicles = false;
+    rules.purchaseVehicles = true;
     mc2::rules::GameRules restored;
     for (const auto& entry : mc2::rules::cfgEntries(rules))
         mc2::rules::loadCfgText(restored, entry.key + "=" + entry.text + "\n");
-    CHECK_FALSE(restored.purchaseVehicles);
+    CHECK(restored.purchaseVehicles);
 }
 
 TEST_CASE("purchase_catalog/zero rating vehicle prices use shipped tonnage and role data") {
