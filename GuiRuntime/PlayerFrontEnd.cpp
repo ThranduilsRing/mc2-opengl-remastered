@@ -834,11 +834,17 @@ int restartIfRequested(int argc, char** argv) {
     // A child must reload saved choices, not mistake our injected values for shell overrides.
     const auto original = std::move(inheritedEnv);
     for (const auto& [key, value] : original) setEnv(key, value.value_or(""));
+    // The child must run loadSettings in full to mount the requested mod and consume start_campaign/start_load: a parent started by
+    // a launcher carries MC2_LAUNCHED, which makes loadSettings return before any of that, so the child does not inherit it.
+    setEnv(mc2::gate::name<"MC2_LAUNCHED">(), "");
 #ifdef _WIN32
     STARTUPINFOA si{}; si.cb = sizeof(si);
     PROCESS_INFORMATION pi{};
     std::string command = GetCommandLineA();
-    if (!CreateProcessA(nullptr, command.data(), nullptr, nullptr, FALSE, BELOW_NORMAL_PRIORITY_CLASS, nullptr, nullptr, &si, &pi)) return 1;
+    // A player's relaunch keeps the parent's priority (NORMAL); a harness parent started below normal stays below normal.
+    const DWORD priority = relaunchPriorityClass(GetPriorityClass(GetCurrentProcess()), NORMAL_PRIORITY_CLASS);
+    if (!CreateProcessA(nullptr, command.data(), nullptr, nullptr, FALSE, priority, nullptr, nullptr, &si, &pi)) return 1;
+    if (mc2_diag::tagRequested("CAMPAIGN_PICKER")) std::printf("[CAMPAIGN_PICKER] relaunch child pid=%lu priority_class=0x%lx\n", static_cast<unsigned long>(pi.dwProcessId), static_cast<unsigned long>(priority));
     CloseHandle(pi.hThread);
     CloseHandle(pi.hProcess);
 #else

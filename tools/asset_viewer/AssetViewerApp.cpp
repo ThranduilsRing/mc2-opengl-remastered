@@ -33,6 +33,7 @@
 AssetViewerApp::AssetViewerApp()  {
     // Deploy root is the viewer's cwd; "." -> ./tgl.fst for TglMeshLoader.
     meshSurface_.setDeployDir(".");
+    shapeSurface_.setDeployDir(".");
     workbenchPanel_.setDeployDir(".");
     workbench_.setDeployDir(".");
 }
@@ -53,9 +54,24 @@ void AssetViewerApp::drawUi()
     ImGui::EndChild();
     ImGui::SameLine();
 
+    // The shape categories share a preview: reload their selection on entry.
+    if (sidebar_.active() != prevActive_) { prevActive_ = sidebar_.active(); shapePanel_.markStale(); }
+
     // browser child: dispatch on the active asset type.
     ImGui::BeginChild("browser", ImVec2(browserW, 0), true);
-    if (sidebar_.active() == AssetType::StaticProps) {
+    if (sidebar_.active() == AssetType::Mechs) {
+        shapePanel_.drawBrowser(ShapeCategory::Mechs);
+    } else if (sidebar_.active() == AssetType::Vehicles) {
+        shapePanel_.drawBrowser(ShapeCategory::Vehicles);
+    } else if (sidebar_.active() == AssetType::Trees) {
+        shapePanel_.drawBrowser(ShapeCategory::Trees);
+    } else if (sidebar_.active() == AssetType::TerrainMaterials) {
+        terrainPanel_.drawBrowser();
+    } else if (sidebar_.active() == AssetType::Vfx) {
+        vfxPanel_.drawBrowser();
+    } else if (sidebar_.active() == AssetType::ModPackage) {
+        modPackagePanel_.drawBrowser();
+    } else if (sidebar_.active() == AssetType::StaticProps) {
         modelBrowser_.draw();
         if (modelBrowser_.hasSelection()) {
             std::string sel = modelBrowser_.takeSelection();
@@ -64,7 +80,7 @@ void AssetViewerApp::drawUi()
     } else if (sidebar_.active() == AssetType::ModWorkbench) {
         ImGui::TextDisabled("Drop a GLB on the window.");
     } else if (sidebar_.active() == AssetType::Archives) {
-        ImGui::TextDisabled("Drop a .mc2pak, .zip or .fst on the window.");
+        archivePanel_.drawDetails();
     } else {
         browser_.draw();
         if (browser_.hasSelection()) {
@@ -99,6 +115,24 @@ void AssetViewerApp::drawUi()
         break;
       case AssetType::Archives:
         archivePanel_.draw();
+        break;
+      case AssetType::Mechs:
+        shapePanel_.drawDetails(ShapeCategory::Mechs, shapeSurface_);
+        break;
+      case AssetType::Vehicles:
+        shapePanel_.drawDetails(ShapeCategory::Vehicles, shapeSurface_);
+        break;
+      case AssetType::Trees:
+        shapePanel_.drawDetails(ShapeCategory::Trees, shapeSurface_);
+        break;
+      case AssetType::TerrainMaterials:
+        terrainPanel_.drawDetails();
+        break;
+      case AssetType::Vfx:
+        vfxPanel_.drawDetails();
+        break;
+      case AssetType::ModPackage:
+        modPackagePanel_.drawDetails();
         break;
     }
     ImGui::EndChild();
@@ -973,6 +1007,48 @@ int AssetViewerApp::runSmokeCentralMergePreserve(const char* fixtureDir, const c
     return ok ? 0 : 1;
 }
 
+// Offline proof for the six asset panels' data builders against an install (no window, no GPU).
+int AssetViewerApp::runSmokeAssetPanels(const char* deployDir)
+{
+    const std::string dir = deployDir ? deployDir : ".";
+    if (!TglMeshLoader::ensureFastFile(dir.c_str())) return smokeFail("tgl.fst not found in deploy dir");
+    const std::vector<std::string> tgl = TglMeshLoader::listTgl();
+    auto find = [](const std::vector<ShapeEntry>& v, const char* name, const char* originPrefix) -> const ShapeEntry* {
+        for (const auto& e : v) if (e.name == name && e.origin.rfind(originPrefix, 0) == 0) return &e;
+        return nullptr;
+    };
+    const auto mechs = BuildShapeCatalog(ShapeCategory::Mechs, dir, tgl);
+    const ShapeEntry* atlas = find(mechs, "atlas", "stock");
+    if (!atlas || atlas->variants.size() != 5) return smokeFail("mechs: stock atlas with 5 variants (base, LOD1, shadow, 2 arms)");
+    ShapeStats as = MeasureMesh(LoadShapeVariant(atlas->variants[0]));
+    if (!as.ok || as.tris <= 0 || as.parts <= 0 || as.textures.empty()) return smokeFail("mechs: atlas base mesh stats");
+    const auto vehicles = BuildShapeCatalog(ShapeCategory::Vehicles, dir, tgl);
+    if (!find(vehicles, "apc", "stock")) return smokeFail("vehicles: stock apc");
+    if (find(vehicles, "atlas", "stock")) return smokeFail("vehicles: a mech leaked into the vehicle list");
+    const auto trees = BuildShapeCatalog(ShapeCategory::Trees, dir, tgl);
+    const ShapeEntry* pine = find(trees, "pine1", "stock");
+    if (!pine || pine->variants.size() != 3) return smokeFail("trees: stock pine1 with LOD0/LOD1/shadow");
+    if (find(trees, "pine1l1", "stock")) return smokeFail("trees: pine1l1 must be folded into pine1's chain");
+    const auto terrain = TerrainMaterialPanel::Build(dir);
+    bool grass = false;
+    for (const auto& s : terrain) if (s.name == "grass" && s.hasTint && !s.params.empty() && !s.files.empty()) grass = true;
+    if (!grass) return smokeFail("terrain materials: grass layer with files, tint and parameters");
+    VfxPanel vfx;
+    std::vector<std::string> errs;
+    if (vfx.Load(dir, errs) < 100 || !errs.empty()) return smokeFail("vfx: expected the stock catalog (>=100 effects, no decode errors)");
+    if (std::string(VfxPanel::ClassName(mc2::fx::first_effect_class + 1)) != "ParticleCloud") return smokeFail("vfx: class name table");
+    const auto mods = ModPackagePanel::ListMods(dir);
+    if (mods.empty()) return smokeFail("mod package: no mods listed");
+    for (const auto& id : mods) {
+        ModPackageInfo mi = ModPackagePanel::Read(dir, id);
+        if (mi.manifest.empty() || mi.files.empty()) return smokeFail("mod package: manifest/files empty");
+        if (mi.blocks() != 0) return smokeFail("mod package: shipped mod has blocking validation problems");
+    }
+    std::printf("[smoke] asset-panels PASS (mechs=%zu vehicles=%zu trees=%zu terrain=%zu effects=%zu mods=%zu)\n",
+                mechs.size(), vehicles.size(), trees.size(), terrain.size(), vfx.entries().size(), mods.size());
+    return 0;
+}
+
 // Launch-and-capture support: open a view without a click (the --view command line option; see main.cpp).
 //   textures <file> | materials | props <name.tgl> | workbench
 void AssetViewerApp::scriptedView(const char* kind, const char* arg) {
@@ -988,6 +1064,24 @@ void AssetViewerApp::scriptedView(const char* kind, const char* arg) {
     } else if (k == "workbench") {
         sidebar_.setActive(AssetType::ModWorkbench);
         if (arg) onFileDropped(arg);
+    } else if (k == "mechs") {
+        sidebar_.setActive(AssetType::Mechs);
+        if (arg) shapePanel_.select(ShapeCategory::Mechs, arg);
+    } else if (k == "vehicles") {
+        sidebar_.setActive(AssetType::Vehicles);
+        if (arg) shapePanel_.select(ShapeCategory::Vehicles, arg);
+    } else if (k == "trees") {
+        sidebar_.setActive(AssetType::Trees);
+        if (arg) shapePanel_.select(ShapeCategory::Trees, arg);
+    } else if (k == "terrain") {
+        sidebar_.setActive(AssetType::TerrainMaterials);
+        if (arg) terrainPanel_.select(arg);
+    } else if (k == "vfx") {
+        sidebar_.setActive(AssetType::Vfx);
+        if (arg) vfxPanel_.select(arg);
+    } else if (k == "modpackage") {
+        sidebar_.setActive(AssetType::ModPackage);
+        if (arg) modPackagePanel_.select(arg);
     } else if (k == "archives") {
         sidebar_.setActive(AssetType::Archives);
         if (arg) onFileDropped(arg);

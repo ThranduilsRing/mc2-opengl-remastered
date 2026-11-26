@@ -10,7 +10,12 @@ class ArchivePanel {
 public:
     void open(const std::string& path);
     void draw();
+    void drawDetails();   // selected-entry details + 4 KB preview (the browser pane)
 private:
+    int current_ = -1, previewRow_ = -1;
+    std::vector<uint8_t> previewBytes_;
+    size_t previewTotal_ = 0;
+    bool previewIsText_ = false;
     void refilter();
     void extract(bool selectedOnly);
     std::unique_ptr<ArchiveSource> src_;

@@ -2904,6 +2904,33 @@ GuiImage {
     uvHeight = 22
 }
 
+GuiText {
+    key = "game.mcl_pr_layout.text.weight_warning"
+    pageKey = "game.mcl_pr_layout"
+    legacyComment = "over-limit reason line (runtime text; red)"
+    role = "text"
+    layer = "text"
+    rect = "290,556,370,20"
+    legacyLocalRect = "290,556,370,20"
+    legacyRectSource = "xywh"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "290,556,370,20"
+    textRect = "290,556,370,20"
+    textRectMode = "control_rect_fallback"
+    textOffset = "0,0"
+    visible = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "right"
+    textAnchor = "upper_right"
+    wrapText = false
+    colorArgb = "0xffff3030"
+}
+
 GuiButton {
     key = "game.mcl_pr_layout.button.main_menu_button"
     pageKey = "game.mcl_pr_layout"

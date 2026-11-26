@@ -147,6 +147,17 @@ set(ASSET_VIEWER_SOURCES
     MeshPreview3D.cpp
     # Task 3: model browser (Static Props panel)
     ModelBrowser.cpp
+    # Mechs / Vehicles / Trees panels
+    ShapeCatalog.cpp
+    ShapePanel.cpp
+    TerrainMaterialPanel.cpp
+    # VFX panel: native .fx catalog reader (self-contained TUs, no gosFX/legacy engine)
+    VfxPanel.cpp
+    ModPackagePanel.cpp
+    "${CMAKE_SOURCE_DIR}/mclib/fx/fx_format.cpp"
+    "${CMAKE_SOURCE_DIR}/mclib/fx/fx_catalog.cpp"
+    "${CMAKE_SOURCE_DIR}/mclib/fx/fx_curve.cpp"
+    "${CMAKE_SOURCE_DIR}/mclib/fx/fx_mesh_data.cpp"
     # remaining sources added in later tasks
     TextureExtensions.cpp
     TextureMetadata.cpp

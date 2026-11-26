@@ -588,7 +588,9 @@ void MainMenu::update()
     const auto pickedCampaign = PlayerFrontEnd::takeCampaignStart();
     if (!pickedCampaign.empty() && LogisticsData::instance) {
         skipIntro();
-        if (LogisticsData::instance->startNewCampaign(pickedCampaign.c_str())) {
+        if (beginCampaignRules(pickedCampaign))
+            ;   // the relaunched child shows the same Game Rules dialog as a same-mod campaign; ACCEPT starts it
+        else if (LogisticsData::instance->startNewCampaign(pickedCampaign.c_str())) {
             LogisticsData::instance->setRules(prefs.gameRules);
             status = RESTART;
         }

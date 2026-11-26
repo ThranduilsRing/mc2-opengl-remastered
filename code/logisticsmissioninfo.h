@@ -79,6 +79,8 @@ class LogisticsMissionInfo
 		int					getCBills() const { return CBills; }
 		void				incrementCBills(int amount) { CBills += amount; }
 		void				decrementCBills(int amount) { CBills -= amount; }
+		int					getDropWeightPurchases() const { return dropWeightPurchases; }
+		void				addDropWeightPurchase() { ++dropWeightPurchases; }
 
 		const std::string& 	getCampaignName( ) const { return campaignName; }
 		const std::string&	getCampaignDisplayName() const { return campaignDisplayName; }
@@ -229,6 +231,7 @@ class LogisticsMissionInfo
 
 		long					CBills;
 		mc2::rules::GameRules	rules;
+		int						dropWeightPurchases = 0;	// bought +5 t steps; campaign-wide, saved only when > 0
 
 		void					clear();
 		bool					bMultiplayer;

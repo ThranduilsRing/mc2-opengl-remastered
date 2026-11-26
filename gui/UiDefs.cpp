@@ -260,6 +260,18 @@ bool UiDefs::GameOSPage::setElementTextColor(const std::string& elementKey, unsi
     return false;
 }
 
+bool UiDefs::GameOSPage::setElementDisabled(const std::string& elementKey, bool disabled)
+{
+    if (!isLoaded()) return false;
+    for (UiElement& e : impl->elements) {
+        if (e.key == elementKey) {
+            e.forceDisabled = disabled;
+            return true;
+        }
+    }
+    return false;
+}
+
 bool UiDefs::GameOSPage::setElementVisible(const std::string& elementKey, bool visible)
 {
     if (!isLoaded()) return false;

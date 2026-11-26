@@ -74,3 +74,10 @@ TEST_CASE("campaign menu/a save reloads under the mod it was made under") {
     CHECK_FALSE(saveNeedsRelaunch(true, "", "", "", ""));
     CHECK_FALSE(saveNeedsRelaunch(false, "alpha", "", "", ""));
 }
+
+TEST_CASE("campaign menu/a relaunched child keeps the parent's priority class") {
+    using namespace PlayerFrontEnd;
+    CHECK(relaunchPriorityClass(0x20, 0x20) == 0x20);   // player parent NORMAL -> NORMAL
+    CHECK(relaunchPriorityClass(0x4000, 0x20) == 0x4000);   // below-normal harness parent stays below normal
+    CHECK(relaunchPriorityClass(0, 0x20) == 0x20);   // unknown -> NORMAL
+}

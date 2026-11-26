@@ -33,6 +33,7 @@ inline constexpr int MB_MSG_CHANGE_LOADOUT = 55;
 inline constexpr int MB_MSG_BUY_SELL = 56;
 inline constexpr int MB_MSG_MAINMENU = 57;
 inline constexpr int MB_MSG_RULES = 58;	// legacyId of the defs-only RULES button in the title bar (opens the Game Rules dialog)
+inline constexpr int MB_MSG_BUY_WEIGHT = 59;	// defs-only button (no legacy aButton)
 
 
 class MechBayScreen : public LogisticsScreen

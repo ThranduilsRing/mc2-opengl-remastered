@@ -171,6 +171,29 @@ void MechBayScreen::update()
 	textObjects[6].setText( str );
 	setDefsElementText( "game.mcl_mb_layout.text.team_weight_readout", str );
 
+	// Over the drop limit: the lance is never auto-trimmed. Red readout + reason, and NEXT is blocked until the player pares it down.
+	const bool overLimit = LogisticsData::instance->isOverDropLimit();
+	setDefsElementTextColor( "game.mcl_mb_layout.text.team_weight_readout", overLimit ? 0xffff3030u : 0xffc8e100u );
+	setDefsElementText( "game.mcl_mb_layout.text.weight_warning",
+		overLimit ? "OVER DROP LIMIT: REMOVE 'MECHS TO CONTINUE" : "" );
+	getButton( MB_MSG_NEXT )->disable( overLimit );
+	setDefsElementDisabled( "game.mcl_mb_layout.button.next_button", overLimit );
+
+	// Buy +5 t drop weight: boxes either side of the gauge (left BUY, right price + bought tons). Greyed when
+	// unaffordable, hidden in multiplayer.
+	mc2::fmt::to_buf( str, "BUY\n+{:d} T", mc2::fmt::as_i32( LogisticsData::instance->rules().dropWeightStep ) );
+	setDefsElementText( "game.mcl_mb_layout.button.buy_drop_weight_button", str );
+	const long price = LogisticsData::instance->getDropWeightPrice();
+	const int bought = LogisticsData::instance->getDropWeightPurchases() * LogisticsData::instance->rules().dropWeightStep;
+	if ( bought > 0 )
+		mc2::fmt::to_buf( str, "{:d}\nC-BILLS\n+{:d} T", mc2::fmt::as_i32( price ), mc2::fmt::as_i32( bought ) );
+	else
+		mc2::fmt::to_buf( str, "{:d}\nC-BILLS", mc2::fmt::as_i32( price ) );
+	setDefsElementText( "game.mcl_mb_layout.button.drop_weight_price_box", str );
+	setDefsElementDisabled( "game.mcl_mb_layout.button.buy_drop_weight_button", LogisticsData::instance->getCBills() < price );
+	setDefsElementVisible( "game.mcl_mb_layout.button.buy_drop_weight_button", !MPlayer && LogisticsData::instance->rules().dropWeightPurchase );
+	setDefsElementVisible( "game.mcl_mb_layout.button.drop_weight_price_box", !MPlayer && LogisticsData::instance->rules().dropWeightPurchase );
+
 
 	// update drag and drop
 	// must be done before Icon's are updated, or we can get out of sync
@@ -396,7 +419,15 @@ int	MechBayScreen::handleMessage( unsigned long message, unsigned long who )
 	switch( who )
 	{
 	case MB_MSG_NEXT:
-		status = NEXT;
+		if ( !LogisticsData::instance->isOverDropLimit() )
+			status = NEXT;
+		break;
+
+	case MB_MSG_BUY_WEIGHT:
+		if ( !MPlayer && LogisticsData::instance->buyDropWeight() )
+			soundSystem->playDigitalSample( LOG_SELECT );
+		else
+			soundSystem->playDigitalSample( LOG_WRONGBUTTON );
 		break;
 
 	case MB_MSG_PREV:

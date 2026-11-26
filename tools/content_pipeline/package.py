@@ -246,6 +246,8 @@ def cook_asset(asset: ir.Asset, out: Path, *, compress=True, max_triangles=None,
         return rec
 
     record = {"type": "model", "replaces": asset.replaces, "renderOnly": True, "fallback": "stock", "scale": 1.0}
+    if "stock_fit" in asset.frontend.get("meta", {}):
+        record["stockFit"] = asset.frontend["meta"]["stock_fit"]
     record.update(chain("pristine", "intact", asset.states["intact"]))
     if "destroyed" in asset.states:
         record["destroyed"] = chain("pristine", "destroyed", asset.states["destroyed"])

@@ -14,6 +14,10 @@
 #include "ModWorkbench.h"
 #include "ModWorkbenchPanel.h"
 #include "ArchivePanel.h"
+#include "ShapePanel.h"
+#include "TerrainMaterialPanel.h"
+#include "VfxPanel.h"
+#include "ModPackagePanel.h"
 
 class AssetViewerApp {
 public:
@@ -41,6 +45,7 @@ public:
     static int runSmokeAppearanceRoster(const char* fixtureDir);  // S5
     static int runSmokeTextureMissingWarn(const char* fixtureDir);  // S5
     static int runSmokeLodEditValidate();  // S5
+    static int runSmokeAssetPanels(const char* deployDir);   // Mechs/Vehicles/Trees/Terrain/VFX/Mod Package data builders (needs an install)
     static int runSmokeCentralMergePreserve(const char* fixtureDir, const char* tmpDir);  // S5
 private:
     FileBrowser browser_;
@@ -50,9 +55,15 @@ private:
     MaterialPreviewPBR materialSurface_;
     MaterialSlots      materialSlots_;
     MeshPreview3D             meshSurface_;
+    MeshPreview3D             shapeSurface_;
     ModelBrowser       modelBrowser_;
     ModWorkbench       workbench_;
     ModWorkbenchPanel  workbenchPanel_;
     ArchivePanel       archivePanel_;
+    ShapePanel         shapePanel_;
+    TerrainMaterialPanel terrainPanel_;
+    VfxPanel           vfxPanel_;
+    ModPackagePanel    modPackagePanel_;
+    AssetType          prevActive_ = AssetType::Textures;
     bool materialsAutoLoaded_ = false;
 };
