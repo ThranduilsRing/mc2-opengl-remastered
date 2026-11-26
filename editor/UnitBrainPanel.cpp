@@ -198,8 +198,6 @@ bool UnitBrainPanel::SmokeProbe()
 		s_routeDrag = std::make_unique<ModifyUnitOrderAction>();
 		s_routeDrag->capture(unit);
 		s_routeMoved = false;
-		s_routeScreenX = screenX;
-		s_routeScreenY = screenY;
 		MoveRoutePoint(64.0f, 96.0f, 0.0f);
 		MoveRoutePoint(96.0f, 128.0f, 0.0f);
 		FinishRouteDrag();
@@ -262,6 +260,8 @@ bool UnitBrainPanel::HandleRoutePress(Camera* eye, int screenX, int screenY)
 		s_routeDrag = std::make_unique<ModifyUnitOrderAction>();
 		s_routeDrag->capture(unit);
 		s_routeMoved = false;
+		s_routeScreenX = screenX;
+		s_routeScreenY = screenY;
 	}
 	return true;
 }
@@ -297,8 +297,9 @@ void UnitBrainPanel::HandleRouteMove(Camera* eye, int screenX, int screenY)
 }
 void UnitBrainPanel::DeleteRoutePoint()
 {
+	FinishRouteDrag();
 	Unit* unit = findUnitById(s_placeTargetId);
-	if (!unit || s_routePoint < 0 || static_cast<size_t>(s_routePoint) >= unit->getWaypoints().size()) return;
+	if (!unit || !unit->isSelected() || s_routePoint < 0 || static_cast<size_t>(s_routePoint) >= unit->getWaypoints().size()) return;
 	auto points = unit->getWaypoints();
 	points.erase(points.begin() + s_routePoint);
 	applyOrderEdit(unit, [&]() {
@@ -366,7 +367,10 @@ void UnitBrainPanel::Draw()
 		if (selected) s_open = true;
 	}
 	if (!s_open)
+	{
+		EndWaypointPlace();
 		return;
+	}
 	if (changed && selected) ImGui::SetNextWindowFocus();
 
 	// Its own panel, exactly like InspectorPanel — a standalone window that docks in
