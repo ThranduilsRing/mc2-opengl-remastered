@@ -299,10 +299,9 @@ void main() {
     vSunDirStuff = sunDirFed;
     vSunColor = sunFound ? sunColorFed : vec3(0.0);
 
-    // Medium/High tree fragments replace the legacy vertex colour, including
-    // both faces' SH evaluations. Keep their material sun/seed and normals.
-    // Low/Potato still consume vArgb; missing albedo uses the teal fallback.
-    if (kBaseQuality == 2 && tree) {
+    // Every tree uses the same fragment lighting, independent of imported
+    // white vertex seeds or quality. Low tiers only omit detail-map sampling.
+    if (tree) {
         vArgb = vec3(0);
         vBackArgb = vec3(0);
         return;

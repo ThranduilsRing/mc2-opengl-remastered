@@ -19,19 +19,4 @@ float propNightSunWeight(float ndl, vec3 nMC2) {
     return ndl * propNightDirectShare() + fill;
 }
 
-// Foliage night ambient (tree props only): a cool moonlit-sky hemisphere term so night crowns read
-// as dark green-blue masses with shape, not black silhouettes. Linear irradiance, scaled by
-// nightDarkness, so it is exactly zero by day. Leaves also scatter a share of the sky light
-// through to their underside (wrap), which keeps the shaded side of a crown off pure black.
-// Sized for stock-dark leaf albedo (mc2_10 pines): the fill multiplies that albedo, so the crowns stay
-// well below lamp-lit mechs and buildings.
-const vec3  kFoliageNightSky    = vec3(0.70, 0.95, 1.25);   // sky-up, cool blue-grey
-const vec3  kFoliageNightGround = vec3(0.06, 0.07, 0.08);   // ground-down, dim
-const float kFoliageNightWrap   = 0.35;                     // leaf cards: sky share reaching the underside
-vec3 propFoliageNightAmbient(vec3 nMC2, bool leaf) {
-    float up = 0.5 + 0.5 * nMC2.z;
-    vec3 hemi = mix(kFoliageNightGround, kFoliageNightSky, up);
-    if (leaf) hemi += kFoliageNightSky * (kFoliageNightWrap * (1.0 - up));
-    return hemi * uFrame.nightDarkness;
-}
 #endif

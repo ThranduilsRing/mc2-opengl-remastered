@@ -129,10 +129,16 @@ layout(location = 2) out uint oObjectId;   // MRT2 R32_UINT object id (RenderWor
 // to the blended fringe at close to its true alpha instead.
 const float kCoverMin = 0.02;   // below this a fringe is invisible; skip the blend
 float propCoverage(float a, float lod) {
+    // Leaves are masked surfaces, not translucent cards. The same cut applies
+    // to stock, imported and coarse foliage; transmission is lighting below.
+    if (vTree.y > 0.5) {
+        if (uPacket.coverageFringePass != 0 || a < (1.0 / 3.0)) discard;
+        return 1.0;
+    }
     // Mode 2 uses this same LOD-aware coverage; only its fringe scheduling
     // differs (after vegetation). A fixed cutoff loses minified wire entirely.
     // Canopies retain depth-writing leaf cores against bright sky at every mip.
-    float cut = vTree.y > 0.5 ? 0.5 : mix(0.5, 0.9, clamp(lod * 0.5, 0.0, 1.0));
+    float cut = mix(0.5, 0.9, clamp(lod * 0.5, 0.0, 1.0));
     if (uPacket.coverageFringePass == 0) {
         if (a < cut) discard;
         return 1.0;
@@ -283,7 +289,8 @@ void main() {
         if (uPropMaterials.materials[uPacket.materialId].metadata.x == SURF_CLASS_EMISSIVE && (vMaterialFlags & 3u) == 0u)
             rgb = propAddWindowEmission(rgb, propDecodeColor(materialAlbedo) * uFrame.nightDarkness);
     }
-    if (kBaseQuality == 2 && treeMaterial) {
+    if (treeMaterial) {
+        bool foliage = uPacket.packetAlphaTest != 0;
         vec3 N = normalize(mc2ToRender(outputNormalStuff));
         vec3 Lauth = oneSunAuthFromLive() * uT.terrainLightDir.xyz;   // authored sun direction (one-sun rule)
         vec3 L = Lauth / max(length(Lauth),1e-6);
@@ -307,23 +314,23 @@ void main() {
             skyNormal.xz = mat2(c,-s,s,c) * skyNormal.xz;
         }
         vec3 ambient = uFrame.iblShStrength > 0.0 ? evalShL2(skyNormal,sh)*uFrame.iblShStrength : vec3(0);
+        // Thin leaves scatter sky irradiance from both sides. Keep the front
+        // lobe dominant so crown normals still describe the canopy's shape.
+        if (foliage && uFrame.iblShStrength > 0.0)
+            ambient = (max(ambient, vec3(0)) + 0.25 * max(evalShL2(-skyNormal,sh), vec3(0)) * uFrame.iblShStrength) / 1.25;
         // Crown normals describe the canopy volume: keep the terrain sun's side.
         // Backlit leaves receive transmission and sky fill below.
-        float wrap = max((dot(N,L)+0.5)/1.5,0.0);
-        float transmission = alphaTestClass ? 0.08*max(dot(-N,L),0.0) : 0.0;
+        float wrap = foliage ? max((dot(N,L)+0.5)/1.5,0.0) : max(dot(N,L),0.0);
+        float transmission = foliage ? 0.25*max(dot(-N,L),0.0) : 0.0;
         vec3 direct = propDecodeColor(vMaterialSun) * (propNightSunWeight(wrap, N) + transmission * propNightDirectShare());
-        // SH already contains linear irradiance. Preserve the stock albedo exposure ceiling.
+        // SH contains irradiance. Apply the same diffuse BRDF as other props;
+        // clamping to albedo flattened every sufficiently lit leaf to one colour.
         float forestSky = vTree.z;
         float vis = vTree.w < 1.0 ? treeVisibility(N) : 1.0;
         vec3 irradiance = max(ambient,vec3(0))*vTree.x*materialAO*forestSky + direct*(vTree.w*mix(vis, 1.0, vTree.w)); // above the baked shadow line the crown is lit
-        // Thin leaves retain sky fill through canopy self-occlusion. Fade it
-        // with the night profile rather than making dark forests emissive. Full night keeps 0.35*0.35 (was 0.35*0.2: stock-dark
-        // leaf albedo read near-black on night maps such as mc2_10).
-        if (alphaTestClass) irradiance = max(irradiance, vec3(0.35 * (1.0 - 0.65*uFrame.nightDarkness) * forestSky * envAmbientKey()));
-        // Night moonlight/sky fill for foliage (zero by day): shape-giving hemisphere + leaf wrap, crown AO for form.
-        // A light, not brighter albedo; it sits outside the albedo exposure ceiling, which kept stock-dark leaves black.
-        vec3 nightFill = propFoliageNightAmbient(normalize(outputNormalStuff), alphaTestClass) * (vTree.x * materialAO * forestSky);
-        rgb = propEncodeColor(min(albedo, albedo*irradiance) + albedo*nightFill);
+        // Mission SH already carries the night sky. A second fixed fill overwhelms
+        // that dim ambient on lighter foliage, independently of the mission light.
+        rgb = propEncodeColor(albedo * (irradiance / 3.14159265));
         vec3 treePoolLight = vec3(0);
         if (any(notEqual(poolLight, vec3(0)))) treePoolLight = propEncodeColor(albedo) * poolLight;
         rgb += treePoolLight + vHighlight.rgb*vHighlight.a;
