@@ -13,7 +13,7 @@ def test_prune_retired_seed_payload_only_removes_matching_bytes(tmp_path):
     (tgl / "QuonsetGLB.glb").write_bytes(b"x")
     dp.prune_retired_seed_payload(str(tmp_path))
     assert (tgl / "quonset.ini").exists() and (tgl / "QuonsetGLB.glb").exists()
-    assert set(dp.RETIRED_SEED_PAYLOAD) == {
+    assert {rel for rel in dp.RETIRED_SEED_PAYLOAD if not rel.startswith("data/textures/mech_pbr/")} == {
         "data/tgl/quonset.ini", "data/tgl/QuonsetGLB.glb", "data/tgl/QuonsetGLB.mcasset.json",
         "data/tgl/hangar.ini", "data/tgl/hangar.ini.cookstamp", "data/tgl/HangarGLB.glb",
         "data/tgl/HangarGLB.mcasset.json", "data/tgl/quonset.ini.cookstamp"}
@@ -60,7 +60,8 @@ def test_retired_seed_hashes_match_real_blobs():
     checked = 0
     for rel, digest in dp.RETIRED_SEED_PAYLOAD.items():
         known = set()
-        r = subprocess.run(["git", "show", f"c43ed3a2b^:{rel}"], cwd=repo, capture_output=True,
+        ref = "mech-pbr-retexture-final" if rel.startswith("data/textures/mech_pbr/") else "c43ed3a2b^"
+        r = subprocess.run(["git", "show", f"{ref}:{rel}"], cwd=repo, capture_output=True,
                            **console_child.child_kwargs(redirected=True))
         if r.returncode == 0:
             known.add(hashlib.sha256(r.stdout).hexdigest())
