@@ -971,8 +971,7 @@ def magic_brain_payload(src_root, target):
             continue
         source = decompress_entry(off, comp, real, is_lz, data)
         fixed = magic_brain_145(source)
-        if fixed == source:
-            continue
+        # Refresh unchanged warriors too: an earlier profile may have trimmed their stock arguments.
         dest = generated / key
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(fixed)

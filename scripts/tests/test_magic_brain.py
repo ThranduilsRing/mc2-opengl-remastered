@@ -60,3 +60,14 @@ def test_payload_rewrites_stock_archive_only(tmp_path, monkeypatch):
     assert destination == 'mods/magic-brain-1.45/data/missions/warriors/enemy.abl'
     assert Path(path).read_bytes() == b'magicAttack(0);\r\n'
     assert not (tmp_path / 'data/missions/warriors/enemy.abl').exists()
+
+
+def test_payload_refreshes_previously_trimmed_warriors(tmp_path, monkeypatch):
+    import deploy_payload
+    import tools.mc2x_import.fst as fst
+    stock = b'corePatrol(s, p, attack);'
+    monkeypatch.setattr(fst, 'fst_entries', lambda _: [
+        (0, len(stock), len(stock), 'data/missions/warriors/convoy.abl', False, stock)])
+    items = deploy_payload.magic_brain_payload(tmp_path, tmp_path)
+    assert len(items) == 1
+    assert Path(items[0][0]).read_bytes() == stock
