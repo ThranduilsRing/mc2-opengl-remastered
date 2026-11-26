@@ -6,6 +6,8 @@
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
 
+#include "mission_environment_gpu.h"
+#include "visual_tuning_profile.h"
 #include <volk.h>
 #include "load_scope.h"
 #include "Gates/gate.h"
@@ -411,6 +413,8 @@ extern "C" int mc2_vk_sky_island_run(int w, int h) {
     std::memcpy(pc.invProj, p.invProj, sizeof(pc.invProj));
     for (int i = 0; i < 3; ++i) { pc.rotC0[i] = p.rot[i]; pc.rotC1[i] = p.rot[3 + i]; pc.rotC2[i] = p.rot[6 + i]; }
     pc.skyYaw = p.yaw;
+    const auto radiance = mc2::environment::skyRadianceScale(visualTuning_environment());
+    pc.rotC0[3] = radiance[0]; pc.rotC1[3] = radiance[1]; pc.rotC2[3] = radiance[2];
     const VkImageView colorView = s->colorRes->view.get();
     const VkImageView depthView = reinterpret_cast<VkImageResource*>(s->depthRes)->view.get();
     const VkFormat depthFmt = s->depthFmt;

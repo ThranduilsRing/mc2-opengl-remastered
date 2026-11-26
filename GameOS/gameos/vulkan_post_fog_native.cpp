@@ -32,6 +32,8 @@
 // The whole TU compiles to nothing unless MC2_VULKAN_ISLAND is defined.
 
 #include "gos_postprocess.h"
+#include "mission_environment_gpu.h"
+#include "visual_tuning_profile.h"
 #include "vk_render_pass_timer.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include <tracy/Tracy.hpp>
@@ -512,9 +514,10 @@ void gosPostProcess::prewarmVkFog() {
 void gosPostProcess::fillWorldFogParams(EdgeFogParams& p) const {
     p = {};
     std::memcpy(p.invViewProj, inverseViewProj_, 16 * sizeof(float));
-    p.u_fogColor[0] = edgeFogColor_[0];
-    p.u_fogColor[1] = edgeFogColor_[1];
-    p.u_fogColor[2] = edgeFogColor_[2];
+    const auto& env = visualTuning_environment();
+    const auto radiance = mc2::environment::skyRadianceScale(env);
+    for (int c = 0; c < 3; ++c)
+        p.u_fogColor[c] = edgeFogColor_[c] * std::pow(radiance[c], 1.0f / 2.2f);
     p._pad0 = 0.0f;
     p.u_halfExtent = mapHalfExtent_;
     p.u_fogStart = edgeFogStart_;
@@ -533,19 +536,19 @@ void gosPostProcess::fillWorldFogParams(EdgeFogParams& p) const {
     p.u_horizonFadeEndSin   = fogHorizonFadeEndSin_;
     {
         const int quality = std::clamp(mc2::options::current().atmosphereQuality, 0, 2);
-        const float night = mc2NightLightFactor();
-        float lx = 0.f, ly = 0.f, lz = 1.f;
-        gos_GetTerrainLightDir(&lx, &ly, &lz);
+        float lx = env.lighting.effectiveDirection[0];
+        float ly = env.lighting.effectiveDirection[1];
+        float lz = env.lighting.effectiveDirection[2];
         const float len = std::sqrt(lx * lx + ly * ly + lz * lz);
         if (len > 1e-6f) { lx /= len; ly /= len; lz /= len; } else { lx = ly = 0.f; lz = 1.f; }
-        const float nightDim = 1.0f - 0.85f * night;   // sun scatter and the sky colour fade with the sun
+        const float sunScale = (std::max)({env.lighting.directionalColor[0], env.lighting.directionalColor[1], env.lighting.directionalColor[2]});
         p.u_atmoParams[0] = static_cast<float>(quality);
         p.u_atmoParams[1] = 6e-5f * atmoDensity_ * (quality == 1 ? 0.7f : 1.0f);
         p.u_atmoParams[2] = atmoFalloff_;
         p.u_atmoParams[3] = atmoAnisotropy_;
         p.u_atmoSun[0] = lx; p.u_atmoSun[1] = ly; p.u_atmoSun[2] = lz;
-        p.u_atmoSun[3] = atmoSunScatter_ * nightDim;
-        for (int c = 0; c < 3; ++c) p.u_atmoColor[c] = edgeFogColor_[c] * 0.85f * nightDim;
+        p.u_atmoSun[3] = atmoSunScatter_ * sunScale;
+        for (int c = 0; c < 3; ++c) p.u_atmoColor[c] = p.u_fogColor[c] * 0.85f;
         p.u_atmoColor[3] = waterElevation_;
     }
     if (!sceneHasTerrain_ || !edgeFogEnabled_) { p.u_fogMax = 0.0f; p.u_atmoParams[0] = 0.0f; p.u_halfExtent = 0.0f; }

@@ -1,5 +1,6 @@
 // Native HDRI sky submission; the terrain pass draws it behind its depth.
 #include "gos_postprocess_internal.h"
+#include "visual_tuning_profile.h"
 
 // MC2_HDRI_SKY_AZ_OFFSET is a manual sun-sync trim in DEGREES; every sky path wants it in radians.
 static float hdriAzOffsetRadians()
@@ -30,8 +31,8 @@ void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat
     if (!mc2_vk_sky_island_enabled()) return;
     float yaw = hdriAzOffsetRadians();
     if (hdriBakedSunValid_) {
-        float lx = 0.0f, ly = 0.0f, lz = 0.0f;
-        gos_GetTerrainLightDir(&lx, &ly, &lz);
+        const auto& sun = visualTuning_environment().lighting.effectiveDirection;
+        const float lx = sun[0], ly = sun[1];
         yaw += hdriBakedSunAz_ - atan2f(ly, -lx);
     }
     skyYaw_ = yaw;

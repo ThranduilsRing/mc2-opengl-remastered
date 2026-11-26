@@ -14,7 +14,7 @@ layout(set = 0, binding = 0) uniform sampler2D u_hdri;
 // vulkan_sky_island.cpp SkyPC.
 layout(push_constant) uniform SkyPC {
     mat4  invProj;     // native row-vector matrix, column-major bytes
-    vec4  rotC0;       // inverse view rotation row 0 (xyz)
+    vec4  rotC0;       // inverse view rotation row 0 (xyz), red radiance scale (w)
     vec4  rotC1;
     vec4  rotC2;
     float skyYaw;
@@ -42,5 +42,8 @@ void main()
         atan(worldDir.z, worldDir.x) / (2.0 * PI) + 0.5,
         1.0 - (asin(clamp(worldDir.y, -1.0, 1.0)) / PI + 0.5)
     );
-    FragColor = vec4(texture(u_hdri, uv).rgb, 1.0);
+    // SH and visible sky share mission/night/ambient-key radiance. Scene exposure
+    // belongs to the common composite, after sky and world have been combined.
+    vec3 radiance = vec3(pc.rotC0.w, pc.rotC1.w, pc.rotC2.w);
+    FragColor = vec4(texture(u_hdri, uv).rgb * radiance, 1.0);
 }

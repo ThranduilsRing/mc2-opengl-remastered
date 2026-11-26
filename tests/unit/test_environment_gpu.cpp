@@ -301,3 +301,16 @@ TEST_CASE("EnvironmentGpu/T2 live state and bake reference stay independent; Fix
     mc2::environment::fillGpu({}, 1, out, live, bake);
     CHECK(out.lightingParams[0] == 0); CHECK(out.lightingParams[1] == 0);
 }
+
+TEST_CASE("EnvironmentGpu/visible sky shares SH ambient keys and night radiance") {
+    RenderCore::MissionEnvironment env;
+    for (int i=0; i<9; ++i) for (int c=0; c<3; ++c)
+        env.sky.diffuseSh[i][c] = RenderCore::kIblShCoeffs[i][c];
+    for (float v : mc2::environment::skyRadianceScale(env)) CHECK(v == doctest::Approx(1.0f));
+    env.lighting.ambientRatio = 0.5f;
+    const float key = std::pow(0.5f, 2.2f);
+    for (float v : mc2::environment::skyRadianceScale(env)) CHECK(v == doctest::Approx(key));
+    env.lighting.night = true;
+    for (int c=0; c<3; ++c) env.sky.diffuseSh[0][c] *= 0.02f;
+    for (float v : mc2::environment::skyRadianceScale(env)) CHECK(v == doctest::Approx(0.02f * key));
+}
