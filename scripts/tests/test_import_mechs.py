@@ -188,7 +188,7 @@ def test_base_install_stages_data_and_fsts(tmp_path, cross_volume):
         assert (stage / rel).samefile(install / rel) is not cross_volume
 
 
-def test_bt_only_rebuild_replaces_pack_with_matching_names(tmp_path):
+def test_bt_only_rebuild_keeps_other_chassis_and_matching_strings(tmp_path):
     import re
     from tools.bt2018_mechs import compile as compiler
 
@@ -201,23 +201,50 @@ def test_bt_only_rebuild_replaces_pack_with_matching_names(tmp_path):
         if Path(cmd[1]).name != "build_pack.py":
             return
         pack = Path(cmd[cmd.index("--out") + 1])
-        pack.mkdir()
-        profiles = [{"family": n, "name": n.title(), "details": n + " details"}
+        (pack / "content").mkdir(parents=True)
+        (pack / "data/objects").mkdir(parents=True)
+        (pack / "data/defs/text/en_us").mkdir(parents=True)
+        profiles = [{"family": n, "stem": "bt2018_" + n, "name": n.title(), "details": n + " details"}
                     for n in sorted(cmd[cmd.index("--only") + 1].split(","))]
-        (pack / "strings.fit").write_text(compiler.emit_strings(profiles))
+        (pack / "data/defs/text/en_us/bt2018_mechs.fit").write_text(compiler.emit_strings(profiles))
         for i, profile in enumerate(profiles):
-            (pack / (profile["family"] + ".csv")).write_text(str(compiler.string_ids(profile, i)["name"]))
+            n = profile["family"]
+            (pack / f"content/{n}.profile.json").write_text(json.dumps(profile))
+            ids = compiler.string_ids(profile, i)
+            (pack / f"data/objects/bt2018_{n}.csv").write_text(
+                f"DescIndex,{ids['name']},unchanged\nAbbrIndex,{ids['details']},unchanged\n")
+            (pack / (n + ".glb")).write_text(str(cmd[cmd.index("--conversions") + 1]))
+        metadata = {k: {} for k in ("generated", "assets", "stock_references_unmodified", "native_clip_counts", "clip_manifest")}
+        metadata["profiles"] = {p["family"]: p["name"] for p in profiles}
+        (pack / "content/report.json").write_text(json.dumps(metadata))
     with patch("tools.bt2018_import.convert_all_bt2018.convert_bundle", side_effect=convert), \
          patch.object(importer, "run", side_effect=build), patch.object(importer, "validate") as validate:
-        for i, names in enumerate((["archer", "atlas"], ["atlas"])):
+        for i, names in enumerate((["atlas", "warhammer"], ["archer", "atlas"])):
             work = tmp_path / str(i)
             work.mkdir()
             report = []
             importer.battletech(tmp_path / "game", install, work, {"KTX": "ktx"}, names, report)
             assert all(row[2] == "PASS" for row in report)
             strings = {int(sid): text for text, sid in re.findall(
-                r'text = "([^"]*)"\s+legacyId = (\d+)', (target / "strings.fit").read_text())}
-            assert {p.stem for p in target.glob("*.csv")} == set(names)
-            for chassis in target.glob("*.csv"):
-                assert strings[int(chassis.read_text())] == chassis.stem.title()
+                r'text = "([^"]*)"\s+legacyId = (\d+)', (target / "data/defs/text/en_us/bt2018_mechs.fit").read_text())}
+            expected = {"atlas", "warhammer"} | set(names)
+            assert {p.stem.removeprefix("bt2018_") for p in (target / "data/objects").glob("*.csv")} == expected
+            for n in expected:
+                csv = (target / f"data/objects/bt2018_{n}.csv").read_text()
+                ids = [int(s) for s in re.findall(r"Index,(\d+),unchanged", csv)]
+                assert [strings[s] for s in ids] == [n.title(), n + " details"]
+            assert len(strings) == 2 * len(expected)
+        assert (target / "warhammer.glb").read_text() == str(tmp_path / "0/conversions")
+        assert (target / "atlas.glb").read_text() == str(tmp_path / "1/conversions")
+        metadata = json.loads((target / "content/report.json").read_text())
+        assert set(metadata["profiles"]) == expected
+        from tools.bt2018_mechs.build_pack import sha256
+        assert all(sha256(target / rel) == digest for rel, digest in metadata["generated"].items())
         assert validate.call_count == 2
+        before = {p.relative_to(target): p.read_bytes() for p in target.rglob("*") if p.is_file()}
+        validate.side_effect = RuntimeError("invalid package")
+        work = tmp_path / "bad"
+        work.mkdir()
+        with pytest.raises(RuntimeError, match="invalid package"):
+            importer.battletech(tmp_path / "game", install, work, {"KTX": "ktx"}, ["atlas"], [])
+        assert {p.relative_to(target): p.read_bytes() for p in target.rglob("*") if p.is_file()} == before

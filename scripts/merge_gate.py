@@ -1028,6 +1028,20 @@ def git(*args):
                                    **console_child.child_kwargs(redirected=True)).strip()
 
 
+def nightly_capture_baseline(steps, head):
+    """A published HEAD cannot supply a before set; --base selects changes, not a runtime payload."""
+    if not any(n.startswith("capture-before") and not e.get("MC2_GATE_SKIP_REASON") for n, _, e in steps):
+        return steps
+    from exe_fingerprint import extract, sha_agrees
+    fp = extract(PUBLISHED / "mc2.exe")
+    if not fp.get("present") or sha_agrees(fp.get("sha"), head) is not True:
+        return steps  # Unknown provenance still fails closed in check_capture_commit.
+    reason = "published executable equals HEAD; no historical baseline payload available (--base selects changes only)"
+    return [(n, c, dict(e, MC2_GATE_SKIP_REASON=e.get("MC2_GATE_SKIP_REASON") or reason)
+             if n.startswith(("capture-before", "compare-captures", "compare-noise")) else e)
+            for n, c, e in steps]
+
+
 def run_child(command, cwd, env):
     return run_logged(cwd, command, env=env)
 
@@ -2397,6 +2411,8 @@ def main(argv=None):
     for name, command, _ in steps:
         if name in MOD_BATTERY_STAGES and window_number:
             command += ['--window', str(window_number)]
+    if args.nightly:
+        steps = nightly_capture_baseline(steps, head)
     steps = settle_capture_reference(steps)   # last: the lookup reads the same final capture-after row execution stores under
     if args.expect_head and git("rev-parse", args.expect_head + "^{commit}") != head:
         ap.error("HEAD does not match --expect-head")
