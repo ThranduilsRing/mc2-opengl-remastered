@@ -408,9 +408,13 @@ bool ensure_shore(WaterIsland* s) {
     if (!s->foamTexture) {
         std::vector<uint8_t> pixels(512 * 512 * 4);
         std::ifstream foam("shaders/shore_foam.rgba", std::ios::binary);
-        if (!foam.read(reinterpret_cast<char*>(pixels.data()), static_cast<std::streamsize>(pixels.size()))) return false;
+        const bool haveFoam = !!foam.read(reinterpret_cast<char*>(pixels.data()), static_cast<std::streamsize>(pixels.size()));
+        if (!haveFoam) {
+            vlog("shore foam missing or truncated: shaders/shore_foam.rgba; keeping water with neutral foam.");
+            pixels.assign(4, 0);
+        }
         s->foamTexture = mc2vk::getOrCreateEngineVulkanContext().textures().acquirePixels(
-            512, 512, VK_FORMAT_R8G8B8A8_UNORM, pixels.data(), pixels.size(), true);
+            haveFoam ? 512 : 1, haveFoam ? 512 : 1, VK_FORMAT_R8G8B8A8_UNORM, pixels.data(), pixels.size(), true);
         if (!s->foamTexture) return false;
         write_descriptors(s);
     }

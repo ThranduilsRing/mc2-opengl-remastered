@@ -612,9 +612,12 @@ void main(void)
     float swashFront = 18.0 + 14.0 * sin(swashPhase);
     // Positive phase velocity moves each broken crest toward decreasing shore distance.
     float breakerPhase = shoreDistance * (6.2831853 / 145.0) + swashPhase;
-    if (shorelineLook > 0 && debugMode != 3)
-        waveSlope += shoreGrad / max(length(shoreGrad), 1e-4) * cos(breakerPhase)
-                   * 0.10 * coastWeight * (1.0 - smoothstep(8.0, 24.0, footprint));
+    if (shorelineLook > 0 && debugMode != 3) {
+        float keep = 1.0 - smoothstep(8.0, 24.0, footprint);
+        float amplitude = 0.10 * coastWeight;
+        waveSlope += shoreGrad / max(length(shoreGrad), 1e-4) * cos(breakerPhase) * amplitude * keep;
+        waveVar += 0.5 * amplitude * amplitude * (1.0 - keep * keep);
+    }
     // Coastal look (after gokayfem coastal-water, MIT): eight dispersive ripple trains spread on the golden angle (no
     // wind streaks), each faded as its wavelength nears the pixel footprint; the faded slope goes to the GGX roughness.
     float rippleCrest = 0.0;
@@ -631,9 +634,20 @@ void main(void)
         for (int i = 0; i < 10; ++i) {   // trains 8-9 (L 6.6-4.5) break the near glint into sparkle
             float L = 90.0 * pow(0.69, float(i)), k = 6.2831853 / L, s = 0.055 * pow(0.84, float(i)) * (RIPPLE_GAIN / 0.22)
                     * mix(1.0, i < 3 ? mix(0.35, 1.4, gustBig) : gust, offshore);
-            vec2  d = vec2(cos(0.7 + 2.39996 * float(i)), sin(0.7 + 2.39996 * float(i)));
+            // Coarse and fine normal layers advect independently; keep the accepted coast field.
+            int layer = i < 5 ? 0 : 1;
+            vec2 drift = layer == 0 ? vec2(4.1, 1.7) : vec2(-2.3, 3.6);
+            vec2 layerP = warpP - offshore * drift * time;
+            vec2 lattice = layerP / (layer == 0 ? 310.0 : 95.0) + float(layer) * 13.7;
+            vec2 f = fract(lattice);
+            vec2 uv = (mod(floor(lattice), 32.0) + f * f * (3.0 - 2.0 * f) + 0.5)
+                    / float(textureSize(u_wavePackets, 0).x);
+            float envelope = textureLod(u_wavePackets, vec3(uv, 2), 0)[2 + layer];
+            s *= mix(1.0, mix(0.35, 1.65, envelope), offshore);
+            float angle = 0.7 + 2.39996 * float(i) + offshore * float(layer) * 0.83;
+            vec2  d = vec2(cos(angle), sin(angle));
             float keep = smoothstep(2.0, 6.0, L / max(footprint, 1e-3));
-            float ph = k * dot(d, warpP + float(i) * vec2(31.0, 17.0)) - sqrt(WAVE_G * k) * time;
+            float ph = k * dot(d, layerP + float(i) * vec2(31.0, 17.0)) - sqrt(WAVE_G * k) * time;
             waveSlope += d * (s * keep * cos(ph));
             if (i < 8) rippleCrest += s * k * keep * sin(ph);   // -Laplacian: crest convexity
             waveVar += 0.5 * s * s * (1.0 - keep * keep);
@@ -647,7 +661,11 @@ void main(void)
         float jacobian=(1.0+dx.x)*(1.0+dy.y)-dx.y*dy.x;
         foldingFoam=1.0-smoothstep(0.25,0.85,jacobian);
         float resolved=1.0-smoothstep(3.0,12.0,footprint);
-        waveSlope=mix(waveSlope,waveSlope*0.6+vec2(dx.z,dy.z)*resolved,coastWeight);
+        vec2 fftSlope = vec2(dx.z,dy.z);
+        float retained = mix(1.0, 0.6, coastWeight);
+        waveVar = waveVar * retained * retained
+                + 0.5 * dot(fftSlope, fftSlope) * coastWeight * coastWeight * (1.0 - resolved * resolved);
+        waveSlope = waveSlope * retained + fftSlope * resolved * coastWeight;
     }
     PREC vec3  waveN     = normalize(vec3(-waveSlope, 1.0));  // world-XZ wave trains only: no screen-space or noise gradient
     PREC vec3  vdir      = normalize(cameraPos.xyz - WorldPos);  // MC2 Z-up
