@@ -897,7 +897,7 @@ void main(void)
         vec3  Ls = uEnv.sunDirLive.xyz;
         Ls = normalize(vec3(Ls.xy, max(Ls.z, max(uT.shadowMinSunSin, 0.05))));
         // The vertex light saturates at white, so the sun keys' colour never reached it: sunRelight (live/authored sun colour, 1 without keys) tints the glint.
-        vec3  sunRad = Color.bgra.rgb * uEnv.sunRelight.rgb * (1.0 - 0.5 * clamp((0.6 * uEnv.nightState.z) / 0.6, 0.0, 1.0));
+        vec3  sunRad = Color.bgra.rgb * uEnv.sunRelight.rgb * uEnv.sceneLight.x * (1.0 - 0.5 * clamp((0.6 * uEnv.nightState.z) / 0.6, 0.0, 1.0));
         if (F.debug.w > 0.0) {
             // waterGlintWarm: blend toward the flat-light chroma instead of adding white onto a blue body (additive glint clips all channels).
             float sg = SUN_SPEC_GAIN * glintScale * sunVis * waterGgxSpec(waveN, vdir, Ls, specAlpha2);
