@@ -35,8 +35,9 @@ vec3 shadeGround(vec3 baseColor, vec3 N, float normalLight, float shadow,
                                         uT.lightPoolSoft, uT.lightPoolMoverDim, uT.lightPoolMoverScale,
                                         uT.lightPoolMoverMax, uT.lightPoolCompress,
                                         GROUND_MOVER_CONTACT, moverContact, N, macroNormal, resolveNormal, normalLod);
-            // Lamp radiance reflects the ground material instead of whitening it.
-            lit += pool * (uEnv.sceneLight.x < 1.0 ? baseColor : vec3(1.0));
+            // Burnin darkness is baked illumination, not lamp reflectance. A shared
+            // modest night response keeps pools continuous across road/tile seams.
+            lit += pool * (uEnv.sceneLight.x < 1.0 ? vec3(0.3) : vec3(1.0));
         }
         // The burnin already contains mission ambient; no second ambient floor.
 

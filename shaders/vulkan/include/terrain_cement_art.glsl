@@ -30,7 +30,6 @@ vec3 shadeRoadArt(vec4 art, uint road, uint cw, vec2 dx, vec2 dy) {
     } else if (!adopt) {
         color *= vec3(0.82, 0.80, 0.76);
     }
-    vec3 albedo = color;
     color *= vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);
     vec3 normal = vec3(0, 0, 1);
     float shadow = min(TS_enableShadows != 0 ? terrainStaticShadow(v_worldPos) : 1.0,
@@ -51,7 +50,7 @@ vec3 shadeRoadArt(vec4 art, uint road, uint cw, vec2 dx, vec2 dy) {
     }
     if (uT.numPoolLights > 0) {
         float unusedContact = 0.0;
-        color += (uEnv.sceneLight.x < 1.0 ? albedo : vec3(1.0)) * tlp_terrainPoolLight(v_worldPos, uT.numPoolLights,
+        color += (uEnv.sceneLight.x < 1.0 ? vec3(0.3) : vec3(1.0)) * tlp_terrainPoolLight(v_worldPos, uT.numPoolLights,
             uT.lightGridDim, vec2(uT.lightGridMinX, uT.lightGridMinY),
             vec2(uT.lightGridInvCellX, uT.lightGridInvCellY),
             uT.lightPoolSoft, uT.lightPoolMoverDim, uT.lightPoolMoverScale,
