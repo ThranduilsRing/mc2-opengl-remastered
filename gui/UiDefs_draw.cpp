@@ -103,6 +103,8 @@ int messageIdForElement(LogisticsScreen* screen, const UiElement& e)
 
 bool isButtonEnabled(LogisticsScreen* screen, const UiElement& e)
 {
+    if (e.forceDisabled)
+        return false;
     aButton* button = legacyButtonForElement(screen, e);
     return !button || button->isEnabled();
 }

@@ -275,7 +275,20 @@ void PilotReadyScreen::begin()
 
 		status = RUNNING;
 
-		if ( bHasPilot != -1 )
+		// Land on a mech that still needs a pilot so ADD PILOT is lit (not a greyed button on a piloted mech).
+		int noPilotIcon = -1;
+		for ( int i = 0; i < 12 && noPilotIcon == -1; i++ )
+			if ( pIcons[i].getMech() && !pIcons[i].getPilot() )
+				noPilotIcon = i;
+
+		if ( noPilotIcon != -1 )
+		{
+			pIcons[noPilotIcon].select( true );
+			if ( pilotListBox.GetItem( 0 ) )
+				pilotListBox.SelectItem( 0 );
+			setMech( pIcons[noPilotIcon].getMech() );
+		}
+		else if ( bHasPilot != -1 )
 		{
 			pIcons[bHasPilot].select( true );
 			setPilot( pIcons[bHasPilot].getPilot().transform([](auto ref) { return &ref.get(); }).value_or(nullptr) );
@@ -525,6 +538,13 @@ void PilotReadyScreen::update()
 			buttons[2].disable( 1 );
 		}
 
+		// Over the drop limit (no auto-trim): LAUNCH is blocked with a one-line reason.
+		const bool overLimit = LogisticsData::instance->isOverDropLimit();
+		if ( overLimit )
+			buttons[1].disable( 1 );
+		setDefsElementText( "game.mcl_pr_layout.text.weight_warning",
+			overLimit ? "OVER DROP LIMIT: GO BACK AND REMOVE 'MECHS" : "" );
+
 
 		if ( ( newSel == -1 && oldSel == -1 )|| !pIcons[curSel].getPilot())
 		{
@@ -583,6 +603,8 @@ int	PilotReadyScreen::handleMessage( unsigned long message, unsigned long who )
 	switch( who )
 	{
 	case MB_MSG_NEXT:
+		if ( LogisticsData::instance->isOverDropLimit() )
+			break;
 		if ( MPlayer )
 		{
 			MPlayer->sendMissionSetup(nullptr, 7, nullptr);

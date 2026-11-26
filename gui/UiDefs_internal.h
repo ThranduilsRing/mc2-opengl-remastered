@@ -93,6 +93,7 @@ struct UiElement {
     Rect textRect;
     bool hasTextRect = false;
     bool visible = true;
+    bool forceDisabled = false;   // runtime grey-out for defs-only buttons (no legacy aButton)
     bool fromAnimation = false;
     bool outline = false;
     bool textOutline = false;   // legacy aButton data.outlineText: draw a hollow
