@@ -1031,6 +1031,9 @@ def git(*args):
                                    **console_child.child_kwargs(redirected=True)).strip()
 
 
+NO_BASELINE_REASON = "published executable equals HEAD; no historical baseline payload available (--base selects changes only)"
+
+
 def nightly_capture_baseline(steps, head):
     """A published HEAD cannot supply a before set; --base selects changes, not a runtime payload."""
     if not any(n.startswith("capture-before") and not e.get("MC2_GATE_SKIP_REASON") for n, _, e in steps):
@@ -1039,8 +1042,7 @@ def nightly_capture_baseline(steps, head):
     fp = extract(PUBLISHED / "mc2.exe")
     if not fp.get("present") or sha_agrees(fp.get("sha"), head) is not True:
         return steps  # Unknown provenance still fails closed in check_capture_commit.
-    reason = "published executable equals HEAD; no historical baseline payload available (--base selects changes only)"
-    return [(n, c, dict(e, MC2_GATE_SKIP_REASON=e.get("MC2_GATE_SKIP_REASON") or reason)
+    return [(n, c, dict(e, MC2_GATE_SKIP_REASON=e.get("MC2_GATE_SKIP_REASON") or NO_BASELINE_REASON)
              if n.startswith(("capture-before", "compare-captures", "compare-noise")) else e)
             for n, c, e in steps]
 

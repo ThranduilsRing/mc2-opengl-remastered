@@ -4,6 +4,7 @@
 PC side (orchestrator):   py -3 tools/laptop_gate.py W [--setup] [-- <extra merge_gate args>]
 Scheduled: py -3 tools/laptop_gate.py nightly (Sundays weekly), or W -- --nightly.
 Scheduled runs build nifty, publish dated isolated verdicts, and never pack a promotion payload.
+  Host: one ssh probe with a 10 s connect timeout; a laptop that does not answer moves the same rows to the PC (pc_nightly).
   1. push claude/stage-W (and nifty) to the persistent laptop clone  C:/mc2gate/drv/A/Games/mc2-main
   2. over ssh: build there (warm Ninja tree, cold the first time), run merge_gate.py --full against the laptop install
   3. pull gate-verdict.json, gate.log, summary.json and the payload delta (tar of every manifest file that differs from
@@ -97,6 +98,16 @@ def ssh(cmd, check=True, stream=False):
     if check and r.returncode:
         sys.exit(f"laptop_gate: ssh failed rc={r.returncode}: {cmd[:120]}\n{getattr(r, 'stderr', '') or ''}")
     return r.returncode, out
+
+
+def laptop_reachable(timeout_s=10):
+    """One bounded ssh probe: a laptop that is off, away or refuses the key costs the schedule 10 s, not ssh's own connect timeout."""
+    argv = ["ssh", *SSH_OPTS, "-o", f"ConnectTimeout={timeout_s}", HOST, "exit 0"]
+    try:
+        r = subprocess.run(argv, env=env(), capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
+    except OSError:
+        return False
+    return r.returncode == 0
 
 
 def scp(src, dst, recursive=False):
@@ -1246,16 +1257,67 @@ def pull_nightly(w, head, run_rc):
                 reason="laptop verdict identity/tier mismatch")), encoding="utf-8")
             print(f"nightly FAIL: verdict identity/tier mismatch; diagnostics {dest}")
             return 1
-        if run_rc or missing:
-            v.update(verdict="INFRA", written=time.time(), reason=f"run_rc={run_rc}; missing={missing}")
-        (dest / "gate-verdict.json").write_text(json.dumps(v, indent=1), encoding="utf-8")
-        from lane_merge_stage import nightly_unmet
-        unmet = nightly_unmet(v)
-        ok = not (run_rc or missing or unmet or v.get("failed")) and v.get("verdict") in ("PASS", "PARTIAL")
-        print(f"nightly {'PASS' if ok else 'FAIL'}: {dest}/gate-verdict.json; unmet={unmet}; missing={missing}")
-        return 0 if ok else 1
+        return settle_nightly(dest, v, run_rc, missing)
     finally:
         local.unlink(missing_ok=True)
+
+
+def settle_nightly(dest, v, run_rc=0, missing=()):
+    """The line both hosts end with: the verdict goes to dest/gate-verdict.json (INFRA when the run itself failed) and -> 0 only
+    when nothing failed and every required stage of the tier ran green (lane_merge_stage.nightly_unmet)."""
+    from lane_merge_stage import nightly_unmet
+    if run_rc or missing:
+        v.update(verdict="INFRA", written=time.time(), reason=f"run_rc={run_rc}; missing={missing}" + (f"; {v['reason']}" if v.get("reason") else ""))
+    dest.mkdir(parents=True, exist_ok=True)
+    (dest / "gate-verdict.json").write_text(json.dumps(v, indent=1), encoding="utf-8")
+    unmet = nightly_unmet(v)
+    ok = not (run_rc or missing or unmet or v.get("failed")) and v.get("verdict") in ("PASS", "PARTIAL")
+    print(f"nightly {'PASS' if ok else 'FAIL'}: {dest}/gate-verdict.json; unmet={unmet}; missing={missing}")
+    return 0 if ok else 1
+
+
+def nightly(args, dry_run=False):
+    """The scheduled nightly/weekly tier: on the laptop when it answers one ssh probe, else the same rows on the PC."""
+    if not laptop_reachable():
+        return pc_nightly(args.window, "--weekly" in args.gate_args, dry_run)
+    if dry_run:
+        print("NIGHTLY host=laptop reason=reachable\nNIGHTLY plan: " + remote_run_cmd(args.window, args.gate_args), flush=True)
+        return 0
+    return pc_main(args)
+
+
+def pc_nightly(w, weekly, dry_run=False):
+    """The laptop is unreachable: the same rows (contracts, deploy and the tier's stages) on the PC, in nightly_gate's detached nifty
+    worktree with --isolated-verdict. merge_gate's own rows take the host lease (lane GPU slots, never the owner's game) and nothing
+    is published, so A:/Games/mc2-opengl is only read. The verdict lands where pull_nightly puts the laptop's."""
+    import nightly_gate
+    names = ["contracts", *nightly_gate.stage_names(weekly)]
+    base = nightly_gate.nightly_base()
+    if not base:
+        sys.exit("nightly needs a previous nifty-green window as --base")
+    dest = PROOFS.parent / "merge-gate" / w
+    window, proof = nightly_gate.current_window(), dest.as_posix()
+    cmd = nightly_gate.gate_cmd(weekly, names, base, window, proof)
+    print("NIGHTLY host=pc reason=laptop-unreachable\nNIGHTLY plan: " + " ".join(cmd), flush=True)
+    if dry_run:
+        return 0
+    infra = dict(verdict="INFRA", tier=2 if weekly else 1, failed=[])
+    why = nightly_gate.prepare_worktree()
+    if why:
+        print(f"nightly gate not prepared on the PC: {why}", flush=True)
+        return settle_nightly(dest, dict(infra, reason=why), run_rc=1)
+    if not nightly_gate.wait_for_lease():
+        cpu, game = nightly_gate.cpu_only(names)
+        print(f"NIGHTLY NOT RUN (host lease held for {nightly_gate.LEASE_WAIT_S // 60} min): {', '.join(game)}", flush=True)
+        cmd = nightly_gate.gate_cmd(weekly, cpu, base, window, proof)
+    env = dict(os.environ, TMP=nightly_gate.TMP_DIR, TEMP=nightly_gate.TMP_DIR, TMPDIR=nightly_gate.TMP_DIR)
+    rc = subprocess.run(cmd, cwd=nightly_gate.ROOT, env=env, **console_child.child_kwargs()).returncode
+    try:
+        v = json.loads((dest / "gate-verdict.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        v = {}
+    v = v if isinstance(v, dict) and v.get("verdict") else dict(infra, reason=f"no verdict; rc={rc}")
+    return settle_nightly(dest, v, run_rc=0 if v.get("head") else 1)
 
 
 def main():
@@ -1266,7 +1328,8 @@ def main():
     ap.add_argument("--sim", action="store_true", help="run merge_gate's determinism+saveload rows on the gate's deployed candidate (no push/build)")
     ap.add_argument("--sim-rows", help="comma list of sim rows (default: determinism-mc2_01/03/10/24, saveload-mc2_03/10)")
     ap.add_argument("--sim-pair", action="store_true", help="a/b pair for mc2_03 determinism, as on --weekly or a sim-sensitive diff")
-    ap.add_argument("--dry-run", action="store_true", help="with --sim: print the command list and run nothing")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="with --sim: print the command list; with a scheduled run: print the host and its plan; runs nothing")
     ap.add_argument("--no-sim", action="store_true", help="gate only: skip diff-triggered sim rows after a PASS")
     ap.add_argument("--attached", action="store_true", help=argparse.SUPPRESS)   # set on the detached child: run in this process
     ap.add_argument("gate_args", nargs="*", help="extra merge_gate.py args (after --)")
@@ -1301,11 +1364,13 @@ def main():
             a.window += datetime.datetime.now().strftime("-%H%M%S")
         if not any(x in a.gate_args for x in ("--nightly", "--weekly")):
             a.gate_args.append("--weekly" if today.weekday() == 6 else "--nightly")
-    if a.dry_run and not a.sim:
-        ap.error("--dry-run is for --sim")
+    if a.dry_run and not (a.sim or scheduled(a.window)):
+        ap.error("--dry-run is for --sim or a scheduled run")
     if a.sim and a.dry_run:
         print("\n".join(sim_command_list(a.window, [r for r in (a.sim_rows or "").split(",") if r], a.sim_pair)))
         return 0
+    if a.dry_run:
+        return nightly(a, dry_run=True)
     if not a.attached:
         return detach_self(a)
     if a.sim:
@@ -1314,7 +1379,7 @@ def main():
     import detached_job
     with queue_lock.hold(str(Path(detached_job.jobs_dir()) / "laptop-gate.lock"), timeout=1200,
                          log=lambda m: print(m, flush=True)):
-        return pc_main(a)
+        return nightly(a) if scheduled(a.window) else pc_main(a)
 
 
 def detach_self(a):
