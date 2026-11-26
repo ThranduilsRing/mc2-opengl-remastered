@@ -126,3 +126,23 @@ def test_tool_capture_preserves_parent_environment(monkeypatch, tmp_path):
     monkeypatch.setattr(run_tool_capture.nofocus, "spawn", check_spawn)
     with pytest.raises(SpawnChecked):
         run_tool_capture.main()
+
+
+@pytest.mark.parametrize("method", ["terminate", "kill"])
+def test_harness_stop_marker_precedes_kill(tmp_path, monkeypatch, method):
+    from types import SimpleNamespace
+    from smoke_lib import child_registry, exe_guard, host_lease
+    marker = tmp_path / "debug_state/session_123.stopped"
+    calls = []
+    def stop():
+        assert marker.read_text() == "pid=123\ncreated=456\n"
+        calls.append("stopped")
+    proc = SimpleNamespace(pid=123, poll=lambda: None, terminate=stop, kill=stop)
+    monkeypatch.setattr(exe_guard, "engine_kind", lambda _: "mc2")
+    monkeypatch.setattr(host_lease, "_records", lambda: [])
+    monkeypatch.setattr(child_registry, "record", lambda *a, **k: None)
+    monkeypatch.setattr(child_registry, "process_create_time", lambda _: 456)
+    nofocus._record_child(proc, [str(tmp_path / "mc2.exe")])
+    assert not marker.exists()  # an owner crash before a harness stop is still unclean
+    getattr(proc, method)()
+    assert calls == ["stopped"]
