@@ -158,7 +158,7 @@ void QueueConeGlow(mc2::tgl::ViewUniforms view, TG_MultiShape* shape, long nodeI
 // reverts -> no-op). Call from the owner's
 // update path AFTER TransformMultiShape, same contract as QueueConeGlow.
 void QueueBeaconGlow(mc2::tgl::ViewUniforms view, TG_MultiShape* shape, float nightFactor,
-                     mc2::czstring fixtureName = nullptr);
+                     mc2::czstring fixtureName);
 
 // Submit all queued cone triangles into the MC2_ISSPOTLGT vertex batch.
 // Called once per frame from legacy texture manager::renderLists() (top).

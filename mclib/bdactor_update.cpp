@@ -494,7 +494,8 @@ void BldgAppearance::updateFrameEffects()
 		// live inside QueueBeaconGlow. No TG_Light slots are consumed — see
 		// the cone_glow.h contract note.
 		if (eye && eye->isNight && visible && !forceLightsOut)
-			mc2_cone_glow::QueueBeaconGlow(eye->getViewUniforms(), bldgShape, eye->getNightFactor());
+			mc2_cone_glow::QueueBeaconGlow(eye->getViewUniforms(), bldgShape, eye->getNightFactor(),
+				appearType ? appearType->name : nullptr);
 	}
 
 	if (forceLightsOut)
