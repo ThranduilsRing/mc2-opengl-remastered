@@ -77,6 +77,7 @@ add_executable(mc2_tests
     test_present_wait.cpp  # PRESENT-HARDEN: pumped bounded main waits, failure seen at seal, start-spaced cap pacing
     test_crash_session_sentinel.cpp  # ALTTAB-CRASH: a session that died with no handler is recorded at the next launch
     test_loading_pump_meter.cpp
+    test_loading_detail.cpp
     test_commander_team.cpp # COMMANDER-TEAM: commanderPartTeam fallback (first part wins, team 0, non-home team, no parts)
     test_pilot_kill_result.cpp
     test_soft_splash.cpp
