@@ -187,7 +187,7 @@ def synthetic_island(tmp_path):
     return {"pak": pak, "fit": fit, "side": side, "elev": elev, "water_elev": water_elev}
 
 
-@pytest.mark.parametrize("side", (60, 140, 160, 180))
+@pytest.mark.parametrize("side", (60, 140, 160, 180, 240))
 def test_deploy_cooks_mod_visual_height_and_retains_authored_bake(tmp_path, side):
     import importlib.util
     root = Path(__file__).resolve().parents[2]
