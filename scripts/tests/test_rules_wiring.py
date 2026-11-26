@@ -110,5 +110,5 @@ def test_legacy_selection_and_exclusions_are_preserved():
     for mod in ("magic-brain-1.45", "mc2x-compat", "mco-compat", "mw5_mechs", "mw5-vehicles", "bt2018_mechs", "sample_"):
         assert mod in catalogue
     defaults = rules.split("inline GameRules newCampaignDefaults()", 1)[1].split("enum class Kind", 1)[0]
-    assert 'r.ai = 1' in defaults
+    assert 'r.ai' not in defaults   # the AI rule stays Stock until the smarter-AI sweep is green
     assert 'magic-ballistic-weapons,magic-gamesys-tweaks' in defaults

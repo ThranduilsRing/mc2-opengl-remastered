@@ -256,7 +256,7 @@ def test_run_deploy_logs_stock_receipts_and_kit_cook(tmp_path, monkeypatch, caps
     monkeypatch.setattr(kit_payload, "finish_trees", lambda *a, **kw: (_ for _ in ()).throw(ValueError("bad tree")))
     # This synthetic deploy tests phase logging, independently of the host's stock assets.
     monkeypatch.setattr(asset_parity, "enforce", lambda *a, **kw: None)
-    monkeypatch.setattr(dp.subprocess, "run", lambda *a, **kw: SimpleNamespace(stdout=""))
+    monkeypatch.setattr(dp.subprocess, "run", lambda *a, **kw: SimpleNamespace(stdout=b"" if "ls-files" in a[0] else ""))
     args = SimpleNamespace(target=target_name, allow_new_target=True, allow_stale_exe=False, build64_root=None, classic_assets=False, skip_kit=False,
                            require_clean=False, full_verify=False, allow_stale_pdb=False, preserve=[], no_asset_sync=False)
     probes = ("mc2.private-99999999", ".deployed_manifest.csv.private-99999999", "owner.private",

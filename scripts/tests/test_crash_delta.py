@@ -85,7 +85,7 @@ def test_capture_pose_is_crash_with_its_bundle_never_missing(tmp_path, monkeypat
     monkeypatch.setattr(ab, "game_executable", lambda install: tmp_path / "mc2.exe")
     monkeypatch.setattr(ab, "payload_identity", lambda install: {})
     monkeypatch.setattr(capture.ms, "identity_block", lambda **kw: {})
-    monkeypatch.setattr(capture, "run_pose", lambda **kw: result)
+    monkeypatch.setattr(rvc, "batch_capture", lambda files, out, **kw: {files[0]: {**result, "seconds": 1.0}})
     out = io.StringIO()
     manifest = capture.capture_sweep(tmp_path, [tmp_path / "mc2_10_saved_204523.json"], tmp_path / "out", 1, 1, 1, True, False, out)
     assert f"CRASH(Vulkan device lost) bundle={BUNDLE}" in out.getvalue() and "MISSING" not in out.getvalue()

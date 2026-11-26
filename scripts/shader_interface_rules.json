@@ -26,7 +26,7 @@
      "patterns": ["vegetation_region.*", "vegetation_cull.*", "vegetation_compact.*", "vfx_vegetation.*"],
      "msg": "missing"},
     {"id": "veg_shade_early_tests", "kind": "present", "files": ["shaders/vulkan/vfx_vegetation.frag"],
-     "needles": ["#ifdef VEGETATION_SHADE_EARLY_TESTS\n// Shade only: EQUAL, no depth/stencil writes; retain both cutout predicates below.\nlayout(early_fragment_tests) in;\n#endif", "if (texel.a * alphaLift < 0.5) discard;", "if (v_atlasLayer >= 4u && v_vegAux.x <= coverageRank) discard;"],
+     "needles": ["#ifdef VEGETATION_SHADE_EARLY_TESTS\n// Shade only: EQUAL, no depth/stencil writes; retain both cutout predicates below.\nlayout(early_fragment_tests) in;\n#endif", "if (kFringe ? (coverage <= 0.02 || coverage >= 1.0) : coverage < 1.0) discard;", "if (v_atlasLayer >= 4u && v_vegAux.x <= coverageRank) discard;"],
      "msg": "shade early tests must retain both shared cutout predicates"},
     {"id": "veg_shade_selection", "kind": "present", "files": ["GameOS/gameos/vulkan_vfx_island.cpp"],
      "needles": ["depthOnly ? s->vegFrag.get() : s->vegShadeFrag.get()", "vfx_vegetation_shade.frag.spv"],

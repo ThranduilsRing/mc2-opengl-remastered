@@ -178,7 +178,7 @@ CASES = [
     ("v source missing", "rules", lambda r: [p.unlink() for p in (r / "shaders/vulkan").glob("vegetation_region.*")], True, True),
     ("v clean", "rules", lambda r: None, False, False),
     ("v shade selection", "rules", lambda r: _sub(r, "GameOS/gameos/vulkan_vfx_island.cpp", "depthOnly ? s->vegFrag.get() : s->vegShadeFrag.get()", "s->vegShadeFrag.get()"), True, False),
-    ("v shade alpha", "rules", lambda r: _sub(r, "shaders/vulkan/vfx_vegetation.frag", "if (texel.a * alphaLift < 0.5) discard;", ""), True, False),
+    ("v shade alpha", "rules", lambda r: _sub(r, "shaders/vulkan/vfx_vegetation.frag", "if (kFringe ? (coverage <= 0.02 || coverage >= 1.0) : coverage < 1.0) discard;", ""), True, False),
     ("v shade spatial", "rules", lambda r: _sub(r, "shaders/vulkan/vfx_vegetation.frag", "if (v_atlasLayer >= 4u && v_vegAux.x <= coverageRank) discard;", ""), True, False),
     ("v early depth writes", "rules", lambda r: _sub(r, "shaders/vulkan/vfx_vegetation.frag", "#ifdef VEGETATION_SHADE_EARLY_TESTS", "#if 1"), True, False),
 ]

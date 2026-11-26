@@ -100,6 +100,7 @@ def test_returning_fatal_callback_always_unwinds(tmp_path):
 static int calls;
 static void returningCallback(long, mc2::czstring) { ++calls; }
 static auto ABLFatalCallback = returningCallback;
+bool g_ablProfileFrame = true;   // fatals unwind only inside a profile frame
 ''' + body + r'''
 int main() {
     const char* messages[] = {"unsupported activation instruction", nullptr};

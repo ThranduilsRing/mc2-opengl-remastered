@@ -87,6 +87,7 @@ def test_the_sweep_fails_on_a_backend_mismatch(tmp_path, monkeypatch, drew, fail
                 "bookmarks": [{"name": "pose", "present": True, "png": "p.png", "sha256": "0" * 64, "engine_deterministic": True}],
                 "backend": {"requested": "vulkan", "drew": drew, "disagree": problems}}
 
+    (tmp_path / "mc2_01_saved_1.json").write_text('{"mission": "m", "bookmarks": [{"name": "pose"}]}', encoding="utf-8")
     real = cap_rvc.run_one
     cap_rvc.run_one = fake_run_one
     try:
