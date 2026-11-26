@@ -125,6 +125,9 @@ def shader_files():
 # --- Category A: scalar ambient floors declared in shader code --------------
 RE_SCALAR_FLOOR = re.compile(
     r"\bconst\s+float\s+(\w*(?:[Aa]mbient|AMBIENT)\w*)\s*=\s*([0-9]*\.?[0-9]+)\s*;")
+# The same floor sourced from the shared environment UBO (set once by the CPU producer).
+RE_SCALAR_FLOOR_UBO = re.compile(
+    r"#define\s+(\w*(?:[Aa]mbient|AMBIENT)\w*)\s+(uEnv\.\w+\.\w)\b")
 
 # --- Category B: hemisphere / directional ambient FILL colours --------------
 RE_VEC3_FILL = re.compile(
@@ -193,6 +196,8 @@ def scan(verbose_sink=None):
         for ln, line in numbered(s):
             for m in RE_SCALAR_FLOOR.finditer(line):
                 floors.append((rel, m.group(1), m.group(2)))
+            for m in RE_SCALAR_FLOOR_UBO.finditer(line):
+                floors.append((rel, m.group(1), m.group(2)))
             for m in RE_VEC3_FILL.finditer(line):
                 comps = re.sub(r"\s+", "", m.group(2))
                 # `vec3 ambientTerm = vec3(0.0);` is an ACCUMULATOR being zeroed,
@@ -246,7 +251,7 @@ def scan(verbose_sink=None):
 # PINNED BASELINE -- the deliberate current state.
 # Each entry was read from the shader / C++ reader itself, not from docs.
 # ---------------------------------------------------------------------------
-BASELINE = {'ambient_floor_scalar': [('shaders/vulkan/water_geom.frag', 'SKY_AMBIENT', '0.18')],
+BASELINE = {'ambient_floor_scalar': [('shaders/vulkan/water_geom.frag', 'SKY_AMBIENT', 'uEnv.cementSky.w')],
  'ambient_fill_vec3': [],
  'inline_light_floor': [],
  'light_type_dispatch': (('shaders/vulkan/mech_tier1.vert',

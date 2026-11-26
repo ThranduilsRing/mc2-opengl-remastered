@@ -127,7 +127,7 @@ def test_night_water_is_unchanged():
 
 
 def test_shader_wiring_keeps_lean_and_specular_aa():
-    assert "(1.0 - clamp(F.f3.z / 0.6, 0.0, 1.0))" in SRC
+    assert "(1.0 - clamp((0.6 * uEnv.nightState.z) / 0.6, 0.0, 1.0))" in SRC
     assert "fres = max(fres, NEAR_REFL_FLOOR * nearGloss);" in SRC
     assert "float alpha0 = mix(WATER_ALPHA0, NEAR_ALPHA0, nearGloss);" in SRC
     assert re.search(r"specAlpha2 = clamp\(alpha0 \* alpha0\s*\n\s*\+ 2\.0 \* \(waveVar", SRC)
