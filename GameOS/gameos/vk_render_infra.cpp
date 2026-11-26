@@ -775,23 +775,30 @@ static void takeDeviceFault() {
         if(n>0) used+=std::min<size_t>(size_t(n),sizeof(s.deviceFault)-used-1);
     };
     for(int fault=0;fault<4;++fault) {
-        VkDeviceFaultCountsEXT counts{};
+        VkDeviceFaultCountsEXT counts{VK_STRUCTURE_TYPE_DEVICE_FAULT_COUNTS_EXT};
         const VkResult first=vkGetDeviceFaultInfoEXT(ctx.device(),&counts,nullptr);
         if(first<0) { put("device_fault[%d]: no report (vkGetDeviceFaultInfoEXT=%d)\n",fault,static_cast<int>(first)); break; }
-        std::vector<VkDeviceFaultAddressInfoEXT> infos(counts.addressInfos);
-        std::vector<char> vendor(counts.vendorBinarySize);
-        VkDeviceFaultInfoEXT info{};
+        std::vector<VkDeviceFaultAddressInfoEXT> infos(counts.addressInfoCount);
+        std::vector<VkDeviceFaultVendorInfoEXT> vendors(counts.vendorInfoCount);
+        std::vector<char> binary(counts.vendorBinarySize);
+        VkDeviceFaultInfoEXT info{VK_STRUCTURE_TYPE_DEVICE_FAULT_INFO_EXT};
         info.pAddressInfos=infos.empty()?nullptr:infos.data();
-        info.pVendorBinaryData=vendor.empty()?nullptr:vendor.data();
+        info.pVendorInfos=vendors.empty()?nullptr:vendors.data();
+        info.pVendorBinaryData=binary.empty()?nullptr:binary.data();
         const VkResult r=vkGetDeviceFaultInfoEXT(ctx.device(),&counts,&info);
         if(r<0) { put("device_fault[%d]: read failed (vkGetDeviceFaultInfoEXT=%d)\n",fault,static_cast<int>(r)); break; }
         info.description[sizeof(info.description)-1]=0;
-        for(char& c:vendor) if(static_cast<unsigned char>(c)<32||static_cast<unsigned char>(c)>126) c='.';
+        for(char& c:binary) if(static_cast<unsigned char>(c)<32||static_cast<unsigned char>(c)>126) c='.';
         put("device_fault[%d]: result=%d description=%s\n",fault,static_cast<int>(r),info.description);
         for(const VkDeviceFaultAddressInfoEXT& a:infos)
-            put("device_fault[%d] address=0x%016llx type=0x%x precise=0x%x\n",fault,static_cast<unsigned long long>(a.address),static_cast<unsigned>(a.addressType),
-                static_cast<unsigned>(a.preciseAddressOperands));
-        put("device_fault[%d] vendor_binary=%zu bytes: %.*s\n",fault,vendor.size(),static_cast<int>(std::min<size_t>(vendor.size(),1500)),vendor.empty()?"":vendor.data());
+            put("device_fault[%d] reported_address=0x%016llx type=0x%x address_precision=0x%llx\n",fault,static_cast<unsigned long long>(a.reportedAddress),
+                static_cast<unsigned>(a.addressType),static_cast<unsigned long long>(a.addressPrecision));
+        for(VkDeviceFaultVendorInfoEXT& v:vendors) {
+            v.description[sizeof(v.description)-1]=0;
+            put("device_fault[%d] vendor_info: description=%s code=0x%016llx data=0x%016llx\n",fault,v.description,
+                static_cast<unsigned long long>(v.vendorFaultCode),static_cast<unsigned long long>(v.vendorFaultData));
+        }
+        put("device_fault[%d] vendor_binary=%zu bytes: %.*s\n",fault,binary.size(),static_cast<int>(std::min<size_t>(binary.size(),1500)),binary.empty()?"":binary.data());
         if(r==VK_SUCCESS) break;   // VK_INCOMPLETE: more faults are pending
     }
 }
