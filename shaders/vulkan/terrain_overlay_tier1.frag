@@ -117,7 +117,7 @@ void main() {
     // NIGHT-LIGHT-POOLS-2b: additive pool AFTER the fog mix (chunk terrain applies no fog to it).
     if (uT.numPoolLights > 0) {
         float moverContactUnused = 0.0;
-        c.rgb += tlp_terrainPoolLight(WorldPos, uT.numPoolLights,
+        c.rgb += (uEnv.sceneLight.x < 1.0 ? vec3(0.3) : vec3(1.0)) * tlp_terrainPoolLight(WorldPos, uT.numPoolLights,
                                       uT.lightGridDim, vec2(uT.lightGridMinX, uT.lightGridMinY),
                                       vec2(uT.lightGridInvCellX, uT.lightGridInvCellY),
                                       uT.lightPoolSoft, uT.lightPoolMoverDim, uT.lightPoolMoverScale,

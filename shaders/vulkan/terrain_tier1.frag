@@ -576,7 +576,7 @@ void main() {
         // colour so the straight map perimeter does not cut a hard edge. halfMap 0 means the map size is not known yet.
         if (uT.edgeFeatherStrength > 0.0 && uT.halfMap > 0.0) {
             float haze = edgeHazeAmount(v_worldPos.xy, uT.halfMap) * uT.edgeFeatherStrength;
-            lit = mix(lit, EDGE_HAZE_SKY, clamp(haze, 0.0, 1.0));
+            lit = mix(lit, uEnv.sceneLight.x < 1.0 ? uEnv.ambLive.rgb : EDGE_HAZE_SKY, clamp(haze, 0.0, 1.0));
         }
 
         // TERRAIN-SHORELINE-V3/V4 (terrain_lod_chunk.frag, after the edge feather): wet and foam bands measured as the
@@ -660,7 +660,8 @@ void main() {
                     float slF        = clamp(slFoam, 0.0, 1.0);
                     float coverage   = smoothstep(1.0 - slF * 0.85, 1.0, foamNoise + (1.0 - slF) * 0.15);
                     float foamAmt    = coverage * slopeAtten * uT.shorelineFoamStrength * shoreAffinity;
-                    lit = mix(lit, vec3(0.92), clamp(foamAmt, 0.0, 1.0) * (1.0 - F3pc));
+                    vec3 foamLight = uEnv.sceneLight.x < 1.0 ? vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB) : vec3(1.0);
+                    lit = mix(lit, vec3(0.92) * foamLight, clamp(foamAmt, 0.0, 1.0) * (1.0 - F3pc));
                 }
             }
         }
