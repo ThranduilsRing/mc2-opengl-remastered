@@ -248,6 +248,24 @@ bool init_island(WaterIsland* s, int w, int h) {
         }
         mc2vk::nameObject(s->device, s->pipeEarly.get(), "water.pipeEarly");
         stages[1].module = s->frag.get();
+        const int32_t absorption = 1;
+        const VkSpecializationMapEntry absorptionEntry{14, 0, sizeof(absorption)};
+        const VkSpecializationInfo absorptionSpec{1, &absorptionEntry, sizeof(absorption), &absorption};
+        stages[1].pSpecializationInfo = &absorptionSpec;
+        ds.depthWriteEnable = VK_FALSE;
+        cba[0].srcColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+        cba[0].dstColorBlendFactor = VK_BLEND_FACTOR_SRC_COLOR;
+        cba[0].colorWriteMask &= ~VK_COLOR_COMPONENT_A_BIT;
+        cba[1].colorWriteMask = 0;
+        if (!mc2vk::create(s->absorption, s->device, [&](VkPipeline* h) {
+            return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h);
+        })) return false;
+        stages[1].pSpecializationInfo = nullptr;
+        ds.depthWriteEnable = VK_TRUE;
+        cba[0].srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+        cba[0].dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        cba[0].colorWriteMask |= VK_COLOR_COMPONENT_A_BIT;
+        cba[1].colorWriteMask = VK_COLOR_COMPONENT_A_BIT;
         if (gos_GetWaterFsDebugMode() == 10 || gos_GetWaterFsDebugMode() == 11) {
             const VkSpecializationMapEntry vsEntry{12, 0, sizeof(int32_t)};
             const VkSpecializationMapEntry fsEntry{13, 0, sizeof(int32_t)};
