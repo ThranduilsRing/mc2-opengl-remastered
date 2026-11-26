@@ -434,8 +434,8 @@ void crashSnapshot(std::string_view folder) {
         write(s.gpuCrumbs[i].text);
         if(s.markerMap) { char gpu[64]{}; std::snprintf(gpu,sizeof(gpu),"gpu_completed_sequence=%u",s.markerMap[i]); write(gpu); }
     }
-    for(const char* p=s.deviceFault;*p;) {   // the VK_EXT_device_fault report of a lost device, after the pass slots
-        const char* e=std::strchr(p,'\n'); const size_t n=e?size_t(e-p):std::strlen(p);
+    for(auto* p=s.deviceFault;*p;) {   // the VK_EXT_device_fault report of a lost device, after the pass slots
+        const auto* e=std::strchr(p,'\n'); const size_t n=e?static_cast<size_t>(e-p):std::strlen(p);
         write(std::string_view(p,n)); p+=e?n+1:n;
     }
     CloseHandle(f);
@@ -769,10 +769,10 @@ static void takeDeviceFault() {
     const VulkanContext& ctx=getOrCreateEngineVulkanContext();
     if(!ctx.deviceFaultEnabled()) return;
     size_t used=0;
-    auto put=[&](const char* fmt, auto... args) {
+    auto put=[&](auto fmt, auto... args) {
         if(used+1>=sizeof(s.deviceFault)) return;
         const int n=std::snprintf(s.deviceFault+used,sizeof(s.deviceFault)-used,fmt,args...);
-        if(n>0) used+=std::min<size_t>(size_t(n),sizeof(s.deviceFault)-used-1);
+        if(n>0) used+=std::min<size_t>(static_cast<size_t>(n),sizeof(s.deviceFault)-used-1);
     };
     for(int fault=0;fault<4;++fault) {
         VkDeviceFaultCountsEXT counts{VK_STRUCTURE_TYPE_DEVICE_FAULT_COUNTS_EXT};
