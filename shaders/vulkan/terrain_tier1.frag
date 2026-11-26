@@ -483,6 +483,9 @@ void main() {
             vec3 baseN = baseNormal;
             vec4 detailW = mv_groundDetailWeights(materialW, baseN.z);
             vec3 dN    = vec3(0.0);
+            if (TS_authoredMaterialsOnly && uT.reserved220 > 1.0 && TS_detailReady != 0 &&
+                (kPlanarReflection == 0 || kReflectCutDetail == 0) && uT.detailStrength != 0.0)
+                dN = mv_authoredDetailNormal(v_worldPos.xy, detailUvDx, detailUvDy);
             if (!TS_authoredMaterialsOnly && (kPlanarReflection == 0 || kReflectCutDetail == 0) && TS_detailReady != 0 && uT.detailStrength != 0.0) {
                 if (mv_needDetail(baseN, lightDir, detailW, materialSnow, v_worldPos, normalLightFloor)) {
                     // Under-forest ground: the tree-canopy density mask (splatted from tree placements at mission load), same atlas UV as

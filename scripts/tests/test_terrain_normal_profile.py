@@ -72,6 +72,6 @@ def test_normalgl_bump_lights_world_facing_side(angle, axis):
     hex_shader = (ROOT / "shaders/vulkan/include/terrain_hex_tiling.glsl").read_text()
     assert "vec2(1.0, -1.0) * (transpose(R)" in hex_shader
     assert "(c.rg * 2.0 - 1.0) * vec2(1.0, -1.0)" in hex_shader
-    assert detail.count("mv_detailDecode(") == 11
+    assert detail.count("mv_detailDecode(") == 12
     lamp = (ROOT / "shaders/vulkan/terrain_tier1.frag").read_text()
     assert "amount * mv_detailDecode(textureLod" in lamp

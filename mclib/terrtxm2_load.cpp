@@ -12,6 +12,8 @@
 #include "../GameOS/gameos/gos_render.h"
 #include "../GameOS/gameos/load_scope.h"
 
+bool g_terrainAuthoredDetailNormal = false;
+
 using mc2::tga::loadTga;
 using mc2::tga::tgaPixelsPresent;
 
@@ -653,7 +655,18 @@ long TerrainColorMap::init (char *fileName)
 		std::vector<unsigned char> normalStore[9];
 		int arrayWidth = 0;
 		bool usedCooked = false;
+		g_terrainAuthoredDetailNormal = false;
 		if (auto* fields = gos_TerrainFieldStore()) {
+			// Authored-only biomes can replace the rock normal without borrowing earth materials.
+			FitIniFile biome;
+			char detailPath[256] = {};
+			bool authoredOnly = false;
+			const std::string biomePath = "data/missions/" + std::string(fileName) + ".biome.fit";
+			if (biome.open(biomePath.c_str()) == NO_ERR && biome.seekBlock("TerrainMaterials") == NO_ERR &&
+				biome.readIdBoolean("AuthoredOnly", authoredOnly) == NO_ERR && authoredOnly)
+				biome.readIdString("DetailNormal", detailPath, sizeof(detailPath));
+			auto authoredNormal = detailPath[0] ? mc2::textures::loadCookedSidecar(detailPath)
+				: decltype(mc2::textures::loadCookedSidecar(detailPath)){};
 			std::vector<RenderCore::KtxImage> cooked(7);
 			FullPathFileName grassPath, dirtPath;
 			grassPath.init(texturePath, normalNames[1], ".tga");
@@ -661,6 +674,7 @@ long TerrainColorMap::init (char *fileName)
 			bool turf = false, sand = false;
 			usedCooked = mc2::terrain::loadCookedNormals(std::span(cooked), LookupModOwner(grassPath) != nullptr, LookupModOwner(dirtPath) != nullptr,
 				[&](int mat, bool alt) {
+					if (mat == 0 && authoredNormal) return authoredNormal;
 					FullPathFileName nmPath;
 					nmPath.init(texturePath, normalNames[mat], ".tga");
 					auto layer = mc2::textures::loadCookedSidecar(alt ? (mat == 6 ? mc2::terrain::kForestFloorSource : mat == 1 ? mc2::terrain::kGrassTurfSource : mc2::terrain::kDirtSandSource) : static_cast<const char*>(nmPath));
@@ -670,6 +684,9 @@ long TerrainColorMap::init (char *fileName)
 				},
 				[&](std::span<const RenderCore::KtxImage> layers) { return fields->setMaterialNormals(layers); });
 			if (!usedCooked) fields->setMaterialNormals({});
+			g_terrainAuthoredDetailNormal = usedCooked && authoredNormal.has_value();
+			if (g_terrainAuthoredDetailNormal)
+				mc2::fmt::print_out("[TerrainMaterials] authored detail normal={}\n", mc2::fmt::safe(detailPath));
 			fields->setGrassSourceAo(usedCooked && turf);
 			mc2::fmt::print_out("[SPLATTING] cooked detail normals: {}{}\n", usedCooked ? "cooked sidecars" : "absent, TGA import",
 				usedCooked && turf ? ", grass layer = grass_turf_normal" : "");

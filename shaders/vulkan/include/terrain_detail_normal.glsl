@@ -17,6 +17,16 @@ vec3 mv_detailDecode(vec3 texel) {
     // increases DOWN its rows. Convert before undoing any UV rotation.
     return texel * vec3(2.0, -2.0, 2.0) + vec3(-1.0, 1.0, -1.0);
 }
+// The moon keeps its authored albedo. A broad crater/regolith tap survives RTS zoom;
+// the same texel-footprint fade and hex tiling as earth keep it filtered and untiled.
+vec3 mv_authoredDetailNormal(vec2 worldXY, vec2 uvDx, vec2 uvDy) {
+    float scale = MATV_WU_PER_TILE / (uT.normalFlatPeriod * 4.0);
+    float fade = mv_detailFade(mv_detailTexelGM * scale);
+    if (fade <= 0.0) return vec3(0.0);
+    vec2 uv = worldXY * (uT.detailTiling / MATV_WU_PER_TILE) * scale;
+    return 0.7 * uT.normalFlatStrength * fade * mv_detailDecode(hexTileGrad(u_matNormalArray,
+        float(MAT_LAYER_ROCK), uv, uvDx * scale, uvDy * scale, 1.0, true, vec4(0.5)).rgb);
+}
 // Desaturated soil falls into the colour classifier's rock remainder. Give its
 // flat areas turf relief/AO without changing the authored colour or steep rock.
 vec4 mv_groundDetailWeights(vec4 w, float macroNz) {
