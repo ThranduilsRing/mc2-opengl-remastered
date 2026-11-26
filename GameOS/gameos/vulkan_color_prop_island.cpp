@@ -163,7 +163,7 @@ VkShaderModule load_spv(VkDevice device, std::string_view path) {
 const VkFormat kColorFmt = VK_FORMAT_R16G16B16A16_SFLOAT; // MainColor-compatible
 const VkFormat kDepthFmt = VK_FORMAT_D32_SFLOAT;          // VK-owned (non-exported)
 // Night light-pool SSBO: GpuTerrainLight is 48 B; 256 is the GL object pool cap.
-const int          kMaxPoolLights = 256;
+const int          kMaxPoolLights = gos_terrain_lighting::kObjectPoolLights;
 
 // Per-type packet (subset of GpuStaticPropPacket the draw loop needs).
 struct TypeRun {

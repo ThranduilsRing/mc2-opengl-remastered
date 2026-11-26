@@ -119,4 +119,17 @@ float lpa_localShadow(vec3 wp, vec3 lightPos, uint packed, float farD)
     return 1.0;
 #endif
 }
+// Shared incident local light: radial fade, spot cone and local visibility.
+// Material response and mover/contact composition remain with the receiver.
+bool lpa_evaluate(vec3 wp, vec3 lightPos, uint packed, bool mover,
+                  float moverScale, int soft, inout float nearD,
+                  float farD, float ooD, out float len, out float falloff)
+{
+    vec3 delta = wp - lightPos;
+    if (!lpa_falloff(delta, mover, moverScale, soft, nearD, farD, ooD, len, falloff)) return false;
+    falloff = lpa_spotCone(delta, packed, len, farD, falloff);
+    if (falloff <= 0.0) return false;
+    falloff *= lpa_localShadow(wp, lightPos, packed, farD);
+    return true;
+}
 #endif

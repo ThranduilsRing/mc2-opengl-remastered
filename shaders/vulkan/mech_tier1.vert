@@ -91,6 +91,11 @@ vec3 calc_light(int idx, vec3 normal, vec3 wpos, vec3 base_light, int sunAxisMc2
     int n = min(ld.numLights.x, MAX_LIGHTS_IN_WORLD);
     for (int i = 0; i < n; ++i) {
         int lt = int(uLights.light[idx].light_dir[i].w);
+#ifndef MECH_PREVIEW
+        // World local lights come from the shared fragment grid, never the
+        // capped per-object vertex row. Studio previews keep their own rig.
+        if (lt == TG_LIGHT_POINT || lt == TG_LIGHT_SPOT) continue;
+#endif
         vec3 lc = uLights.light[idx].light_color[i].xyz;
         if (lt == TG_LIGHT_AMBIENT) {
             if (legacyVehicle) ambient += lc * uEnv.ambRelight.rgb;   // the light row's own ambient, not the environment's; moves like the ground (one-sun rule)

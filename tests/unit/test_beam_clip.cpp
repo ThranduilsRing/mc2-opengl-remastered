@@ -2,6 +2,17 @@
 #include "../../code/beam_clip.h"
 #include <limits>
 
+TEST_CASE("beam_clip/screen projection matches Camera in both modes") {
+    const glm::vec4 clip{0.2f, 0.6f, 0.5f, 2.0f};
+    const glm::vec2 mul{1280, 720}, add{10, 20};
+    const auto perspective = mc2::beam::screenPosition(clip, true, mul, add);
+    CHECK(perspective.x == doctest::Approx(138));
+    CHECK(perspective.y == doctest::Approx(236));
+    const auto parallel = mc2::beam::screenPosition(clip, false, mul, add);
+    CHECK(parallel.x == doctest::Approx(1034));
+    CHECK(parallel.y == doctest::Approx(308));
+}
+
 namespace {
 mc2::beam::Vertex at(float x, float y, float z, float w, float u) {
     return {{x, y, z, w}, {u, 0}, {255, 80, 40, 20}};
