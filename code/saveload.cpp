@@ -552,7 +552,7 @@ void Mission::loadPrologue(MissionLoadFrame& f) {
 }
 
 // The campaign a save names must still load: probe the logistics packet before the running mission is torn down.
-static bool savedCampaignLoads(PacketFile& loadFile, int packet) {
+static bool savedCampaignLoads(PacketFile& loadFile, int packet, long& savedAi) {
 	if (loadFile.seekPacket(packet) != NO_ERR || loadFile.getPacketSize() <= 0)
 		return false;
 	const auto size = loadFile.getPacketSize();
@@ -580,6 +580,7 @@ static bool savedCampaignLoads(PacketFile& loadFile, int packet) {
 		if (logisticsFile.open(probeName) == NO_ERR) {
 			LogisticsMissionInfo probe;
 			ok = probe.load(logisticsFile).has_value();
+			if (ok) savedAi = probe.getRules().ai;
 			logisticsFile.close();
 		}
 	}
@@ -645,7 +646,7 @@ bool Mission::openSaveFile(MissionLoadFrame& f) {
 			else
 				mc2::save::decodeSections(bytes, f.sections, &why);
 		}
-		if (why.empty() && !savedCampaignLoads(loadFile, last - 3))
+		if (why.empty() && !savedCampaignLoads(loadFile, last - 3, f.savedAi))
 		{
 			why = "campaign";   // the saved campaign is gone or broken (the probe logs the cause); the running mission stays
 			f.campaignRefused = true;
@@ -1098,6 +1099,11 @@ void Mission::load (mc2::czstring loadFileName)
 		return;
 	}
 
+	// The environment recompiles its saved source names before loadLogistics publishes all rules.
+	// Select the saved library now, after validation, while the simulation is stopped.
+	auto savedRules = mc2::rules::current();
+	savedRules.ai = f.savedAi;
+	mc2::rules::publish(savedRules);
 	loadDestroyAndRestore();
 	loadResetSimState(f);
 	loadGameSystemRanges(f);

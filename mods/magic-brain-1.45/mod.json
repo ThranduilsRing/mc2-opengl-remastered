@@ -1,0 +1,9 @@
+{
+  "schema": "mc2-mod/1",
+  "id": "magic-brain-1.45",
+  "name": "Magic Brain Library 1.45",
+  "version": "1.45",
+  "type": "assets",
+  "dependencies": [],
+  "description": "AI content profile selected by the Smarter game rule. Stock warrior compatibility is generated from mission.fst during deployment."
+}

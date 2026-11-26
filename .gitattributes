@@ -6,3 +6,4 @@
 tools/box/** text eol=lf
 # Frozen editor goldens are byte references: never normalize their line endings.
 editor/tests/goldens/** -text
+mods/magic-brain-1.45/data/missions/corebrain.abx -text

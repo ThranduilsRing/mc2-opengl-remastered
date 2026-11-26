@@ -25,6 +25,7 @@ struct MissionLoadFrame {
 	long rps;
 	PacketFile pakFile;
 	bool saveV2 = false;                       // packet 0 carries mc2::save::saveStampV2
+	long savedAi = 0;                          // selected before the ABL environment is recompiled
 	DWORD sectionsPacket = 0;                  // v2: index of the section container, validated by openSaveFile
 	mc2::save::SectionContainer sections;
 };

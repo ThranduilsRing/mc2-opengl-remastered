@@ -877,6 +877,7 @@ void InitModSearchPaths(mc2::czstring modsRoot) {
     // MC2_ACTIVE_MOD is re-read here on every mount: the editor's mod picker changes it
     // with _putenv_s at run time, so no reader may cache it in a static.
     std::string envModStr = mc2::gate::str<"MC2_ACTIVE_MOD">();
+    if (envModStr == "magic-brain-1.45") envModStr.clear(); // AI-rule profile; never a manual overlay.
     if (envModStr == "mc2-industrial-kit" || envModStr == "mc2-vehicle-kit") envModStr.clear(); // Bundled art is never an active user layer.
     const char* envMod = envModStr.c_str();
     const bool stockMode = !envMod[0];
@@ -986,6 +987,7 @@ void InitModSearchPaths(mc2::czstring modsRoot) {
     if (vehicleKit) deps.push_back("mc2-vehicle-kit");
     for (const auto& pack : installedAssets)
         if (pack != envMod && std::ranges::find(deps, pack) == deps.end()) deps.push_back(pack);
+    std::erase(deps, "magic-brain-1.45"); // Stock cannot mount the profile even as an explicit dependency.
     // Priority order: base data < dep[N-1] < ... < dep[0] < active mod.
     // Index is first-wins, so scan highest priority first.
     // Duplicates: winner keeps its slot; loser is logged when MC2_LOG_FILE_RESOLVE=1.

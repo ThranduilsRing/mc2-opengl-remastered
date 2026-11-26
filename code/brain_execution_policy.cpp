@@ -60,7 +60,7 @@ void decide(std::string_view missionFitPath, std::string_view missionDir, std::s
 	} else if (mc2::gate::is<"MC2_BRAIN_POLICY", "techbrain">()) {
 		p = Policy::TechBrain; why = "forced-techbrain";
 	} else if (mc2::rules::current().ai == 1) {
-		p = Policy::TechBrain; why = "player-smarter-generic";
+		why = "player-smarter-magic-1.45";
 		const std::string base = std::string(missionDir).append(missionName);
 		if (missionFitHasBrainBlock(missionFitPath))                    { p = Policy::TechBrain; why = "mission.fit Brain{}"; }
 		else if (overlayBrainFile(base + "_specials.fit"))              { p = Policy::TechBrain; why = "mod _specials.fit"; }
