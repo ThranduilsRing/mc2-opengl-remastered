@@ -38,9 +38,9 @@ def test_original_library_is_only_in_named_profile():
     library = ROOT / 'mods/magic-brain-1.45/data/missions/corebrain.abx'
     source = library.read_bytes().replace(b'\r\n', b'\n')
     attack = re.search(rb'order magicAttack.*?endorder;', source, re.S).group(0)
-    wake = (b'if ((objectStatus(-1) == OBJ_STATUS_SHUTDOWN) or\n'
+    wake = (b'\t\tif ((objectStatus(-1) == OBJ_STATUS_SHUTDOWN) or\n'
             b'\t\t    (objectStatus(-1) == OBJ_STATUS_SHUTTING_DOWN)) then\n'
-            b'\t\t\tcorePower(true);\n\t\tendif;\n\n\t\t')
+            b'\t\t\tcorePower(true);\n\t\tendif;\n\n')
     assert wake in attack
     assert hashlib.md5(attack.replace(wake, b'')).hexdigest() == '1e28ce31d6ff65137eca165c18b857f8'
     assert not (ROOT / 'data/missions/corebrain.abx').exists()

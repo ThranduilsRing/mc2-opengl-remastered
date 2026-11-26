@@ -254,12 +254,12 @@ order magicAttack (integer targetID) : integer;
 
 	code
 
-if ((objectStatus(-1) == OBJ_STATUS_SHUTDOWN) or
+		if ((objectStatus(-1) == OBJ_STATUS_SHUTDOWN) or
 		    (objectStatus(-1) == OBJ_STATUS_SHUTTING_DOWN)) then
 			corePower(true);
 		endif;
 
-		//		if (targetID <> 0) AND (getenemycount(-1) > 0) then 
+//		if (targetID <> 0) AND (getenemycount(-1) > 0) then 
 //			targetID = 0;
 //		endif;
 		curParams = 0;
