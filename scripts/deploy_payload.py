@@ -338,6 +338,7 @@ GAME_DATA_PAYLOAD = [
     "data/art/gui/mcl_mn_4.png",
     "data/art/gui/mcl_mn_4.tga",
     "data/terrain_materials.json",
+    "data/missions/mc2_13.biome.fit",
     "data/visual_tuning.json",
     # ImGui UI fonts (GuiRuntime resolves exe/data/fonts/ui first); without them every defs UI text falls back
     # to the ImGui bitmap default font (blocky, low-res at 4K).

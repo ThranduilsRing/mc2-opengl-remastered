@@ -19,6 +19,7 @@ layout(constant_id = 14) const int kReflectCutMovers = 1;
 vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod);
 #define TLP_LAMP_NORMAL mv_lampPoolNormal
 #include "include/terrain_frame_vk.glsl"   // TerrainFrameUBO + set-0 resources + CSM shadow helpers
+#define TS_authoredMaterialsOnly (uT.reserved220 != 0.0)
 
 // -1 preserves the uniform path for generic and skirt pipelines.
 layout(constant_id = 20) const int kSp_colormapReady = -1;
@@ -185,6 +186,7 @@ float cliffReferenceLuma(vec2 worldXY) {
 // Lamp-only detail uses an isotropic footprint computed in uniform main flow.
 // The normal is sampled once at the first unoccluded, nonzero lamp.
 vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod) {
+    if (TS_authoredMaterialsOnly) return macroN;
     // No hard footprint cut: mv_detailFade below reaches 0 (amount <= 0 -> macroN) well before the sampled mip goes whole-texture.
     vec2 uv = vec2((wp.x - uT.atlasTopLeftX) * uT.atlasOneOverWorldUnits,
                    (uT.atlasTopLeftY - wp.y) * uT.atlasOneOverWorldUnits);
@@ -376,18 +378,19 @@ void main() {
     //   world-space break-up noise (0.78..1.18), snow brightness dampen.
     // Overlay-sidecar coverage is 0 in VK (sidecar not fed), matching GL when OVERLAY_V2 is off.
     // One baked blend feeds tint, detail and shoreline affinity.
+    if (TS_authoredMaterialsOnly) materials = vec4(0.0);
     float materialSnow = materials.z;
     vec4 materialW = vec4(max(1.0 - materials.x - materials.y - materials.w, 0.0), materials.x, materials.y, materials.w);
     vec3 baseNormal = mv_smoothTerrainNormal(v_worldPos.xy);
     vec3 prelitBase = base;
     float delitShare = (1.0 - pureConcrete) * (1.0 - smoothstep(0.55, 0.85, abs(baseNormal.z)));
-    if (delitShare > 0.0 && TS_colormapReady != 0) {
+    if (!TS_authoredMaterialsOnly && delitShare > 0.0 && TS_colormapReady != 0) {
         float gain = cliffDelightGain(dot(base, vec3(0.299, 0.587, 0.114)), cliffReferenceLuma(v_worldPos.xy));
         base *= mix(1.0, gain, delitShare);
     }
     vec3 baseColor = base;
     float F3pc = pureConcrete;
-    {
+    if (!TS_authoredMaterialsOnly) {
         vec4 f3W = materialW; float f3Snow = materialSnow;
         f3W = mix(f3W, vec4(0.0, 0.0, 0.0, 1.0), F3pc);
         f3Snow *= (1.0 - F3pc);
@@ -480,7 +483,7 @@ void main() {
             vec3 baseN = baseNormal;
             vec4 detailW = mv_groundDetailWeights(materialW, baseN.z);
             vec3 dN    = vec3(0.0);
-            if ((kPlanarReflection == 0 || kReflectCutDetail == 0) && TS_detailReady != 0 && uT.detailStrength != 0.0) {
+            if (!TS_authoredMaterialsOnly && (kPlanarReflection == 0 || kReflectCutDetail == 0) && TS_detailReady != 0 && uT.detailStrength != 0.0) {
                 if (mv_needDetail(baseN, lightDir, detailW, materialSnow, v_worldPos, normalLightFloor)) {
                     // Under-forest ground: the tree-canopy density mask (splatted from tree placements at mission load), same atlas UV as
                     // the macro colour. Needs the 7th array layer.
@@ -495,11 +498,13 @@ void main() {
             vec3 macroPert = vec3(baseN.xy / max(baseN.z, 0.2) * uT.nfhStrength, 1.0);
             vec3 pert = macroPert + vec3(dN.xy * uT.detailStrength, 0.0);
             N = normalize(pert);
-            float blocked = crTerrainCliff(v_worldPos.xy);
-            if ((TS_concreteDetail & 2) != 0) crApply(baseN, cliffDx * MATV_CLIFF_TS, cliffDy * MATV_CLIFF_TS, cliffLod, blocked, N, baseColor);
-            else if (TS_detailReady >= 2) mv_cliffMaterial(baseN, cliffLod, blocked, N, baseColor);
-            if (TS_detailReady != 0) crNavigable(baseN, cliffDx * MATV_CLIFF_TS, cliffDy * MATV_CLIFF_TS,
-                                               (1.0 - blocked) * max(detailW.x, cliffRockWeight(abs(baseN.z))), N, baseColor);
+            if (!TS_authoredMaterialsOnly) {
+                float blocked = crTerrainCliff(v_worldPos.xy);
+                if ((TS_concreteDetail & 2) != 0) crApply(baseN, cliffDx * MATV_CLIFF_TS, cliffDy * MATV_CLIFF_TS, cliffLod, blocked, N, baseColor);
+                else if (TS_detailReady >= 2) mv_cliffMaterial(baseN, cliffLod, blocked, N, baseColor);
+                if (TS_detailReady != 0) crNavigable(baseN, cliffDx * MATV_CLIFF_TS, cliffDy * MATV_CLIFF_TS,
+                                                   (1.0 - blocked) * max(detailW.x, cliffRockWeight(abs(baseN.z))), N, baseColor);
+            }
             if (kPlanarReflection != 0 && kReflectCutDetail != 0) N = normalize(macroPert);
             dbgBaseN = baseN; dbgDN = dN;                        // CSM-BLACKOUT-RECON-1 taps
             N = normalize(mix(N, vec3(0.0, 0.0, 1.0), pureConcrete));
@@ -522,7 +527,7 @@ void main() {
         // fragments skip the material detail-normal fetches, so the two concrete fetches replace them (no net fetch increase).
         vec3 cdSpec = vec3(0.0);
         vec2 cdWpDx = dFdx(v_worldPos.xy), cdWpDy = dFdy(v_worldPos.xy);   // uniform flow, late: nothing extra stays live through the detail-normal block
-        if ((kPlanarReflection == 0 || kReflectCutDetail == 0) && TS_concreteDetail != 0 && pureConcrete > 0.0) cdApply(cdRoad > 0.5 ? CD_LAYER_ROAD : CD_LAYER_PAD, v_worldPos.xy, cdWpDx, cdWpDy, lightDir, pureConcrete, baseColor, normalLight, cdSpec, N);
+        if (!TS_authoredMaterialsOnly && (kPlanarReflection == 0 || kReflectCutDetail == 0) && TS_concreteDetail != 0 && pureConcrete > 0.0) cdApply(cdRoad > 0.5 ? CD_LAYER_ROAD : CD_LAYER_PAD, v_worldPos.xy, cdWpDx, cdWpDy, lightDir, pureConcrete, baseColor, normalLight, cdSpec, N);
         gbufN = N;
 
         // Static ground mask and current-frame movers share the same visibility

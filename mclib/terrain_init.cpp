@@ -1271,6 +1271,16 @@ void Terrain::initMaterialProfile() {
 		} else {
 			gos_SetTerrainClassDirt(-0.02f, 0.06f, 0.22f, 0.45f);
 		}
+		// BaseTerrain is editor metadata (even the stock moon is marked tundra).
+		// Resolve through the content providers so mods can author the same policy.
+		FitIniFile biome;
+		const std::string biomePath = "data/missions/" + std::string(profileKey) + ".biome.fit";
+		bool authoredOnly = false;
+		if (biome.open(biomePath.c_str()) == NO_ERR && biome.seekBlock("TerrainMaterials") == NO_ERR &&
+			biome.readIdBoolean("AuthoredOnly", authoredOnly) == NO_ERR && authoredOnly) {
+			g_terrainMaterialProfile = static_cast<int>(TERRAIN_MAT_PROFILE_AUTHORED);
+			mc2::fmt::print_out("[TerrainMaterials] authored-only path={}\n", mc2::fmt::safe(biomePath));
+		}
 	}
 }
 
