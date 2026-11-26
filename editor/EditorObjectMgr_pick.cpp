@@ -256,8 +256,21 @@ EditorObject* EditorObjectMgr::getObjectAtScreenPosition( int screenX, int scree
 	if (!eye)
 		return nullptr;
 
-	const float clickX = (float)screenX;
-	const float clickY = (float)screenY;
+	// MFC clicks are client pixels; forward projections use viewport pixels.
+	// Normalise like gameplay picking when the editor client has been resized.
+	float clickX = (float)screenX;
+	float clickY = (float)screenY;
+	if (auto* view = EditorInterface::instance(); view && view->GetSafeHwnd())
+	{
+		CRect clientRect;
+		view->GetClientRect(&clientRect);
+		const float clientWidth = (float)std::max(1, int(clientRect.Width()));
+		const float clientHeight = (float)std::max(1, int(clientRect.Height()));
+		float vmx = 1.f, vmy = 1.f, vax = 0.f, vay = 0.f;
+		gos_GetViewport(&vmx, &vmy, &vax, &vay);
+		clickX = vax + (float)screenX / clientWidth * vmx;
+		clickY = vay + (float)screenY / clientHeight * vmy;
+	}
 
 	// Base click slop in pixels (objects with a larger projected radius widen it).
 	const float pixelFloor = 12.0f;

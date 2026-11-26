@@ -10,7 +10,17 @@
 #include "newsinglemission.h"
 #include "ModPicker.h"
 #include "EditorRecent.h"
+#include "LauncherMissions.h"
+#include <filesystem>
 #include <string>
+
+std::string EditorInstallPath(const char* relative)
+{
+	char executable[32768] = {};
+	const DWORD length = GetModuleFileNameA(nullptr, executable, sizeof(executable));
+	if (!length || length >= sizeof(executable)) return {};
+	return (std::filesystem::path(executable).parent_path() / relative).string();
+}
 
 // When the user picks a Recent mission and clicks Edit Mission, this holds the path
 // so EditorInterface loads it directly instead of popping the file dialog. Empty =
@@ -50,6 +60,9 @@ BEGIN_MESSAGE_MAP(NewSingleMission, CDialog)
 	ON_BN_CLICKED(ID_LOAD_MISSION, OnLoadMission)
 	ON_BN_CLICKED(ID_NEWMISSION, OnNewmission)
 	ON_BN_CLICKED(ID_MAPGENERATOR, OnMapGenerator)
+	ON_BN_CLICKED(IDC_MI_STOCK_OPEN, OnStockMission)
+	ON_BN_CLICKED(IDC_MI_RECENT_OPEN, OnRecentMission)
+	ON_BN_CLICKED(IDC_MI_MOD_OPEN, OnModMission)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -59,6 +72,21 @@ END_MESSAGE_MAP()
 BOOL NewSingleMission::OnInitDialog()
 {
 	CDialog::OnInitDialog();
+	g_editorPreselectMission.clear();
+	// Background harnesses must also keep this modal off the visible desktop.
+	extern bool EditorBackgroundLaunch();
+	if (EditorBackgroundLaunch())
+	{
+		ModifyStyleEx(0, WS_EX_NOACTIVATE);
+		SetWindowPos(nullptr, -32000, -32000, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOZORDER);
+	}
+	CComboBox* stock = (CComboBox*)GetDlgItem(IDC_MI_STOCK_COMBO);
+	stock->ResetContent();
+	for (const auto& name : editor::launcher::campaignMissions(EditorInstallPath("data/missions")))
+		stock->AddString(name.c_str());
+	stock->SetCurSel(0);
+	if (!stock->GetCount())
+		SetDlgItemText(IDC_MI_STOCK_HINT, "No loose stock missions. Add mc2_01.pak + mc2_01.fit to data/missions.");
 
 	// Populate the Mod combo: "None (stock)" + every folder under mods/. Pick the
 	// mod BEFORE loading a mission so its data/* shadows base data/* (mod missions'
@@ -82,22 +110,19 @@ BOOL NewSingleMission::OnInitDialog()
 		combo->SetCurSel( sel );
 	}
 
-	// Recent missions: index 0 = "(browse...)", then most-recent first.
+	// Recent missions are listed newest first.
 	CComboBox* recent = (CComboBox*)GetDlgItem( IDC_MI_RECENT_COMBO );
 	if ( recent )
 	{
 		recent->ResetContent();
-		recent->AddString( "(browse for file...)" );
 		for ( int i = 0; i < EditorRecent::Count(); ++i )
 		{
 			const char* p = EditorRecent::Path( i );
-			// Show the file name (after the last slash) to keep the combo readable.
-			const char* base = p;
-			for ( const char* c = p; *c; ++c )
-				if ( *c == '\\' || *c == '/' ) base = c + 1;
-			recent->AddString( base );
+			recent->AddString(p);
 		}
 		recent->SetCurSel( 0 );
+		recent->SetDroppedWidth(680);
+		GetDlgItem(IDC_MI_RECENT_OPEN)->EnableWindow(recent->GetCount() > 0);
 	}
 	return TRUE;
 }
@@ -117,22 +142,65 @@ void NewSingleMission::applySelectedMod()
 void NewSingleMission::OnLoadMission()
 {
 	applySelectedMod();
-
-	// If a Recent (index > 0) is chosen, hand its full path to EditorInterface so it
-	// loads directly; otherwise leave empty -> the file-browse dialog runs as before.
 	g_editorPreselectMission.clear();
-	CComboBox* recent = (CComboBox*)GetDlgItem( IDC_MI_RECENT_COMBO );
-	if ( recent )
-	{
-		int sel = recent->GetCurSel();
-		if ( sel > 0 )   // 0 == "(browse...)"
-		{
-			const char* p = EditorRecent::Path( sel - 1 );
-			if ( p && p[0] ) g_editorPreselectMission = p;
-		}
-	}
+	EndDialog(ID_LOAD_MISSION);
+}
 
-	EndDialog( ID_LOAD_MISSION );
+void NewSingleMission::OnRecentMission()
+{
+	const int selected = ((CComboBox*)GetDlgItem(IDC_MI_RECENT_COMBO))->GetCurSel();
+	if (selected < 0) return;
+	const char* path = EditorRecent::Path(selected);
+	if (GetFileAttributesA(path) == INVALID_FILE_ATTRIBUTES)
+	{
+		AfxMessageBox("This recent mission has moved or been removed. Use Edit Mission to locate it.");
+		return;
+	}
+	applySelectedMod();
+	g_editorPreselectMission = path;
+	EndDialog(ID_LOAD_MISSION);
+}
+
+void NewSingleMission::OnModMission()
+{
+	CComboBox* combo = (CComboBox*)GetDlgItem(IDC_MI_MOD_COMBO);
+	const int selected = combo->GetCurSel();
+	if (selected < 0 || (INT_PTR)combo->GetItemData(selected) < 0)
+	{
+		AfxMessageBox("Choose a mod first.");
+		return;
+	}
+	const int mod = (int)(INT_PTR)combo->GetItemData(selected);
+	const std::string folder = EditorInstallPath((std::string("mods/") + ModPicker::ModName(mod) + "/data/missions/").c_str());
+	CFileDialog browser(TRUE, "pak", (folder + "\\").c_str(),
+		OFN_FILEMUSTEXIST | OFN_HIDEREADONLY | OFN_NOCHANGEDIR, "Mission maps (*.pak)|*.pak||", this);
+	browser.m_ofn.lpstrInitialDir = folder.c_str();
+	if (browser.DoModal() != IDOK) return;
+	applySelectedMod();
+	g_editorPreselectMission = (const char*)browser.GetPathName();
+	EndDialog(ID_LOAD_MISSION);
+}
+
+void NewSingleMission::OnStockMission()
+{
+	CString selected;
+	CComboBox* stock = (CComboBox*)GetDlgItem(IDC_MI_STOCK_COMBO);
+	if (stock->GetCurSel() < 0)
+	{
+		AfxMessageBox("No loose campaign missions in this install. Put matching mc2_01.pak and mc2_01.fit (optionally mc2_01.abl) in data/missions. Packed mission.fst is not used by this entry point.");
+		return;
+	}
+	stock->GetLBText(stock->GetCurSel(), selected);
+	std::error_code error;
+	const auto copy = editor::launcher::copyCampaign(EditorInstallPath(""), (const char*)selected, error);
+	if (error || copy.empty())
+	{
+		AfxMessageBox("Could not create an editable mission copy. Check the loose mission files and user-missions folder permissions.");
+		return;
+	}
+	ModPicker::Activate("");
+	g_editorPreselectMission = copy.string();
+	EndDialog(ID_LOAD_MISSION);
 }
 
 void NewSingleMission::OnNewmission()

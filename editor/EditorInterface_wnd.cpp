@@ -408,6 +408,7 @@ void EditorInterface::OnViewRefreshtacmap()
 
 bool EditorInterface::SafeRunGameOSLogic()
 {
+	if (bIsLoading) return false;
 	static unsigned long s_safeRunCount = 0;
 	// Allow rendering when the ImGui map generator dialog is open even if no
 	// terrain is loaded yet — the dialog needs GL frames to draw itself.

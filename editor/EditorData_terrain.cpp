@@ -3,6 +3,66 @@
 #include "EditorData_internal.h"
 #include "mc2fmt.h"
 #include "mc2str.h"
+#include "../GameOS/gameos/load_scope.h"
+#include "../GameOS/gameos/vk_render_infra.h"
+#include "texture_assets.h"
+#include "Gates/gate.h"
+#include <commctrl.h>
+
+namespace {
+// Only paint/sent messages are serviced: document commands and render timers wait for the completed map.
+class EditorLoadProgress {
+	inline static thread_local EditorLoadProgress* current = nullptr;
+	EditorLoadProgress* previous = current;
+	void (*previousCheckpoint)() = mc2::load::checkpoint;
+	HWND frame = AfxGetMainWnd() ? AfxGetMainWnd()->GetSafeHwnd() : nullptr;
+	HWND label = nullptr, bar = nullptr;
+	bool enabled = frame && IsWindowEnabled(frame);
+	bool pumping = false;
+	ULONGLONG last = GetTickCount64(), maxGap = 0;
+	unsigned beats = 0;
+public:
+	EditorLoadProgress() {
+		current = this;
+		if (enabled) EnableWindow(frame, FALSE);
+		HWND parent = EditorInterface::instance()->GetSafeHwnd();
+		label = CreateWindowExA(0, "STATIC", "Loading mission", WS_CHILD | WS_VISIBLE,
+			16, 16, 480, 24, parent, nullptr, AfxGetInstanceHandle(), nullptr);
+		bar = CreateWindowExA(0, PROGRESS_CLASSA, "", WS_CHILD | WS_VISIBLE,
+			16, 44, 480, 24, parent, nullptr, AfxGetInstanceHandle(), nullptr);
+		SendMessage(bar, PBM_SETRANGE32, 0, 100);
+		mc2::load::checkpoint = [] { if (current) current->pump(); };
+		stage("Loading terrain", 5);
+	}
+	void pump() {
+		const auto now = GetTickCount64();
+		if (pumping || now - last < 50) return;
+		maxGap = std::max(maxGap, now - last);
+		last = now;
+		pumping = true;
+		MSG message{};
+		while (PeekMessage(&message, nullptr, WM_PAINT, WM_PAINT, PM_REMOVE)) DispatchMessage(&message);
+		EditorDataTrace("[EDITOR_LOAD_HEARTBEAT v1] beat=%u max_gap_ms=%llu", ++beats, maxGap);
+		pumping = false;
+	}
+	void stage(const char* name, int percent) {
+		SetWindowTextA(label, name);
+		SendMessage(bar, PBM_SETPOS, percent, 0);
+		UpdateWindow(label);
+		UpdateWindow(bar);
+		pump();
+	}
+	~EditorLoadProgress() {
+		pump();
+		mc2::load::checkpoint = previousCheckpoint;
+		current = previous;
+		DestroyWindow(bar);
+		DestroyWindow(label);
+		if (enabled) EnableWindow(frame, TRUE);
+		EditorDataTrace("[EDITOR_LOAD_HEARTBEAT v1] event=complete beats=%u max_gap_ms=%llu", beats, maxGap);
+	}
+};
+}
 
 
 static void EditorDataWarmTerrain(const char* where)
@@ -40,6 +100,18 @@ static void EditorDataWarmTerrain(const char* where)
 
 bool EditorData::initTerrainFromPCV( const char* fileName )
 {
+	if (bIsLoading) return false;
+	mc2::load::begin();
+	struct LoadReport {
+		ULONGLONG start = GetTickCount64();
+		~LoadReport() {
+			const auto results = mc2::load::report();
+			if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) if (FILE* log = fopen("editor-startup.log", "a")) {
+				fprintf(log, "[LOAD_SCOPES v1] host=editor total_ms=%llu%s\n", GetTickCount64() - start, results.scopes.c_str());
+				fclose(log);
+			}
+		}
+	} loadReport;
 	EditorDataTrace("EditorData::initTerrainFromPCV: enter fileName=%s", fileName ? fileName : "<null>");
 	if (!fileName || !fileName[0]) return false;
 	EditorFit::MissionTextReader file;
@@ -116,6 +188,7 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	EditorDataTrace("EditorData::initTerrainFromPCV: before new Terrain");
 	bool bRetVal = true;
 	bIsLoading = true;
+	EditorLoadProgress loading;
 	EditorInterface::instance()->SetBusyMode(false/*no redraw*/);
 	clear();
 	const auto rejectDocument = [] {
@@ -185,6 +258,7 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	EditorDataTrace("EditorData::initTerrainFromPCV: gpu_cull substrate/compute/readback + terrain_lighting + shadow priming initialized");
 
 	EditorDataTrace("EditorData::initTerrainFromPCV: before loadMechs");
+	loading.stage("Loading actors", 25);
 	if (!EditorObjectMgr::instance()->loadMechs(file))
 	{
 		return rejectDocument();
@@ -207,11 +281,13 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	{
 		volatile float editorLoadProgress = 36.0f;
 		EditorDataTrace("EditorData::initTerrainFromPCV: before primeMissionTerrainCache");
+		loading.stage("Preparing terrain", 40);
 		land->primeMissionTerrainCache(editorLoadProgress, 4.0f);
 		EditorDataTrace("EditorData::initTerrainFromPCV: after primeMissionTerrainCache");
 	}
 
 	EditorDataTrace("EditorData::initTerrainFromPCV: before EditorObjectMgr::load");
+	loading.stage("Loading placed objects", 55);
 	// Load placed actors before registering their render resources.
 	EditorObjectMgr::instance()->load( pFile, 1 );
 	if (!EditorObjectMgr::instance()->loadNavMarkers(file))
@@ -244,7 +320,11 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	// placing a Bridge (or any other type absent from the starter map) hits the
 	// late-register path (s_geometryFinalized==true at registerType time) and
 	// renders solid black.
-	EditorObjectMgr::instance()->primeAllBuildingAppearanceTypes();
+	{
+		MC2_LOAD_SCOPE("editor.primeAllBuildingAppearanceTypes");
+		loading.stage("Preparing object palette", 70);
+		EditorObjectMgr::instance()->primeAllBuildingAppearanceTypes();
+	}
 	EditorDataTrace("EditorData::initTerrainFromPCV: after primeAllBuildingAppearanceTypes");
 
 	// Steps 11-13 (game lines 3136-3143): finalize batcher geometry, then build indirect buffer.
@@ -254,7 +334,14 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	// Watch editor-startup.log for:
 	//   "[GPUPROPS] finalize: N types, M packets"   -- N > 0 required
 	EditorBridge::finalizeMissionGeometry();
+	loading.stage("Preparing vegetation", 80);
 	GameAdapters::Vegetation::missionLoaded(land, nullptr);   // biome view: scatter grass/ground patches as in game                   // steps 11-13 — game lines 3136-3143
+	{
+		MC2_LOAD_SCOPE("editor.prewarmRenderResources");
+		loading.stage("Preparing renderer", 90);
+		mc2PrewarmMissionPipelines();
+		mc2::textures::prewarmCpuTextures();
+	}
 	EditorDataTrace("EditorData::initTerrainFromPCV: GPU batchers finalized + indirect buffer built");
 
 	{

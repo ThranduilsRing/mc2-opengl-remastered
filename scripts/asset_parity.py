@@ -92,7 +92,8 @@ def manifest_assets(install: Path | str) -> tuple[dict[str, str], str | None]:
         if next(rows, [])[:2] != ["manifest_version", "v1"]:
             raise ValueError(f"invalid payload manifest: {path}")
         entries = list(csv.DictReader(stream))
-    commits = {row["src_commit"] for row in entries if row["relpath"] in {"mc2.exe", "mc2", "mc2.elf"}}
+    executables = {"mc2.exe", "mc2", "mc2.elf", "mission editor.exe"}
+    commits = {row["src_commit"] for row in entries if row["relpath"].casefold() in executables}
     if len(commits) != 1:
         raise ValueError(f"missing/ambiguous executable commit: {path}")
     # Exe-only A/B stages retain the data rows of the source install. Their

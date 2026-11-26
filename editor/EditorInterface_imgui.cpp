@@ -421,6 +421,7 @@ void EditorInterface::renderToolbarImGui()
 		};
 		const int nModes = (int)(sizeof(modes) / sizeof(modes[0]));
 		const float colW = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
+		ImGui::PushID("AuthoringModes");
 		for (int i = 0; i < nModes; ++i)
 		{
 			const bool on = (s_toolMode == modes[i].mode);
@@ -437,6 +438,7 @@ void EditorInterface::renderToolbarImGui()
 			if (on) ImGui::PopStyleColor();
 			if ((i % 2) == 0 && i + 1 < nModes) ImGui::SameLine();
 		}
+		ImGui::PopID();
 	}
 	ImGui::Separator();
 

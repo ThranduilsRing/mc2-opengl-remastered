@@ -281,6 +281,10 @@ void __stdcall InitGameOS(HINSTANCE /*hInstance*/, HWND hWindow, char* commandLi
         int h = rc.bottom - rc.top;
         if (w <= 0) w = 1024;
         if (h <= 0) h = 768;
+        if (mc2::gate::get<"MC2_WINDOW_OFFSCREEN">()) {
+            if (mc2::gate::get<"MC2_WIDTH">() > 0) w = mc2::gate::get<"MC2_WIDTH">();
+            if (mc2::gate::get<"MC2_HEIGHT">() > 0) h = mc2::gate::get<"MC2_HEIGHT">();
+        }
 
         Environment.screenWidth = w;
         Environment.screenHeight = h;
@@ -466,6 +470,18 @@ extern bool gosExitGameOS();
 
 DWORD __stdcall RunGameOSLogic()
 {
+    extern bool g_cliSmokeCamera;
+    static int cameraFrame = 0;
+    const auto cameraStart = GetTickCount64();
+    const int cameraPhase = cameraFrame / 45;
+    if (g_cliSmokeCamera && eye && land) {
+        if (cameraPhase == 1) eye->moveRight(20.0f);
+        if (cameraPhase == 2) eye->ZoomOut(0.01f * eye->getScaleFactor());
+        if (cameraPhase == 3) eye->ZoomIn(0.01f * eye->getScaleFactor());
+        if (cameraPhase == 4) eye->rotateLeft(1.0f);
+        if (cameraPhase > 0 && cameraPhase < 5 && EditorInterface::instance())
+            EditorInterface::instance()->syncScrollBars();
+    }
     EditorWatchdog_Heartbeat();  // main-thread liveness for the stall watchdog
 
     if (!g_editorRenderWindow || !getGosRenderer())
@@ -483,6 +499,10 @@ DWORD __stdcall RunGameOSLogic()
         ::GetClientRect(hwnd, &rc);
         int w = rc.right - rc.left;
         int h = rc.bottom - rc.top;
+        if (mc2::gate::get<"MC2_WINDOW_OFFSCREEN">()) {
+            if (mc2::gate::get<"MC2_WIDTH">() > 0) w = mc2::gate::get<"MC2_WIDTH">();
+            if (mc2::gate::get<"MC2_HEIGHT">() > 0) h = mc2::gate::get<"MC2_HEIGHT">();
+        }
         // Compare against the last REAL client size (not Environment, which we shrink
         // below for the docked scene viewport -- otherwise this fires every frame).
         static int s_lastClientW = -1, s_lastClientH = -1;
@@ -673,6 +693,14 @@ DWORD __stdcall RunGameOSLogic()
     graphics::limit_editor_frame();
     EditorFramePhase_Mark("present");
     EditorFramePhase_End();
+    if (g_cliSmokeCamera && land) {
+        if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) {
+            fprintf(stderr, "[EDITOR_CAMERA v1] frame=%d phase=%d active_ms=%llu size=%dx%d\n",
+                    cameraFrame, cameraPhase, GetTickCount64() - cameraStart, viewport_w, viewport_h);
+            fflush(stderr);
+        }
+        ++cameraFrame;
+    }
 
 #ifdef TRACY_ENABLE
     FrameMark;

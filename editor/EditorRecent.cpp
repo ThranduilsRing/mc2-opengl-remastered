@@ -3,6 +3,8 @@
 //-------------------------------------------------------------------------------------------------
 #include "stdafx.h"
 #include "EditorRecent.h"
+#include "resource.h"
+#include "newsinglemission.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -11,7 +13,7 @@
 
 namespace
 {
-	const char* kFile = "editor_recent.txt";
+	std::string recentFile() { return EditorInstallPath("editor_recent.txt"); }
 	std::vector<std::string> s_list;
 	bool s_loaded = false;
 
@@ -19,7 +21,7 @@ namespace
 	{
 		s_loaded = true;
 		s_list.clear();
-		FILE* f = fopen( kFile, "r" );
+		FILE* f = fopen( recentFile().c_str(), "r" );
 		if ( !f ) return;
 		char line[1024];
 		while ( fgets( line, sizeof( line ), f ) )
@@ -35,7 +37,7 @@ namespace
 
 	void save()
 	{
-		FILE* f = fopen( kFile, "w" );
+		FILE* f = fopen( recentFile().c_str(), "w" );
 		if ( !f ) return;
 		for ( size_t i = 0; i < s_list.size(); ++i )
 			fprintf( f, "%s\n", s_list[i].c_str() );

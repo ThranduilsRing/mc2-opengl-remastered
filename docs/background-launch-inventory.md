@@ -19,9 +19,9 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/run_battle_bench.py` | 503 | `subprocess.call` **raw, allowed:** re-runs this same bench script (python child); it launches the game through its own offscreen path | offscreen |
 | `scripts/run_editor_capture.py` | 46 | `nofocus.spawn` | offscreen |
 | `scripts/run_editor_playtest_smoke.py` | 246 | `nofocus.spawn` | offscreen |
-| `scripts/run_editor_smoke.py` | 882 | `nofocus.spawn` | offscreen |
-| `scripts/run_editor_smoke.py` | 1194 | `nofocus.spawn` | offscreen |
-| `scripts/run_editor_smoke.py` | 1720 | `nofocus.spawn` | offscreen |
+| `scripts/run_editor_smoke.py` | 910 | `nofocus.spawn` | offscreen |
+| `scripts/run_editor_smoke.py` | 1222 | `nofocus.spawn` | offscreen |
+| `scripts/run_editor_smoke.py` | 1748 | `nofocus.spawn` | offscreen |
 | `scripts/run_mp_loopback_proof.py` | 139 | `nofocus.spawn` | offscreen |
 | `scripts/run_player_path.py` | 150 | `nofocus.spawn` | offscreen |
 | `scripts/run_smoke.py` | 419 | `nofocus.spawn` | offscreen |

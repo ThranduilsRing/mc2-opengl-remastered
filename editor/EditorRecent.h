@@ -1,7 +1,7 @@
 //-------------------------------------------------------------------------------------------------
 // EditorRecent.h -- most-recently-used mission list for the editor startup dialog.
 //
-// Persisted to editor_recent.txt in the editor's CWD (the deploy dir). One path per
+// Persisted to editor_recent.txt beside the editor executable. One path per
 // line, newest first, capped. Push() on every successful mission load; the startup
 // dialog lists them so the user doesn't re-navigate a file dialog each time.
 //-------------------------------------------------------------------------------------------------

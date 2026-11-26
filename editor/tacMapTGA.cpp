@@ -35,36 +35,34 @@ void TacMapTGA::OnPaint()
 	{
  		Stuff::Vector2DOf< long > screen;
 		gos_VERTEX tmp;
-		glm::vec3 world;
+		glm::vec3 world{};
 		POINT pts[5];
 
 
-		// Draw the view rectangle. Use the cheap O(1) ground-plane unproject —
-		// NOT eye->inverseProject (the legacy terrain picker, which scans ~40k
-		// quads per call and froze the editor for seconds when OnMouseWheel
-		// forced a synchronous tacmap repaint per notch). The rectangle is an
-		// approximate overlay; exact terrain intersection is unnecessary.
+		// Use the scene dimensions and terrain hits from the rendered camera rays.
+		// A corner above the horizon or outside the map cannot close a footprint.
+		bool hits[4];
 		screen.x = 1;
 		screen.y = 1;
-		eye->screenToGroundPlaneApprox( screen.x, screen.y, world );
+		hits[0] = eye->pickTerrainRay(screen.x, screen.y, world);
 		TacMap::worldToTacMap( world, 0, 0, EDITOR_TACMAP_DISPLAY_SIZE, EDITOR_TACMAP_DISPLAY_SIZE,  tmp );
 		pts[0].x = tmp.x;
 		pts[0].y = tmp.y;
 
-		screen.y = Environment.screenHeight - 1;
-		eye->screenToGroundPlaneApprox( screen.x, screen.y, world );
+		screen.y = Environment.drawableHeight - 1;
+		hits[1] = eye->pickTerrainRay(screen.x, screen.y, world);
 		TacMap::worldToTacMap( world, 0, 0, EDITOR_TACMAP_DISPLAY_SIZE, EDITOR_TACMAP_DISPLAY_SIZE,  tmp );
 		pts[1].x = tmp.x;
 		pts[1].y = tmp.y;
 
-		screen.x = Environment.screenWidth - 1;
-		eye->screenToGroundPlaneApprox( screen.x, screen.y, world );
+		screen.x = Environment.drawableWidth - 1;
+		hits[2] = eye->pickTerrainRay(screen.x, screen.y, world);
 		TacMap::worldToTacMap( world, 0, 0,EDITOR_TACMAP_DISPLAY_SIZE, EDITOR_TACMAP_DISPLAY_SIZE, tmp );
 		pts[2].x = tmp.x;
 		pts[2].y = tmp.y;
 
 		screen.y = 1;
-		eye->screenToGroundPlaneApprox( screen.x, screen.y, world );
+		hits[3] = eye->pickTerrainRay(screen.x, screen.y, world);
 		TacMap::worldToTacMap( world, 0, 0, EDITOR_TACMAP_DISPLAY_SIZE, EDITOR_TACMAP_DISPLAY_SIZE, tmp );
 		pts[3].x = tmp.x;
 		pts[3].y = tmp.y;
@@ -74,10 +72,11 @@ void TacMapTGA::OnPaint()
 		CPen ourPen( PS_SOLID, 1,  0x00ffffff );
 		CPen *pReplacedPen = dc.SelectObject(&ourPen);
 
-		dc.MoveTo( pts[0].x, pts[0].y );
-		for ( int i = 1; i < 5; ++i )
+		for ( int i = 0; i < 4; ++i )
 		{
-			dc.LineTo( pts[i] );
+			if (!hits[i] || !hits[(i + 1) % 4]) continue;
+			dc.MoveTo(pts[i]);
+			dc.LineTo(pts[i + 1]);
 		}
 
 		dc.SelectObject(pReplacedPen);

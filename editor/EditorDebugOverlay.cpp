@@ -403,13 +403,21 @@ static void patrolSeg( float x0, float y0, float x1, float y1, DWORD argb )
 
 static void patrolFlush()
 {
-	// Chunk to stay well within any gos_DrawLines batch limit.
-	const size_t kChunk = 4000;   // even (line list = pairs)
-	for ( size_t off = 0; off < s_patrolVerts.size(); off += kChunk )
+	// Screen-space editor lines belong to the UI pass. Vulkan discards legacy
+	// non-HUD gos_DrawLines, which made every patrol disappear after GL removal.
+	ImDrawList* draw = ImGui::GetBackgroundDrawList();
+	float w, h, x, y;
+	gos_GetViewport(&w, &h, &x, &y);
+	draw->PushClipRect(ImVec2(x, y), ImVec2(x + w, y + h), true);
+	for (size_t i = 0; i + 1 < s_patrolVerts.size(); i += 2)
 	{
-		size_t n = s_patrolVerts.size() - off; if ( n > kChunk ) n = kChunk;
-		gos_DrawLines( &s_patrolVerts[off], (int)n );
+		const auto& a = s_patrolVerts[i];
+		const auto& b = s_patrolVerts[i + 1];
+		const auto c = a.argb;
+		draw->AddLine(ImVec2(a.x, a.y), ImVec2(b.x, b.y),
+			IM_COL32((c >> 16) & 255, (c >> 8) & 255, c & 255, c >> 24));
 	}
+	draw->PopClipRect();
 	s_patrolVerts.clear();
 }
 
@@ -420,11 +428,11 @@ static void patrolDashed( float x0, float y0, float x1, float y1, DWORD argb )
 	const float len = sqrtf( dx * dx + dy * dy );
 	if ( len < 1.0f ) { patrolSeg( x0, y0, x1, y1, argb ); return; }
 	const float ux = dx / len, uy = dy / len;
-	float step = 17.0f;                              // dash(10) + gap(7)
+	float step = 8.0f;                               // red dotted route
 	// Cap dashes per segment (huge zoomed-in on-screen lines) — widen the step so a
 	// segment never emits more than ~256 dashes regardless of on-screen length.
 	if ( len / step > 256.0f ) step = len / 256.0f;
-	const float dash = step * 0.6f;
+	const float dash = step * 0.25f;
 	for ( float s = 0.f; s < len; s += step )
 	{
 		float a = s, b = s + dash; if ( b > len ) b = len;
@@ -462,7 +470,7 @@ static void drawOnePatrol( Camera* eye, Unit* unit )
 	// Selected unit's path is emphasized (full alpha + bold + bright connector) so
 	// you can tell which unit owns which path; others are dimmer.
 	const bool sel = unit->isSelected();
-	DWORD base = (DWORD)unit->getColor();
+	DWORD base = sel ? 0x00ff3030 : (DWORD)unit->getColor();
 	if ( base == 0 ) base = 0x00ffffff;             // team "none" -> white
 	base &= 0x00ffffff;
 	const DWORD col  = base | ( sel ? 0xff000000u : 0xa0000000u );
@@ -537,24 +545,14 @@ static void drawOnePatrol( Camera* eye, Unit* unit )
 	}
 }
 
-// Draw EVERY unit's patrol/move path (each in its own team color), only while the
-// AI/Brain/Orders panel is open. Units with no waypoints are skipped inside.
+// Selected routes are always visible; opening the AI panel also shows other routes.
 void RenderPatrolPaths( Camera* eye )
 {
-	if ( !eye || !UnitBrainPanel::IsOpen() || !terrainLoaded() )
+	if ( !eye || !ImGui::GetCurrentContext() || !terrainLoaded() )
 		return;
 	EditorObjectMgr* mgr = EditorObjectMgr::instance();
 	if ( !mgr )
 		return;
-
-	// Same overlay render state as RenderWorldOverlay — alpha-blended, no texture,
-	// always-on-top (ZCompare/ZWrite off). Without this the gos_DrawLines for the
-	// path inherit arbitrary state (textured / z-tested) and never show.
-	gos_SetRenderState( gos_State_Texture,   0 );
-	gos_SetRenderState( gos_State_AlphaMode,  gos_Alpha_AlphaInvAlpha );
-	gos_SetRenderState( gos_State_AlphaTest,  0 );
-	gos_SetRenderState( gos_State_ZCompare,   0 );
-	gos_SetRenderState( gos_State_ZWrite,     0 );
 
 	// Accumulate every unit's path into one vertex list, drawn in a single
 	// gos_DrawLines (chunked). Non-selected first, selected last so the emphasized
@@ -566,6 +564,8 @@ void RenderPatrolPaths( Camera* eye )
 		{
 			Unit* u = *it;
 			if ( !u )
+				continue;
+			if (!u->isSelected() && !UnitBrainPanel::IsOpen())
 				continue;
 			const bool wantSel = ( pass == 1 );
 			if ( u->isSelected() != wantSel )

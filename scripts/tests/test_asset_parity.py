@@ -300,6 +300,21 @@ def payload_manifest(install, files, commit="a" * 40):
                                     for rel, data in {"mc2.exe": b"exe", **files}.items()}, commit)
 
 
+@pytest.mark.parametrize("name", ["Mission Editor.exe", "MISSION EDITOR.EXE", "mc2.exe", "mc2", "mc2.elf"])
+def test_manifest_accepts_editor_and_game_executables(work, name):
+    # Trigger paths: scripts/asset_parity.py.
+    import deploy_payload as dp
+    install = tree(work / "install", {name: b"exe"})
+    commit = "a" * 40
+    dp.write_manifest(str(install), {name: (hashlib.sha256(b"exe").hexdigest(), 3)}, commit)
+    assert ap.manifest_assets(install)[1] == commit
+    with (install / ".deployed_manifest.csv").open("a", newline="") as stream:
+        csv.writer(stream).writerow(["mc2.exe" if name != "mc2.exe" else "Mission Editor.exe",
+                                    hashlib.sha256(b"exe").hexdigest(), 3, "b" * 40, "", 0])
+    with pytest.raises(ValueError, match="ambiguous executable commit"):
+        ap.manifest_assets(install)
+
+
 def test_deploy_and_capture_share_exact_payload_ownership(work):
     ref = tree(work / "reference", {"data/defs/owned.fit": b"base", "data/stock.fit": b"stock"})
     files = {"data/defs/owned.fit": b"candidate", "data/new.fit": b"new"}

@@ -194,6 +194,7 @@ struct VfxIsland : mc2vk::IslandState {
     mc2vk::OwnedPipeline addPipe;
     mc2vk::OwnedPipeline vegetationPipe;
     mc2vk::OwnedPipeline vegetationDepthPipe;   // depth pre-pass of the same draw (vfx_vegetation.frag kDepthOnly)
+    mc2vk::OwnedPipeline vegetationFringePipe;
     mc2vk::OwnedShaderModule vegVert;        // vfx_vegetation.vert: reads the GPU cull's survivor list
     mc2vk::OwnedPipelineLayout vegLayout;    // set 0 ring, set 1 atlas page, set 2 the vegetation state's draw set
     mc2vk::OwnedPipeline oneOnePipe;  // GL OneOne: (ONE, ONE), alpha ignored
@@ -326,7 +327,7 @@ std::optional<VkDescriptorSet> get_page(VfxIsland* s,uint32_t handle,uint32_t pa
 // VfxDrawGroup::additive values (LOCKSTEP with ADDITIVE_* in shaders/vulkan/vfx_particle.vert).
 inline constexpr uint32_t VFX_ADD_ALPHA = 0, VFX_ADD_SRC_ALPHA = 1, VFX_ADD_ONE_ONE = 2;
 
-mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bool oneOne = false, bool vegetation = false, unsigned tubeMode = 0, bool indexed = false, bool depthOnly = false) {
+mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bool oneOne = false, bool vegetation = false, unsigned tubeMode = 0, bool indexed = false, bool depthOnly = false, bool fringe = false) {
     VkPipelineVertexInputStateCreateInfo vin{};
     vin.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;  // procedural
     VkPipelineInputAssemblyStateCreateInfo ia{};
@@ -343,15 +344,14 @@ mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bo
     VkPipelineDepthStencilStateCreateInfo ds{};
     ds.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     ds.depthTestEnable = VK_TRUE;
-    // Vegetation depthOnly writes the nearest surviving cutout depth; shading tests EQUAL without writing.
-    // Both draws share invariant vertex depth, cutout decisions and resources, with no intervening depth write.
+    // Vegetation cores establish depth before shading; fractional edges blend afterwards without depth writes.
     ds.depthWriteEnable = ((vegetation && depthOnly) || (!vegetation && tubeMode == 3)) ? VK_TRUE : VK_FALSE;
-    ds.depthCompareOp = vegetation ? (depthOnly ? VK_COMPARE_OP_GREATER : VK_COMPARE_OP_EQUAL) : VK_COMPARE_OP_GREATER_OR_EQUAL;
+    ds.depthCompareOp = vegetation && !fringe ? (depthOnly ? VK_COMPARE_OP_GREATER : VK_COMPARE_OP_EQUAL) : VK_COMPARE_OP_GREATER_OR_EQUAL;
     // color0: straight-alpha (FS emits straight rgb,a; src-alpha factor premults in HW).
     //   alpha    = SRC_ALPHA / ONE_MINUS_SRC_ALPHA  (GL alpha groups)
     //   additive = SRC_ALPHA / ONE                  (GL additive groups)
     VkPipelineColorBlendAttachmentState cba[2]{};
-    cba[0].blendEnable = (vegetation || tubeMode == 3) ? VK_FALSE : VK_TRUE;  // tubeMode 3 = opaque ONE/ZERO
+    cba[0].blendEnable = ((vegetation && !fringe) || tubeMode == 3) ? VK_FALSE : VK_TRUE;
     cba[0].srcColorBlendFactor = oneOne ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_SRC_ALPHA;
     cba[0].dstColorBlendFactor = additive ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
     cba[0].colorBlendOp = VK_BLEND_OP_ADD;
@@ -370,7 +370,7 @@ mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bo
     cba[0].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                             VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
     cba[1].blendEnable = VK_FALSE;   // shared normal target left untouched
-    cba[1].colorWriteMask = vegetation ? cba[0].colorWriteMask : 0;
+    cba[1].colorWriteMask = vegetation && !fringe ? cba[0].colorWriteMask : 0;
     if (depthOnly) cba[0].colorWriteMask = cba[1].colorWriteMask = 0;
     VkPipelineColorBlendStateCreateInfo cb{};
     cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -386,10 +386,10 @@ mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bo
     stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = vegetation ? (depthOnly ? s->vegFrag.get() : s->vegShadeFrag.get()) : s->frag.get(); stages[1].pName = "main";
     if (indexed) { stages[0].module = s->indexedVert.get(); stages[1].module = s->indexedFrag.get(); }
-    const VkBool32 depthOnlyConst = VK_TRUE;
-    const VkSpecializationMapEntry depthOnlyEntry{0, 0, sizeof(VkBool32)};
-    const VkSpecializationInfo depthOnlySpec{1, &depthOnlyEntry, sizeof(VkBool32), &depthOnlyConst};
-    if (depthOnly) stages[1].pSpecializationInfo = &depthOnlySpec;
+    const VkBool32 vegetationModes[]{depthOnly ? VK_TRUE : VK_FALSE, fringe ? VK_TRUE : VK_FALSE};
+    const VkSpecializationMapEntry vegetationEntries[]{{0, 0, sizeof(VkBool32)}, {1, sizeof(VkBool32), sizeof(VkBool32)}};
+    const VkSpecializationInfo vegetationSpec{2, vegetationEntries, sizeof(vegetationModes), vegetationModes};
+    if (vegetation) stages[1].pSpecializationInfo = &vegetationSpec;
     VkGraphicsPipelineCreateInfo gp{};
     gp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     gp.stageCount = 2; gp.pStages = stages;
@@ -549,6 +549,7 @@ bool init_island(VfxIsland* s, int w, int h) {
         if (GosVegetation::isEnabled()) {
             s->vegetationPipe = make_pipeline(s, w, h, false, false, true);
             s->vegetationDepthPipe = make_pipeline(s, w, h, false, false, true, 0, false, true);
+            s->vegetationFringePipe = make_pipeline(s, w, h, false, false, true, 0, false, false, true);
         }
         s->alphaPipe = make_pipeline(s, w, h, /*additive=*/false);
         s->addPipe   = make_pipeline(s, w, h, /*additive=*/true);
@@ -557,7 +558,7 @@ bool init_island(VfxIsland* s, int w, int h) {
         s->oneInvAlphaPipe = make_pipeline(s, w, h, false, false, false, 5);
         s->opaquePipe = make_pipeline(s, w, h, false, false, false, 3);
         if (!s->alphaPipe || !s->addPipe || !s->oneOnePipe ||
-            !s->oneAlphaPipe || !s->oneInvAlphaPipe || !s->opaquePipe || (GosVegetation::isEnabled() && (!s->vegetationPipe || !s->vegetationDepthPipe))) { setFallback("pipeline_create_failed"); return false; }
+            !s->oneAlphaPipe || !s->oneInvAlphaPipe || !s->opaquePipe || (GosVegetation::isEnabled() && (!s->vegetationPipe || !s->vegetationDepthPipe || !s->vegetationFringePipe))) { setFallback("pipeline_create_failed"); return false; }
 
         VkPhysicalDeviceProperties props{};
         vkGetPhysicalDeviceProperties(s->phys, &props);
@@ -1052,6 +1053,8 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
             MC2_VK_GPU_SCOPE(shadeScope, cb, "VKIsl.Vegetation.Shade");
             veg->drawIndirect(cb, vegPar);
         }
+        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegetationFringePipe.get());
+        veg->drawIndirect(cb, vegPar);
         mc2vk::dynrender::end(slotCtx, cb);
         gpuScope.end();
     }
@@ -1068,7 +1071,7 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
       s->ticket[par] = value; s->vegTicket[vegPar] = value; }
     timerGuard.submitted();
     if (!g_health.nativeVegetationDraws) vlog("native_geometry kind=vegetation gpu_cull=1 regions=%u instances=%u", veg->regionCount(), veg->instanceCount());
-    g_health.nativeVegetationDraws += 2;
+    g_health.nativeVegetationDraws += 3;
     ++g_health.usedVulkan;
     return true;
 }

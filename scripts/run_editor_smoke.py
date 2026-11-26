@@ -61,6 +61,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from smoke_lib import nofocus  # noqa: E402
+import seed_parity  # noqa: E402
 from smoke_lib import host_lease, exe_guard  # noqa: E402
 from console_child import child_kwargs  # noqa: E402
 import exe_fingerprint  # noqa: E402
@@ -379,6 +380,25 @@ class StockInputs:
         return data
 
 
+_REFERENCE_HASHES = {}
+
+
+def reference_data_hash(ref: Path, relative: str, size: int):
+    """sha256 of the live reference file when its size matches (else None); stat-validated cache."""
+    path = ref / relative
+    try:
+        stat = path.stat()
+    except OSError:
+        return None
+    if not path.is_file() or stat.st_size != size:
+        return None
+    signature = (stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns, stat.st_ino, stat.st_dev)
+    cached = _REFERENCE_HASHES.get((ref, relative))
+    if cached is None or cached[0] != signature:
+        cached = _REFERENCE_HASHES[(ref, relative)] = (signature, seed_parity._sha(path))
+    return cached[1]
+
+
 def dependency_manifest(deploy: Path, destination: Path, allowlist: dict | None = None) -> dict:
     """Audit the complete VFS namespace, including shadows outside mission.fst.
 
@@ -386,6 +406,8 @@ def dependency_manifest(deploy: Path, destination: Path, allowlist: dict | None 
     a changed catalog. Unknown loose data also needs an explicit allowance.
     """
     allowlist = allowlist or {}
+    ref = seed_parity.DEFAULT_REF.resolve()
+    declared = read_json_object(REPO / "intentional-asset-changes.json")
     archives, resolved = {}, {}
     system = fit_fields((deploy / "system.cfg").read_bytes())
     count = int(system["FastFiles/NumFastFiles"][0].split(" ", 1)[1])
@@ -417,19 +439,25 @@ def dependency_manifest(deploy: Path, destination: Path, allowlist: dict | None 
         if not loose.is_file():
             continue
         relative = loose.relative_to(deploy).as_posix().lower()
-        digest = hashlib.sha256(loose.read_bytes()).hexdigest()
+        data = loose.read_bytes()
+        digest = hashlib.sha256(data).hexdigest()
         archived = resolved.get(relative)
         allowance = allowlist.get(relative, {})
         allowed = allowance.get("sha256") == digest and bool(allowance.get("reason", "").strip())
+        reason = allowance.get("reason") if allowed else None
+        if not allowed and reference_data_hash(ref, relative, len(data)) == digest:
+            allowed, reason = True, "v0.4 reference sha256"
+        if not allowed and declared.get(relative) == digest:
+            allowed, reason = True, "intentional-asset-changes.json sha256"
         stock = archived is not None and archived["sha256"] == digest
         fact = dict(path=relative, sha256=digest, source="loose",
                     archive=archived["archive"] if archived else None,
                     archive_sha256=archived["archive_sha256"] if archived else None,
                     archive_entry_sha256=archived["sha256"] if archived else None,
-                    stock=stock, reason=allowance.get("reason") if allowed else None)
+                    stock=stock, reason=reason)
         shadows.append(fact)
         resolved[relative] = fact
-        if not stock and not allowed:
+        if not allowed:
             violations.append(relative)
     manifest = dict(version=1, system_sha256=hashlib.sha256((deploy / "system.cfg").read_bytes()).hexdigest(),
                     archives=archives, loose_files=shadows,

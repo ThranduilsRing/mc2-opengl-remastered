@@ -3,6 +3,7 @@
 // Declared in the class headers; shared names in EditorInterface_internal.h.
 #include "EditorInterface_internal.h"
 #include "MapGeneratorDialog.h"
+#include "EditorRenderTimer.h"
 
 
 
@@ -55,11 +56,11 @@ void Editor::init( char* loader )
 	{
 				bool missionExists = fileExists(mPath);
 
-		if (missionExists)
+		if (missionExists && g_cliMissionPath.empty())
 		{
 			bOK = EditorData::initTerrainFromPCV(mPath);
 		}
-		else if (g_cliGenMap || g_cliNewMap)
+		else if (g_cliGenMap || g_cliNewMap || !g_cliMissionPath.empty())
 		{
 			bOK = true;   // defer to the OnIdle auto-generate hook; no modal
 		}
@@ -201,10 +202,10 @@ void Editor::init( char* loader )
 					}
 					else
 					{
-					CFileDialog fileDlg( 1,  "pak", nullptr, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR, szPAKFilter );
-					// When a Mod Project is open, default to <root>\data\missions; else unchanged.
-					{ const char* pd = EditorModProject::SaveDirOverride();
-					  fileDlg.m_ofn.lpstrInitialDir = pd ? pd : missionPath; }
+					const char* project = EditorModProject::SaveDirOverride();
+					const std::string folder = project ? project : EditorInstallPath("data/missions");
+					CFileDialog fileDlg(1, "pak", (folder + "\\").c_str(), OFN_FILEMUSTEXIST | OFN_HIDEREADONLY | OFN_NOCHANGEDIR, szPAKFilter);
+					fileDlg.m_ofn.lpstrInitialDir = folder.c_str();
 
 					bOK = false;
 					while ( !bOK )
@@ -480,6 +481,7 @@ void Editor::render()
 
 void Editor::update()
 {
+	EditorCpuPhase_Begin();
 	// S2.9 — Editor's analog to code/mission.cpp Mission::update pre-pause-branch
 	// substrate_frameBegin (commit f8d6b171). Editor::update() is invoked
 	// unconditionally from DoGameLogic() every tick (Editor.cpp:198) — no
@@ -517,6 +519,7 @@ void Editor::update()
 	if ( land )
 	{
 		eye->update();
+		EditorCpuPhase_Mark("camera");
 		if (land->terrainTextures2 && !(land->terrainTextures2->colorMapStarted) && (EditorInterface::instance()))
 		{
 			if (EditorInterface::instance())
@@ -548,15 +551,20 @@ void Editor::update()
 			eye->changeResolution(newRes);
 		}
 
+		EditorCpuPhase_Mark("terrainUpdate");
 		land->clearObjBlocksActive();
 		land->geometry();
+		EditorCpuPhase_Mark("terrainGeometry");
 	}
 
 	if (EditorInterface::instance())
 	{
 		EditorInterface::instance()->update();
 	}
+	EditorCpuPhase_Mark("interface");
 	EditorObjectMgr::instance()->update();
+	EditorCpuPhase_Mark("objects");
+	EditorCpuPhase_End();
 
 
 }
@@ -1266,10 +1274,10 @@ int EditorInterface::FileOpen()
 		return false;
 	}
 
-	CFileDialog fileDlg( 1,  "pak", nullptr, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR, szPAKFilter );
-	// When a Mod Project is open, default to <root>\data\missions; else unchanged.
-	{ const char* pd = EditorModProject::SaveDirOverride();
-	  fileDlg.m_ofn.lpstrInitialDir = pd ? pd : missionPath; }
+	const char* project = EditorModProject::SaveDirOverride();
+	const std::string folder = project ? project : EditorInstallPath("data/missions");
+	CFileDialog fileDlg(1, "pak", (folder + "\\").c_str(), OFN_FILEMUSTEXIST | OFN_HIDEREADONLY | OFN_NOCHANGEDIR, szPAKFilter);
+	fileDlg.m_ofn.lpstrInitialDir = folder.c_str();
 
 	if (  IDOK == fileDlg.DoModal() )
 	{

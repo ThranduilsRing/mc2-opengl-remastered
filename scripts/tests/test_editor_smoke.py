@@ -19,6 +19,27 @@ smoke = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(smoke)
 
 
+class EditorCpuPickResizeTests(unittest.TestCase):
+    """Trigger: editor/EditorObjectMgr_pick.cpp client-to-viewport mapping."""
+    def test_forward_pick_uses_viewport_pixels_after_resize(self):
+        source = (SCRIPT.parents[1] / "editor/EditorObjectMgr_pick.cpp").read_text()
+        body = source.split("EditorObject* EditorObjectMgr::getObjectAtScreenPosition", 1)[1]
+        expressions = [re.findall(rf"click{axis} = ([^;]+);", body)[-1]
+                       .replace("(float)", "") for axis in "XY"]
+        # Execute the production arithmetic: native size, resize, nonuniform
+        # scaling and a viewport offset must all hit the projected centre.
+        for width, height, ax, ay in [(1920, 1080, 0, 0), (1280, 720, 0, 0),
+                                      (1000, 800, 40, 30)]:
+            values = dict(screenX=width / 2, screenY=height / 2,
+                          clientWidth=width, clientHeight=height,
+                          vmx=1920, vmy=1080, vax=ax, vay=ay)
+            with self.subTest(width=width, height=height):
+                self.assertEqual(eval(expressions[0], {"__builtins__": {}}, values), ax + 960)
+                self.assertEqual(eval(expressions[1], {"__builtins__": {}}, values), ay + 540)
+        self.assertIn("EditorObjectMgr_ConsiderScreenPick(*iter, clickX, clickY", body)
+        self.assertNotIn("inverseProject(", body)
+
+
 class ShadowEditGradingTests(unittest.TestCase):
     def test_population_requires_unique_actors_in_the_live_union_fit(self):
         proof="[EDITOR_CLI v1] event=mover_population count=100 ok=1 frame=120\n[VK_SHADOW_ISLAND] movers actors_feed=110 actors_visible=100 rigid_leaves=3 map=4096 format=D16"
@@ -557,9 +578,14 @@ class EditorSmokeTests(unittest.TestCase):
             loose.write_bytes(b"stock")
             entry = (0, 5, 5, "data/art/Buildings.csv", False, b"stock")
             destination = temp / "dependencies.json"
-            with patch.object(smoke, "fst_entries", return_value=[entry]):
+            stock_hash = smoke.hashlib.sha256(b"stock").hexdigest()
+            with patch.object(smoke, "fst_entries", return_value=[entry]), patch.object(
+                    smoke, "reference_data_hash", side_effect=lambda ref, rel, size: stock_hash if rel == "data/art/buildings.csv" else None):
                 facts = smoke.dependency_manifest(temp, destination)
                 self.assertTrue(facts["loose_files"][0]["stock"])
+                with patch.object(smoke, "reference_data_hash", return_value=None):
+                    with self.assertRaisesRegex(ValueError, "non-stock loose"):
+                        smoke.dependency_manifest(temp, destination)
                 loose.write_bytes(b"MECH mod")
                 with self.assertRaisesRegex(ValueError, "non-stock loose"):
                     smoke.dependency_manifest(temp, destination)
@@ -578,6 +604,59 @@ class EditorSmokeTests(unittest.TestCase):
                 (loose.parent / "mod.ini").write_bytes(b"mod")
                 with self.assertRaisesRegex(ValueError, "mod.ini"):
                     smoke.dependency_manifest(temp, destination)
+
+    def test_dependency_audit_requires_reference_and_declared_hashes(self):
+        self.audit.stop()
+        with scratch_directory() as temp:
+            (temp / "system.cfg").write_bytes(b'[FastFiles]\nl NumFastFiles = 0\n')
+            parity = "data/art/known.csv"
+            declared = "data/model_overrides/known.glb"
+            unknown = "data/textures/unknown.txm"
+            excluded = "data/textures/txm_backup/known.txm"
+            digest = smoke.hashlib.sha256(b"known").hexdigest()
+            (temp / "intentional-asset-changes.json").write_text(json.dumps({declared: digest}))
+            destination = temp / "dependencies.json"
+            reference = temp / "reference"
+            source = reference / parity
+            source.parent.mkdir(parents=True)
+            source.write_bytes(b"known")
+            with patch.object(smoke, "REPO", temp), patch.object(smoke.seed_parity, "DEFAULT_REF", reference):
+                for relative in (parity, declared):
+                    with self.subTest(accepted=relative):
+                        path = temp / relative
+                        path.parent.mkdir(parents=True, exist_ok=True)
+                        path.write_bytes(b"known")
+                        facts = smoke.dependency_manifest(temp, destination)
+                        self.assertFalse(facts["violations"])
+                        self.assertTrue(next(f["reason"] for f in facts["loose_files"] if f["path"] == relative))
+                        path.write_bytes(b"changed")
+                        with self.assertRaisesRegex(ValueError, relative):
+                            smoke.dependency_manifest(temp, destination)
+                        path.write_bytes(b"known")
+                stamp = temp / "data/art/known.csv.cookstamp"
+                stamp.write_bytes(b"mc2-stock-v1 5c605451e9453d8f")
+                with self.assertRaisesRegex(ValueError, "cookstamp"):
+                    smoke.dependency_manifest(temp, destination)
+                stamp.unlink()
+                for relative in (unknown, excluded):
+                    path = temp / relative
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_bytes(b"known")
+                    with self.assertRaisesRegex(ValueError, relative):
+                        smoke.dependency_manifest(temp, destination)
+                    path.unlink()
+                with patch.object(smoke.seed_parity, "_sha", wraps=smoke.seed_parity._sha) as hashed:
+                    smoke.dependency_manifest(temp, destination)
+                    hashed.assert_not_called()
+                    source.write_bytes(b"fresh")
+                    with self.assertRaisesRegex(ValueError, parity):
+                        smoke.dependency_manifest(temp, destination)
+                    self.assertEqual(hashed.call_count, 1)
+                source.unlink()
+                with self.assertRaisesRegex(ValueError, parity):
+                    smoke.dependency_manifest(temp, destination)
+                source.write_bytes(b"known")
+                self.assertFalse(smoke.dependency_manifest(temp, destination)["violations"])
 
     def test_stock_preparation_is_scratch_only_and_records_overlay_removal(self):
         with scratch_directory() as temp:

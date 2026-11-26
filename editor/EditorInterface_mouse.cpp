@@ -65,6 +65,7 @@ void EditorInterface::handleLeftButtonDown( int PosX, int PosY )
 	// building-placement coordinate; snap Z to terrain.
 	if ( UnitBrainPanel::WaypointPlaceActive() )
 	{
+		if (UnitBrainPanel::HandleRoutePress(eye, PosX, PosY)) return;
 		glm::vec3 wp = vector;
 		if ( land )
 			wp.z = land->getTerrainElevation( wp );
@@ -146,6 +147,11 @@ void EditorInterface::handleMouseMove( int PosX, int PosY )
 	// Precise terrain picks remain where they matter: click (handleLeftButtonDown)
 	// and the object drag-move jacobian (4 inverseProject calls just below).
 	eye->screenToGroundPlaneApprox( v2.x, v2.y, vector );
+	if (UnitBrainPanel::RouteDragging())
+	{
+		UnitBrainPanel::HandleRouteMove(eye, PosX, PosY);
+		return;
+	}
 	// One-step elevation refinement for terrain sculpting: screenToGroundPlaneApprox
 	// intersects z=0; on elevated terrain the x,y diverges from the actual brush cell.
 	// Re-intersect at the terrain z so HeightBrush paints where the cursor visually lands.
@@ -428,6 +434,11 @@ void EditorInterface::notifyObjectDeleted( const EditorObject* pObj )
 
 void EditorInterface::handleLeftButtonUp( int PosX, int PosY )
 {
+	if (UnitBrainPanel::WaypointPlaceActive())
+	{
+		UnitBrainPanel::FinishRouteDrag();
+		return;
+	}
 	if ( !eye || !eye->active  )
 		return;
 
@@ -692,7 +703,7 @@ void EditorInterface::OnLButtonUp(UINT nFlags, CPoint point)
 		ImGui::GetIO().AddMouseButtonEvent(0, false);
 #endif
 
-	if (wasClick && currentBrushID == IDS_SELECT)
+	if (wasClick && currentBrushID == IDS_SELECT && !UnitBrainPanel::WaypointPlaceActive())
 	{
 		// Shift = add/remove (multi-select). Ctrl+click and plain click both do a
 		// plain replace-select so a single click always selects the clicked object.

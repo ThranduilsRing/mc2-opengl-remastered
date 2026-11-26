@@ -1015,11 +1015,8 @@ bool init_island(ColorPropIsland* s, int w, int h) {
                 setFallback("tier1_shared_gbuffer_images_not_realized");
                 return false;
             }
-            // The shared images must also match the size the caller is rendering at;
-            // building the framebuffer at a stale extent would render props into the
-            // wrong region (or off the realized image). run() rebuilds on w/h change,
-            // but a resource re-realized at a new size mid-session must also force a
-            // fresh init -- decline here and let the next frame re-init cleanly.
+            // Dynamic rendering still requires realized attachments at the requested extent.
+            // run_props refreshes these borrowed resources after scene-target replacement.
             if (static_cast<int>(cR->w) != w || static_cast<int>(cR->h) != h) {
                 setFallback("tier1_shared_gbuffer_size_mismatch");
                 return false;
@@ -2159,11 +2156,39 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
     // Shadow matrix diagnostics: the object matrix the props are projected with next to the live camera matrix, so a light-space leak into the colour pass shows.
 
 
-    // Lazy init / rebuild on size change.
+    // Viewport/scissor are dynamic. Keep map geometry, material residency and pipelines across resizes.
     mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
-    if (!supplied) if (const ColorPropIsland* parked = parkedIsland(); parked && (parked->w != w || parked->h != h)) {
-        slotCtx.retireIsland(mc2vk::IslandSlot::Water);
-        slotCtx.retireIsland(mc2vk::IslandSlot::ColorProp);
+    if (!supplied) if (ColorPropIsland* parked = parkedIsland()) {
+        bool incompatible = false;
+        if (parked->tier1) {
+            // Scene resize deletes the old resource objects. Resolve live attachments without
+            // dereferencing those borrowed pointers; command recording snapshots their views.
+            auto* color = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0);
+            auto* normal = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_NORMAL);
+            auto* depth = mc2SharedSceneDepthGetResource();
+            auto* id = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_OBJECT_ID);
+            if (!color || !normal || !depth || !color->view || !normal->view || !depth->view ||
+                color->w != static_cast<uint32_t>(w) || color->h != static_cast<uint32_t>(h)) return 0;
+            const bool haveId = id && id->view;
+            incompatible = color->format != parked->t1_fmts[0] || normal->format != parked->t1_fmts[1] ||
+                depth->format != parked->t1_depthFmt || haveId != parked->t1_haveId ||
+                (haveId && id->format != parked->t1_fmts[2]);
+            parked->t1_colorRes = color;
+            parked->t1_normalRes = normal;
+            parked->t1_depthRes = depth;
+            parked->t1_idRes = id;
+        } else {
+            incompatible = parked->w != w || parked->h != h;
+        }
+        if (incompatible) {
+            // An attachment format change still requires compatible pipelines.
+            slotCtx.retireIsland(mc2vk::IslandSlot::Water);
+            slotCtx.retireIsland(mc2vk::IslandSlot::ColorProp);
+        } else if (parked->w != w || parked->h != h) {
+            parked->w = w;
+            parked->h = h;
+            vlog("viewport resized: %dx%d; mission resources retained.", w, h);
+        }
     }
     if (!supplied && !islandSlot()) {
         ZoneScopedN("VKIsl.Props.Init");

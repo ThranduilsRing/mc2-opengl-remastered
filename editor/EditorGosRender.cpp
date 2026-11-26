@@ -10,6 +10,8 @@
 
 #include <functional>
 #include "gos_render.h"
+#include "load_scope.h"
+#include "present_thread_wait.h"
 
 #ifdef PLATFORM_WINDOWS
 #include <windows.h>
@@ -313,9 +315,15 @@ static void PrintRenderer(SDL_RendererInfo * info);
 // MFC owns cursor selection and message dispatch. Shared game loading/cursor
 // hooks must not apply the standalone SDL window policy to the editor shell.
 void set_native_cursor(SDL_Cursor*, bool) {}
-void pump_loading_events() {}
+void pump_loading_events() {
+    if (mc2::load::checkpoint) mc2::load::checkpoint();
+}
 void note_window_pumped() {}   // the editor has no MAIN_STALL watchdog; MFC owns the message pump
-void loading_work(const std::function<void()>& work) { work(); }
+void loading_work(const std::function<void()>& work) {
+    if (mc2::load::checkpoint)
+        mc2vk::present_thread::detail::workPumping(work, pump_loading_events);
+    else work();
+}
 
 
 void set_verbose(bool is_verbose)

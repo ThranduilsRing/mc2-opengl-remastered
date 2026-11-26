@@ -1,6 +1,7 @@
 // Assemble CPU albedo arrays and per-packet layers for native prop consumers.
 // and the per-packet layer tables. The orchestrator is in gos_static_prop_batcher_finalize.cpp.
 #include <algorithm>
+#include "load_scope.h"
 #include "gos_static_prop_batcher_internal.h"
 #include "../../mclib/texture_assets.h"
 #include "gos_static_prop_finalize_frame.h"
@@ -54,6 +55,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
         // each type, walk ALL its packets. Each packet gets its own layer
         // (deduped by sourceHandle) — this is the per-packet rework's core change.
         for (uint32_t i = 0; i < s_sortedTypeOrder.size(); ++i) {
+            MC2_LOAD_SCOPE("props.finalizeTextureType");
             const uint32_t typeID = s_sortedTypeOrder[i];
             auto& type = s_types[typeID];
             if (type.alphaClass != group) continue;
@@ -230,6 +232,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                 std::memcpy(layer.data() + static_cast<size_t>(y) * layerW * 4u, src + static_cast<size_t>(y) * w * 4u, static_cast<size_t>(w) * 4u);
         };
         for (size_t k = 0; k < members.size(); ++k) {
+            MC2_LOAD_SCOPE("props.finalizeTextureLayer");
             const auto& u = uniques[members[k]];
             blitRows(layerTexels[k], cpuArray.width, u.rgba->data(), static_cast<uint32_t>(u.w), static_cast<uint32_t>(u.h));
             if (u.tree) mc2::vegetation::toneFoliageRgb(layerTexels[k], kTreeFoliageTone);
@@ -272,6 +275,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
         const uint32_t levelCount = static_cast<uint32_t>(maxLevel) + 1u;
         cpuArray.levels.assign(levelCount, {});
         for (uint32_t lvl = 0; lvl < levelCount; ++lvl) {
+            MC2_LOAD_SCOPE("props.finalizeTextureMip");
             const uint32_t lw = mc2tex::mipExtent(cpuArray.width, lvl), lh = mc2tex::mipExtent(cpuArray.height, lvl);
             const size_t layerBytes = static_cast<size_t>(lw) * lh * 4u;
             std::vector<uint8_t>& level = cpuArray.levels[lvl];
