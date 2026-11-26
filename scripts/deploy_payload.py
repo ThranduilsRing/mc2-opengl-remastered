@@ -35,7 +35,8 @@ Python (not .sh) to match sibling conventions: scripts/ is python-dominated
 (run_smoke.py, check-asset-manifests.py, ...) and we need sha256 + csv + robust
 Windows file-lock probing, all stdlib here.
 
-NO engine code. NO run_smoke verdict-path involvement. tier1 not required
+NO engine code. NO run_smoke verdict-path involvement by default.
+--warm-pipelines explicitly runs the separate rendering cache warmer after lease release. tier1 not required
 (scripts-only, zero runtime change).
 """
 
@@ -3303,6 +3304,8 @@ def main():
                          "instead of enumerating a local build; sha256-verified, no build needed. Pair with --payload-head.")
     ap.add_argument("--payload-head", metavar="SHA", default=None,
                     help="with --from-payload: the candidate head the exe must fingerprint as (default: --source-root HEAD)")
+    ap.add_argument("--warm-pipelines", action="store_true",
+                    help="explicitly render missions after deploy to warm this build's Vulkan cache")
     ap.add_argument("--quiet", action="store_true",
                     help="print only verdicts, failures/warnings, artifact paths and the DEPLOY_FINGERPRINT lines; "
                          "the full output goes to a log (path on the last line)")
@@ -3452,6 +3455,12 @@ def main():
             sweep_asides(target)
             _ASIDE_TARGET[0] = None
             release_folder_lease(target)
+
+    if not args.shaders_only:
+        log(f'pipeline cache is now cold for the replaced exe; run: py -3 tools/pipeline_warm.py "{target}"')
+        if args.warm_pipelines:
+            subprocess.run([sys.executable, "-B", os.path.join(src_root, "tools", "pipeline_warm.py"), target],
+                           cwd=src_root, check=True, **console_child.child_kwargs(redirected=False))
 
 
 def rebuild_command():

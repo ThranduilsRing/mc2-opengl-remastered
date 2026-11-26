@@ -1,3 +1,4 @@
+#include "../GameOS/gameos/hitch_stats.h"
 #include "footprints.h"
 #include "vk_scene_renderer.h"
 #include <atomic>
@@ -1041,7 +1042,7 @@ void GameCamera::render (void)
 			// that real gosFX producers call BeginGroup+Emit via the
 			// SpawnCard*/SpawnCardCloud paths.
 			{
-				ZoneScopedN("GameCamera::render particlesFlush");
+				ZoneScopedN("GameCamera::render particlesFlush"); MC2_HITCH_CAUSE("GameCamera::render particlesFlush");
 
 				// B2 P1: publish current camera basis to particle bridge before flush.
 				// cameraOrigin is the camera's world transform (LinearMatrix4D);
@@ -1061,8 +1062,8 @@ void GameCamera::render (void)
 					gos_SetActiveCamera(camRight, camUp);
 				}
 
-				if (auto* pp = getGosPostProcess()) pp->finishWorldLighting();
-				::mc2::particles::Batcher::Instance().ResolveTextures();  // resolve MLR->GOS after renderLists
+				{ ZoneScopedN("Particles.FinishWorldLighting"); MC2_HITCH_CAUSE("Particles.FinishWorldLighting"); if (auto* pp = getGosPostProcess()) pp->finishWorldLighting(); }
+				{ ZoneScopedN("Particles.ResolveTextures"); MC2_HITCH_CAUSE("Particles.ResolveTextures"); ::mc2::particles::Batcher::Instance().ResolveTextures(); }  // resolve MLR->GOS after renderLists
 				// DRYRUN-OBSERVE-COVERAGE-1: observe-only. ParticleEffect (VFX) has no
 				// AmbientContract row and no declared FBO target -> ambient/FBO probe skips
 				// it. Fires once per frame even on empty-particle frames (the pass was
@@ -1071,14 +1072,14 @@ void GameCamera::render (void)
 				// v[0]=='1' to enable. Said "default ON" until ENV-DROP-CLOSE-1,
 				// 2026-07-30). No draw change.
 				mc2_note_particle_effect_pass();
-				::mc2::particles::Batcher::Instance().Flush();
+				{ ZoneScopedN("Particles.Flush"); MC2_HITCH_CAUSE("Particles.Flush"); ::mc2::particles::Batcher::Instance().Flush(); }
 				mc2::fx::FrameView fxView;
 				if (const float* mvp = gos_GetTerrainMVPMat4()) std::copy_n(mvp, 16, &fxView.world_to_clip[0][0]);
 				gos_GetCameraRight(&fxView.right.x); gos_GetCameraUp(&fxView.up.x);
 				if (auto* pp = getGosPostProcess()) { fxView.width = pp->getWidth(); fxView.height = pp->getHeight(); }
 				// One island render pass and submit for gosFX packets, ribbons and mesh effects (closed after the mesh flush).
 				gos_vfx_native_batch_begin();
-				::mc2::particles::Batcher::Instance().FlushNative(fxView);
+				{ ZoneScopedN("Particles.FlushNative"); MC2_HITCH_CAUSE("Particles.FlushNative"); ::mc2::particles::Batcher::Instance().FlushNative(fxView); }
 
 				// TUBE-DEFERRED-FLUSH-1: drain the ribbon queue enqueued by
 				// gosFX::Tube::Draw during the effect-render phase.  MUST run

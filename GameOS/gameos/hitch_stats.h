@@ -7,6 +7,7 @@
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
+#include <mutex>
 
 #include "diagnostic_trace.h"
 #include <string_view>
@@ -39,6 +40,40 @@ struct Stats {
 using WaitKind = int;   // index into Stats::wait
 inline constexpr WaitKind kOneShot = 0, kSlot = 1;
 inline Stats& stats() { static Stats s; return s; }
+
+struct CauseRecord { const char* name = "none"; double ms = 0; };
+struct Causes {
+    std::mutex mutex;
+    uint64_t frame = 1;
+    CauseRecord largest;
+};
+inline Causes& causes() { static Causes c; return c; }
+inline CauseRecord takeCause() {
+    auto& c = causes();
+    std::lock_guard<std::mutex> lock(c.mutex);
+    const auto result = c.largest;
+    c.largest = {};
+    ++c.frame;
+    return result;
+}
+// Each call site owns its throttle; recording is shared with the frame summary.
+struct CauseScope {
+    const char* name;
+    uint64_t& last;
+    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+    CauseScope(const char* n, uint64_t& l) : name(n), last(l) {}
+    ~CauseScope() {
+        const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+        if (ms <= 8.0) return;
+        auto& c = causes();
+        std::lock_guard<std::mutex> lock(c.mutex);
+        if (ms > c.largest.ms) c.largest = {name, ms};
+        if (!last || c.frame - last >= 60) {
+            last = c.frame;
+            std::fprintf(stderr, "[HITCH_CAUSE v1] zone=%s ms=%.3f\n", name, ms);
+        }
+    }
+};
 inline void noteStaged(uint64_t bytes) { stats().stagedBytes.fetch_add(bytes, std::memory_order_relaxed); }
 inline uint64_t pendingUploadBytes() { Stats& s = stats(); return s.uploadBytes.load(std::memory_order_relaxed) - s.uploadBytesFlushed.load(std::memory_order_relaxed); }
 inline void noteUploadsFlushed() { Stats& s = stats(); s.uploadBytesFlushed.store(s.uploadBytes.load(std::memory_order_relaxed), std::memory_order_relaxed); }
@@ -155,3 +190,9 @@ struct Scope {
 };
 
 }  // namespace mc2_hitch2
+
+#define MC2_CAUSE_JOIN_(a, b) a##b
+#define MC2_CAUSE_JOIN(a, b) MC2_CAUSE_JOIN_(a, b)
+#define MC2_HITCH_CAUSE(name) \
+    static thread_local uint64_t MC2_CAUSE_JOIN(causeLast_, __LINE__) = 0; \
+    mc2_hitch2::CauseScope MC2_CAUSE_JOIN(cause_, __LINE__)(name, MC2_CAUSE_JOIN(causeLast_, __LINE__))

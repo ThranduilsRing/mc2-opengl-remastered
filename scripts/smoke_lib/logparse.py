@@ -134,6 +134,8 @@ PRESENCE_RULES: tuple = (
 )
 
 MARKER_BUCKETS: tuple = (
+    # Numeric GPU thresholds are counted below; register their advisory severity here.
+    MarkerBucket(re.compile(r"\[GPU_SPIKE_ADVISORY v1\]"), "gpu_spike", "advisory", None),
     # Colour-prop light contract (W1): any row that disagrees with contractSun is a look change.
     MarkerBucket(re.compile(r"\[LIGHT_CONTRACT v1\] checks=\d+ mismatches=[1-9]"),
                  "light_contract_mismatch", "red", None),
@@ -384,6 +386,16 @@ def parse_log(text: str,
 
         if "Validation Error: [ " in line and vk_validation.RAW_RE.search(line) and vk_validation.raw_is_known(line):
             raw_known += 1
+        for pattern, limit in (
+            (r"\[SHADOW_BAKE\] gpu_ms object_map=([\d.]+)", 10.0),
+            (r"\[SHADOW_BAKE\] dirty queue drained.*batch_gpu_ms mean=([\d.]+)", 1.0),
+            (r"\[VK_GPU_PASSES v1\].*\bmax_frame_ms=([\d.]+)", 10.0),
+        ):
+            spike = re.search(pattern, line)
+            if spike and float(spike.group(1)) > limit:
+                s.marker_counts["gpu_spike"] = s.marker_counts.get("gpu_spike", 0) + 1
+                s.marker_first.setdefault("gpu_spike", line.strip()[:400])
+                break
         for mb in MARKER_BUCKETS:
             if mb.pattern.search(line):
                 s.marker_counts[mb.bucket] = s.marker_counts.get(mb.bucket, 0) + 1

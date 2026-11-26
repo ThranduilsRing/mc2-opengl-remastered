@@ -1,3 +1,4 @@
+#include "../GameOS/gameos/hitch_stats.h"
 // MissionInterfaceManager: the per-frame update() and the hover/target pick (updateTarget).
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
 #include <algorithm>
@@ -953,7 +954,7 @@ void MissionInterfaceManager::update (void)
 
 
 	{
-		ZoneScopedN("MIF.UpdateTarget"); MifScope _mUT(MifPhase::MF_UPDTGT);
+		ZoneScopedN("MIF.UpdateTarget"); MC2_HITCH_CAUSE("MIF.UpdateTarget"); MifScope _mUT(MifPhase::MF_UPDTGT);
 		// Pass the RAW-space GUI flag (not the HUD-inverse bGui): the world pick +
 		// hovered-unit name must be suppressed only when the cursor is over a widget
 		// in the space the pick (findObjectByMouse) and the user actually use.
@@ -1122,6 +1123,7 @@ long g_hoverTipY = 0;
 
 void MissionInterfaceManager::updateTarget( bool bGui)
 {
+	{ ZoneScopedN("MIF.UpdateTarget.Validate");
 	g_hoverTipNameID = 0;
 	
 	// MISSION-START-HOVER-TARGET-LIFETIME-1 (completed): suppress hover BEFORE any deref.
@@ -1159,7 +1161,9 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 		}
 	}
 
+	}
 	mc2::pick::refreshHover(bGui, target, [&] {
+        ZoneScopedN("MIF.UpdateTarget.ClearHover");
 		// Clear previous hover even when the pointer is covered by GUI.
 		for ( int i = 0; i < MAX_ICONS; i++ )
 		{
@@ -1172,7 +1176,8 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 		}
 		if ( target )
 			target->setTargeted( 0 );
-	}, [&] { return ObjectManager->findObjectByMouse(mouseX, mouseY); });
+	}, [&] { ZoneScopedN("MIF.UpdateTarget.Pick"); MC2_HITCH_CAUSE("MIF.UpdateTarget.Pick"); return ObjectManager->findObjectByMouse(mouseX, mouseY); });
+	ZoneScopedN("MIF.UpdateTarget.Describe");
 	if (bGui)
 		s_targetWatchID = 0;
 	if ( target )

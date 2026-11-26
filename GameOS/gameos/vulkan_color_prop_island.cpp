@@ -2323,7 +2323,7 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
     void* hzbMask = nullptr;
     uint64_t hzbMaskGeneration = 0;
     gosPostProcess* pp = getGosPostProcess();
-    const bool hzbCulled = [&] { ZoneScopedN("VKIsl.Props.HzbPrepare");
+    const bool hzbCulled = [&] { ZoneScopedN("VKIsl.Props.HzbPrepare"); MC2_HITCH_CAUSE("VKIsl.Props.HzbPrepare");
         return !target && pp && pp->runVkPostHzbNative(feed, s->mapGeneration, reinterpret_cast<void*>(s->gpu[par].instances.get()), &hzbMask, &hzbMaskGeneration); }();
     VkDescriptorBufferInfo maskInfo{hzbCulled ? reinterpret_cast<VkBuffer>(hzbMask) : s->hotBuf.get(),0,VK_WHOLE_SIZE};
     VkWriteDescriptorSet maskWrite{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};

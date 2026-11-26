@@ -1,3 +1,4 @@
+#include "hitch_stats.h"
 // GpuStaticPropBatcher: the VK shadow-island geometry feed and the colour-prop island feeds (the GL prop shadow draws are gone).
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
 #include <atomic>
@@ -149,16 +150,14 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
     static const bool s_lodOn = mc2::gate::get<"MC2_VK_PROP_LOD">();
     static std::unordered_map<uint32_t, std::vector<GpuStaticPropInstance>> s_lodOut;
     static std::unordered_map<uint32_t, PropLodTierCache<GpuStaticPropInstance, kMaxPropLods>> s_lodCache;
-    std::unordered_map<uint32_t, const std::vector<GpuStaticPropInstance>*> persistentTiers;
+    static std::unordered_map<uint32_t, const std::vector<GpuStaticPropInstance>*> persistentTiers;
+    persistentTiers.clear();
     static const bool s_statsOn = mc2_diag::tagRequested("TREE_LOD_STATS");
     const bool lodActive = s_lodOn && !s_lodGroups.empty();
-    { ZoneScopedN("VKIsl.Props.MainFeed.LODRoute");
-    for (auto& [lodTid, lodVec] : s_lodOut) lodVec.clear();
+    { ZoneScopedN("VKIsl.Props.MainFeed.LODRoute"); MC2_HITCH_CAUSE("VKIsl.Props.MainFeed.LODRoute");
+    { ZoneScopedN("MainFeed.LODRoute.Clear"); for (auto& [lodTid, lodVec] : s_lodOut) lodVec.clear(); }
     if (lodActive) {
         // Overlapping targets retain the original interleaved group routing.
-        std::unordered_map<uint32_t, unsigned> targetUses;
-        for (const auto& [src, g] : s_lodGroups)
-            for (int tier = 0; tier < g.count; ++tier) ++targetUses[g.target[tier]];
         const RenderCore::ViewPacket mainView = RenderCore::framePackets().copyMainView();
         const RenderCore::ViewUniforms& vu = mainView.uniforms;
         const float cx = vu.cameraWorldPos[0], cy = vu.cameraWorldPos[1], cz = vu.cameraWorldPos[2];
@@ -185,9 +184,10 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
                 outputs[lod]->push_back(inst);
             }
         };
+        { ZoneScopedN("MainFeed.LODRoute.Groups"); MC2_HITCH_CAUSE("MainFeed.LODRoute.Groups");
         for (const auto& [src, g] : s_lodGroups) {
             bool overlapping = false;
-            for (int tier = 0; tier < g.count; ++tier) overlapping |= targetUses[g.target[tier]] > 1;
+            for (int tier = 0; tier < g.count; ++tier) overlapping |= s_lodTargetUses.at(g.target[tier]) > 1;
             std::array<std::vector<GpuStaticPropInstance>*, kMaxPropLods> outputs{};
             for (int tier = 0; tier < g.count; ++tier) outputs[tier] = &s_lodOut[g.target[tier]];
             if (auto it = s_persistentStaticStore.find(src); it != s_persistentStaticStore.end()) {
@@ -220,6 +220,7 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
                 route(d0, d0 + n, g, nullptr, outputs);
             }
         }
+        }
         static uint32_t s_statsTick = 0;
         if (s_statsOn && (++s_statsTick <= 3u || s_statsTick % 120u == 0)) {
             uint64_t inst[kMaxPropLods] = {}, tris[kMaxPropLods] = {};
@@ -246,7 +247,7 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
     std::sort(typeIds.begin(), typeIds.end());
     typeIds.erase(std::unique(typeIds.begin(), typeIds.end()), typeIds.end());
     }
-    { ZoneScopedN("VKIsl.Props.MainFeed.Flatten");
+    { ZoneScopedN("VKIsl.Props.MainFeed.Flatten"); MC2_HITCH_CAUSE("VKIsl.Props.MainFeed.Flatten");
     for (uint32_t tid : typeIds) {
         if (lodActive) if (auto p = persistentTiers.find(tid); p != persistentTiers.end())
             appendPropFeed(s_colorFeedFlat, feedCursor, std::span<const GpuStaticPropInstance>(*p->second));
