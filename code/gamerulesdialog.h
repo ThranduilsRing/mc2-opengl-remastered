@@ -6,6 +6,7 @@
 #include <memory>
 #include "logisticsdialog.h"
 #include "game_rules.h"
+#include "ascroll.h"
 
 class GameRulesDialog : public LogisticsDialog
 {
@@ -32,6 +33,13 @@ private:
 	GameRulesDialog( const GameRulesDialog& ) = delete;
 	GameRulesDialog& operator=( const GameRulesDialog& ) = delete;
 
+	struct ModsPanel : LogisticsScreen {
+		GameRulesDialog* owner = nullptr;
+		int handleMessage(unsigned long, unsigned long who) override;
+	} modsPanel;
+	mcScrollBar modsScroll;
+	int modOffset = 0, highlightedMod = 0;
+	void refreshMods();
 	void refreshRows();
 	void cycleRow( std::size_t row );
 	void pollSliders();

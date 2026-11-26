@@ -9,7 +9,6 @@ namespace PlayerFrontEnd {
 // The game owns CPrefs; the shared UI also links into tools without CPrefs.
 extern bool (*saveRenderOptions)(const mc2::options::RenderOptions&);
 void loadSettings();
-void drawCampaignMods(mc2::rules::GameRules& rules, bool editable);
 bool prepareCampaignRules(const mc2::rules::GameRules& rules, std::string_view fit);
 void drawMainMenu(bool showCredits);
 void drawOptions();

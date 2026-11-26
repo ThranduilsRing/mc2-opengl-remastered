@@ -2,7 +2,7 @@
 #define GAMERULESDIALOG_CPP
 // GameRulesDialog: see gamerulesdialog.h. Rows are generated from mc2::rules::kRules; the page (mcl_gamerules.fit) supplies kPageRows slots.
 #include "gamerulesdialog.h"
-#include "../GuiRuntime/PlayerFrontEnd.h"
+#include "imgui.h"
 #include <cctype>
 #include <string>
 #include "mclib.h"
@@ -59,7 +59,32 @@ bool ruleActive( std::string_view key )
 		if ( k == key ) return false;
 	return true;
 }
-constexpr long kMountX = 489, kMountY = 200;
+constexpr long kMountX = 169, kMountY = 200;
+constexpr std::size_t kModRows = 10;
+const auto& addons() { static const auto value = mc2::mods::catalogue("mods"); return value; }
+struct ModText { const char* id; const char* name; const char* description; };
+constexpr ModText builtins[] = {
+	{"@faster-weapons", "FASTER WEAPONS", "Straight shots travel twice as fast."},
+	{"@purchase-all", "PURCHASE ALL", "Buy any available mech or component."},
+	{"@infinite-money", "INFINITE MONEY", "Spend freely without running out of C-Bills."},
+	{"@salvage-all", "SALVAGE EVERYTHING", "Recover every salvageable enemy mech."},
+	{"@jumpjets-all", "JUMP JETS FOR ALL", "Fit jump jets to any mech."}
+};
+std::string modId(std::size_t i) { return i < 5 ? builtins[i].id : addons()[i - 5].id; }
+std::string modName(std::size_t i) {
+	if (i < 5) return builtins[i].name;
+	const auto& a = addons()[i - 5];
+	if (a.id == "magic-ballistic-weapons") return "BALLISTICS";
+	if (a.id == "magic-gamesys-tweaks") return "SYSTEM TUNING";
+	return a.name.substr(0, a.name.find(" ("));
+}
+std::string modDescription(std::size_t i) {
+	if (i < 5) return builtins[i].description;
+	const auto& a = addons()[i - 5];
+	if (a.id == "magic-ballistic-weapons") return "Rebalanced ballistics and new weapons.";
+	if (a.id == "magic-gamesys-tweaks") return "Retuned ranges, sensors and pilot skills.";
+	return "Adds gameplay content for this campaign.";
+}
 constexpr unsigned int kActiveColor = 0xffc66600, kGreyColor = 0xff6b6b6b, kActiveValueColor = 0xff5C96C2;
 }  // namespace
 
@@ -81,6 +106,14 @@ bool GameRulesDialog::init()
 		MC2_LOG( Ui, Warn, "[GAME_RULES] mcl_gamerules defs page not available; the rules dialog is skipped" );
 		return false;
 	}
+	if (!d->modsPanel.tryInitDefsOnly("mcl_gamerules.fit")) return false;
+	d->modsPanel.owner = d.get();
+	d->setDefsElementVisible("game.mcl_gamerules.text.description", false);
+	if (addons().size() + 5 > kModRows) {
+		d->modsScroll.init(0, 0, 16, 360);
+		d->modsScroll.setOrange();
+		d->modsScroll.SetScrollMax(static_cast<float>(addons().size() + 5 - kModRows));
+	}
 	s_instance = std::move( d );
 	return true;
 }
@@ -92,7 +125,10 @@ void GameRulesDialog::begin( const mc2::rules::GameRules& start, bool campaignSt
 	focusRow = -1;
 	showFocus = false;
 	moveFocus( 1 );
-	moveTo( kMountX, kMountY );	// page space is 1778x1000 (16:9, 1:1 at 1080p); centre the 600x500 panel in it
+	moveTo( kMountX, kMountY );
+	modsPanel.moveTo(kMountX + 640, kMountY);
+	modOffset = highlightedMod = 0;
+	modsScroll.SetScrollPos(0);
 	status = RUNNING;
 	bDone = false;
 	refreshRows();
@@ -102,6 +138,7 @@ void GameRulesDialog::begin( const mc2::rules::GameRules& start, bool campaignSt
 
 void GameRulesDialog::refreshRows()
 {
+	refreshMods();
 	setDefsElementText( "game.mcl_gamerules.text.title", "GAME RULES" );
 	for ( std::size_t i = 0; i < kPageRows; ++i )
 	{
@@ -137,6 +174,48 @@ void GameRulesDialog::refreshRows()
 		setDefsElementVisible( sliderKey( i ), slider );
 		setDefsElementVisible( valueKey( i ), slider );
 	}
+}
+
+int GameRulesDialog::ModsPanel::handleMessage(unsigned long, unsigned long who)
+{
+	if (who >= kRowBase && who < kRowBase + kModRows) {
+		const auto i = who - kRowBase + owner->modOffset;
+		if (!owner->editMods || i >= addons().size() + 5) return 0;
+		const bool on = mc2::mods::selected(owner->working.mods, modId(i));
+		if (i >= 5 && !on && !mc2::mods::conflict(addons()[i - 5], addons(), owner->working.mods).empty()) return 0;
+		mc2::mods::toggle(owner->working.mods, modId(i));
+		owner->highlightedMod = static_cast<int>(i);
+		owner->refreshMods();
+		return 0;
+	}
+	return owner->handleMessage(0, who);
+}
+
+void GameRulesDialog::refreshMods()
+{
+	modsPanel.setDefsElementText("game.mcl_gamerules.text.title", "MODS");
+	modsPanel.setDefsElementVisible("game.mcl_gamerules.button.preset", false);
+	for (std::size_t row = 0; row < kPageRows; ++row) {
+		const auto i = row + modOffset;
+		const bool used = row < kModRows && i < addons().size() + 5;
+		modsPanel.setDefsElementVisible(sliderKey(row), false);
+		modsPanel.setDefsElementVisible(valueKey(row), false);
+		modsPanel.setDefsElementVisible(rowKey("text", row), used);
+		modsPanel.setDefsElementVisible(rowKey("button", row), used);
+		if (!used) continue;
+		const bool on = mc2::mods::selected(working.mods, modId(i));
+		auto why = i < 5 ? std::string{} : mc2::mods::conflict(addons()[i - 5], addons(), working.mods);
+		why = why.substr(0, why.find(": "));
+		for (std::size_t other = 0; other < addons().size(); ++other)
+			if (why == addons()[other].name) { why = modName(other + 5); break; }
+		const bool enabled = editMods && (on || why.empty());
+		modsPanel.setDefsElementText(rowKey("text", row), modName(i) + (why.empty() ? "" : " (conflicts with " + why + ")"));
+		modsPanel.setDefsElementTextColor(rowKey("text", row), enabled ? kActiveColor : kGreyColor);
+		modsPanel.setDefsElementText(rowKey("button", row), on ? "ON" : "OFF");
+		modsPanel.setDefsElementDisabled(rowKey("button", row), !enabled);
+	}
+	modsPanel.setDefsElementText("game.mcl_gamerules.text.description", editMods ? modDescription(highlightedMod) : "Start a new campaign to change mods.");
+
 }
 
 void GameRulesDialog::cycleRow( std::size_t row )
@@ -226,6 +305,26 @@ void GameRulesDialog::update()
 	userInput->mouseOn();
 	userInput->setMouseCursor( mState_NORMAL );
 	LogisticsScreen::update();
+	modsPanel.update();
+	if (addons().size() + 5 > kModRows) {
+		float x, y, w, h, sx, sy, ox, oy;
+		if (modsPanel.getDefsElementScreenRect(rowKey("button", 0), x, y, w, h)) {
+			aObject::getCanvasTransform(sx, sy, ox, oy);
+			modsScroll.moveTo(static_cast<long>((x + w + 3 - ox) / sx), static_cast<long>((y - oy) / sy));
+			modsScroll.resize(12, static_cast<long>(h * kModRows / sy * 36 / 32));
+		}
+		modsScroll.update();
+		const int offset = static_cast<int>(modsScroll.GetScrollPos());
+		if (offset != modOffset) { modOffset = offset; refreshMods(); }
+	}
+	const auto mouse = ImGui::GetIO().MousePos;
+	for (std::size_t row = 0; row < kModRows && row + modOffset < addons().size() + 5; ++row) {
+		float x, y, w, h;
+		if (modsPanel.getDefsElementScreenRect(rowKey("text", row), x, y, w, h) && mouse.x >= x && mouse.x <= x + 540 * h / 32 && mouse.y >= y && mouse.y <= y + h) {
+			highlightedMod = static_cast<int>(row) + modOffset;
+			refreshMods();
+		}
+	}
 	pollSliders();
 	if ( focusRow >= 0 )
 	{
@@ -265,5 +364,10 @@ void GameRulesDialog::render()
 		if ( showFocus && static_cast<int>( i ) == focusRow ) drawDefsRect( x - 2.0f, y - 2.0f, w + 4.0f, h + 4.0f, 0xff5C96C2, false );
 	}
 	gos_SetHudScaleExempt( false );
-	PlayerFrontEnd::drawCampaignMods( working, editMods );
+	modsPanel.render(0, 0);
+	if (addons().size() + 5 > kModRows) {
+		aObject::beginGuiBridgeCanvas();
+		modsScroll.render();
+		aObject::endGuiBridge();
+	}
 }
