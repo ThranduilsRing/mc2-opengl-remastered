@@ -6,6 +6,7 @@
 #include "mc2fmt.h"
 #include "cmponent.h"
 #include "../GameOS/gameos/beam_lights.h"
+#include "beam_clip.h"
 
 
 // VK-FIELD-VFX-2 (2026-07-11): under the field VK umbrella the DEFAULT bolt path
@@ -418,140 +419,44 @@ void WeaponBolt::drawPacket (const mc2::render_view::FxPacket& view, const mc2::
 		}
 		else if (!hitTarget && rvType->isBeam)
 		{
-			gos_VERTEX	lq1Vertices[3], lq2Vertices[3], lq3Vertices[3], lq4Vertices[3];
-			Stuff::Vector4D screenPos;
-			
-			DWORD alphaMode = rvType->boltAlpha;
-			alphaMode <<= 24;
-			
-			DWORD edgeMode = rvType->edgeAlpha;
-			edgeMode <<= 24;
-			
-			glm::vec3 actualPosition;
-			glm::vec3 hotSpot = view.aux[1];
-				
-			glm::vec3 length;
-			length = hotSpot - position;
-			float dist = glm::length(length);
-			
-			float realUVRepeat = rvType->uvRepeat * dist / rvType->unitLength;
-			
-			// [PROJECTZ:ScreenXYOracle id=weaponbolt_beam_v0]
-			eye->projectForScreenXY(laserVertices[0],screenPos);
-			lq1Vertices[0].x		= screenPos.x;
-			lq1Vertices[0].y		= screenPos.y;
-			lq1Vertices[0].z		= screenPos.z;
-			lq1Vertices[0].rhw		= screenPos.w;
-			lq1Vertices[0].u		= startUV;
-			lq1Vertices[0].v		= 0.0f;
-			lq1Vertices[0].argb		= edgeMode + rvType->midEdgeRGB;
-	
-			lq2Vertices[0].x		= screenPos.x;
-			lq2Vertices[0].y		= screenPos.y;
-			lq2Vertices[0].z		= screenPos.z;
-			lq2Vertices[0].rhw		= screenPos.w;
-			lq2Vertices[0].u		= startUV;
-			lq2Vertices[0].v		= 0.0f;
-			lq2Vertices[0].argb		= edgeMode + rvType->midEdgeRGB;
-			
-			// [PROJECTZ:ScreenXYOracle id=weaponbolt_beam_v1]
- 			eye->projectForScreenXY(laserVertices[1],screenPos);
-			lq2Vertices[1].x		= screenPos.x;
-			lq2Vertices[1].y		= screenPos.y;
-			lq2Vertices[1].z		= screenPos.z;
-			lq2Vertices[1].rhw		= screenPos.w;
-			lq2Vertices[1].u		= startUV;
-			lq2Vertices[1].v		= 0.999999f;
-			lq2Vertices[1].argb		= alphaMode + rvType->midEdgeRGB;
-	
-			// [PROJECTZ:ScreenXYOracle id=weaponbolt_beam_v2]
-			eye->projectForScreenXY(laserVertices[2],screenPos);
-			lq1Vertices[1].x		= screenPos.x;
-			lq1Vertices[1].y		= screenPos.y;
-			lq1Vertices[1].z		= screenPos.z;
-			lq1Vertices[1].rhw		= screenPos.w;
-			lq1Vertices[1].u		= startUV + realUVRepeat;
-			lq1Vertices[1].v		= 0.0f;
-			lq1Vertices[1].argb		= edgeMode + rvType->middleRGB;
-			
-			// [PROJECTZ:ScreenXYOracle id=weaponbolt_beam_v3]
-			eye->projectForScreenXY(laserVertices[3],screenPos);
-			lq1Vertices[2].x		= screenPos.x;
-			lq1Vertices[2].y		= screenPos.y;
-			lq1Vertices[2].z		= screenPos.z;
-			lq1Vertices[2].rhw		= screenPos.w;
-			lq1Vertices[2].u		= startUV + realUVRepeat; 
-			lq1Vertices[2].v		= 0.999999f;
-			lq1Vertices[2].argb		= alphaMode + rvType->middleRGB;
-			
-			lq2Vertices[2].x		= screenPos.x;
-			lq2Vertices[2].y		= screenPos.y;
-			lq2Vertices[2].z		= screenPos.z;
-			lq2Vertices[2].rhw		= screenPos.w;
-			lq2Vertices[2].u		= startUV + realUVRepeat; 
-			lq2Vertices[2].v		= 0.999999f;
-			lq2Vertices[2].argb		= alphaMode + rvType->middleRGB;
-			
-			// [PROJECTZ:ScreenXYOracle id=weaponbolt_beam_side0]
-			eye->projectForScreenXY(laserSide[0],screenPos);
-			lq3Vertices[0].x		= screenPos.x;
-			lq3Vertices[0].y		= screenPos.y;
-			lq3Vertices[0].z		= screenPos.z;
-			lq3Vertices[0].rhw		= screenPos.w;
-			lq3Vertices[0].u		= startUV;
-			lq3Vertices[0].v		= 0.0f;
-			lq3Vertices[0].argb		= edgeMode + rvType->midEdgeRGB;
-	
-			lq4Vertices[0].x		= screenPos.x;
-			lq4Vertices[0].y		= screenPos.y;
-			lq4Vertices[0].z		= screenPos.z;
-			lq4Vertices[0].rhw		= screenPos.w;
-			lq4Vertices[0].u		= startUV;
-			lq4Vertices[0].v		= 0.0f;
-			lq4Vertices[0].argb		= edgeMode + rvType->midEdgeRGB;
-			
-			// [PROJECTZ:ScreenXYOracle id=weaponbolt_beam_side1]
- 			eye->projectForScreenXY(laserSide[1],screenPos);
-			lq4Vertices[1].x		= screenPos.x;
-			lq4Vertices[1].y		= screenPos.y;
-			lq4Vertices[1].z		= screenPos.z;
-			lq4Vertices[1].rhw		= screenPos.w;
-			lq4Vertices[1].u		= startUV;
-			lq4Vertices[1].v		= 0.999999f;
-			lq4Vertices[1].argb		= alphaMode + rvType->midEdgeRGB;
-	
-			// [PROJECTZ:ScreenXYOracle id=weaponbolt_beam_side2]
-			eye->projectForScreenXY(laserSide[2],screenPos);
-			lq3Vertices[1].x		= screenPos.x;
-			lq3Vertices[1].y		= screenPos.y;
-			lq3Vertices[1].z		= screenPos.z;
-			lq3Vertices[1].rhw		= screenPos.w;
-			lq3Vertices[1].u		= startUV + realUVRepeat;
-			lq3Vertices[1].v		= 0.0f;
-			lq3Vertices[1].argb		= edgeMode + rvType->middleRGB;
-			
-			// [PROJECTZ:ScreenXYOracle id=weaponbolt_beam_side3]
-			eye->projectForScreenXY(laserSide[3],screenPos);
-			lq3Vertices[2].x		= screenPos.x;
-			lq3Vertices[2].y		= screenPos.y;
-			lq3Vertices[2].z		= screenPos.z;
-			lq3Vertices[2].rhw		= screenPos.w;
-			lq3Vertices[2].u		= startUV + realUVRepeat; 
-			lq3Vertices[2].v		= 0.999999f;
-			lq3Vertices[2].argb		= alphaMode + rvType->middleRGB;
-			
-			lq4Vertices[2].x		= screenPos.x;
-			lq4Vertices[2].y		= screenPos.y;
-			lq4Vertices[2].z		= screenPos.z;
-			lq4Vertices[2].rhw		= screenPos.w;
-			lq4Vertices[2].u		= startUV + realUVRepeat; 
-			lq4Vertices[2].v		= 0.999999f;
-			lq4Vertices[2].argb		= alphaMode + rvType->middleRGB;
-
-			if (vfxTrace) {
-				mc2::fmt::print_out("[VK_VFX_TRACE] beam path={} view=[{:.0f}..{:.0f},{:.0f}..{:.0f}] v0=({:.0f},{:.0f},z{:.3f}) v1=({:.0f},{:.0f},z{:.3f}) v2=({:.0f},{:.0f},z{:.3f}) argb0={:08X} tex={:d}\n", mc2::fmt::safe(useImmediate ? "IMMEDIATE" : "addVertices"), eye->viewAddX, eye->viewMulX, eye->viewAddY, eye->viewMulY, lq1Vertices[0].x, lq1Vertices[0].y, lq1Vertices[0].z, lq1Vertices[1].x, lq1Vertices[1].y, lq1Vertices[1].z, lq1Vertices[2].x, lq1Vertices[2].y, lq1Vertices[2].z, mc2::fmt::as_u32(static_cast<unsigned>(lq1Vertices[0].argb)), mc2::fmt::as_u32(static_cast<unsigned>(gosTextureHandle)));
-				fflush(stdout);
-			}
+            const float dist = glm::length(view.aux[1] - position);
+            const float repeat = rvType->uvRepeat * dist / rvType->unitLength;
+            const auto vertex = [&](const glm::vec3& world, float u, float v, DWORD color) {
+                glm::vec3 render;
+                mc2ToRender(render, world);
+                Stuff::Vector4D clip;
+                clip.MultiplyPoint(render, eye->getWorldToClip());
+                return mc2::beam::Vertex{{clip.x, clip.y, clip.z, clip.w}, {u, v},
+                    {float((color >> 24) & 255), float((color >> 16) & 255),
+                     float((color >> 8) & 255), float(color & 255)}};
+            };
+            const auto drawBeam = [&](const glm::vec3* ribbon) {
+                const auto a = vertex(ribbon[0], startUV, 0, (rvType->edgeAlpha << 24) + rvType->midEdgeRGB);
+                const auto b = vertex(ribbon[1], startUV, 0.999999f, (rvType->boltAlpha << 24) + rvType->midEdgeRGB);
+                const auto c = vertex(ribbon[2], startUV + repeat, 0, (rvType->edgeAlpha << 24) + rvType->middleRGB);
+                const auto d = vertex(ribbon[3], startUV + repeat, 0.999999f, (rvType->boltAlpha << 24) + rvType->middleRGB);
+                for (const auto& triangle : {std::array<mc2::beam::Vertex, 3>{a, c, d}, {a, b, d}}) {
+                    const auto polygon = mc2::beam::clipTriangle(triangle);
+                    for (int i = 1; i + 1 < polygon.count; ++i) {
+                        gos_VERTEX vertices[3]{};
+                        const int indices[] = {0, i, i + 1};
+                        for (int j = 0; j < 3; ++j) {
+                            const auto& p = polygon.vertices[indices[j]];
+                            const float rhw = 1.0f / p.clip.w;
+                            auto& out = vertices[j];
+                            out.x = (eye->getUsePerspective() ? p.clip.x * rhw : 1.0f - p.clip.x) * eye->viewMulX + eye->viewAddX;
+                            out.y = (eye->getUsePerspective() ? p.clip.y * rhw : p.clip.y) * eye->viewMulY + eye->viewAddY;
+                            out.z = p.clip.z * rhw;
+                            out.rhw = eye->getUsePerspective() ? rhw : 0.000001f;
+                            out.u = p.uv.x; out.v = p.uv.y;
+                            out.argb = (DWORD(p.argb.x + 0.5f) << 24) | (DWORD(p.argb.y + 0.5f) << 16) |
+                                       (DWORD(p.argb.z + 0.5f) << 8) | DWORD(p.argb.w + 0.5f);
+                        }
+                        if (useImmediate) gos_DrawTriangles(vertices, 3);
+                        else mc2::renderSubmissions().addVertices(mcTextureHandle, vertices, MC2_ISEFFECTS | MC2_DRAWONEIN);
+                    }
+                }
+            };
 
 			if (useImmediate)
 			{
@@ -609,59 +514,11 @@ void WeaponBolt::drawPacket (const mc2::render_view::FxPacket& view, const mc2::
 				else
 					gos_SetRenderState( gos_State_Texture,0);
 
-				gos_DrawTriangles(lq1Vertices,3);
-				gos_DrawTriangles(lq2Vertices,3);
-				gos_DrawTriangles(lq3Vertices,3);
-				gos_DrawTriangles(lq4Vertices,3);
-				// VK-FIELD-VFX-3 (look-restore): the round-2 beam-axis LINE fallback
-				// (3 opaque horizontal lines) is retired — it was a visibility hack that
-				// produced the flat "weird laser". The textured ribbon quads above are the
-				// real beam and match GL. (If a far-zoom sub-pixel ribbon coverage delta
-				// resurfaces it will be handled by the ribbon geometry, not a line proxy.)
-			}
-			else
-			{
-				if ((lq1Vertices[0].z >= 0.0f) &&
-					(lq1Vertices[0].z < 1.0f) &&
-					(lq1Vertices[1].z >= 0.0f) &&  
-					(lq1Vertices[1].z < 1.0f) && 
-					(lq1Vertices[2].z >= 0.0f) &&  
-					(lq1Vertices[2].z < 1.0f))
-					{
-						mc2::renderSubmissions().addVertices(mcTextureHandle,lq1Vertices,MC2_ISEFFECTS|MC2_DRAWONEIN);
-					}
-					
-				if ((lq2Vertices[0].z >= 0.0f) &&
-					(lq2Vertices[0].z < 1.0f) &&
-					(lq2Vertices[1].z >= 0.0f) &&  
-					(lq2Vertices[1].z < 1.0f) && 
-					(lq2Vertices[2].z >= 0.0f) &&  
-					(lq2Vertices[2].z < 1.0f))
-					{
-						mc2::renderSubmissions().addVertices(mcTextureHandle,lq2Vertices,MC2_ISEFFECTS|MC2_DRAWONEIN);
-					}
-					
-				if ((lq3Vertices[0].z >= 0.0f) &&
-					(lq3Vertices[0].z < 1.0f) &&
-					(lq3Vertices[1].z >= 0.0f) &&  
-					(lq3Vertices[1].z < 1.0f) && 
-					(lq3Vertices[2].z >= 0.0f) &&  
-					(lq3Vertices[2].z < 1.0f))
-					{
-						mc2::renderSubmissions().addVertices(mcTextureHandle,lq3Vertices,MC2_ISEFFECTS|MC2_DRAWONEIN);
-					}
-					
-				if ((lq4Vertices[0].z >= 0.0f) &&
-					(lq4Vertices[0].z < 1.0f) &&
-					(lq4Vertices[1].z >= 0.0f) &&  
-					(lq4Vertices[1].z < 1.0f) && 
-					(lq4Vertices[2].z >= 0.0f) &&  
-					(lq4Vertices[2].z < 1.0f))
-					{
-						mc2::renderSubmissions().addVertices(mcTextureHandle,lq4Vertices,MC2_ISEFFECTS|MC2_DRAWONEIN);
-					}
-			}
-				
+            }
+            drawBeam(laserVertices);
+            drawBeam(laserSide);
+
+
 			if (gosEffect)
 			{
 				glm::vec3 actualPosition;
