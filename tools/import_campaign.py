@@ -120,7 +120,7 @@ def inspect_source(root):
         fallback = Path(name).stem
         if fallback == "campaign":
             fallback = "Carver V (legacy)" if mission[1].lower() == "mc2_01" else mission[1]
-        campaigns.append({"fit": Path(name).stem, "name": (title[1] if title else fallback).replace("MechWarriror", "MechWarrior"),
+        campaigns.append({"fit": Path(name).stem, "name": title[1] if title else fallback,
                           "first_mission": mission[1].lower()})
     if not campaigns:
         raise ValueError("No campaign FIT found in data/campaign or FSTs. Select the campaign root, not data/.")
