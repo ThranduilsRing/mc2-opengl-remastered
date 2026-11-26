@@ -1702,8 +1702,10 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
         // P9: event clips (hits, falls, get-up, death, jump phases) switch at once and play
         // from their first frame; locomotion keeps the 4-frame debounce and its phase.
         const bool finished = (s.mode == mc2clip::Mode::Once) && s.clipTimeSec >= s.durationSec - 1e-4f;
-        const mc2clip::Choice want = mc2clip::select(motion.gestureId, speed, turnRate, s.turnStreak,
+        mc2clip::Choice want = mc2clip::select(motion.gestureId, speed, turnRate, s.turnStreak,
                                                      motion.destroyed, finished, s.activeClip.c_str(), s.phase);
+        want.clip = mc2clip::standingClip(want.clip,
+            [&](std::string_view name) { return clipDurationSec(e.scene, std::string(name)).has_value(); }).data();
         auto adopt = [&](const mc2clip::Choice& c, bool restart) {
             if (auto nd = clipDurationSec(e.scene, c.clip)) {
                 mc2skel::BeginActorClipFade(*e.plan, s);
