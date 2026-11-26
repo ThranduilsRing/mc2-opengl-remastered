@@ -916,6 +916,9 @@ void main(void)
         float foamA = clamp(foamMix, 0.0, 1.0) * shore * (1.0 - 0.65 * coastNight), fogT = 1.0;
         if (F.fog_color.x > 0.0 || F.fog_color.y > 0.0 || F.fog_color.z > 0.0 || F.fog_color.w > 0.0) fogT = FogValue;
         float wa = shore * reflAmount * (1.0 - foamA) + foamA;
+        // Foam covers the prelit seabed: match its mission lighting at night.
+        // Leave the daytime arithmetic unchanged.
+        if (coastNight > 0.0) foamLight *= uEnv.sceneLight.x * uEnv.sceneLight.yzw;
         vec3 premul = (col * shore * (1.0 - foamA) + mix(vec3(0.86, 0.90, 0.88), vec3(0.62, 0.66, 0.70), coastNight) * foamLight * foamA) * fogT
                     + F.fog_color.rgb * (1.0 - fogT) * wa;
         if (F.f8.x != 0.0 && F.f8.z > 0.0) {
