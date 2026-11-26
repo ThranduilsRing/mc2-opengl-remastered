@@ -1,7 +1,7 @@
 #pragma once
 #include <array>
 #include <cmath>
-#include <glm/glm.hpp>
+#include "math/glm_config.h"
 
 namespace mc2::beam {
 struct Vertex {
