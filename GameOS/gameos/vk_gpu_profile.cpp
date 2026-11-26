@@ -310,13 +310,12 @@ void readSlot(uint32_t slot, uint32_t& used) {
         g.spanEma = g.spanEma > 0.0 ? g.spanEma + (spanMs - g.spanEma) * 0.05 : spanMs;
     }
     const double frameMs = static_cast<double>(maxEnd - minBegin) * g.nsPerTick / 1.0e6;
-    if (frameMs > g.maxFrameMs) {
-        g.maxFrameMs = frameMs;
-        g.maxScopeMs = 0;
-        g.maxScope = "none";
-        for (uint32_t k = 0; k < nNames; ++k) {
-            if (perName[k] > g.maxScopeMs) { g.maxScopeMs = perName[k]; g.maxScope = nameOf[k]; }
-        }
+    const bool longest = frameMs > g.maxFrameMs;
+    g.maxFrameMs = std::max(g.maxFrameMs, frameMs);
+    if (longest) {
+        const auto* largest = std::max_element(perName, perName + nNames);
+        g.maxScopeMs = *largest;
+        g.maxScope = nameOf[largest - perName];
     }
     g.spanSumMs += frameMs;
     g.sumSumMs += sumMs;

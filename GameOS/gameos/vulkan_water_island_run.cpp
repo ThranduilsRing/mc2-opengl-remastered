@@ -127,7 +127,7 @@ extern float g_waterWaveBreakup; // visual_tuning_profile.cpp
 
 namespace {
 bool prepareNative(WaterIsland* s, mc2vk::VulkanContext& ctx) {
-    ZoneScopedN("VKIsl.Water.prepareNative"); MC2_HITCH_CAUSE("VKIsl.Water.prepareNative");
+    ZoneNamedN(prepareNativeZone, "VKIsl.Water.prepareNative", true); MC2_HITCH_CAUSE("VKIsl.Water.prepareNative");
     if (s->native && s->native->ready()) return true;
     if (s->nativeFailed) return false;
     const auto capacity = WaterStream::GetNativeCapacity();

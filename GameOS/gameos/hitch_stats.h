@@ -61,7 +61,7 @@ struct CauseScope {
     const char* name;
     uint64_t& last;
     std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
-    CauseScope(const char* n, uint64_t& l) : name(n), last(l) {}
+    CauseScope(std::string_view n, uint64_t& l) : name(n.data()), last(l) {}
     ~CauseScope() {
         const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
         if (ms <= 8.0) return;
