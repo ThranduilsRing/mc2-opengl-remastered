@@ -144,7 +144,7 @@ def test_indexed_vfx_group_layout_and_page_array(tmp_path):
     vert, frag = reflected["vert"], reflected["frag"]
     group = next(t for t in vert["types"].values() if t.get("name") == "Group")
     # Member order mirrors VfxIndexedGroup in vulkan_vfx_island.cpp (std430 packs these eight 4-byte words into 32 bytes).
-    assert [m["name"] for m in group["members"]] == ["uvOffset", "uvSize", "atlasColumns", "oneOne", "page", "blend"]
+    assert [m["name"] for m in group["members"]] == ["uvOffset", "uvSize", "atlasColumns", "blendMode", "page", "blend"]
     groups = next(t for t in vert["types"].values() if t.get("name") == "Groups")
     assert groups["members"][0]["array_stride"] == 32
     metadata = next(b for b in vert["ssbos"] if b["name"] == "Groups")

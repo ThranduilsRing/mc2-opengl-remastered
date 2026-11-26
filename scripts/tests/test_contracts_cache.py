@@ -67,7 +67,7 @@ def test_1122m_selection_is_small_and_includes_campaign_marker():
                            **console_child.child_kwargs(redirected=True)).stdout.splitlines()
     modules = rtt.discover() + rst.discover()
     selected = rtt.scoped_modules(modules, paths)
-    assert len(modules) == 439,f"{len(modules)} test modules discovered: bump this pin with the module you added or removed"
+    assert len(modules) == 440,f"{len(modules)} test modules discovered: bump this pin with the module you added or removed"
     assert len(selected) == 10
     assert "scripts/tests/test_campaign_marker_selection.py" in selected
 
