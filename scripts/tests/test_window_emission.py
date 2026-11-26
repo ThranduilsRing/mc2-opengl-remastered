@@ -12,10 +12,11 @@ import shader_common
 
 
 @pytest.mark.parametrize('quality', [0, 1, 2])
-def test_tree_vertex_quality_removes_only_unused_sh(tmp_path, quality):
+@pytest.mark.parametrize('tree', [False, True])
+def test_tree_vertex_quality_removes_only_unused_sh(tmp_path, quality, tree):
     src = ROOT / 'shaders/vulkan/color_prop_tier1.vert'
     variant, spv, optimized = (tmp_path / n for n in ('tree.vert', 'tree.spv', 'tree-opt.spv'))
-    variant.write_text(re.sub(r'bool tree = [^;]+;', 'bool tree = true;', src.read_text()))
+    variant.write_text(re.sub(r'bool tree = [^;]+;', 'bool tree = ' + str(tree).lower() + ';', src.read_text()))
     subprocess.run([shader_common.find_tool('glslangValidator'), '-V', '-I' + str(src.parent), str(variant), '-o', str(spv)],
                    check=True, capture_output=True, **console_child.child_kwargs(redirected=True))
     subprocess.run([shader_common.find_tool('spirv-opt'), str(spv),
@@ -24,7 +25,7 @@ def test_tree_vertex_quality_removes_only_unused_sh(tmp_path, quality):
                     '--eliminate-dead-functions', '-o', str(optimized)],
                    check=True, capture_output=True, **console_child.child_kwargs(redirected=True))
     dis = subprocess.check_output([shader_common.find_tool('spirv-dis'), str(optimized)], text=True, **console_child.child_kwargs(redirected=True))
-    assert ('OpName %evalShL2' in dis) is (quality != 2)
+    assert ('OpName %evalShL2' in dis) is not tree
 
 
 @pytest.mark.parametrize('regressed', [False, True])
