@@ -7,7 +7,8 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-from tools.mc2x_import.fst import magic_brain_145
+sys.path.insert(0, str(ROOT / "scripts"))
+from deploy_payload import magic_brain_145
 
 
 @pytest.mark.parametrize('before,after', [
