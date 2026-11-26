@@ -743,7 +743,7 @@ void MainMenu::update()
 		return;
 	}
 
-	if ( !introMovie && !bRulesDlg && mc2::gate::str<"MC2_BOOT_TO_SCREEN">() == "game_rules" )
+	if ( !introMovie && !bRulesDlg && (intro.allAnimObjectsDone() || introOver) && mc2::gate::str<"MC2_BOOT_TO_SCREEN">() == "game_rules" )
 		beginCampaignRules("campaign");
 	if ( bRulesDlg )
 	{
