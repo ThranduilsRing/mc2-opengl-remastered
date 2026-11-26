@@ -52,7 +52,7 @@ layout(push_constant) uniform VfxGroupPush {
     vec2 uvOffset;
     vec2 uvSize;
     uint atlasColumns;   // 0 / 1 = static, > 1 = flipbook (frame = atlasIndex)
-    uint oneOne;         // additive mode, ADDITIVE_*
+    uint blendMode;      // VFX blend recipe, VFX_ADD_*
 } G;
 
 #ifdef VFX_INDEXED
@@ -60,14 +60,14 @@ struct Group {
     vec2 uvOffset;
     vec2 uvSize;
     uint atlasColumns;
-    uint oneOne;
+    uint blendMode;
     uint page;
     uint blend;   // island blend mode 0/1/2/3/4/5; the fragment shader weights it for the premultiplied fold
 };
 layout(std430, set = 1, binding = 1) readonly buffer Groups { Group groups[]; };
 layout(location = 5) flat out uint v_page;
-layout(location = 6) flat out uint v_blend;
 #endif
+layout(location = 6) flat out uint v_blend;
 
 // Atlas UVs for the four billboard corners (normalized [0,1]).
 const vec2 kCornerUv[4] = vec2[](
@@ -75,12 +75,13 @@ const vec2 kCornerUv[4] = vec2[](
 // Two CCW triangles per quad (matches the GL VS winding fix).
 const int kCornerIdx[6] = int[](0, 1, 2, 2, 3, 1);
 
-// Group additive mode (push constant oneOne).
-const uint ADDITIVE_ONE_ONE = 1u;   // pure additive (GL OneOne); ADDITIVE_* mirrors VfxAdditive in vulkan_vfx_island.cpp
+// Group additive mode (push constant blendMode).
+const uint ADDITIVE_ONE_ONE = 2u;   // pure additive (GL OneOne); ADDITIVE_* mirrors VfxAdditive in vulkan_vfx_island.cpp
 
 layout(location = 0) out vec2 v_uv;
 layout(location = 1) out vec4 v_color;
 layout(location = 2) flat out uint v_flags;
+layout(location = 7) out vec3 v_worldPos;
 
 layout(location = 3) out vec4 v_vegData;
 layout(location = 4) out vec2 v_vegAux;
@@ -92,11 +93,13 @@ void main() {
 #else
     // Keep the original page-binding shader usable without descriptor indexing.
     #define g G
+    v_blend = G.blendMode;
 #endif
     v_vegData=vec4(0.0); v_vegAux=vec2(0.0);   // vegetation has its own vertex shader (vfx_vegetation.vert); the fragment shader still reads these
     if (G.atlasColumns == 0xfffffffdu) {
         uint b = uint(gl_VertexIndex) * 10u;
-        gl_Position = U.worldToClipGL * vec4(mc2ToRender(read3(b)), 1.0);
+        v_worldPos = mc2ToRender(read3(b));
+        gl_Position = U.worldToClipGL * vec4(v_worldPos, 1.0);
         v_color = read4(b+3u); v_uv = read2(b+7u); v_flags = words[b+9u];
         if ((v_flags & 128u) != 0u)
             gl_Position.xy += v_uv * vec2(U.camRight.w, U.camUp.w) * gl_Position.w;
@@ -108,10 +111,11 @@ void main() {
         // The terrain MVP includes the MC2-to-render conversion. Native
         // gosFX geometry is already in render space, so convert it back first.
         vec3 world = mc2ToRender(p.position);
+        v_worldPos = world;
         gl_Position = U.worldToClipGL * vec4(world, 1.0);
         // Surface flares need depth clearance, but moving their world corners
         // toward the camera enlarges explosions. Preserve authored screen size.
-        if ((p.kind_flags & 64u) != 0u && g.oneOne == ADDITIVE_ONE_ONE) {
+        if ((p.kind_flags & 64u) != 0u && g.blendMode == ADDITIVE_ONE_ONE) {
             vec3 liftedWorld = world - normalize(cross(U.camRight.xyz, U.camUp.xyz))
                              * min(4.0 * p.size, 0.25 * max(gl_Position.w, 0.0));
             vec4 lifted = U.worldToClipGL * vec4(liftedWorld, 1.0);
@@ -145,7 +149,7 @@ void main() {
     vec3 glCenter    = mc2ToRender(stuffCenter);
     // Beam heads and additive flares sit on the surface they hit and would fail the depth test there, so lift them
     // toward the camera. Smoke, dust and alpha sprites keep true depth. The lift never crosses the near plane.
-    bool pulled = ((p.kind_flags & 1u) != 0u) || (g.oneOne == ADDITIVE_ONE_ONE);
+    bool pulled = ((p.kind_flags & 1u) != 0u) || (g.blendMode == ADDITIVE_ONE_ONE);
     if (pulled) {
         vec3  toCamera = normalize(cross(U.camRight.xyz, U.camUp.xyz));
         float viewW    = (U.worldToClipGL * vec4(glCenter, 1.0)).w;
@@ -157,6 +161,7 @@ void main() {
                      + U.camRight.xyz * corner.x
                      + U.camUp.xyz    * corner.y;
 
+    v_worldPos = worldPos;
     gl_Position = U.worldToClipGL * vec4(worldPos, 1.0);
 
     vec2 frameOffset = vec2(0.0);
@@ -165,5 +170,5 @@ void main() {
     }
     v_uv      = g.uvOffset + (frameOffset + kCornerUv[cornerIdx]) * g.uvSize;
     v_color   = p.color;
-    v_flags = (p.kind_flags & 1u) | (g.oneOne << 1);
+    v_flags = (p.kind_flags & 1u) | (g.blendMode == ADDITIVE_ONE_ONE ? 2u : 0u);
 }

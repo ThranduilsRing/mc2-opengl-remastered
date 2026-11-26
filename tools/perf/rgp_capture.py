@@ -85,7 +85,7 @@ def main():
         threading.Thread(target=trigger, daemon=True).start()
         with host_lease.exclusive_window(f"rgp {a.mission} {a.pose}", timeout_s=1500):
             res = runner.run_one(runner.RunConfig(exe=[str(a.exe)], profile="stock", stem=a.mission, duration=int(a.settle) + 25,
-                heartbeat_timeout_load_s=180, heartbeat_timeout_play_s=60, grace_s=150, env_extra=env, show_window=True))
+                heartbeat_timeout_load_s=180, heartbeat_timeout_play_s=60, grace_s=150, env_extra=env, show_window=False))
         (a.out / "engine.log").write_text(res.stdout_text, encoding="utf-8")
         shutil.copy(PANEL_LOG, a.out / "panel.log")   # evidence: does the Panel list an mc2.exe client?
         new = sorted(set(p.name for p in a.out.glob("*.rgp")) - before)

@@ -923,14 +923,12 @@ void main(void)
     if (shorelineLook == 1) {
         // Coastal look: col is premultiplied radiance (in-scatter + reflection + glints) over the absorbed scene; only
         // the reflected share hides it. Foam covers both; fog scales the added light by its own coverage.
-        float foamA = clamp(foamMix, 0.0, 1.0) * shore * (1.0 - 0.65 * coastNight), fogT = 1.0;
-        if (F.fog_color.x > 0.0 || F.fog_color.y > 0.0 || F.fog_color.z > 0.0 || F.fog_color.w > 0.0) fogT = FogValue;
+        float foamA = clamp(foamMix, 0.0, 1.0) * shore * (1.0 - 0.65 * coastNight);
         float wa = shore * reflAmount * (1.0 - foamA) + foamA;
         // Foam covers the prelit seabed: match its mission lighting at night.
         // Leave the daytime arithmetic unchanged.
         if (coastNight > 0.0) foamLight *= uEnv.sceneLight.x * uEnv.sceneLight.yzw;
-        vec3 premul = (col * shore * (1.0 - foamA) + mix(vec3(0.86, 0.90, 0.88), vec3(0.62, 0.66, 0.70), coastNight) * foamLight * foamA) * fogT
-                    + F.fog_color.rgb * (1.0 - fogT) * wa;
+        vec3 premul = (col * shore * (1.0 - foamA) + mix(vec3(0.86, 0.90, 0.88), vec3(0.62, 0.66, 0.70), coastNight) * foamLight * foamA);
         if (F.f8.x != 0.0 && F.f8.z > 0.0) {
             float hz = clamp(edgeHazeAmount(WorldPos.xy, F.f8.z) * F.f8.y, 0.0, 1.0);
             premul *= 1.0 - hz; wa *= 1.0 - hz;
@@ -939,8 +937,7 @@ void main(void)
         GBuffer1 = vec4(0.5, 0.5, 1.0, 0.875);
         return;
     }
-    if (F.fog_color.x > 0.0 || F.fog_color.y > 0.0 || F.fog_color.z > 0.0 || F.fog_color.w > 0.0)
-        col = mix(F.fog_color.rgb, col, FogValue);
+    // The shared opaque fog pass attenuates water and its local radiance.
 
     // WATER-SHALLOW-1: opacity follows the water column (shaders/include/water_shallow.hglsl); deep water is unchanged.
     PREC float waterA = shore * WATER_MAX_ALPHA * ws_column_veil(tintThick);

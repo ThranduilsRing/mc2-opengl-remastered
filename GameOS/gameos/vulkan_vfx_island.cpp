@@ -43,6 +43,7 @@
 #include "vulkan_shared_scene_depth.h"
 #include "vk_shared_gbuffer_gate.h"
 #include "vulkan_vfx_island.h"
+#include "gos_postprocess.h"
 #include "vulkan_vfx_island_algo.h"
 #include "vulkan_vfx_geometry.h"
 #include "vfx_draw_plan.h"
@@ -125,10 +126,10 @@ struct VfxGroupPush {
     float    uvOffset[2];
     float    uvSize[2];
     uint32_t atlasColumns;
-    uint32_t oneOne;
+    uint32_t blendMode;
 };
 static_assert(sizeof(VfxGroupPush) == 24, "VfxGroupPush push-constant size (vfx_particle.vert)");
-static_assert(offsetof(VfxGroupPush, uvSize) == 8 && offsetof(VfxGroupPush, atlasColumns) == 16 && offsetof(VfxGroupPush, oneOne) == 20);
+static_assert(offsetof(VfxGroupPush, uvSize) == 8 && offsetof(VfxGroupPush, atlasColumns) == 16 && offsetof(VfxGroupPush, blendMode) == 20);
 static_assert(offsetof(VfxGeometryVertex, pad0) == 12);
 
 // std430 Group in vfx_particle.vert; the record's unused pad at byte 12 selects it.
@@ -449,9 +450,9 @@ bool init_island(VfxIsland* s, int w, int h) {
 
     // Descriptor set: UBO(0, vert) + particle SSBO(1, vert).
     {
-        VkDescriptorSetLayoutBinding b[6]{};
+        VkDescriptorSetLayoutBinding b[7]{};
         b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-        b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         b[1].binding = 1; b[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
         b[1].descriptorCount = 1; b[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         b[2].binding = 17; b[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -463,13 +464,15 @@ bool init_island(VfxIsland* s, int w, int h) {
         b[5] = {26, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr};
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 6; lci.pBindings = b;
+        b[6].binding = 27; b[6].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        b[6].descriptorCount = 1; b[6].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        lci.bindingCount = 7; lci.pBindings = b;
         if (!mc2vk::create(s->dsl, s->device, [&](VkDescriptorSetLayout* o) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, o); })) { vlog("vkCreateDescriptorSetLayout failed."); return false; }
         VkDescriptorPoolSize sizes[4]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = kVfxSlots;
         sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC; sizes[1].descriptorCount = kVfxSlots;
         sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = 2 * kVfxSlots;
-        sizes[3].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[3].descriptorCount = 2 * kVfxSlots;
+        sizes[3].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[3].descriptorCount = 3 * kVfxSlots;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pci.maxSets = kVfxSlots; pci.poolSizeCount = 4; pci.pPoolSizes = sizes;
@@ -525,8 +528,9 @@ bool init_island(VfxIsland* s, int w, int h) {
 
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        const VkDescriptorSetLayout dslHandles[2] = { s->dsl.get(), s->spriteDsl.get() };
-        plci.setLayoutCount = 2; plci.pSetLayouts = dslHandles;
+        if (!s->groundLighting.init(s->device)) return false;
+        const VkDescriptorSetLayout dslHandles[4] = { s->dsl.get(), s->spriteDsl.get(), s->spriteDsl.get(), s->groundLighting.layout() };
+        plci.setLayoutCount = 4; plci.pSetLayouts = dslHandles;
         const VkPushConstantRange pcr{ VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(VfxGroupPush) };
         plci.pushConstantRangeCount = 1; plci.pPushConstantRanges = &pcr;
         if (!mc2vk::create(s->playout, s->device, [&](VkPipelineLayout* o) { return vkCreatePipelineLayout(s->device, &plci, nullptr, o); })) { vlog("vkCreatePipelineLayout failed."); return false; }
@@ -536,7 +540,6 @@ bool init_island(VfxIsland* s, int w, int h) {
             if (!veg.ensureDrawLayout(ctx)) { setFallback("vegetation_draw_layout_failed"); return false; }
             s->vegVert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "vfx_vegetation.vert.spv"));
             if (!s->vegVert) { setFallback("spv_load_failed"); return false; }
-            if (!s->groundLighting.init(s->device)) return false;
             const VkDescriptorSetLayout vegHandles[4] = { s->dsl.get(), s->spriteDsl.get(), veg.drawLayout(), s->groundLighting.layout() };
             VkPipelineLayoutCreateInfo vlci{};
             vlci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -559,8 +562,8 @@ bool init_island(VfxIsland* s, int w, int h) {
         VkPhysicalDeviceProperties props{};
         vkGetPhysicalDeviceProperties(s->phys, &props);
         s->indexed = mc2vk::profile::featureEnabled(ctx.profile(), "shaderSampledImageArrayNonUniformIndexing") &&
-            props.limits.maxPerStageDescriptorSamplers >= kSpritePagesPerPool + 2 &&
-            props.limits.maxPerStageDescriptorSampledImages >= kSpritePagesPerPool + 2;
+            props.limits.maxPerStageDescriptorSamplers >= kSpritePagesPerPool + 7 &&
+            props.limits.maxPerStageDescriptorSampledImages >= kSpritePagesPerPool + 7;
         if (s->indexed) {
             s->indexedVert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "vfx_indexed.vert.spv"));
             s->indexedFrag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "vfx_indexed.frag.spv"));
@@ -582,7 +585,7 @@ bool init_island(VfxIsland* s, int w, int h) {
             VkDescriptorSetAllocateInfo alloc{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
             alloc.descriptorPool = s->indexedPool.get(); alloc.descriptorSetCount = kVfxSlots; alloc.pSetLayouts = layouts;
             if (MC2_VK_ALLOC_SETS(s->device, &alloc, s->indexedSet) != VK_SUCCESS) return false;
-            const VkDescriptorSetLayout indexedLayouts[] = {s->dsl.get(), s->indexedDsl.get()};
+            const VkDescriptorSetLayout indexedLayouts[] = {s->dsl.get(), s->indexedDsl.get(), s->spriteDsl.get(), s->groundLighting.layout()};
             plci.pSetLayouts = indexedLayouts;
             if (!mc2vk::create(s->indexedLayout, s->device, [&](VkPipelineLayout* o) { return vkCreatePipelineLayout(s->device, &plci, nullptr, o); })) return false;
             for (const unsigned mode : {0u, 3u, 4u}) {
@@ -665,6 +668,15 @@ bool prepare_shadow_descriptors(VfxIsland* s, uint32_t par) {
     envWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; envWrite.pBufferInfo = &info;
     vkUpdateDescriptorSets(s->device, 1, &envWrite, 0, nullptr);
     mc2vk::noteDescWrites(1, 0);
+
+    const auto fogSlice = rctx.frameAlloc(sizeof(EdgeFogParams));
+    if (!fogSlice) return false;
+    EdgeFogParams fog{};
+    if (const auto* pp = getGosPostProcess()) pp->fillWorldFogParams(fog);
+    std::memcpy(fogSlice.ptr, &fog, sizeof(fog));
+    const VkDescriptorBufferInfo fogInfo{fogSlice.buffer, fogSlice.offset, sizeof(fog)};
+    envWrite.dstBinding = 27; envWrite.pBufferInfo = &fogInfo;
+    vkUpdateDescriptorSets(s->device, 1, &envWrite, 0, nullptr);
 
     if (!mc2vk::bindMoverShadowDescriptors(s->device,s->set[par],&s->moverStamp[par])) return false;
     // The white page is a valid fallback while the bake is pending. This set
@@ -798,7 +810,7 @@ static int run_vfx(
                 pageImages.push_back({s->samp.get(), resident->bound[par], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL});
                 page = pageSets.end() - 1;
             }
-            groups[it.tag] = {{{it.u0, it.v0}, {it.us, it.vs}, it.atlas, it.blend == VFX_ADD_ONE_ONE ? 1u : 0u},
+            groups[it.tag] = {{{it.u0, it.v0}, {it.us, it.vs}, it.atlas, it.blend},
                               static_cast<uint32_t>(page - pageSets.begin()), it.blend};
         }
     }
@@ -858,7 +870,7 @@ static int run_vfx(
         else if (d.additive == 5) want = s->oneInvAlphaPipe.get();
         else if (d.additive == 3) want = s->opaquePipe.get();
         if (indexed) want = s->indexedPipes[mc2vfx::plan_pipe(d.additive)].get();
-        const VfxGroupPush push{ {d.u0, d.v0}, {d.us, d.vs}, d.atlasColumns, d.additive == VFX_ADD_ONE_ONE ? 1u : 0u };
+        const VfxGroupPush push{ {d.u0, d.v0}, {d.us, d.vs}, d.atlasColumns, d.additive };
         const uint32_t expansion = d.atlasColumns == kVfxGeometryAtlas ? 1u : 6u;
         recDraws.push_back({want, indexed ? VK_NULL_HANDLE : *groupPage[gi], push, nativeIdx ? pd.count : pd.count * expansion, nativeIdx ? pd.start : pd.start * expansion});
     }
@@ -869,12 +881,18 @@ static int run_vfx(
     const VkFormat sceneDepthFmt = s->sceneDepthFmt;
     mc2vk::VulkanContext* const dctx = &mc2vk::engineVulkanContextNoWait();   // the recording runs on a worker: no wait/owner assert
     const VkPipelineLayout playout = indexed ? s->indexedLayout.get() : s->playout.get();
+    const auto ground = mc2_vk_ground_lighting_frame();
+    if (!ground) return 0;
+    const uint32_t groundPar = par / kVfxCallsPerFrame;
+    s->groundLighting.copy(s->device, groundPar, *ground);
+    const VkDescriptorSet groundSet = s->groundLighting.set(groundPar);
+    const auto groundOffsets = ground->offsets;
     const VkDescriptorSet frameSet = s->set[par];
     const VkDescriptorSet indexedSet = indexed ? s->indexedSet[par] : VK_NULL_HANDLE;
     const uint32_t offs0 = dynOffsets[0], offs1 = dynOffsets[1];
     const VkBuffer idxBuf = nativeIdx ? span.buffer : VK_NULL_HANDLE;
     const VkDeviceSize idxOffset = span.offset + indexOff;
-    auto record = [recDraws = std::move(recDraws), nativeIdx, idxBuf, idxOffset, sceneViews, sceneDepthFmt, dctx, playout, frameSet, indexedSet, offs0, offs1, w, h](VkCommandBuffer cb) -> bool {
+    auto record = [recDraws = std::move(recDraws), nativeIdx, idxBuf, idxOffset, sceneViews, sceneDepthFmt, dctx, playout, frameSet, groundSet, groundOffsets, indexedSet, offs0, offs1, w, h](VkCommandBuffer cb) -> bool {
         ZoneScopedN("VKIsl.Vfx.Record");
         VkCommandBufferBeginInfo bi{};
         bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -886,6 +904,7 @@ static int run_vfx(
         mc2vk::infra::setSceneViewport(cb, static_cast<uint32_t>(w), static_cast<uint32_t>(h));
         const uint32_t dynOffsets[2] = {offs0, offs1};
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, playout, 0, 1, &frameSet, 2, dynOffsets);
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, playout, 3, 1, &groundSet, 4, groundOffsets.data());
         if (indexedSet != VK_NULL_HANDLE) vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, playout, 1, 1, &indexedSet, 0, nullptr);
         if (nativeIdx) vkCmdBindIndexBuffer(cb, idxBuf, idxOffset, VK_INDEX_TYPE_UINT32);
         VkPipeline bound = VK_NULL_HANDLE;

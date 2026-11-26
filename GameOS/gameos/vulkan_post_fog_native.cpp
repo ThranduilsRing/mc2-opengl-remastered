@@ -32,6 +32,8 @@
 // The whole TU compiles to nothing unless MC2_VULKAN_ISLAND is defined.
 
 #include "gos_postprocess.h"
+#include "mission_environment_gpu.h"
+#include "visual_tuning_profile.h"
 #include "vk_render_pass_timer.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include <tracy/Tracy.hpp>
@@ -120,27 +122,7 @@ VkShaderModule load_spv(VkDevice device, std::string_view path) {
 }
 
 // std140 PODs for the same edge/oob fog shaders as the retired subgraph path;`r`n// offsets are offline-checked by check_ubo_layout.py postfog_edge/postfog_oob.
-struct EdgeFogParams {
-    float invViewProj[16];     // off 0  (same 16 floats the GL path uploads, GL_FALSE)
-    float u_fogColor[3];       // off 64
-    float _pad0;               // off 76
-    float u_halfExtent;        // off 80
-    float u_fogStart;          // off 84
-    float u_fogHeight;         // off 88
-    float u_fogMax;            // off 92
-    float u_waterElevation;    // off 96
-    int   u_horizonClampEnabled;   // off 100 (VK-PARITY-F3: FOG-HORIZON-CLAMP-1)
-    float u_horizonFadeStartSin;   // off 104
-    float u_horizonFadeEndSin;     // off 108
-    float u_hazeStart;             // off 112 (source wu; shader applies x1.5)
-    float u_hazeFull;              // off 116
-    int   u_fogProfile;            // off 120 (DrawDistance 0 = Stock)
-    float _pad1;                   // off 124
-    float u_atmoParams[4];         // off 128 quality, ground extinction/wu, height falloff/wu, HG g
-    float u_atmoSun[4];            // off 144 unit toward sun (Z up), in-scatter strength
-    float u_atmoColor[4];          // off 160 ambient scatter rgb, base elevation
-};
-static_assert(sizeof(EdgeFogParams) == 176, "EdgeFogParams std140 offsets drifted");
+
 
 struct FogOobParams {
     float invViewProj[16];     // off 0
@@ -529,6 +511,49 @@ void gosPostProcess::prewarmVkFog() {
     if(!s->inited && !build_state(s,width_,height_)) destroy_state(s);
 }
 
+void gosPostProcess::fillWorldFogParams(EdgeFogParams& p) const {
+    p = {};
+    std::memcpy(p.invViewProj, inverseViewProj_, 16 * sizeof(float));
+    const auto& env = visualTuning_environment();
+    const auto radiance = mc2::environment::skyRadianceScale(env);
+    for (int c = 0; c < 3; ++c)
+        p.u_fogColor[c] = edgeFogColor_[c] * std::pow(radiance[c], 1.0f / 2.2f);
+    p._pad0 = 0.0f;
+    p.u_halfExtent = mapHalfExtent_;
+    p.u_fogStart = edgeFogStart_;
+    p.u_fogHeight = edgeFogHeight_;
+    // Fog profile (DrawDistance): source wu = effective / 1.5. Stock (0) keeps edgeFogMax_ and the shader's own haze range.
+    static constexpr float kHaze[4][2] = {{6000.0f, 12000.0f}, {4667.0f, 9333.0f}, {3333.0f, 6667.0f}, {2333.0f, 4667.0f}};
+    const int profile = std::clamp(mc2::options::current().drawDistance, 0, 3);
+    p.u_fogMax = profile ? 1.0f : edgeFogMax_;
+    p.u_hazeStart = kHaze[profile][0];
+    p.u_hazeFull = kHaze[profile][1];
+    p.u_fogProfile = profile;
+    p._pad1 = 0.0f;
+    p.u_waterElevation = waterElevation_;
+    p.u_horizonClampEnabled = fogHorizonClampEnabled_ ? 1 : 0;
+    p.u_horizonFadeStartSin = fogHorizonFadeStartSin_;
+    p.u_horizonFadeEndSin   = fogHorizonFadeEndSin_;
+    {
+        const int quality = std::clamp(mc2::options::current().atmosphereQuality, 0, 2);
+        float lx = env.lighting.effectiveDirection[0];
+        float ly = env.lighting.effectiveDirection[1];
+        float lz = env.lighting.effectiveDirection[2];
+        const float len = std::sqrt(lx * lx + ly * ly + lz * lz);
+        if (len > 1e-6f) { lx /= len; ly /= len; lz /= len; } else { lx = ly = 0.f; lz = 1.f; }
+        const float sunScale = (std::max)({env.lighting.directionalColor[0], env.lighting.directionalColor[1], env.lighting.directionalColor[2]});
+        p.u_atmoParams[0] = static_cast<float>(quality);
+        p.u_atmoParams[1] = 6e-5f * atmoDensity_ * (quality == 1 ? 0.7f : 1.0f);
+        p.u_atmoParams[2] = atmoFalloff_;
+        p.u_atmoParams[3] = atmoAnisotropy_;
+        p.u_atmoSun[0] = lx; p.u_atmoSun[1] = ly; p.u_atmoSun[2] = lz;
+        p.u_atmoSun[3] = atmoSunScatter_ * sunScale;
+        for (int c = 0; c < 3; ++c) p.u_atmoColor[c] = p.u_fogColor[c] * 0.85f;
+        p.u_atmoColor[3] = waterElevation_;
+    }
+    if (!sceneHasTerrain_ || !edgeFogEnabled_) { p.u_fogMax = 0.0f; p.u_atmoParams[0] = 0.0f; p.u_halfExtent = 0.0f; }
+}
+
 bool gosPostProcess::runVkPostFogNative()
 {
     ZoneScopedN("VKIsl.Post.Fog");
@@ -582,43 +607,7 @@ bool gosPostProcess::runVkPostFogNative()
     // ---- UBOs (values IDENTICAL to the GL runEdgeFog()/runFogOob() uploads). ----
     if (fog.edge) {
         EdgeFogParams p{};
-        std::memcpy(p.invViewProj, inverseViewProj_, 16 * sizeof(float));
-        p.u_fogColor[0] = edgeFogColor_[0];
-        p.u_fogColor[1] = edgeFogColor_[1];
-        p.u_fogColor[2] = edgeFogColor_[2];
-        p._pad0 = 0.0f;
-        p.u_halfExtent = mapHalfExtent_;
-        p.u_fogStart = edgeFogStart_;
-        p.u_fogHeight = edgeFogHeight_;
-        // Fog profile (DrawDistance): source wu = effective / 1.5. Stock (0) keeps edgeFogMax_ and the shader's own haze range.
-        static constexpr float kHaze[4][2] = {{6000.0f, 12000.0f}, {4667.0f, 9333.0f}, {3333.0f, 6667.0f}, {2333.0f, 4667.0f}};
-        const int profile = std::clamp(mc2::options::current().drawDistance, 0, 3);
-        p.u_fogMax = profile ? 1.0f : edgeFogMax_;
-        p.u_hazeStart = kHaze[profile][0];
-        p.u_hazeFull = kHaze[profile][1];
-        p.u_fogProfile = profile;
-        p._pad1 = 0.0f;
-        p.u_waterElevation = waterElevation_;
-        p.u_horizonClampEnabled = fogHorizonClampEnabled_ ? 1 : 0;
-        p.u_horizonFadeStartSin = fogHorizonFadeStartSin_;
-        p.u_horizonFadeEndSin   = fogHorizonFadeEndSin_;
-        {
-            const int quality = std::clamp(mc2::options::current().atmosphereQuality, 0, 2);
-            const float night = mc2NightLightFactor();
-            float lx = 0.f, ly = 0.f, lz = 1.f;
-            gos_GetTerrainLightDir(&lx, &ly, &lz);
-            const float len = std::sqrt(lx * lx + ly * ly + lz * lz);
-            if (len > 1e-6f) { lx /= len; ly /= len; lz /= len; } else { lx = ly = 0.f; lz = 1.f; }
-            const float nightDim = 1.0f - 0.85f * night;   // sun scatter and the sky colour fade with the sun
-            p.u_atmoParams[0] = static_cast<float>(quality);
-            p.u_atmoParams[1] = 6e-5f * atmoDensity_ * (quality == 1 ? 0.7f : 1.0f);
-            p.u_atmoParams[2] = atmoFalloff_;
-            p.u_atmoParams[3] = atmoAnisotropy_;
-            p.u_atmoSun[0] = lx; p.u_atmoSun[1] = ly; p.u_atmoSun[2] = lz;
-            p.u_atmoSun[3] = atmoSunScatter_ * nightDim;
-            for (int c = 0; c < 3; ++c) p.u_atmoColor[c] = edgeFogColor_[c] * 0.85f * nightDim;
-            p.u_atmoColor[3] = waterElevation_;
-        }
+        fillWorldFogParams(p);
         if (void* m = frame.edgeUbo.map()) {
             std::memcpy(m, &p, sizeof(p));
             frame.edgeUbo.unmap();

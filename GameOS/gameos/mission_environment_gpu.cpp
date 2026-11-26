@@ -1,5 +1,5 @@
 #include "mission_environment_gpu.h"
-#include "../../RenderCore/IblShCoeffs.h"
+#include "../../RenderCore/IblShRegistry.h"
 #include "../../mclib/mission_light_profile.h"
 #include <algorithm>
 #include <cmath>
@@ -76,6 +76,17 @@ void fillGpu(const RenderCore::MissionEnvironment& env, float sceneLightScale, E
     out.shadowParams[2] = mc2_mission_light::moverNightFade(out.nightState[2],
         0.299f*live.sun[0] + 0.587f*live.sun[1] + 0.114f*live.sun[2],
         0.299f*live.amb[0] + 0.587f*live.amb[1] + 0.114f*live.amb[2]);
+}
+
+std::array<float,3> skyRadianceScale(const RenderCore::MissionEnvironment& env) {
+    EnvironmentUBO gpu{};
+    fillGpu(env, 1.0f, gpu);
+    const auto& reference = RenderCore::lookupShSet(env.mission.c_str());
+    std::array<float,3> scale{};
+    for (int c = 0; c < 3; ++c)
+        scale[c] = reference.coeffs[0][c] > 1e-6f
+            ? std::max(gpu.shDiffuse[0][c] / reference.coeffs[0][c], 0.0f) : 1.0f;
+    return scale;
 }
 
 }

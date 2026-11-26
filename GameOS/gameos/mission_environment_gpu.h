@@ -13,6 +13,9 @@ namespace mc2::environment {
 void fillGpu(const RenderCore::MissionEnvironment& env, float sceneLightScale, EnvironmentUBO& out,
              const mc2::lighting::LightingState& live = {}, const mc2::lighting::LightingState& bake = {});
 
+// Visible HDRI radiance follows the same evaluated SH L0, without scene exposure.
+std::array<float,3> skyRadianceScale(const RenderCore::MissionEnvironment& env);
+
 // The L0 chroma multiplier fillGpu applies for an ambient colour (exposed for the doctest).
 void missionL0Chroma(const std::array<float,3>& ambient, float out[3]);
 

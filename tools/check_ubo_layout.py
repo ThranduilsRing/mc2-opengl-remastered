@@ -35,8 +35,8 @@ REGISTRY = [
      "shaders/vulkan/water_geom.frag", "WaterFsParams"),
     # The native fog pair reuses the subgraph's
     # shaders verbatim; its UBO PODs must stay byte-identical to those blocks.
-    ("postfog_edge", "GameOS/gameos/vulkan_post_fog_native.cpp", "EdgeFogParams",
-     "shaders/vulkan/edge_fog.frag", "EdgeFogParams"),
+    ("postfog_edge", "GameOS/gameos/gos_postprocess.h", "EdgeFogParams",
+     "shaders/include/fog_policy.hglsl", "EdgeFogParams"),
     ("postfog_oob", "GameOS/gameos/vulkan_post_fog_native.cpp", "FogOobParams",
      "shaders/vulkan/fog_oob.frag", "FogOobParams"),
     # Native cloud-shadow + shoreline UBOs.

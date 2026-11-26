@@ -575,12 +575,8 @@ void main() {
         lit = shadeGround(baseColor, N, normalLight, shadow, pureConcrete, v_worldPos, macroN, resolveLampNormal, lampLod);
         lit = max(lit + cdSpec * shadow, vec3(0.0));
 
-        // TERRAIN-EDGE-FEATHER-1 (GL terrain_lod_chunk.frag, after the mover contact): the last tile band of the map fades to the sky haze
-        // colour so the straight map perimeter does not cut a hard edge. halfMap 0 means the map size is not known yet.
-        if (uT.edgeFeatherStrength > 0.0 && uT.halfMap > 0.0) {
-            float haze = edgeHazeAmount(v_worldPos.xy, uT.halfMap) * uT.edgeFeatherStrength;
-            lit = mix(lit, uEnv.sceneLight.x < 1.0 ? uEnv.ambLive.rgb : EDGE_HAZE_SKY, clamp(haze, 0.0, 1.0));
-        }
+        // Map-edge and range fog belong to the opaque fog pass.
+
 
         // TERRAIN-SHORELINE-V3/V4 (terrain_lod_chunk.frag, after the edge feather): wet and foam bands measured as the
         // HORIZONTAL run from the waterline through the macro slope, with static fbm jitter on the run, a fade-in over the

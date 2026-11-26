@@ -48,8 +48,7 @@ void main() {
     }
     c.rgb *= uEnv.sceneLight.x * uEnv.sceneLight.yzw;   // LOCAL-LIGHTS-4: same night scale as the ground under it
 
-    if (pc.fogColor.x > 0.0 || pc.fogColor.y > 0.0 || pc.fogColor.z > 0.0 || pc.fogColor.w > 0.0)
-        c.rgb = mix(pc.fogColor.rgb, c.rgb, FogValue);
+    // Opaque screen fog owns distance/height attenuation.
 
     FragColor = c;
     GBuffer1  = vec4(0.5, 0.5, 1.0, 1.0);
