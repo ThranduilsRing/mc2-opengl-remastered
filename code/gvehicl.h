@@ -282,6 +282,8 @@ class GroundVehicle : public Mover {
 		GroundVehicle (void) {
 			init(true);
 		}
+
+		long getDescription() override { return descID; }
 			
 		virtual void init (bool create, ObjectTypePtr objType);
 
