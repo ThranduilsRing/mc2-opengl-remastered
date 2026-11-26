@@ -32,6 +32,21 @@ void bounded(const mc2::beam::Polygon& p) {
 }
 }
 
+TEST_CASE("beam_clip/real camera negative W survives for visible and offscreen firers") {
+    const auto cameraVertex = [](float x, float y) {
+        auto v = at(-x * 2, -y * 2, -1, -2, x);
+        v.clip = mc2::beam::cameraClip(v.clip, true);
+        return v;
+    };
+    for (float start : {0.2f, -1.0f}) {
+        const auto p = mc2::beam::clipTriangle({cameraVertex(start, 0.4f),
+            cameraVertex(0.6f, 0.4f), cameraVertex(0.6f, 0.6f)});
+        bounded(p);
+    }
+    const glm::vec4 parallel{0.2f, 0.4f, 0.5f, 1.0f};
+    CHECK(mc2::beam::cameraClip(parallel, false) == parallel);
+}
+
 TEST_CASE("beam_clip/culled firer ribbon enters the correct edge") {
     // Current world hardpoint projects left of the viewport; its target is visible.
     // The firer has no screen position. Both ribbon triangles must survive.
