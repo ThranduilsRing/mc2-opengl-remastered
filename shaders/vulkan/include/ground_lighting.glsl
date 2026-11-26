@@ -29,12 +29,15 @@ vec3 shadeGround(vec3 baseColor, vec3 N, float normalLight, float shadow,
         // reshape is baked into the pool by the shared CPU producer.
         float moverContact = 0.0;
         if (GROUND_POOL_ENABLED && uT.numPoolLights > 0) {
-            lit += tlp_terrainPoolLight(worldPos, uT.numPoolLights,
+            vec3 pool = tlp_terrainPoolLight(worldPos, uT.numPoolLights,
                                         uT.lightGridDim, vec2(uT.lightGridMinX, uT.lightGridMinY),
                                         vec2(uT.lightGridInvCellX, uT.lightGridInvCellY),
                                         uT.lightPoolSoft, uT.lightPoolMoverDim, uT.lightPoolMoverScale,
                                         uT.lightPoolMoverMax, uT.lightPoolCompress,
                                         GROUND_MOVER_CONTACT, moverContact, N, macroNormal, resolveNormal, normalLod);
+            // Burnin darkness is baked illumination, not lamp reflectance. A shared
+            // modest night response keeps pools continuous across road/tile seams.
+            lit += pool * (uEnv.sceneLight.x < 1.0 ? vec3(0.3) : vec3(1.0));
         }
         // The burnin already contains mission ambient; no second ambient floor.
 

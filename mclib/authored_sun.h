@@ -27,10 +27,13 @@ inline std::array<unsigned char, 3> flatBytes(const std::array<unsigned char, 3>
 
 // R = liveFlat / authoredFlat per channel. Exactly 1 when there is no authored record or the two are equal (no keys).
 inline std::array<float, 3> flatRatio(const AuthoredSun& a, const std::array<unsigned char, 3>& liveSun, const std::array<unsigned char, 3>& liveAmb,
-                                      float z, long floorV) {
+                                      float z, long floorV, bool night = false) {
     if (!a.valid) return {1.0f, 1.0f, 1.0f};
     const auto live = flatBytes(liveSun, liveAmb, z, floorV);
-    const auto auth = flatBytes(a.sun, a.amb, z, floorV);
+    // At night the cached daytime ground still contains its authored sunlight.
+    // Dividing by daytime ambient alone can brighten it instead of dimming it.
+    const float authoredZ = night ? std::clamp(std::sin(a.pitch * 0.01745329252f), 0.0f, 1.0f) : z;
+    const auto auth = flatBytes(a.sun, a.amb, authoredZ, floorV);
     std::array<float, 3> r{1.0f, 1.0f, 1.0f};
     for (int i = 0; i < 3; ++i)
         if (live[i] != auth[i] && auth[i] > 0) r[i] = static_cast<float>(live[i]) / static_cast<float>(auth[i]);

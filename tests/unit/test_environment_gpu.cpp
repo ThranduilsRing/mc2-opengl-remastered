@@ -135,6 +135,20 @@ TEST_CASE("EnvironmentGpu/flat-light ratio is exactly 1 without sun keys, at nig
     CHECK((def.sceneLight[1] == 1.0f && def.sceneLight[2] == 1.0f && def.sceneLight[3] == 1.0f));
 }
 
+TEST_CASE("EnvironmentGpu/night switch dims the full baked daylight, not just its ambient") {
+    using namespace mc2::authored_sun;
+    const AuthoredSun day{true, {200, 180, 160}, {8, 10, 12}, 30.0f};
+    const std::array<unsigned char,3> moon{64,64,64}, ambient{32,32,32};
+    const auto night = flatRatio(day, moon, ambient, 0.0f, 0, true);
+    for (int c = 0; c < 3; ++c) {
+        CHECK(night[c] == doctest::Approx(32.0f / (day.sun[c] / 2 + day.amb[c])));
+        CHECK(night[c] < 1.0f);
+    }
+    CHECK(flatRatio(day, moon, ambient, 0.0f, 0)[0] > 1.0f); // old ambient-only amplification
+    CHECK((flatRatio(day, day.sun, day.amb, 0.5f, 0) == std::array<float,3>{1,1,1}));
+    CHECK((flatRatio(AuthoredSun{}, moon, ambient, 0.0f, 0, true) == std::array<float,3>{1,1,1})); // native night
+}
+
 TEST_CASE("EnvironmentGpu/a keyed save keeps the authored sun across load") {
     using namespace mc2::authored_sun;
     const std::array<unsigned char,3> sun{255, 255, 225}, amb{71, 71, 78}, keySun{255, 214, 160}, keyAmb{50, 50, 55};
