@@ -963,7 +963,8 @@ def magic_brain_payload(src_root, target):
     from tools.mc2x_import.fst import fst_entries, decompress_entry
     profile = Path(src_root) / "mods/magic-brain-1.45"
     tracked = subprocess.run(["git", "-C", str(src_root), "ls-files", "-z", "--",
-                              "mods/magic-brain-1.45"], check=True, capture_output=True).stdout
+                              "mods/magic-brain-1.45"], check=True, capture_output=True,
+                             **console_child.child_kwargs(redirected=True)).stdout
     items = [(str(Path(src_root) / name), name, "support")
              for name in tracked.decode().split("\0") if name and (Path(src_root) / name).is_file()]
     generated = Path(src_root) / "build/magic-brain-1.45"
