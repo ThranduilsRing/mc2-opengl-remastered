@@ -578,9 +578,13 @@ class EditorSmokeTests(unittest.TestCase):
             loose.write_bytes(b"stock")
             entry = (0, 5, 5, "data/art/Buildings.csv", False, b"stock")
             destination = temp / "dependencies.json"
-            with patch.object(smoke, "fst_entries", return_value=[entry]):
+            with patch.object(smoke, "fst_entries", return_value=[entry]), patch.object(
+                    smoke, "reference_data_hashes", return_value={"data/art/buildings.csv": smoke.hashlib.sha256(b"stock").hexdigest()}):
                 facts = smoke.dependency_manifest(temp, destination)
                 self.assertTrue(facts["loose_files"][0]["stock"])
+                with patch.object(smoke, "reference_data_hashes", return_value={}):
+                    with self.assertRaisesRegex(ValueError, "non-stock loose"):
+                        smoke.dependency_manifest(temp, destination)
                 loose.write_bytes(b"MECH mod")
                 with self.assertRaisesRegex(ValueError, "non-stock loose"):
                     smoke.dependency_manifest(temp, destination)
@@ -600,19 +604,22 @@ class EditorSmokeTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "mod.ini"):
                     smoke.dependency_manifest(temp, destination)
 
-    def test_dependency_audit_requires_known_parity_and_declared_hashes(self):
+    def test_dependency_audit_requires_reference_and_declared_hashes(self):
         self.audit.stop()
         with scratch_directory() as temp:
             (temp / "system.cfg").write_bytes(b'[FastFiles]\nl NumFastFiles = 0\n')
-            parity = "data/textures/known.txm"
+            parity = "data/art/known.csv"
             declared = "data/model_overrides/known.glb"
             unknown = "data/textures/unknown.txm"
             excluded = "data/textures/txm_backup/known.txm"
             digest = smoke.hashlib.sha256(b"known").hexdigest()
             (temp / "intentional-asset-changes.json").write_text(json.dumps({declared: digest}))
             destination = temp / "dependencies.json"
-            with patch.object(smoke, "REPO", temp), patch.object(
-                    smoke.seed_parity, "read_snapshot", return_value={parity: digest, excluded: digest}):
+            reference = temp / "reference"
+            source = reference / parity
+            source.parent.mkdir(parents=True)
+            source.write_bytes(b"known")
+            with patch.object(smoke, "REPO", temp), patch.object(smoke.seed_parity, "DEFAULT_REF", reference):
                 for relative in (parity, declared):
                     with self.subTest(accepted=relative):
                         path = temp / relative
@@ -632,6 +639,18 @@ class EditorSmokeTests(unittest.TestCase):
                     with self.assertRaisesRegex(ValueError, relative):
                         smoke.dependency_manifest(temp, destination)
                     path.unlink()
+                with patch.object(smoke.seed_parity, "_sha", wraps=smoke.seed_parity._sha) as hashed:
+                    smoke.dependency_manifest(temp, destination)
+                    hashed.assert_not_called()
+                    source.write_bytes(b"fresh")
+                    with self.assertRaisesRegex(ValueError, parity):
+                        smoke.dependency_manifest(temp, destination)
+                    self.assertEqual(hashed.call_count, 1)
+                source.unlink()
+                with self.assertRaisesRegex(ValueError, parity):
+                    smoke.dependency_manifest(temp, destination)
+                source.write_bytes(b"known")
+                self.assertFalse(smoke.dependency_manifest(temp, destination)["violations"])
 
     def test_stock_preparation_is_scratch_only_and_records_overlay_removal(self):
         with scratch_directory() as temp:

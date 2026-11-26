@@ -380,6 +380,27 @@ class StockInputs:
         return data
 
 
+_REFERENCE_HASHES = {}
+
+
+def reference_data_hashes(ref: Path) -> dict:
+    """Reuse unchanged reference hashes; stat and inventory changes invalidate cached entries."""
+    ref = ref.resolve()
+    previous = _REFERENCE_HASHES.get(ref, {})
+    current = {}
+    for path in (ref / "data").rglob("*"):
+        if not path.is_file():
+            continue
+        relative = path.relative_to(ref).as_posix().lower()
+        stat = path.stat()
+        signature = (stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns, stat.st_ino, stat.st_dev)
+        cached = previous.get(relative)
+        digest = cached[1] if cached and cached[0] == signature else seed_parity._sha(path)
+        current[relative] = (signature, digest)
+    _REFERENCE_HASHES[ref] = current
+    return {relative: entry[1] for relative, entry in current.items()}
+
+
 def dependency_manifest(deploy: Path, destination: Path, allowlist: dict | None = None) -> dict:
     """Audit the complete VFS namespace, including shadows outside mission.fst.
 
@@ -387,9 +408,7 @@ def dependency_manifest(deploy: Path, destination: Path, allowlist: dict | None 
     a changed catalog. Unknown loose data also needs an explicit allowance.
     """
     allowlist = allowlist or {}
-    parity = {path.lower(): digest for path, digest in
-              (seed_parity.read_snapshot(seed_parity.default_seed()) or {}).items()
-              if seed_parity.is_parity(path)}
+    parity = reference_data_hashes(seed_parity.DEFAULT_REF)
     declared = read_json_object(REPO / "intentional-asset-changes.json")
     archives, resolved = {}, {}
     system = fit_fields((deploy / "system.cfg").read_bytes())
@@ -428,7 +447,7 @@ def dependency_manifest(deploy: Path, destination: Path, allowlist: dict | None 
         allowed = allowance.get("sha256") == digest and bool(allowance.get("reason", "").strip())
         reason = allowance.get("reason") if allowed else None
         if not allowed and parity.get(relative) == digest:
-            allowed, reason = True, "seed parity snapshot sha256"
+            allowed, reason = True, "v0.4 reference sha256"
         if not allowed and declared.get(relative) == digest:
             allowed, reason = True, "intentional-asset-changes.json sha256"
         stock = archived is not None and archived["sha256"] == digest
@@ -439,7 +458,7 @@ def dependency_manifest(deploy: Path, destination: Path, allowlist: dict | None 
                     stock=stock, reason=reason)
         shadows.append(fact)
         resolved[relative] = fact
-        if not stock and not allowed:
+        if not allowed:
             violations.append(relative)
     manifest = dict(version=1, system_sha256=hashlib.sha256((deploy / "system.cfg").read_bytes()).hexdigest(),
                     archives=archives, loose_files=shadows,
