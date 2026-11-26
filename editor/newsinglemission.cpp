@@ -76,7 +76,10 @@ BOOL NewSingleMission::OnInitDialog()
 	// Background harnesses must also keep this modal off the visible desktop.
 	extern bool EditorBackgroundLaunch();
 	if (EditorBackgroundLaunch())
+	{
+		ModifyStyleEx(0, WS_EX_NOACTIVATE);
 		SetWindowPos(nullptr, -32000, -32000, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOZORDER);
+	}
 	CComboBox* stock = (CComboBox*)GetDlgItem(IDC_MI_STOCK_COMBO);
 	stock->ResetContent();
 	for (const auto& name : editor::launcher::campaignMissions(EditorInstallPath("data/missions")))
