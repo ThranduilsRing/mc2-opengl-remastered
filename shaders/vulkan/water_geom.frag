@@ -790,7 +790,9 @@ void main(void)
                 float reef = (1.0 - smoothstep(2.5, 4.0 + 1.5 * foamAA, abs(shoreDistance - breakDist + 3.0 * sin(brokenPhase)) * min(shoreSlope / 0.08, 1.0)))
                            + 0.35 * smoothstep(0.0, 4.0, breakDist - shoreDistance) * exp(-max(breakDist - shoreDistance, 0.0) / 14.0);
                 reef *= smoothstep(50.0, 110.0, breakDist);   // only wide shelves break offshore: steep islands get no ring
-                foamMix = clamp((edge * (0.5 + 0.8 * vnoise(WorldPos.xy / 160.0))) * holes * coastWeight + reef * sets * mix(holes, 1.0, 0.6) * max(coastWeight, smoothstep(0.03, 0.07, length(shoreGrad)) * step(abs(shoreDepth - shelfBreak), 6.0)), 0.0, 0.94);
+                // Advect the swash coverage with the foam and pulse it with each arriving wave.
+                float swashCoverage = (0.5 + 0.8 * vnoise(q)) * (0.65 + 0.35 * sin(swashPhase));
+                foamMix = clamp(edge * swashCoverage * holes * coastWeight + reef * sets * mix(holes, 1.0, 0.6) * max(coastWeight, smoothstep(0.03, 0.07, length(shoreGrad)) * step(abs(shoreDepth - shelfBreak), 6.0)), 0.0, 0.94);
             }
         }
         if (shorelineLook == 1 && rippleCrest > 0.65 && coastNight < 0.5) {   // tiny scattered whitecaps where the ripple crests pile up
