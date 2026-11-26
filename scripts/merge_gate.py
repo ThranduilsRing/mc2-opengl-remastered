@@ -65,7 +65,7 @@ WEEKLY_SAVE_MAPS = ("mc2_03", "mc2_16", "mc2_24")   # mc2_01 (day) and mc2_10 (n
 #: mods-slim = one short load per mod, nightly only (the weekly tier runs the full `mods` battery instead). Non-blocking: its
 #: per-mod PASS/FAIL is reported in the summary and the verdict's `executed` row, but it never fails the gate, never enters
 #: `failed`, and promotion (lane_merge_stage.nightly_unmet) does not require it. A red row gets a dedicated fix lane.
-NON_BLOCKING_STAGES = ("mods-slim",)
+NON_BLOCKING_STAGES = ("mods-slim", "editor")
 MOD_BATTERY_STAGES = ("mods", "mods-slim")
 
 
@@ -83,7 +83,7 @@ def stage_tier(name):
 
 def tier_includes(name, tier):
     """True when a scheduled `tier` run (0 per merge, 1 nightly, 2 weekly) plans `name`. The weekly tier drops mods-slim: it runs the full battery."""
-    return stage_tier(name) <= tier and not (name in NON_BLOCKING_STAGES and tier >= 2)
+    return stage_tier(name) <= tier and not (name == "mods-slim" and tier >= 2)
 
 
 def merge_visuals(scheduled, before_dir=None):

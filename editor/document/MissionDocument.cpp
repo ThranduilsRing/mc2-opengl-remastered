@@ -40,9 +40,18 @@ void diagnostic(const Diagnostic& log, std::string_view mission, const LoadError
 {
     if (log) log(std::format("[EDITOR_MODEL v1] mission={} field={} offset={} reason={} rejected=1", logText(mission), logText(error.field), error.offset, error.reason));
 }
+std::filesystem::path streamPath(const std::filesystem::path& path)
+{
+#ifdef _WIN32
+    const auto native = std::filesystem::absolute(path).lexically_normal().make_preferred().native();
+    if (native.size() >= 248 && !native.starts_with(L"\\\\?\\"))
+        return native.starts_with(L"\\\\") ? L"\\\\?\\UNC\\" + native.substr(2) : L"\\\\?\\" + native;
+#endif
+    return path;
+}
 std::expected<std::vector<std::byte>, LoadError> readBytes(const std::filesystem::path& path, std::size_t limit, bool allowEmpty = false)
 {
-    std::ifstream input(path, std::ios::binary | std::ios::ate);
+    std::ifstream input(streamPath(path), std::ios::binary | std::ios::ate);
     if (!input) return std::unexpected(LoadError{pathText(path.filename()), "open_failed", 0});
     const auto size = input.tellg();
     if (size < 0 || (!allowEmpty && size == 0) || static_cast<std::uint64_t>(size) > limit) return std::unexpected(LoadError{pathText(path.filename()), "file_size_limit", 0});
@@ -69,7 +78,7 @@ std::optional<double> number(const Field* field)
 }
 bool writeBytes(const std::filesystem::path& path, std::span<const std::byte> bytes, bool exclusive = false)
 {
-    std::ofstream output(path, std::ios::binary | (exclusive ? std::ios::noreplace : std::ios::trunc));
+    std::ofstream output(streamPath(path), std::ios::binary | (exclusive ? std::ios::noreplace : std::ios::trunc));
     output.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
     output.flush();
     const bool wrote = static_cast<bool>(output);
@@ -90,7 +99,7 @@ std::expected<void, LoadError> recoveryState(const std::filesystem::path& fit)
     const auto prefix = pathText(fit.stem()) + ".transaction.";
     for (std::filesystem::directory_iterator entry(directory, ec), end; !ec && entry != end; entry.increment(ec)) {
         if (!pathText(entry->path().filename()).starts_with(prefix)) continue;
-        std::ifstream journal(entry->path());
+        std::ifstream journal(streamPath(entry->path()));
         std::string state;
         std::getline(journal, state);
         if (state != "committed" && state != "rolled_back") {
@@ -676,6 +685,8 @@ std::expected<void, LoadError> MissionDocument::save(const std::filesystem::path
     };
     auto fit = stem; fit.replace_extension(".fit");
     auto pak = stem; pak.replace_extension(".pak");
+    const auto mission = pathText(fit);
+    fit = streamPath(fit); pak = streamPath(pak);
     const auto transaction = std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
     auto fitStage = fit; fitStage += ".stage." + transaction;
     auto pakStage = pak; pakStage += ".stage." + transaction;
@@ -768,7 +779,7 @@ std::expected<void, LoadError> MissionDocument::save(const std::filesystem::path
     savedFit_ = output;
     savedPlacements_ = placements_;
     savedBrainSidecars_ = brainSidecars_;
-    mission_ = pathText(fit);
+    mission_ = mission;
     return {};
 }
 }

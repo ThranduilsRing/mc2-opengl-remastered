@@ -1,4 +1,4 @@
-"""Build bounded editor proofs and copy fresh lane3 stock inputs without launching an editor."""
+"""Build bounded editor proofs and copy fresh assigned-install stock inputs without launching an editor."""
 import hashlib
 import json
 import os
@@ -11,6 +11,8 @@ import re
 import argparse
 
 ROOT = Path(__file__).resolve().parents[2]
+INSTALL = Path("G:/mc2-installs/editor-tests-1")
+BINARIES = ROOT / "build64-ninja/out/editor"
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts"))
 from console_child import child_kwargs
@@ -46,7 +48,7 @@ def grade_placements(output, evidence):
     report = json.loads((output / "mod-placement.json").read_text())
     if report["id"] != 2 or report["appearance"] != "Starslayer":
         raise ValueError("mod placement identity mismatch")
-    independent = oracle(Path("A:/Games/mc2-opengl/mc2-win64-lane3"), Path("A:/Games/mc2-opengl"), "MC2X-CVE-G")
+    independent = oracle(INSTALL, Path("A:/Games/mc2-opengl"), "MC2X-CVE-G")
     for source in report["sources"]:
         contents, layer, path = independent(source["key"])
         if layer != source["layer"] or path.resolve() != Path(source["source"]).resolve() or (output / "provenance" / source["key"]).read_bytes() != contents:
@@ -55,7 +57,7 @@ def grade_placements(output, evidence):
     if not any(s["key"] == "data/objects/object2.pak" and s["layer"] == "mod:MC2X-CVE-G" for s in report["sources"]):
         raise ValueError("mod placement did not consume overriding definition")
     from run_editor_smoke import fit_fields
-    stock = oracle(Path("A:/Games/mc2-opengl/mc2-win64-lane3"), Path("A:/Games/mc2-opengl"), "")
+    stock = oracle(INSTALL, Path("A:/Games/mc2-opengl"), "")
     profiles = []
     for key in ("data/objects/pilots.csv", "data/objects/badpilots.csv"):
         table = stock(key)[0]
@@ -123,7 +125,7 @@ def grade_outputs(inputs, output):
 
 
 def grade_shipping_shell():
-    binaries = ROOT / "build64/out/editor/RelWithDebInfo"
+    binaries = BINARIES
     shipping = (binaries / "Mission Editor Shell.exe").read_bytes()
     smoke = (binaries / "Mission Editor Smoke.exe").read_bytes()
     for marker in (b"--panel-smoke", b"panel_fixture_seed_failed", b"[EDITOR_PANEL_OPERATION v1]",
@@ -141,16 +143,16 @@ def main():
     parser.add_argument("--asan", action="store_true", help="include ASan for merge candidates")
     args = parser.parse_args()
     from editor.tests.objective_census import census
-    current = census(StockInputs(Path("A:/Games/mc2-opengl/mc2-win64-lane3")))
+    current = census(StockInputs(INSTALL))
     if current != json.loads((ROOT / "editor/tests/objective-census.json").read_text()):
         raise ValueError("stock objective census differs from the committed input hashes and schema")
     print("Objective census: 24 mission hashes, scalar fields and four lists match the committed census", flush=True)
     verify_frozen()
     print("Frozen corpus: nine committed captures, manifest and baseline fingerprints verified", flush=True)
-    directory = ROOT / "scratch" / "e4-proofs" / time.strftime("%Y-%m-%dT%H-%M-%S")
+    directory = Path("G:/mc2-proofs/editor-tests-1") / time.strftime("%Y-%m-%dT%H-%M-%S")
     inputs = directory / "stock"
     inputs.mkdir(parents=True, exist_ok=False)
-    stock = StockInputs(Path("A:/Games/mc2-opengl/mc2-win64-lane3"))
+    stock = StockInputs(INSTALL)
     hashes = {}
     for mission in STOCK_MISSIONS:
         for extension in ("fit", "pak"):
@@ -160,20 +162,18 @@ def main():
             hashes[name] = hashlib.sha256(data).hexdigest()
     (directory / "inputs.json").write_text(json.dumps(hashes, indent=2) + "\n", encoding="utf-8")
     env = dict(os.environ, _MSPDBSRV_ENDPOINT_=f"sol-editor-egl-{os.getpid()}",
-               ASAN_OPTIONS="detect_leaks=0:halt_on_error=1")
+               ASAN_OPTIONS="detect_leaks=0:halt_on_error=1", TEMP=str(directory.resolve()), TMP=str(directory.resolve()))
     commands = [([sys.executable, "-B", "-m", "unittest",
                   "editor.tests.test_placement_proofs.LegacyLinkTests"], 120, "legacy-link-order-run")]
-    for target in ("editor_document_tests", "editor_document_tests_asan", "EditorShell", "EditorShellSmoke", "editor_panel_tests", "editor_objective_reader_tests"):
-        if target == "editor_document_tests_asan" and not args.asan:
-            continue
-        cmake = "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe"
-        commands.append(([cmake, "--build", "build64", "--config", "RelWithDebInfo", "--target", target,
-                          "--parallel", "2", "--", "-m:1", "-p:CL_MPCount=2"], 300, f"{target}-build"))
+    targets = ["editor_document_tests", "EditorShell", "EditorShellSmoke", "editor_panel_tests", "editor_objective_reader_tests"]
+    if args.asan:
+        targets.append("editor_document_tests_asan")
+    commands.append(([sys.executable, "scripts/ninja_build.py", *targets], 300, "editor-build"))
     for target in ("editor_document_tests", "editor_document_tests_asan", "editor_panel_tests"):
         if target == "editor_document_tests_asan" and not args.asan:
             continue
         label = f"{target}-run"
-        command = [str(ROOT / "build64/out/editor/RelWithDebInfo" / (target + ".exe")),
+        command = [str(BINARIES / (target + ".exe")),
                    "--no-breaks", "--stock-dir", str(inputs)]
         if target != "editor_panel_tests":
             command += ["--byte-grade-dir", str(directory / label), "--require-stock-corpus"]
@@ -181,10 +181,10 @@ def main():
             output.mkdir()
             for extension in ("fit", "pak"):
                 (output / f"e5_reference_before.{extension}").write_bytes((FROZEN / f"e5_reference_before.{extension}").read_bytes())
-            command += ["--placement-base", "A:/Games/mc2-opengl/mc2-win64-lane3", "--placement-mods", "A:/Games/mc2-opengl",
+            command += ["--placement-base", str(INSTALL), "--placement-mods", "A:/Games/mc2-opengl",
                         "--placement-goldens", str(FROZEN), "--placement-output", str(output)]
         else:
-            command += ["--placement-base", "A:/Games/mc2-opengl/mc2-win64-lane3", "--placement-mods", "A:/Games/mc2-opengl",
+            command += ["--placement-base", str(INSTALL), "--placement-mods", "A:/Games/mc2-opengl",
                         "--placement-goldens", str(FROZEN), "--placement-output", str(directory / "panel-placements")]
         if target == "editor_document_tests_asan":
             # Memory-heavy ASan suites need headroom under host load and must cover every native case.
@@ -235,9 +235,9 @@ def main():
                 grade_panel(name, ROOT / path, 0, require_render=False)
                 panel_negative_controls(name, ROOT / path)
             objective_widgets = ROOT / dict(rows)["objectives_panel"]
-            command = [str(ROOT / "build64/out/editor/RelWithDebInfo/editor_objective_reader_tests.exe"),
+            command = [str(BINARIES / "editor_objective_reader_tests.exe"),
                        "--no-breaks", "--byte-grade-dir", str(objective_widgets),
-                       "--placement-base", "A:/Games/mc2-opengl/mc2-win64-lane3",
+                       "--placement-base", str(INSTALL),
                        "--placement-mods", "A:/Games/mc2-opengl", "--placement-goldens", str(FROZEN),
                        "--placement-output", str(directory / "reader-placements")]
             print(subprocess.list2cmdline(command), flush=True)

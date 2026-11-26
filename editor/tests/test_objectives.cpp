@@ -410,11 +410,11 @@ TEST_CASE("objectives/model preview applies appearance types atomically without 
     CHECK(doc->fitBytes() == original);
 }
 
-TEST_CASE("objectives/LF blank line collapse matches the RAM reader")
+TEST_CASE("objectives/LF blank lines match the RAM reader")
 {
     const auto fit = messageFixture("\"a\n\nb\"");
     auto doc = MissionDocument::decode(fit, packet(), "lf", {}); REQUIRE(doc);
-    CHECK(doc->objectives()[0].entries[1][0].payload[0] == Scalar{std::string("ab")});
+    CHECK(doc->objectives()[0].entries[1][0].payload[0] == Scalar{std::string("a\nb")});
     CHECK(doc->fitBytes() == fit);
 }
 

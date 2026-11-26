@@ -10,8 +10,9 @@ std::string_view line(std::string_view bytes, std::size_t& at, std::size_t limit
     const auto begin = at;
     while (at < bytes.size() && at - begin < limit && bytes[at] != '\r' && bytes[at] != '\n') ++at;
     const auto result = bytes.substr(begin, at - begin);
+    const bool cr = at < bytes.size() && bytes[at] == '\r';
     ++at;
-    if (at < bytes.size() && bytes[at] == '\n') ++at;
+    if (cr && at < bytes.size() && bytes[at] == '\n') ++at;
     return result;
 }
 bool declaration(std::string_view text, std::string_view search)

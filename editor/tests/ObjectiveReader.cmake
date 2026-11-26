@@ -21,6 +21,13 @@ add_executable(editor_objective_reader_tests EXCLUDE_FROM_ALL
     "${CMAKE_SOURCE_DIR}/mclib/err.cpp"
     "${CMAKE_SOURCE_DIR}/GameOS/src/platform_str.cpp")
 target_compile_features(editor_objective_reader_tests PRIVATE cxx_std_23)
+target_compile_definitions(editor_objective_reader_tests PRIVATE MC2_EDITOR_READER_TESTS=1 MC2_EDITOR_SMOKE_HOST=1)
+target_sources(editor_objective_reader_tests PRIVATE
+    shell/EntityPanels.cpp shell/BrainPathPanel.cpp shell/ObjectivePanel.cpp shell/ObjectivePresentation.cpp
+    shell/PanelProof.cpp shell/ObjectiveProof.cpp shell/FileWorkflow.cpp shell/FileProof.cpp
+    "${CMAKE_SOURCE_DIR}/3rdparty/imgui/misc/cpp/imgui_stdlib.cpp")
+target_include_directories(editor_objective_reader_tests PRIVATE shell)
+target_link_libraries(editor_objective_reader_tests PRIVATE imgui SDL2::SDL2)
 target_include_directories(editor_objective_reader_tests PRIVATE
     "${CMAKE_SOURCE_DIR}/mclib" "${CMAKE_SOURCE_DIR}/code"
     "${CMAKE_SOURCE_DIR}/GameOS" "${CMAKE_SOURCE_DIR}/GameOS/include"
