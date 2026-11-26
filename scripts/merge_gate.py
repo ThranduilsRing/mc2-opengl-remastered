@@ -1028,12 +1028,18 @@ def git(*args):
                                    **console_child.child_kwargs(redirected=True)).strip()
 
 
-def nightly_base(head):
-    for tag in git("tag", "--merged", head, "--list", "promote-*", "--sort=-creatordate").splitlines():
-        base = git("rev-parse", tag + "^{commit}")
-        if base != head:
-            return tag, base
-    raise ValueError(f"no promote-* tag is a strict ancestor of {head}; pass --base")
+def nightly_capture_baseline(steps, head):
+    """A published HEAD cannot supply a before set; --base selects changes, not a runtime payload."""
+    if not any(n.startswith("capture-before") and not e.get("MC2_GATE_SKIP_REASON") for n, _, e in steps):
+        return steps
+    from exe_fingerprint import extract, sha_agrees
+    fp = extract(PUBLISHED / "mc2.exe")
+    if not fp.get("present") or sha_agrees(fp.get("sha"), head) is not True:
+        return steps  # Unknown provenance still fails closed in check_capture_commit.
+    reason = "published executable equals HEAD; no historical baseline payload available (--base selects changes only)"
+    return [(n, c, dict(e, MC2_GATE_SKIP_REASON=e.get("MC2_GATE_SKIP_REASON") or reason)
+             if n.startswith(("capture-before", "compare-captures", "compare-noise")) else e)
+            for n, c, e in steps]
 
 
 def run_child(command, cwd, env):
@@ -2348,13 +2354,7 @@ def main(argv=None):
             window = {}
     except (OSError, ValueError):
         pass
-    base = args.base or (None if args.nightly else window.get("base"))
-    if not base and args.nightly:
-        try:
-            tag, base = nightly_base(head)
-        except (ValueError, subprocess.CalledProcessError) as exc:
-            ap.error(str(exc))
-        print(f"[merge_gate] no --base given: defaulting nightly base to {tag} {base}", flush=True)
+    base = args.base or window.get("base")
     if not base:
         # No --base and no verified window: default to the current nifty tip (the lane base), resolved at start. The laptop
         # gate runs merge_gate without --base; refusing it made a whole window's run fail on a missing argument (W139).
@@ -2411,6 +2411,8 @@ def main(argv=None):
     for name, command, _ in steps:
         if name in MOD_BATTERY_STAGES and window_number:
             command += ['--window', str(window_number)]
+    if args.nightly:
+        steps = nightly_capture_baseline(steps, head)
     steps = settle_capture_reference(steps)   # last: the lookup reads the same final capture-after row execution stores under
     if args.expect_head and git("rev-parse", args.expect_head + "^{commit}") != head:
         ap.error("HEAD does not match --expect-head")
