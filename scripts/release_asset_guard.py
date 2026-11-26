@@ -47,7 +47,8 @@ def _text_exception(name: str) -> bool:
     return (PurePosixPath(name).suffix in TEXT_SUFFIXES and
             (name.startswith(TOOL_DIRS + ("docs/", "scripts/tests/")) or
              name in {"scripts/bt2018_retarget_clips.py",
-                      "tests/unit/fixtures/stock_names.txt", "tools/mech_import/build_marauder.py"}))
+                      "tests/unit/fixtures/stock_names.txt", "tools/mech_import/build_marauder.py",
+                      "tools/import_mechs.py"}))
 
 
 def _path_reason(name: str) -> str | None:

@@ -168,7 +168,7 @@ MUTATED_ROOTS = (
 )
 MUTATED_FILES = (
     "scripts/console_child.py", "scripts/smoke_lib/child_registry.py",
-    "data/terrain_materials.json", "data/visual_tuning.json",
+    "data/terrain_materials.json", "data/visual_tuning.json", "data/missions/mc2_13.biome.fit",
     "data/tgl/spotlight.ini", "data/tgl/marblecliff.ini", "data/tgl/MarbleCliffGLB.glb",
     # stock-tree-upscale: deploy-cooked 1024 sidecars beside the stock 128 TGAs (deploy_payload.tree_upscale_payload, pins in
     # data/kit/tree-upscale.json); every deploy may rewrite them, so they are never a shared seed inode.

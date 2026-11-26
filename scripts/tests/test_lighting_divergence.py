@@ -30,7 +30,7 @@ def test_missing_native_call_is_a_broken_census():
 def test_changed_native_floor_fails_without_repinning(monkeypatch):
     live = copy.deepcopy(checker.scan())
     path, name, value = live['ambient_floor_scalar'][0]
-    live['ambient_floor_scalar'][0] = (path, name, str(float(value) + 0.1))
+    live['ambient_floor_scalar'][0] = (path, name, value + ' + 0.1')
     monkeypatch.setattr(checker, 'scan', lambda: live)
     monkeypatch.setattr('sys.argv', ['check-lighting-divergence.py'])
     assert checker.main() == 1
