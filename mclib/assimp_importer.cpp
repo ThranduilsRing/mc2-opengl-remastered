@@ -1362,7 +1362,6 @@ void RegisterImportedAnim(mc2::czstring path, TG_TypeMultiShape* out, const Skel
     // Reuse package travel, but lock the final grounded feet rather than raw ankles.
     if (scene->mRootNode->FindNode("mw5_forward"))
         for (auto& [clip, curve] : e.distanceCurves) {
-            if (!mc2ground::contactCurveAllowed(path, clip)) continue;
             std::vector<std::vector<glm::mat4>> poses;
             for (size_t f = 0; f < curve.distance.size(); ++f) {
                 std::vector<mc2skel::GpuBone> bones;
@@ -1373,7 +1372,7 @@ void RegisterImportedAnim(mc2::czstring path, TG_TypeMultiShape* out, const Skel
                 poses.push_back(std::move(pose));
             }
             e.plants[clip] = mc2ground::buildPlants(e.grounding, poses, curve.distance,
-                                                   clip == "atlas_moveCoreWalkBwd");
+                clip == "atlas_moveCoreWalkBwd", mc2ground::contactCurveAllowed(path, clip));
         }
     if (mechImportGpuEnabled() && !bake.rest.empty()) {
         e.gpuMode = true;
@@ -1520,6 +1519,7 @@ void groundActorPose(const ImportedAnimEntry& e, const ActorAnimState& s,
                      std::vector<mc2skel::GpuBone>& globals, unsigned frameStamp,
                      const mc2mechanim::VisualGround* ground = nullptr) {
     if (mc2clip::groundingRole(e.groundingRoles, s.activeClip) == "feet") {
+        ZoneScopedN("Mech.FootLockIK");
         std::vector<glm::mat4> pose(globals.size());
         for (size_t b = 0; b < globals.size(); ++b)
             for (int r = 0; r < 4; ++r)
@@ -1534,6 +1534,7 @@ void groundActorPose(const ImportedAnimEntry& e, const ActorAnimState& s,
                 legLift[side] = ground->under(ground->ctx, &model.x) / e.scale;
             }
         std::array<glm::vec3, 2> targets;
+        std::array<glm::quat, 2> rotations;
         const auto plant = e.plants.find(s.activeClip);
         const mc2ground::PlantTrack* track = nullptr;
         if (plant != e.plants.end()) {
@@ -1543,12 +1544,16 @@ void groundActorPose(const ImportedAnimEntry& e, const ActorAnimState& s,
         const bool locking = s.locomotion && track && !track->feet.empty();
         if (locking) {
             targets = track->sample(s.clipTimeSec / s.durationSec);
+            rotations = track->sampleRotations(s.clipTimeSec / s.durationSec);
             const float weight = s.previousClip.empty() ? 1.0f : std::clamp(s.fadeTimeSec /
                 mc2clip::fadeDuration(s.previousClip, s.activeClip), 0.0f, 1.0f);
-            for (int side = 0; side < 2; ++side)
+            for (int side = 0; side < 2; ++side) {
                 targets[side] = glm::mix(glm::vec3(pose[e.grounding.legs[side].foot][3]), targets[side], weight);
+                rotations[side] = glm::slerp(mc2ground::columnQuaternion(pose[e.grounding.legs[side].foot]), rotations[side], weight);
+            }
         }
-        mc2ground::solve(e.grounding, pose, ground ? legLift : nullptr, locking ? &targets : nullptr);
+        mc2ground::solve(e.grounding, pose, ground ? legLift : nullptr, locking ? &targets : nullptr,
+            locking ? &rotations : nullptr);
         if (s_mechSkelTrace && frameStamp % 6 == 0) {
             float soles[2] = {1e30f, 1e30f};
             for (int side = 0; side < 2; ++side)

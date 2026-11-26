@@ -8,6 +8,7 @@
 #include "mech_clip_state.h"
 #include "mech_grounding.h"
 #include "mw5_contact_passes.h"
+#include <chrono>
 #include "foot_grounding.h"
 #include "mech_model_delta.h"
 #include "unit_anim_state.h"
@@ -351,6 +352,25 @@ TEST_CASE("imported grounding: soles contact, reverse knees and torso motion sur
         }
         CHECK(pose[leg.calf][3].z < 0); // retain the source bend plane
     }
+    std::array<glm::vec3, 2> targets{glm::vec3(pose[2][3]), glm::vec3(pose[5][3])};
+    targets[0] += glm::vec3(.05f, .15f, .05f);
+    auto locked = original;
+    mc2ground::solve(rig, locked, nullptr, &targets);
+    CHECK(glm::length(glm::vec3(locked[2][3]) - targets[0]) < 1e-5f);
+    auto repeated = original;
+    mc2ground::solve(rig, repeated, nullptr, &targets);
+    CHECK(repeated == locked); // no dependency on an earlier frame's solve
+    const std::array<glm::quat, 2> rotations{mc2ground::columnQuaternion(locked[2]),
+                                           mc2ground::columnQuaternion(locked[5])};
+    const float lift[2] = {.1f, 0};
+    repeated = original;
+    mc2ground::solve(rig, repeated, lift, &targets, &rotations);
+    CHECK(glm::length(glm::vec3(repeated[2][3]) - targets[0] - glm::vec3(0, .1f, 0)) < 1e-5f);
+    targets[0].x += 100;
+    mc2ground::solve(rig, repeated, nullptr, &targets);
+    const float reach = glm::length(glm::vec3(original[1][3] - original[0][3])) +
+                        glm::length(glm::vec3(original[2][3] - original[1][3]));
+    CHECK(glm::length(glm::vec3(repeated[2][3] - repeated[0][3])) <= reach);
 }
 
 TEST_CASE("imported grounding: a toe-down swing foot keeps its sole height and knee side") {
@@ -721,16 +741,23 @@ TEST_CASE("clip state: MW5 grounded stance drift at installed gesture speeds") {
             };
             for (size_t f = 0; f < curve.distance.size(); ++f)
                 poses.push_back(samplePose(float(f) * curve.duration / float(curve.distance.size() - 1)));
-            const auto plants = mc2ground::buildPlants(rig, poses, curve.distance, gesture == kGestureReverse);
+            const auto packageDistance = curve.distance;
+            const bool refine = mc2ground::contactCurveAllowed(asset.path().string(), choice.clip);
+            const auto plants = mc2ground::buildPlants(rig, poses, curve.distance, gesture == kGestureReverse, refine);
+            if (!refine) CHECK(curve.distance == packageDistance);
             REQUIRE_FALSE(plants.feet.empty());
             float time = 0, world = 0, peak = 0, maxVelocity = 0, reachError = 0;
+            double solveSeconds = 0;
             float drift[2] = {}, previousWorld[2][2] = {};
             int previousContact[2] = {-1, -1}, contactFrames = 0;
             const float dt = 1.0f / 60, moved = speed * dt;
             for (int f = 0; f < 600; ++f) {
                 auto pose = samplePose(time);
                 const auto targets = plants.sample(time / curve.duration);
-                mc2ground::solve(rig, pose, nullptr, &targets);
+                const auto rotations = plants.sampleRotations(time / curve.duration);
+                const auto started = std::chrono::steady_clock::now();
+                mc2ground::solve(rig, pose, nullptr, &targets, &rotations);
+                solveSeconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
                 const int frame = std::min(int(time / curve.duration * plants.feet.size()), int(plants.feet.size()) - 1);
                 for (int k = 0; k < 2; ++k) {
                     const auto ankle = glm::vec3(pose[rig.legs[k].foot][3]);
@@ -753,6 +780,10 @@ TEST_CASE("clip state: MW5 grounded stance drift at installed gesture speeds") {
             }
             std::printf("MW5_CONTACT %s %s stance_cm=%.3f peak_cm_s=%.3f contact_frames=%d speed=%.3f reach_cm=%.3f\n",
                 asset.path().stem().string().c_str(), choice.clip, peak * 100, maxVelocity * 100, contactFrames, speed, reachError * 100);
+            const char* reason = !contactFrames ? "NO_MEASURABLE_CONTACT" : peak < .02f ? "PASS" :
+                reachError > .0001f ? "REACH_CLAMP_RESIDUAL" : "PHASE_INTERPOLATION_DRIFT";
+            std::printf("MW5_LOCK %s %s solve20_ms=%.4f reason=%s\n",
+                asset.path().stem().string().c_str(), choice.clip, solveSeconds * 1000 * 20 / 600, reason);
             CHECK(contactFrames > 0);
             CHECK(peak < .02f);
         }
