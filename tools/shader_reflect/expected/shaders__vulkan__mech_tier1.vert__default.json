@@ -11,7 +11,7 @@
           "matrix_stride": null,
           "name": "instances",
           "offset": 0,
-          "type": "_501"
+          "type": "_509"
         }
       ],
       "name": "InstanceBuffer"
@@ -24,7 +24,7 @@
           "matrix_stride": null,
           "name": "bones",
           "offset": 0,
-          "type": "_554"
+          "type": "_562"
         }
       ],
       "name": "BoneBuffer"
