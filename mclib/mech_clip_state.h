@@ -255,8 +255,8 @@ inline float footDrift(float actualSpeed, float clipStrideSpeed) {
 }
 
 // Walk/run clips have different durations; preserve the planted leg on adoption.
-inline float locomotionPhase(float time, float oldDuration, float newDuration) {
-    return oldDuration > 0 && newDuration > 0 ? std::fmod(time / oldDuration, 1.0f) * newDuration : 0.0f;
+inline float locomotionPhase(float clipSec, float oldDuration, float newDuration) {
+    return oldDuration > 0 && newDuration > 0 ? std::fmod(clipSec / oldDuration, 1.0f) * newDuration : 0.0f;
 }
 
 } // namespace mc2clip
