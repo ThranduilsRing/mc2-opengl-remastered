@@ -13,6 +13,7 @@ std::uint32_t g_generation = 1;
 const char* name(Policy p) { return p == Policy::Legacy ? "legacy" : "techbrain"; }
 static bool missionFitHasBrainBlock(std::string_view) { return false; }
 static bool overlayBrainFile(std::string_view) { return false; }
+bool profileInstalled(std::string_view) { return true; }
 #include "review_decide.inc"
 }
 namespace {

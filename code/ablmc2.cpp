@@ -10,6 +10,7 @@
 #include <climits>
 #include "game_rules.h"
 #include "brain_execution_policy.h"
+#include "Gates/gate_cold.h"
 #include "../mclib/vfs.h"
 
 
