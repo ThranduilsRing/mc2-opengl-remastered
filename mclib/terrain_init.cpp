@@ -24,6 +24,8 @@
 
 
 //---------------------------------------------------------------------------
+bool g_terrainAuthoredMaterialsOnly = false;
+
 // Per-vertex heightfield and material copies the terrain LOD-chunk load phases of Terrain::init share.
 struct TerrainLodInitFrame {
 	std::vector<float> elev;
@@ -1250,6 +1252,7 @@ void Terrain::initColorMapLoad() {
 
 // Select the terrain material profile for this mission.
 void Terrain::initMaterialProfile() {
+	g_terrainAuthoredMaterialsOnly = false;
 	//-----------------------------------------------------------------
 	// C1 tactical material profile selection. Whitelist-only; default
 	// LEGACY preserves byte-for-byte pre-C1 rendering on every other
@@ -1278,8 +1281,8 @@ void Terrain::initMaterialProfile() {
 		bool authoredOnly = false;
 		if (biome.open(biomePath.c_str()) == NO_ERR && biome.seekBlock("TerrainMaterials") == NO_ERR &&
 			biome.readIdBoolean("AuthoredOnly", authoredOnly) == NO_ERR && authoredOnly) {
-			g_terrainMaterialProfile = static_cast<int>(TERRAIN_MAT_PROFILE_AUTHORED);
-			mc2::fmt::print_out("[TerrainMaterials] authored-only path={}\n", mc2::fmt::safe(biomePath));
+			g_terrainAuthoredMaterialsOnly = true;
+			mc2::fmt::print_out("[TerrainMaterials] authored-only path={}\n", mc2::fmt::safe(biomePath.c_str()));
 		}
 	}
 }

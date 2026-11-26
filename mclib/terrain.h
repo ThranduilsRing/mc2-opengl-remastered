@@ -88,7 +88,6 @@ bool mc2TerrainLodChunkEnabled();
 enum class TerrainMaterialProfile : int32_t {
 	TERRAIN_MAT_PROFILE_LEGACY   = 0,
 	TERRAIN_MAT_PROFILE_SAND_M24 = 1,
-	TERRAIN_MAT_PROFILE_AUTHORED = 2,
 };
 using enum TerrainMaterialProfile;
 extern int g_terrainMaterialProfile;
