@@ -24,17 +24,17 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/run_editor_smoke.py` | 1748 | `nofocus.spawn` | offscreen |
 | `scripts/run_mp_loopback_proof.py` | 139 | `nofocus.spawn` | offscreen |
 | `scripts/run_player_path.py` | 150 | `nofocus.spawn` | offscreen |
-| `scripts/run_smoke.py` | 419 | `nofocus.spawn` | offscreen |
+| `scripts/run_smoke.py` | 421 | `nofocus.spawn` | offscreen |
 | `scripts/run_smoke_asan.py` | 203 | `nofocus.spawn` | offscreen |
 | `scripts/run_tool_capture.py` | 108 | `nofocus.spawn` | offscreen |
-| `scripts/run_visual_capture.py` | 455 | `nofocus.spawn` | offscreen |
-| `scripts/run_visual_capture.py` | 819 | `nofocus.spawn` | offscreen |
+| `scripts/run_visual_capture.py` | 564 | `nofocus.spawn` | offscreen |
+| `scripts/run_visual_capture.py` | 938 | `nofocus.spawn` | offscreen |
 | `scripts/screen_shot.py` | 103 | `nofocus.spawn` | offscreen |
 | `scripts/smoke_lib/runner.py` | 347 | `nofocus.spawn` | offscreen |
 | `scripts/sweep_campaign.py` | 108 | `nofocus.spawn` | offscreen |
 | `scripts/test_release_zip_install.py` | 263 | `nofocus.run` | offscreen |
 | `scripts/tests/test_abl_static_alloc.py` | 88 | `nofocus.run` | offscreen |
-| `scripts/tests/test_abl_static_alloc.py` | 125 | `nofocus.run` | offscreen |
+| `scripts/tests/test_abl_static_alloc.py` | 126 | `nofocus.run` | offscreen |
 | `scripts/tests/test_gpu_routing.py` | 60 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_harness_desktop_safety.py` | 173 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_harness_desktop_safety.py` | 451 | `nofocus.spawn` | offscreen |
@@ -85,12 +85,11 @@ in the background.
 
 | file | line | how an agent run stays in the background |
 | --- | --- | --- |
-| `launch_recon_mission.ps1` | 26 | interactive user launcher. When CLAUDECODE is set (an agent shell) it exports the no-focus env so the engine stays in the background: windowed, parked offscreen, no cursor grab, silent audio. |
 | `run-editor.bat` | 20 | interactive user launcher. The MFC editor frame maximizes and takes focus on start and has no offscreen mode, so under CLAUDECODE (an agent shell) this refuses to run; agents use scripts/run_editor_smoke.py (nofocus.spawn). |
 | `run-mc2.bat` | 14 | interactive user launcher. When CLAUDECODE is set (an agent shell) it exports the no-focus env so the engine stays in the background: windowed, parked offscreen, no cursor grab, silent audio. |
 | `run-with-log.bat` | 27 | interactive user launcher. When CLAUDECODE is set (an agent shell) it exports the no-focus env so the engine stays in the background: windowed, parked offscreen, no cursor grab, silent audio. |
 
-Total shell launchers: 4
+Total shell launchers: 3
 
 ## User tools, not harness
 
