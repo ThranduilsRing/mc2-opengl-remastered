@@ -9,6 +9,7 @@
 #include "../../RenderCore/gpu_abi/GpuStaticPropInstance.h"
 #include "gos_postprocess.h"
 #include "mc2fmt.h"
+#include "diagnostic_trace.h"
 #include "Gates/gate.h"
 #include "gameos.hpp"   // gos_GetUserDataDirectory
 #include "shadow_mask_asset.h"
@@ -556,7 +557,8 @@ void ShadowBake::retire(uint64_t epoch) {
             const double ms = timestampPeriodNs_ * 1e-6;
             auto span = [&](uint32_t a, uint32_t b) { return static_cast<double>(ts[b] - ts[a]) * ms; };
             const double object = span(tail + 2, tail + 5);
-            mc2::fmt::print_err("[SHADOW_BAKE] object split gpu_ms clear={:.3f} terrain={:.3f} casters={:.3f} partial={}\n",
+            if (mc2_diag::tagRequested("SHADOW_BAKE_SPLIT"))
+            mc2::fmt::print_err("[SHADOW_BAKE_SPLIT] object gpu_ms clear={:.3f} terrain={:.3f} casters={:.3f} partial={}\n",
                                 span(tail + 2, tail + 3), span(tail + 3, tail + 4), span(tail + 4, tail + 5), objectPartial_);
             if (recordedMask_ && warm_) {
                 mc2::fmt::print_err("[SHADOW_BAKE] warm load: gpu_ms upload={:.2f} object_map={:.2f} cpu_ms={:.2f} (disk read {:.2f})\n",
@@ -1191,7 +1193,8 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     }
     const auto logDirtyStats = [&] {
         const double n = incTimed_ ? incTimed_ : 1;
-        mc2::fmt::print_err("[SHADOW_BAKE] dirty split gpu_ms clear={:.3f} casters={:.3f} pcss={:.3f} march={:.3f} resolve={:.3f} batches={}\n",
+        if (mc2_diag::tagRequested("SHADOW_BAKE_SPLIT"))
+        mc2::fmt::print_err("[SHADOW_BAKE_SPLIT] dirty gpu_ms clear={:.3f} casters={:.3f} pcss={:.3f} march={:.3f} resolve={:.3f} batches={}\n",
                             incStageMs_[4] / n, (incStageMs_[0] - incStageMs_[4]) / n, incStageMs_[1] / n, incStageMs_[2] / n, incStageMs_[3] / n, incTimed_);
         const uint64_t frames = epoch - statsEpoch_ + 1;
         mc2::fmt::print_err("[SHADOW_BAKE] dirty queue drained: drained={} sub_tiles={} batches={} batch_gpu_ms mean={:.3f} max={:.3f} (budget {} sub-tiles a frame) object_map_records={} dirty_batches={} local_tile_rebakes={} frames={} records_per_1000={:.2f} batches_per_1000={:.2f} local_tiles_per_1000={:.2f}\n",
@@ -1451,7 +1454,7 @@ void ShadowBake::applyLiveEvent(const std::vector<GpuStaticPropInstance>& before
 }
 
 bool ShadowBake::diagOn() {
-    static const bool s_on = false;
+    static const bool s_on = mc2_diag::tagRequested("SHADOW_BAKE_COMPARE");
     return s_on;
 }
 
