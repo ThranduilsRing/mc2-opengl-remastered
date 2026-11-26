@@ -1,5 +1,4 @@
 #include "gos_render.h"
-#include "load_scope.h"
 #include "loading_pump_meter.h"
 #include "gos_smoke.h"
 #include "mc2fmt.h"
@@ -251,7 +250,6 @@ void end_loading_events()
 
 void pump_loading_events()
 {
-    if (mc2::load::checkpoint) mc2::load::checkpoint();
     auto& meter = mc2::loadpump::meter;
     if (SmokeMode::state().headless) {
         meter.service(SDL_GetTicks64(), true);

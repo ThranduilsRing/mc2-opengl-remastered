@@ -4,7 +4,6 @@
 #include "mc2fmt.h"
 #include "mc2str.h"
 #include "../GameOS/gameos/load_scope.h"
-#include "../GameOS/gameos/gos_render.h"
 #include "../GameOS/gameos/vk_render_infra.h"
 #include "texture_assets.h"
 #include "Gates/gate.h"
@@ -25,7 +24,6 @@ class EditorLoadProgress {
 public:
 	EditorLoadProgress() {
 		current = this;
-		graphics::begin_loading_events();
 		if (enabled) EnableWindow(frame, FALSE);
 		HWND parent = EditorInterface::instance()->GetSafeHwnd();
 		label = CreateWindowExA(0, "STATIC", "Loading mission", WS_CHILD | WS_VISIBLE,
@@ -56,7 +54,6 @@ public:
 	}
 	~EditorLoadProgress() {
 		pump();
-		graphics::end_loading_events();
 		mc2::load::checkpoint = previousCheckpoint;
 		current = previous;
 		DestroyWindow(bar);
