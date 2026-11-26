@@ -50,7 +50,7 @@ TEST_CASE("ReviewRules/save load refreshes policy in both directions before BRN1
     const auto oldRules = mc2::rules::current();
     const auto oldPolicy = mc2::brainpolicy::current();
     mc2::gate::ScopedOverride<"MC2_BRAIN_POLICY"> automatic("auto");
-    mc2::gate::ScopedOverride<"MC2_PLAY_MISSION"> noCommander("0");
+    mc2::gate::ScopedOverride<"MC2_PLAY_MISSION"> commander("1");
     LogisticsData data;
     LogisticsData::instance = &data;
     for (const long ai : {1L, 0L}) {
