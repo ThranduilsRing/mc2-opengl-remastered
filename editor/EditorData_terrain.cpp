@@ -4,6 +4,7 @@
 #include "mc2fmt.h"
 #include "mc2str.h"
 #include "../GameOS/gameos/load_scope.h"
+#include "../GameOS/gameos/gos_render.h"
 #include "../GameOS/gameos/vk_render_infra.h"
 #include "texture_assets.h"
 #include "Gates/gate.h"
