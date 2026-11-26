@@ -134,7 +134,9 @@ TEST_CASE("game rules: campaign save round trip through LogisticsMissionInfo") {
     REQUIRE(in.open(path.c_str()) == NO_ERR);
     CHECK(loaded.load(in).has_value());
     in.close();
-    CHECK(loaded.getRules() == battleTechPreset());
+    auto expected = battleTechPreset();
+    migrateLegacyMods(expected, legacyCampaignMods());
+    CHECK(loaded.getRules() == expected);
     std::remove(path.c_str());
 }
 
@@ -149,7 +151,9 @@ TEST_CASE("game rules: an old save without GameRules loads with the defaults and
     REQUIRE(in.open(path.c_str()) == NO_ERR);
     CHECK(loaded.load(in).has_value());
     in.close();
-    CHECK(loaded.getRules() == GameRules{});
+    auto expected = GameRules{};
+    migrateLegacyMods(expected, legacyCampaignMods());
+    CHECK(loaded.getRules() == expected);
     std::remove(path.c_str());
 }
 
@@ -285,7 +289,9 @@ TEST_CASE("game rules: clear resets and a campaign save names its campaign file 
     std::remove(save.c_str());
     std::remove(campaign.c_str());
     REQUIRE(r.has_value());
-    CHECK(loaded.getRules() == battleTechPreset());   // the campaign-file path (logisticsmissioninfo.cpp, end of load), not the skirmish early return
+    auto expected = battleTechPreset();
+    migrateLegacyMods(expected, legacyCampaignMods());
+    CHECK(loaded.getRules() == expected);   // the campaign-file path (logisticsmissioninfo.cpp, end of load), not the skirmish early return
 }
 
 TEST_CASE("game rules: the published snapshot defaults and republishes") {

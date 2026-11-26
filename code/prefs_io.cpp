@@ -42,6 +42,7 @@ std::vector<mc2::options::PreferenceValue> CPrefs::snapshotValues() const {
     const auto defaults = mc2::rules::cfgEntries(mc2::rules::newCampaignDefaults());
     const auto current = mc2::rules::cfgEntries(gameRules);
     for (std::size_t i = 0; i < current.size(); ++i) {
+        if (current[i].key == "GameRulesAI" && gameRules.mods.empty() && !mc2::options::cfg::get(sourceText_, "GameRulesAI")) continue;
         if (current[i].key == "GameRulesMods" && gameRules.mods.empty()) continue; // no selection made: nothing to persist
         if ((current[i].key != "GameRulesMods" || mc2::rules::launcherModDefaults().empty()) && current[i].text == defaults[i].text && !mc2::options::cfg::get(sourceText_, current[i].key).has_value()) continue;
         out.push_back({current[i].key, current[i].text, current[i].type});

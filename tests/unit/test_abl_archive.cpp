@@ -27,7 +27,7 @@ TEST_CASE("save fields: ABL native union and module census") {
     // Encoded fields plus the derived fields documented in abl_module_archive.h.
     CHECK(fields("mclib/ablenv.h", "class ABLModule {", "// A2:") ==
         std::vector<std::string>{"id", "name", "handle", "staticData", "orderCallFlags",
-            "returnVal", "initCalled", "runtimeFailed", "prevState", "state", "watchManager", "breakPointManager",
+            "returnVal", "initCalled", "runtimeFailed", "lastRuntimeError", "runtimeErrorRepeats", "prevState", "state", "watchManager", "breakPointManager",
             "trace", "step", "traceEntry", "traceExit"});
 }
 

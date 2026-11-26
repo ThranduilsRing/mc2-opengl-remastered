@@ -255,6 +255,12 @@ TEST_CASE("Preferences/fresh options.cfg writes no GameRules key until one diffe
     CPrefs preselected; REQUIRE(preselected.load() == 0);
     CHECK(mc2::mods::selected(preselected.gameRules.mods, "@infinite-money"));
     CHECK_FALSE(mc2::mods::selected(preselected.gameRules.mods, "@purchase-all"));
+    fresh.gameRules.mods = "-";
+    fresh.gameRules.ai = 0; // Explicit Stock survives the new-campaign Smarter baseline.
+    REQUIRE(fresh.save().has_value());
+    CPrefs stockChoice; REQUIRE(stockChoice.load() == 0);
+    CHECK(stockChoice.gameRules.ai == 0);
+
 }
 
 TEST_CASE("Preferences/explicit empty indexed names override the legacy fallback") {
