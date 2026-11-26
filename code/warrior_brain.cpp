@@ -11,6 +11,7 @@
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 #include "brain_execution_policy.h"
+#include "game_rules.h"
 #include "mc2fmt.h"
 #include <utility>
 #include "sim_trace.h"
@@ -548,6 +549,28 @@ long MechWarrior::runBrain (void) {
 			                             &brainRuntime->varStore, idx, "");
 		}
 		brainErr = 0;
+	}
+
+	// Sidecar-free Smarter units keep their scripted ABL movement until a detected enemy is available.
+	if (mc2::brainpolicy::techBrain() && mc2::rules::current().ai == 1
+	    && (!brainRuntime || brainRuntime->mode == BrainRuntimeMode::Legacy)
+	    && getVehicle()->getTeam() != Team::home && !getVehicle()->isDisabled()) {
+		std::array<int, MAX_CONTACTS_PER_TEAM> contacts;
+		if (getVehicle()->getContacts(contacts.data(), (1 | 64), CONTACT_SORT_DISTANCE) > 0) {
+			auto* target = ObjectManager->get(contacts[0]);
+			if (target && (curTacOrder.code != TACTICAL_ORDER_ATTACK_OBJECT || curTacOrder.targetWID != target->getWatchID())) {
+				TacticalOrder order;
+				order.init(ORDER_ORIGIN_SELF, TACTICAL_ORDER_ATTACK_OBJECT, false);
+				order.targetWID = target->getWatchID();
+				order.attackParams.type = ATTACK_TO_DESTROY;
+				order.attackParams.method = ATTACKMETHOD_RANGED;
+				order.attackParams.range = FIRERANGE_OPTIMAL;
+				order.attackParams.pursue = true;
+				order.moveParams.wayPath.mode[0] = TRAVEL_MODE_FAST;
+				setGeneralTacOrder(order);
+				mc2::fmt::print_err("[SMARTER_AI] wid={} target={}\n", vehicleWID, order.targetWID);
+			}
+		}
 	}
 
 	// UNCONDITIONAL housekeeping — runs for BOTH paths (preserves Legacy invariant).

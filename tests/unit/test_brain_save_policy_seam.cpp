@@ -1,5 +1,6 @@
 #include "doctest.h"
 #include "brain_execution_policy.h"
+#include "game_rules.h"
 #include "save_brain_section.h"
 #include "save_field_probe.h"
 #include "mech_brain_runtime.h"
@@ -241,9 +242,33 @@ TEST_CASE("BrainSavePolicy/sidecars select TechBrain only from a temporary mod o
             fs::remove_all(dir, ec);
         }
     } sandbox;
+    const auto previousRules = mc2::rules::current();
+    struct RestoreRules {
+        mc2::rules::GameRules previous;
+        ~RestoreRules() { mc2::rules::publish(previous); }
+    } restoreRules{previousRules};
+    mc2::rules::publish({});
     InitModSearchPaths("mods/");
     decide("data/missions/missing.fit", "data/missions/", "mc2_01");
     CHECK(current() == Policy::Legacy);
+    auto smarter = mc2::rules::GameRules{};
+    smarter.ai = 1;
+    mc2::rules::publish(smarter);
+    decide("data/missions/missing.fit", "data/missions/", "mc2_01");
+    CHECK(techBrain()); // no sidecar: generic detected-target policy
+    SUBCASE("legacy kill switch overrides Smarter") {
+        mc2::gate::ScopedOverride<"MC2_BRAIN_POLICY"> forced("legacy");
+        decide("data/missions/missing.fit", "data/missions/", "mc2_01");
+        CHECK(current() == Policy::Legacy);
+    }
+    SUBCASE("Stock ignores authored brain data") {
+        fs::copy_file("data/missions/mc2_01_ai.fit", "mods/w81/data/missions/mc2_01_ai.fit");
+        mc2::gate::ScopedOverride<"MC2_ACTIVE_MOD"> active("w81");
+        InitModSearchPaths("mods/");
+        mc2::rules::publish({});
+        decide("data/missions/missing.fit", "data/missions/", "mc2_01");
+        CHECK(current() == Policy::Legacy);
+    }
     SUBCASE("overlay specials") {
         fs::copy_file("data/missions/mc2_01_specials.fit", "mods/w81/data/missions/mc2_01_specials.fit");
         mc2::gate::ScopedOverride<"MC2_ACTIVE_MOD"> active("w81");

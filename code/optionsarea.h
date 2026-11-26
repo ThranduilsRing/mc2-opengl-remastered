@@ -189,6 +189,7 @@ public:
 	private:
 
 	SimpleCamera	camera;
+	long aiChoice = 0;
 };
 
 class HotKeyListItem : public aListItem

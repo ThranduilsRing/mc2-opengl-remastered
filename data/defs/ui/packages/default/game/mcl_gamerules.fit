@@ -1,4 +1,4 @@
-// Game Rules dialog page (hand-authored, defs-only: no legacy FIT). Rows 0..9 are filled at runtime from the
+// Game Rules dialog page (hand-authored, defs-only: no legacy FIT). Rows 0..10 are filled at runtime from the
 // mc2::rules::kRules descriptor table by code/gamerulesdialog.cpp (labels, values and visibility); this file only holds the frame.
 
 GuiPage {
@@ -22,8 +22,8 @@ GuiRect {
     pageKey = "game.mcl_gamerules"
     role = "rect"
     layer = "layout"
-    rect = "100,50,600,500"
-    controlRect = "100,50,600,500"
+    rect = "100,50,600,536"
+    controlRect = "100,50,600,536"
     legacyColor = 0
     outline = "FALSE"
     filled = true
@@ -37,8 +37,8 @@ GuiRect {
     pageKey = "game.mcl_gamerules"
     role = "rect"
     layer = "layout"
-    rect = "108,58,584,484"
-    controlRect = "108,58,584,484"
+    rect = "108,58,584,520"
+    controlRect = "108,58,584,520"
     legacyColor = 0
     outline = "TRUE"
     filled = false
@@ -485,10 +485,10 @@ GuiButton {
     pageKey = "game.mcl_gamerules"
     role = "button"
     layer = "control"
-    rect = "125,488,135,40"
-    controlRect = "125,488,135,40"
-    hitRect = "125,488,135,40"
-    textRect = "125,488,135,40"
+    rect = "125,524,135,40"
+    controlRect = "125,524,135,40"
+    hitRect = "125,524,135,40"
+    textRect = "125,524,135,40"
     visibleText = "ACCEPT"
     legacyId = 90
     font = "Agency Regular"
@@ -512,10 +512,10 @@ GuiButton {
     pageKey = "game.mcl_gamerules"
     role = "button"
     layer = "control"
-    rect = "269,488,135,40"
-    controlRect = "269,488,135,40"
-    hitRect = "269,488,135,40"
-    textRect = "269,488,135,40"
+    rect = "269,524,135,40"
+    controlRect = "269,524,135,40"
+    hitRect = "269,524,135,40"
+    textRect = "269,524,135,40"
     visibleText = "DEFAULTS"
     legacyId = 91
     font = "Agency Regular"
@@ -539,10 +539,10 @@ GuiButton {
     pageKey = "game.mcl_gamerules"
     role = "button"
     layer = "control"
-    rect = "413,488,135,40"
-    controlRect = "413,488,135,40"
-    hitRect = "413,488,135,40"
-    textRect = "413,488,135,40"
+    rect = "413,524,135,40"
+    controlRect = "413,524,135,40"
+    hitRect = "413,524,135,40"
+    textRect = "413,524,135,40"
     visibleText = "BATTLETECH PRESET"
     legacyId = 92
     font = "Agency Regular"
@@ -566,10 +566,10 @@ GuiButton {
     pageKey = "game.mcl_gamerules"
     role = "button"
     layer = "control"
-    rect = "557,488,135,40"
-    controlRect = "557,488,135,40"
-    hitRect = "557,488,135,40"
-    textRect = "557,488,135,40"
+    rect = "557,524,135,40"
+    controlRect = "557,524,135,40"
+    hitRect = "557,524,135,40"
+    textRect = "557,524,135,40"
     visibleText = "BACK"
     legacyId = 93
     font = "Agency Regular"
@@ -943,4 +943,50 @@ GuiText {
     legacyColor = 0
     outline = "FALSE"
     visible = false
+}
+
+GuiText {
+    key = "game.mcl_gamerules.text.row10"
+    pageKey = "game.mcl_gamerules"
+    role = "text"
+    layer = "text"
+    rect = "130,472,290,32"
+    controlRect = "130,472,290,32"
+    textRect = "130,472,290,32"
+    visibleText = "AI"
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "left"
+    textAnchor = "left"
+    wrapText = false
+    colorArgb = "0xffc66600"
+    legacyColor = 0
+    outline = "FALSE"
+}
+
+GuiButton {
+    key = "game.mcl_gamerules.button.row10"
+    pageKey = "game.mcl_gamerules"
+    role = "button"
+    layer = "control"
+    rect = "440,472,230,32"
+    controlRect = "440,472,230,32"
+    hitRect = "440,472,230,32"
+    textRect = "440,472,230,32"
+    visibleText = "-"
+    legacyId = 110
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = false
+    normalTextColorArgb = "0xff5C96C2"
+    colorArgb = "0xff5C96C2"
+    pressedTextColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    fillColorArgb = "0xff101c28"
+    borderColorArgb = "0xff005392"
+    legacyAnimateBmp = false
+    legacyAnimateText = false
 }
