@@ -22,6 +22,8 @@
 // Everything below mirrors the GL VS math VERBATIM. Any single index/stride
 // drift = geometry garbage; this file is the load-bearing parity surface.
 #version 450
+#extension GL_GOOGLE_include_directive : require
+#include "../include/water_fft.hglsl"
 layout(constant_id = 12) const int kWaterDbgPhysical = 0;
 
 // --- Recipe SSBO (mission-static). std430 layout mirrors WaterRecipe (64B).
@@ -64,7 +66,25 @@ layout(set = 0, binding = 0, std140) uniform WaterVsParams {
 layout(set = 0, binding = 1, std140) uniform WaterFsParams {
     vec4 fog_color;
     vec4 f0;    // (time, cameraPosX, cameraPosY, cameraPosZ)
+    vec4 f1;
+    vec4 f2;
+    vec4 f3;
+    vec4 DEEP_COLOR;
+    vec4 SHALLOW_COLOR;
+    vec4 f4;
+    vec4 f5;
+    vec4 f6;
+    vec4 f7;
 } F;
+layout(set=0,binding=14,std430) readonly buffer WaterShoreSurface { float shoreSurface[]; };
+float shoreBed(vec2 p) {
+    int side=int(U.p3.z);
+    vec2 q=clamp(vec2(p.x+F.f7.w,F.f7.w-p.y)/32.0,vec2(0),vec2(side-1));
+    ivec2 a=min(ivec2(floor(q)),ivec2(side-2)); vec2 f=q-vec2(a);
+    int i=a.x+a.y*side;
+    return mix(mix(shoreSurface[i],shoreSurface[i+1],f.x),
+               mix(shoreSurface[i+side],shoreSurface[i+side+1],f.x),f.y);
+}
 
 // Output varyings -> water_geom.frag (base-layer subset of gos_terrain_water_mdi.frag).
 layout(location = 0) out vec4  Color;
@@ -132,19 +152,31 @@ void main() {
     vec2  uvOffset       = vec2(U.p1.w, U.p2.x);
 
     uint vid          = uint(gl_VertexIndex);
-    uint vertInRecord = vid % 6u;
+    uint divisions = U.p3.w == 2.0 ? 64u : 1u;
+    uint subTriangle = (vid / 3u) % divisions;
+    uint vertInRecord = (vid / (divisions * 3u)) % 2u * 3u + vid % 3u;
     uint triIdx       = vertInRecord / 3u;
     uint id           = vertInRecord % 3u;
-    uint thinIdx      = vid / 6u;
+    uint thinIdx      = vid / (6u * divisions);
 
     WaterThinRecord trec = thinRecs[thinIdx];
     uint recipeIdx = trec.ctrl.x;
     uint thinFlags = trec.ctrl.y;
     WaterRecipe rec = recipes[recipeIdx];
 
+    // Preserve the original triangles offshore, including their interpolation.
+    if (divisions > 1u && U.p3.z > 1.0) {
+        vec2 diagonal = cornerXY(rec, 2u) - cornerXY(rec, 0u);
+        vec2 center = cornerXY(rec, 0u) + diagonal * 0.5;
+        vec2 gradient = vec2(shoreBed(center+vec2(32,0))-shoreBed(center-vec2(32,0)),
+                             shoreBed(center+vec2(0,32))-shoreBed(center-vec2(0,32))) / 64.0;
+        float distance = max(waterElevation-shoreBed(center), 0.0) / max(length(gradient), 0.08);
+        if (distance > 100.0 + length(diagonal)) divisions = 1u;
+    }
+
     uint pzValid = (triIdx == 0u) ? (thinFlags & kPzTri1ValidBit)
                                   : (thinFlags & kPzTri2ValidBit);
-    if (pzValid == 0u) {
+    if (pzValid == 0u || (divisions == 1u && subTriangle != 0u)) {
         gl_Position    = vec4(0.0, 0.0, -2.0, 1.0);
         Color          = vec4(0.0);
         Texcoord       = vec2(0.0);
@@ -168,6 +200,32 @@ void main() {
 
     vec2  vxy       = cornerXY(rec, cornerIdx);
     float velev     = cornerElev(rec, cornerIdx);
+    vec4 light = unpackARGB(cornerLightRGB(trec, cornerIdx));
+    float fog = float((cornerFogRGB(trec, cornerIdx) >> 24u) & 255u) / 255.0;
+    if (divisions > 1u) {
+        uint a = uvMode == 0u || triIdx == 0u ? 0u : 1u;
+        uint b = triIdx == 0u ? 1u : 2u;
+        uint c = uvMode == 0u && triIdx == 0u ? 2u : 3u;
+        if (uvMode == 0u && triIdx == 1u) b = 2u;
+        uint row = uint(sqrt(float(subTriangle)));
+        uint j = (subTriangle - row * row) / 2u;
+        vec2 uv = vec2(j, row - j);
+        if ((subTriangle & 1u) == (row & 1u)) {
+            if (id == 1u) uv.x += 1.0;
+            if (id == 2u) uv.y += 1.0;
+        } else {
+            uv.x += 1.0;
+            if (id == 1u) uv.x -= 1.0;
+            if (id == 2u) uv.y -= 1.0;
+        }
+        uv *= 0.125;
+        vec3 weights = vec3(1.0 - uv.x - uv.y, uv.x, uv.y);
+        vxy = cornerXY(rec,a)*weights.x + cornerXY(rec,b)*weights.y + cornerXY(rec,c)*weights.z;
+        velev = dot(vec3(cornerElev(rec,a),cornerElev(rec,b),cornerElev(rec,c)), weights);
+        light = unpackARGB(cornerLightRGB(trec,a))*weights.x + unpackARGB(cornerLightRGB(trec,b))*weights.y
+              + unpackARGB(cornerLightRGB(trec,c))*weights.z;
+        fog = dot(vec3(cornerFogRGB(trec,a)>>24u,cornerFogRGB(trec,b)>>24u,cornerFogRGB(trec,c)>>24u),weights)/255.0;
+    }
 
     WaterThickness = waterElevation - velev;   // negative = above waterline
     float shoreBlendVS = max(alphaDepth, 1.0);
@@ -185,6 +243,16 @@ void main() {
         wz += swell;
     }
     vec3 worldPos = vec3(vxy, kWaterDbgPhysical != 0 ? waterElevation : wz);
+    if (divisions > 1u && U.p3.z > 1.0) {
+        float bed=shoreBed(vxy);
+        vec2 gradient=vec2(shoreBed(vxy+vec2(32,0))-shoreBed(vxy-vec2(32,0)),
+                           shoreBed(vxy+vec2(0,32))-shoreBed(vxy-vec2(0,32)))/64.0;
+        float depth = waterElevation-bed;
+        float distance = max(depth,0.0)/max(length(gradient),0.08);
+        float weight = (1.0-smoothstep(36.0,100.0,distance))*smoothstep(0.04,0.08,length(gradient));
+        vec3 displacement = fftShore(vxy,depth)*weight;
+        worldPos += displacement;
+    }
     WorldPos = worldPos;
 
     float u = (vxy.x - mapTopLeft.x) * uvScale + uvOffset.x;
@@ -218,13 +286,9 @@ void main() {
     }
 
     // BASE layer (detailMode==0): alpha owned by FS shore term; opaque sentinel.
-    uint lrgb = cornerLightRGB(trec, cornerIdx);
-    uint argb = (lrgb & 0x00FFFFFFu) | 0xFF000000u;
+    FogValue = fog;
 
-    uint frgb = cornerFogRGB(trec, cornerIdx);
-    FogValue = float((frgb >> 24u) & 0xFFu) / 255.0;
-
-    Color    = unpackARGB(argb).bgra;
+    Color    = vec4(light.rgb,1.0).bgra;
     Texcoord = vec2(u, v);
 
     vec4 clip = U.worldToClipGL * vec4(worldPos, 1.0);

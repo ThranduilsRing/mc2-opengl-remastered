@@ -273,6 +273,9 @@ bool NativeProducers::record(VkCommandBuffer cb, uint32_t par, const gos_terrain
     if (!ready_) return false;
     par %= kSlots;
 
+    const VkDrawArgsParams args{{static_cast<int32_t>(maxThin_), W.waterVertices, 0, 0}};
+    if (!argsUbo_[par].upload(&args, sizeof(args))) return false;
+
     // ---- health: slot `par` completed its previous frame (the island host-waits the slot before re-recording it), so its header copy is readable ----
     if (healthPending_[par]) {
         healthPending_[par] = false;

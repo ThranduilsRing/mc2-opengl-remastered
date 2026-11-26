@@ -23,6 +23,9 @@ void main(uint3 tid : SV_DispatchThreadID) {
             float2 origin = floor(float2(-P.halfMap, P.halfMap - P.span) /
                                   (6.0 * wavelengths[j]) + float2(i * 19.19, i * 7.73));
             result[c] = h21(origin + float2(tid.xy));
+        } else {
+            // Two periodic, independent offshore envelopes in the spare channels.
+            result[c] = h21(float2(tid.xy % 32) + float2(j * 37.1, j * 91.7));
         }
     }
     packets[tid] = result;

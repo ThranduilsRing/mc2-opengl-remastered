@@ -233,11 +233,21 @@ void main() {
     // concrete is a SEPARATE dynamic map, still deferred here.)
     bool pureConcrete = false;
     bool cementHit = false;   // a solid cement atlas texel won (the shoreline wet band skips it, as GL)
+    // Bounded shallow refraction of the seabed material, fading to zero at the waterline.
+    // Displace texture reads only: terrain coverage, shadows and material classification stay fixed.
+    vec2 seabedOffset = vec2(0.0);
+    if (uT.shorelineOn > 1 && kPlanarReflection == 0) {
+        float depth = max(uT.shorelineWaterElev - v_worldPos.z, 0.0);
+        float phase = dot(v_worldPos.xy, vec2(0.003, 0.002)) + uT.shorelineTime * 1.05;
+        seabedOffset = vec2(sin(phase), cos(phase * 1.37)) * min(depth * 0.12, 4.0)
+                     * (1.0 - smoothstep(24.0, 80.0, depth));
+    }
     if (TS_colormapReady != 0) {
         // The shared cook already applied the original nine-tap blur and coast-color repair.
         vec2 uv = vec2((v_worldPos.x - uT.atlasTopLeftX) * uT.atlasOneOverWorldUnits,
                        (uT.atlasTopLeftY - v_worldPos.y) * uT.atlasOneOverWorldUnits);
-        vec4 macro = textureGrad(u_colormap, uv, dFdx(uv), dFdy(uv));   // mip chain; the weights below stay LOD 0
+        vec2 refractedUV = uv + seabedOffset * vec2(1.0, -1.0) * uT.atlasOneOverWorldUnits;
+        vec4 macro = textureGrad(u_colormap, refractedUV, dFdx(refractedUV), dFdy(refractedUV));   // mip chain; the weights below stay LOD 0
         base = macro.rgb;
         cookedBreakup = macro.a;
         materials = textureLod(u_materialWeights, uv, 0.0);
@@ -442,7 +452,7 @@ void main() {
     }
 
     // Uniform flow, close to use: avoid keeping the footprint live through cement/tint work.
-    vec2 detailUv = v_worldPos.xy * (uT.detailTiling / MATV_WU_PER_TILE);
+    vec2 detailUv = (v_worldPos.xy + seabedOffset) * (uT.detailTiling / MATV_WU_PER_TILE);
     vec2 detailUvDx = dFdx(detailUv), detailUvDy = dFdy(detailUv);
     mv_detailTexelGM = sqrt(abs(detailUvDx.x * detailUvDy.y - detailUvDx.y * detailUvDy.x)) * float(textureSize(u_matNormalArray, 0).x);
     // Continuous world derivatives, before any divergent material branch or POM.
@@ -474,7 +484,7 @@ void main() {
                     mv_forestMix = (TS_colormapReady != 0 && textureSize(u_matNormalArray, 0).z > MAT_LAYER_FOREST)
                         ? textureLod(u_forestMask, vec2((v_worldPos.x - uT.atlasTopLeftX) * uT.atlasOneOverWorldUnits,
                                                         (uT.atlasTopLeftY - v_worldPos.y) * uT.atlasOneOverWorldUnits), 0.0).r : 0.0;
-                    dN = mv_detailNormal(detailW, materialSnow, v_worldPos.xy, baseN.z, detailUvDx, detailUvDy);
+                    dN = mv_detailNormal(detailW, materialSnow, v_worldPos.xy + seabedOffset, baseN.z, detailUvDx, detailUvDy);
                 } else {
                     resolveLampNormal = true;
                 }
@@ -569,6 +579,26 @@ void main() {
             float nzc        = clamp(abs(macroN.z), 0.0, 0.9995);
             float sinSlope   = max(sqrt(max(1.0 - nzc * nzc, 1e-6)), 0.03);
             float horizDist  = max(aboveWater, 0.0) * (nzc / sinSlope);
+            // Coastal look (owner refs 1/4/6): a pale sand beach above the swash that continues under the shallows, where
+            // the Beer-Lambert below turns it jade; gentle slopes only, so cliffs and quays keep their own colour.
+            // Close up (ref 6) a dark wet strip follows the swash, and a lacy white swash sheet runs up the sand.
+            // Night (scene light below 1, day exactly 1): a gentle cool-grey sand strip, no wet strip, a dim swash.
+            float beachFw = length(fwidth(v_worldPos.xy)), beachNight = clamp((1.0 - uEnv.sceneLight.x) * 2.5, 0.0, 1.0);
+            if (uT.shorelineOn == 2 && horizDist < 110.0 && aboveWater > -40.0) {
+                float lumR = clamp(dot(lit, vec3(0.299, 0.587, 0.114)) / max(dot(baseColor, vec3(0.299, 0.587, 0.114)), 0.04), 0.0, 2.5);
+                float mask = smoothstep(0.93, 0.975, nzc) * (cementHit ? 0.0 : 1.0) * (1.0 - F3pc) * (1.0 - materialSnow);
+                float beach = (1.0 - smoothstep(35.0, 80.0, horizDist + fbm(v_worldPos.xy * 0.011, 2) * 30.0))
+                            * (1.0 - smoothstep(4.0, 40.0, -aboveWater)) * mask;
+                lit = mix(lit, mix(vec3(0.97, 0.92, 0.79), vec3(0.74, 0.77, 0.80), beachNight) * lumR, beach * mix(0.8, 0.4, beachNight));
+                mask *= 1.0 - beachNight;
+                float above = smoothstep(0.0, 0.3, aboveWater) * mask, near = 1.0 - smoothstep(1.5, 5.0, beachFw);
+                float run = mix(8.0, 24.0, near) + 7.0 * sin(uT.shorelineTime * 1.05 + dot(v_worldPos.xy, vec2(0.003, 0.002)) - 0.9);
+                float lace = fbm(v_worldPos.xy * 0.15 + uT.shorelineTime * vec2(0.12, 0.05), 2);
+                lit *= 1.0 - mix(0.15, 0.4, near) * above * (1.0 - smoothstep(run, run + 10.0, horizDist + fbm(v_worldPos.xy * 0.04, 2) * 5.0));
+                float swash = (1.0 - smoothstep(run * 0.75, run * 0.75 + 2.0, horizDist + lace * 8.0)) * smoothstep(-0.3, 0.1, lace)
+                            * above * near;
+                lit = mix(lit, vec3(0.90, 0.93, 0.92) * lumR, swash * 0.85);
+            }
             // Both bands are zero outside (0, reach): aboveFade is 0 at the waterline and the smoothsteps are 0 past the runs, and
             // |fbm(.., 2)| <= 0.75, so the jittered run cannot re-enter. Skipping there is exact and saves the noise on most pixels.
             float shoreReach = max(uT.shorelineWetRun, uT.shorelineFoamRun) + abs(uT.shorelineEdgeJitter);
@@ -579,6 +609,15 @@ void main() {
                 float aboveFade = smoothstep(0.0, 1.5, horizDist);
                 slWet  *= aboveFade;
                 slFoam *= aboveFade;
+                bool reviewShore = uT.shorelineOn > 1;
+                if (reviewShore) {
+                    float phase = uT.shorelineTime * 1.05 + dot(v_worldPos.xy, vec2(0.003, 0.002));
+                    // The wet tail lags the swash so dark sand remains exposed on retreat.
+                    float reach = 46.0 + 18.0 * sin(phase - 0.9);
+                    slWet = (1.0 - smoothstep(reach, reach + 32.0, horizDistJ))
+                          * smoothstep(0.0, 2.0, horizDist);
+                    slFoam = 0.0;
+                }
                 if (TS_shorelineHasMask != 0) {
                     vec2 slUV = vec2((v_worldPos.x - uT.shorelineBoundsX) / max(uT.shorelineBoundsW, 1e-5),
                                      (uT.shorelineBoundsY - v_worldPos.y) / max(uT.shorelineBoundsH, 1e-5));
@@ -596,7 +635,14 @@ void main() {
                 float shoreAffinity = smoothstep(0.08, 0.26, litLuma) * clamp(1.0 - slW.x - slSnow, 0.0, 1.0);
                 if (slWet > 0.001 && !cementHit && slopeAtten > 0.0 && shoreAffinity > 0.001) {
                     float wetAmt = clamp(slWet, 0.0, 1.0) * (1.0 - F3pc) * slopeAtten * shoreAffinity * uT.shorelineStrength;
-                    lit = mix(lit, vec3(1.16, 1.06, 0.78) * (litLuma * 0.90), clamp(wetAmt, 0.0, 1.0) * 0.85);
+                    vec3 wetSand = reviewShore ? lit * vec3(0.62, 0.68, 0.70)
+                                              : vec3(1.16, 1.06, 0.78) * (litLuma * 0.90);
+                    lit = mix(lit, wetSand, clamp(wetAmt, 0.0, 1.0) * 0.85);
+                    if (reviewShore) {
+                        vec3 eye = normalize(mc2ToRender(uT.cameraPosMC2.xyz) - v_worldPos);
+                        float sheen = pow(1.0 - clamp(abs(dot(eye, macroN)), 0.0, 1.0), 5.0);
+                        lit += prelitBase * wetAmt * sheen * 0.28;
+                    }
                 }
                 if (slFoam > 0.001 && slopeAtten > 0.0 && shoreAffinity > 0.001) {
                     float foamScroll = fbm(v_worldPos.xy * 0.09 + uT.shorelineTime * 0.15, 3) * 0.5 + 0.5;
@@ -609,6 +655,25 @@ void main() {
                 }
             }
         }
+    }
+
+    // Coastal look (FoamFirst; after gokayfem coastal-water, MIT): RGB Beer-Lambert of the seabed down and back up the
+    // water column, plus its artistic caustic web; water_geom.frag adds the in-scattered light with the same coefficients.
+    float causticFw = length(fwidth(v_worldPos.xy)) * 0.21;   // uniform control flow: caustics fade below ~2 px
+    if (uT.shorelineOn == 2 && kPlanarReflection == 0 && v_worldPos.z < uT.shorelineWaterElev) {
+        float wd = uT.shorelineWaterElev - v_worldPos.z;
+        vec3 eyeA = normalize(mc2ToRender(uT.cameraPosMC2.xyz) - v_worldPos);
+        vec2 cp = v_worldPos.xy * 0.03;
+        float caustic = pow(max(0.0, sin(cp.x * 7.0 + sin(cp.y * 4.0 + uT.shorelineTime) * 1.3)
+                                   * sin(cp.y * 6.0 + cos(cp.x * 4.0 - uT.shorelineTime) * 1.2)), 9.0)
+                      * (1.0 - smoothstep(0.6, 2.0, causticFw));
+        float reef = smoothstep(0.1, 0.4, fbm(v_worldPos.xy / 380.0 + 7.3, 3)) * smoothstep(3.0, 9.0, wd) * (1.0 - smoothstep(45.0, 90.0, wd));
+        // Night: little light reaches the seabed and back; no caustics, a dim, mostly desaturated cool teal-green.
+        float seaNight = clamp((1.0 - uEnv.sceneLight.x) * 2.5, 0.0, 1.0);
+        lit *= mix(vec3(1.0), vec3(0.42, 0.52, 0.46), reef * 0.75)   // darker reef/weed patches inside the shallows (owner refs)
+             * (1.0 + 1.2 * (1.0 - seaNight) * caustic * exp(-0.05 * wd))
+             * exp(-vec3(0.07, 0.022, 0.024) * wd * (1.0 + 1.0 / max(abs(eyeA.z), 0.25)));
+        lit = mix(lit, dot(lit, vec3(0.299, 0.587, 0.114)) * vec3(0.80, 0.98, 1.0) * 0.6, 0.75 * seaNight);
     }
 
     // Shade the receiver before compositing the authored road shoulder. Keeping

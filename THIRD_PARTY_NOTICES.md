@@ -38,3 +38,9 @@ Vendored at 3rdparty/meshoptimizer/ (LICENSE.md alongside). Engine links a five-
 ## CUE4Parse v1.2.2 / CUE4Parse-Conversion v1.2.1
 Apache-2.0, copyright FabianFG and contributors. Source: https://github.com/FabianFG/CUE4Parse/tree/v1.2.2 (commit 920dc1682278d70ee738383b6fbd3a1e9b7523ea)
 Not vendored: NuGet-restored with exact pins and packages.lock.json by the optional MW5 extractor in tools/mw5_kit/ (code only; the player supplies their own MW5 install and Oodle). A distributed built extractor must also carry the Apache-2.0 text and its transitive package licences.
+
+## shader-skills (coastal-water, ocean gallery shaders)
+MIT License, copyright (c) 2026 gokayfem. Source: https://github.com/gokayfem/shader-skills
+Not vendored: the FoamFirst shoreline look in shaders/vulkan/water_geom.frag and terrain_tier1.frag adapts techniques from its
+coastal-water.glsl and ocean.glsl (golden-angle ripple trains with footprint filtering, exact dielectric Fresnel, RGB Beer-Lambert
+seabed attenuation with in-scatter, artistic caustic web, crest translucency). The MIT notice applies to those adapted portions.

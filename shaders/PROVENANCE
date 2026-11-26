@@ -1,0 +1,15 @@
+shore_foam.rgba: ambientCG Foam003, by Lennart Demes.
+Source: https://ambientcg.com/view?id=Foam003
+Download: https://ambientcg.com/get?file=Foam003_1K-PNG.zip
+Licence: CC0 1.0 Universal, https://docs.ambientcg.com/license/
+Cook: Opacity and NormalGL resized from 1024 to 512 using Lanczos.
+Raw RGBA8: R opacity, G normal X, B normal Y, A 255; seamless source.
+Only source tried. No Epic assets or code used.
+
+water_fft.comp.slang and include/water_fft.hglsl: original implementation of
+Phillips/Tessendorf spectrum and radix-2 inverse FFT, not copied third-party code.
+Two 64x64 cascades (256 and 64 world units); current-frame displacement only.
+Concept reference: https://crest.readthedocs.io/en/4.12/user/ocean-simulation.html
+Crest 4.12 licence verified MIT at https://github.com/wave-harmonic/crest/blob/4.12/LICENSE
+No Crest code or persistent foam simulation incorporated; no Crest 5 content.
+Foam is instantaneous Jacobian folding plus depth/time and the CC0 mask above.
