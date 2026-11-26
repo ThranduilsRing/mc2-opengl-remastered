@@ -1187,7 +1187,7 @@ void MainMenu::render()
 	}
 	else
 		LogisticsSaveDialog::instance()->render();
-	if ( !xDelta && !yDelta && !bSave && !bLoad && !bLoadSingle && !bLoadCampaign && !bLegal )
+	if ( !xDelta && !yDelta && !bRulesDlg && !bSave && !bLoad && !bLoadSingle && !bLoadCampaign && !bLegal )
 	{
 		static bool markedReady = false;
 		if ( !markedReady )
@@ -1218,10 +1218,8 @@ void MainMenu::render()
 	}
 	if ( bRulesDlg )
 	{
-	{
 		GameRulesDialog::instance()->render();
 		mc2::screen_settle::tickFrontEnd(-5, -5);
-	}
 	}
 	if ( bHostLeftDlg )
 	{
