@@ -255,3 +255,31 @@ TEST_CASE("Preferences/explicit empty indexed names override the legacy fallback
     load(text, settings, render);
     CHECK(std::string(settings.playerName[0]).empty());
 }
+
+TEST_CASE("Preferences/UI saves preserve unknown keys and active overrides") {
+    bool active = false;
+    CHECK_FALSE(mc2::options::cfg::editCommitted(true, true, active));
+    CHECK_FALSE(mc2::options::cfg::editCommitted(true, true, active));
+    CHECK(mc2::options::cfg::editCommitted(false, false, active));
+    CHECK_FALSE(mc2::options::cfg::editCommitted(false, false, active)); // failed save is not retried each frame
+    CHECK(mc2::options::cfg::editCommitted(true, false, active)); // checkbox/keyboard commit
+    const auto oldOverrides = mc2::options::g_activeOverrides;
+    const auto oldCurrent = mc2::options::g_current;
+    const auto oldPublished = mc2::options::g_published;
+    const auto oldChanged = mc2::options::g_publishChanged;
+    mc2::options::g_activeOverrides = "ShadowQuality=0";
+    RenderOptions draft;
+    draft.shadowQuality = 2;
+    const std::string text = "FITini\n[MechCommander2]\nst FutureModKey = untouched\nFITend\n";
+    const auto saved = mc2::options::rewritePreferences(text, {}, mc2::options::preferenceSnapshot(Preferences{}, draft));
+    CHECK(saved.find("st FutureModKey = untouched") != std::string::npos);
+    RenderOptions reloaded;
+    mc2::options::cfg::loadFromText(reloaded, saved);
+    CHECK(reloaded.shadowQuality == 2);
+    mc2::options::publish(reloaded);
+    CHECK(mc2::options::current().shadowQuality == 0);
+    mc2::options::g_activeOverrides = oldOverrides;
+    mc2::options::g_current = oldCurrent;
+    mc2::options::g_published = oldPublished;
+    mc2::options::g_publishChanged = oldChanged;
+}

@@ -52,7 +52,7 @@ def main():
     name = args[0]
     secs = int(args[1]) if len(args) > 1 else 300
     if len(args) < 3:
-        sys.exit("sweep_campaign: deploy_dir is required (use your own E:/mc2-installs/<lane>); there is no default install")
+        sys.exit("sweep_campaign: deploy_dir is required (use your own G:/mc2-installs/<lane>); there is no default install")  # drive-path: ok PC path in user-facing help
     deploy = args[2]
     if re.search(r"mc2-win64-v0\.4|owner-test", deploy.replace("\\", "/")) and "--allow-owner-install" not in flags:
         sys.exit("sweep_campaign: refusing the owner install %s (pass --allow-owner-install to override)" % deploy)

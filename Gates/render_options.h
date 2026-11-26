@@ -305,8 +305,11 @@ inline bool buildingArtArgument(std::string_view argument) {
     return false;
 }
 
+inline std::string g_activeOverrides;
 inline void publish(const RenderOptions& o) {
     auto effective = o;
+    std::vector<Reject> rejects;
+    applyOverrides(effective, g_activeOverrides, rejects);
     if (g_buildingArtCommandLine >= 0) effective.remasteredBuildings = g_buildingArtCommandLine != 0;
     if (g_published && !(g_current == effective)) g_publishChanged = true;
     g_current = effective;

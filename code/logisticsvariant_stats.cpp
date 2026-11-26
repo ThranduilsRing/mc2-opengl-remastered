@@ -566,6 +566,17 @@ void		LogisticsVariant::setAvailable( bool available )
 		availableToUser = available; 
 }
 
+LogisticsVariant::LogisticsVariant(const LogisticsVehicle& vehicle, int chassisId)
+	: LogisticsVariant(std::make_unique<LogisticsChassis>(vehicle).release(), true)
+{
+	chassis->ID = chassisId;
+	ID = chassisId;
+	variantName = chassis->getDisplayName();
+	componentCount = vehicle.componentCount;
+	std::copy_n(vehicle.components, componentCount, components);
+	for (long i = 0; i < componentCount; ++i) components[i].location = CHEST;
+}
+
 void LogisticsVehicle::init( FitIniFile& file )
 {
 	bIsVehicle = true;   // VEHICLE-AUTO-PILOT-1: this chassis is a vehicle/support unit
@@ -578,6 +589,27 @@ void LogisticsVehicle::init( FitIniFile& file )
 	file.seekBlock( "General" );
 	file.readIdLong( "DescIndex", chassisNameID );
 	file.readIdFloat( "CurTonnage", maxWeight );
+	float rating = 25;
+	file.readIdFloat("BattleRating", rating);
+	baseCost = static_cast<long>(rating * 100);
+	if (baseCost <= 0) {
+		FitIniFile prices;
+		if (prices.open("data/defs/purchase/vehicle_prices.fit") == NO_ERR && prices.seekBlock("VehiclePrices") == NO_ERR) {
+			long perTon = 0, minimum = 0;
+			prices.readIdLong("PerTon", perTon);
+			prices.readIdLong("Minimum", minimum);
+			long roleRate = 0;
+			if (prices.readIdLong(fileName.c_str(), roleRate) == NO_ERR) perTon = roleRate;
+			baseCost = mc2purchase::vehiclePrice(baseCost, maxWeight, perTon, minimum);
+		}
+	}
+	maxHeat = 0;
+	helpID = encyclopediaID = IDS_VEHICLE_DESCRIPTION_0;
+	componentAreaWidth = 6;
+	componentAreaHeight = 9;
+	iconPictureIndex = 0;
+	iconFileNames[0] = "MCL_GN_MECHICONRAVEN";
+	iconFileNames[1] = iconFileNames[2] = "MCL_MC_MECHPAYLOADRAVEN";
 
 	mechClass = cLoadString(IDS_VEHICLE_CLASS, 256).c_str();
 
@@ -597,7 +629,7 @@ void LogisticsVehicle::init( FitIniFile& file )
 
 	baseArmor = 0;
 
-	unsigned char pts;
+	unsigned char pts = 0;
 	for (auto & part : parts)
 	{
 		file.seekBlock( part );
@@ -608,6 +640,7 @@ void LogisticsVehicle::init( FitIniFile& file )
 
 	}
 
+	maxArmor = baseArmor;
 	file.seekBlock( "InventoryInfo" );
 	file.readIdUChar( "NumWeapons", pts );
 

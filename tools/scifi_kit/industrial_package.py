@@ -2,7 +2,7 @@
 
 Uses the common IR cooker. Reads art exports without modifying the art worktree.
 Generated geometry/textures stay outside git. Run from the repository root:
-  py -3 tools/scifi_kit/industrial_package.py --out E:/mc2-archive-2026-10/proofs/kit-ingame-2/package
+  py -3 tools/scifi_kit/industrial_package.py --out G:/mc2-proofs/kit-ingame-2/package
 """
 from __future__ import annotations
 

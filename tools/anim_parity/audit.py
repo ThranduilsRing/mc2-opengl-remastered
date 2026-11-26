@@ -524,13 +524,16 @@ def serial(value):
     raise TypeError(type(value).__name__)
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+from smoke_lib.paths import PROOF_ROOT
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--install',type=Path,default=Path('A:/Games/mc2-opengl/mc2-win64-v0.4'))
     ap.add_argument('--art',type=Path,default=Path('E:/mc2-ref/scifi-kit/art/intent-pass'))
     ap.add_argument('--catalog',type=Path,default=Path('E:/mc2-archive-2026-10/asset-modernize/docs/assets/catalog.json'))
     ap.add_argument('--placements',type=Path,default=Path('E:/mc2-archive-2026-10/proofs/placement-survey/placements.json'))
-    ap.add_argument('--out',type=Path,default=Path('E:/mc2-archive-2026-10/proofs/anim-parity'))
+    ap.add_argument('--out',type=Path,default=Path((PROOF_ROOT + '/anim-parity')))
     args = ap.parse_args()
     out = args.out.resolve()
     for protected in (args.install,args.art,ROOT,Path('A:/Games/mc2-art3'),Path('A:/Games/mc2-s1')):

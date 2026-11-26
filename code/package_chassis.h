@@ -79,8 +79,10 @@ struct PackageChassis {
     std::string balanceProfile;
     std::string hudIcon;        // P6: HUD strip base (<base>_<W>x<H>.tga in data/art), empty = stock atlas
     long objTypeNum = -1;       // runtime allocation; never saved (saves carry chassisId)
+    long objectType = 2;        // ObjectClass: BattleMech (2) or ground vehicle (3)
     float scale = 1.0f, tonnage = 0.0f, emptyMass = 0.0f, payload = 0.0f;
     bool purchasable = false;
+    bool vehicle = false;      // air vehicles retain the BattleMech object class
     int layoutRev = 1;          // pack-declared layout revision (LayoutRev); saves/exports of a revised layout are fenced from older builds
     std::vector<Region> regions;
     std::vector<Hardpoint> hardpoints;

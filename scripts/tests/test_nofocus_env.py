@@ -87,6 +87,14 @@ def test_spawned_env_carries_both(monkeypatch):
     assert env["MC2_LAUNCHER_ENV_JSON"] == "0"
 
 
+def test_normal_frontend_retains_saved_settings_and_background_safety(monkeypatch):
+    monkeypatch.delenv("MC2_HARNESS_ALLOW_FOREGROUND", raising=False)
+    env = nofocus.apply_env({"MC2_LAUNCHER_ENV_JSON": "1", "MC2_WINDOW_OFFSCREEN": "0",
+                             "MC2_NO_CURSOR_GRAB": "0"})
+    assert env["MC2_LAUNCHER_ENV_JSON"] == "1"
+    assert env["MC2_WINDOW_OFFSCREEN"] == env["MC2_NO_CURSOR_GRAB"] == "1"
+
+
 def test_user_present_session_also_carries_both(monkeypatch):
     monkeypatch.setenv("MC2_HARNESS_ALLOW_FOREGROUND", "1")
     env = nofocus.apply_env({})

@@ -435,7 +435,7 @@ def test_cook_cache_root_follows_the_gate_e_root(monkeypatch):
     # The farm laptop has no E: drive (W138d laptop gate: deploy failed "device is not ready: E:\mc2-cook-cache").
     monkeypatch.delenv("MC2_COOK_CACHE", raising=False)
     monkeypatch.delenv("MC2_GATE_EROOT", raising=False)
-    assert kit.cook_cache_root() == Path("E:/mc2-cook-cache")
+    assert kit.cook_cache_root() == Path("G:/mc2-cook-cache")
     monkeypatch.setenv("MC2_GATE_EROOT", "C:/mc2gate/drv/E/")
     assert kit.cook_cache_root() == Path("C:/mc2gate/drv/E/mc2-cook-cache")
     monkeypatch.setenv("MC2_COOK_CACHE", "D:/cc")

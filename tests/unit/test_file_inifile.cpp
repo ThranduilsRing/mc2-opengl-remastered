@@ -137,6 +137,57 @@ TEST_CASE("carbon_mclib/short paths append a longer extension once")
     CHECK(std::strcmp(suffixed, "a.fit") == 0);
 }
 
+namespace vehicle_results {
+struct Variant {
+    bool vehicle = true;
+    const Variant* getChassis() const { return this; }
+    bool isVehicle() const { return vehicle; }
+    std::string getName() const { return "Hunter"; }
+    std::string getFileName() const { return "hunter.csv"; }
+    bool isDesignerMech() const { return true; }
+};
+struct { unsigned long baseColor = 1, highlightColor = 2; } prefs;
+struct LogisticsData {
+    struct Snapshot { Variant* pVariant; long fitID; bool recovered = false; };
+    std::vector<Snapshot> deployedMechSnapshot;
+    std::vector<Variant*> inventory;
+    void* getVehiclePilot() { return this; }
+    void addMechToInventory(Variant* v, int, void*, unsigned long, unsigned long, unsigned long) { inventory.push_back(v); }
+    void recoverDeployedVehicle(long, bool, int&);
+};
+#include "vehicle_recovery.inc"
+}
+
+TEST_CASE("purchase_catalog/surviving purchased vehicles return through results and FIT reload") {
+    vehicle_results::Variant hunter, mech{false};
+    vehicle_results::LogisticsData data;
+    data.deployedMechSnapshot = {{&hunter, 7}, {&hunter, 7}, {&mech, 8}};
+    int group = 1;
+    data.recoverDeployedVehicle(7, false, group);
+    data.recoverDeployedVehicle(7, true, group);
+    data.recoverDeployedVehicle(7, true, group);
+    data.recoverDeployedVehicle(8, true, group);
+    data.recoverDeployedVehicle(9, true, group);
+    REQUIRE(data.inventory.size() == 1);
+    CHECK(group == 2);
+    const auto path = scratchPath("vehicle_results.fit");
+    {
+        FitIniFile out;
+        REQUIRE(out.create(path.c_str()) == NO_ERR);
+        out.writeBlock("Inventory0");
+        auto* v = data.inventory.front();
+        mc2purchase::saveInventoryIdentity(out, "", v->getName(), v->getFileName(), true, "PMWScout");
+        out.close();
+    }
+    FitIniFile in;
+    REQUIRE(in.open(path.c_str()) == NO_ERR);
+    REQUIRE(in.seekBlock("Inventory0") == NO_ERR);
+    std::vector<vehicle_results::Variant*> catalog{&hunter};
+    REQUIRE(mc2purchase::loadInventoryVariant(in, catalog, [](const auto&) { return std::string(); }) == catalog.begin());
+    in.close();
+    remove(path.c_str());
+}
+
 // Trigger paths: code/purchase_catalog.h, code/logisticsmech.cpp, code/logisticsdata_save.cpp.
 TEST_CASE("purchase_catalog/full inventory identity survives real FIT save reload")
 {

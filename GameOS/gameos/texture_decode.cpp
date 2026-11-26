@@ -305,6 +305,20 @@ std::vector<uint8_t> boxDownsampleRgba8Srgb(const std::vector<uint8_t>& src, uin
     return dst;
 }
 
+std::vector<uint8_t> boxDownsampleR8(const std::vector<uint8_t>& src, uint32_t width, uint32_t height) {
+    if (!width || !height || width > RenderCore::kKtxMaxEdge || height > RenderCore::kKtxMaxEdge ||
+        src.size() != size_t{width} * height) return {};
+    const uint32_t dw = mipExtent(width, 1), dh = mipExtent(height, 1);
+    std::vector<uint8_t> dst(size_t{dw} * dh);
+    for (uint32_t y = 0; y < dh; ++y) for (uint32_t x = 0; x < dw; ++x) {
+        const uint32_t x0 = x * 2, y0 = y * 2;
+        const uint32_t x1 = std::clamp(x0 + 1, 0u, width - 1), y1 = std::clamp(y0 + 1, 0u, height - 1);
+        dst[size_t{y} * dw + x] = static_cast<uint8_t>((src[size_t{y0} * width + x0] +
+            src[size_t{y0} * width + x1] + src[size_t{y1} * width + x0] + src[size_t{y1} * width + x1] + 2u) / 4u);
+    }
+    return dst;
+}
+
 std::vector<uint8_t> boxDownsampleRgba8(const std::vector<uint8_t>& src, uint32_t width, uint32_t height) {
     if (width == 0 || height == 0 || width > RenderCore::kKtxMaxEdge || height > RenderCore::kKtxMaxEdge ||
         src.size() != size_t{width} * height * 4u)

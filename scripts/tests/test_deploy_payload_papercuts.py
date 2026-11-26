@@ -188,7 +188,7 @@ def test_dll_sources_are_this_repo_or_the_toolchain():
 
 
 def test_target_path_names_positional_arg():
-    r = subprocess.run([sys.executable, str(ROOT / "scripts/deploy_payload.py"), "--target", "E:/mc2-installs/lane9"],
+    r = subprocess.run([sys.executable, str(ROOT / "scripts/deploy_payload.py"), "--target", "G:/mc2-installs/lane9"],
                        capture_output=True, text=True, timeout=60, **console_child.child_kwargs(redirected=True))
     assert r.returncode == 2 and "positional target_dir" in r.stderr and "preset name" in r.stderr
 
@@ -235,7 +235,7 @@ def test_run_deploy_logs_stock_receipts_and_kit_cook(tmp_path, monkeypatch, caps
     target.mkdir()
     (build / "mc2").write_bytes(b"exe")
     for name in ("seed_build_dlls", "check_exe_fresh", "check_free_space_for_payload", "check_hardlink_isolation",
-                 "ensure_engine_normal_cooks", "write_manifest"):
+                 "ensure_engine_normal_cooks", "cook_mod_visual_heights", "write_manifest"):
         monkeypatch.setattr(dp, name, lambda *a, **kw: None)
     monkeypatch.setattr(dp, "git_head", lambda *a: "head")
     monkeypatch.setattr(dp, "deploy_inputs", lambda *a: {})
@@ -281,3 +281,49 @@ def test_run_deploy_logs_stock_receipts_and_kit_cook(tmp_path, monkeypatch, caps
 
 def test_run_deploy_game_target_fails_when_tree_precook_fails(tmp_path, monkeypatch, capsys):
     test_run_deploy_logs_stock_receipts_and_kit_cook(tmp_path, monkeypatch, capsys, False, target_name="game")
+
+def test_mod_height_cook_is_lazy_without_paks(tmp_path, monkeypatch):
+    import builtins
+    original = builtins.__import__
+    def guarded(name, *args, **kwargs):
+        assert name not in ("mission_terrain_analyzer", "height_sig", "numpy")
+        return original(name, *args, **kwargs)
+    monkeypatch.setattr(builtins, "__import__", guarded)
+    before = list(sys.path)
+    dp.cook_mod_visual_heights(ROOT, tmp_path)
+    assert sys.path == before
+
+
+def test_mod_height_skip_validates_size_signature_and_continues(tmp_path, monkeypatch):
+    import types
+    import numpy as np
+    maps = tmp_path / "mods/test/data/missions"
+    maps.mkdir(parents=True)
+    for name in ("a", "b"):
+        (maps / (name + ".pak")).touch()
+    monkeypatch.setitem(sys.modules, "mission_terrain_analyzer", types.SimpleNamespace(
+        read_packets=lambda p: [], locate_mapdata=lambda p: (0, 2, b""),
+        extract_layers=lambda *a: {"elev": np.zeros((2, 2))}))
+    monkeypatch.setitem(sys.modules, "height_sig", types.SimpleNamespace(height_sig=lambda e: "2 fixture"))
+    calls = []
+    def fail(cmd, **kwargs):
+        calls.append(cmd[2])
+        raise subprocess.CalledProcessError(8, cmd)
+    monkeypatch.setattr(dp.subprocess, "run", fail)
+    beauty = maps / "a.beauty"
+    beauty.mkdir()
+    height = beauty / "visual_height_4x.r32"
+    sig = beauty / "gameplay_height.sig"
+    height.write_bytes(bytes(100))
+    sig.write_text("2 fixture")
+    dp.cook_mod_visual_heights(ROOT, tmp_path)
+    assert calls == ["b"]
+    height.write_bytes(b"truncated")
+    calls.clear()
+    dp.cook_mod_visual_heights(ROOT, tmp_path)
+    assert calls == ["a", "b"]
+    height.write_bytes(bytes(100))
+    sig.write_text("2 stale")
+    calls.clear()
+    dp.cook_mod_visual_heights(ROOT, tmp_path)
+    assert calls == ["a", "b"]

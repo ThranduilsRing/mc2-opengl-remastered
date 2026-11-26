@@ -531,6 +531,8 @@ def hold_install(install):
         deploy_lease.release_lease(str(install))
 
 
+from smoke_lib.paths import PROOF_ROOT
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--exe", type=Path, default=DEFAULT_EXE)
@@ -564,7 +566,7 @@ def main():
     if provenance.get("dirty") or not provenance.get("available") or not head_ok:
         raise ValueError("commit, build and deploy a clean binary first")
     sha = provenance["commit"] if args.allow_non_head else identity["git"]["commit"]
-    out = (args.out or Path("E:/mc2-archive-2026-10/proofs/run_battle_bench") / sha).resolve()
+    out = (args.out or Path((PROOF_ROOT + '/run_battle_bench')) / sha).resolve()
     stages.preflight(out)
     out.mkdir(parents=True, exist_ok=True)
     if (out / "battle-bench.json").exists():

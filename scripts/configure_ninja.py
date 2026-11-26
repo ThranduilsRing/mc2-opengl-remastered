@@ -44,8 +44,10 @@ LAUNCHER_SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cc_l
 # The ONLY list of checkout roots that share compile-cache entries. FIXED: the sccache server reads it once at start, so it must
 # never change (lanes get a slot from tools/lane_slot.py instead of a new worktree). Import it; do not copy it.
 SLOT_COUNT = 12
+from smoke_lib.paths import INSTALL_ROOT
+
 SCCACHE_FIXED_ROOTS = (["A:/Games/mc2-main"] + [f"A:/Games/mc2-slot{n:02d}" for n in range(1, SLOT_COUNT + 1)]
-                       + ["E:/mc2-installs/_precheck/tree"])
+                       + [(INSTALL_ROOT + '/_precheck/tree')])
 
 
 def _norm_root(p):

@@ -56,6 +56,10 @@ std::optional<mc2pkg::PackageChassis> parse(std::string_view path) {
     if (f.open(std::string(path).c_str()) != NO_ERR) { finding(path, "cannot open"); return std::nullopt; }
     if (f.seekBlock("Chassis") != NO_ERR) { finding(path, "no [Chassis] block"); return std::nullopt; }
     out.fitPath = path;
+    if (f.seekBlock("ObjectClass") == NO_ERR)
+        out.objectType = readLong(f, "ObjectTypeNum", 2);
+    if (out.objectType != 2 && out.objectType != 3) { finding(path, "unsupported package object class"); return std::nullopt; }
+    f.seekBlock("Chassis");
     out.chassisId = mc2id::canonicalizeQualifiedId(readStr(f, "ChassisId"));
     out.stem = readStr(f, "Stem");
     out.balanceProfile = readStr(f, "BalanceProfile");
@@ -66,6 +70,7 @@ std::optional<mc2pkg::PackageChassis> parse(std::string_view path) {
     out.payload = readFloat(f, "Payload", 0.0f);
     out.layoutRev = static_cast<int>(readLong(f, "LayoutRev", 1));
     bool purch = false;
+    if (f.readIdBoolean("Vehicle", out.vehicle) != NO_ERR) out.vehicle = out.objectType == 3;
     if (f.readIdBoolean("Purchasable", purch) == NO_ERR) out.purchasable = purch;
     const long regionCount = readLong(f, "RegionCount", 0);
     const long hardpointCount = readLong(f, "HardpointCount", 0);

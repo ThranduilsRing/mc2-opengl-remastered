@@ -8,6 +8,15 @@
 
 using namespace mc2::waterreactive;
 
+TEST_CASE("WaterReactive/destroyed wet vehicles sink visually while live and dry units stay put") {
+    CHECK(wreckSinkDepth(0, true, true, 0.5f, 20) == 4.0f);
+    CHECK(wreckSinkDepth(39, true, true, 1.0f, 20) == 40.0f);
+    CHECK(wreckSinkDepth(0, true, true, 20.0f, 1) == 32.0f);
+    CHECK(wreckSinkDepth(4, false, true, 1.0f, 20) == 0.0f);
+    CHECK(wreckSinkDepth(4, true, false, 1.0f, 20) == 0.0f);
+    CHECK(wreckSinkDepth(4, true, true, 0.0f, 20) == 4.0f);
+}
+
 TEST_CASE("WaterReactive/only live moving units emit and death leaves rings to fade") {
     CHECK(shouldEmit(true, 2, 0));
     CHECK(shouldEmit(true, -2, 0));

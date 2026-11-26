@@ -745,29 +745,22 @@ void drawMainMenu(bool showCredits) {
     popPickerStyle();
 }
 
-// Options with a dedicated live-saving widget in GraphicsOptionsWindow.cpp (pinned by
-// scripts/tests/test_live_widget_option_keys.py). drawOptions() draws no draft widget for them.
-static bool isLiveWidgetKey(std::string_view key) {
-    static constexpr std::string_view k_liveWidgetKeys[] = {"ReflectionQuality", "WaterDetail", "GroundAo", "TextureQuality", "SpatialAA"};
-    for (const auto k : k_liveWidgetKeys) if (k == key) return true;
-    return false;
-}
-
 void drawOptions() {
-    static mc2::options::RenderOptions draft;
-    static std::string loadedCfg;
-    static int lastFrame = -2;
     if (!ImGui::CollapsingHeader("Player settings (saved; restart required)", ImGuiTreeNodeFlags_DefaultOpen)) return;
-    const auto cfg = mc2::options::cfg::readTextFile("options.cfg");
-    if (lastFrame != ImGui::GetFrameCount() - 1 || ImGui::IsWindowAppearing() || cfg != loadedCfg) {
+    static mc2::options::RenderOptions draft;
+    static std::optional<mc2::options::RenderOptions> seen;
+    static bool dirty = false;
+    static bool wasEditing = false;
+    if (!seen || (!dirty && *seen != mc2::options::current())) {
         draft = {};
-        mc2::options::cfg::loadFromText(draft, cfg);
-        loadedCfg = cfg;
+        mc2::options::cfg::loadFromText(draft, mc2::options::cfg::readTextFile("options.cfg"));
+        seen = mc2::options::current();
     }
-    lastFrame = ImGui::GetFrameCount();
+    bool changed = false;
     for (const auto& preset : k_gfxPresets) {
         if (ImGui::Button(preset.label)) {
             preset.apply(draft);
+            changed = true;
             for (int i = 0; i < 6; ++i) settings[k_presetKeys[i]] = preset.values[i];
         }
         ImGui::SameLine();
@@ -777,22 +770,24 @@ void drawOptions() {
     ImGui::Text("Approximate fixed VRAM: %d MB (excludes mission textures/geometry)",
         256 + 96 + 8 + shadowMB[std::clamp(draft.shadowQuality, 0, 2)]);
     for (const auto& option : mc2::options::kOptions) {
-        if (isLiveWidgetKey(option.key)) continue; // The live window sections own these; a draft copy would revert them on Save.
         const char* label = std::string_view(option.key) == "RemasteredBuildings" ? "Remastered buildings (off: Classic)" : std::string_view(option.key) == "MechLabLocations" ? "Mech lab: Locations view (off: Classic grid)" : option.key;
-        if (option.kind == mc2::options::Kind::Bool) ImGui::Checkbox(label, &(draft.*option.b));
+        if (option.kind == mc2::options::Kind::Bool) changed |= ImGui::Checkbox(label, &(draft.*option.b));
         else if (option.kind == mc2::options::Kind::Long) {
             if (std::string_view(option.key) == "WaterReflections") {
                 continue; // Legacy material/profile switch; player budget controls follow.
             } else if (std::string_view(option.key) == "CameraView") {
                 const char* labels[] = {"Stock", "Closer", "Wide"};
-                ImGui::Combo("Camera view (next mission)", &(draft.*option.l), labels, IM_ARRAYSIZE(labels));
+                changed |= ImGui::Combo("Camera view (next mission)", &(draft.*option.l), labels, IM_ARRAYSIZE(labels));
             } else if (std::string_view(option.key) == "AtmosphereQuality") {
                 const char* labels[] = {"Off", "Low", "High"};
-                ImGui::Combo("Atmosphere (fog and sun haze)", &(draft.*option.l), labels, IM_ARRAYSIZE(labels));
+                changed |= ImGui::Combo("Atmosphere (fog and sun haze)", &(draft.*option.l), labels, IM_ARRAYSIZE(labels));
             } else if (std::string_view(option.key) == "DrawDistance") {
                 continue; // DrawDistance GUI row is a later lane
-            } else ImGui::SliderInt(label, &(draft.*option.l), static_cast<int>(option.lo), static_cast<int>(option.hi));
-        } else ImGui::SliderFloat(label, &(draft.*option.f), static_cast<float>(option.lo), static_cast<float>(option.hi));
+            } else if (std::string_view(option.key) == "SpatialAA") {
+                const char* labels[] = {"Off", "SMAA 1x", "FXAA", "CMAA2", "FSR 3.1 native AA"};
+                changed |= ImGui::Combo("Anti-aliasing", &(draft.*option.l), labels, IM_ARRAYSIZE(labels));
+            } else changed |= ImGui::SliderInt(label, &(draft.*option.l), static_cast<int>(option.lo), static_cast<int>(option.hi));
+        } else changed |= ImGui::SliderFloat(label, &(draft.*option.f), static_cast<float>(option.lo), static_cast<float>(option.hi));
     }
     if (ImGui::TreeNode("Engine and display options")) {
         for (const auto& row : k_envVars) {
@@ -819,17 +814,16 @@ void drawOptions() {
         }
         ImGui::TreePop();
     }
-    if (ImGui::Button("Save player settings")) {
-        // Never overwrite live-widget edits with this section's older draft.
-        const auto live = mc2::options::current();
-        for (const auto& option : mc2::options::kOptions) {
-            if (!isLiveWidgetKey(option.key)) continue;
-            if (option.kind == mc2::options::Kind::Bool) draft.*option.b = live.*option.b;
-            else if (option.kind == mc2::options::Kind::Long) draft.*option.l = live.*option.l;
-            else draft.*option.f = live.*option.f;
-        }
+    dirty |= changed;
+    const bool committed = mc2::options::cfg::editCommitted(changed, ImGui::IsAnyItemActive(), wasEditing);
+    if (ImGui::Button("Save player settings") || (dirty && committed)) {
         if (!saveRenderOptions || !saveRenderOptions(draft)) error = "Could not save options.cfg.";
-        else if (saveSettings()) { settingsChanged = true; error = "Saved. Restart the game to apply player settings."; }
+        else {
+            mc2::options::publish(draft);
+            seen = mc2::options::current();
+            dirty = false;
+            if (saveSettings()) { settingsChanged = true; error = "Saved. Restart the game to apply player settings."; }
+        }
     }
     ImGui::TextWrapped("SMAA 1x is the default, without history or jitter. FSR 3.1 native AA is an optional temporal mode.");
     if (!error.empty()) ImGui::TextWrapped("%s", error.c_str());

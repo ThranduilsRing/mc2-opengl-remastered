@@ -44,6 +44,20 @@ def region_of(part_name: str):
                 "centre_torso", "center_torso", "head"):
         if key in n:
             return REGION[key]
+    # MW5 rigid mesh partitions are named after their owning skeleton bone.
+    side = 0 if 'left' in n else 1
+    if any(k in n for k in ('hip_', 'thigh_', 'calf_', 'foot', 'toe')):
+        return side
+    if any(k in n for k in ('clavicle_', 'upperarm_', 'forearm_', 'hand_')):
+        return 2 + side
+    if 'cockpit' in n:
+        return 7
+    if 'torso_left' in n:
+        return 5
+    if 'torso_right' in n:
+        return 4
+    if any(k in n for k in ('spine', 'pelvis', 'torso', 'weapon_', 'body')):
+        return 6
     return None
 
 
@@ -104,6 +118,8 @@ def load_parts(glb: Path):
         if node.mesh is None:
             continue
         region = region_of(node.name or g.meshes[node.mesh].name or "")
+        if region is None and (node.name or '').startswith('wp') and node.skin is not None:
+            region = region_of(g.nodes[g.skins[node.skin].joints[0]].name or '')
         if region is None:
             continue
         skin = g.skins[node.skin] if node.skin is not None else None
@@ -118,6 +134,9 @@ def load_parts(glb: Path):
                 out = np.einsum("nij,nj->ni", mats[j0], ph)[:, :3]
             else:
                 out = (np.c_[pos, np.ones(len(pos))] @ wm(ni).T)[:, :3]
+            if 'mw5Attachments' in (g.extras or {}):
+                # MW5 faces +X; the stock icon raster looks at glTF +Z.
+                out = np.column_stack((-out[:, 2], out[:, 1], out[:, 0]))
             parts.append((region, out, idx))
     return parts
 

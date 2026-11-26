@@ -7,7 +7,7 @@ first violation, render-owns fence and private-RNG jitter), under the determinis
 mission reached; one serial reference run per mission (MC2_SIM_OVERLAP=0, no jitter) must give the same hash. A run is red
 when it prints a `[SIM_OVERLAP v1] VIOLATION` line, aborts, or its hash differs from the serial reference.
 
-  py -3 tools/stress_overlap.py --exe E:/mc2-installs/<lane>/mc2.exe --runs 8 --out E:/mc2-archive-2026-10/proofs/<lane>/stress
+  py -3 tools/stress_overlap.py --exe G:/mc2-installs/<lane>/mc2.exe --runs 8 --out G:/mc2-proofs/<lane>/stress
   py -3 tools/stress_overlap.py --deploy <lane> --missions mc2_10 --runs 2 --out <dir>
 
 Farm (the seeded harness has this file once reseeded; `{EXE}`/`{ROOT}` are replaced by host.py):

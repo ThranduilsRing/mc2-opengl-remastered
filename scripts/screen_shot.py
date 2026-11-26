@@ -47,18 +47,18 @@ def build_env(screen: str, out_tga: Path, *, campaign: str = "campaign", mission
         "MC2_SHOT_SCREEN": f"{name}@{settle}",
         "MC2_SCREENSHOT_PATH": str(out_tga),
         "MC2_RENDER_BACKEND": "vulkan",
+        "MC2_LAUNCHER_ENV_JSON": "1",
         "MC2_LOG": "1",
         "MC2_NO_CURSOR_GRAB": "1",
         "MC2_WIDTH": str(width),
         "MC2_HEIGHT": str(height),
-        "MC2_SOAK_STOP_AT_BAY": "1",   # park at the bay, never NEXT past it
-        "MC2_SOAK_AUTOWIN": "1",  # also enables the logistics auto-purchase path
     }
     if name == "loadout":
-        sets.update(MC2_BOOT_TO_SCREEN="bay", MC2_BOOT_TO_MECHLAB="1", MC2_SOAK_AUTO_PURCHASE="1")
+        sets.update(MC2_BOOT_TO_SCREEN="bay", MC2_BOOT_TO_MECHLAB="1", MC2_SOAK_AUTO_PURCHASE="1",
+                    MC2_SOAK_AUTOWIN="1", MC2_SOAK_STOP_AT_BAY="1")
     elif name in ("encyclopedia", "mainmenu", "loadgame"):
         for key in ("MC2_BOOT_TO_BAY", "MC2_BOOT_TO_MISSION", "MC2_SOAK_AUTOWIN", "MC2_SOAK_STOP_AT_BAY"):
-            sets.pop(key)
+            sets.pop(key, None)
         sets["MC2_BOOT_TO_SCREEN"] = name
     return env_pin.build_pinned_env(sets, declared)
 

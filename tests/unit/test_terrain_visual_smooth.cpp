@@ -4,6 +4,13 @@
 #include "gameos/terrain_visual_smooth.h"
 #include <cmath>
 #include <vector>
+#include <stdexcept>
+
+TEST_CASE("visual smooth: worker exceptions return to the caller") {
+    CHECK_THROWS_AS(mc2terrain::parallelBands(128, [](int first, int) {
+        if (first > 0 || std::thread::hardware_concurrency() < 8) throw std::runtime_error("worker");
+    }), std::runtime_error);
+}
 
 TEST_CASE("visual smooth: terraced wall melts, flats stay, gameplay input untouched, corners bounded")
 {
@@ -48,6 +55,7 @@ TEST_CASE("ravine weathering: only blocked cells move, passable cell centres kee
         }
     const std::vector<unsigned char> maskBefore = blocked;
     const auto plain = mc2terrain::buildSmoothedVisualHeight(e.data(), N, -1.0e9f);
+    CHECK(mc2terrain::buildSmoothedVisualHeight(e.data(), N, -1.0e9f, nullptr, -1) == plain); // missing/non-square MOVE fallback
     const auto carved = mc2terrain::buildSmoothedVisualHeight(e.data(), N, -1.0e9f, &blocked, C);
     REQUIRE(plain.has_value());
     REQUIRE(carved.has_value());

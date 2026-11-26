@@ -5,7 +5,7 @@ Every per-mech fact lives in recipes/<family>.json (object paths, clip names, ha
 Game bytes stay in --work (outside git); the pack is written to <install>/mods/<mod id>/.
 
   py -3 tools/mw5_mechs/make_mech.py --recipe recipes/hunchback.json --work G:/mc2-tmp/x/hunchback \
-      --install E:/mc2-installs/mw5-poc [--steps extract,glb,bake,pack] [--mod-id mw5_mechs]
+      --install G:/mc2-installs/mw5-poc [--steps extract,glb,bake,pack] [--mod-id mw5_mechs]
 
 Environment: MW5_INSTALL (game root), MW5_EXTRACT_DLL (Mw5Extract.dll), UMODEL (umodel_64.exe), KTX (ktx.exe),
 MW5_MATERIAL_DEFAULTS (json of the shared painted-metal material's default parameters).
@@ -62,7 +62,7 @@ def run(*cmd, ok=(0,)):
 
 def native_request(recipe):
     ex = recipe["extraction"]
-    return {"mesh": ex["mesh"], "clips": list(ex["clips"].values()), "materials": ex["materials"],
+    return {"mesh": ex["mesh"], "clips": [v for k, v in ex["clips"].items() if k != "Crouch"], "materials": ex["materials"],
             "loadouts": [], "textures": list(ex["textures"].values())}
 
 
@@ -120,6 +120,7 @@ def extract(recipe, work):
             "--ue", "4.26", "--request", request, "--out", native, ok=(0, 2))  # 2 = assets left on the bridge
     work.joinpath("hull.gltf").write_text(json.dumps(from_native.convert(native), allow_nan=False))
     objects = [ex["cockpit"]["hull"]] + ([ex["cockpit"]["glass"]] if ex["cockpit"].get("glass") else []) + list(ex["weapons"].values())
+    objects += [row["source"] for row in recipe["mc2"]["model"]["attachments"]]
     for path in objects:
         if not (work / "ex" / (path.lstrip("/") + ".gltf")).is_file():
             # umodel takes one exact object per call; a wildcard silently exports nothing
@@ -135,11 +136,28 @@ def weapon_attachments(recipe, work):
             continue
         seen.add((row["mesh"], row["bone"]))
         out.append(f"{work / 'ex' / (ex['weapons'][row['mesh']].lstrip('/') + '.gltf')}={row['bone']}")
+    for row in recipe["mc2"]["model"]["attachments"]:
+        out.append(f"{work / 'ex' / (row['source'].lstrip('/') + '.gltf')}={row['bone']}")
     return out
+
+
+def select_base_clips(recipe, available):
+    sources = [s for s in recipe["extraction"]["clips"] if recipe["clip_pattern"].format(source=s) in available]
+    if "Stand" not in sources:
+        raise ValueError("no base Stand animation")
+    for source, gesture in build_glb.CLIPS.items():
+        if gesture not in recipe["clips"].values():
+            recipe["hold_clips"].setdefault(gesture, [source, 0])
+    for gesture, (source, frame) in list(recipe["hold_clips"].items()):
+        if source not in sources:
+            fallback = next(s for s in ("Stand", "WalkForward_Straight", "RunForward_Straight") if s in sources)
+            recipe["hold_clips"][gesture] = [fallback, 0]
+            print(f"fallback_hold {gesture} source={source} -> {fallback} frame=0")
 
 
 def hull_glb(recipe, work):
     ex, stem = recipe["extraction"], recipe["mc2"]["stem"]
+    select_base_clips(recipe, {a["name"] for a in json.loads((work / "hull.gltf").read_text())["animations"]})
     base = work / "base.glb"
     build_glb.build(work / "hull.gltf", None, base, f"{stem}_alb.png", attachments=weapon_attachments(recipe, work), recipe=recipe)
     cockpit = ex["cockpit"]

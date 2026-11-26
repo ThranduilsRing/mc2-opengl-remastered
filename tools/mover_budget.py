@@ -5,7 +5,7 @@ Boots a stock mission headless with MC2_MOVER_FIXTURE=N (code/mover_budget_fixtu
 keeps move/attack orders flowing), runs --ticks sim ticks and reads the engine's [SIM_TICK_COST v1] rows (MC2_MISSION_SPLIT=1).
 Prints one verdict line: mean of the per-run avg and p95 sim tick ms over --runs runs.
 
-  py -3 tools/mover_budget.py --install E:/mc2-installs/claude-m5-m6-movers [--mission mc2_03] [--movers 200] [--ticks 900] [--runs 3]
+  py -3 tools/mover_budget.py --install G:/mc2-installs/claude-m5-m6-movers [--mission mc2_03] [--movers 200] [--ticks 900] [--runs 3]
 """
 from __future__ import annotations
 

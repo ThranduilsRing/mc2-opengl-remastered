@@ -470,6 +470,8 @@ def tree_upscale_payload(src_root):
     return {f"data/tgl/128/{stem}.ktx2": row["ktx2_sha256"] for stem, row in sorted(pins.items())}
 
 
+from smoke_lib.paths import ASSET_STORE_ROOT, INSTALL_ROOT, LEAN_SEED_ROOT
+
 def ensure_tree_upscale(src_root, cooker=subprocess.run):
     """Generate the upscaled tree sidecars when absent or not the pinned bytes (soft: stock trees render without them)."""
     rows = tree_upscale_payload(src_root)
@@ -484,7 +486,7 @@ def ensure_tree_upscale(src_root, cooker=subprocess.run):
     # Lane worktrees can reuse published bytes only when they match the checked-in pins.
     # This avoids a redundant multi-minute cook inside the 300 s enumeration phase.
     import asset_parity
-    references = (Path(os.environ.get('MC2_LEAN_SEED', 'E:/mc2-installs/_lean-seed')),
+    references = (Path(os.environ.get('MC2_LEAN_SEED', LEAN_SEED_ROOT)),
                   asset_parity.default_ref())
     for rel, want in rows.items():
         dst = Path(src_root) / rel
@@ -542,7 +544,7 @@ def ensure_actor_pbr(src_root, cooker=subprocess.run):
     if current():
         return
     import asset_parity
-    references = (Path(os.environ.get('MC2_LEAN_SEED', 'E:/mc2-installs/_lean-seed')), asset_parity.default_ref())
+    references = (Path(os.environ.get('MC2_LEAN_SEED', LEAN_SEED_ROOT)), asset_parity.default_ref())
     for rel, want in rows.items():
         dst = Path(src_root) / rel
         if dst.is_file() and sha256_file(dst) == want:
@@ -618,6 +620,35 @@ FOREST_FLOOR_REL = "data/terrain_layers/forest_floor_normal.ktx2"
 
 
 FOREST_FLOOR_SRC = "E:/mc2-ref/terrain-normals-2026-11-24"  # drive-path: ok PC-only cook source; mirrors cook_forest_floor.SOURCE_DIR
+
+
+def cook_mod_visual_heights(src_root, target):
+    """Reuse the offline sidecar cook for installed mod maps; retain authored bakes."""
+    cook = Path(src_root) / "tools/terrain_beautify/visual_heightfield.py"
+    paks = sorted((Path(target) / "mods").glob("*/data/missions/*.pak"))
+    if not paks:
+        return
+    sys.path.insert(0, str(cook.parent))
+    from mission_terrain_analyzer import locate_mapdata, read_packets, extract_layers
+    from height_sig import height_sig
+    for pak in paks:
+        sidecar = pak.parent / (pak.stem + ".beauty") / "visual_height_4x.r32"
+        md = locate_mapdata(read_packets(pak))
+        if md is None:
+            log(f"mod visual height: {pak.name} has no terrain MapData; skipping")
+            continue
+        _, side, blocks = md
+        sig = sidecar.with_name("gameplay_height.sig")
+        expected_sig = height_sig(extract_layers(side, blocks, 0.0)["elev"])
+        if (sidecar.is_file() and sidecar.stat().st_size == ((side - 1) * 4 + 1) ** 2 * 4
+                and (not sig.is_file() or sig.read_text(encoding="ascii").strip() == expected_sig)):
+            continue
+        try:
+            subprocess.run([sys.executable, str(cook), pak.stem, "--missions-dir", str(pak.parent),
+                        "--out", str(pak.parent), "--allow-nonstock", "--reauth", "--reauth-passes", "4", "--cliff-drift", "56",
+                        "--cliff-melt-passes", "4"], check=True, **console_child.child_kwargs())
+        except subprocess.CalledProcessError as exc:
+            log(f"mod visual height: {pak.name} cook failed (rc={exc.returncode}); skipping")
 
 
 def ensure_forest_floor(src_root, cooker=subprocess.run):
@@ -2552,7 +2583,7 @@ def implicit_target_refusal(src_root, explicit_target):
     parent, name = os.path.split(root)
     if parent.lower() == "a:/games" and name.lower().startswith("mc2-") and name.lower() != "mc2-main":
         return (f"no deploy target named, and {name} is a lane worktree: the implicit default install is mc2-main's. "
-                f"Name your own install, e.g. E:/mc2-installs/<lane> with --allow-new-target.")
+                f"Name your own install, e.g. G:/mc2-installs/<lane> with --allow-new-target.")
     return None
 
 
@@ -3050,7 +3081,7 @@ def main():
     ap.add_argument("--quiet", action="store_true",
                     help="print only verdicts, failures/warnings, artifact paths and the DEPLOY_FINGERPRINT lines; "
                          "the full output goes to a log (path on the last line)")
-    ap.add_argument("--asset-store", default=os.environ.get("MC2_ASSET_STORE", "E:/mc2-asset-store"),
+    ap.add_argument("--asset-store", default=os.environ.get("MC2_ASSET_STORE", ASSET_STORE_ROOT),
                     help="sha256-addressed intentional asset store (or MC2_ASSET_STORE)")
     asset_mode = ap.add_mutually_exclusive_group()
     asset_mode.add_argument("--from-install", metavar="INSTALL",
@@ -3316,7 +3347,7 @@ def verdict_exe_refusal(src_root, exe_src, head, verdict_path=None):
 
 def seed_receipt_rows():
     """The seed's own verification rows ({casefolded rel: {stamp, sha256}}); {} when the seed is absent."""
-    seed = Path(os.environ.get('MC2_LEAN_SEED', 'E:/mc2-installs/_lean-seed'))
+    seed = Path(os.environ.get('MC2_LEAN_SEED', LEAN_SEED_ROOT))
     rows = {}
     for name in ('.lane-seed-verification.json', '.lane-kit-verification.json'):
         try:
@@ -3420,7 +3451,7 @@ def prepare_seed_delta(items, target, full_verify=False, allow_legacy=False):
     return verified
 
 
-PAK_CACHE_ROOT = Path(os.environ.get("MC2_PAK_CACHE", "E:/mc2-installs/_pak-cache"))
+PAK_CACHE_ROOT = Path(os.environ.get("MC2_PAK_CACHE", (INSTALL_ROOT + '/_pak-cache')))
 PAK_REL = "paks/stock.mc2pak"
 
 
@@ -3762,7 +3793,7 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
         except (OSError, ValueError, KeyError) as exc:
             fail(f"RemasteredBuildings requires the pinned kit: {exc}; use --classic-assets for Classic")
     declared_items = intentional_payload(src_root, target, getattr(args, "asset_store", None)
-                                         or os.environ.get("MC2_ASSET_STORE", "E:/mc2-asset-store"))
+                                         or os.environ.get("MC2_ASSET_STORE", ASSET_STORE_ROOT))
     declared_paths = {rel for _, rel, _ in declared_items}
     items = [item for item in items if item[1] not in declared_paths] + declared_items
     kit_prepare_seconds = time.perf_counter() - kit_prepare_started
@@ -3789,7 +3820,7 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     # ones.
     write_set = items + [(None, MANIFEST_NAME, "manifest")]
     legacy_lane = (getattr(args, "allow_new_target", False) and
-                   Path(target).resolve().is_relative_to(Path('E:/mc2-installs').resolve()))
+                   Path(target).resolve().is_relative_to(Path(INSTALL_ROOT).resolve()))
     with deploy_phase("hardlink isolation", 300):
         verified = prepare_seed_delta(write_set, target, args.full_verify, allow_legacy=legacy_lane)
         check_hardlink_isolation([item for item in items if item[1] not in verified] + [(None, MANIFEST_NAME, "manifest")],
@@ -3844,6 +3875,8 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
         fail(f"asset parity: {len(drift.missing)} missing, {len(drift.size)} size-different, "
              f"{len(drift.content)} content-different, {len(drift.extra)} extra file(s) vs {asset_parity.default_ref()} "
              f"(missing e.g. {', '.join(drift.missing[:5])}); rerun without --no-asset-sync to copy them from v0.4", 8)
+    with deploy_phase("mod visual height cook", 900):
+        cook_mod_visual_heights(src_root, target)
     if not reuse and (Path(target) / "data/model_overrides/models.json").is_file():
         try:
             with deploy_phase("tree cook", 900):

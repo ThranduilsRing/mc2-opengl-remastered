@@ -69,7 +69,7 @@ layout(set = 0, binding = 1, std430) readonly buffer TerrainHeightBuf {
 } uH;
 // TERRAIN-SHORELINE-V3: optional mask sidecar (G wet, B foam, A valid); read only while TS_shorelineHasMask != 0.
 layout(set = 0, binding = 14) uniform sampler2D u_shorelineMask;
-layout(set = 0, binding = 20) uniform sampler2D u_forestMask;   // tree-canopy density (RGBA8, density in R) over the colormap atlas extent
+layout(set = 0, binding = 20) uniform sampler2D u_forestMask;   // tree-canopy density (R8) over the colormap atlas extent
 
 // Material layer indices (mirror shaders/include/terrain_mat_layers.hglsl).
 #define MAT_LAYER_ROCK     0
@@ -195,6 +195,7 @@ vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod) {
     vec4 tiling = vec4(MATV_TILING.x / 3.0, MATV_TILING.yzw);
     vec4 fade = vec4(mv_detailFade(mv_detailTexelGM * tiling.x), mv_detailFade(mv_detailTexelGM * tiling.y),
                      mv_detailFade(mv_detailTexelGM * tiling.z), mv_detailFade(mv_detailTexelGM * tiling.w));
+    w = mv_groundDetailWeights(w, macroN.z);
     vec4 strength = w * MATV_NORMAL_BOOST * vec4(1.0 / 3.0, 1, 1, 1) * fade;
     // A lamp needs micro-relief, not a second full material evaluation. Use
     // the strongest visible layer; sun/shore/debug retain the weighted blend.
@@ -474,15 +475,16 @@ void main() {
         vec3 dbgBaseN = vec3(0.0, 0.0, 1.0); vec3 dbgDN = vec3(0.0);  // CSM-BLACKOUT-RECON-1 taps
         if (TS_detailEnabled != 0 && !pureConcrete) {
             vec3 baseN = baseNormal;
+            vec4 detailW = mv_groundDetailWeights(materialW, baseN.z);
             vec3 dN    = vec3(0.0);
             if ((kPlanarReflection == 0 || kReflectCutDetail == 0) && TS_detailReady != 0 && uT.detailStrength != 0.0) {
-                if (mv_needDetail(baseN, lightDir, materialW, materialSnow, v_worldPos, normalLightFloor)) {
+                if (mv_needDetail(baseN, lightDir, detailW, materialSnow, v_worldPos, normalLightFloor)) {
                     // Under-forest ground: the tree-canopy density mask (splatted from tree placements at mission load), same atlas UV as
                     // the macro colour. Needs the 7th array layer.
                     mv_forestMix = (TS_colormapReady != 0 && textureSize(u_matNormalArray, 0).z > MAT_LAYER_FOREST)
                         ? textureLod(u_forestMask, vec2((v_worldPos.x - uT.atlasTopLeftX) * uT.atlasOneOverWorldUnits,
                                                         (uT.atlasTopLeftY - v_worldPos.y) * uT.atlasOneOverWorldUnits), 0.0).r : 0.0;
-                    dN = mv_detailNormal(materialW, materialSnow, v_worldPos.xy + seabedOffset, baseN.z, detailUvDx, detailUvDy);
+                    dN = mv_detailNormal(detailW, materialSnow, v_worldPos.xy + seabedOffset, baseN.z, detailUvDx, detailUvDy);
                 } else {
                     resolveLampNormal = true;
                 }
@@ -494,7 +496,7 @@ void main() {
             if ((TS_concreteDetail & 2) != 0) crApply(baseN, cliffDx * MATV_CLIFF_TS, cliffDy * MATV_CLIFF_TS, cliffLod, blocked, N, baseColor);
             else if (TS_detailReady >= 2) mv_cliffMaterial(baseN, cliffLod, blocked, N, baseColor);
             if (TS_detailReady != 0) crNavigable(baseN, cliffDx * MATV_CLIFF_TS, cliffDy * MATV_CLIFF_TS,
-                                               (1.0 - blocked) * max(materialW.x, cliffRockWeight(abs(baseN.z))), N, baseColor);
+                                               (1.0 - blocked) * max(detailW.x, cliffRockWeight(abs(baseN.z))), N, baseColor);
             if (kPlanarReflection != 0 && kReflectCutDetail != 0) N = normalize(macroPert);
             dbgBaseN = baseN; dbgDN = dN;                        // CSM-BLACKOUT-RECON-1 taps
         }

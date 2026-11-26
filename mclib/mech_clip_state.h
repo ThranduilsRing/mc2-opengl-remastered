@@ -32,7 +32,9 @@ namespace mc2clip {
 struct StrideMeasurement {
     float estimate = 0, planted = 0;
     float speed() const {
-        return planted >= 0.5f * estimate && planted <= 1.1f * estimate ? planted : estimate;
+        // Running stance is shorter than half a cycle: 2R/T is not its speed cap.
+        // Allow contact down to a quarter cycle; reject non-contact joint motion.
+        return planted >= 0.5f * estimate && planted <= 2.0f * estimate ? planted : estimate;
     }
 };
 

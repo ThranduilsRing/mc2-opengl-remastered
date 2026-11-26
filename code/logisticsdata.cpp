@@ -482,6 +482,8 @@ void				LogisticsData::addNewBonusPurchaseFile( mc2::czstring pFileName )
 
 bool				LogisticsData::skipLogistics()
 {
+	if (missionInfo->skipPurchasing() && !skipPurchasing())
+		return false;
 	return missionInfo->skipLogistics();
 }
 bool				LogisticsData::skipPilotReview()
@@ -494,6 +496,10 @@ bool				LogisticsData::skipSalvageScreen()
 }
 bool				LogisticsData::skipPurchasing()
 {
+	// Imported chassis remain available in campaigns that disable their stock shop.
+	for (const auto& variant : variants)
+		if (variant->isAvailable() && variant->getChassis()->getPackage())
+			return false;
 	return missionInfo->skipPurchasing();
 }
 

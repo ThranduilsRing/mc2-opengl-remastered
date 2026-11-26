@@ -36,7 +36,9 @@ from smoke_lib import deploy_lease, host_lease, vk_profile
 
 MISSIONS = bench.STOCK_MISSIONS
 DEFAULT_BOOKMARKS = Path("A:/Games/mc2-ops/bookmarks/mc2_01_owner_2026-11-11.json")  # drive-path: ok brief's canonical owner file; --bookmarks supplies the laptop copy
-DEFAULT_OUT = Path("E:/mc2-archive-2026-10/proofs/by-tag")  # drive-path: ok brief's immutable archive; --out-root supplies laptop-local storage
+from smoke_lib.paths import PROOF_ROOT, SCRATCH_ROOT
+
+DEFAULT_OUT = Path((PROOF_ROOT + '/by-tag'))  # drive-path: ok brief's immutable archive; --out-root supplies laptop-local storage
 V04 = Path("A:/Games/mc2-opengl/mc2-win64-v0.4")  # drive-path: ok identifies the canonical PC snapshot; copied --asset-reference requires its hash
 SETTINGS = {"width": 1920, "height": 1080, "duration_s": 20, "seed": "0xC0FFEE",
             "lighting": "native mission", "fps_cap": 0, "vsync": 0,
@@ -648,7 +650,7 @@ def main(argv=None):
     parser.add_argument("--asset-reference", type=Path)
     parser.add_argument("--reference-sha256", help="PC v0.4 asset identity; required for a host-local reference copy")
     parser.add_argument("--out-root", type=Path, default=DEFAULT_OUT)
-    parser.add_argument("--scratch-root", type=Path, default=Path("E:/mc2-tmp/slot05/tag-replay"))  # drive-path: ok assigned slot scratch; laptop overrides explicitly
+    parser.add_argument("--scratch-root", type=Path, default=Path((SCRATCH_ROOT + '/slot05/tag-replay')))  # drive-path: ok assigned slot scratch; laptop overrides explicitly
     parser.add_argument("--pc-sweep", type=Path, default=Path("G:/mc2-tmp/perf-brief/stats.md"))  # drive-path: ok binding owner reference; --pc-sweep supplies laptop copy
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)

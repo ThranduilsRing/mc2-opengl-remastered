@@ -32,8 +32,11 @@ def _child_kwargs():
     sys.path.insert(0, str(ROOT / 'scripts'))
     from console_child import child_kwargs
     return child_kwargs(redirected=True)
-OUT = Path('E:/mc2-ref/scifi-kit/art')
-STOCK_VIEWS = Path('E:/mc2-ref/scifi-kit/studies/stock-views')
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
+from smoke_lib.paths import SCIFI_OUTPUT_ROOT
+
+OUT = Path((SCIFI_OUTPUT_ROOT + '/art'))
+STOCK_VIEWS = Path((SCIFI_OUTPUT_ROOT + '/studies/stock-views'))
 INVENTORY = Path(os.environ.get('MC2_REF_ROOT', 'E:/mc2-ref')) / 'scifi-kit/mapping/inventory.csv'
 JOBS_FILE = Path('A:/Games/mc2-ops/JOBS')
 PIPELINE = Path('A:/Games/mc2-flash4')

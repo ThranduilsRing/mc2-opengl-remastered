@@ -429,6 +429,8 @@ def test_compile_cache_real_pc_stats(monkeypatch, mismatch):
     # Captured on this PC with sccache 0.18.0, 2026-11-08.
     cn = bat.cn
     shown = (ROOT / "scripts/tests/fixtures/sccache-stats-tasklist-timeout.txt").read_text()
+    # Keep the captured stats, remapping the precheck root for the drive migration.
+    shown = shown.replace("e:/mc2-installs/_precheck/tree", "g:/mc2-installs/_precheck/tree")
     assert cn.server_base_dirs(shown.lower()) == {cn._norm_root(r) for r in cn.SCCACHE_FIXED_ROOTS}
     if mismatch == "roots":
         shown = shown.replace("a:/games/mc2-slot12/", "a:/games/old-slot/")

@@ -44,7 +44,7 @@ def test_env_strips_smoke_and_boot_shortcuts(monkeypatch, tmp_path):
 
 
 def test_refuses_owner_install(capsys):
-    assert pp.main(["--install", "E:/mc2-installs/owner-test-2026-10-26"]) == 2
+    assert pp.main(["--install", "G:/mc2-installs/owner-test-2026-10-26"]) == 2
 
 
 def test_save_redirect_is_required_and_per_run(tmp_path):

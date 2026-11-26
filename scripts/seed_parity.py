@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Lane-install data parity with the nifty install (v0.4).
 
-A lane install built from E:/mc2-installs/_lean-seed carries the deploy payload and the stock archives, but the seed
+A lane install built from G:/mc2-installs/_lean-seed carries the deploy payload and the stock archives, but the seed
 used to leave out the pre-baked data the game reads from v0.4: the terrain transition cache (data/textures/*.txm, *.ktx2,
 *.lst, *.burnin.jpg), the loose terrain overlay/mask art and the stock option files. Without them a lane regenerates the
 transition textures at load (127 s on mc2_01, and the concrete/shore areas then differ from v0.4), so every lane A/B and
@@ -13,8 +13,8 @@ into the seed using atomic file replacement, and records a parity snapshot (SNAP
 so v0.4 drifting after a refresh does not block lanes. The merge-gate v0.4 deploy refreshes the seed and snapshot afterwards
 (`after_v04_deploy`) or prints the exact command. Payload follows the deployed manifest; runtime-written dirs remain per-install.
 
-  py -3 scripts/seed_parity.py --check E:/mc2-installs/<install>
-  py -3 scripts/seed_parity.py --refresh-seed E:/mc2-installs/_lean-seed
+  py -3 scripts/seed_parity.py --check G:/mc2-installs/<install>
+  py -3 scripts/seed_parity.py --refresh-seed G:/mc2-installs/_lean-seed
 """
 from __future__ import annotations
 
@@ -42,8 +42,10 @@ DEFAULT_REF = default_ref()
 SNAPSHOT_NAME = ".parity-snapshot.json"
 
 
+from smoke_lib.paths import LEAN_SEED_ROOT
+
 def default_seed() -> Path:
-    return Path(os.environ.get("MC2_LEAN_SEED", "E:/mc2-installs/_lean-seed"))
+    return Path(os.environ.get("MC2_LEAN_SEED", LEAN_SEED_ROOT))
 
 ROOT_FILES = ("options.cfg", "system.cfg", "prefs.cfg", "minprefs.cfg", "orgprefs.cfg")
 # (prefix, excluded subdirectories under it). Backups and the random-map picker art are never read by a mission.
@@ -254,7 +256,7 @@ def require_parity(install: Path, ref: Path | None = None) -> None:
         raise SystemExit(
             f"{PREFIX} FAIL: {len(problems)} data file(s) of {install} differ from {ref}:\n  {shown}"
             + ("\n  ..." if len(problems) > 20 else "")
-            + f"\n  fix: py -3 scripts/seed_parity.py --refresh-seed E:/mc2-installs/_lean-seed, then rebuild the install")
+            + f"\n  fix: py -3 scripts/seed_parity.py --refresh-seed G:/mc2-installs/_lean-seed, then rebuild the install")  # drive-path: ok PC path in user-facing help
     print(f"{PREFIX} OK: {install} matches {ref} for the shared data set")
 
 

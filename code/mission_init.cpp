@@ -849,7 +849,6 @@ void Mission::initPathfinding(MissionInitFrame& f) {
 		if (pakFile.getPacketSize() != 0)
 		{
 			MOVE_readData(&pakFile, 4);
-			if (land) land->reloadVisualHeightWithPassability(GameMap);
 			if (GlobalMoveMap[0]->badLoad) {
 				PAUSE((" Mission.init: bad/old move data — skipping gate callback wiring; pathfinding degraded "));
 				GameMap->placeMoversCallback = PlaceMovers;
@@ -905,6 +904,7 @@ void Mission::initPathfinding(MissionInitFrame& f) {
 		}
 	}
 
+	if (land) land->reloadVisualHeightWithPassability(GameMap);
 	configurePathfinding(forestMoveCost);
 
 #ifdef LAB_ONLY

@@ -88,6 +88,7 @@ import argparse
 import hashlib
 import json
 import sys
+import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -1194,6 +1195,19 @@ def _pyramid_top_score(elev, water_mask, land_mask):
     return float(pyr[0]["score"]) if pyr else 0.0
 
 
+def quality_passes(report: dict, reshape: bool, corner_clamp: float, max_drift: float) -> bool:
+    """Use the same quality gate for publishing the bake and reporting CLI success."""
+    error = report["max_corner_error_wu"]
+    if report.get("reauth"):
+        ra = report["reauth"]
+        # Allow extrema restoration slack plus the bounded shore adjustment.
+        cap = float(ra.get("effective_max_drift_wu", max_drift)) * 1.25 + float((ra.get("shore") or {}).get("bank_adjust_wu", {}).get("max", 0.0))
+        return (ra["extrema"]["violations"] == 0
+                and float(ra.get("landform_correlation_off_shore", ra["landform_correlation"])) >= 0.99
+                and 0.05 < error <= cap)
+    return error <= (corner_clamp if reshape else 0.0) + 1e-4
+
+
 def bake(mission: str, missions_dir: Path, out_root: Path, factor: int,
          reshape: bool = False, corner_clamp: float = 0.0,
          max_delta: float = 40.0, passes: int = 24,
@@ -1306,17 +1320,6 @@ def bake(mission: str, missions_dir: Path, out_root: Path, factor: int,
                      "self_check": selfck,
                      "levels": mm["stats"]}
 
-    beauty = out_root / f"{mission}.beauty"
-    beauty.mkdir(parents=True, exist_ok=True)
-    visual.astype("<f4").tofile(beauty / f"visual_height_{factor}x.r32")
-    if mips:
-        mm["blob"].astype("<f4").tofile(beauty / "visual_height_mips.r32")
-    _save_gray(visual, beauty / "visual_height_preview.png")
-    _save_gray(np.abs(delta), beauty / "visual_delta_heatmap.png")
-    if damp is not None:
-        damp.astype("<f4").tofile(beauty / "visual_damp.r32")
-        _save_gray(damp, beauty / "visual_damp_preview.png")
-
     if reauth:
         note = ("REAUTH (TERRAIN-REAUTH-UNPIN-1): corner-UNpinned Taubin band-pass "
                 "smoothing; landform kept (extrema within shape_tolerance of local "
@@ -1359,7 +1362,28 @@ def bake(mission: str, missions_dir: Path, out_root: Path, factor: int,
         "max_mips": mips_info,
         "note": note,
     }
-    (beauty / "visual_height_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+    if not quality_passes(report, reshape, corner_clamp, max_drift):
+        return report
+    # Publish complete files only after the quality gate; signature is the commit marker.
+    out_root.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=out_root, suffix=".tmp") as stage:
+        beauty = Path(stage) / f"{mission}.beauty"
+        beauty.mkdir(parents=True, exist_ok=True)
+        from height_sig import height_sig
+        (beauty / "gameplay_height.sig").write_text(height_sig(elev) + "\n", encoding="ascii")
+        visual.astype("<f4").tofile(beauty / f"visual_height_{factor}x.r32")
+        if mips:
+            mm["blob"].astype("<f4").tofile(beauty / "visual_height_mips.r32")
+        _save_gray(visual, beauty / "visual_height_preview.png")
+        _save_gray(np.abs(delta), beauty / "visual_delta_heatmap.png")
+        if damp is not None:
+            damp.astype("<f4").tofile(beauty / "visual_damp.r32")
+            _save_gray(damp, beauty / "visual_damp_preview.png")
+        (beauty / "visual_height_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+        target = out_root / beauty.name
+        target.mkdir(parents=True, exist_ok=True)
+        for output in sorted(beauty.iterdir(), key=lambda p: p.name == "gameplay_height.sig"):
+            output.replace(target / output.name)
     return report
 
 
@@ -1438,23 +1462,9 @@ def main() -> int:
         if rep.get("error"):
             print(f"[visual-bake] {m}: ERROR {rep['error']}", file=sys.stderr); rc = 1; continue
         extra = ""
+        ok = quality_passes(rep, args.reshape, args.corner_clamp, args.max_drift)
         if rep.get("reauth"):
             ra = rep["reauth"]
-            # reauth PASS = landform kept (corr + extrema) AND corners actually
-            # unpinned AND drift inside the soft bound (+tanh slack).
-            # corner cap: extrema re-injection may locally exceed the tanh soft
-            # bound while restoring a peak (that is the guarantee WORKING) ->
-            # allow 25% headroom over the EFFECTIVE drift (cliff smoothing: the
-            # cliff mask allows cliff_drift; flats keep max_drift).
-            eff = float(ra.get("effective_max_drift_wu", args.max_drift))
-            # Gate on the off-shore correlation when the
-            # shore stage ran (== global when it didn't).
-            corr_gate = float(ra.get("landform_correlation_off_shore",
-                                     ra["landform_correlation"]))
-            ok = (ra["extrema"]["violations"] == 0
-                  and corr_gate >= 0.99
-                  and rep["max_corner_error_wu"] <= eff * 1.25
-                  and rep["max_corner_error_wu"] > 0.05)
             ce = ra["facet_crease_energy"]
             n_enf = ra["extrema"].get("enforced", ra["extrema"]["count"])
             extra = (f" corr={ra['landform_correlation']:.4f}"
@@ -1485,8 +1495,6 @@ def main() -> int:
                 extra += (f" mtn[seed={mi['seed']} rock={100*mi['rock_area_frac']:.0f}%"
                           f" detail_rms={mi['detail_rms_on_rock_wu']:.1f}wu]")
         else:
-            cap = (0.0 if not args.reshape else args.corner_clamp) + 1e-4
-            ok = rep["max_corner_error_wu"] <= cap
             if rep.get("reshape"):
                 ri = rep["reshape"]
                 extra = (f" pyr_score {ri['pyramid_top_score_before']:.2f}->{ri['pyramid_top_score_after']:.2f}"

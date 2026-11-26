@@ -3,6 +3,7 @@
 // Declared in the class headers; shared names in mission_internal.h.
 #include "mission_internal.h"
 #include "content_error.h"
+#include "package_chassis.h"
 #include "spawn_tree_clear.h"
 #include <string>
 #include "mc2fmt.h"
@@ -56,10 +57,11 @@ void Mission::createPartObject (long partIndex, MoverPtr mover) {
 			case GROUNDVEHICLE:
 			case ELEMENTAL:
 			{
-				if (ObjectTypeManager::objectFile->seekPacket(parts[partIndex].objNumber) == NO_ERR) 
+				const auto* package = packageChassisByTypeNum(parts[partIndex].objNumber);
+				if (package || ObjectTypeManager::objectFile->seekPacket(parts[partIndex].objNumber) == NO_ERR)
 				{
 					FitIniFile profileFile;
-					long result = profileFile.open(ObjectTypeManager::objectFile,ObjectTypeManager::objectFile->getPacketSize());
+					long result = package ? profileFile.open(package->fitPath.c_str()) : profileFile.open(ObjectTypeManager::objectFile,ObjectTypeManager::objectFile->getPacketSize());
 					if (result != NO_ERR) {
 						mc2::content::error(mc2::content::Kind::MissionData, std::to_string(parts[partIndex].objNumber).c_str(), "cannot open mover profile; skipped");
 						MC2_DESTROY(mover, "invalid_content_profile");
@@ -341,10 +343,11 @@ typedef struct _MoverInitData {
 				case GROUNDVEHICLE:
 				case ELEMENTAL:	
 				{
-					if (ObjectTypeManager::objectFile->seekPacket(moverSpec->objNumber) == NO_ERR) 
+					const auto* package = packageChassisByTypeNum(moverSpec->objNumber);
+					if (package || ObjectTypeManager::objectFile->seekPacket(moverSpec->objNumber) == NO_ERR)
 					{
 						FitIniFile profileFile;
-						long result = profileFile.open(ObjectTypeManager::objectFile,ObjectTypeManager::objectFile->getPacketSize());
+						long result = package ? profileFile.open(package->fitPath.c_str()) : profileFile.open(ObjectTypeManager::objectFile,ObjectTypeManager::objectFile->getPacketSize());
 						if (result != NO_ERR) {
 							mc2::content::error(mc2::content::Kind::MissionData, std::to_string(moverSpec->objNumber).c_str(), "cannot open mover profile; skipped");
 							MC2_DESTROY(mover, "invalid_content_profile");

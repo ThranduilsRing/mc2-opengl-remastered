@@ -29,6 +29,7 @@ inline constexpr long kCalledOff = 0, kCalledFloors = 1, kCalledClassic = 2;
 inline constexpr long kSalvageGenerous = 0, kSalvageMC2 = 1, kSalvageScarce = 2;
 
 struct GameRules {
+    bool purchaseVehicles     = true;
     long dropLimitMode        = kDropTonnage;   // what caps a drop: tonnage (today), battle value, or nothing (tonnage still shown as info)
     bool dropWeightPurchase   = false;          // the player may buy extra drop weight
     long dropWeightStep       = 5;              // tons (or BV points per ton-equivalent later) per purchase
@@ -92,6 +93,7 @@ inline constexpr Rule kRules[] = {
     detail::pctRule ("PilotSkillWeight",   &GameRules::pilotSkillWeight, 0, 200),
     detail::enumRule("Salvage",            &GameRules::salvage,          kSalvageScarce, detail::kSalvageLabels),
     detail::pctRule ("CBillMultiplier",    &GameRules::cbillMultiplier,  50, 200),
+    detail::boolRule("PurchaseVehicles",   &GameRules::purchaseVehicles),
 };
 
 inline constexpr std::size_t kRuleCount = sizeof(kRules) / sizeof(kRules[0]);

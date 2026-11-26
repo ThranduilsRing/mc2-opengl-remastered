@@ -89,3 +89,11 @@ def test_legacy_only_allow_listed(env):
         d.mkdir()
     assert sr.main(["--legacy", str(bad), "--apply"]) == 2 and bad.exists()
     assert sr.main(["--legacy", str(ok), "--apply"]) == 0 and not ok.exists()
+
+
+def test_ensure_creates_only_g_scratch(env, monkeypatch):
+    _, e, g, _ = env
+    monkeypatch.setattr(sr, "SCRATCH_ROOT", str(g).replace("\\", "/"))
+    sr.ensure_slot_scratch("slot05")
+    assert (g / "slot05").is_dir()
+    assert not (e / "slot05").exists()

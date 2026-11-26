@@ -483,7 +483,9 @@ def build_importer(src_root):
     return tool
 
 
-COOK_CACHE_DEFAULT = "E:/mc2-cook-cache"
+from smoke_lib.paths import COOK_CACHE_ROOT
+
+COOK_CACHE_DEFAULT = COOK_CACHE_ROOT
 COOK_KEEP_KEYS = 8
 COOK_KEEP_SECONDS = 14 * 86400
 COOK_PROTECT_SECONDS = 24 * 3600
@@ -492,7 +494,7 @@ COOK_LOCK_WAIT = 900
 
 def cook_cache_root():
     """MC2_COOK_CACHE, else the cache under the gate's E: root (the farm laptop has no E: drive; laptop_gate sets
-    MC2_GATE_EROOT), else E:/mc2-cook-cache."""
+    MC2_GATE_EROOT), else G:/mc2-cook-cache."""
     if os.environ.get("MC2_COOK_CACHE"):
         return Path(os.environ["MC2_COOK_CACHE"])
     eroot = os.environ.get("MC2_GATE_EROOT", "").rstrip("/\\")

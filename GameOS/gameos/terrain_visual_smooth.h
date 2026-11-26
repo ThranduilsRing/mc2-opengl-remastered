@@ -11,6 +11,7 @@
 #pragma once
 #include <algorithm>
 #include <cmath>
+#include <exception>
 #include <optional>
 #include <thread>
 #include <vector>
@@ -39,9 +40,16 @@ inline void parallelBands(int rows, Fn fn)
     const unsigned workers = std::clamp(std::thread::hardware_concurrency() / 4u, 1u, 4u);
     if (rows < 64 || workers < 2) { fn(0, rows); return; }
     const int band = (rows + static_cast<int>(workers) - 1) / static_cast<int>(workers);
+    std::vector<std::exception_ptr> errors(workers);
+    auto run = [&](unsigned w) {
+        try { fn(static_cast<int>(w) * band, std::min(static_cast<int>(w + 1) * band, rows)); }
+        catch (...) { errors[w] = std::current_exception(); }
+    };
     std::vector<std::jthread> pool;
-    for (unsigned w = 1; w < workers; ++w) pool.emplace_back([=] { fn(static_cast<int>(w) * band, std::min(static_cast<int>(w + 1) * band, rows)); });
-    fn(0, std::min(band, rows));
+    for (unsigned w = 1; w < workers; ++w) pool.emplace_back([&, w] { run(w); });
+    run(0);
+    pool.clear(); // Join before inspecting worker errors or destroying their shared storage.
+    for (const auto& error : errors) if (error) std::rethrow_exception(error);
 }
 
 // RAVINE-WEATHER-1: horizontal weathering of cliff walls, only inside cells the pathing map already blocks.

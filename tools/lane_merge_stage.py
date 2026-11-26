@@ -101,11 +101,16 @@ def checked_out_elsewhere(root: str, branch: str) -> list[str]:
     return out
 
 
+def _dirty_besides_readme(root: str) -> list[tuple[str, str]]:
+    """Ignore unstaged owner edits to README.md; staged changes still block."""
+    return [(xy, p) for xy, p in _git_util.status_entries(root) if p != "README.md" or xy[0] != " "]
+
+
 def stage(root: str, window: str, tips: list[str]) -> dict:
     """Freeze the tips and check out claude/stage-<window> at the current nifty; the --batch merge then runs on that branch."""
     if not re.fullmatch(r"[A-Za-z0-9._-]+", window):
         raise Stop(2, f"bad window name {window!r}")
-    if _git_util.status_entries(root):
+    if _dirty_besides_readme(root):
         raise Stop(4, "staging needs a clean worktree (git status is not empty)")
     base = git_out(root, "rev-parse", f"{NIFTY}^{{commit}}")
     frozen = [git_out(root, "rev-parse", f"{t}^{{commit}}") for t in tips]
@@ -122,7 +127,10 @@ def stage(root: str, window: str, tips: list[str]) -> dict:
     return state
 
 
-NIGHTLY_PROOFS = "E:/mc2-archive-2026-10/proofs/merge-gate"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+from smoke_lib.paths import PROOF_ROOT
+
+NIGHTLY_PROOFS = (PROOF_ROOT + '/merge-gate')
 
 
 def nightly_unmet(verdict: dict) -> list[str]:
@@ -283,7 +291,7 @@ def promote(root: str, window: str, verdict_path: str | None = None) -> int:
     git_out(root, "update-ref", "-m", f"merge queue: promote {branch}", f"refs/heads/{NIFTY}", cand, old)
     tag = f"nifty-green-{window}-{cand[:9]}"
     git_out(root, "tag", "-a", "-f", "-m", f"gate PASS (complete) for {cand}", tag, cand)   # local only, never pushed
-    if git_out(root, "branch", "--show-current") == branch and not _git_util.status_entries(root):
+    if git_out(root, "branch", "--show-current") == branch and not _dirty_besides_readme(root):
         git_out(root, "checkout", "-q", NIFTY)   # same commit: the tree does not change
     seconds = round(time.monotonic() - started, 1)
     verdict.setdefault("timings", {})["promotion"] = seconds

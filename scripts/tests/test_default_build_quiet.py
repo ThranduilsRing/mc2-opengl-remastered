@@ -16,8 +16,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 import gate_hosts  # noqa: E402
 
 needs_proofs_archive = pytest.mark.skipif(
-    gate_hosts.current_host() != "pc" and not Path("E:/mc2-archive-2026-10/proofs").exists(),
-    reason="PC-only proofs archive E:/mc2-archive-2026-10/proofs is absent on this host")
+    gate_hosts.current_host() != "pc" and not Path("G:/mc2-proofs").exists(),
+    reason="PC-only proofs archive G:/mc2-proofs is absent on this host")
 
 
 @pytest.mark.parametrize("problem", ["none", "missing", "diagnostic", "failed", "ambiguous"])

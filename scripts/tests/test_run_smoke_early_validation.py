@@ -53,7 +53,7 @@ def _run(*args):
 
 
 def test_deploy_path_rejected_before_lease():
-    r = _run("--mission", "mc2_01", "--deploy", "E:/mc2-installs/some-lane", "--no-wait")
+    r = _run("--mission", "mc2_01", "--deploy", "G:/mc2-installs/some-lane", "--no-wait")
     assert r.returncode == 2
     assert "--exe <path>/mc2.exe" in r.stderr and "[LEASE]" not in r.stderr
 

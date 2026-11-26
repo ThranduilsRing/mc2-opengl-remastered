@@ -198,6 +198,11 @@ TEST_CASE("game rules: options.cfg keys round trip garbage and out-of-range valu
     GameRules fresh;
     loadCfgText(fresh, "FITini\n[MechCommander2]\nl MusicVolume = 10\nFITend\n");
     CHECK(fresh == GameRules{});
+    CHECK(fresh.purchaseVehicles);
+    CHECK(GameRules{}.purchaseVehicles); // new campaign, before any options are read
+    GameRules explicitOff;
+    loadCfgText(explicitOff, "b GameRulesPurchaseVehicles = false\n");
+    CHECK_FALSE(explicitOff.purchaseVehicles); // preserve an intentional owner choice
 
     // Out of range, garbage (FitIniFile's atol would make these 0 = a valid non-default Heat Off / Called Off / Weight 0) and a bad bool: default stays.
     GameRules edited;

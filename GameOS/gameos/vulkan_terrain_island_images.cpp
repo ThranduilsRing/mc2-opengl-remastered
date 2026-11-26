@@ -396,11 +396,11 @@ bool ensure_dummy_materials(TerrainIsland* s) {
 bool ensure_dummy_forest_mask(TerrainIsland* s) {
     if (!create_colormap_sampler(s)) return false;
     if (s->forestMaskTexture) return true;
-    const uint8_t zero[4] = {};
-    return upload_sampled_image(s, s->forestMaskTexture, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, zero, sizeof(zero));
+    const uint8_t zero[1] = {};
+    return upload_sampled_image(s, s->forestMaskTexture, VK_FORMAT_R8_UNORM, 1, 1, zero, sizeof(zero));
 }
 
-// Splat the mission's tree placements into the canopy-density mask (R of RGBA8) over the colormap atlas extent; rebuilt when the
+// Splat the mission's tree placements into the canopy-density mask (R8) over the colormap atlas extent; rebuilt when the
 // trees or the atlas extent change. Canopy radius and grid are fixed: the mask is a soft blob field, not a per-tree footprint.
 void import_forest_mask(TerrainIsland* s) {
     const auto* fields = gos_TerrainFieldStore();
@@ -414,9 +414,7 @@ void import_forest_mask(TerrainIsland* s) {
     while (kEdge < 4096 && extentWu / static_cast<float>(kEdge) > kCanopyRadius * 0.5f) kEdge *= 2;
     std::vector<uint8_t> density;
     mc2terrain::splatForestMask(fields->treePositions(), params[0], params[1], 1.0f / params[2], kEdge, kEdge, kCanopyRadius, density);
-    std::vector<uint8_t> rgba(density.size() * 4);
-    for (size_t i = 0; i < density.size(); ++i) { rgba[4*i] = rgba[4*i+1] = rgba[4*i+2] = density[i]; rgba[4*i+3] = 255; }
-    if (!upload_sampled_image(s, s->forestMaskTexture, VK_FORMAT_R8G8B8A8_UNORM, kEdge, kEdge, rgba.data(), rgba.size())) {
+    if (!upload_sampled_image(s, s->forestMaskTexture, VK_FORMAT_R8_UNORM, kEdge, kEdge, density.data(), density.size())) {
         vlog("FOREST_MASK: upload failed; no forest floor this mission.");
         s->forestTreeVersionImported = fields->treeVersion();   // latch: no per-frame retry or log spam until the trees or atlas change
         s->forestParamsImported = params;

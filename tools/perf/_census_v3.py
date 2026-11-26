@@ -14,8 +14,10 @@ import psutil
 import run_battle_bench as battle
 from smoke_lib import host_lease, runner
 
-EXE = Path("E:/mc2-installs/lane8/mc2.exe")
-OUT = Path("E:/mc2-archive-2026-10/proofs/census3")
+from smoke_lib.paths import INSTALL_ROOT, PROOF_ROOT
+
+EXE = Path((INSTALL_ROOT + '/lane8/mc2.exe'))
+OUT = Path((PROOF_ROOT + '/census3'))
 BK = ROOT / "tests/visual/bookmarks"
 POSES = [("mc2_01", "cross_map_view", "mc2_01"), ("mc2_03", "scout_1", "mc2_03_camera"),
          ("mc2_03", "scout_2", "mc2_03_camera"), ("mc2_03", "scout_3", "mc2_03_camera"),

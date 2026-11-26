@@ -163,7 +163,10 @@ def check_fingerprint(fp: Optional[dict], expected_sha: Optional[str],
     references require that exact clean commit; exe references compare bytes.
     """
     lines: list[str] = []
-    from scripts.manifest_schema import shader_dirty
+    try:  # run_player_path/run_smoke put scripts/ (not the repo root) on sys.path and import this as `smoke_lib.fingerprint`
+        from scripts.manifest_schema import shader_dirty
+    except ImportError:
+        from manifest_schema import shader_dirty
     shaders = shader_dirty(exe_path)
     if shaders:
         lines.append(f"[DEPLOY_FINGERPRINT] shader-dirty shaders={len(shaders['shaders'])}; binary stamp covers exe only")

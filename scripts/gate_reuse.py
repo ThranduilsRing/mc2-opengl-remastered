@@ -22,7 +22,9 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-CACHE_ROOT = Path(os.environ.get("MC2_GATE_REUSE_ROOT", "E:/mc2-installs/_gate-reuse"))
+from smoke_lib.paths import INSTALL_ROOT
+
+CACHE_ROOT = Path(os.environ.get("MC2_GATE_REUSE_ROOT", (INSTALL_ROOT + '/_gate-reuse')))
 SCHEMA = 1
 SKIP_TOP = ("debug_state", "crashes", "logs")
 SKIP_SUFFIX = (".log", ".dmp", ".tmp", ".pdb")

@@ -18,13 +18,24 @@ def test_frag_normal_layer_indices_match_header():
         assert header.get(name) == idx, f"{name}: frag {idx} vs header {header.get(name)}"
 
 
-def test_every_live_widget_option_is_in_the_front_end_skip_list():
-    window = (ROOT / "GuiRuntime/GraphicsOptionsWindow.cpp").read_text(encoding="utf-8")
-    fields = set(re.findall(r"opts\.(\w+)\s*=[^=]", window)) | set(re.findall(r"&opts\.(\w+)", window))
-    fields.add("spatialAA")  # saved through mc2::options::saveSpatialAA, not opts
-    keys = {f: k for k, f in re.findall(r'"(\w+)",\s*&RenderOptions::(\w+)', (ROOT / "Gates/render_options.h").read_text(encoding="utf-8"))}
-    need = {keys[f] for f in fields}
-    assert {"GroundAo", "WaterDetail", "ReflectionQuality", "TextureQuality"} <= need
-    front = (ROOT / "GuiRuntime/PlayerFrontEnd.cpp").read_text(encoding="utf-8")
-    listed = set(re.findall(r'"(\w+)"', re.search(r"k_liveWidgetKeys\[\]\s*=\s*\{([^}]*)\}", front).group(1)))
-    assert need <= listed, f"live-widget options missing from k_liveWidgetKeys: {sorted(need - listed)}"
+def test_options_draft_reload_and_failed_save_contract():
+    # drawOptions owns local ImGui state, outside the preferences unit harness.
+    source = (ROOT / "GuiRuntime/PlayerFrontEnd.cpp").read_text(encoding="utf-8")
+    body = source.split("void drawOptions() {", 1)[1].split('ImGui::TextWrapped("SMAA', 1)[0]
+    body = re.sub(r"\s+", " ", body)
+    for declaration in ("static mc2::options::RenderOptions draft;",
+                        "static std::optional<mc2::options::RenderOptions> seen;",
+                        "static bool dirty = false;"):
+        assert declaration in body
+    assert ('if (!seen || (!dirty && *seen != mc2::options::current())) { '
+            'draft = {}; mc2::options::cfg::loadFromText(draft, '
+            'mc2::options::cfg::readTextFile("options.cfg")); '
+            'seen = mc2::options::current(); }') in body
+    # Failure preserves dirty/draft for retry; only successful publication syncs seen.
+    assert ('dirty |= changed; const bool committed = mc2::options::cfg::editCommitted('
+            'changed, ImGui::IsAnyItemActive(), wasEditing); '
+            'if (ImGui::Button("Save player settings") || (dirty && committed)) { '
+            'if (!saveRenderOptions || !saveRenderOptions(draft)) '
+            'error = "Could not save options.cfg."; else { '
+            'mc2::options::publish(draft); seen = mc2::options::current(); dirty = false;') in body
+    assert body.count("dirty = false;") == 2  # initialization and successful save only

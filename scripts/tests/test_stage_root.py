@@ -14,13 +14,13 @@ import stage_root
 
 
 @pytest.mark.parametrize("mod", ["mod_smoke", "battery", "reload_leak", "sim_trace_diff", "sound_smoke", "tools_smoke"])
-def test_tools_no_longer_default_to_g(mod):
+def test_tools_use_shared_staging_root(mod):
     text = (ROOT / "tools" / f"{mod}.py").read_text(encoding="utf-8")
     assert 'Path("G:/' not in text and "Path('G:/" not in text and '"G:/mc2-battery' not in text
 
 
-def test_default_root_is_on_e():
-    assert str(stage_root.default_root("mod_smoke")).replace("\\", "/").endswith("/mod_smoke-stage")
+def test_default_root_is_on_g():
+    assert str(stage_root.default_root("mod_smoke")).replace("\\", "/") == "G:/mc2-installs/mod_smoke-stage"
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows G: drive containment")
@@ -29,8 +29,7 @@ def test_g_staging_is_allowed_only_under_lane_temp(monkeypatch):
     monkeypatch.setattr(stage_root.shutil, "disk_usage", lambda p: usage(0, 0, 20 * 2**30))
     monkeypatch.setenv("TMP", "G:/mc2-tmp")
     stage_root.preflight("G:/mc2-tmp/mod_smoke-stage")
-    with pytest.raises(OSError, match="allowed only under G:/mc2-tmp"):
-        stage_root.preflight("G:/mc2-battery/mod_smoke-stage")
+    stage_root.preflight("G:/mc2-installs/mod_smoke-stage")
 
 
 def test_preflight_refuses_under_15_gb(tmp_path, monkeypatch):

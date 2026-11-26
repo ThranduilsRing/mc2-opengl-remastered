@@ -25,15 +25,20 @@ inline std::string_view trimmed(std::string_view text) {
 template <class Csv>
 inline void readNameCell(Csv& csv, long row, long col, long& id, char* text, size_t textSize) {
 	std::string cell(256, '\0');
-	if (csv.readString(row, col, cell.data(), static_cast<unsigned long>(cell.size())) != 0) return; // NO_ERR
-	const std::string_view whole = trimmed({cell.data(), cell.find('\0')});
+	if (csv.readString(row, col, cell.data(), static_cast<unsigned long>(cell.size()), true) != 0) return; // NO_ERR
+	auto whole = trimmed({cell.data(), cell.find('\0')});
+	if (whole.size() >= 2 && whole.front() == '"' && whole.back() == '"') {
+		whole.remove_prefix(1);
+		whole.remove_suffix(1);
+	}
 	const size_t sign = !whole.empty() && (whole.front() == '-' || whole.front() == '+');
 	if (whole.size() > sign && whole.find_first_not_of("0123456789", sign) == std::string_view::npos) {
 		csv.readLong(row, col, id);
 		return;
 	}
-	const size_t length = std::min(cell.find('\0'), textSize - 1);
-	std::copy_n(cell.begin(), static_cast<std::ptrdiff_t>(length), text);
+	if (textSize == 0) return;
+	const size_t length = std::min(whole.size(), textSize - 1);
+	std::copy_n(whole.begin(), static_cast<std::ptrdiff_t>(length), text);
 	text[length] = '\0';
 }
 
