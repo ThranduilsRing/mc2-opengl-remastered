@@ -16,6 +16,23 @@ float cCutLt(float x, float fw) {
     return 1.0 - smoothstep(0.5 - w, 0.5 + w, x);
 }
 
+// Reconstruct the contour of the stock 64px concrete mask before pixel coverage.
+// Four source texels remove magnified stair steps; colour keeps its original LOD.
+float concreteCoverage(vec2 uv, float layer, vec2 dx, vec2 dy) {
+    float lod = max(log2(float(textureSize(u_cementArt, 0).x) / 16.0), 0.0);
+    vec2 lo = vec2(0.5 / 16.0), hi = vec2(1.0) - lo;
+    float a = textureLod(u_cementArt, vec3(clamp(uv, lo, hi), layer), lod).a;
+    // Explicit alpha gradients keep coverage defined across divergent tile words.
+    vec2 ex = vec2(1.0 / 16.0, 0.0), ey = ex.yx;
+    float ax = textureLod(u_cementArt, vec3(clamp(uv + ex, lo, hi), layer), lod).a
+             - textureLod(u_cementArt, vec3(clamp(uv - ex, lo, hi), layer), lod).a;
+    float ay = textureLod(u_cementArt, vec3(clamp(uv + ey, lo, hi), layer), lod).a
+             - textureLod(u_cementArt, vec3(clamp(uv - ey, lo, hi), layer), lod).a;
+    vec2 gradient = vec2(ax, ay) * 8.0;
+    float width = max(abs(dot(gradient, dx)) + abs(dot(gradient, dy)), 1.0 / 255.0);
+    return smoothstep(0.5 - 0.5 * width, 0.5 + 0.5 * width, a);
+}
+
 // Permanent road art uses the former overlay's material response on the terrain
 // receiver. The caller blends the authored shoulder over shaded ground.
 vec3 shadeRoadArt(vec4 art, uint road, uint cw, vec2 dx, vec2 dy) {
@@ -78,6 +95,9 @@ float shadeRoadArtTile(out vec3 outColor) {
             vec2 uv = fract(vec2(v_worldPos.x + uT.halfMap, uT.halfMap - v_worldPos.y) / 128.0);
             vec4 art = textureGrad(u_cementArt, vec3(uv, float(layer)), roadDx * vec2(1, -1) / 128.0, roadDy * vec2(1, -1) / 128.0);
             float coverage = smoothstep(0.3, 0.7, art.a);
+            uint cw = uC.cementWordsF[index];
+            if ((cw & 0xc0800000u) == 0xc0800000u)
+                coverage = concreteCoverage(uv, float(layer), roadDx * vec2(1, -1) / 128.0, roadDy * vec2(1, -1) / 128.0);
             if (coverage > 0.0) {
                 outColor = shadeRoadArt(art, road, uC.cementWordsF[index], roadDx, roadDy);
                 return coverage;

@@ -277,12 +277,7 @@ void main() {
             // Word bit23 => the atlas cell carries its own coverage in alpha; composite OVER base.
             bool cementOwnAlpha = (cw & 0x00800000u) != 0u;
             if (isTransition && cementOwnAlpha) {
-                // Upscaled transition masks retain the original 64px coverage steps.
-                // Filter alpha at that grid, rather than half an upscaled texel; RGB stays sharp.
-                float side = float(textureSize(u_cementArt, 0).x);
-                float footprint = max(length(cGx), length(cGy)) * side;
-                float coverageLod = log2(max(max(footprint, side / 64.0), 1.0));
-                float cOwnA = textureLod(u_cementArt, vec3(cTileUV, float(cLayerIdx)), coverageLod).a;
+                float cOwnA = concreteCoverage(cTileUV, float(cLayerIdx), cGx, cGy);
                 base = mix(base, cementColor, cOwnA);
                 pureConcrete = cOwnA;
                 cementHit = cOwnA > 0.5;
