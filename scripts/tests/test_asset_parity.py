@@ -304,7 +304,7 @@ def payload_manifest(install, files, commit="a" * 40):
 def test_manifest_accepts_editor_and_game_executables(work, name):
     # Trigger paths: scripts/asset_parity.py.
     import deploy_payload as dp
-    install = tree(work / "install", {})
+    install = tree(work / "install", {name: b"exe"})
     commit = "a" * 40
     dp.write_manifest(str(install), {name: (hashlib.sha256(b"exe").hexdigest(), 3)}, commit)
     assert ap.manifest_assets(install)[1] == commit
