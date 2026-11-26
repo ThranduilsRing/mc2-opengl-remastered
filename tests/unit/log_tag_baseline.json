@@ -9890,6 +9890,16 @@
    "count": 1
   },
   {
+   "tag": "SMARTER_AI",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wid",
+    "target"
+   ],
+   "count": 1
+  },
+  {
    "tag": "SMOKE",
    "ver": 1,
    "stream": "stdout",
