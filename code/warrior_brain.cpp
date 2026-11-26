@@ -568,7 +568,8 @@ long MechWarrior::runBrain (void) {
 				order.attackParams.pursue = true;
 				order.moveParams.wayPath.mode[0] = TRAVEL_MODE_FAST;
 				setGeneralTacOrder(order);
-				mc2::fmt::print_err("[SMARTER_AI] wid={} target={}\n", vehicleWID, order.targetWID);
+				if (mc2_diag::tagRequested("SMARTER_AI"))
+					mc2::fmt::print_err("[SMARTER_AI] wid={} target={}\n", vehicleWID, order.targetWID);
 			}
 		}
 	}
