@@ -443,7 +443,9 @@ void GameCamera::renderTerrainSceneState() {
 	unsigned char flatBytes[3];
 	flatLight(lighting, flatIntensity, flatBytes);   // getLightRed/Green/Blue's arithmetic on the state's bytes (== the members without a curve)
 	inputs.flatLight = {flatBytes[0]/255.0f, flatBytes[1]/255.0f, flatBytes[2]/255.0f};
+	if (!eye->getIsNight())
 	{
+		// Night SH already uses live ambient; a daytime reference would amplify it again.
 		// Prelit art (ground, decals, grass) is scaled by live/authored flat light; cement stays on the live flat light.
 		extern void mc2_FlatLightRatio(float z, const unsigned char liveSun[3], const unsigned char liveAmb[3], float out[3]);
 		// The camera's own colour members (what getLightRed uses and what the authored capture saw), not the world-light
@@ -464,8 +466,8 @@ void GameCamera::renderTerrainSceneState() {
 			inputs.pitchUndo[c] = o[9 + c]; inputs.ambRelight[c] = o[12 + c]; inputs.sunRelight[c] = o[15 + c];
 		}
 		inputs.authoredValid = o[18] != 0.0f;
-		inputs.sunZ = flatIntensity;
 	}
+	inputs.sunZ = flatIntensity;
 	inputs.authoredPitch = eye->getDayLightPitch();
 	inputs.night = eye->getIsNight();
 	inputs.nightFactor = eye->getNightFactor();
