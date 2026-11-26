@@ -59,7 +59,7 @@ int CPrefs::load(mc2::czstring name) {
     mc2::options::cfg::loadFromText(render, sourceText_, &rejects);
     for (const auto& reject : rejects)
         mc2::options::logRejectedOption(reject.key, reject.text, reject.why, mc2::options::find(reject.key));
-    if (!mc2::options::cfg::get(sourceText_, "GameRulesMods")) gameRules.mods = launcherModDefaults();
+    if (!mc2::options::cfg::get(sourceText_, "GameRulesMods") || mc2::gate::isSet<"MC2_LAUNCHED">()) gameRules.mods = launcherModDefaults();
     loadedValues_ = snapshotValues();
     // Startup reads these before SoundSystem exists; loading the defaults-screen draft must not publish it.
     if (this == &prefs) mc2::options::runtimePreferences() = static_cast<const mc2::options::Preferences&>(*this);
