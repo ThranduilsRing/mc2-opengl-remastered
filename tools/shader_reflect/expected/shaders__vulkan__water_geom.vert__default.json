@@ -11,7 +11,7 @@
           "matrix_stride": null,
           "name": "recipes",
           "offset": 0,
-          "type": "_315"
+          "type": "_570"
         }
       ],
       "name": "WaterRecipeBuf"
@@ -24,10 +24,36 @@
           "matrix_stride": null,
           "name": "thinRecs",
           "offset": 0,
-          "type": "_298"
+          "type": "_553"
         }
       ],
       "name": "WaterThinBuf"
+    },
+    {
+      "binding": 14,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "shoreSurface",
+          "offset": 0,
+          "type": "float"
+        }
+      ],
+      "name": "WaterShoreSurface"
+    },
+    {
+      "binding": 19,
+      "members": [
+        {
+          "array_stride": 16,
+          "matrix_stride": null,
+          "name": "shoreFFT",
+          "offset": 0,
+          "type": "vec4"
+        }
+      ],
+      "name": "ShoreFFT"
     }
   ],
   "stage": "vert",
@@ -88,6 +114,69 @@
           "matrix_stride": null,
           "name": "f0",
           "offset": 16,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "f1",
+          "offset": 32,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "f2",
+          "offset": 48,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "f3",
+          "offset": 64,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "DEEP_COLOR",
+          "offset": 80,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "SHALLOW_COLOR",
+          "offset": 96,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "f4",
+          "offset": 112,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "f5",
+          "offset": 128,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "f6",
+          "offset": 144,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "f7",
+          "offset": 160,
           "type": "vec4"
         }
       ],

@@ -61,7 +61,7 @@
           "matrix_stride": null,
           "name": "poolLights",
           "offset": 0,
-          "type": "_3828"
+          "type": "_4039"
         }
       ],
       "name": "TerrainLightPoolVK"
@@ -100,7 +100,7 @@
           "matrix_stride": null,
           "name": "stamps",
           "offset": 0,
-          "type": "_3018"
+          "type": "_3162"
         },
         {
           "array_stride": 4,
@@ -131,6 +131,19 @@
         }
       ],
       "name": "WaterShoreSurface"
+    },
+    {
+      "binding": 19,
+      "members": [
+        {
+          "array_stride": 16,
+          "matrix_stride": null,
+          "name": "shoreFFT",
+          "offset": 0,
+          "type": "vec4"
+        }
+      ],
+      "name": "ShoreFFT"
     }
   ],
   "stage": "frag",
