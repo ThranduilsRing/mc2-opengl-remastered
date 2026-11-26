@@ -24,6 +24,7 @@ class EditorLoadProgress {
 public:
 	EditorLoadProgress() {
 		current = this;
+		graphics::begin_loading_events();
 		if (enabled) EnableWindow(frame, FALSE);
 		HWND parent = EditorInterface::instance()->GetSafeHwnd();
 		label = CreateWindowExA(0, "STATIC", "Loading mission", WS_CHILD | WS_VISIBLE,
@@ -54,6 +55,7 @@ public:
 	}
 	~EditorLoadProgress() {
 		pump();
+		graphics::end_loading_events();
 		mc2::load::checkpoint = previousCheckpoint;
 		current = previous;
 		DestroyWindow(bar);
