@@ -30,8 +30,12 @@ CRASH_PATTERNS = (
     # evidence-free crash_silent.
     re.compile(r"^MC2 Remastered Crash Report", re.M),
     re.compile(r"^\[CRASH\] FAST-EXIT ", re.M),
+    # The fatal-backend sink line (a lost Vulkan device). It reaches the ring trace a bundle keeps (last_trace.txt), so a log that carries it is a crash.
+    re.compile(r"^fatal backend exit \d+: ", re.M),
     re.compile(r"unhandled exception", re.I),
 )
+#: What the record says that the next session writes for a process that died with no handler (a harness-killed game, W135 3274): not that session's crash.
+SENTINEL_RECORD = "unclean exit"
 SHADER_ERROR_PATTERNS = (
     # Matches shader_builder.cpp:358 and friends.
     re.compile(r"Shader filename:.*failed to load shader", re.I),
@@ -394,7 +398,7 @@ def parse_log(text: str,
                 s.presence_counts[rule.bucket] = s.presence_counts.get(rule.bucket, 0) + 1
 
         for p in CRASH_PATTERNS:
-            if p.search(line): s.crash_handler_hit = True; break
+            if SENTINEL_RECORD not in line and p.search(line): s.crash_handler_hit = True; break
         for p in SHADER_ERROR_PATTERNS:
             if p.search(line): s.shader_errors += 1; break
         if "[CONTENT_SUMMARY]" in line:

@@ -1,0 +1,20 @@
+MC2 Remastered Crash Report
+Time: 2026-11-26 09:34:43
+Build: a86c41d236ee
+Fingerprint: MC2FP1|a86c41d236ee|0|claude/stage-1126f|2026-11-26T09:09:29|A:/Games/mc2-slot01|FP1END
+Code: 0xE0004D46  Flags: 0x00000001  Addr: 00007FF773C374BC
+Frame: 70
+Mission: mc2_01
+
+Stack:
+  #00 0x00007FF773C374BC  crashbundle_fatal  (A:\Games\mc2-slot03\GameOS\gameos\gos_crashbundle.cpp:840)
+  #01 0x00007FF773C36079  `crashbundle_init'::`2'::<lambda_1>::<lambda_invoker_cdecl>  (A:\Games\mc2-slot03\GameOS\gameos\gos_crashbundle.cpp:917)
+  #02 0x00007FF773D973DA  mc2::fatalBackendFailure  (A:\Games\mc2-slot03\GameOS\gameos\render_backend_select.cpp:63)
+  #03 0x00007FF774127BF3  gos::host::recoverAsyncPresentFailure  (A:\Games\mc2-slot08\GameOS\gameos\gos_host_vk.cpp:204)
+  #04 0x00007FF773EB9F41  SDL_main  (A:\Games\mc2-slot01\GameOS\gameos\gameosmain.cpp:1168)
+  #05 0x00007FF774128FB0  main_getcmdline  (C:\temp\SDL2-2.30.11\src\main\windows\SDL_windows_main.c:80)
+  #06 0x00007FF77411E578  __scrt_common_main_seh  (D:\a\_work\1\s\src\vctools\crt\vcstartup\src\startup\exe_common.inl:288)
+  #07 0x00007FFC3FAF7124  BaseThreadInitThunk  (?:0)
+  #08 0x00007FFC402BCC91  RtlUserThreadStart  (?:0)
+
+Minidump: G:\mc2-installs\merge-gate\crashes\crash_2026-11-26_093443_761_23624_284100843\minidump.dmp
