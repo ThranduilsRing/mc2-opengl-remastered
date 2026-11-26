@@ -42,7 +42,6 @@ L(Presence, "MC2_NO_LAUNCHER", Bool, false, "gameos", "", "", passthrough | veri
 G("MC2_OBJECT_ADMISSION_PREDICATE", Enum, "", "code", "", "", passthrough | tokens("|legacy|modern") | verified),
 // history: docs/gate-history.md#MC2_OBJECT_ID_BUFFER
 L(DefOnLead0, "MC2_OBJECT_ID_BUFFER", Bool, true, "code", "", "R32_UINT MRT attachment-2 with per-pixel object handles (RenderWorld M1.5).", passthrough | registry(Feature, "MC2_FEATURE_OBJECT_ID_BUFFER", 2, true) | verified),
-P("MC2_OBJECT_POLY_OFFSET_FACTOR", Float, -1.0, "props", "", "", passthrough),
 L(Lead0, "MC2_OBJECT_WALK_FACTS", Bool, false, "code", "", "", verified),
 G("MC2_OOB_FOG_COLOR", String, "", "post", "", "", verified),
 G("MC2_OPTIONS_OVERRIDE", String, "", "code", "", "Test channel: Key=Value,... options.cfg keys applied over the file at startup (smoke matrices, capture drivers); never saved.", passthrough | verified),
@@ -62,7 +61,6 @@ G("MC2_PLAY_MISSION_GOTO", String, "", "code", "", "Dev-only: order the home lan
 G("MC2_PLAY_MISSION_INVULNERABLE", Bool, false, "code", "", "Dev-only home-team damage immunity for mission tests.", passthrough | verified),
 G("MC2_PLAY_MISSION_SECONDS", Int, 300, "code", "", "Dev-only mission test simulation timeout in seconds.", passthrough | verified),
 G("MC2_PLAY_MISSION_SKIP_CINEMATICS", Bool, false, "code", "", "Dev-only mission test cinematic skip; direct mission harness skips briefing.", passthrough | verified),
-L(Lead0P, "MC2_POSTPROCESS_COMPUTE_BLUR", Bool, false, "post", "", ""),
 // POST-FX-CAS-1: AMD FidelityFX Contrast Adaptive Sharpening (GL composite).
 G("MC2_PRESENTATION_DISABLED", Bool, false, "code", "", "Replay proof: suppress presentation extraction updates while simulation continues.", passthrough | registry(Trace, "MC2_PRESENTATION_DISABLED", -1, false) | verified),
 P("MC2_PREVIEW_FBO_SCALE", Int, 0, "gameos", "", "", verified),  // default not derivable from the tree
@@ -97,7 +95,6 @@ P("MC2_RENDER_PASS_TIME_EVERY", Int, 0, "gameos", "", "", passthrough | verified
 L(Presence, "MC2_RENDER_PATH", Bool, false, "props", "", "G5 RENDER-PATH OBSERVABILITY (descriptive; env-gated; ZERO behavior change): one line per registered static-prop type recording which render path it takes.", verified),
 P("MC2_RENDER_SCALE", Float, 1.0, "post", "", "Scene resolution relative to output; spatial cubic upscale, native HUD. Restart to apply.", clampRange(0.5, 1.0) | passthrough | verified),
 L(Presence, "MC2_RENDER_WATER_FASTPATH", Bool, false, "terrain", "", "", passthrough | verified),
-P("MC2_RENDER_WATER_FASTPATH_DEBUG", Int, 0, "gameos", "", ""),
 // history: docs/gate-history.md#MC2_RESOLVE_TRACE_FILE
 G("MC2_REPLAY_CONTENT", String, "", "code", "", "Mission/mod content digest supplied and checked by tools/command_replay.py.", passthrough | registry(Trace, "MC2_REPLAY_CONTENT", -1, false) | verified),
 G("MC2_RESOLVE_TRACE_FILE", String, "", "code", "", "META-FIX design E tier 3 (mclib/file.cpp): output path for the MC2_LOG_FILE_RESOLVE=2 JSONL resolve trace, opened for append at InitModSearchPaths (relative...", passthrough | registry(Trace, "MC2_TRACE_RESOLVE_TRACE_FILE", -1, false) | verified),
@@ -105,7 +102,6 @@ G("MC2_RESOLVE_TRACE_FILE", String, "", "code", "", "META-FIX design E tier 3 (m
 // history: docs/gate-history.md#MC2_RES_ASSERT
 G("MC2_RES_ASSERT", String, "", "code", "", "META-FIX design D runtime tier (RenderCore/ResolutionContract.h): audit mode, unset/0 = off, fatal = abort, anything else = log.", passthrough | registry(Trace, "MC2_TRACE_RES_ASSERT", -1, false) | verified),
 L(Presence, "MC2_RES_DIAG", Bool, false, "post", "", "[RES_DIAG v1] One-shot dump of the resolution split: scene FBO size (this object's width_/height_) vs the HUD canvas (Environment.screenWidth) vs the native...", passthrough | verified),
-L(Presence, "MC2_RING_TRACE", Bool, false, "terrain", "", "?? Probe 8: compare draw-time MVP fingerprint vs compute-time fingerprint.", passthrough),
 G("MC2_RNG_SEED", String, "", "mech", "", "DETERMINISTIC-RNG-1: seed text (decimal, 0x hex, leading-0 octal; strtoul base 0 at the reader); empty = the fixed or mission-hash seed.", passthrough | verified),
 // RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6): feather solid cement pad/runway edges
 // that abut bare terrain on the indirect terrain path (gos_terrain.frag).

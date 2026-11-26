@@ -46,7 +46,6 @@ set(SOURCES
     gosvertex.cpp
     gosvertex2uv.cpp
     mlrclipper.cpp
-    mlr_gate.cpp
     mlrclippingstate.cpp
     mlreffect.cpp
     mlrindexedtrianglecloud.cpp

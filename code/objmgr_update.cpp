@@ -22,14 +22,6 @@
 // ---------------------------------------------------------------------------
 static const bool s_gpuCullLifecycle = false;
 
-// ---------------------------------------------------------------------------
-// GOM Recon: object type classification & mutation tracking (read-only).
-// MC2_GOM_RECON=1 enables per-frame logging of terrain object types and counts.
-// Zero overhead when disabled. Gated diagnostics only.
-// ---------------------------------------------------------------------------
-static const bool s_gomReconEnabled = mc2::gate::get<"MC2_GOM_RECON">();
-inline bool MC2_GOM_RECON_ENABLED() { return s_gomReconEnabled; }
-
 static bool mc2SkipStaticNaturalEnabled (void)
 {
 	// DEFAULT-ON (opt-out kill switch): the pure-static-natural update skip is the

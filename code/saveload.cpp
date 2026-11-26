@@ -532,9 +532,6 @@ void Mission::loadPrologue(MissionLoadFrame& f) {
 	auto& turnOffAsyncMouse = f.turnOffAsyncMouse;
 	saveloadTrace("load_begin_currentMission", loadFileName, missionFileName);
 	extern int g_lightProbeSetupPath; g_lightProbeSetupPath = 2; // [GPUPROPS v1]
-	// F3 CPU projection cost-baseline: flush previous-mission samples and
-	// clear ring buffer. No-op when env OFF.
-	::mc2_cpu_proj_cost::hard_reset("Mission::load");
 	userInput->mouseOff();
 	loadProgress = 0.0f;
 

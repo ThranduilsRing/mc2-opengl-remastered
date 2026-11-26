@@ -23,10 +23,8 @@ Branch: `claude/nifty-mendeleev` HEAD `9dfff4a9`
 | GPU weapon trails (MissileSmoke / PpcBolt) | **DISABLED** (`gpuTrailKindProven` returns false for all) | — | GPU ring-buffer billboard trail produced "white square" artifact; gosFX Tube via MLR is the correct path | gosFX Tube via MLR is active instead |
 
 **MLR gate state (post-2026-05-31):**
-- `mclib/mlr/mlr_gate.cpp` `kDefaultDisabled = false` (was `true`)
 - All gosFX Draw calls route through MLR normally
 - Oracle classes prevent double-draw by calling `Effect::Draw` (children only) instead of their base-class Draw at the GPU-path exit
-- Kill-switch: `MC2_DISABLE_GOSFX=1` suppresses all gosFX via the 4 MLR work-leaves (DrawEffect, DrawScalableShape, etc.)
 
 **WeaponBolt hit-site suppression (post-2026-05-31):**
 - `hitEffect->Draw` — suppressed when oracle ON (`!is_oracle_render_enabled()`)

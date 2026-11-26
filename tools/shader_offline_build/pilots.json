@@ -1,21 +1,7 @@
 {
-  "_comment": "Native Vulkan verification subset. Runtime shader modules are baked by CMake; this subset exercises portable artifact hashes, reflection and package metadata for the active mech/postprocess sources.",
+  "_comment": "Native Vulkan verification subset. Runtime shader modules are baked by CMake; this subset exercises portable artifact hashes, reflection and package metadata for the active mech sources.",
   "spv_dir": "shaders/spv",
   "pilots": [
-    {
-      "program": "postprocess",
-      "note": "Active native Vulkan stages; explicit descriptor bindings and no GL specialization path.",
-      "stages": {
-        "vert": "shaders/vulkan/postprocess.vert",
-        "frag": "shaders/vulkan/postprocess.frag"
-      },
-      "variants": [
-        {
-          "name": "default",
-          "defines": []
-        }
-      ]
-    },
     {
       "program": "mech",
       "note": "Active native Vulkan stages; explicit descriptor bindings and no GL specialization path.",

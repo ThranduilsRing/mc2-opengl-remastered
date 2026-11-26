@@ -1,6 +1,6 @@
 {
   "matrix_id": "terrain",
-  "description": "Terrain default and height-normal debug view.",
+  "description": "Terrain default settings.",
   "default_missions": ["mc2_01", "mc2_24"],
   "default_duration": 15,
   "entries": [
@@ -8,13 +8,6 @@
       "id": "default",
       "description": "Default terrain settings (all gates at their shipped defaults).",
       "env": {}
-    },
-    {
-      "id": "terrain_debug_mode_10",
-      "description": "Debug mode 10: height-derived normals visualized as RGB.",
-      "env": {
-        "MC2_TERRAIN_DEBUG_MODE": "10"
-      }
     }
   ]
 }

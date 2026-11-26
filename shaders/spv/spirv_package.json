@@ -15,27 +15,12 @@
     "fatal_gate": "shader and pipeline initialization must succeed"
   },
   "pilot_families": [
-    "postprocess",
     "mech"
   ],
   "excluded_families": [
     "other native Vulkan pipelines are baked by CMake"
   ],
   "variant_matrix": [
-    {
-      "base": "postprocess",
-      "variants": [
-        {
-          "name": "default",
-          "defines": [],
-          "variantId": "24eb244242a0",
-          "stages": {
-            "vert": "postprocess.vert.default.24eb2442.spv",
-            "frag": "postprocess.frag.default.24eb2442.spv"
-          }
-        }
-      ]
-    },
     {
       "base": "mech",
       "variants": [
@@ -52,8 +37,8 @@
     }
   ],
   "hashes": {
-    "spirv_index_sha256": "4fa65f8b10ea66fe408a9cc16279a646d7ad04450341f94b5ca111e6dd7a1088",
-    "sidecars_sha256": "c549f59daee1ebb7d125e1822be198726896f9cd2446cec922db9c025b72ba72",
-    "source_set_sha256": "eb7bd4234e36c72a820f1302da6d8f58d453f156ba34d48695d0276ea5bc042f"
+    "spirv_index_sha256": "fa906a2f33f70510d4a389d1128fd9d43f2f43de6e1f4dbdeb128c1c2dfa93a0",
+    "sidecars_sha256": "896675af849bbf894645c9b7232cca61e169ff8f643d0b050f7c00679e2a121d",
+    "source_set_sha256": "6eba079035f1d9902c77dfcc1459cadea7e5d91c1d3a973027e482d7352883e2"
   }
 }

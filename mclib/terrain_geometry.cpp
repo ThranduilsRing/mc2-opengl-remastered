@@ -129,9 +129,6 @@ void Terrain::geometry (void)
 	// Default OFF: bit-identical legacy behavior. See handoff S2.13.
 
 
-	// Retired VPL cull probe retains its one-shot lifecycle notice.
-	static const bool s_vplCull = mc2::gate::get<"MC2_VPL_CULL">();
-
 	// F6 T1/T2: terrain admission Modern path. Replaces per-vertex
 	// projectForTerrainAdmission with a world-space frustum-plane test:
 	//   extractFrustumPlanes (one-shot per frame) + quadAabbInFrustum
@@ -160,18 +157,7 @@ void Terrain::geometry (void)
 	// SURVIVES because its return drives the clipInfo / objBlock cull cascade
 	// AND the rv->px/py/pz/pw raster writes consumed by the legacy
 	// TerrainQuad::draw() immediate path on un-armed frames.
-	// The retired VPL cull probe logs only when explicitly enabled.
-	// adversarial-review.md CRIT-1/Â§6 + the v3.5 plan amendment.
-	if (s_vplCull)
-	{
-		static bool s_vplCullRetiredLogged = false;
-		if (!s_vplCullRetiredLogged) {
-			s_vplCullRetiredLogged = true;
-			mc2::fmt::print_err(
-				"[VPL_CULL v1] event=retired reason=vpl_body_deleted_slim_is_sole_producer\n");
-			fflush(stderr);
-		}
-	}
+	// adversarial-review.md CRIT-1/§6 + the v3.5 plan amendment.
 	// Reset the candidate window consumed only by terrain feed observation.
 	const bool observe = mc2_terrain_feed_observation_enabled();
 	gos_terrain_indirect::BeginFrameSolidWindow();

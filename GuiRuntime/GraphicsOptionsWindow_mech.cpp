@@ -27,7 +27,6 @@ static const EnvGate kEnvGates[] = {
     { mc2::gate::name<"MC2_RENDER_WATER_FASTPATH">(),  "Fast water render path",                    false, false },
     { mc2::gate::name<"MC2_OBJECT_ID_BUFFER">(),       "Object-ID picking buffer",                  false, false },
     { mc2::gate::name<"MC2_HDRI_SKY">(),               "HDRI skybox",                               false, false },
-    { mc2::gate::name<"MC2_DISABLE_GOSFX">(),          "FX/particles (var disables)",               false, true  },
     { mc2::gate::name<"MC2_RENDER_CONTRACT_ASSERT">(), "Render-contract GL state validation",        false, false },
     { mc2::gate::name<"MC2_IMGUI">(),                  "Dear ImGui overlay (default-on)",           true,  false },
 };

@@ -4,7 +4,7 @@ That is only valid while nothing reads scene alpha. This test fails when a desti
 Audit at the fold (consumer, file:line at the time):
   - blend factors: the only DST_ALPHA factor is vulkan_post_screenfx_native.cpp srcAlphaBlendFactor (cloud/shoreline multiply,
     alpha channel result only; its colour factors are DST_COLOR/ZERO).
-  - post-process / AA / grade shaders (postprocess.frag, postprocess_visual.frag, aa_*.frag) sample sceneTex as .rgb and write alpha 1.0.
+  - post-process / AA / grade shaders (postprocess_visual.frag, aa_*.frag) sample sceneTex as .rgb and write alpha 1.0.
   - HUD, present and capture composite the post-process output, whose alpha is the constant 1.0 above.
 """
 import re
@@ -43,7 +43,7 @@ def test_screenfx_dst_alpha_stays_alpha_channel_only():
 
 def test_post_shaders_read_scene_rgb_only():
     offenders = []
-    for name in ("postprocess.frag", "postprocess_visual.frag", "aa_fxaa.frag", "aa_smaa_blend.frag"):
+    for name in ("postprocess_visual.frag", "aa_fxaa.frag", "aa_smaa_blend.frag"):
         text = (ROOT / "shaders/vulkan" / name).read_text(encoding="utf-8", errors="replace")
         for match in re.finditer(r"texture\(\s*sceneTex", text):
             depth, i = 0, match.start() + len("texture")

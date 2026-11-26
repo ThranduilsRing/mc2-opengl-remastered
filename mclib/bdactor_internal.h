@@ -38,7 +38,6 @@
 #include <set>            // [LIGHTSLOT v1] Task 0 cardinality gate
 #include "gos_smoke.h"    // [LIGHTSLOT v1] SmokeMode::missionHasStarted()
 #include "gos_object_recon_tracy.h"  // [OBJECT_RECON v1] slice-2 recon-zero
-#include "cpu_proj_cost_split.h"      // F3 CPU projection cost-baseline (RAII scope)
 #include "spotlight_diag.h"  // T1.16 — (E)-owned slot tagging for per-slot probe
 #include "cone_glow.h"       // LIGHT-CONE-MODELS-1 — node aim + cone glow
 #include "gos_profiler.h"  // PERF DIAGNOSTIC 2026-05-06: ZoneScopedN for per-update breakdown

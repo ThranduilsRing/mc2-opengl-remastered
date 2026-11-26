@@ -43,7 +43,7 @@ extern long g_viewContentEpoch;   // VIEW-EPOCH-DEDUPE-1 semantic view-content e
 #include <cstdlib>
 #include <cstring>  // memcpy
 #include <cmath>    // std::abs (clipPos ULP-bounded parity comparator)
-#include <chrono>   // MC2_RING_TRACE wait-time measurement (probe-only)
+#include <chrono>   // wait-time measurement (probe-only)
 #include <ctime>    // RING_SINK timestamp on probe-sink open
 
 #include "platform_intrinsics.h"   // __rdtsc -- [LIGHT_COST_SPLIT v1]

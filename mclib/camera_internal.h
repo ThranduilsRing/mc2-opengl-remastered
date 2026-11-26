@@ -44,7 +44,6 @@
 // Lifecycle Option C (camera-motion-gated fail-open) is shippable. See
 // docs/superpowers/explorations/2026-05-07-lifecycle-normal-zoom-design.md.
 #include"../GameOS/gameos/gos_profiler.h"
-#include "cpu_proj_cost_split.h"  // F3 CPU projection cost-baseline (RAII scope)
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include <math.h>
 #include <cstdlib>

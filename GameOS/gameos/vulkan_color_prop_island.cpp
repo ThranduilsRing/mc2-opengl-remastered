@@ -2156,7 +2156,7 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
             }
         }
     }
-    // MC2_VK_SHADOW_MATRIX_DIAG: the object matrix the props are projected with next to the live camera matrix, so a light-space leak into the colour pass shows.
+    // Shadow matrix diagnostics: the object matrix the props are projected with next to the live camera matrix, so a light-space leak into the colour pass shows.
 
 
     // Lazy init / rebuild on size change.

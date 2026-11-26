@@ -25,10 +25,7 @@
 #include"mathfunc.h"
 #endif
 
-// F3 CPU projection cost-baseline: forward declarations to keep camera.h
-// header weight low. projectZ() bumps n_calls_eventdriven when called
-// outside the render loop (TLS flag tracked by RenderLoopGuard).
-#include <cstdint>  // int64_t for cull_admission_*_ns
+#include <cstdint>
 #include <memory>
 #include <string_view>
 #include "lighting_state.h"   // LightingState, TodCurve, LightMods (camera members)
@@ -37,29 +34,6 @@
 #include "Gates/gate.h"
 #include "Gates/render_options.h"
 #include "spotlight_diag.h"
-namespace mc2_cpu_proj_cost {
-    extern bool g_cpuProjEnabled;
-    extern thread_local bool tls_inRenderLoop;
-    void add_workload_eventdriven_projectZ();
-    // R2 cull-admission timing pair (see cpu_proj_cost_split.h comment).
-    int64_t cull_admission_begin_ns();
-    void    cull_admission_end_ns(int64_t startNs);
-    // R3 narrow-subset wrapper timing pairs (one per remaining
-    // policy-split wrapper). Same contract as cull_admission_*_ns:
-    // env-OFF returns 0 / no-op.
-    int64_t screenxy_begin_ns();
-    void    screenxy_end_ns(int64_t startNs);
-    int64_t effect_admission_begin_ns();
-    void    effect_admission_end_ns(int64_t startNs);
-    int64_t terrain_admission_begin_ns();
-    void    terrain_admission_end_ns(int64_t startNs);
-    int64_t lighting_shadow_begin_ns();
-    void    lighting_shadow_end_ns(int64_t startNs);
-    int64_t selection_picking_begin_ns();
-    void    selection_picking_end_ns(int64_t startNs);
-    int64_t debug_overlay_begin_ns();
-    void    debug_overlay_end_ns(int64_t startNs);
-}
 
 #ifndef TGL_H
 #include"tgl.h"
@@ -660,14 +634,6 @@ class Camera
 		bool projectZ (glm::vec3 &point, Stuff::Vector4D &screen,
 		               LegacyProjectionResult* optionalResult = nullptr)
 		{
-			// F3 CPU projection cost-baseline: eventdriven projectZ
-			// attribution. Count-only (no chrono); single TLS read + branch
-			// + non-atomic counter bump. Per audit (c): no outer event
-			// boundary exists, so count is the only signal.
-			if (mc2_cpu_proj_cost::g_cpuProjEnabled &&
-			    !mc2_cpu_proj_cost::tls_inRenderLoop) {
-				mc2_cpu_proj_cost::add_workload_eventdriven_projectZ();
-			}
 			//--------------------------------------------------------------------
 			// Now run the NEW project code
 			Stuff::Vector4D xformCoords;
@@ -755,8 +721,6 @@ class Camera
 		// Terrain vertex admission — bool gates submission; per-vertex wedge-risk concentration.
 		inline bool projectForTerrainAdmission (glm::vec3& point,
 		                                        Stuff::Vector4D& screen) {
-			// R3 narrow-subset sidecar (see cpu_proj_cost_split.h).
-			const int64_t _f3_terrain_t0 = ::mc2_cpu_proj_cost::terrain_admission_begin_ns();
 #pragma warning(push)
 #pragma warning(disable: 4996)
 			bool accepted = projectZ(point, screen);
@@ -767,18 +731,12 @@ class Camera
 				          isfinite(screen.z) && isfinite(screen.w));
 			}
 #endif
-			::mc2_cpu_proj_cost::terrain_admission_end_ns(_f3_terrain_t0);
 			return accepted;
 		}
 
 		// Object lifecycle admission — bool feeds windowsVisible → canBeSeen() cull chain.
 		inline bool projectForObjectAdmission (glm::vec3& point,
 		                                       Stuff::Vector4D& screen) {
-			// R2 cull-admission instrumentation. begin_ns returns 0 when env
-			// OFF; end_ns short-circuits the same way. Inline pair is safe in
-			// header (no class definition needed).
-			const int64_t _f3_cull_t0 = ::mc2_cpu_proj_cost::cull_admission_begin_ns();
-
 			ProjectZBypassMode bypassMode = projectZBypassMode();
 			const bool isModern = (objectAdmissionPredicateMode() == ObjectAdmissionPredicateMode::Modern);
 			bool ret;
@@ -818,7 +776,6 @@ class Camera
 				}
 			}
 
-			::mc2_cpu_proj_cost::cull_admission_end_ns(_f3_cull_t0);
 			return ret;
 		}
 
@@ -845,15 +802,12 @@ class Camera
 			static const float s_objNearPadScale = 4.0f;
 			worldRadius *= s_objNearPadScale;
 
-			const int64_t _f3_cull_t0 = ::mc2_cpu_proj_cost::cull_admission_begin_ns();
-
 			ProjectZBypassMode bypassMode = projectZBypassMode();
 			const bool isModern = (objectAdmissionPredicateMode() == ObjectAdmissionPredicateMode::Modern);
 			bool ret;
 
 			if (!isModern) {
 				// Legacy screen-rect path is unchanged by the near-pad slice.
-				::mc2_cpu_proj_cost::cull_admission_end_ns(_f3_cull_t0);
 				return projectForObjectAdmission(point, screen);
 			}
 
@@ -877,7 +831,6 @@ class Camera
 				ret = clipSpaceFrustumAdmitSphere(result.rawClip, worldRadius, projScale);
 			}
 
-			::mc2_cpu_proj_cost::cull_admission_end_ns(_f3_cull_t0);
 			return ret;
 		}
 
@@ -898,9 +851,6 @@ class Camera
 		// Effect billboard admission — bool gates submission; same wedge-class hazard as terrain.
 		inline bool projectForEffectAdmission (glm::vec3& point,
 		                                       Stuff::Vector4D& screen) {
-			// R3 narrow-subset sidecar (see cpu_proj_cost_split.h).
-			const int64_t _f3_effect_t0 = ::mc2_cpu_proj_cost::effect_admission_begin_ns();
-
 			ProjectZBypassMode bypassMode = projectZBypassMode();
 			const bool isModern = (effectAdmissionPredicateMode() == EffectAdmissionPredicateMode::Modern);
 			bool ret;
@@ -939,7 +889,6 @@ class Camera
 				}
 			}
 
-			::mc2_cpu_proj_cost::effect_admission_end_ns(_f3_effect_t0);
 			return ret;
 		}
 
@@ -947,8 +896,6 @@ class Camera
 		// F3 modernized via clipSpaceFrustumAdmit when MC2_LIGHTING_SHADOW_PREDICATE_MODE=Modern.
 		inline bool projectForLightingShadow (glm::vec3& point,
 		                                      Stuff::Vector4D& screen) {
-			const int64_t _f3_lshadow_t0 = ::mc2_cpu_proj_cost::lighting_shadow_begin_ns();
-
 			ProjectZBypassMode bypassMode = projectZBypassMode();
 			const bool isModern = (lightingShadowPredicateMode() == LightingShadowPredicateMode::Modern);
 			bool ret;
@@ -983,7 +930,6 @@ class Camera
 				}
 			}
 
-			::mc2_cpu_proj_cost::lighting_shadow_end_ns(_f3_lshadow_t0);
 			return ret;
 		}
 
@@ -998,8 +944,6 @@ class Camera
 		// screenResolution and screenPos which are also pixel Y-down).
 		inline bool projectForSelectionPicking (glm::vec3& point,
 		                                        Stuff::Vector4D& screen) {
-			const int64_t _f3_pick_t0 = ::mc2_cpu_proj_cost::selection_picking_begin_ns();
-
 			ProjectZBypassMode bypassMode = projectZBypassMode();
 			const bool isModern = (selectionPickingPredicateMode() == SelectionPickingPredicateMode::Modern);
 			bool ret;
@@ -1069,7 +1013,6 @@ class Camera
 				}
 			}
 
-			::mc2_cpu_proj_cost::selection_picking_end_ns(_f3_pick_t0);
 			return ret;
 		}
 
@@ -1082,8 +1025,6 @@ class Camera
 		// logs pixel-delta events when bypass screen.xy disagrees >1px.
 		inline bool projectForScreenXY (glm::vec3& point,
 		                                Stuff::Vector4D& screen) {
-			const int64_t _f3_sxy_t0 = ::mc2_cpu_proj_cost::screenxy_begin_ns();
-
 			ProjectZBypassMode bypassMode = projectZBypassMode();
 			const bool isModern = (screenXYPredicateMode() == ScreenXYPredicateMode::Modern);
 			bool ret;
@@ -1136,7 +1077,6 @@ class Camera
 				}
 			}
 
-			::mc2_cpu_proj_cost::screenxy_end_ns(_f3_sxy_t0);
 			return ret;
 		}
 
@@ -1144,8 +1084,6 @@ class Camera
 		// F3 modernized via clipSpaceFrustumAdmit when MC2_DEBUG_OVERLAY_PREDICATE_MODE=Modern.
 		inline bool projectForDebugOverlay (glm::vec3& point,
 		                                    Stuff::Vector4D& screen) {
-			const int64_t _f3_dbg_t0 = ::mc2_cpu_proj_cost::debug_overlay_begin_ns();
-
 			ProjectZBypassMode bypassMode = projectZBypassMode();
 			const bool isModern = (debugOverlayPredicateMode() == DebugOverlayPredicateMode::Modern);
 			bool ret;
@@ -1180,7 +1118,6 @@ class Camera
 				}
 			}
 
-			::mc2_cpu_proj_cost::debug_overlay_end_ns(_f3_dbg_t0);
 			return ret;
 		}
 

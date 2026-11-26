@@ -35,7 +35,7 @@ void gos_SetWaterReflectionQuality(int quality) {
 // (gos_terrain_water_mdi.frag uniform u_waterDebugMode). Sentinel -1 = uninit:
 // resolve once from MC2_WATER_DEBUG_MODE. ImGui (EditorInspector) may overwrite
 // with a live value (>=0). Distinct from the VS geometry-space debugMode latch
-// (MC2_RENDER_WATER_FASTPATH_DEBUG). 0=Final default.
+// 0=Final default.
 int g_waterFsDebugMode = -1;
 int gos_GetWaterFsDebugMode()
 {

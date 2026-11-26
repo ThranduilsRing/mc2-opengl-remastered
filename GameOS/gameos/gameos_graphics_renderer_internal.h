@@ -585,7 +585,7 @@ class gosRenderer {
         float terrain_phong_alpha_ = 0.5f;         // Phong smoothing strength
         float terrain_displace_scale_ = 2.0f;      // displacement amplitude (dirt-only in TES)
         bool terrain_wireframe_ = false;            // wireframe overlay toggle
-        float terrain_debug_mode_ = 0.0f;          // 0=off, 1..9 fragment debug modes (see GraphicsOptionsWindow kTerrainModes), -1 tess-alive probe. Env MC2_TERRAIN_DEBUG_MODE overrides at upload.
+        float terrain_debug_mode_ = 0.0f;          // 0=off, 1..9 fragment debug modes (see GraphicsOptionsWindow kTerrainModes), -1 tess-alive probe.
 
         // Terrain tessellation MVP (world-to-NDC)
         mat4 terrain_mvp_;

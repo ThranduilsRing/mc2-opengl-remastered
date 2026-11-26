@@ -111,12 +111,6 @@ namespace {
 
 bool Mech3DAppearance::recalcBounds (void)
 {
-	// F3 CPU projection cost-baseline: aggregate per-actor scope into the
-	// recalcBounds_perframe bucket. No-op when env OFF.
-	::mc2_cpu_proj_cost::Scope _f3_recalcBounds_scope(
-	    ::mc2_cpu_proj_cost::BucketId::BUCKET_RECALCBOUNDS_PERFRAME);
-	::mc2_cpu_proj_cost::add_workload_recalcbounds(1);
-
 	// DEGRADE-DON'T-CRASH: no base shape (partial import) -> treat as not in
 	// view; the mechShape->GetNodeNameId() / LOD-swap derefs below are unsafe.
 	if (!mechShape)

@@ -692,7 +692,7 @@ void BldgAppearance::touchSerialCommit()
 	//       is an index into the static prefix [0..s_staticLightHighWater).
 	//   Q4: renderLists() uploads lightData_[0..max(lightDataStructuresCount,64)] which
 	//       always covers [0..s_staticLightHighWater) since count >= S after rebase.
-	//       With MC2_STATIC_LIGHT_UPLOAD_SPLIT the prefix is uploaded once-per-dirty;
+	//       The prefix is uploaded once-per-dirty;
 	//       suffix is uploaded every frame. Either path keeps [0..S) in GPU memory.
 	// Therefore: staticReg.lightDataIndex from a prior frame remains valid on the GPU
 	// for stable objects — we can skip resubmit entirely when stableLightSkipEligible.

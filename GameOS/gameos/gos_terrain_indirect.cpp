@@ -57,14 +57,6 @@ bool SolidWindowEnabled() {
     return s;
 }
 
-// Parity-probe gate for the windowed dispatch (catastrophic-axis: a visible
-// quad dropped from the window).  Default-OFF; literal "1" arms it.  When off
-// the probe path does ZERO per-frame work (no ref build, no assert).
-bool IsSolidWindowParityEnabled() {
-    static const bool s = mc2::gate::get<"MC2_TERRAIN_SOLID_WINDOW_PARITY">();
-    return s;
-}
-
 bool IsCostSplitEnabled() {
     static const bool s = false;
     return s;

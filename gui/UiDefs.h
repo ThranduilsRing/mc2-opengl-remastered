@@ -24,7 +24,6 @@ class LogisticsScreen;
 namespace UiDefs {
 
 bool gameOsUiDefsEnabled();
-bool editorUiDefsEnabled();
 std::string replacementPathForLegacyFit(const char* legacyFitPath);
 std::string replacementPathForEditorShell();
 

@@ -383,7 +383,6 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/mclib/stuff/style.cpp             # Stuff::SMALL and the other global constants
     ${MC2_WORKTREE_ROOT}/code/objective_text.cpp           # objective string reader/writer (leaf: FitIniFile + log facade)
     ${MC2_WORKTREE_ROOT}/code/objective_flags.cpp          # objective boolean flag table (leaf)
-    ${MC2_WORKTREE_ROOT}/mclib/mlr/mlr_gate.cpp            # MC2_DISABLE_GOSFX latch
 
     # MINIMAL-VIABLE-HARNESS-2: paths.cpp is a pure leaf TU (path string globals
     # only -- no mod-index; that logic lives in vfs.cpp, already

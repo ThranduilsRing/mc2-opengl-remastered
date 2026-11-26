@@ -5090,24 +5090,6 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
-    "budget"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "INSTR",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "disabled"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "INSTR",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
     "log"
    ],
    "count": 1

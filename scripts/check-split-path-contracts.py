@@ -30,11 +30,10 @@ RULE 2 — depth-fudge single-source + form. (a) local `const float *_DEPTH_
   future non-zero fudge moves both paths together).
 
 RULE 3 — tess predicate chokepoint (the actual #34 recurrence guard). The raw
-  tokens RendererFeature::TerrainTessellation / MC2_TERRAIN_TESS may appear
+  tokens RendererFeature::TerrainTessellation / a revived MC2_TERRAIN_TESS may appear
   ONLY in the allowlist below; all other code must consume
   gos_IsModernShadowPathActive() / gos_IsTerrainTessellationActive().
-  (Freezes the TOKEN chokepoint; a re-derived synonym predicate evades it —
-  the nightly MC2_TERRAIN_TESS=0/1 A/B leg is the behavioral guard.)
+  (Freezes the TOKEN chokepoint; a re-derived synonym predicate evades it.)
 
 RULE 4 — pair manifest + content-hash stamps. Every declared path-pair's
   members are sha1-stamped in scripts/split-path-stamps.json at last verified
@@ -133,14 +132,12 @@ TESS_TOKENS_RE = re.compile(
 # still holds, so a dead entry is a standing permission slip for a consumption
 # nobody has written yet.
 TESS_TOKEN_ALLOWLIST = {
-    # 5 code hits: enum TerrainTessellation = 3 + the kFeatureTable row.
-    "RenderCore/RendererFeatureRegistry.h",
     # 2 code hits: the material-load kill-switch read (getenv, :5184) and the
     # printf naming it. This TU also DEFINES gos_IsTerrainTessellationActive()
     # (:10124) -- it is the chokepoint every other TU is told to consume, so it
     # is the one place the raw token belongs.
     "GameOS/gameos/gameos_graphics.cpp",
-    # 2 code hits: registry unit tests assert the enum/table by name.
+    # 1 code hit: the registry unit test asserts the always-on row by name.
     "tests/unit/test_rendercore.cpp",
 }
 TESS_SCAN_DIRS = ["code", "gui", "mclib", "GameOS", "RenderCore", "RenderWorld",
@@ -220,10 +217,6 @@ ISLANDS = {
     "shaders/vulkan/mech_tier1.frag":
         "native VK tier-1 island (VULKAN-BACKEND-L6/P-ladder): structural rewrite of the GL pass (Vulkan bindings/push-constants/SPIR-V), NOT a text-lockstep sibling. Parity is enforced at runtime pixel level per RendererFeatureRegistry convention (VK arc GL/VK visual capture pairs, VFX-9 2026-07-16 + tier1 smoke), not by RULE4 hash lockstep. Declared island-only at MERGE-WAVE-2 checker reconcile 2026-07-22.",
     "shaders/vulkan/postprocess.vert":
-        "native VK tier-1 island (VULKAN-BACKEND-L6/P-ladder): structural rewrite of the GL pass (Vulkan bindings/push-constants/SPIR-V), NOT a text-lockstep sibling. Parity is enforced at runtime pixel level per RendererFeatureRegistry convention (VK arc GL/VK visual capture pairs, VFX-9 2026-07-16 + tier1 smoke), not by RULE4 hash lockstep. Declared island-only at MERGE-WAVE-2 checker reconcile 2026-07-22.",
-    "shaders/vulkan/postprocess.frag":
-        "native VK tier-1 island (VULKAN-BACKEND-L6/P-ladder): structural rewrite of the GL pass (Vulkan bindings/push-constants/SPIR-V), NOT a text-lockstep sibling. Parity is enforced at runtime pixel level per RendererFeatureRegistry convention (VK arc GL/VK visual capture pairs, VFX-9 2026-07-16 + tier1 smoke), not by RULE4 hash lockstep. Declared island-only at MERGE-WAVE-2 checker reconcile 2026-07-22.",
-    "shaders/vulkan/postprocess_visual.vert":
         "native VK tier-1 island (VULKAN-BACKEND-L6/P-ladder): structural rewrite of the GL pass (Vulkan bindings/push-constants/SPIR-V), NOT a text-lockstep sibling. Parity is enforced at runtime pixel level per RendererFeatureRegistry convention (VK arc GL/VK visual capture pairs, VFX-9 2026-07-16 + tier1 smoke), not by RULE4 hash lockstep. Declared island-only at MERGE-WAVE-2 checker reconcile 2026-07-22.",
     "shaders/vulkan/postprocess_visual.frag":
         "native VK tier-1 island (VULKAN-BACKEND-L6/P-ladder): structural rewrite of the GL pass (Vulkan bindings/push-constants/SPIR-V), NOT a text-lockstep sibling. Parity is enforced at runtime pixel level per RendererFeatureRegistry convention (VK arc GL/VK visual capture pairs, VFX-9 2026-07-16 + tier1 smoke), not by RULE4 hash lockstep. Declared island-only at MERGE-WAVE-2 checker reconcile 2026-07-22.",

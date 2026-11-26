@@ -1351,7 +1351,6 @@
   "code/action_executor_registry.h": {
    "LG14": 1
   },
-  "code/actor.h": {},
   "code/appearance_owner.h": {},
   "code/armor_alloc.h": {},
   "code/artillery_value_codec.h": {},
@@ -2585,8 +2584,6 @@
   "mclib/control_map_png_decode.cpp": {
    "LG17": 1
   },
-  "mclib/cpu_proj_cost_split.cpp": {},
-  "mclib/cpu_proj_cost_split.h": {},
   "mclib/csvfile.cpp": {
    "LG05": 3
   },
@@ -2606,7 +2603,6 @@
   "mclib/dffile.h": {},
   "mclib/dfile.h": {},
   "mclib/dgamelog.h": {},
-  "mclib/dheap.h": {},
   "mclib/dident.h": {},
   "mclib/dinifile.h": {},
   "mclib/dmapdata.h": {
@@ -2900,8 +2896,6 @@
   "mclib/mlr/mlr.hpp": {
    "LG14": 3
   },
-  "mclib/mlr/mlr_gate.cpp": {},
-  "mclib/mlr/mlr_gate.h": {},
   "mclib/mlr/mlr_i_c_det_pmesh.cpp": {
    "LG03": 6
   },
@@ -3095,9 +3089,6 @@
    "LG03": 2
   },
   "mclib/mlr/mlrtrianglecloud.hpp": {},
-  "mclib/mlr/owntrace.hpp": {
-   "LG06": 1
-  },
   "mclib/mod_cache_sig.h": {},
   "mclib/mod_conflict.h": {},
   "mclib/model_override_registry.cpp": {

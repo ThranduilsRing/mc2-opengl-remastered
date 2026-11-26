@@ -330,8 +330,7 @@ void Terrain::renderWater (void)
 	// MC2_WATER_DEBUG=1: post-warmup population recon for the renderWater slice.
 	// Reports per-frame how many quads are pure-skip (waterHandle == 0xffffffff,
 	// out-of-frustum or non-water by map data) vs handle-valid (the upper bound
-	// on the actually-emitting subset). Mirrors the MC2_THIN_DEBUG pattern in
-	// quad.cpp: prints 5 frames after a 1200-frame warmup hold-off, then dormant.
+	// on the actually-emitting subset). Prints 5 frames after a 1200-frame warmup hold-off, then dormant.
 	static const bool s_waterDebugOn = false;
 	static uint32_t s_total = 0;
 	static uint32_t s_handleValid = 0;

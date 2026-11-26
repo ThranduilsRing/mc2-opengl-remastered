@@ -117,7 +117,6 @@ bool payloadMatches(std::span<const GpuParticle> actual, std::span<const GpuPart
 
 struct FrozenPlatform {
     // Fresh children set this before MLR first reads its process-lifetime cache.
-    mc2::gate::ScopedOverride<"MC2_DISABLE_GOSFX"> mlrEnabled{"0"};
     std::uint32_t seed = mc2_det_rng::hashMissionName("mc2_03");
     BridgeCapture capture;
     FrozenPlatform()

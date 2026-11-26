@@ -130,7 +130,6 @@ extern const bool s_mechSpotlightRealTrace;
 extern const bool s_mechMaterialGpuEnabled;
 
 // Helpers defined in gos_mech_batcher.cpp that the other pieces call.
-void noteDeprecatedMechFeedNative();
 const float* gos_GetMechFixBMVPMat4();
 
 // VK-P14 mech island: the feed snapshots flush() fills.

@@ -27,7 +27,6 @@
 #include <algorithm>
 #include "Gates/render_options.h"
 #include "Gates/render_options_cfg.h"
-#include "mlr/mlr_gate.h"
 #include "vk_caps_json.h"        // the per-GPU capability report's JSON writer (header-only)
 #include "vk_device_profile.h"   // the Vulkan device profile table (header-only, so the table is tested without a Vulkan link)
 #include "vk_validation_line.h"  // the engine-log line of one validation-layer message (header-only, Vulkan-free)
@@ -1130,7 +1129,7 @@ TEST_CASE("the VK opt-in and kill-switch rows read like the envTriState expressi
         return v[0] == '1' ? 1 : v[0] == '0' ? 0 : -1;
     };
     constexpr const char* kProbe[] = {nullptr, "", "0", "false", "1", "yes", "10", "2.5", "00", "0x", "01"};
-    const char* exact1[] = {"MC2_TERRAIN_SOLID_WINDOW_PARITY"};
+    const char* exact1[] = {"MC2_EDITOR_MODE"};
     const char* killSwitch[] = {"MC2_VK_LIGHTFEED_DEDUP", "MC2_VK_POST_SCREENFX", "MC2_VK_POST_SCREENFX_CLOUD",
                                 "MC2_VK_POST_SCREENFX_SHADOW", "MC2_VK_POST_SCREENFX_SHORELINE"};
     for (const char* name : exact1) {
@@ -1149,14 +1148,6 @@ TEST_CASE("the VK opt-in and kill-switch rows read like the envTriState expressi
             // The one documented edge: a leading '0' followed by more text ("00", "0x") now also turns it off.
             const bool edge = v != nullptr && v[0] == '0' && v[1] != '\0';
             CHECK(rowValue(row, v) == (edge ? false : oldOn));
-        }
-    }
-    // MC2_VK_MECH_FEED_NATIVE: "was it set to exactly 0 or 1".
-    for (const char* name : {"MC2_VK_MECH_FEED_NATIVE"}) {
-        const gate::Row& row = g1b::rowNamed(name);
-        for (const char* v : kProbe) {
-            INFO(name << " = " << (v != nullptr ? v : "<unset>"));
-            CHECK(rowValue(row, v) == (old(v) != -1));
         }
     }
 }
@@ -1341,11 +1332,9 @@ TEST_CASE("G5 postprocess text rows") {
 // ---------------------------------------------------------------------------
 
 TEST_CASE("G5 static-prop clamp rows reproduce the lambdas they replaced") {
-    auto fl = [&](const char* name, const char* text) { return asFloat(gate::detail::parseRow(g1b::rowNamed(name), text)); };
     auto in = [&](const char* name, const char* text) {
         return static_cast<std::int32_t>(static_cast<std::uint32_t>(gate::detail::parseRow(g1b::rowNamed(name), text)));
     };
-    CHECK(fl("MC2_OBJECT_POLY_OFFSET_FACTOR", nullptr) == -1.0f);
     // texture tier and the billboard mode keep their snapping / first-character logic at the site
     CHECK(g1b::rowNamed("MC2_LIGHT_BILLBOARD_FACING").kind == Kind::String);
 }
@@ -1364,9 +1353,6 @@ TEST_CASE("G5 graphics rows reproduce the lambdas and helpers they replaced") {
     CHECK(fl("MC2_WATER_EDGE_FEATHER_STRENGTH", "0") == 1.0f);
     CHECK(fl("MC2_WATER_EDGE_FEATHER_STRENGTH", "2.5") == 2.5f);
     CHECK(fl("MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN", nullptr) == 0.78f);
-    CHECK(fl("MC2_TERRAIN_DETAIL_FADE_START", nullptr) == 1000.0f);
-    CHECK(fl("MC2_TERRAIN_DETAIL_FADE_END", nullptr) == 3000.0f);
-    CHECK(fl("MC2_TERRAIN_DETAIL_FADE_END", "") == 3000.0f);
     // out of range -> default (the old `f >= 0 && f <= 1 ? f : 0.25f`)
     CHECK(fl("MC2_LIGHT_POOL_MOVER_DIM", "2") == 0.25f);
     CHECK(fl("MC2_LIGHT_POOL_MOVER_DIM", "0.5") == 0.5f);
@@ -1432,29 +1418,6 @@ TEST_CASE("an exclusive float range rejects both endpoints") {
         INFO(t);
         CHECK(val(t) == 0.04f);
     }
-}
-
-// mc2::mlr_gate: the MC2_DISABLE_GOSFX latch is a thread-safe function-local static (first use in this process is here).
-TEST_CASE("mlr_gate latches the env value on first use and every thread sees it")
-{
-    _putenv_s("MC2_DISABLE_GOSFX", "1");
-    mc2::gate::invalidateAll();
-
-    CHECK(mc2::mlr_gate::is_disabled());
-
-    _putenv_s("MC2_DISABLE_GOSFX", "0");            // after the first call the value no longer moves
-    mc2::gate::invalidateAll();
-    CHECK(mc2::mlr_gate::is_disabled());
-
-    std::vector<std::thread> threads;
-    std::vector<int> seen(8, 0);
-    for (int i = 0; i < 8; ++i)
-        threads.emplace_back([&seen, i] { seen[i] = mc2::mlr_gate::is_disabled() ? 1 : 0; });
-    for (auto &t : threads) t.join();
-    for (int v : seen) CHECK(v == 1);
-
-    _putenv_s("MC2_DISABLE_GOSFX", "");
-    mc2::gate::invalidateAll();
 }
 
 // ---------------------------------------------------------------------------

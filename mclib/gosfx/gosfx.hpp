@@ -49,7 +49,7 @@ namespace gosFX
 
 	// [B1 C16] Per-frame diagnostic tick for GOSFX_HEAP + GOSFX_CHILD counters.
 	// Env-gated on MC2_GPU_PARTICLES=1; no-op otherwise. Safe to call every frame.
-	// Hooked from gos_RendererEndFrame (sibling of mc2_cpu_proj_cost::frame_end).
+	// Hooked from gos_RendererEndFrame.
 	void DiagFrameTick();
 
 	extern const glm::mat4 &Effect_Into_Motion;

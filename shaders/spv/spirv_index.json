@@ -2,22 +2,6 @@
   "slice": "SPIRV-KEYED-VARIANT-CONSUMER-1",
   "records": [
     {
-      "key": "postprocess|vert|",
-      "artifact": "postprocess.vert.default.24eb2442.spv",
-      "variantId": "24eb244242a0",
-      "base": "postprocess",
-      "stage": "vert",
-      "defines": []
-    },
-    {
-      "key": "postprocess|frag|",
-      "artifact": "postprocess.frag.default.24eb2442.spv",
-      "variantId": "24eb244242a0",
-      "base": "postprocess",
-      "stage": "frag",
-      "defines": []
-    },
-    {
       "key": "mech|vert|",
       "artifact": "mech.vert.default.dbbae7d3.spv",
       "variantId": "dbbae7d3535c",

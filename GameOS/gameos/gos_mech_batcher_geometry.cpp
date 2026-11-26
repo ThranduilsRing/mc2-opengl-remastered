@@ -548,7 +548,6 @@ void uploadMechGeometryVbo() {
 
 void GpuMechBatcher::finalizeGeometry() {
     if (s_geometryFinalized) return;
-    noteDeprecatedMechFeedNative();
     // Slice C1: init the named material profile table once per process (idempotent).
     gos_materials::init();
 

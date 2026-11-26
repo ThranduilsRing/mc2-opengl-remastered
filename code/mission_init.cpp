@@ -66,7 +66,6 @@ void Mission::initPrologue(MissionInitFrame& f) {
 	// campaign cannot inherit a freeze nobody asked for in this mission.
 	mc2FreezeMoversMissionReset();
 	gos_dev_shell::registerCommand("sim_speed", devShellSimSpeed);
-	::mc2_cpu_proj_cost::hard_reset("Mission::init");
 
 	// Reset GPU static-prop batcher state at every map boundary, before any
 	// actor registerType() calls happen during actor spawn (Task 6).

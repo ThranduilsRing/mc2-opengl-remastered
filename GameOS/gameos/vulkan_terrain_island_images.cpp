@@ -849,11 +849,9 @@ void import_concrete_detail(TerrainIsland* s) {
     // Preferred: one BC7 array holding every layer's authored mip chain, uploaded as-is (no decode, no runtime mips).
     // A layer that is not BC7 with a full chain at the first layer's size (a mod file) sends the whole set down the decode path below.
     {
-        const bool wantRock = mc2::gate::get<"MC2_TERRAIN_CLIFF_ROCK">();
-        std::vector<const char*> files{kFiles[0], kFiles[1]};
-        if (wantRock) { files.push_back(kRockFiles[0]); files.push_back(kRockFiles[1]); }
+        std::vector<const char*> files{kFiles[0], kFiles[1], kRockFiles[0], kRockFiles[1]};
         auto array = concrete_bc7_array(files);
-        if (!array && wantRock) { files.resize(2); array = concrete_bc7_array(files); }
+        if (!array) { files.resize(2); array = concrete_bc7_array(files); }
         if (array) {
             const bool rock = files.size() == 4;
             RenderCore::TextureKey key;
@@ -866,7 +864,7 @@ void import_concrete_detail(TerrainIsland* s) {
                 s->concreteDetailPending = std::move(tex);
                 s->cliffRockPresent = rock;
                 vlog("CONCRETE-DETAIL: imported pad + road%s BC7 detail array %ux%u x%u layers, %d authored mips.", rock ? " + cliff rock" : "", w, w, n, mips);
-                if (!rock) vlog("CLIFF-ROCK: rock set absent, unusable or switched off; steep faces keep the base look.");
+                if (!rock) vlog("CLIFF-ROCK: rock set absent or unusable; steep faces keep the base look.");
                 return;
             }
         }
@@ -894,10 +892,10 @@ void import_concrete_detail(TerrainIsland* s) {
     // TERRAIN-CLIFF-ROCK: the cliff rock set (albedo ratio + height, normal + roughness + AO) rides the same array as layers 2/3.
     const auto& kRock = kRockFiles;
     const size_t concreteBytes = px.size();
-    const bool rock = mc2::gate::get<"MC2_TERRAIN_CLIFF_ROCK">() && appendLayer(kRock[0]) && appendLayer(kRock[1]);
+    const bool rock = appendLayer(kRock[0]) && appendLayer(kRock[1]);
     if (!rock) {
         px.resize(concreteBytes);
-        vlog("CLIFF-ROCK: rock set absent, unusable or switched off; steep faces keep the base look.");
+        vlog("CLIFF-ROCK: rock set absent or unusable; steep faces keep the base look.");
     }
     const uint32_t layers = rock ? 4u : 2u;
     auto tex = mc2vk::getOrCreateEngineVulkanContext().textures().acquirePixels(static_cast<uint32_t>(w), static_cast<uint32_t>(h), VK_FORMAT_R8G8B8A8_UNORM, px.data(), px.size(), true, layers, true);
