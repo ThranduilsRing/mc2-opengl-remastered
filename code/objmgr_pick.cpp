@@ -787,6 +787,10 @@ GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
             && (!terrainOnly || !obj->isMover()) && std::find(list.begin(), list.end(), obj) != list.end();
         if (!eligible) rejectEnemy(obj, "ineligible");
         stack.push_back({obj, depth, pickPriority(obj) + (coreHit ? 0 : 5), eligible, forgiven});
+        if (pickTrace && obj->isMover()) {
+            const auto payload = std::format("{{\"mouse\":[{},{}],\"candidate\":{},\"eligible\":{},\"forgiven\":{},\"depth\":{:.17g}}}", x, y, obj->getPartId(), eligible ? 1 : 0, forgiven ? 1 : 0, depth);
+            mc2_diag::writeEvent("PICK", 1, 0, payload.c_str());
+        }
     }
     if (stack.empty()) return GameObjectPtr{};
     std::stable_sort(stack.begin(), stack.end(), [](const auto& a, const auto& b) {
