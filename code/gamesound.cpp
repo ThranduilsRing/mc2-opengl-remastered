@@ -146,8 +146,14 @@ long i;
 //---------------------------------------------------------------------------
 bool GameSoundSystem::checkMessage (MechWarriorPtr pilot, byte priority, unsigned long messageType)
 {
+	// Clip variants belong to one request: don't queue another while it is spoken.
+	if (currentMessage && !wholeMsgDone && currentMessage->pilot == pilot && currentMessage->msgType == messageType)
+		return FALSE;
 	for (const auto & queueElem : queue)
 	{
+		if (queueElem)
+			if (queueElem->pilot == pilot && queueElem->msgType == messageType)
+				return FALSE;
 		if (queueElem)
 			if ((queueElem->pilot == pilot && priority > queueElem->priority) ||			// I'm already saying something more important, or
 					(queueElem->priority > 1 && queueElem->msgType == messageType))		// someone else is saying this

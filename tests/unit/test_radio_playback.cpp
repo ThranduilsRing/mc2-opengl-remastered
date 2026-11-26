@@ -28,6 +28,8 @@ struct RadioClip {
 struct RadioData {
     std::array<RadioClip, 16> data{}, noise{};
     Pilot* pilot = nullptr;
+    unsigned long msgType = 0;
+    unsigned char priority = 0;
 };
 struct { std::atomic<bool> active{false}; } g_va;
 struct SoundSystem {
@@ -42,6 +44,7 @@ struct SoundSystem {
 };
 #include "voiceover_playback.inc"
 struct GameSoundSystem : SoundSystem {
+    std::array<std::unique_ptr<RadioData>, 8> queue;
     std::unique_ptr<RadioData> currentMessage, queued;
     unsigned messagesInQueue = 0, currentFragment = 0;
     bool playingNoise = false, wholeMsgDone = true;
@@ -62,10 +65,33 @@ struct GameSoundSystem : SoundSystem {
     void playNoiseClip();
     void playNextDataClip();
     void update();
+    bool checkMessage(Pilot*, unsigned char, unsigned long);
 };
+using MechWarriorPtr = Pilot*;
+using byte = unsigned char;
+#include "radio_admission.inc"
 #define VIEWER
 #include "radio_playback.inc"
 #undef VIEWER
+}
+
+TEST_CASE("MissionAudio/repeated pilot request is refused while queued or spoken") {
+    GameSoundSystem sound;
+    Pilot pilot, other;
+    CHECK(sound.checkMessage(&pilot, 1, 7));
+    sound.queue[0] = std::make_unique<RadioData>();
+    sound.queue[0]->pilot = &pilot;
+    sound.queue[0]->msgType = 7;
+    sound.queue[0]->priority = 1;
+    CHECK_FALSE(sound.checkMessage(&pilot, 1, 7));
+    CHECK(sound.checkMessage(&other, 1, 7));
+    sound.currentMessage = std::move(sound.queue[0]);
+    sound.wholeMsgDone = false;
+    CHECK_FALSE(sound.checkMessage(&pilot, 1, 7));
+    CHECK(sound.checkMessage(&other, 1, 7));
+    CHECK(sound.checkMessage(&pilot, 0, 8));
+    sound.wholeMsgDone = true;
+    CHECK(sound.checkMessage(&pilot, 1, 7));
 }
 
 TEST_CASE("MissionAudio/briefing and tutorial speech hold pilot radio in its queue") {

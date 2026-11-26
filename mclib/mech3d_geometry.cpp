@@ -784,6 +784,7 @@ void Mech3DAppearance::updateGeometry (void)
 		baseRootNodeDifference -= HELICOPTER_FACTOR;
 
 	xlatPosition.y += baseRootNodeDifference;
+	xlatPosition.y = std::max(xlatPosition.y, Terrain::waterElevation + 2.0f);
 	sensorTriangleShape->SetFogRGB(0xffffffff);
 	sensorTriangleShape->TransformMultiShape_HierarchyOnly(&xlatPosition,&totalRotation);
 	sensorTriangleShape->ReserveCpuDraw();
