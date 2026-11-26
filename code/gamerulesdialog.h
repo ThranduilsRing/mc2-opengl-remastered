@@ -15,7 +15,7 @@ public:
 	static bool init();
 
 	// Rows are filled from `start`; status is RUNNING until ACCEPT (YES) or BACK (NO).
-	void begin( const mc2::rules::GameRules& start );
+	void begin( const mc2::rules::GameRules& start, bool campaignStart = false );
 	virtual void update();
 	virtual void render();
 	virtual int handleMessage( unsigned long, unsigned long );
@@ -39,6 +39,7 @@ private:
 
 	long lastSlider[kPageRows] = {};	// last slider position the dialog applied (the page slider is re-set to the snapped notch)
 	int focusRow = -1;				// slider row the left/right keys move
+	bool editMods = false;
 	bool showFocus = false;			// the focus outline appears only after keyboard use
 
 	mc2::rules::GameRules working;

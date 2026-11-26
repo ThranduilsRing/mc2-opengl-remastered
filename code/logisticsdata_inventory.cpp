@@ -1,3 +1,4 @@
+#include "game_rules.h"
 // LogisticsData: components, mech purchase and sale, force groups, inventory lists and the vehicle pilot (with the infinite-money cheat gate).
 // Declared in the class headers; shared names in logisticsdata_internal.h.
 #include "logisticsdata_internal.h"
@@ -7,7 +8,7 @@
 // Interactive cheat gates -- read once at startup, default OFF (unset = nullptr = false)
 // The launcher writes this into launcher_env.json, which main() applies after static initialization, so it
 // is read at first use rather than in a namespace-scope initializer.
-static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CHEAT_INFINITE_MONEY">(); return on; }
+static bool cheatInfiniteMoney() { const bool on = mc2::rules::campaignToggle("@infinite-money", mc2::gate::get<"MC2_CHEAT_INFINITE_MONEY">()); return on; }
 
 
 int LogisticsData::getAvailableComponents( LogisticsComponent** pComps, int& maxCount )

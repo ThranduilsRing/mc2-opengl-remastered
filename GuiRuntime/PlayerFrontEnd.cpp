@@ -1,3 +1,4 @@
+#include "../mclib/campaign_mod_catalogue.h"
 #include "PlayerFrontEnd.h"
 #include "GuiRuntime_internal.h"
 #include "PlayerOptionRows.h"
@@ -470,6 +471,47 @@ bool relaunchForCampaign(std::string_view key) {
     campaignFit = fit;
     autoBase();
     return commitRelaunch(mod, base, texture, dependencies(), "start_campaign", fit);
+}
+
+bool prepareCampaignRules(const mc2::rules::GameRules& rules, std::string_view fit) {
+    const auto deps = mc2::mods::dependencies(activeModDeps(), rules.mods, mc2::mods::catalogue("mods"));
+    if (deps == activeModDeps()) return true;
+    commitRelaunch(activeModId(), {}, {}, deps, "start_campaign", fit);
+    return false; // also refuse starting with stale layers when saving/relaunching failed
+}
+
+void drawCampaignMods(mc2::rules::GameRules& rules, bool editable) {
+    // Cache the small manifests/file lists; no filesystem traversal in the frame loop.
+    static const auto addons = mc2::mods::catalogue("mods");
+    const auto* vp = ImGui::GetMainViewport();
+    const float scale = vp->Size.y / 1000.0f;
+    ImGui::SetNextWindowPos(ImVec2(vp->Pos.x + 12 * scale, vp->Pos.y + 250 * scale), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(550 * scale, 536 * scale), ImGuiCond_Always);
+    if (ImGui::Begin("MODS", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse)) {
+        ImGui::TextWrapped(editable ? "Choose for this campaign. Overlapping files cannot be combined." : "Chosen at campaign start. Start a new campaign to change mods.");
+        ImGui::BeginDisabled(!editable);
+        for (const auto& [id, label] : {std::pair{"@faster-weapons", "Faster weapons (straight fire, 2x speed)"},
+             {"@purchase-all", "Purchase All"}, {"@infinite-money", "Infinite money"},
+             {"@salvage-all", "Salvage everything"}, {"@jumpjets-all", "Jump jets on any mech"}}) {
+            bool on = mc2::mods::selected(rules.mods, id);
+            if (ImGui::Checkbox(label, &on)) mc2::mods::toggle(rules.mods, id);
+        }
+        ImGui::SeparatorText("Gameplay / data add-ons");
+        if (addons.empty()) ImGui::TextWrapped("No gameplay add-ons installed.");
+        for (const auto& addon : addons) {
+            ImGui::PushID(addon.id.c_str());
+            bool on = mc2::mods::selected(rules.mods, addon.id);
+            const auto why = mc2::mods::conflict(addon, addons, rules.mods);
+            ImGui::BeginDisabled(!on && !why.empty());
+            if (ImGui::Checkbox(addon.name.c_str(), &on)) mc2::mods::toggle(rules.mods, addon.id);
+            ImGui::EndDisabled();
+            if (!why.empty()) ImGui::TextWrapped("Conflicts with %s", why.c_str());
+            ImGui::TextWrapped("%s", addon.description.c_str());
+            ImGui::PopID();
+        }
+        ImGui::EndDisabled();
+    }
+    ImGui::End();
 }
 
 bool relaunchForSave(bool recorded, std::string_view savedMod, std::string_view savedDeps, std::string_view saveFile) {

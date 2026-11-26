@@ -81,7 +81,7 @@
         "GameOS/gameos/runtime_bridge.cpp", "GameOS/gameos/runtime_bridge_protocol.cpp",
         "tests/unit/test_runtime_bridge_protocol.cpp", "tests/unit/test_mission_environment.cpp",
         "mclib/ui_chrome_sheets.cpp", "tests/unit/test_ui_chrome_sheets.cpp",
-        "mclib/lighting_tod_json.h", "mclib/pak_zip.cpp"
+        "mclib/lighting_tod_json.h", "mclib/pak_zip.cpp", "mclib/campaign_mod_catalogue.h"
       ],
       "allow_basenames": ["model_override_registry.cpp", "anim_override_registry.cpp", "fx_def_registry.cpp", "test_model_override_registry.cpp"],
       "patterns": [

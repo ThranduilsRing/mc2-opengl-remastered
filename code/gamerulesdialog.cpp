@@ -1,6 +1,8 @@
+#include "../mclib/campaign_mod_catalogue.h"
 #define GAMERULESDIALOG_CPP
 // GameRulesDialog: see gamerulesdialog.h. Rows are generated from mc2::rules::kRules; the page (mcl_gamerules.fit) supplies kPageRows slots.
 #include "gamerulesdialog.h"
+#include "../GuiRuntime/PlayerFrontEnd.h"
 #include <cctype>
 #include <string>
 #include "mclib.h"
@@ -83,9 +85,10 @@ bool GameRulesDialog::init()
 	return true;
 }
 
-void GameRulesDialog::begin( const mc2::rules::GameRules& start )
+void GameRulesDialog::begin( const mc2::rules::GameRules& start, bool campaignStart )
 {
 	working = start;
+	editMods = campaignStart;
 	focusRow = -1;
 	showFocus = false;
 	moveFocus( 1 );
@@ -157,11 +160,22 @@ int GameRulesDialog::handleMessage( unsigned long, unsigned long who )
 		if ( !mc2::rules::isSlider( mc2::rules::kRules[who - kRowBase] ) ) cycleRow( who - kRowBase );
 	}
 	else if ( who == kDefaults )
+	{
+		auto mods = working.mods;
 		working = mc2::rules::GameRules{};
+		working.mods = std::move(mods);
+	}
 	else if ( who == kPreset )
+	{
+		auto mods = working.mods;
 		working = mc2::rules::battleTechPreset();
+		working.mods = std::move(mods);
+	}
 	else if ( who == kAccept || who == YES )
 	{
+		const auto addons = mc2::mods::catalogue("mods");
+		for ( const auto& addon : addons )
+			if ( mc2::mods::selected(working.mods, addon.id) && !mc2::mods::conflict(addon, addons, working.mods).empty() ) return 0;
 		status = YES;
 		bDone = true;
 	}
@@ -251,4 +265,5 @@ void GameRulesDialog::render()
 		if ( showFocus && static_cast<int>( i ) == focusRow ) drawDefsRect( x - 2.0f, y - 2.0f, w + 4.0f, h + 4.0f, 0xff5C96C2, false );
 	}
 	gos_SetHudScaleExempt( false );
+	PlayerFrontEnd::drawCampaignMods( working, editMods );
 }

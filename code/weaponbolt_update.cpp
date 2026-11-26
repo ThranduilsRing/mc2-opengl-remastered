@@ -1,3 +1,4 @@
+#include "game_rules.h"
 // WeaponBolt: the per-frame bolt update (flight, impact, direct-fire modes) and its speed/straight-fire gates.
 // Declared in the class headers; shared names in weaponbolt_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
@@ -32,12 +33,12 @@ static void emitImpact(const WeaponBoltType* t, const WeaponShotInfo& shot, cons
 static bool directFireStraightEnabled (void)
 {
 	static const bool s = mc2::gate::get<"MC2_DIRECT_FIRE_STRAIGHT">();
-	return s;
+	return mc2::rules::campaignToggle("@faster-weapons", s);
 }
 static float directFireSpeedMult (void)
 {
 	static const float s = mc2::gate::get<"MC2_PROJECTILE_SPEED_MULT">();   // the row reads 1 outside (0, 10]
-	return s;
+	return mc2::rules::g_published ? (mc2::mods::selected(mc2::rules::current().mods, "@faster-weapons") ? 2.0f : 1.0f) : s;
 }
 
 long WeaponBolt::update (void)

@@ -354,7 +354,7 @@ bool MainMenu::beginCampaignRules( std::string_view campaignFile )
 	rulesCampaign = campaignFile;
 	bLoadCampaign = false;
 	bRulesDlg = true;
-	GameRulesDialog::instance()->begin( prefs.gameRules );
+	GameRulesDialog::instance()->begin( prefs.gameRules, true );
 	return true;
 }
 
@@ -743,6 +743,8 @@ void MainMenu::update()
 		return;
 	}
 
+	if ( !introMovie && !bRulesDlg && mc2::gate::str<"MC2_BOOT_TO_SCREEN">() == "game_rules" )
+		beginCampaignRules("campaign");
 	if ( bRulesDlg )
 	{
 		GameRulesDialog* dlg = GameRulesDialog::instance();
@@ -765,6 +767,7 @@ void MainMenu::update()
 				const mc2::rules::GameRules chosen = dlg->rules();
 				prefs.gameRules = chosen;	// remembered as the next new campaign's starting point
 				(void)prefs.save();
+				if ( !PlayerFrontEnd::prepareCampaignRules( chosen, rulesCampaign ) ) return;
 				if ( LogisticsData::instance->startNewCampaign( rulesCampaign.c_str() ) )
 				{
 					LogisticsData::instance->setRules( chosen );
@@ -1215,7 +1218,10 @@ void MainMenu::render()
 	}
 	if ( bRulesDlg )
 	{
+	{
 		GameRulesDialog::instance()->render();
+		mc2::screen_settle::tickFrontEnd(-5, -5);
+	}
 	}
 	if ( bHostLeftDlg )
 	{

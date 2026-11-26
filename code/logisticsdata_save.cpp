@@ -1,3 +1,4 @@
+#include "../mclib/campaign_mod_catalogue.h"
 // LogisticsData: removeMechsInForceGroup, pilot ranking, save / load, setMissionCompleted and the mech / pilot / variant lookups.
 // Declared in the class headers; shared names in logisticsdata_internal.h.
 #include "pilot_pick.h"
@@ -176,7 +177,7 @@ long	LogisticsData::save( FitIniFile& file )
 	// The mod layers this campaign runs under: loading it from another mod relaunches into these (mainmenu reads them
 	// from [General]). Written before missionInfo->save, which ends in its own [AdditionalPurchaseFiles]/[GameRules] blocks.
 	file.writeIdString( "ActiveMod", PlayerFrontEnd::saveModField( PlayerFrontEnd::activeModId() ).c_str() );
-	file.writeIdString( "ModDeps", PlayerFrontEnd::saveModField( PlayerFrontEnd::activeModDeps() ).c_str() );
+	file.writeIdString( "ModDeps", PlayerFrontEnd::saveModField( mc2::mods::dependencies(PlayerFrontEnd::activeModDeps(), rules().mods, mc2::mods::catalogue("mods")) ).c_str() );
 
 	// save the campaign info
 	missionInfo->save( file );
@@ -238,6 +239,7 @@ std::expected<void, long> LogisticsData::load( FitIniFile& file )
 		}
 	}
 
+	mc2::rules::publish( mc2::rules::readFit(file) );
 	ensureMechBayDataLoaded("save-load");
 	resetCampaignRoster();
 	resourcePoints = 0;

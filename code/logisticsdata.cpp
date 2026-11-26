@@ -122,6 +122,7 @@ bool				LogisticsData::startNewCampaign( mc2::czstring fileName )
 		}
 	}
 
+	mc2::rules::publish( prefs.gameRules );
 	ensureMechBayDataLoaded("campaign-start");
 #ifndef VIEWER
 	if ( MPlayer )
