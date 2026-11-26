@@ -3,7 +3,7 @@
 // depth 0) reprojects by view rotation only; zero on history reset (identity reprojection). The scene depth was drawn with the
 // frame's render jitter jitterClip, so it is removed before reprojecting (plan: depth algebra).
 // Output 1: reactive/transparency mask for the temporal consumer. Water is marked from the shared GBuffer1 alpha class
-// (water_geom writes 0.875, terrain 1.0); everything else stays 0. Particles/VFX: see the report (no class channel yet).
+// (water_geom writes 0.875, terrain 1.0). Mechs/vehicles reject history via their object-vector coverage.
 #version 450
 
 layout(location = 0) in vec2 TexCoord;
@@ -37,14 +37,17 @@ void main() {
         Motion = w > 0.0 ? 0.5 * vec2(dot(u.skyRowX, v), dot(u.skyRowY, v)) / w + 0.5 - (TexCoord - 0.5 * u.jitterClip) : vec2(0.0);
     }
     if (u.previousFromCurrentClip == mat4(1.0)) Motion = vec2(0.0);
+    Reactive = 0.0;
     if ((u.objectValid & 1u) != 0u) {
         // Mechs and vehicles co-wrote their own vector under the same depth test; the sentinel marks every other pixel.
         vec2 objectMotion = texelFetch(objectMv, ivec2(gl_FragCoord.xy), 0).xy;
-        if (objectMotion.x < 1000.0) Motion = objectMotion;
+        if (objectMotion.x < 1000.0) {
+            Motion = objectMotion;
+            Reactive = 1.0;   // moving units must not accumulate history
+        }
     }
-    Reactive = 0.0;
     if ((u.objectValid & 2u) != 0u) {
         float classA = texelFetch(sceneNormal, ivec2(gl_FragCoord.xy), 0).a;
-        if (classA > 0.8 && classA < 0.95) Reactive = 0.5;   // water
+        if (classA > 0.8 && classA < 0.95) Reactive = max(Reactive, 0.5);   // water
     }
 }
