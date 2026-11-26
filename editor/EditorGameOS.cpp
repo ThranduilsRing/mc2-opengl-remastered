@@ -694,9 +694,12 @@ DWORD __stdcall RunGameOSLogic()
     EditorFramePhase_Mark("present");
     EditorFramePhase_End();
     if (g_cliSmokeCamera && land) {
-        fprintf(stderr, "[EDITOR_CAMERA v1] frame=%d phase=%d active_ms=%llu size=%dx%d\n",
-                cameraFrame++, cameraPhase, GetTickCount64() - cameraStart, viewport_w, viewport_h);
-        fflush(stderr);
+        if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) {
+            fprintf(stderr, "[EDITOR_CAMERA v1] frame=%d phase=%d active_ms=%llu size=%dx%d\n",
+                    cameraFrame, cameraPhase, GetTickCount64() - cameraStart, viewport_w, viewport_h);
+            fflush(stderr);
+        }
+        ++cameraFrame;
     }
 
 #ifdef TRACY_ENABLE

@@ -6,6 +6,7 @@
 #include "../GameOS/gameos/load_scope.h"
 #include "../GameOS/gameos/vk_render_infra.h"
 #include "texture_assets.h"
+#include "Gates/gate.h"
 #include <commctrl.h>
 
 namespace {
@@ -104,9 +105,15 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	struct LoadReport {
 		ULONGLONG start = GetTickCount64();
 		~LoadReport() {
+<<<<<<< HEAD
 			const auto results = mc2::load::report();
 			if (FILE* log = fopen("editor-startup.log", "a")) {
 				fprintf(log, "[LOAD_SCOPES v1] host=editor total_ms=%llu%s\n", GetTickCount64() - start, results.scopes.c_str());
+=======
+			const auto scopes = mc2::load::report();
+			if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) if (FILE* log = fopen("editor-startup.log", "a")) {
+				fprintf(log, "[LOAD_SCOPES v1] host=editor total_ms=%llu%s\n", GetTickCount64() - start, scopes.c_str());
+>>>>>>> bcb1227ef (chore(editor): gate capture diagnostics)
 				fclose(log);
 			}
 		}
