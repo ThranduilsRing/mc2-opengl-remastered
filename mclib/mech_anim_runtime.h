@@ -122,6 +122,6 @@ const char* ImportedMechNormalTexName(const void* typeKey);
 // imported mech, no manifest, the name is unmapped, or the joint/globals are absent.
 bool GetImportedNodeWorld(const void* actorKey, const void* typeKey,
                           const char* mc2Name, const float* rootToWorld12,
-                          float outXYZ[3]);
+                          float outXYZ[3], bool presentation = false);
 
 }  // namespace mc2mechanim

@@ -705,7 +705,7 @@ glm::vec3 Mech3DAppearance::getWeaponNodePosition (long nodeId)
 		float wp[3];
 		if (mc2mechanim::GetImportedNodeWorld(static_cast<const void*>(mechShape), tKey,
 				mechType->nodeData[nodeId].nodeId,
-				static_cast<const float*>(glm::value_ptr(mechShape->GetShapeRec(0)->shapeToWorld)), wp)) {
+				static_cast<const float*>(glm::value_ptr(mechShape->GetShapeRec(0)->shapeToWorld)), wp, !pv_.sim)) {
 			static int s_diagN = 0;
 			if (false && s_diagN++ < 24)
 				fprintf(stderr, "[NODE-DIAG-CALLER] mech pos=(%.1f,%.1f,%.1f) node='%s' world=(%.1f,%.1f,%.1f) delta=(%.1f,%.1f,%.1f)\n",
@@ -764,7 +764,7 @@ glm::vec3 Mech3DAppearance::getNodeNamePosition (mc2::czstring nodeName)
         const void* type = mechType ? static_cast<const void*>(mechType->mechShape[currentLOD].get()) : nullptr;
         float world[3];
         if (mc2mechanim::GetImportedNodeWorld(mechShape, type, nodeName,
-                glm::value_ptr(mechShape->GetShapeRec(0)->shapeToWorld), world))
+                glm::value_ptr(mechShape->GetShapeRec(0)->shapeToWorld), world, !pv_.sim))
             return glm::vec3(world[0], world[1], world[2] - pv_.lift);
     }
 
