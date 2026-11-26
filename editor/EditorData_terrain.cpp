@@ -105,15 +105,9 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	struct LoadReport {
 		ULONGLONG start = GetTickCount64();
 		~LoadReport() {
-<<<<<<< HEAD
 			const auto results = mc2::load::report();
-			if (FILE* log = fopen("editor-startup.log", "a")) {
-				fprintf(log, "[LOAD_SCOPES v1] host=editor total_ms=%llu%s\n", GetTickCount64() - start, results.scopes.c_str());
-=======
-			const auto scopes = mc2::load::report();
 			if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) if (FILE* log = fopen("editor-startup.log", "a")) {
-				fprintf(log, "[LOAD_SCOPES v1] host=editor total_ms=%llu%s\n", GetTickCount64() - start, scopes.c_str());
->>>>>>> bcb1227ef (chore(editor): gate capture diagnostics)
+				fprintf(log, "[LOAD_SCOPES v1] host=editor total_ms=%llu%s\n", GetTickCount64() - start, results.scopes.c_str());
 				fclose(log);
 			}
 		}

@@ -56,11 +56,11 @@ void Editor::init( char* loader )
 	{
 				bool missionExists = fileExists(mPath);
 
-		if (missionExists)
+		if (missionExists && g_cliMissionPath.empty())
 		{
 			bOK = EditorData::initTerrainFromPCV(mPath);
 		}
-		else if (g_cliGenMap || g_cliNewMap)
+		else if (g_cliGenMap || g_cliNewMap || !g_cliMissionPath.empty())
 		{
 			bOK = true;   // defer to the OnIdle auto-generate hook; no modal
 		}

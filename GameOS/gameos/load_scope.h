@@ -97,6 +97,7 @@ public:
     }
     void end(int64_t now) {
         if (!entry_) return;
+        {
         std::scoped_lock lock(g_entryMutex);
         g_parent = parent_;
         if (generation_ == g_generation && g_active.load()) {
@@ -108,6 +109,7 @@ public:
             if (parent_ && parent_->generation_ == generation_) parent_->children_ += elapsed;
         }
         entry_ = nullptr;
+        }
         if (checkpoint) checkpoint();
     }
     ~Scope() { if (entry_) end(clockNs()); }
