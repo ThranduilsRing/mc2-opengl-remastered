@@ -1,3 +1,4 @@
+#include "../../mclib/camera.h"
 #include "vulkan_mover_shadow.h"
 #include "shadow_quality.h"
 #include "visual_tuning_profile.h"
@@ -209,7 +210,10 @@ bool MoverShadowState::prepare(uint64_t epoch, int mapSide, const float cameraRo
     frame_.mask[2]=1.0f/((std::max)(side-1,1)*kWorldUnitsPerVertex); frame_.mask[3]=maskReady?1.0f:0.0f;
     if (!spheres_.empty()) {
         const auto basis=lightBasis(sun);
-        const Window window=fitMoverWindow(spheres_,basis,ground_,mapSide,extent_);
+        const auto focus = eye ? eye->getPosition() : glm::vec3(0.0f);
+        const MoverSphere region{{focus.x,focus.y,focus.z}, eye ? eye->getCameraAltitude() : 1200.0f};
+        const Window window=fitMoverWindow(spheres_,basis,ground_,mapSide,region);
+        extent_=window.texelWorld*mapSide;
         windowMatrix(basis,window,frame_.matrix);
         frame_.params[0]=window.texelWorld; frame_.params[1]=1.0f/(window.dMax-window.dMin);
         frame_.params[2]=(std::max)(0.2f,window.texelWorld*0.35f); frame_.params[3]=1.0f/mapSide;
