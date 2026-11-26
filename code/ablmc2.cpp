@@ -10,7 +10,7 @@
 #include <climits>
 #include "game_rules.h"
 #include "brain_execution_policy.h"
-#include <algorithm>
+#include "../mclib/vfs.h"
 
 
 MoverGroupPtr			CurGroup = nullptr;
@@ -44,9 +44,7 @@ long ablFileOpenCB (void** file, mc2::czstring fName) {
 
 	*file = nullptr;
 	// Archive lookup requires lowercase names.
-	std::string name(fName);
-	CharLower(name.data());
-	std::replace(name.begin(), name.end(), '\\', '/');
+	std::string name = mc2::vfs::key(fName);
 	// This profile is selected by the saved AI rule, never by the launcher's mod stack.
 	if (const auto profile = mc2::brainpolicy::magicAsset(name, mc2::rules::current().ai); !profile.empty()) {
 		if (name.ends_with(".abx") || fileExists(profile.c_str())) name = profile;
