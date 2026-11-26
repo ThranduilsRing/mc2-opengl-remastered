@@ -478,7 +478,7 @@ void MissionInterfaceManager::update (void)
 				Stuff::Vector2DOf<long> sXY;
 				sXY.x = fmx; sXY.y = fmy;
 				glm::vec3 w;
-				eye->inverseProject( sXY, w );
+				if (eye->inverseProject(sXY,w)==0)
 				{
 					Mover* flMovers[32];
 					int nm = 0;
@@ -513,8 +513,8 @@ void MissionInterfaceManager::update (void)
 			Stuff::Vector2DOf<long> sXY;
 			sXY.x = fmx; sXY.y = fmy;
 			glm::vec3 w;
-			eye->inverseProject( sXY, w );
-			g_tacticalOverview.flOnDragMove( w );
+			if (eye->inverseProject(sXY,w)==0)
+				g_tacticalOverview.flOnDragMove(w);
 
 				// Spacing wheel: stretches/tightens the squad spread while
 				// drawing. Consume it so the overview zoom-on-wheel (later this

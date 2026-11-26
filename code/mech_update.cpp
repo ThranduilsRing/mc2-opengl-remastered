@@ -855,10 +855,7 @@ void BattleMech::renderView (const mc2::render_view::RenderView& view)
 					startPos.z = TerrainRuntime::groundElevation(startPos);
 					endPos.z = TerrainRuntime::groundElevation(endPos);
 					
-					// [PROJECTZ:ScreenXYOracle id=mech_path_step_start]
-					eye->projectForScreenXY(startPos,lineStart);
-					// [PROJECTZ:ScreenXYOracle id=mech_path_step_end]
-					eye->projectForScreenXY(endPos,lineEnd);
+					if (!eye->projectSegmentForScreen(startPos,endPos,lineStart,lineEnd)) continue;
 
 					lineStart.z = lineEnd.z = HUD_DEPTH;
 

@@ -151,3 +151,29 @@ TEST_CASE("camera sweep: layer world push is proportional and ordered at every n
         }
     }
 }
+
+TEST_CASE("camera sweep: segments clip at reverse Z near before division") {
+    for(int yaw : {0,90,180,270}) for(float pitch : {18.0f,45.0f,88.0f})
+    for(float zoom : {300.0f,1200.0f,3000.0f}) {
+        glm::mat4 pose(1);
+        mc2::math::buildRotation(pose,mc2::math::Euler(glm::radians(-pitch),glm::radians(float(yaw)),0));
+        mc2::math::buildTranslation(pose,mc2::math::localForwardInWorld(pose)*zoom);
+        glm::mat4 projection(0);
+        projection[0][0]=2; projection[1][1]=3;
+        projection[2][2]=100.0f/49900; projection[3][2]=-1; projection[2][3]=5000000.0f/49900;
+        const auto matrix=glm::inverse(pose)*projection;
+        auto a=(glm::vec4(20,10,-200,1)*pose)*matrix;
+        auto b=(glm::vec4(-10,30,100,1)*pose)*matrix;
+        const glm::vec2 start=glm::vec2(a)/a.w, end=glm::vec2(b)/b.w;
+        REQUIRE(camera_frustum_math::clipSegmentNear(a,b));
+        CHECK(b.w==doctest::Approx(b.z).epsilon(0.0001));
+        const auto cut=glm::vec2(b)/b.w, line=end-start, delta=cut-start;
+        CHECK(std::fabs(line.x*delta.y-line.y*delta.x)<0.0001f);
+        CHECK(std::isfinite(cut.x)); CHECK(std::isfinite(cut.y));
+        const auto originalA=a,originalB=b;
+        REQUIRE(camera_frustum_math::clipSegmentNear(a,b));
+        CHECK(a==originalA); CHECK(b==originalB);
+        a=glm::vec4(0,0,200,100); b=glm::vec4(0,0,300,-100);
+        CHECK_FALSE(camera_frustum_math::clipSegmentNear(a,b));
+    }
+}

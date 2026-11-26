@@ -7,6 +7,7 @@
 #include "terrain_runtime.h"
 #include "../RenderCore/TemporalInputs.h"
 #include <format>
+#include "mc2fmt.h"
 namespace {
 // XFORM-CONVENTION-HARNESS-1: the two canonical clip-space convention
 // matrices used to live here as anonymous-namespace free functions. They were
@@ -521,15 +522,17 @@ void Camera::setCameraOrigin (void)
 	
 	if (usePerspective)
 		clipToWorld = glm::inverse(worldToClip);
+	bool validCamera = std::fabs(NearPlaneDistance) < FarPlaneDistance &&
+		glm::length(lookVector - mc2::math::localBackwardInWorld(cameraOrigin)) < 0.001f;
 	for (int c = 0; c < 4; ++c)
 		for (int r = 0; r < 4; ++r)
-			gosASSERT(std::isfinite(worldToClip[c][r]));
-	gosASSERT(std::fabs(NearPlaneDistance) < FarPlaneDistance);
+			validCamera = validCamera && std::isfinite(worldToClip[c][r]);
+	if (!validCamera) { mc2::fmt::print_err("Camera invariant failed: projection or forward axis\n"); std::abort(); }
 	cacheFrustumPlanes(); // Lights and CPU visibility consume this before terrain::geometry.
 	static bool reportedNearFocus = false;
 	const glm::vec3 focus(-position.x, cameraShiftZ, position.y);
 	if (!reportedNearFocus && usePerspective && glm::length(physicalPos - focus) <= std::fabs(NearPlaneDistance)) {
-		fprintf(stderr, "[CAMERA] focus inside near plane\n");
+		mc2::fmt::print_err("Camera focus is inside the near plane\n");
 		reportedNearFocus = true;
 	}
 }

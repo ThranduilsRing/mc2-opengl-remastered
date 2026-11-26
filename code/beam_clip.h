@@ -14,6 +14,9 @@ struct Polygon {
     int count = 0;
 };
 
+// Normalize the perspective camera's negative homogeneous W without changing NDC.
+inline glm::vec4 cameraClip(const glm::vec4& clip, bool perspective) { return perspective ? -clip : clip; }
+
 inline glm::vec2 screenPosition(const glm::vec4& clip, bool perspective,
                                const glm::vec2& mul, const glm::vec2& add) {
     return (perspective ? glm::vec2(clip) / clip.w : glm::vec2(1.0f) - glm::vec2(clip)) * mul + add;

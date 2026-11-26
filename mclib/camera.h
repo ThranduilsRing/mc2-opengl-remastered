@@ -1083,6 +1083,9 @@ class Camera
 		// mode validates pre-flip. Default: Legacy (conservative).
 		// Env MC2_SCREENXY_PREDICATE_MODE=Modern + MC2_PROJECTZ_BYPASS_MODE=Compare
 		// logs pixel-delta events when bypass screen.xy disagrees >1px.
+		bool projectSegmentForScreen(const glm::vec3& a, const glm::vec3& b,
+			Stuff::Vector4D& outA, Stuff::Vector4D& outB);
+
 		inline bool projectForScreenXY (glm::vec3& point,
 		                                Stuff::Vector4D& screen) {
 			const int64_t _f3_sxy_t0 = ::mc2_cpu_proj_cost::screenxy_begin_ns();

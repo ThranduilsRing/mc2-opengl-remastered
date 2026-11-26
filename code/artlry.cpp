@@ -1067,7 +1067,7 @@ bool Artillery::recalcBounds (CameraPtr myEye)
 				Distance = glm::normalize(Distance);
 				
 				float cosine = glm::dot(Distance, eye->getLookVector());
-				if (eye->sphereInViewCone(cosine, 0.0f, glm::length(objPosition - eyePosition)))
+				if (eye->sphereInViewCone(cosine, getExtentRadius(), glm::length(objPosition - eyePosition)))
 					inView = true;
 				else
 					inView = false;
@@ -1086,10 +1086,10 @@ bool Artillery::recalcBounds (CameraPtr myEye)
 			// [PROJECTZ:ScreenXYOracle id=artlry_iface_screen]
 			eye->projectForScreenXY(iFacePosition, iFaceScreen );
 	
-			if (((screenPos.x >= 0) && (screenPos.y >= 0) &&
+			if (((screenPos.w > 1e-4f) && (screenPos.x >= 0) && (screenPos.y >= 0) &&
 				(screenPos.x <= eye->getScreenResX()) &&
 				(screenPos.y <= eye->getScreenResY())) 
-				|| (((iFaceScreen.x >= 0) && (iFaceScreen.y >= 0) &&
+				|| (((iFaceScreen.w > 1e-4f) && (iFaceScreen.x >= 0) && (iFaceScreen.y >= 0) &&
 				(iFaceScreen.x <= eye->getScreenResX()) &&
 				(iFaceScreen.y <= eye->getScreenResY()))))
 			{
@@ -1277,6 +1277,7 @@ void Artillery::renderView (const mc2::render_view::RenderView& view)
 			// [PROJECTZ:ScreenXYOracle id=artlry_iface_float_help]
 			glm::vec3 iFace = view.aux[0];
 			eye->projectForScreenXY( iFace, moveHere );
+			if (moveHere.w > 1e-4f) {
 
 			gos_TextSetAttributes (gosFontHandle, 0, gosFontScale, false, false, false, false);
 			gos_TextStringLength(&width,&height,text);
@@ -1287,6 +1288,7 @@ void Artillery::renderView (const mc2::render_view::RenderView& view)
 			moveHere.w = height;
 		
 			globalFloatHelp->setFloatHelp(text,moveHere,SD_GREEN,0x0,gosFontScale,false,false,false,false);
+			}
 		
 			if (view.has(mc2::render_view::SeenAtExtract) && strike)
 			{

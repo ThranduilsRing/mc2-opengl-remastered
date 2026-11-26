@@ -550,6 +550,7 @@ bool GenericAppearance::recalcBounds (void)
 		//ALWAYS need to do this or select is YAYA
 		// [PROJECTZ:ScreenXYOracle id=genactor_screen_pos]
 		eye->projectForScreenXY(position,screenPos);
+		if (screenPos.w <= 1e-4f) screenPos.x=screenPos.y=-1000000.0f;
 		
  		//--------------------------------------------------
 		// First, if we are using perspective, figure out
@@ -674,24 +675,28 @@ bool GenericAppearance::recalcBounds (void)
 				float maxX = 0.0f, maxY = 0.0f;
 				float minX = 0.0f, minY = 0.0f;
 
+				bool firstProjected=true;
 				for (long i=0;i<8;i++)
 				{
 					// [PROJECTZ:ScreenXYOracle id=genactor_box_rect]
 					eye->projectForScreenXY(boxCoords[i],bcsp[i]);
-					if (!i)
+					if (bcsp[i].w <= 1e-4f) continue;
+					if (firstProjected)
 					{
 						maxX = minX = bcsp[i].x;
 						maxY = minY = bcsp[i].y;
 					}
 
-					if (i)
+					if (!firstProjected)
 					{
 						maxX = std::max(maxX, bcsp[i].x);
 						minX = std::min(minX, bcsp[i].x);
 						maxY = std::max(maxY, bcsp[i].y);
 						minY = std::min(minY, bcsp[i].y);
 					}
+					firstProjected=false;
 				}
+				if (firstProjected) minX=maxX=minY=maxY=-1000000.0f;
 		
 				upperLeft.x = minX;
 				upperLeft.y = minY;

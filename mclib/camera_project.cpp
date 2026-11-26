@@ -331,6 +331,24 @@ bool Camera::screenToTerrainApprox (long screenX, long screenY, glm::vec3 &outWo
 }
 
 //---------------------------------------------------------------------------
+bool Camera::projectSegmentForScreen(const glm::vec3& a, const glm::vec3& b,
+    Stuff::Vector4D& outA, Stuff::Vector4D& outB)
+{
+    auto ca=projectModernClipGL(a).clip, cb=projectModernClipGL(b).clip;
+    if(!camera_frustum_math::clipSegmentNear(ca,cb)) return false;
+    // Preserve the established projection bytes for endpoints that were not cut.
+    const auto project=[&](const glm::vec3& world, const auto& clip, Stuff::Vector4D& screen) {
+        const auto original=projectModernClipGL(world).clip;
+        if(clip==original) { auto point=world; projectForScreenXY(point,screen); return; }
+        float mx,my,ax,ay; gos_GetViewport(&mx,&my,&ax,&ay);
+        screen.x=ax+(clip.x/clip.w*0.5f+0.5f)*mx;
+        screen.y=ay+(1.0f-(clip.y/clip.w*0.5f+0.5f))*my;
+        screen.z=clip.z/clip.w; screen.w=clip.w;
+    };
+    project(a,ca,outA); project(b,cb,outB);
+    return true;
+}
+
 unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, glm::vec3 &point)
 {
 	if (getUsePerspective())

@@ -54,6 +54,9 @@ TEST_CASE("beam_clip/culled firer ribbon enters the correct edge") {
 }
 
 TEST_CASE("beam_clip/behind camera endpoint clips before perspective division") {
+    const auto camera=mc2::beam::cameraClip({-0.4f,-0.6f,-0.5f,-1.0f},true);
+    CHECK(camera.w==1.0f);
+    CHECK(camera.x/camera.w==doctest::Approx(0.4f));
     const auto p = mc2::beam::clipTriangle({at(-1, -0.5f, -1, -1, 0),
         at(0.6f, 0.4f, 0.5f, 1, 1), at(0.6f, 0.6f, 0.5f, 1, 1)});
     bounded(p);

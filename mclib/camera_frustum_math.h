@@ -42,6 +42,21 @@ inline bool sphereInFrustum(const float planes[6][4], const float center[3], flo
     return true;
 }
 
+// Reverse-Z ZERO_TO_ONE near plane: w-z >= 0, before perspective division.
+template<class Clip> inline bool clipSegmentNear(Clip& a, Clip& b) {
+    for(int c=0;c<4;++c) if(!std::isfinite(a[c]) || !std::isfinite(b[c])) return false;
+    const float da=a[3]-a[2], db=b[3]-b[2];
+    if(da<0 && db<0) return false;
+    if((da<0)!=(db<0)) {
+        const float t=da/(da-db);
+        Clip hit=a;
+        for(int c=0;c<4;++c) hit[c]=a[c]+t*(b[c]-a[c]);
+        hit[2]=hit[3]; // Keep a rounded intersection exactly on the near plane.
+        if(da<0) a=hit; else b=hit;
+    }
+    return a[3]>1e-4f && b[3]>1e-4f;
+}
+
 // Replica of mclib/mathfunc.h sign2: -1 for negative, 0 otherwise (NOT +1).
 inline float sign2f(float f) { return (f < 0.0f) ? -1.0f : 0.0f; }
 
