@@ -20,6 +20,7 @@ layout(early_fragment_tests) in;
 #endif
 layout(constant_id = 11) const int kReflectionCoverage = 0;
 layout(constant_id = 13) const int kWaterDbgPass = 0;
+layout(constant_id = 14) const int kWaterAbsorption = 0;
 #define PREC highp
 #define TERRAIN_RESOURCE_SET 1
 #define TERRAIN_OBJECT_RECEIVER 1
@@ -562,6 +563,17 @@ void main(void)
     float softnessThick = hasVisual && !hasField ? F.f7.x - waterFineHeight(WorldPos.xy) : fieldThick;
     const float fieldThickFw = fwidth(fieldThick);
     PREC float tintThick = hasField ? max(fieldThick, 0.0) : WaterThickness;
+    if (kWaterAbsorption != 0) {
+        if (tintThick <= 0.0) discard;
+        // Multiply every submerged receiver, not just the seabed. Keep the
+        // seabed's RGB Beer-Lambert law; reflection and foam are added later.
+        vec3 eye = normalize(viewVec);
+        vec3 transmission = exp(-vec3(0.07, 0.022, 0.024) * tintThick
+                                * (1.0 + 1.0 / max(abs(eye.z), 0.25)));
+        FragColor = vec4(transmission, 1.0 - min(transmission.r, min(transmission.g, transmission.b)));
+        GBuffer1 = vec4(0.0);
+        return;
+    }
     // Recover horizontal shore distance from the depth field already sampled above.
     // World-space gradients keep the wash width stable across camera zoom and shore slopes.
     // Derivatives precede coverage discard so helper lanes remain defined at the coast.
@@ -687,7 +699,7 @@ void main(void)
         vec3 lagoon = mix(vec3(0.055, 0.24, 0.23), SHALLOW_COLOR, smoothstep(0.0, 24.0, max(shoreDepth, 0.0)));
         waterCol = mix(waterCol, lagoon, coastWeight * 0.65);
     }
-    // Coastal look: the terrain absorbs the seabed per channel (terrain_tier1.frag); the water adds only the light the
+    // Coastal look: the absorption draw attenuates all receivers per channel; this draw adds only the light the
     // column scatters back, jade over the shelf turning navy offshore (owner refs E:/mc2-ref/refs/water).
     if (shorelineLook == 1)
         waterCol = mix(vec3(0.03, 0.26, 0.24), vec3(0.008, 0.075, 0.17), smoothstep(16.0, 90.0, tintThick))
@@ -911,7 +923,7 @@ void main(void)
         GBuffer1 = vec4(0.5, 0.5, 1.0, 0.875); return;
     }
     if (shorelineLook == 1) {
-        // Coastal look: col is premultiplied radiance (in-scatter + reflection + glints) over the absorbed seabed; only
+        // Coastal look: col is premultiplied radiance (in-scatter + reflection + glints) over the absorbed scene; only
         // the reflected share hides it. Foam covers both; fog scales the added light by its own coverage.
         float foamA = clamp(foamMix, 0.0, 1.0) * shore * (1.0 - 0.65 * coastNight), fogT = 1.0;
         if (F.fog_color.x > 0.0 || F.fog_color.y > 0.0 || F.fog_color.z > 0.0 || F.fog_color.w > 0.0) fogT = FogValue;
