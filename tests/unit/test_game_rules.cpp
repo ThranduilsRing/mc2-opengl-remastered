@@ -462,8 +462,10 @@ TEST_CASE("game rules: GameRules{} is the frozen legacy stock baseline (change a
 }
 
 TEST_CASE("game rules: new-campaign defaults, legacy add-on migration and the add-on exclusions") {
-    // newCampaignDefaults differs from GameRules{} in Mods only: old saves, an absent key and networked games stay on stock.
+    // newCampaignDefaults differs in AI and Mods: old saves, an absent key and networked games stay on stock.
     auto stock = newCampaignDefaults();
+    CHECK(stock.ai == 1);
+    stock.ai = 0;
     stock.mods.clear();
     CHECK(stock == GameRules{});
     CHECK(mc2::mods::selected(newCampaignDefaults().mods, "magic-ballistic-weapons"));

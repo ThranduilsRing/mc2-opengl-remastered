@@ -51,7 +51,7 @@ long ablFileOpenCB (void** file, mc2::czstring fName) {
 		const auto winner = mc2::vfs::lookup(name);
 		const bool stock = !winner || winner->provider != mc2::vfs::Provider::Mod;
 		const auto profile = mc2::brainpolicy::magicAsset(name, mc2::rules::current().ai, [](std::string_view path) {
-			return fileExists(std::string(path).c_str()); });
+			return mc2::brainpolicy::profileInstalled() && fileExists(std::string(path).c_str()); });
 		ABLi_noteProfileSource(name.c_str(), stock && !profile.empty());
 		if (stock && !profile.empty())
 			name = profile;

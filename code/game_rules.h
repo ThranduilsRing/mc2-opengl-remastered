@@ -68,6 +68,7 @@ inline GameRules battleTechPreset() {
 // games read, so a player who explicitly picks Stock keeps Stock.
 inline GameRules newCampaignDefaults() {
     GameRules r;
+    r.ai = 1;
     r.mods = "magic-ballistic-weapons,magic-gamesys-tweaks";
     return r;
 }

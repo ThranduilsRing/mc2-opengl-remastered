@@ -67,6 +67,8 @@ TEST_CASE("ReviewRules/Magic profile is restricted to Smarter ABL assets") {
     using mc2::brainpolicy::magicAsset;
     for (const auto key : {"data/missions/corebrain.abx", "data/missions/warriors/patrol.abl"}) {
         CHECK(magicAsset(key, 0).empty());
+        CHECK(magicAsset(key, 1, [](auto) { return false; }).empty());
+        CHECK(magicAsset(key, 1, [](auto) { return true; }) == magicAsset(key, 1));
         CHECK(magicAsset(key, 1) == std::string("mods/magic-brain-1.45/") + key);
     }
     for (const auto key : {"data/missions/mc2_01.abl", "data/missions/orders.abx",

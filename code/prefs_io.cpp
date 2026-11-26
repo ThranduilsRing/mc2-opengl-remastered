@@ -23,13 +23,11 @@ std::string mc2::rules::launcherModDefaults() {
         if (on) mc2::mods::toggle(ids, id);
     return ids;
 }
-// What a campaign saved before add-on selection ran with: the launcher toggles and the add-on layers its ModDeps lists (the older
-// builds auto-mounted every add-on and recorded them there; the loader runs with that ModDeps as MC2_MOD_DEPS).
+// Before add-on selection, every installed catalogue add-on auto-mounted. Preserve those layers plus the launcher toggles.
 std::string mc2::rules::legacyCampaignMods() {
     std::string ids = launcherModDefaults();
-    const auto mounted = mc2::gate::str<"MC2_MOD_DEPS">();
     for (const auto& addon : installedAddons())
-        if (mc2::mods::selected(mounted, addon.id) && !mc2::mods::selected(ids, addon.id)) mc2::mods::toggle(ids, addon.id);
+        if (!mc2::mods::selected(ids, addon.id)) mc2::mods::toggle(ids, addon.id);
     return ids;
 }
 extern int loadPreferenceHotKeys(FitIniFile&);
@@ -75,6 +73,7 @@ int CPrefs::load(mc2::czstring name) {
     for (const auto& reject : rejects)
         mc2::options::logRejectedOption(reject.key, reject.text, reject.why, mc2::options::find(reject.key));
     if (!mc2::options::cfg::get(sourceText_, "GameRulesMods") || mc2::gate::isSet<"MC2_LAUNCHED">()) gameRules.mods = mc2::rules::launcherModDefaults();
+    if (gameRules.mods.empty() && mc2::options::cfg::get(sourceText_, "GameRulesAI")) gameRules.mods = "-";
     loadedValues_ = snapshotValues();
     // Startup reads these before SoundSystem exists; loading the defaults-screen draft must not publish it.
     if (this == &prefs) mc2::options::runtimePreferences() = static_cast<const mc2::options::Preferences&>(*this);

@@ -1034,10 +1034,12 @@ struct AblFrameScope {
 
 // Quarantine only this failed instance; existing tactical orders keep running. The frame's AblFrameScope has already unwound it.
 long ABLModule::stopAfterRuntimeError(mc2::czstring message) {
-	mc2::fmt::print_err("[ABL_FALLBACK] module={} file={} line={} action=disable-instance retain-orders message={}\n",
-		getName(), getFileName(), g_ablExec->execLineNumber, message);
+	if (lastRuntimeError == message) ++runtimeErrorRepeats;
+	else { lastRuntimeError = message; runtimeErrorRepeats = 1; }
+	runtimeFailed = runtimeErrorRepeats >= 3;
+	mc2::fmt::print_err("[ABL_FALLBACK] module={} file={} line={} action={} retain-orders message={}\n",
+		getName(), getFileName(), g_ablExec->execLineNumber, runtimeFailed ? "disable-instance" : "retry-instance", message);
 	fflush(stderr);
-	runtimeFailed = true;
 	returnVal.integer = 1;
 	return 0;
 }
@@ -1123,6 +1125,7 @@ long ABLModule::execute (ABLParamPtr paramList) try {
 
 	memcpy(&returnVal, &g_ablExec->returnValue, sizeof(StackItem));
 
+	runtimeErrorRepeats = 0;
 	return(g_ablExec->execStatementCount);	
 } catch (const ABLRuntimeFailure& error) {
 	// A stock script keeps the shipped path: only the base stack-overflow throw ever reaches here, and it propagates as before.
@@ -1274,6 +1277,7 @@ long ABLModule::execute (ABLParamPtr moduleParamList, SymTableNodePtr functionId
 
 	//-----------
 	// Summary...
+	runtimeErrorRepeats = 0;
 	return(g_ablExec->execStatementCount);	
 } catch (const ABLRuntimeFailure& error) {
 	// A stock script keeps the shipped path: only the base stack-overflow throw ever reaches here, and it propagates as before.
