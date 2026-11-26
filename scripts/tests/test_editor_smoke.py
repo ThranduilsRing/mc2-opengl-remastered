@@ -19,6 +19,27 @@ smoke = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(smoke)
 
 
+class EditorCpuPickResizeTests(unittest.TestCase):
+    """Trigger: editor/EditorObjectMgr_pick.cpp client-to-viewport mapping."""
+    def test_forward_pick_uses_viewport_pixels_after_resize(self):
+        source = (SCRIPT.parents[1] / "editor/EditorObjectMgr_pick.cpp").read_text()
+        body = source.split("EditorObject* EditorObjectMgr::getObjectAtScreenPosition", 1)[1]
+        expressions = [re.findall(rf"click{axis} = ([^;]+);", body)[-1]
+                       .replace("(float)", "") for axis in "XY"]
+        # Execute the production arithmetic: native size, resize, nonuniform
+        # scaling and a viewport offset must all hit the projected centre.
+        for width, height, ax, ay in [(1920, 1080, 0, 0), (1280, 720, 0, 0),
+                                      (1000, 800, 40, 30)]:
+            values = dict(screenX=width / 2, screenY=height / 2,
+                          clientWidth=width, clientHeight=height,
+                          vmx=1920, vmy=1080, vax=ax, vay=ay)
+            with self.subTest(width=width, height=height):
+                self.assertEqual(eval(expressions[0], {"__builtins__": {}}, values), ax + 960)
+                self.assertEqual(eval(expressions[1], {"__builtins__": {}}, values), ay + 540)
+        self.assertIn("EditorObjectMgr_ConsiderScreenPick(*iter, clickX, clickY", body)
+        self.assertNotIn("inverseProject(", body)
+
+
 class ShadowEditGradingTests(unittest.TestCase):
     def test_population_requires_unique_actors_in_the_live_union_fit(self):
         proof="[EDITOR_CLI v1] event=mover_population count=100 ok=1 frame=120\n[VK_SHADOW_ISLAND] movers actors_feed=110 actors_visible=100 rigid_leaves=3 map=4096 format=D16"
