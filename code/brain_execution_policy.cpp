@@ -75,8 +75,11 @@ void decide(std::string_view missionFitPath, std::string_view missionDir, std::s
 	}
 	g_policy = p;
 	++g_generation;
-	if (mc2::rules::current().ai == 1 && !magicCampaign(mc2::gate::str<"MC2_ACTIVE_MOD">()))
-		mc2::fmt::print_err("[BRAIN_POLICY] smarter-unavailable mod={}\n", mc2::fmt::safe(mc2::gate::str<"MC2_ACTIVE_MOD">().c_str()));
+	std::string unavailable;
+	if (mc2::rules::current().ai == 1 && !magicCampaign(mc2::gate::str<"MC2_ACTIVE_MOD">())) {
+		unavailable = std::string("smarter-unavailable mod=").append(mc2::gate::str<"MC2_ACTIVE_MOD">());
+		why = unavailable.c_str();
+	}
 	mc2::fmt::print_err("[BRAIN_POLICY] mission={} policy={} reason={}\n",
 		mc2::fmt::safe(std::string(missionName).c_str()), mc2::fmt::safe(name(p)), mc2::fmt::safe(why));
 }
