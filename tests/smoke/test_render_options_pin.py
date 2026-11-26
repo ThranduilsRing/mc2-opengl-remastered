@@ -21,7 +21,7 @@ def values(**changes):
 
 def test_table_has_the_engines_options_with_their_defaults():
     t = {o.key: o for o in rop.table()}
-    assert len(t) == 32   # includes CameraView, AtmosphereQuality and GroundAo
+    assert len(t) == 33   # includes CameraView, AtmosphereQuality, GroundAo and ShorelineLook
     assert t["CameraView"].default == 2 and (t["CameraView"].lo, t["CameraView"].hi) == (0, 2)
     assert t["HdrOutput"].default == 0 and (t["HdrOutput"].lo, t["HdrOutput"].hi) == (0, 1)
     assert t["MechLabLocations"].default is True
