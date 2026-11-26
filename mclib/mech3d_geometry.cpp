@@ -1329,7 +1329,7 @@ bool Mech3DAppearance::leftArmRecalc (void)
 			Distance = glm::normalize(Distance);
 
 			float cosine = glm::dot(Distance, eye->getLookVector());
-			if (cosine > eye->cosHalfFOV)
+			if (eye->sphereInViewCone(cosine, getRadius(), glm::length(objPosition - eyePosition)))
 				leftArmInView = true;
 			else
 				leftArmInView = false;
@@ -1379,7 +1379,7 @@ bool Mech3DAppearance::rightArmRecalc (void)
 			Distance = glm::normalize(Distance);
 
 			float cosine = glm::dot(Distance, eye->getLookVector());
-			if (cosine > eye->cosHalfFOV)
+			if (eye->sphereInViewCone(cosine, getRadius(), glm::length(objPosition - eyePosition)))
 				rightArmInView = true;
 			else
 				rightArmInView = false;

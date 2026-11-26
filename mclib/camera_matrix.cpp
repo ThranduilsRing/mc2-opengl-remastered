@@ -508,6 +508,9 @@ void Camera::setCameraOrigin (void)
 		cameraFrame.rotate(rotationVector);
 	}
 
+	// View space looks down -Z (NearPlaneDistance is negative).
+	lookVector = glm::normalize(mc2::math::localBackwardInWorld(cameraOrigin));
+
 	//------------------------------------------------------------
 	// DO Exactly what MLR does to create its Internal Matrices.
 	glm::mat4 cameraToWorldMatrix(cameraOrigin);
@@ -518,6 +521,16 @@ void Camera::setCameraOrigin (void)
 	
 	if (usePerspective)
 		clipToWorld = glm::inverse(worldToClip);
+	for (int c = 0; c < 4; ++c)
+		for (int r = 0; r < 4; ++r)
+			gosASSERT(std::isfinite(worldToClip[c][r]));
+	gosASSERT(std::fabs(NearPlaneDistance) < FarPlaneDistance);
+	static bool reportedNearFocus = false;
+	const glm::vec3 focus(-position.x, cameraShiftZ, position.y);
+	if (!reportedNearFocus && usePerspective && glm::length(physicalPos - focus) <= std::fabs(NearPlaneDistance)) {
+		fprintf(stderr, "[CAMERA] focus inside near plane\n");
+		reportedNearFocus = true;
+	}
 }
 
 //---------------------------------------------------------------------------
@@ -591,18 +604,14 @@ void Camera::calculateProjectionConstants (void)
 	screenCenter.y = screenResolution.y / 2.0;
 	screenCenter.z = screenResolution.z = 0.0f;
 	
+	setOrthogonal(); // Establish the actual drawable/preview projection first.
 	if (usePerspective)
 	{
-		float oneOverResMag = glm::length(screenResolution);
-		if (oneOverResMag > Stuff::SMALL)
-			oneOverResMag = 1.0f / oneOverResMag;
-
-		verticalSphereClipConstant = tan(screenResolution.y * oneOverResMag * camera_fov * 0.7071f * DEGREES_TO_RADS);
-		horizontalSphereClipConstant = tan(screenResolution.x * oneOverResMag * camera_fov * 0.7071f * DEGREES_TO_RADS);
-		
+		horizontalSphereClipConstant = 0.5f / std::fabs(cameraToClip[LEFT_AXIS][LEFT_AXIS]);
+		verticalSphereClipConstant = 0.5f / std::fabs(cameraToClip[UP_AXIS][UP_AXIS]);
+		cosHalfFOV = camera_frustum_math::coneCosine(camera_fov * DEGREES_TO_RADS,
+			verticalSphereClipConstant / horizontalSphereClipConstant);
 	}
-
-	setOrthogonal();		//Setup the camera Clip matrix.
 
 	setCameraOrigin();
 

@@ -1037,8 +1037,9 @@ bool Artillery::recalcBounds (CameraPtr myEye)
 		if (eye->usePerspective)
 		{
 			glm::vec3 Distance;
-			glm::vec3 objPosition(position);
-			glm::vec3 eyePosition(eye->getPosition());
+			glm::vec3 objPosition;
+			mc2ToRender(objPosition, position);
+			glm::vec3 eyePosition(eye->getCameraOrigin());
 	
 			Distance = objPosition - eyePosition;
 			float eyeDistance = glm::length(Distance);
@@ -1066,7 +1067,7 @@ bool Artillery::recalcBounds (CameraPtr myEye)
 				Distance = glm::normalize(Distance);
 				
 				float cosine = glm::dot(Distance, eye->getLookVector());
- 				if (cosine > eye->cosHalfFOV)
+				if (eye->sphereInViewCone(cosine, 0.0f, glm::length(objPosition - eyePosition)))
 					inView = true;
 				else
 					inView = false;

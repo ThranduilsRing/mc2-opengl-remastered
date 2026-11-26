@@ -172,7 +172,7 @@ bool Mech3DAppearance::recalcBounds (void)
 				Distance = glm::normalize(Distance);
 				
 				float cosine = glm::dot(Distance, eye->getLookVector());
- 				if (cosine > eye->cosHalfFOV)
+				if (eye->sphereInViewCone(cosine, getRadius(), glm::length(objPosition - eyePosition)))
 					setVisibilityGatesFromLegacy(true);
 				else
 					setVisibilityGatesFromLegacy(false);

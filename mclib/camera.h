@@ -72,6 +72,9 @@ namespace mc2_cpu_proj_cost {
 #include<stuff/stuff.hpp>
 #include "math/mc2_math.h"
 #include<float.h>   // FLT_MAX for trueSignedRhw sentinel
+#include "camera_frustum_math.h"
+extern float FOVMin;
+extern float FOVMax;
 #include<cmath>     // isfinite for MC2_PROJECTZ_FINITE_CHECK invariant
 #include<cstdlib>
 
@@ -1753,9 +1756,19 @@ class Camera
 			forceMovieEnd = true;
 		}
 		
+		static float altitudeMaxForAngle(float angle)
+		{
+			return camera_frustum_math::altitudeMaxForAngle(angle, MIN_PERSPECTIVE, MAX_PERSPECTIVE, AltitudeMaximumLo, AltitudeMaximumHi);
+		}
+
+		bool sphereInViewCone(float cosine, float radius, float distance) const
+		{
+			return camera_frustum_math::sphereInCone(cosine, cosHalfFOV, radius, distance);
+		}
+
 		void setFieldOfView (float fov)
 		{
-			camera_fov = fov;
+			camera_fov = std::clamp(fov, FOVMin, FOVMax);
 		}
 
 		float getFieldOfView (void)
@@ -1765,7 +1778,7 @@ class Camera
 		
 		void setFieldOfViewGoal (float fov, float time)
 		{
-			goalFOV = fov;
+			goalFOV = std::clamp(fov, FOVMin, FOVMax);
 			goalFOVTime = time;
 		}
 		
@@ -1815,9 +1828,10 @@ class Camera
 		
 			cameraAltitude = rot.z;
 			cameraAltitude = std::max(cameraAltitude, AltitudeMinimum);
+			cameraAltitudeDesired = cameraAltitude;
+			altitudeVelocity = 0.0f;
 					
-			float anglePercent = (projectionAngle - MIN_PERSPECTIVE) / (MAX_PERSPECTIVE - MIN_PERSPECTIVE);
-			float testMax = Camera::AltitudeMaximumLo + ((Camera::AltitudeMaximumHi - Camera::AltitudeMaximumLo) * anglePercent);
+			float testMax = altitudeMaxForAngle(projectionAngle);
 		
 			newScaleFactor = 1.0f - ((cameraAltitude - AltitudeMinimum) / testMax);
 		}

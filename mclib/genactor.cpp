@@ -557,8 +557,9 @@ bool GenericAppearance::recalcBounds (void)
 		if (eye->usePerspective)
 		{
 			glm::vec3 Distance;
-			glm::vec3 eyePosition(eye->getPosition());
-			glm::vec3 objPosition(position);
+			glm::vec3 eyePosition(eye->getCameraOrigin());
+			glm::vec3 objPosition;
+			mc2ToRender(objPosition, position);
 	
 			Distance = objPosition - eyePosition;
 			float eyeDistance = glm::length(Distance);
@@ -593,7 +594,7 @@ bool GenericAppearance::recalcBounds (void)
 				Distance = glm::normalize(Distance);
 				
 				float cosine = glm::dot(Distance, eye->getLookVector());
- 				if (cosine > eye->cosHalfFOV)
+				if (eye->sphereInViewCone(cosine, OBBRadius, glm::length(objPosition - eyePosition)))
 					setVisibilityGatesFromLegacy(true);
 				else
 					setVisibilityGatesFromLegacy(false);

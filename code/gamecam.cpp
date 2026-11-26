@@ -1323,8 +1323,7 @@ long GameCamera::update (void)
 	}
 
 	//Force CameraAltitude to be less than max based on angle.  This keeps poly load relatively even	
-	float anglePercent = (projectionAngle - MIN_PERSPECTIVE) / (MAX_PERSPECTIVE - MIN_PERSPECTIVE);
-	float testMax = Camera::AltitudeMaximumLo + ((Camera::AltitudeMaximumHi - Camera::AltitudeMaximumLo) * anglePercent);
+	float testMax = altitudeMaxForAngle(projectionAngle);
 	
 	cameraAltitude = std::min(cameraAltitude, testMax);
 
@@ -1392,8 +1391,7 @@ long GameCamera::update (void)
 		projectionAngle       = s_hzbSavedView.angle;
 		cameraAltitude        = s_hzbSavedView.alt;
 		cameraAltitudeDesired = s_hzbSavedView.alt;
-		anglePercent = (projectionAngle - MIN_PERSPECTIVE) / (MAX_PERSPECTIVE - MIN_PERSPECTIVE);
-		testMax = Camera::AltitudeMaximumLo + ((Camera::AltitudeMaximumHi - Camera::AltitudeMaximumLo) * anglePercent);
+		testMax = altitudeMaxForAngle(projectionAngle);
 		hzbPinCamera();
 	}
 	else if (s_hzbForceHorizon)
@@ -1419,8 +1417,7 @@ long GameCamera::update (void)
 		projectionAngle       = s_angle;
 		cameraAltitude        = s_alt;
 		cameraAltitudeDesired = s_alt;
-		anglePercent = (projectionAngle - MIN_PERSPECTIVE) / (MAX_PERSPECTIVE - MIN_PERSPECTIVE);
-		testMax = Camera::AltitudeMaximumLo + ((Camera::AltitudeMaximumHi - Camera::AltitudeMaximumLo) * anglePercent);
+		testMax = altitudeMaxForAngle(projectionAngle);
 
 		// HZB-PIN: kill all jitter sources so viewProj is byte-stable frame-to-frame.
 		hzbPinCamera();
@@ -1428,7 +1425,7 @@ long GameCamera::update (void)
 
 	// calculate new near and far plane distance based on
 	// Current altitude above terrain.
-	float altitudePercent = (cameraAltitude - AltitudeMinimum) / (testMax - AltitudeMinimum);
+	float altitudePercent = std::clamp((cameraAltitude - AltitudeMinimum) / std::max(testMax - AltitudeMinimum, 1.0f), 0.0f, 1.0f);
 	Camera::NearPlaneDistance = MinNearPlane + ((MaxNearPlane - MinNearPlane) * altitudePercent);
 	Camera::FarPlaneDistance = MinFarPlane + ((MaxFarPlane - MinFarPlane) * altitudePercent);
 	
