@@ -524,8 +524,14 @@ def capture_argv(install, bookmarks, out, env_extra, hud=False, allow_asset_drif
     return cmd
 
 
-def run_capture(install, bookmarks, out, env_extra, hud=False, allow_asset_drift=False):
+def run_capture(install, bookmarks, out, env_extra, hud=False, allow_asset_drift=False, reuse=False):
     cmd = capture_argv(install, bookmarks, out, env_extra, hud, allow_asset_drift)
+    import capture_reuse
+    if reuse:
+        note = capture_reuse.restore(cmd, ROOT)
+        if note:
+            print(f"[ab] {note}", flush=True)
+            return
     print("[ab] " + " ".join(map(str, cmd)), flush=True)
     # background-launch: allow streams capture.py progress to the caller's console; inherits it (no new window when the parent has one)
     proc = subprocess.Popen(cmd, env=dict(os.environ, MC2_CURSOR_NO_PARK="1"))  # background-launch: allow same console stream as the subprocess.call it replaces
@@ -540,6 +546,8 @@ def run_capture(install, bookmarks, out, env_extra, hud=False, allow_asset_drift
         raise
     if rc != 0:
         sys.exit(f"[ab] capture failed rc={rc}: {out}")
+    if reuse:
+        capture_reuse.store(cmd, ROOT)
 
 
 def find_pngs(d: Path, bm: str) -> dict:
@@ -1505,7 +1513,7 @@ def main(argv=None):
         width, height = (3840, 2160) if a.res == "4k" else (1920, 1080)
         env = ["MC2_RENDER_BACKEND=vulkan", "MC2_VK_SHARED_GBUFFER=1", f"MC2_WIDTH={width}", f"MC2_HEIGHT={height}"] + pin_stock_overlay_concrete(a.env) + env_pin.focus_declarations(a.focus, a.focus_zoom)
         exe_recs = [arm_exe_record("A", game_executable(ia))]
-        run_capture(ia, a.bookmarks, out / "a", env, hud=a.hud, allow_asset_drift=a.allow_asset_drift)
+        run_capture(ia, a.bookmarks, out / "a", env, hud=a.hud, allow_asset_drift=a.allow_asset_drift, reuse=True)
         stamp_identity(out / "a", identities[0])
         exe_recs.append(arm_exe_record("B", game_executable(ib)))
         same_exe = same_exe_warning(*exe_recs)

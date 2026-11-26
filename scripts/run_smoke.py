@@ -1604,7 +1604,20 @@ def main():
     )
 
     _cold_grace = cold_cache_extra_grace(args.exe)
-    for e in selected:
+    for mission_index, e in enumerate(selected):
+        if mission_index and not args.headless:
+            # Yield to queued lanes between missions; preserve host-before-folder lock order.
+            if _lease_folder is not None:
+                _deploy_lease.release_lease(_lease_folder)
+                _lease_folder = None
+            _host_lease.release()
+            _host_lease.acquire(f"run_smoke {args.exe} {e.stem}", wait=not args.no_wait,
+                                timeout_s=args.wait_timeout,
+                                exclusive=True if args.show_window or args.tier == "resolution" else None)
+            if _lease_available and not args.no_lease:
+                _lease_folder = _deploy_lease.auto_acquire(
+                    explicit_folder=str(Path(args.exe).resolve().parent), deploy_name=None,
+                    intended_test=_intended_test, wait_s=_lease_wait_s)
         # Lease heartbeat: refresh last_used timestamp at the start of each mission
         # so a multi-mission run does not go stale mid-run.
         if _lease_folder is not None and _lease_available:

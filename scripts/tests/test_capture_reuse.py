@@ -44,6 +44,25 @@ def _capture(out):
                    "primary_sha256": hashlib.sha256(b"png-bytes").hexdigest()}]}))
 
 
+def test_cache_manifest_lock_and_size_cap(tmp_path, monkeypatch):
+    root, _, out, cmd = _world(tmp_path)
+    cache = tmp_path / "cache"
+    _capture(out)
+    assert capture_reuse.store(cmd, root, cache, "gpuA")
+    hit = capture_reuse.available(cmd, root, cache, "gpuA")
+    assert hit and (hit / "cache_identity.json").is_file()
+    with capture_reuse._cache_lock(cache):
+        assert capture_reuse.restore(cmd, root, cache, "gpuA") is None
+    manifest = hit / "cache_identity.json"
+    saved = manifest.read_text()
+    manifest.write_text('{}')
+    assert capture_reuse.available(cmd, root, cache, "gpuA") is None
+    manifest.write_text(saved)
+    monkeypatch.setattr(capture_reuse, "MAX_BYTES", 1)
+    assert not capture_reuse.store(cmd, root, cache, "gpuA")
+    assert not hit.exists()
+
+
 def test_round_trip_hits_and_the_restored_set_verifies_in_its_own_place(tmp_path):
     root, _install, out, cmd = _world(tmp_path)
     cache = tmp_path / "cache"
@@ -109,7 +128,7 @@ def test_previous_after_set_is_found_through_the_real_gate_plan(tmp_path, monkey
         _capture(Path(command[command.index("--out") + 1]))
         return types.SimpleNamespace(returncode=0, stdout="")
     assert real_execute([after], "head", runner=runner) == 0
-    assert len(list(cache.iterdir())) == 1
+    assert len([p for p in cache.iterdir() if p.is_dir()]) == 1
     shutil.copytree(candidate, published)   # the window is published: v0.4 now runs what capture-after ran
 
     # Window N+1: the same planning path must now keep compare-captures, and a dry run must not write anything.

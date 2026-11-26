@@ -43,6 +43,7 @@ import atexit
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -311,12 +312,120 @@ def build_capture_env(bookmarks_path: Path, out_dir: Path, trigger_frame: int, s
 DEFAULT_DURATION_S = 15
 
 
+def merge_bookmarks(bookmarks, mission, out):
+    """Combine saved camera files for one mission without colliding shot names."""
+    matching = [Path(b) for b in bookmarks if _load_bookmarks(b)[0] == mission]
+    if len(matching) <= 1:
+        return matching
+    marks = []
+    names = set()
+    for b in matching:
+        for mark in _load_bookmarks(b)[1]:
+            name = f"{b.stem}__{mark['name']}"
+            if _safe_name(name) in names:
+                raise ValueError(f"duplicate batch shot filename: {name}")
+            names.add(_safe_name(name))
+            marks.append({**mark, "name": name})
+    target = Path(out) / f"{mission}_bookmarks.json"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps({"mission": mission, "bookmarks": marks}), encoding="utf-8")
+    return [target]
+
+
+def batch_capture(bookmarks, out_dir, **kwargs):
+    """One engine per mission, returning the usual result for each saved camera file."""
+    groups = {}
+    for b in bookmarks:
+        mission, marks = _load_bookmarks(b)
+        if not mission or not marks:
+            raise ValueError(f"empty mission or poses: {b}")
+        groups.setdefault(mission, []).append(Path(b))
+    results = {}
+    Path(out_dir).mkdir(parents=True, exist_ok=True)
+    started = time.monotonic()
+    launches = 0
+    from smoke_lib import host_lease
+    for mission, files in groups.items():
+        mission_started = time.monotonic()
+        merged = merge_bookmarks(files, mission, out_dir)[0]
+        group_out = Path(out_dir) / (files[0].stem if len(files) == 1 else f"{mission}_batch")
+        try:
+            launches += 1
+            result = run_one(mission=mission, bookmarks_path=merged, out_dir=group_out, **kwargs)
+        finally:
+            _reap_active()
+            host_lease.release()
+        result["seconds"] = round(time.monotonic() - mission_started, 3)
+        for b in files:
+            if len(files) == 1:
+                results[b] = result
+                continue
+            dest = Path(out_dir) / b.stem
+            dest.mkdir(parents=True, exist_ok=True)
+            shots = []
+            for mark in _load_bookmarks(b)[1]:
+                prefixed = f"{b.stem}__{mark['name']}"
+                shot = next(s for s in result["bookmarks"] if s["name"] == prefixed)
+                png = dest / f"{mission}_{_safe_name(mark['name'])}.png"
+                for ext in (".png", ".json"):
+                    src = Path(shot["png"]).with_suffix(ext)
+                    if src.is_file():
+                        shutil.move(src, png.with_suffix(ext))
+                side = png.with_suffix(".json")
+                if side.is_file():
+                    metadata = json.loads(side.read_text(encoding="utf-8"))
+                    metadata.update(batch_label=prefixed, label=mark["name"])
+                    side.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+                shots.append({**shot, "name": mark["name"], "png": str(png)})
+            results[b] = {**result, "bookmarks_path": str(b), "out_dir": str(dest),
+                          "bookmarks": shots, "all_present": all(s["present"] for s in shots)}
+    receipt = {"launch_count": launches, "mission_count": len(groups),
+               "wall_seconds": round(time.monotonic() - started, 3)}
+    (Path(out_dir) / "capture_batch.json").write_text(json.dumps(receipt, indent=2), encoding="utf-8")
+    return results
+
+
+def load_capture_plan(path, out):
+    """Validate a JSON mission list and materialize existing engine bookmark inputs."""
+    plan = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(plan, list) or not plan:
+        raise ValueError("capture plan must be a nonempty list")
+    files = []
+    seen = set()
+    for row in plan:
+        mission = row.get("mission") if isinstance(row, dict) else None
+        if not isinstance(mission, str) or not re.fullmatch(r"[A-Za-z0-9_-]+", mission) or mission in seen:
+            raise ValueError("capture plan needs unique mission stems")
+        seen.add(mission)
+        poses = row.get("poses")
+        if not isinstance(poses, list) or not poses:
+            raise ValueError(f"{mission}: poses must be a nonempty list")
+        if row.get("tod") or row.get("perf_samples"):
+            raise ValueError("bookmark engine cannot switch TOD or sample perf per shot; use authored mission lighting")
+        names = set()
+        for pose in poses:
+            if not isinstance(pose, dict) or not isinstance(pose.get("name"), str) or not pose["name"]:
+                raise ValueError(f"{mission}: each pose needs a name")
+            name = _safe_name(pose["name"])
+            if name in names:
+                raise ValueError(f"{mission}: duplicate shot filename {name}")
+            names.add(name)
+            if len(pose.get("pos", [])) != 3:
+                raise ValueError(f"{mission}: pose needs three position coordinates")
+        frames = row.get("frames", 120)
+        if type(frames) is not int or frames < 1:
+            raise ValueError(f"{mission}: frames must be a positive integer")
+        target = Path(out) / f"{mission}.json"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(json.dumps({"mission": mission, "bookmarks": poses}), encoding="utf-8")
+        files.append((target, frames))
+    return files
+
+
 def smoke_capture(bookmarks, mission, out, verify=False, exe=None):
     """Share a stock smoke boot with matching deterministic bookmark captures."""
     env = {}
-    matching = [b for b in bookmarks if _load_bookmarks(b)[0] == mission]
-    if len(matching) > 1:
-        raise ValueError(f"multiple capture bookmarks for {mission}")
+    matching = merge_bookmarks(bookmarks, mission, out)
     for bookmark in matching:
         _, marks = _load_bookmarks(bookmark)
         pose_dir = out.resolve() / bookmark.stem
@@ -874,6 +983,7 @@ def main() -> int:
                          "tests/visual/bookmarks/<mission>.json")
     ap.add_argument("--bookmarks", default=None,
                     help="explicit bookmark JSON path (overrides --mission lookup)")
+    ap.add_argument("--plan", type=Path, help="JSON mission list with inline poses and trigger frames")
     ap.add_argument("--exe", default=str(DEFAULT_EXE))
     ap.add_argument("--tracy-output", help="record an uncapped corner trace and bench frame table")
     ap.add_argument("--tracy-seconds", type=int, default=60)
@@ -976,6 +1086,25 @@ def main() -> int:
         return 8
     if drift is not None:
         print(f"[viscap] {asset_parity.verdict_line(drift, asset_parity.default_ref())}", file=sys.stderr)
+    if args.plan:
+        base_out = Path(args.out_dir or DEFAULT_OUT / "plan").resolve()
+        planned = load_capture_plan(args.plan, base_out / "inputs")
+        declared = env_pin.parse_declarations(args.env_declare)
+        results = []
+        started = time.monotonic()
+        for bookmark, frame in planned:
+            result = batch_capture([bookmark], base_out, exe=exe, trigger_frame=frame,
+                                   settle=args.settle, duration=args.duration,
+                                   deterministic_clock=not args.no_fixed_clock,
+                                   show_window=args.show_window, declared_env=declared)
+            for shot in result.values():
+                write_manifest(shot, exe)
+                results.append(shot)
+        summary = {"launch_count": len(results), "mission_count": len(planned),
+                   "wall_seconds": round(time.monotonic() - started, 3)}
+        (base_out / "capture_batch.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+        print(f"[viscap] plan: {summary}")
+        return int(any(fail_reasons(r) for r in results))
     bookmarks_path, searched = resolve_bookmarks(args.bookmarks, args.mission, exe)
     if bookmarks_path is None:
         print(f"[viscap] ERROR bookmarks missing: {args.bookmarks or args.mission}", file=sys.stderr)

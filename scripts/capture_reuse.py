@@ -15,10 +15,14 @@ import json
 import os
 import shutil
 import subprocess
+import time
+import uuid
+from contextlib import contextmanager
 from pathlib import Path
 
-CACHE_ROOT = Path("G:/mc2-tmp/capture-reuse")
-KEEP = 3   # newest reference sets kept
+CACHE_ROOT = Path("G:/mc2-captures/baseline-cache")  # drive-path: ok owner-requested shared PC capture cache
+MAX_BYTES = 20 * 1024**3
+MAX_AGE_S = 14 * 86400
 SHADER_DIRS = ("shaders", "shaders_vk")   # install-relative; every file under them is hashed by content
 ENABLE_ENV = "MC2_CAPTURE_REUSE"
 OPTION_FILES = ("options.cfg", "system.cfg", "prefs.cfg")
@@ -149,7 +153,35 @@ def _copy(src: Path, dst: Path) -> None:
     shutil.copytree(src, dst)
 
 
-def available(command: list, root: Path, cache: Path = CACHE_ROOT, gpu: str | None = None, env=None) -> Path | None:
+@contextmanager
+def _cache_lock(cache):
+    """An OS lock serializes readers, publication and eviction; busy caches are misses."""
+    cache.mkdir(parents=True, exist_ok=True)
+    with (cache / ".lock").open("a+b") as lock:
+        if lock.seek(0, 2) == 0:
+            lock.write(b"0")
+            lock.flush()
+        lock.seek(0)
+        try:
+            if os.name == "nt":
+                import msvcrt
+                msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            yield False
+            return
+        try:
+            yield True
+        finally:
+            if os.name == "nt":
+                msvcrt.locking(lock.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(lock, fcntl.LOCK_UN)
+
+
+def _available(command, root, cache, gpu, env):
     """Read-only lookup of a matching, verified reference set."""
     if not enabled():
         return None
@@ -157,14 +189,28 @@ def available(command: list, root: Path, cache: Path = CACHE_ROOT, gpu: str | No
     if not _arg(command, "--out") or ident is None:
         return None
     hit = cache / key_of(ident)
-    if not hit.is_dir() or verify_artifacts(hit) is not None:
+    try:
+        stored = json.loads((hit / "cache_identity.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if stored != ident or time.time() - hit.stat().st_mtime > MAX_AGE_S or verify_artifacts(hit) is not None:
         return None
     return hit
 
 
+def available(command: list, root: Path, cache: Path = CACHE_ROOT, gpu: str | None = None, env=None) -> Path | None:
+    with _cache_lock(cache) as locked:
+        return _available(command, root, cache, gpu, env) if locked else None
+
+
 def restore(command: list, root: Path, cache: Path = CACHE_ROOT, gpu: str | None = None, env=None) -> str | None:
+    with _cache_lock(cache) as locked:
+        return _restore(command, root, cache, gpu, env) if locked else None
+
+
+def _restore(command, root, cache, gpu, env):
     """Copy a matching verified reference set to the command's --out. Returns a one-line note on reuse, None on a miss."""
-    hit = available(command, root, cache=cache, gpu=gpu, env=env)
+    hit = _available(command, root, cache, gpu, env)
     if hit is None:
         return None
     out = _arg(command, "--out")
@@ -185,7 +231,12 @@ def restore(command: list, root: Path, cache: Path = CACHE_ROOT, gpu: str | None
 
 
 def store(command: list, root: Path, cache: Path = CACHE_ROOT, gpu: str | None = None, env=None) -> bool:
-    """Keep a freshly verified reference set under its identity (newest KEEP sets survive)."""
+    with _cache_lock(cache) as locked:
+        return _store(command, root, cache, gpu, env) if locked else False
+
+
+def _store(command, root, cache, gpu, env):
+    """Publish a complete immutable set, then evict by age and total bytes."""
     out = _arg(command, "--out")
     if not enabled():
         return False
@@ -193,8 +244,25 @@ def store(command: list, root: Path, cache: Path = CACHE_ROOT, gpu: str | None =
     if not out or ident is None or verify_artifacts(Path(out)) is not None:
         return False
     cache.mkdir(parents=True, exist_ok=True)
-    _copy(Path(out), cache / key_of(ident))
-    sets = sorted((p for p in cache.iterdir() if p.is_dir()), key=lambda p: p.stat().st_mtime, reverse=True)
-    for old in sets[KEEP:]:
-        shutil.rmtree(old, ignore_errors=True)
-    return True
+    target = cache / key_of(ident)
+    if target.exists() and verify_artifacts(target) is not None:
+        shutil.rmtree(target)
+    if not target.exists():
+        temp = cache / (".pending-" + uuid.uuid4().hex)
+        try:
+            shutil.copytree(out, temp)
+            (temp / "cache_identity.json").write_text(json.dumps(ident, sort_keys=True), encoding="utf-8")
+            temp.rename(target)
+        finally:
+            if temp.exists():
+                shutil.rmtree(temp)
+    sets = sorted((p for p in cache.iterdir() if p.is_dir() and len(p.name) == 64),
+                  key=lambda p: p.stat().st_mtime, reverse=True)
+    total = 0
+    for old in sets:
+        size = sum(p.stat().st_size for p in old.rglob("*") if p.is_file())
+        if time.time() - old.stat().st_mtime > MAX_AGE_S or total + size > MAX_BYTES:
+            shutil.rmtree(old)
+        else:
+            total += size
+    return target.exists()
