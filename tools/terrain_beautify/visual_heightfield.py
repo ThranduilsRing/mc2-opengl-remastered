@@ -1202,9 +1202,11 @@ def quality_passes(report: dict, reshape: bool, corner_clamp: float, max_drift: 
         ra = report["reauth"]
         # Allow extrema restoration slack plus the bounded shore adjustment.
         cap = float(ra.get("effective_max_drift_wu", max_drift)) * 1.25 + float((ra.get("shore") or {}).get("bank_adjust_wu", {}).get("max", 0.0))
+        heights = report.get("elevation_wu", {})
+        flat = bool(heights) and heights["min"] == heights["max"]
         return (ra["extrema"]["violations"] == 0
                 and float(ra.get("landform_correlation_off_shore", ra["landform_correlation"])) >= 0.99
-                and 0.05 < error <= cap)
+                and (error >= 0.0 if flat else error > 0.05) and error <= cap)
     return error <= (corner_clamp if reshape else 0.0) + 1e-4
 
 

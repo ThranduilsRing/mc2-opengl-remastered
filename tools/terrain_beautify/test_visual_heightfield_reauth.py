@@ -199,6 +199,35 @@ def test_pinned_quality_gate(reshape, clamp, error, expected):
     assert quality_passes({"max_corner_error_wu": error}, reshape, clamp, 24) == expected
 
 
+def test_corona_sized_mapdata_beats_nan_texture_packet():
+    from mission_terrain_analyzer import locate_mapdata, extract_layers
+    terrain = np.zeros((240 * 240, 8), dtype="<f4")
+    terrain[:, 3] = np.linspace(1, 500, 240 * 240)
+    texture = np.full((180 * 180, 8), np.nan, dtype="<f4")
+    index, side, blocks = locate_mapdata([
+        (0, 0, terrain.tobytes()), (18, 0, texture.tobytes())])
+    assert (index, side) == (0, 240)
+    assert np.isfinite(extract_layers(side, blocks, 0)["elev"]).all()
+
+
+def test_flat_dummy_reauth_publishes_finite_zero_bake(tmp_path):
+    import struct
+    import visual_heightfield as vh
+    side = 120
+    # Single RAW MapData packet, with every height/overlay/object count zero.
+    (tmp_path / "dummy.pak").write_bytes(
+        struct.pack("<III", 0xFEEDFACE, 12, 12) + bytes(side * side * 32))
+    report = vh.bake("dummy", tmp_path, tmp_path / "out", 4, reauth=True,
+                     reauth_passes=4, cliff_drift=56, cliff_melt_passes=4)
+    assert vh.quality_passes(report, False, 0, 24)
+    assert report["max_corner_error_wu"] == 0
+    beauty = tmp_path / "out/dummy.beauty"
+    for name in ("visual_height_4x.r32", "visual_height_mips.r32"):
+        heights = np.fromfile(beauty / name, dtype="<f4")
+        assert np.isfinite(heights).all() and not heights.any()
+    assert (beauty / "gameplay_height.sig").is_file()
+
+
 def test_bake_publishes_only_after_quality_and_complete_writes(tmp_path, monkeypatch):
     import visual_heightfield as vh
     elev = np.arange(9, dtype=float).reshape(3, 3)
