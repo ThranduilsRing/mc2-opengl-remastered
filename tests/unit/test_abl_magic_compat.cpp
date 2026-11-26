@@ -1,7 +1,7 @@
 // Real-compiler proof for the Smarter profile (ai-abl-compat-check-1): every stock warrior that a campaign
 // mission (mc2_01-24, tut_01-05) uses compiles after FixABL against orders, miscfunc, the Magic corebrain and
 // the stock headers. Stock sources come from the install's mission.fst and the deployed
-// mods/magic-brain-1.45 profile (MC2_TEST_INSTALL, else the golden v0.4c install); the case skips when absent.
+// mods/magic-brain-1.45 profile (working directory, else the golden v0.4c install); the case skips when absent.
 #include "doctest.h"
 #include "abl.h"
 #include "ablmc2_internal.h"
@@ -10,7 +10,6 @@
 #include <algorithm>
 #include <cctype>
 #include <cstring>
-#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -152,8 +151,7 @@ std::string compile(Fixture& fixture, const std::string& name, bool library) {
 
 TEST_CASE("MagicBrain/every campaign warrior compiles FixABL'd against the Magic library with the real compiler") {
 	namespace fs = std::filesystem;
-	const char* env = std::getenv("MC2_TEST_INSTALL");
-	const fs::path install = env && *env ? env : "A:/Games/mc2-opengl/mc2-win64-v0.4c";
+	const fs::path install = fs::is_regular_file("mission.fst") ? fs::current_path() : fs::path("A:/Games/mc2-opengl/mc2-win64-v0.4c");
 	const fs::path profile = install / "mods/magic-brain-1.45/data/missions";
 	if (!fs::is_regular_file(install / "mission.fst") || !fs::is_regular_file(profile / "corebrain.abx")) {
 		MESSAGE("no install carrying the Smarter profile at " << install.string() << "; case skipped");
