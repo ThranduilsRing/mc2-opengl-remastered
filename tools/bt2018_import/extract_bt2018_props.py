@@ -31,8 +31,6 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image
-import UnityPy
-from UnityPy.helpers.MeshHelper import MeshHandler
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import bake_materials  # noqa: E402
@@ -56,6 +54,7 @@ class Install:
 
     def env(self, name):
         if name not in self._env:
+            import UnityPy  # lazy: pure helpers import without it
             self._env[name] = UnityPy.load(str(self.root / name))
         return self._env[name]
 
@@ -164,6 +163,7 @@ def write_glb(path, name, prims, images, materials):
 
 
 def mesh_prims(mesh):
+    from UnityPy.helpers.MeshHelper import MeshHandler
     h = MeshHandler(mesh)
     h.process()
     pos = np.asarray(h.m_Vertices, np.float32).reshape(-1, 3).copy()
