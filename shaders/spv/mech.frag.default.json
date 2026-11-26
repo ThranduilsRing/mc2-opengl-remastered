@@ -6,8 +6,8 @@
   "specializationParams": [],
   "artifact": "mech.frag.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "e7e4bcdc7ae5cf8f16aa3c5fdaff7dc77ccde818be86d02a155c6418f27b268d",
-  "spirv_sha256": "aebb6b13d61dba39e07de5a3d8130e6accc70be16bbb94879ea48c1b2a69bb7a",
+  "source_sha256": "738b47f9f568712595f00de6a6bb6a5589f75d5d8867834c14f3c57f85e6bbb4",
+  "spirv_sha256": "7b8452de1d15531a509a8fab15ccba8776831ff62a90249cc24ee38aba6b8a68",
   "bindings": {
     "ubos": [
       {
@@ -32,7 +32,7 @@
         "binding": 26
       },
       {
-        "type": "_1822",
+        "type": "_1814",
         "name": "MoverShadowFrame",
         "block_size": 14544,
         "set": 0,
@@ -65,7 +65,7 @@
         "binding": 13
       },
       {
-        "type": "_1830",
+        "type": "_1822",
         "name": "TerrainCementBuf",
         "readonly": true,
         "block_size": 0,
@@ -1137,7 +1137,7 @@
         }
       ]
     },
-    "_1822": {
+    "_1814": {
       "name": "MoverShadowFrame",
       "members": [
         {
@@ -1185,7 +1185,7 @@
         }
       ]
     },
-    "_1830": {
+    "_1822": {
       "name": "TerrainCementBuf",
       "members": [
         {
@@ -1250,16 +1250,16 @@
         "location": 6
       },
       {
-        "name": "vFog",
-        "location": 4
-      },
-      {
         "name": "vPrevClip",
         "location": 13
       },
       {
         "name": "vCurClip",
         "location": 12
+      },
+      {
+        "name": "vFog",
+        "location": 4
       }
     ],
     "outputs": [

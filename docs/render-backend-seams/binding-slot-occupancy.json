@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 301,
+    "glsl_blocks_with_binding": 314,
     "native_pairs": 4,
     "fails": 0,
     "warns": 1
@@ -88,7 +88,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/edge_fog.frag",
-        "line": 25,
+        "line": 28,
         "role": "depthTex",
         "std": null,
         "type": "sampler2D",
@@ -440,8 +440,8 @@
         "type": "uniform",
         "source": "shaders/vulkan/include/terrain_frame_ubo_vk.glsl",
         "branch": {
-          "5": 0,
-          "7": 0
+          "7": 0,
+          "9": 0
         }
       },
       {
@@ -519,6 +519,16 @@
         "std": "std140",
         "type": "uniform",
         "source": "shaders/vulkan/include/vegetation_cull_common.glsl",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/vfx_particle.frag",
+        "line": 19,
+        "role": "VfxVsParams",
+        "std": "std140",
+        "type": "uniform",
+        "source": "shaders/vulkan/vfx_particle.frag",
         "branch": {}
       },
       {
@@ -606,12 +616,14 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/edge_fog.frag",
-        "line": 45,
+        "line": 79,
         "role": "EdgeFogParams",
         "std": "std140",
         "type": "uniform",
-        "source": "shaders/vulkan/edge_fog.frag",
-        "branch": {}
+        "source": "shaders/include/fog_policy.hglsl",
+        "branch": {
+          "4": 0
+        }
       },
       {
         "side": "glsl",
@@ -1037,7 +1049,7 @@
         "type": "buffer",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "5": 0
+          "7": 0
         }
       },
       {
@@ -1085,7 +1097,7 @@
         "type": "buffer",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "5": 0
+          "7": 0
         }
       },
       {
@@ -1133,7 +1145,7 @@
         "type": "buffer",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "5": 0
+          "7": 0
         }
       },
       {
@@ -1279,9 +1291,9 @@
         "type": "sampler2D",
         "source": "shaders/vulkan/include/ground_shadow.glsl",
         "branch": {
-          "5": 0,
-          "16": 0,
-          "17": 0
+          "7": 0,
+          "18": 0,
+          "19": 0
         }
       },
       {
@@ -1296,6 +1308,20 @@
           "3": 0,
           "14": 0,
           "15": 0
+        }
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/vfx_particle.frag",
+        "line": 4,
+        "role": "u_staticMask",
+        "std": null,
+        "type": "sampler2D",
+        "source": "shaders/vulkan/include/ground_shadow.glsl",
+        "branch": {
+          "1": 0,
+          "12": 0,
+          "13": 0
         }
       },
       {
@@ -1343,7 +1369,7 @@
         "type": "sampler2DArray",
         "source": "shaders/vulkan/include/concrete_detail_vk.glsl",
         "branch": {
-          "18": 0
+          "20": 0
         }
       },
       {
@@ -1391,7 +1417,7 @@
         "type": "sampler2D",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "5": 0
+          "7": 0
         }
       },
       {
@@ -1628,7 +1654,7 @@
         "type": "sampler2D",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "5": 0
+          "7": 0
         }
       },
       {
@@ -1768,8 +1794,8 @@
         "type": "sampler2D",
         "source": "shaders/vulkan/include/mover_shadow.glsl",
         "branch": {
-          "5": 0,
-          "11": 0
+          "7": 0,
+          "13": 0
         }
       },
       {
@@ -1783,6 +1809,19 @@
         "branch": {
           "3": 0,
           "9": 0
+        }
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/vfx_particle.frag",
+        "line": 5,
+        "role": "moverShadowMap",
+        "std": null,
+        "type": "sampler2D",
+        "source": "shaders/vulkan/include/mover_shadow.glsl",
+        "branch": {
+          "1": 0,
+          "7": 0
         }
       },
       {
@@ -1874,8 +1913,8 @@
         "type": "uniform",
         "source": "shaders/vulkan/include/mover_shadow.glsl",
         "branch": {
-          "5": 0,
-          "11": 0
+          "7": 0,
+          "13": 0
         }
       },
       {
@@ -1889,6 +1928,19 @@
         "branch": {
           "3": 0,
           "9": 0
+        }
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/vfx_particle.frag",
+        "line": 6,
+        "role": "MoverShadowFrame",
+        "std": "std140",
+        "type": "uniform",
+        "source": "shaders/vulkan/include/mover_shadow.glsl",
+        "branch": {
+          "1": 0,
+          "7": 0
         }
       },
       {
@@ -1965,8 +2017,8 @@
         "type": "uniform",
         "source": "shaders/vulkan/include/environment_ubo_vk.glsl",
         "branch": {
-          "5": 0,
-          "9": 0
+          "7": 0,
+          "11": 0
         }
       },
       {
@@ -1981,17 +2033,19 @@
           "3": 0,
           "7": 0
         }
-      },
+      }
+    ],
+    "set0:binding27": [
       {
         "side": "glsl",
         "file": "shaders/vulkan/vfx_particle.frag",
-        "line": 11,
-        "role": "EnvironmentUBO",
+        "line": 79,
+        "role": "EdgeFogParams",
         "std": "std140",
         "type": "uniform",
-        "source": "shaders/vulkan/include/environment_ubo_vk.glsl",
+        "source": "shaders/include/fog_policy.hglsl",
         "branch": {
-          "1": 0
+          "17": 0
         }
       }
     ],
@@ -2106,7 +2160,7 @@
         "type": "sampler2DArray",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "5": 0
+          "7": 0
         }
       },
       {
@@ -2253,7 +2307,7 @@
         "type": "buffer",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "5": 0
+          "7": 0
         }
       },
       {
@@ -2815,25 +2869,25 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/vfx_particle.frag",
-        "line": 18,
+        "line": 30,
         "role": "uPages",
         "std": null,
         "type": "sampler2D",
         "source": "shaders/vulkan/vfx_particle.frag",
         "branch": {
-          "4": 0
+          "18": 0
         }
       },
       {
         "side": "glsl",
         "file": "shaders/vulkan/vfx_particle.frag",
-        "line": 33,
+        "line": 44,
         "role": "uAtlas",
         "std": null,
         "type": "sampler2D",
         "source": "shaders/vulkan/vfx_particle.frag",
         "branch": {
-          "4": 1
+          "18": 1
         }
       },
       {
@@ -3332,6 +3386,19 @@
     "set3:binding0": [
       {
         "side": "glsl",
+        "file": "shaders/vulkan/vfx_particle.frag",
+        "line": 10,
+        "role": "TerrainFrameUBO",
+        "std": "std140",
+        "type": "uniform",
+        "source": "shaders/vulkan/include/terrain_frame_ubo_vk.glsl",
+        "branch": {
+          "1": 0,
+          "3": 0
+        }
+      },
+      {
+        "side": "glsl",
         "file": "shaders/vulkan/vfx_vegetation.frag",
         "line": 10,
         "role": "TerrainFrameUBO",
@@ -3345,6 +3412,18 @@
       }
     ],
     "set3:binding11": [
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/vfx_particle.frag",
+        "line": 40,
+        "role": "TerrainLightPoolVK",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
+        "branch": {
+          "1": 0
+        }
+      },
       {
         "side": "glsl",
         "file": "shaders/vulkan/vfx_vegetation.frag",
@@ -3361,6 +3440,18 @@
     "set3:binding12": [
       {
         "side": "glsl",
+        "file": "shaders/vulkan/vfx_particle.frag",
+        "line": 43,
+        "role": "TerrainLightGridHeaderVK",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
+        "branch": {
+          "1": 0
+        }
+      },
+      {
+        "side": "glsl",
         "file": "shaders/vulkan/vfx_vegetation.frag",
         "line": 43,
         "role": "TerrainLightGridHeaderVK",
@@ -3373,6 +3464,18 @@
       }
     ],
     "set3:binding13": [
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/vfx_particle.frag",
+        "line": 46,
+        "role": "TerrainLightGridIndicesVK",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
+        "branch": {
+          "1": 0
+        }
+      },
       {
         "side": "glsl",
         "file": "shaders/vulkan/vfx_vegetation.frag",
@@ -3401,6 +3504,18 @@
     "set3:binding19": [
       {
         "side": "glsl",
+        "file": "shaders/vulkan/vfx_particle.frag",
+        "line": 50,
+        "role": "u_localShadowAtlas",
+        "std": null,
+        "type": "sampler2D",
+        "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
+        "branch": {
+          "1": 0
+        }
+      },
+      {
+        "side": "glsl",
         "file": "shaders/vulkan/vfx_vegetation.frag",
         "line": 50,
         "role": "u_localShadowAtlas",
@@ -3415,6 +3530,18 @@
     "set3:binding2": [
       {
         "side": "glsl",
+        "file": "shaders/vulkan/vfx_particle.frag",
+        "line": 18,
+        "role": "u_colormap",
+        "std": null,
+        "type": "sampler2D",
+        "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
+        "branch": {
+          "1": 0
+        }
+      },
+      {
+        "side": "glsl",
         "file": "shaders/vulkan/vfx_vegetation.frag",
         "line": 18,
         "role": "u_colormap",
@@ -3427,6 +3554,19 @@
       }
     ],
     "set3:binding26": [
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/vfx_particle.frag",
+        "line": 11,
+        "role": "EnvironmentUBO",
+        "std": "std140",
+        "type": "uniform",
+        "source": "shaders/vulkan/include/environment_ubo_vk.glsl",
+        "branch": {
+          "1": 0,
+          "5": 0
+        }
+      },
       {
         "side": "glsl",
         "file": "shaders/vulkan/vfx_vegetation.frag",
@@ -3444,6 +3584,18 @@
     "set3:binding3": [
       {
         "side": "glsl",
+        "file": "shaders/vulkan/vfx_particle.frag",
+        "line": 21,
+        "role": "u_cementArt",
+        "std": null,
+        "type": "sampler2DArray",
+        "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
+        "branch": {
+          "1": 0
+        }
+      },
+      {
+        "side": "glsl",
         "file": "shaders/vulkan/vfx_vegetation.frag",
         "line": 21,
         "role": "u_cementArt",
@@ -3456,6 +3608,18 @@
       }
     ],
     "set3:binding4": [
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/vfx_particle.frag",
+        "line": 22,
+        "role": "TerrainCementBuf",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
+        "branch": {
+          "1": 0
+        }
+      },
       {
         "side": "glsl",
         "file": "shaders/vulkan/vfx_vegetation.frag",
