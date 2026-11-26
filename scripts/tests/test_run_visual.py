@@ -24,6 +24,15 @@ def test_identical_is_clean(config):
     assert visual.changed_boxes(image, image.copy(), config) == []
 
 
+def test_missing_golden_fails_before_capture(tmp_path, monkeypatch, capsys):
+    missing = tmp_path / "missing-golden"
+    monkeypatch.setattr("sys.argv", [str(SCRIPT), "--golden", str(missing),
+                                    "--install", str(tmp_path), "--out", str(tmp_path / "out")])
+    monkeypatch.setattr(visual, "capture", lambda *_: pytest.fail("captured without a golden"))
+    assert visual.main() == 2
+    assert f"golden directory is missing: {missing.resolve()}" in capsys.readouterr().err
+
+
 def test_missing_small_object_is_boxed_despite_low_mad(config):
     a = Image.new("RGB", (1024, 1024))
     b = a.copy()

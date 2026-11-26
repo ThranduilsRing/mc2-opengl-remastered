@@ -226,6 +226,8 @@ def main():
             return 0
         if not args.out or not (args.install or args.compare_only):
             raise ValueError("comparison needs --out and --install or --compare-only")
+        if not args.golden.is_dir():
+            raise ValueError(f"golden directory is missing: {args.golden.resolve()}")
         candidate = args.compare_only
         if args.install:
             candidate = args.out.resolve() / "capture"

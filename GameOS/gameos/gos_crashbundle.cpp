@@ -627,7 +627,7 @@ static uint64_t process_created(HANDLE process)
 }
 
 // A crash folder holding crash.txt = header + `body`, plus the ring; `ep` adds the stack of the caller.
-static void write_exit_record(std::string_view body, EXCEPTION_POINTERS* ep)
+static bool write_exit_record(std::string_view body, EXCEPTION_POINTERS* ep)
 {
     build_crash_folder();
     static char txt[32 * 1024];
@@ -635,10 +635,11 @@ static void write_exit_record(std::string_view body, EXCEPTION_POINTERS* ep)
     if (ep) n = format_crash_txt(ep, txt, sizeof txt);
     else sbuff(txt, sizeof txt, &n, "MC2 Remastered Crash Report\nFingerprint: %s\n", MC2_BUILD_FP_LITERAL);
     sbuff(txt, sizeof txt, &n, "%.*s\n", static_cast<int>(body.size()), body.data());
-    write_file_all(g_crash_txtA, txt, static_cast<DWORD>(n));
+    const bool written = write_file_all(g_crash_txtA, txt, static_cast<DWORD>(n)) != FALSE;
     if (ep) write_ring_snapshot();   // the ring is this process's: it belongs only to an exit seen live
     mc2::fmt::print_err("[CRASHBUNDLE] {} bundle={}\n", body.substr(0, body.find('\n')), mc2::fmt::safe(g_crash_folderA));
     fflush(stderr);
+    return written;
 }
 
 // Previous sessions of this install whose process is gone without closing their sentinel died silently: record each once.
@@ -655,6 +656,8 @@ static void record_orphaned_sessions(const std::filesystem::path& dir)
             fclose(f);
         }
         const auto s = mc2::crash::parseSentinel(text);
+        auto marker = path;
+        marker.replace_extension(".stopped");
         bool alive = false;
         uint64_t created = 0;
         if (s) {
@@ -665,12 +668,20 @@ static void record_orphaned_sessions(const std::filesystem::path& dir)
                 CloseHandle(h);
             }
             if (!mc2::crash::sentinelOrphaned(*s, alive, created)) continue;
+            std::string stopped;
+            if (FILE* f = _wfopen(marker.c_str(), L"rb")) {
+                char buf[512];
+                stopped.assign(buf, fread(buf, 1, sizeof buf, f));
+                fclose(f);
+            }
             const std::string body = "Reason: unclean exit: session pid " + std::to_string(s->pid) +
                 " ended with no exit record and no crash bundle (no handler ran: external kill, stack overflow inside the handler, "
                 "or fast-fail)\nSession build: " + s->build + "\nSee debug_state/diagnostic_trace.jsonl for that pid's last events.";
-            write_exit_record(body, nullptr);
+            if (!mc2::crash::retireOrphanedSentinel(*s, mc2::crash::parseSentinel(stopped),
+                    [&] { return write_exit_record(body, nullptr); })) continue;
         }
         std::filesystem::remove(path, ec);
+        std::filesystem::remove(marker, ec);
     }
 }
 

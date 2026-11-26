@@ -44,4 +44,11 @@ inline bool sentinelOrphaned(const SessionSentinel& s, bool pidAlive, uint64_t l
     return !pidAlive || liveCreated != s.created;
 }
 
+// Retire an orphan only after its record is durable, or the harness marked this exact session before stopping it.
+template <typename WriteRecord>
+bool retireOrphanedSentinel(const SessionSentinel& s, const std::optional<SessionSentinel>& stopped, WriteRecord writeRecord) {
+    if (stopped && s.created != 0 && stopped->pid == s.pid && stopped->created == s.created) return true;
+    return writeRecord();
+}
+
 }  // namespace mc2::crash

@@ -397,7 +397,6 @@ def _desktop_blocked(what: str) -> bool:
 
 
 def _record_child(proc, argv: Sequence[str]) -> None:
-    """Note an engine child so a later run may end it if its runner died (see child_registry)."""
     try:
         from . import exe_guard, child_registry, host_lease
     except ImportError:
@@ -406,6 +405,7 @@ def _record_child(proc, argv: Sequence[str]) -> None:
         holder = next((r for _, r in host_lease._records() if host_lease._ours(r)), None)
         identity = {key: holder[key] for key in ("pid", "created")} if holder else None
         child_registry.record(proc.pid, argv[0], lease_holder=identity)
+        _mark_harness_stops(proc, argv[0])
 
 
 class ExeRefused(RuntimeError):
@@ -678,3 +678,24 @@ def set_cursor_pos(x: int, y: int, *, restoring: bool = False) -> bool:
     except ImportError:
         from smoke_lib import win_input
     return win_input.set_cursor_pos((int(x), int(y)))
+
+
+def _mark_harness_stops(proc, exe) -> None:
+    """Record an intentional stop before killing an owned engine child, for next-launch orphan recovery."""
+    from pathlib import Path
+    from . import child_registry
+    created = child_registry.process_create_time(proc.pid)
+    marker = Path(exe).resolve().parent / "debug_state" / f"session_{proc.pid}.stopped"
+    for name in ("terminate", "kill"):
+        original = getattr(proc, name)
+
+        def stop(*args, _stop=original, **kwargs):
+            if created and proc.poll() is None:
+                try:
+                    marker.parent.mkdir(parents=True, exist_ok=True)
+                    marker.write_text(f"pid={proc.pid}\ncreated={created}\n", encoding="utf-8")
+                except OSError as exc:
+                    print(f"[runner] could not mark harness stop {marker}: {exc}", file=sys.stderr)
+            return _stop(*args, **kwargs)
+
+        setattr(proc, name, stop)
