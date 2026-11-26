@@ -9,7 +9,7 @@
 // One terrain/cover compose. Existing sun-band, pool, ambient and contact inputs;
 // no new light producer or terrain cover term. Preserve terrain operation order.
 vec3 composeGroundLighting(vec3 baseColor, vec3 ambient, vec3 direct, float shadow, vec3 localLight) {
-    return baseColor * ambient + baseColor * direct * shadow + localLight;
+    return incidentLight(baseColor * ambient, baseColor * direct, vec3(1), shadow) + localLight;
 }
 // Ground AO: the ambient-share occlusion (1 = none) the caller resolves before shadeGround; scales the prelit body, never the pool lights.
 float g_groundAoMul = 1.0;

@@ -27,6 +27,7 @@ layout(location = 4) in uint a_aRGBLight;
 // Mission environment block (SH ambient): the terrain set's binding 26, visible to this vertex stage.
 #define TERRAIN_RESOURCE_SET 1
 #include "include/environment_ubo_vk.glsl"
+#include "include/lighting_vk.glsl"
 #include "include/one_sun_vk.glsl"
 
 // Props use frame sun and SH; local lights come from the fragment pool feed.
@@ -117,8 +118,8 @@ const float kPropBaseLightDirStrength = 0.45;
 // non-zero seed is added as authored. Without the night arms every window, base light and runway fixture stays off after dark.
 vec3 hotColorBaseLight(uint startV, vec3 colouredSeed, bool lightsOut, vec3 pink, vec3 yellow, vec3 green) {
     const float kSmall = 1e-4;   // Stuff_SMALL
-    const bool  isNight = uFrame.isNight != 0;
-    const float nightFactor = uFrame.nightFactor;
+    const bool  isNight = uEnv.nightState.x != 0.0;
+    const float nightFactor = uEnv.nightState.y;
     vec3 outLight = vec3(0.0);
     if (startV == 0xffff00ffu) {                       // hot pink: lit windows, night only
         if (isNight)                   outLight = pink;
@@ -134,11 +135,11 @@ vec3 hotColorBaseLight(uint startV, vec3 colouredSeed, bool lightsOut, vec3 pink
     } else if (startV == 0xfeffffffu) {
         // Synthetic imported building body fill: preserve day brightness, but
         // match the former black seed exactly at full night (not the 20% bake).
-        if (!lightsOut) outLight = colouredSeed * (1.0 - uFrame.nightDarkness) * uEnv.sceneLight.yzw;   // prelit art: relit by the sun keys' flat-light ratio (1 without keys)
+        if (!lightsOut) outLight = colouredSeed * (1.0 - uEnv.nightState.z) * uEnv.sceneLight.yzw;   // prelit art: relit by the sun keys' flat-light ratio (1 without keys)
     } else if ((startV & 0x00ffffffu) != 0u) {
         // Any other light colour is authored vertex light (hangars, terminals carry a near-white bake): it is environment
         // light, not a lamp, so the night dims it like the sun and ambient -- by day it is added as authored.
-        if (!lightsOut) outLight = colouredSeed * mix(1.0, kNightAuthoredLight, uFrame.nightDarkness) * uEnv.sceneLight.yzw;
+        if (!lightsOut) outLight = colouredSeed * mix(1.0, kNightAuthoredLight, uEnv.nightState.z) * uEnv.sceneLight.yzw;
     }
     return clamp(outLight, vec3(0.0), vec3(1.0));
 }
@@ -287,9 +288,9 @@ void main() {
     bool sunOff = (lightWord & 0x10000u) != 0u;
     float propI = ((lightWord & 0x20000u) != 0u) ? 1.0 : float(lightWord & 0xffffu) / 65535.0;
     vec3 contractC = (propI > 0.0)
-        ? min(max(floor(uFrame.sunColor.rgb * propI + uFrame.ambientColor.rgb), vec3(uFrame.ambientColor.w)), vec3(255.0))
-        : max(uFrame.ambientColor.rgb, vec3(uFrame.ambientColor.w));
-    bool sunFound = (uFrame.lightingReady != 0) && (uFrame.sunColor.w != 0.0) && !sunOff;
+        ? min(max(floor(round(uEnv.sunLive.rgb * 255.0) * propI + round(uEnv.ambLive.rgb * 255.0)), vec3(uFrame.lightFloor)), vec3(255.0))
+        : max(round(uEnv.ambLive.rgb * 255.0), vec3(uFrame.lightFloor));
+    bool sunFound = (uFrame.lightingReady != 0) && !sunOff;
     // The live pitch is in propI (terrain light at the live sun) and in ndl above; pitchUndo (encoded, like the seed's x R) puts it back at the authored elevation.
     vec3 sunColorFed = sunFound ? contractC / 255.0 * uEnv.pitchUndo.rgb : vec3(0.0);
     vec3 sunDirFed   = sunFound ? uFrame.specDir.xyz : vec3(0.0);
@@ -328,7 +329,7 @@ void main() {
     // SH evaluates irradiance, not reflected radiance. Apply the Lambert BRDF
     // once, and decode authored light bytes before summing with linear SH.
     vec3 linearLight = surfaceDecodeSrgb(seed) * propDirFactor
-        + (max(iblTerm, vec3(0.0)) * forestSky + surfaceDecodeSrgb(sunTerm) * vTree.w * propNightSunWeight(ndl, nMC2)) / 3.14159265
+        + incidentLight(max(iblTerm, vec3(0.0)) * forestSky, surfaceDecodeSrgb(sunTerm) * vTree.w * propNightSunWeight(ndl, nMC2), vec3(1), 1.0) / 3.14159265
         + surfaceDecodeSrgb(inst.aRGBHighlight.rgb);
     if (side == 0) vArgb = surfaceEncodeSrgb(linearLight);
     else vBackArgb = surfaceEncodeSrgb(linearLight);

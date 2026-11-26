@@ -165,7 +165,7 @@ struct MechIsland : mc2vk::IslandState {
 
     // One set per flight binds frame-ring buffers with dynamic offsets (0,1,2,4,5).
     // A ring growth rewrites just that flight's set after its fence.
-    VkBuffer ringBound[mc2vk::kMaxFramesInFlight][8] = {};
+    VkBuffer ringBound[mc2vk::kMaxFramesInFlight][27] = {};
     // Binding 8 stays island-local (null = white dummy).
     VkImageView localShadowBound[mc2vk::kMaxFramesInFlight] = {};
     VkSampler localSamplerBound[mc2vk::kMaxFramesInFlight] = {};
@@ -248,33 +248,13 @@ bool make_buffer(MechIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkBu
 // Initial buffer bindings; frame allocation can grow the ring before recording.
 constexpr VkDeviceSize kUboRange = sizeof(MechFrameUBO);
 
-// The one-sun tail of the environment block (the mech pass has no terrain set, so it carries its own copy).
-void copyOneSun(MechFrameUBO& u, const EnvironmentUBO& e) {
-    std::memcpy(u.sunAuthFromLive, e.sunAuthFromLive, sizeof(u.sunAuthFromLive));
-    std::memcpy(u.pitchUndo, e.pitchUndo, sizeof(u.pitchUndo));
-    std::memcpy(u.ambRelight, e.ambRelight, sizeof(u.ambRelight));
-    std::memcpy(u.sunRelight, e.sunRelight, sizeof(u.sunRelight));
-}
-
-void copyLiveLighting(MechFrameUBO& u, const EnvironmentUBO& e) {
-    std::memcpy(u.sunLive, e.sunLive, sizeof(u.sunLive));
-    std::memcpy(u.sunLiveDir, e.sunLiveDir, sizeof(u.sunLiveDir));
-    std::memcpy(u.ambLive, e.ambLive, sizeof(u.ambLive));
-    std::memcpy(u.sunBake, e.sunBake, sizeof(u.sunBake));
-    std::memcpy(u.sunBakeDir, e.sunBakeDir, sizeof(u.sunBakeDir));
-    std::memcpy(u.ambBake, e.ambBake, sizeof(u.ambBake));
-    std::memcpy(u.fog, e.fog, sizeof(u.fog));
-    std::memcpy(u.cementSky, e.cementSky, sizeof(u.cementSky));
-    std::memcpy(u.edgeHazeSky, e.edgeHazeSky, sizeof(u.edgeHazeSky));
-    std::memcpy(u.lightingParams, e.lightingParams, sizeof(u.lightingParams));
-}
-
 void write_ring_bindings(MechIsland* s, VkDescriptorSet set) {
     if (set == VK_NULL_HANDLE) return;
     const VkBuffer ring = mc2vk::getOrCreateEngineVulkanContext().frameRingBuffer();
     if (ring == VK_NULL_HANDLE) return;
     const VkDeviceSize range = mc2vk::getOrCreateEngineVulkanContext().frameRingRange();
     mc2vk::writeDynamicBinding(s->device, set, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, ring, kUboRange);
+    mc2vk::writeDynamicBinding(s->device, set, 26, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, ring, sizeof(EnvironmentUBO));
     for (const uint32_t b : {1u, 2u, 4u, 5u})
         mc2vk::writeDynamicBinding(s->device, set, b, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, ring, range);
 }
@@ -285,12 +265,13 @@ void sync_ring_bindings(MechIsland* s, uint32_t par, const mc2vk::FrameAlloc& ma
     const VkBuffer mainBuf = mainSpan.buffer;
     const VkBuffer lightBuf = lightSpan ? lightSpan.buffer : mainSpan.buffer;
     const VkDeviceSize lightRange = lightSpan ? lightSpan.range : mainSpan.range;
-    const Want want[5] = {
+    const Want want[6] = {
         {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, mainBuf, kUboRange},
         {1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, mainBuf, mainSpan.range},
         {2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, mainBuf, mainSpan.range},
         {4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, lightBuf, lightRange},
         {5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, mainBuf, mainSpan.range},
+        {26, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, mainBuf, sizeof(EnvironmentUBO)},
     };
     for (const Want& w : want) {
         if (w.buf == VK_NULL_HANDLE || s->ringBound[par][w.binding] == w.buf) continue;
@@ -441,7 +422,7 @@ bool init_island(MechIsland* s, int w, int h) {
     }
     // Per-flight resources; material images live in the shared table.
     {
-        VkDescriptorSetLayoutBinding b[6]{};
+        VkDescriptorSetLayoutBinding b[7]{};
         b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         b[1].binding = 1; b[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
@@ -456,14 +437,15 @@ bool init_island(MechIsland* s, int w, int h) {
         // LOCAL-LIGHTS-2: 8 = local-light shadow atlas (FS, plain sampler2D + gather).
         b[5].binding = 8; b[5].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         b[5].descriptorCount = 1; b[5].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        b[6] = {26, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, nullptr};
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 6; lci.pBindings = b;
+        lci.bindingCount = 7; lci.pBindings = b;
         if (!mc2vk::create(s->dsl, s->device, [&](VkDescriptorSetLayout* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); })) { vlog("dsl failed."); return false; }
         // Three frame sets, independent of the number of paint schemes.
         const uint32_t N = 1;
         VkDescriptorPoolSize sizes[3]{};
-        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = 1 * mc2vk::kMaxFramesInFlight * N;
+        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = 2 * mc2vk::kMaxFramesInFlight * N;
         sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC; sizes[1].descriptorCount = 4 * mc2vk::kMaxFramesInFlight * N;  // inst+bone+lights+pool, two parities
         sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = mc2vk::kMaxFramesInFlight;
         VkDescriptorPoolCreateInfo pci{};
@@ -804,7 +786,7 @@ struct MechRecPlan {
     VkPipeline depthPipe = VK_NULL_HANDLE, pipe = VK_NULL_HANDLE;
     VkPipelineLayout playout = VK_NULL_HANDLE; VkBuffer vbo = VK_NULL_HANDLE, ibo = VK_NULL_HANDLE;
     VkDescriptorSet groundSet = VK_NULL_HANDLE, textureSet = VK_NULL_HANDLE;
-    uint32_t dyn[5]{}, groundOffsets[4]{}, boneOffset = 0;
+    uint32_t dyn[6]{}, groundOffsets[4]{}, boneOffset = 0;
     std::vector<Mc2MechDrawRun> runs; VkDescriptorSet frameSet = VK_NULL_HANDLE; std::vector<MechRunPC> materials;
     int poolN = 0, w = 0, h = 0;
     VkQueryPool timerPool = VK_NULL_HANDLE; uint32_t timerCount = 0;
@@ -868,7 +850,7 @@ static bool record_mech_cmds(const MechRecPlan& p, VkCommandBuffer cb, MechIslan
     // The color pipeline is read-only EQUAL with early fragment tests: hidden
     // triangles never execute the local-light loop, and discard cannot write depth.
     mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,p.depthPipe);
-    vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,p.playout,0,1,&p.frameSet,5,p.dyn);
+    vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,p.playout,0,1,&p.frameSet,6,p.dyn);
     vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,p.playout,2,1,&p.textureSet,0,nullptr);
     const uint32_t runCount = static_cast<uint32_t>(p.runs.size());
     for(uint32_t r=0;r<runCount;++r) {
@@ -975,7 +957,8 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     if (poolN > (int)kMaxPoolLights) poolN = static_cast<int>(kMaxPoolLights);
     const size_t poolBytes = std::max(poolN, 1) * sizeof(gos_terrain_lighting::GpuTerrainLight);
     const void* poolUpload = feed.poolLights48;
-    const VkDeviceSize instOff = mc2vk::alignUp(sizeof(MechFrameUBO), ringAlign);
+    const VkDeviceSize envOff = mc2vk::alignUp(sizeof(MechFrameUBO), ringAlign);
+    const VkDeviceSize instOff = mc2vk::alignUp(envOff + sizeof(EnvironmentUBO), ringAlign);
     const VkDeviceSize boneOff = mc2vk::alignUp(instOff + (instBytes ? instBytes : 64ull), ringAlign);
     // Object-motion tail: last frame's bone palette (same indexing), right after the current palette; the VS skins with it at boneCount + bone.
     const bool objectMotion = RenderCore::temporal::objectMotionWanted().load(std::memory_order_relaxed);   // motion-vector debug view or upscaler provider
@@ -1063,22 +1046,20 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
       u.miscI[1] = mechFill;
       u.miscI[2] = objectMotion ? static_cast<int>(feed.boneCount) : 0;   // start of the previous-frame palette in the bone array
       mc2_mech_prev_from_cur_clip(u.prevFromCurClip);
-      // The environment producer's hemisphere. The mech lab preview pass has no terrain set 1, so the mech keeps this UBO copy of it.
-      EnvironmentUBO environment; mc2::environment::fillGpu(visualTuning_environment(), 1.0f, environment,
+      // The generated environment ABI is bound independently of terrain, also in the studio.
+      EnvironmentUBO environment; mc2::environment::fillGpu(visualTuning_environment(), mc2SceneLightScale(), environment,
           eye ? eye->currentLighting() : mc2::lighting::LightingState{},
           eye ? eye->bakeReferenceLighting() : mc2::lighting::LightingState{});
-      for (size_t c=0; c<3; ++c) u.environmentAmbient[c] = environment.hemiSky[c];
-      copyOneSun(u, environment);
-      copyLiveLighting(u, environment);
+      std::memcpy(mainPtr + envOff, &environment, sizeof(environment));
       std::memcpy(mainPtr, &u, sizeof(u)); }
     // This flight's set follows the buffers; each pass supplies its dynamic offsets.
     sync_ring_bindings(s, par, mainSpan, lightSpan);
-    const uint32_t dynOffsets[5] = {
+    const uint32_t dynOffsets[6] = {
         static_cast<uint32_t>(mainSpan.offset),
         static_cast<uint32_t>(mainSpan.offset + instOff),
         static_cast<uint32_t>(mainSpan.offset + boneOff),
         static_cast<uint32_t>(lightSpan ? lightSpan.offset : mainSpan.offset),
-        static_cast<uint32_t>(mainSpan.offset + poolOff)};
+        static_cast<uint32_t>(mainSpan.offset + poolOff), static_cast<uint32_t>(mainSpan.offset + envOff)};
     g_health.stageUs = usSince(tStage0);
 
     // ---- Shared-GBuffer co-write (VK-RUNG8 item-4: direct-chain only). Terrain left
@@ -1098,7 +1079,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     }
     plan.depthPipe = s->depthPipe.get(); plan.pipe = s->pipe.get();
     plan.playout = s->playout.get(); plan.vbo = s->vbo.get(); plan.ibo = s->ibo.get(); plan.groundSet = s->groundLighting.set(par);
-    std::copy_n(dynOffsets, 5, plan.dyn); std::copy_n(ground->offsets.data(), 4, plan.groundOffsets); plan.boneOffset = dynOffsets[2];
+    std::copy_n(dynOffsets, 6, plan.dyn); std::copy_n(ground->offsets.data(), 4, plan.groundOffsets); plan.boneOffset = dynOffsets[2];
     plan.runs.assign(feed.runs, feed.runs + feed.runCount); plan.frameSet = s->frameSets[par]; plan.materials = std::move(materials); plan.textureSet = rctx.textures().table().set(rctx.frameContext().slot);
     plan.poolN = poolN; plan.w = w; plan.h = h;
     plan.timerCount = s->gpuTimer.count; plan.timerPool = s->gpuTimer.claim();   // the pool is taken here, on main; the recording only issues commands on it
@@ -1189,7 +1170,7 @@ int previewFail(std::string_view why) {
 
 // Depth prepass + material runs into the preview framebuffer, viewport/scissor = the panel rect.
 bool record_mech_preview(MechIsland* s, VkCommandBuffer cb, const Mc2MechFrameFeed& feed,
-                         const std::vector<MechRunPC>& materials, const uint32_t (&dynOffsets)[5], int w, int h, uint32_t par,
+                         const std::vector<MechRunPC>& materials, const uint32_t (&dynOffsets)[6], int w, int h, uint32_t par,
                          const VkImageView (&views)[3], const VkImage (&images)[3]) {
     vkResetCommandPool(s->device, s->cpool[par].get(), 0);   // cb is s->cbuf[par]
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
@@ -1256,12 +1237,12 @@ bool record_mech_preview(MechIsland* s, VkCommandBuffer cb, const Mc2MechFrameFe
             vkCmdSetScissor(cb, 0, 1, &bsc);
         }
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->backdropPipe.get());
-        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->frameSets[par], 5, dynOffsets);
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->frameSets[par], 6, dynOffsets);
         vkCmdDraw(cb, 3, 1, 0, 0);
         vkCmdSetViewport(cb, 0, 1, &vp);
         vkCmdSetScissor(cb, 0, 1, &scissor);
     }
-    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->frameSets[par], 5, dynOffsets);
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->frameSets[par], 6, dynOffsets);
     dctx.textures().table().bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 2);
     VkDeviceSize vboOff = 0;
     const VkBuffer vertexBuffer = s->vbo.get();
@@ -1335,7 +1316,8 @@ static int mech_preview_flush_impl(void* colorView, void* normalView, void* dept
     const VkDeviceSize ringAlign = rctx.frameAlignment();
     const VkDeviceSize instBytes = VkDeviceSize(feed.instanceCount) * 64ull;
     const VkDeviceSize boneBytes = VkDeviceSize(feed.boneCount ? feed.boneCount : 1) * 64ull;
-    const VkDeviceSize instOff = mc2vk::alignUp(sizeof(MechFrameUBO), ringAlign);
+    const VkDeviceSize envOff = mc2vk::alignUp(sizeof(MechFrameUBO), ringAlign);
+    const VkDeviceSize instOff = mc2vk::alignUp(envOff + sizeof(EnvironmentUBO), ringAlign);
     const VkDeviceSize boneOff = mc2vk::alignUp(instOff + instBytes, ringAlign);
     const VkDeviceSize poolOff = mc2vk::alignUp(boneOff + boneBytes, ringAlign);
     const mc2vk::FrameAlloc mainSpan = rctx.frameAlloc(poolOff + sizeof(gos_terrain_lighting::GpuTerrainLight));
@@ -1389,14 +1371,15 @@ static int mech_preview_flush_impl(void* colorView, void* normalView, void* dept
       EnvironmentUBO environment; mc2::environment::fillGpu(visualTuning_environment(), 1.0f, environment,
           eye ? eye->currentLighting() : mc2::lighting::LightingState{},
           eye ? eye->bakeReferenceLighting() : mc2::lighting::LightingState{});
-      for (size_t c = 0; c < 3; ++c) u.environmentAmbient[c] = environment.hemiSky[c];
-      { EnvironmentUBO identity; mc2::environment::fillGpu(RenderCore::MissionEnvironment{}, 1.0f, identity); copyOneSun(u, identity); }   // the bay is lit by no mission sun: identity
-      copyLiveLighting(u, environment);
+      // Studio lighting keeps the hemisphere, with identity mission-sun corrections.
+      EnvironmentUBO studio; mc2::environment::fillGpu({}, 1.0f, studio);
+      std::copy_n(environment.hemiSky, 4, studio.hemiSky);
+      std::memcpy(mainPtr + envOff, &studio, sizeof(studio));
       std::memcpy(mainPtr, &u, sizeof(u)); }
     sync_ring_bindings(s, par, mainSpan, lightSpan);
-    const uint32_t dynOffsets[5] = {
+    const uint32_t dynOffsets[6] = {
         static_cast<uint32_t>(mainSpan.offset), static_cast<uint32_t>(mainSpan.offset + instOff), static_cast<uint32_t>(mainSpan.offset + boneOff),
-        static_cast<uint32_t>(lightSpan ? lightSpan.offset : mainSpan.offset), static_cast<uint32_t>(mainSpan.offset + poolOff)};
+        static_cast<uint32_t>(lightSpan ? lightSpan.offset : mainSpan.offset), static_cast<uint32_t>(mainSpan.offset + poolOff), static_cast<uint32_t>(mainSpan.offset + envOff)};
 
     // The preview target can be rebuilt (panel resize / texture service reset): the views and images are taken fresh each call (no framebuffer cache).
     const VkImageView views[3] = {static_cast<VkImageView>(colorView), static_cast<VkImageView>(normalView), static_cast<VkImageView>(depthView)};

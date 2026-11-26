@@ -4,7 +4,7 @@
 #pragma once
 
 static_assert(std::is_trivially_copyable<ColorFrameUBO>::value, "ColorFrameUBO must be trivially copyable");
-static_assert(sizeof(ColorFrameUBO) == 224, "ColorFrameUBO size must match std140 GLSL struct");
+static_assert(sizeof(ColorFrameUBO) == 192, "ColorFrameUBO size must match std140 GLSL struct");
 static_assert(offsetof(ColorFrameUBO, worldToClipGL) == 0, "worldToClipGL offset");
 static_assert(offsetof(ColorFrameUBO, objectDepthBias) == 64, "objectDepthBias offset");
 static_assert(offsetof(ColorFrameUBO, instBase) == 68, "instBase offset");
@@ -13,15 +13,13 @@ static_assert(offsetof(ColorFrameUBO, materialReadyOn) == 76, "materialReadyOn o
 static_assert(offsetof(ColorFrameUBO, sway) == 80, "sway offset");
 static_assert(offsetof(ColorFrameUBO, iblShStrength) == 96, "iblShStrength offset");
 static_assert(offsetof(ColorFrameUBO, lightingReady) == 100, "lightingReady offset");
-static_assert(offsetof(ColorFrameUBO, isNight) == 104, "isNight offset");
-static_assert(offsetof(ColorFrameUBO, nightFactor) == 108, "nightFactor offset");
-static_assert(offsetof(ColorFrameUBO, nightDarkness) == 112, "nightDarkness offset");
+static_assert(offsetof(ColorFrameUBO, lightFloor) == 104, "lightFloor offset");
+static_assert(offsetof(ColorFrameUBO, _padLighting0) == 108, "_padLighting0 offset");
+static_assert(offsetof(ColorFrameUBO, _padLighting1) == 112, "_padLighting1 offset");
 static_assert(offsetof(ColorFrameUBO, hotTableReady) == 116, "hotTableReady offset");
 static_assert(offsetof(ColorFrameUBO, pbrV1Strength) == 120, "pbrV1Strength offset");
 static_assert(offsetof(ColorFrameUBO, pbrV1RoughnessOverride) == 124, "pbrV1RoughnessOverride offset");
 static_assert(offsetof(ColorFrameUBO, cameraWorldPos) == 128, "cameraWorldPos offset");
 static_assert(offsetof(ColorFrameUBO, poolF) == 144, "poolF offset");
 static_assert(offsetof(ColorFrameUBO, poolI) == 160, "poolI offset");
-static_assert(offsetof(ColorFrameUBO, sunColor) == 176, "sunColor offset");
-static_assert(offsetof(ColorFrameUBO, ambientColor) == 192, "ambientColor offset");
-static_assert(offsetof(ColorFrameUBO, specDir) == 208, "specDir offset");
+static_assert(offsetof(ColorFrameUBO, specDir) == 176, "specDir offset");

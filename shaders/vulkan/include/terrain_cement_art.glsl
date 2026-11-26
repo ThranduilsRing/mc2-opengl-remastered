@@ -80,7 +80,7 @@ vec3 shadeRoadArt(vec4 art, uint road, uint cw, vec2 dx, vec2 dy) {
     if (TS_concreteDetail != 0) {
         MaterialDetail detail = cdEval(adoptAlbedo ? CD_LAYER_PAD : CD_LAYER_ROAD, v_worldPos.xy, dx, dy);
         float diffuse;
-        cdShade(detail, normalize(uT.terrainLightDir.xyz), uT.ambientDayGate, diffuse, spec);
+        cdShade(detail, normalize(uEnv.sunDirLive.xyz), uT.ambientDayGate, diffuse, spec);
         color *= mix(1.0, detail.ao, 0.5) * detail.lum * diffuse;
         normal = detail.n;
     }

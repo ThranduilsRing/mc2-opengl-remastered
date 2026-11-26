@@ -1,3 +1,4 @@
+#include "include/environment_ubo_vk.slang"
 // terrain_lighting.comp.slang -- native Vulkan port of shaders/gos_terrain_lighting.comp (step 3.4P).
 //
 // Per-vertex terrain lighting (sun + ambient + fog + haze; the light list is not read), output lightRGB / fogRGB
@@ -39,10 +40,8 @@ struct GpuTerrainLightingOutput {
 // std140. Lockstep with VkTerrainLightingParams in vk_native_producers.h.
 struct LightingParams {
     int4   counts;     // x numVertices (absolute bound), y numLights, z vertexOffset (vertex number of element 0), w windowCount
-    int4   sunRgb;     // x lightRed, y lightGreen, z lightBlue, w rendererSW
-    int4   ambRgb;     // x ambientRed, y ambientGreen, z ambientBlue, w lighteningLevel
     int4   baseRgb;    // x,y,z BaseVertexColor R,G,B, w useFog
-    float4 sunDirRain; // xyz sun light direction, w rainLightLevel
+    float4 weather;    // rainLightLevel, rendererSW, reserved, reserved
     float4 fogHaze;    // x fogStart, y fogFull, z minHazeDistance, w effective fog full distance (not clipping)
     float4 playArea;   // (-m, -m, m, m)
     float4 camDist;    // xyz camera world pos, w distanceFactor
@@ -82,14 +81,14 @@ void main(uint3 tid : SV_DispatchThreadID)
 
     uint lightr = 255u, lightg = 255u, lightb = 255u;
 
-    if (P.sunRgb.w == 0)
+    if (P.weather.y == 0)
     {
-        float lightIntensity = dot(v.normal, P.sunDirRain.xyz);
+        float lightIntensity = dot(v.normal, uEnv.sunLiveDir.xyz);
         if ((v.flags & GPU_VERT_SHADOW) != 0u && lightIntensity > 0.2) lightIntensity = 0.2;
 
-        lightr = getLightChannel(lightIntensity, uint(P.sunRgb.x), uint(P.ambRgb.x));
-        lightg = getLightChannel(lightIntensity, uint(P.sunRgb.y), uint(P.ambRgb.y));
-        lightb = getLightChannel(lightIntensity, uint(P.sunRgb.z), uint(P.ambRgb.z));
+        lightr = getLightChannel(lightIntensity, uint(round(uEnv.sunLive.x * 255.0)), uint(round(uEnv.ambLive.x * 255.0)));
+        lightg = getLightChannel(lightIntensity, uint(round(uEnv.sunLive.y * 255.0)), uint(round(uEnv.ambLive.y * 255.0)));
+        lightb = getLightChannel(lightIntensity, uint(round(uEnv.sunLive.z * 255.0)), uint(round(uEnv.ambLive.z * 255.0)));
 
         if (P.baseRgb.x != 0 || P.baseRgb.y != 0 || P.baseRgb.z != 0)
         {
@@ -98,7 +97,7 @@ void main(uint3 tid : SV_DispatchThreadID)
             lightb = min(lightb + uint(P.baseRgb.z), 255u);
         }
 
-        float rain = P.sunDirRain.w;
+        float rain = P.weather.x;
         if (rain < 1.0)
         {
             lightr = uint(float(lightr) * rain);
@@ -113,9 +112,9 @@ void main(uint3 tid : SV_DispatchThreadID)
 
     // fogRGB carries the fog byte alone: the water pass reads nothing else of it (no local-light or material bytes).
     uint fogResult = 0xFFu;
-    float fogStart = P.fogHaze.x;
-    float fogFull  = P.fogHaze.y;
-    if (P.sunRgb.w == 0 && P.baseRgb.w != 0)
+    float fogStart = uEnv.fog.w;
+    float fogFull  = uEnv.lightingParams.z;
+    if (P.weather.y == 0 && P.baseRgb.w != 0)
         fogResult = uint(mc2FogHeightAlpha(v.elevation, fogStart, fogFull));
 
     float3 hpos = float3(v.xy.x, v.xy.y, v.elevation);

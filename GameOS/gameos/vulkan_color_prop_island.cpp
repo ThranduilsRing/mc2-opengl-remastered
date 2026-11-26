@@ -2440,8 +2440,7 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
         // ObjectLights ambientTerm sum; iblShStrength==0.0 short-circuits evalShL2
         // exactly like the GL guard (byte-identical when the feature/env is off).
         if (haveLightFeed) {
-            std::copy_n(lightFeed.sunColor, 4, u.sunColor);
-            std::copy_n(lightFeed.ambientColor, 4, u.ambientColor);
+            u.lightFloor = lightFeed.ambientColor[3];
             std::copy_n(lightFeed.specDir, 4, u.specDir);
             u.iblShStrength = lightFeed.iblShStrength;   // the SH coefficients are the EnvironmentUBO's (binding 26)
         } else {
@@ -2449,10 +2448,7 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
         }
         u.lightingReady = s->lightingReady ? 1 : 0;
         // The eye's night state lights the hot-colour tags; without the feed the island stays on its daytime arm.
-        u.isNight      = haveLightFeed ? lightFeed.isNight : 0;
-        u.nightFactor  = haveLightFeed ? lightFeed.nightFactor : 0.0f;
         u.hotTableReady = s->hotReady ? 1 : 0;   // the shader reads the table only when the real one is bound
-        u.nightDarkness = mc2NightLightFactor();   // the retired ambient-fill slot; same value the shadows and water use
         u.pbrV1Strength = haveLightFeed ? lightFeed.pbrV1Strength : 0.0f;
         u.pbrV1RoughnessOverride = haveLightFeed ? lightFeed.pbrV1RoughnessOverride : -1.0f;
         for (int k = 0; k < 4; ++k) u.cameraWorldPos[k] = haveLightFeed ? lightFeed.cameraWorldPos[k] : 0.0f;

@@ -42,7 +42,7 @@ void main() {
     bool skipInlineShadow = (Texcoord.y < -0.5);
     if (!skipInlineShadow) {
         const vec3 shadowN = vec3(0.0, 0.0, 1.0);
-        vec3 lightDir3 = uT.terrainLightDir.xyz;
+        vec3 lightDir3 = uEnv.sunDirLive.xyz;
         c.rgb *= min(uT.enableShadows!=0?terrainStaticShadow(WorldPos):1.0,
                      terrainDynamicShadow(WorldPos,shadowN));
     }
