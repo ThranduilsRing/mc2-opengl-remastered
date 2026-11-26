@@ -758,6 +758,8 @@ void PackAndDispatch() {
             ++poolWanted;
             if (numLights >= s_maxLights) { ++poolDropped; continue; }
             s_lightBuf[numLights++] = light;
+            s_lightBuf[numLights - 1].lightType = RunwaySegmentLightType(light,
+                s_beaconLights.data(), s_beaconLights.size());
         }
         // Presentation continues while the simulation turn is frozen.
         s_beaconLights.clear();

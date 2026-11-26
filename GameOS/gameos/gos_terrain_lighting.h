@@ -82,6 +82,23 @@ inline uint32_t PackPoolLightType(uint32_t type, float ax, float ay, float az,
          | (q(v, -1.0f, 1.0f) << 16) | (c << 24);
 }
 
+// Stock runway fixtures have zero placement yaw even on crossing strips.
+// Prefer the axis supported by a row of neighbours within four fixture spacings;
+// the closer fixture across the 85wu runway width alone cannot choose the axis.
+inline uint32_t RunwaySegmentLightType(const GpuTerrainLight& light,
+                                      const GpuTerrainLight* fixtures, size_t count) {
+    unsigned alongX = 0, alongY = 0;
+    for (size_t i = 0; i < count; ++i) {
+        const float dx = fixtures[i].position[0] - light.position[0];
+        const float dy = fixtures[i].position[1] - light.position[1];
+        if (dy * dy < 1.0f && dx * dx > 1.0f && dx * dx <= 512.0f * 512.0f) ++alongX;
+        if (dx * dx < 1.0f && dy * dy > 1.0f && dy * dy <= 512.0f * 512.0f) ++alongY;
+    }
+    if (alongX == alongY) return light.lightType;
+    return PackPoolLightType(1u, alongX > alongY ? -1.0f : 0.0f,
+        alongY > alongX ? -1.0f : 0.0f, -0.25f, 0.8660254f, 0u);
+}
+
 struct alignas(4) GpuTerrainLightingOutput { //  8 B std430
     uint32_t lightRGB;       // packed BGRA per memory/mc2_argb_packing.md
     uint32_t fogRGB;

@@ -1,8 +1,26 @@
 #include "doctest.h"
 #include "../../GameOS/gameos/light_pool_culling.h"
+#include "../../GameOS/gameos/gos_terrain_lighting.h"
 #include "../../mclib/spotlight_diag.h"
 #include <vector>
 using namespace gos_terrain_lighting;
+
+TEST_CASE("Runway segment axis follows each strip despite identical placement yaw") {
+    for (bool crossing : {false, true}) {
+        std::vector<GpuTerrainLight> row;
+        for (int step = -2; step <= 2; ++step) for (float edge : {0.0f, 85.333f}) {
+            GpuTerrainLight light{};
+            light.position[crossing ? 1 : 0] = step * 128.0f;
+            light.position[crossing ? 0 : 1] = edge;
+            light.lightType = PackPoolLightType(1u, -1, 0, -0.25f, 0.8660254f, 0);
+            row.push_back(light);
+        }
+        for (const auto& light : row)
+            CHECK(RunwaySegmentLightType(light, row.data(), row.size()) ==
+                PackPoolLightType(1u, crossing ? 0 : -1, crossing ? -1 : 0, -0.25f, 0.8660254f, 0));
+        CHECK(RunwaySegmentLightType(row[0], row.data(), 1) == row[0].lightType);
+    }
+}
 
 TEST_CASE("Registered mover lights equal the world slot scan across lifecycle changes") {
     namespace tags = mc2_spotlight_diag;

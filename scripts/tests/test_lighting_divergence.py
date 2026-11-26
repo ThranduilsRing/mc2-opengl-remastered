@@ -39,3 +39,14 @@ def test_changed_native_floor_fails_without_repinning(monkeypatch):
 def test_commented_floor_does_not_create_a_second_pin():
     source = 'const float kAmbientFloor = 0.35; /* const float kAmbientOther = 0.7; */'
     assert len(checker.RE_SCALAR_FLOOR.findall(checker.strip_comments(source))) == 1
+
+
+def test_terrain_contact_distance_uses_one_coordinate_frame():
+    source = (ROOT / 'shaders/vulkan/terrain_tier1.frag').read_text()
+    assert 'distance(v_worldPos,mc2ToRender(uT.cameraPosMC2.xyz))<1536.0' in source
+    assert 'distance(v_worldPos,uT.cameraPosMC2.xyz)' not in source
+
+
+def test_runway_segment_axis_reaches_the_uploaded_pool():
+    source = (ROOT / 'GameOS/gameos/gos_terrain_lighting.cpp').read_text()
+    assert 's_lightBuf[numLights - 1].lightType = RunwaySegmentLightType(light,' in source
