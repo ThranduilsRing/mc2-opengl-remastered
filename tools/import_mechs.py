@@ -76,7 +76,7 @@ def tool(name, env, candidates):
 
 def run(cmd, log, env=None, ok=(0,)):
     with log.open("w", encoding="utf-8") as stream:
-        result = subprocess.run(list(map(str, cmd)), stdout=stream, stderr=subprocess.STDOUT,
+        result = subprocess.run(list(map(str, cmd)), stdout=stream, stderr=subprocess.STDOUT,  # background-launch: allow asset tools only; console_child suppresses desktop windows
                                 env=env, **console_child.child_kwargs(redirected=True))
     if result.returncode not in ok:
         raise RuntimeError(f"exit {result.returncode}; see {log}")
@@ -88,7 +88,7 @@ def preflight(games, work):
     env = os.environ.copy()
     env.update(TEMP=str(work), TMP=str(work), DOTNET_CLI_HOME=str(work / "dotnet-home"),
                NUGET_PACKAGES=str(work / "nuget"), PYTHONDONTWRITEBYTECODE="1")
-    ktx = tool("ktx", "KTX", [Path("A:/Games/mc2-tools/ktx/ktx.exe")])
+    ktx = tool("ktx", "KTX", [Path("A:/Games/mc2-tools/ktx/ktx.exe")])  # drive-path: ok optional workstation fallback; PATH and KTX take precedence
     umodel = tool("umodel_64", "UMODEL", [Path.home() / "Downloads/umodel_win32/umodel_64.exe"])
     for module, pip_name in [("numpy", "numpy"), ("scipy", "scipy"), ("PIL", "Pillow"), ("pygltflib", "pygltflib")]:
         if importlib.util.find_spec(module) is None:
@@ -308,7 +308,7 @@ def main(argv=None):
     print("Detected: " + "; ".join(f"{k}={v}" for k, v in games.items()), flush=True)
     recipes = [(p, json.loads(p.read_text())) for p in sorted((ROOT / "tools/mw5_mechs/recipes").glob("*.json"))]
     recipes = [(p, r) for p, r in recipes if r.get("schema") == "mw5-mech-recipe/1"]
-    bt_names = sorted(json.loads((ROOT / "tools/bt2018_mechs/data/roster.json").read_text()))
+    bt_names = sorted(n for n in json.loads((ROOT / "tools/bt2018_mechs/data/roster.json").read_text()) if not n.startswith("_"))
     only = {s.strip().lower() for s in args.only.split(",") if s.strip()}
     unknown = only - {r["family"] for _, r in recipes} - set(bt_names)
     if unknown:

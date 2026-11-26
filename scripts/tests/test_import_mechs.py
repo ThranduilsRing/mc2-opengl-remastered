@@ -18,6 +18,19 @@ def test_incompatible_material_is_rejected_before_building():
         importer.check_material_defaults({"S": {"MetalRoughness": 0.4}, "V": {}})
 
 
+def test_report_excludes_roster_metadata(tmp_path, monkeypatch, capsys):
+    install = tmp_path / "install"
+    (install / "data").mkdir(parents=True)
+    monkeypatch.setenv("TEMP", str(tmp_path))
+    with patch.object(importer, "detect", return_value={"bt": tmp_path / "game"}), \
+         patch.object(importer, "preflight", return_value=({}, {"bt": ["missing export"]})):
+        assert importer.main(["--install", str(install)]) == 1
+    output = capsys.readouterr().out
+    assert "bt  archer  FAIL" in output
+    assert "bt  _policy" not in output
+    assert "bt  _source" not in output
+
+
 def test_detect_steam_libraries_epic_and_common(tmp_path):
     steam, library, epic, common = [tmp_path / n for n in ("steam", "library", "epic", "games")]
     (steam / "steamapps").mkdir(parents=True)
