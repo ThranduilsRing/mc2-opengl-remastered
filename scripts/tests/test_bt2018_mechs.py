@@ -788,6 +788,9 @@ def test_pack_guard_picks_the_dominant_skin_texture_and_flags_untextured_parts(t
     assert any("not in the pack" in b and "base-alb" in b for b in G.skin_texture_problems(p, [tex]))   # weapons-first pick would have passed
     (tex / "chrtxrmech_x-base-alb.tga").write_bytes(b"")
     assert G.skin_texture_problems(p, [tex]) == []                                                       # _dmg part without texture is dropped, not flagged
+    (tex / "chrtxrmech_x-base-alb.tga").unlink()
+    (tex / "chrtxrmech_x-base-alb.ktx2").write_bytes(b"")
+    assert G.skin_texture_problems(p, [tex]) == []  # MW5 ships cooked KTX2 without a loose TGA.
     g.materials[0] = pg.Material(name="base")
     p = _save(g, tmp_path)
     assert any("without a base colour texture" in b for b in G.skin_texture_problems(p))

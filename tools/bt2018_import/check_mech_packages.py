@@ -82,7 +82,7 @@ def main():
             if nsrc.startswith("dump:Texture2D/"):
                 if not os.path.isfile(os.path.join(tex2d, nsrc.split("/", 1)[1])):
                     errors.append(f"{name}: normal dump source missing ({nsrc})")
-            else:
+            elif not (d.get("chassisId", "").startswith("mw5:") and nsrc.startswith("native:")):
                 errors.append(f"{name}: normal source not a dump ref ({nsrc!r})")
             # cooked artifact (HAS_NORMAL derives at runtime from the .ktx2 loading)
             if not os.path.isfile(os.path.join(args.deploy, nm.get("ktx2", ""))):

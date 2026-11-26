@@ -47,6 +47,33 @@ def test_clans_without_mapping_skips_without_launching(tmp_path):
     assert report[0][2] == "SKIP" and "MW5_USMAP" in report[0][3]
 
 
+def test_mw5_native_normal_provenance_does_not_require_a_bt_dump(tmp_path):
+    package = {"chassisId": "mw5:archer", "featureBits": ["HAS_NORMAL"], "materials": {
+        "albedo": {"ktx2": "alb.ktx2"}, "normal": {"ktx2": "nrm.ktx2", "container": "bc7",
+        "logicalFormat": "linear-normal-xyz", "source": "native:Archer_Body_NRM"}}}
+    path = tmp_path / "archer.package.json"
+    path.write_text(json.dumps(package))
+    for name in ("alb.ktx2", "nrm.ktx2"):
+        (tmp_path / name).touch()
+    command = [sys.executable, importer.ROOT / "tools/bt2018_import/check_mech_packages.py",
+               "--deploy", tmp_path, "--dump", tmp_path]
+    importer.run(command, tmp_path / "check.log")
+    package["chassisId"] = "bt2018:archer"
+    path.write_text(json.dumps(package))
+    with pytest.raises(RuntimeError):
+        importer.run(command, tmp_path / "check-bt.log")
+
+
+def test_preflight_checks_optional_workstation_wrapper_dependency(tmp_path):
+    with patch.object(importer, "tool", return_value=None), \
+         patch.object(importer.shutil, "which", return_value=None), \
+         patch.object(importer.Path, "is_file", return_value=True), \
+         patch.object(importer.importlib.util, "find_spec", side_effect=lambda name: None if name == "psutil" else True):
+        _, errors = importer.preflight({"mw5": tmp_path, "bt": tmp_path}, tmp_path)
+    assert any("pip install psutil" in e for e in errors["mw5"])
+    assert not any("psutil" in e for e in errors["bt"])
+
+
 def test_report_excludes_roster_metadata(tmp_path, monkeypatch, capsys):
     install = tmp_path / "install"
     (install / "data").mkdir(parents=True)

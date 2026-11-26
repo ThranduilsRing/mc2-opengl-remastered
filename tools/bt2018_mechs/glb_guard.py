@@ -258,7 +258,7 @@ def opaque_mech_materials(path) -> list[str]:
 
 def skin_texture_problems(path, texture_dirs=()) -> list[str]:
     """What the engine's skinned-mech import (assimp_importer.cpp slot-0 pick, see skin_pick) needs: every intact skinned
-    part's material has a base colour texture; the skin materials are OPAQUE; the picked texture's .tga ships in
+    part's material has a base colour texture; the skin materials are OPAQUE; the picked texture's .tga or .ktx2 ships in
     texture_dirs (when given). Skin joints and animation targets must not be dedupe-renamed (name-bound everywhere)."""
     from pygltflib import GLTF2
     g = GLTF2().load(str(path))
@@ -275,7 +275,8 @@ def skin_texture_problems(path, texture_dirs=()) -> list[str]:
         m = g.materials[g.meshes[mi].primitives[pi].material]
         if _wants_alpha(m):
             bad.append(f"skin material '{m.name}' is {m.alphaMode or 'named like foliage'}: the importer would look for an 'a_' texture ('{skin}')")
-    if skin and texture_dirs and not any((Path(d) / skin).is_file() for d in texture_dirs):
+    if skin and texture_dirs and not any((Path(d) / skin).is_file() or
+                                         (Path(d) / skin).with_suffix('.ktx2').is_file() for d in texture_dirs):
         bad.append(f"skin texture '{skin}' (engine pick) is not in the pack")
     joints = {j for s in g.skins for j in s.joints} | {c.target.node for a in g.animations for c in a.channels if c.target and c.target.node is not None}
     bad += [f"joint/animation node '{g.nodes[j].name}' was dedupe-renamed" for j in sorted(joints) if "__dup" in (g.nodes[j].name or "")]

@@ -105,6 +105,9 @@ def preflight(games, work):
         for issues in errors.values():
             issues.append("Install KTX-Software from https://github.com/KhronosGroup/KTX-Software/releases; put ktx on PATH or set KTX to ktx.exe")
     if "mw5" in games:
+        idle_helper = Path("A:/Games/mc2-ops/idle_run.py")  # drive-path: ok optional workstation wrapper used by make_mech.py
+        if idle_helper.is_file() and importlib.util.find_spec("psutil") is None:
+            errors["mw5"].append(f"Install workstation idle helper dependency: {sys.executable} -m pip install psutil")
         if umodel:
             env["UMODEL"] = umodel
         else:
