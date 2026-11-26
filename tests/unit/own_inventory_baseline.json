@@ -2422,11 +2422,14 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
+    "editor/EditorWorkflowSmoke.cpp": {
+     "new": 1
+    },
     "editor/UnitBrainPanel.cpp": {
      "new": 1
     }
    },
-   "new": 1,
+   "new": 2,
    "new_array": 0,
    "owners": []
   },

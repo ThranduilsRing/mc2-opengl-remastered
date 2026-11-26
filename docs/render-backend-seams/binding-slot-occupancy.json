@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 316,
+    "glsl_blocks_with_binding": 313,
     "native_pairs": 4,
     "fails": 0,
     "warns": 1
@@ -267,16 +267,6 @@
         "std": null,
         "type": "sampler2D",
         "source": "shaders/vulkan/motion_vectors_debug.frag",
-        "branch": {}
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/vulkan/postprocess.frag",
-        "line": 9,
-        "role": "sceneTex",
-        "std": null,
-        "type": "sampler2D",
-        "source": "shaders/vulkan/postprocess.frag",
         "branch": {}
       },
       {
@@ -723,16 +713,6 @@
         "std": null,
         "type": "sampler2D",
         "source": "shaders/vulkan/motion_vectors.frag",
-        "branch": {}
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/vulkan/postprocess.frag",
-        "line": 10,
-        "role": "u_objectIdTex",
-        "std": null,
-        "type": "usampler2D",
-        "source": "shaders/vulkan/postprocess.frag",
         "branch": {}
       },
       {
@@ -1542,16 +1522,6 @@
         "std": null,
         "type": "sampler2D",
         "source": "shaders/vulkan/motion_vectors.frag",
-        "branch": {}
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/vulkan/postprocess.frag",
-        "line": 12,
-        "role": "PostCompositeParams",
-        "std": "std140",
-        "type": "uniform",
-        "source": "shaders/vulkan/postprocess.frag",
         "branch": {}
       },
       {
@@ -3694,10 +3664,8 @@
     "shaders/vulkan/mech_tier1.vert",
     "shaders/vulkan/motion_vectors.frag",
     "shaders/vulkan/motion_vectors_debug.frag",
-    "shaders/vulkan/postprocess.frag",
     "shaders/vulkan/postprocess.vert",
     "shaders/vulkan/postprocess_visual.frag",
-    "shaders/vulkan/postprocess_visual.vert",
     "shaders/vulkan/present_encode.frag",
     "shaders/vulkan/screen_shadow_csm.frag",
     "shaders/vulkan/screen_shadow_csm.vert",

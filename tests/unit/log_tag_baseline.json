@@ -2256,7 +2256,8 @@
     "p95_ms",
     "p99_ms",
     "max_ms",
-    "over50"
+    "over50",
+    "over10"
    ],
    "count": 1
   },
@@ -2556,30 +2557,6 @@
    "stream": "stderr",
    "keys": [],
    "count": 2
-  },
-  {
-   "tag": "CPU_PROJ",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "reason"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "CPU_PROJ",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "window",
-    "camera",
-    "p50",
-    "p95",
-    "max",
-    "budget",
-    "status"
-   ],
-   "count": 1
   },
   {
    "tag": "CRASH",
@@ -3066,6 +3043,18 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_CAMERA",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "phase",
+    "active_ms",
+    "size"
+   ],
    "count": 1
   },
   {
@@ -5113,6 +5102,18 @@
    "count": 1
   },
   {
+   "tag": "INTRO_GLIDE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "ms",
+    "eye_z",
+    "ground_z",
+    "margin"
+   ],
+   "count": 1
+  },
+  {
    "tag": "INTRO_MOVIE",
    "ver": -1,
    "stream": "stdout",
@@ -5767,6 +5768,16 @@
     "services"
    ],
    "count": 2
+  },
+  {
+   "tag": "LOAD_SCOPES",
+   "ver": 1,
+   "stream": "file",
+   "keys": [
+    "host",
+    "total_ms"
+   ],
+   "count": 1
   },
   {
    "tag": "LOAD_SCOPES",
@@ -12409,13 +12420,6 @@
    "count": 1
   },
   {
-   "tag": "VK_MECH_FEED",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [],
-   "count": 1
-  },
-  {
    "tag": "VK_MECH_ISLAND",
    "ver": -1,
    "stream": "stderr",
@@ -13593,16 +13597,6 @@
    "count": 1
   },
   {
-   "tag": "VPL_CULL",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "reason"
-   ],
-   "count": 1
-  },
-  {
    "tag": "VPL_PICK",
    "ver": 1,
    "stream": "stdout",
@@ -14092,6 +14086,8 @@
   }
  ],
  "consumed_tags": [
+  "ABL_FALLBACK",
+  "ABL_FATAL",
   "AEG",
   "ALLOC_RELOAD",
   "ALLOC_TICK",
