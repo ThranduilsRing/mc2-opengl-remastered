@@ -27,6 +27,8 @@ import raster  # noqa: E402
 from tools.content_pipeline.frontends import stock_ase  # noqa: E402
 
 PROP_CLASSES = ("building", "terrain_object", "bridge", "unknown")
+# Owner-PC stock .ase/.ini source; the CLI flags default to None and fall back here (PATH_EXEMPTIONS in check-stock-mission-data.py).
+DEFAULT_SRCDATA = "A:/Games/mc2-srcdata/tgl"
 
 
 def used_appearances(corpus):
@@ -39,6 +41,7 @@ def used_appearances(corpus):
 
 
 def stock_prims(name, srcdata, work, textured=False):
+    srcdata = srcdata or DEFAULT_SRCDATA
     ini = stock_ase.parse_ini(Path(srcdata) / f"{name}.ini")
     lod0 = stock_ase.ase.ini_str(ini, "TGLData", "FileName0", name) or name
     scene, mats, _ = stock_ase.scene_from_ase(Path(srcdata) / f"{lod0}.ase", [Path(srcdata) / "128"], work)
@@ -62,7 +65,7 @@ def main(argv=None):
     src = ap.add_mutually_exclusive_group(required=True)
     src.add_argument("--corpus", type=Path)
     src.add_argument("--table", type=Path, help="previous stock_props.json: reuse its keys and use counts")
-    ap.add_argument("--srcdata", type=Path, default=Path("A:/Games/mc2-srcdata/tgl"))  # drive-path: ok owner PC stock source; --srcdata overrides
+    ap.add_argument("--srcdata", type=Path, default=None, help="stock tgl dir (default DEFAULT_SRCDATA)")
     ap.add_argument("--out", type=Path, required=True)
     args = ap.parse_args(argv)
     table = {}

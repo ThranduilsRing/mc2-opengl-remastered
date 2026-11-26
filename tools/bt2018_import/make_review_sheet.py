@@ -66,7 +66,7 @@ def main(argv=None):
     ap.add_argument("--install", default=lib.DEFAULT_INSTALL)
     ap.add_argument("--library", type=Path, required=True)
     ap.add_argument("--mapping", type=Path, required=True)
-    ap.add_argument("--srcdata", type=Path, default=Path("A:/Games/mc2-srcdata/tgl"))  # drive-path: ok owner PC stock source; --srcdata overrides
+    ap.add_argument("--srcdata", type=Path, default=None, help="stock tgl dir (default stock_props.DEFAULT_SRCDATA)")
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--bindings", type=Path, help="scan_bindings output: renders un-extracted alternatives (raw _MainTex)")
     ap.add_argument("--packages", type=Path, help="extract_bt2018_props.py --out: render picks from their baked GLBs")

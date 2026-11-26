@@ -241,7 +241,7 @@ def build_prop(inst, prop, out, matidx, texcache):
     pdir.mkdir(parents=True, exist_ok=True)
     lods, materials_doc, bounds = [], [], None
     from stock_props import stock_prims
-    stock = stock_prims(prop["replaces"][0].split(":", 1)[-1], "A:/Games/mc2-srcdata/tgl", out / "stock", textured=True)  # drive-path: ok owner PC stock source
+    stock = stock_prims(prop["replaces"][0].split(":", 1)[-1], None, out / "stock", textured=True)
     stock_pos = np.concatenate([p["pos"] for p in stock])
     stock_size = stock_pos.max(0) - stock_pos.min(0)
     stock_tex = [p["tex"].reshape(-1, 3) for p in stock if p["tex"] is not None]

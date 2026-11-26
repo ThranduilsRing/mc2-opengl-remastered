@@ -112,6 +112,11 @@ PATH_EXEMPTIONS: dict[str, list[tuple[str, str]]] = {
          "against the sha256 pins in data/kit/tree-upscale.json and deploy_payload.ensure_tree_upscale deletes a "
          "non-matching one, so a wrong source tree cannot ship -- the deploy-lane cook class this gate excludes"),
     ],
+    "tools/bt2018_import/stock_props.py": [
+        ("A:/Games/mc2-srcdata/tgl",
+         "PC-only BT2018 prop-import cook INPUT (stock .ase/.ini source for size and luminance guards); --srcdata overrides "
+         "and no shipped output depends on it -- the offline cook class this gate excludes"),
+    ],
     "tools/import_mechs.py": [
         ("/Game/DLC7/Objects/Mechs/CLANS/_Common/ClanMech_PaintedMetal_MTL",
          "Unreal package path inside the player's own MW5 install, not MC2 stock data"),
