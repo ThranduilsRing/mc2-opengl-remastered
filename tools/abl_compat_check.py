@@ -144,6 +144,8 @@ def expand(tree, key, migrate, seen=None):
 
 def brain_key(tree, name):
     name = key_of(name)
+    if name.endswith(".abl"):
+        name = name[:-4]
     for key in (f"data/missions/warriors/{name}.abl", f"data/missions/{name}", f"data/missions/{name}.abl"):
         if key in tree:
             return key

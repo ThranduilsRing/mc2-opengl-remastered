@@ -164,33 +164,40 @@ TEST_CASE("MagicBrain/every campaign warrior compiles FixABL'd against the Magic
 	for (const auto& file : fs::recursive_directory_iterator(profile))
 		if (file.is_regular_file()) sources["data/missions/" + lower(file.path().string().substr(profile.string().size() + 1))] = readFile(file.path());
 
-	std::set<std::string> brains;
+	std::map<std::string, std::set<std::string>> missions;
 	const std::regex campaign("data/missions/(mc2|tut)_..\\.fit$");
 	const std::regex brainKey("Brain\\s*=\\s*\"([^\"]+)\"");
 	for (const auto& [name, text] : sources) {
 		if (!std::regex_search(name, campaign)) continue;
-		for (auto it = std::sregex_iterator(text.begin(), text.end(), brainKey); it != std::sregex_iterator(); ++it)
-			brains.insert("data/missions/warriors/" + lower((*it)[1].str()) + ".abl");
+		auto& brains = missions[name.substr(0, name.size() - 4) + ".abl"];
+		for (auto it = std::sregex_iterator(text.begin(), text.end(), brainKey); it != std::sregex_iterator(); ++it) {
+			std::string brain = lower((*it)[1].str());
+			if (!brain.ends_with(".abl")) brain += ".abl";
+			brains.insert("data/missions/warriors/" + brain);
+		}
 	}
 	std::vector<std::string> failures;
 	int compiled = 0;
-	{
+	for (const auto& [mission, brains] : missions) {
 		Fixture fixture(sources);
 		for (const char* lib : {"data/missions/orders.abx", "data/missions/miscfunc.abx", "data/missions/corebrain.abx"}) {
 			const std::string failure = compile(fixture, lib, true);
 			if (!failure.empty()) failures.push_back(failure);
 		}
 		if (failures.empty()) {
+			const std::string missionFailure = compile(fixture, mission, false);
+			REQUIRE_MESSAGE(missionFailure.empty(), missionFailure);
 			for (const auto& name : brains) {
 				const std::string failure = compile(fixture, name, false);
 				if (failure.empty()) ++compiled; else failures.push_back(failure);
 			}
+			if (mission == missions.begin()->first)
 			for (const char* known : {"dredcircle01", "dredpatrol01", "hal", "infantry001"})   // non-campaign: reported, not failed
-				MESSAGE("non-campaign " << known << ": " << (compile(fixture, std::string("data/missions/warriors/") + known + ".abl", false).empty()
+				MESSAGE("non-campaign " << std::string(known) << ": " << std::string(compile(fixture, std::string("data/missions/warriors/") + known + ".abl", false).empty()
 					? "compiles" : "does NOT compile"));
 		}
 	}
-	MESSAGE("campaign brains compiled=" << compiled << " of " << brains.size() << " against the Smarter profile at " << install.string());
+	MESSAGE("campaign warrior instances compiled=" << compiled << " across " << missions.size() << " missions against the Smarter profile at " << install.string());
 	for (const auto& failure : failures) MESSAGE(failure);
 	CHECK(failures.empty());
 }
