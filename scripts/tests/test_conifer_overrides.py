@@ -35,6 +35,14 @@ def test_varied_heights_switch_lods_at_height_scaled_distances():
     assert len(set(first)) == 3
 
 
+def test_coarse_pine_cards_wait_until_crowns_are_about_100_pixels_at_4k():
+    # These sparse, enlarged branch cards cannot represent a mid-distance crown.
+    for n, height in ((1, 54), (2, 86.8), (3, 109.5)):
+        lod3 = BY_KEY[f'tree:pine{n}']['lods'][2]
+        projected_height = 1080 * height / lod3['distance']
+        assert 95 < projected_height < 110
+
+
 def test_every_conifer_file_is_pinned_for_deploy():
     for n in (1, 2, 3):
         rec = BY_KEY[f'tree:pine{n}']

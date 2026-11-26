@@ -260,7 +260,7 @@ def view_basis(az, el):
     return r, np.cross(d, r), d
 
 
-def rasterize(model, az, el, window, res, color=False, light=None):
+def rasterize(model, az, el, window, res, color=False, light=None, visible=None):
     """Orthographic raster of every mesh. coverage (res,res) bool of opaque-after-alpha-test
     fragments; with color=True a depth-tested rgb image instead."""
     r, u, d = view_basis(az, el)
@@ -268,7 +268,8 @@ def rasterize(model, az, el, window, res, color=False, light=None):
     cov = np.zeros((res, res), bool)
     zb = np.full((res, res), np.inf)
     img = np.zeros((res, res, 3), np.float32)
-    for m in model['meshes']:
+    ids = np.full((res, res), -1, np.int64) if visible is not None else None
+    for mi, m in enumerate(model['meshes']):
         P = m['attrs']['POSITION']
         t = m['idx'].reshape(-1, 3)
         sx = (P @ r - cx) / half * .5 * res + res / 2
@@ -317,24 +318,54 @@ def rasterize(model, az, el, window, res, color=False, light=None):
                 fuv = np.einsum('fk,fkj->fj', W, uv[g])
                 al = alpha_at(tex, fuv) if m['cls'] == 'leaf' else np.ones(len(g), bool)
                 X, Y = px[ti, ci][al], py[ti, ci][al]
-                if not color:
+                if not color and visible is None:
                     cov[Y, X] = True
                     continue
                 zf = np.einsum('fk,fk->f', W, tz[g])[al]
                 gi = g[al]
-                keep = np.argsort(zf)            # far (small z) first so the nearest is written last
+                keep = np.argsort(zf, kind='stable')  # far first; ties consistently retain the last card
                 X, Y, zf, gi = X[keep], Y[keep], zf[keep], gi[keep]
                 fu = fuv[al][keep]
                 ph = (-zf) < zb[Y, X]
                 X, Y, zf, gi, fu = X[ph], Y[ph], zf[ph], gi[ph], fu[ph]
+                if visible is not None:
+                    ids[Y, X] = (np.int64(mi) << 32) | (gi // 2) if m['cls'] == 'leaf' else -1
+                    zb[Y, X] = -zf
+                    continue
                 h, w = tex.shape[:2]
                 rgb = tex[(fu[:, 1] % 1 * h).astype(int).clip(0, h - 1), (fu[:, 0] % 1 * w).astype(int).clip(0, w - 1), :3] / 255.
                 img[Y, X] = rgb * shade[gi][:, None]
                 zb[Y, X] = -zf
+    if visible is not None:
+        winners = np.unique(ids[ids >= 0])
+        for mi, keep in enumerate(visible):
+            keep[(winners[winners >> 32 == mi] & 0xffffffff).astype(np.int64)] = True
     return img if color else cov
 
 
 VIEWS = [(k * 45., 10. if k % 2 == 0 else 45.) for k in range(8)] + [(0., 90.)]
+
+
+def prune_unseen_cards(model, res=256):
+    """Keep LOD2 cards visible in any cook view, without enlarging or moving survivors.
+
+    This is a sampled visibility approximation; the in-engine look comparison remains required.
+    The old area-weighted subset spends hundreds of thousands of cards inside the crown.
+    """
+    visible = [np.zeros(len(m['idx']) // 6, bool) if m['cls'] == 'leaf' else np.zeros(0, bool)
+               for m in model['meshes']]
+    c, h = window_of(model)
+    for az, el in VIEWS:
+        rasterize(model, az, el, view_window(c, h, az, el), res, visible=visible)
+    meshes = []
+    for m, keep in zip(model['meshes'], visible):
+        if m['cls'] == 'leaf':
+            if not keep.any():
+                keep[0] = True  # retain the authored shape node even if wholly occluded
+            attrs, idx = compact(m['attrs'], m['idx'].reshape(-1, 6)[keep].ravel())
+            m = dict(m, attrs=attrs, idx=idx)
+        meshes.append(m)
+    return dict(model, meshes=meshes)
 
 
 def window_of(model):
@@ -447,6 +478,10 @@ def cook(source, texdir, outdir, sheet=False, log=print):
         p = outdir / stem.format(LEVELS[L])
         write_level(m0, lvl[L], p)
         models[L] = load(p, texdir)
+        if L == 2:
+            pruned = prune_unseen_cards(models[L])
+            write_level(m0, pruned['meshes'], p)
+            models[L] = load(p, texdir)
     nodes0 = sum('mesh' in n for n in m0['doc']['nodes'])
     b0 = geometry_bytes(base)
     fails = []

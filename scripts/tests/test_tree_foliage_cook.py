@@ -80,3 +80,17 @@ def test_coverage_error_zero_for_identical_and_positive_for_thinned():
     attrs, idx, _ = c.leaf_level(m, cards, np.arange(40), n_keep=4)
     thin = dict(doc={}, meshes=[dict(m, attrs=attrs, idx=idx)], tex={0: TEX})
     assert c.coverage_error(model, thin, res=64, cache={})['mean'] > 0
+
+
+def test_visibility_pruning_removes_occluded_cards_without_rescaling():
+    m = _leaf_mesh(n=1)
+    cards = c.card_hulls(m, TEX)
+    attrs, idx, _ = c.leaf_level(m, cards, np.arange(1), n_keep=1)
+    # Three coincident cards in one shape: only a depth winner is needed.
+    repeated = {k: np.tile(v, (3, 1)) for k, v in attrs.items()}
+    mesh = dict(m, attrs=repeated, idx=np.concatenate([idx + 4 * k for k in range(3)]))
+    model = dict(doc={}, meshes=[mesh], tex={0: TEX})
+    pruned = c.prune_unseen_cards(model, res=64)
+    assert c.tris(pruned['meshes']) == 2
+    assert np.array_equal(pruned['meshes'][0]['attrs']['POSITION'], attrs['POSITION'])
+    assert c.coverage_error(model, pruned, res=64, cache={})['mean'] == 0

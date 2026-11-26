@@ -48,11 +48,11 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/tests/test_launcher_save_dir.py` | 76 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_nofocus_env.py` | 47 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_nofocus_env.py` | 78 | `nofocus.spawn` | offscreen |
-| `scripts/tests/test_shadow_bake_init.py` | 53 | `nofocus.run` | offscreen |
-| `scripts/tests/test_shadow_bake_init.py` | 165 | `nofocus.run` | offscreen |
-| `scripts/tests/test_shadow_bake_init.py` | 329 | `nofocus.run` | offscreen |
-| `scripts/tests/test_shadow_bake_init.py` | 377 | `nofocus.run` | offscreen |
-| `scripts/tests/test_shadow_bake_init.py` | 469 | `nofocus.run` | offscreen |
+| `scripts/tests/test_shadow_bake_init.py` | 67 | `nofocus.run` | offscreen |
+| `scripts/tests/test_shadow_bake_init.py` | 179 | `nofocus.run` | offscreen |
+| `scripts/tests/test_shadow_bake_init.py` | 343 | `nofocus.run` | offscreen |
+| `scripts/tests/test_shadow_bake_init.py` | 391 | `nofocus.run` | offscreen |
+| `scripts/tests/test_shadow_bake_init.py` | 483 | `nofocus.run` | offscreen |
 | `tests/smoke/object_visual_diff.py` | 123 | `nofocus.run` | offscreen |
 | `tests/smoke/scene_resize.py` | 37 | `nofocus.spawn` | offscreen |
 | `tools/campaign_save_roundtrip.py` | 192 | `nofocus.spawn` | offscreen |
