@@ -221,7 +221,7 @@ void main() {
             vPrevClip = uFrame.prevFromCurClip * (uFrame.worldToClipGL * vec4(prevWorldMC2, 1.0));
         }
     }
-    clip.z += uFrame.objectDepthBias * clip.w;   // mech.vert:187
+    clip.z += uFrame.objectDepthBias * clip.z;   // mech.vert:187
     gl_Position = clip;
 
     // Per-vertex lighting — mech.vert:204-235 (u_lightingMode=1, lightsOut branch).

@@ -1,6 +1,7 @@
 #include "doctest.h"
 #include "camera_frustum_math.h"
 #include "camera_elevation.h"
+#include "terrain_depth_bias.h"
 #include "../../GameOS/gameos/shadow_mover_fit.h"
 #include "../../RenderCore/VisibilityHistory.h"
 #include "math/mc2_xform.h"
@@ -134,5 +135,19 @@ TEST_CASE("camera sweep: light sphere and current actor survive an offscreen cen
         planes[1][0]=-std::cos(angle); planes[1][2]=std::sin(angle);
         const float actor[3]={1.05f,0,5};
         CHECK((history.isVisible(1) || camera_frustum_math::sphereInFrustum(planes,actor,0.05f)));
+    }
+}
+
+TEST_CASE("camera sweep: layer world push is proportional and ordered at every near plane") {
+    using namespace mc2depth;
+    for(float distance : {200.0f,1000.0f,3000.0f,6000.0f})
+    for(float near : {100.0f,250.0f,400.0f}) {
+        float previous=0;
+        for(float layer : {VEG_DEPTH_BIAS_REL,OVERLAY_DEPTH_BIAS_REL,OBJECT_DEPTH_BIAS_REL,WATER_DEPTH_FUDGE_FAST_REL}) {
+            const float push=worldPush(layer,distance,near);
+            CHECK(push>previous);
+            CHECK(push/distance==doctest::Approx(worldPush(layer,1000,400)/1000).epsilon(0.01));
+            previous=push;
+        }
     }
 }

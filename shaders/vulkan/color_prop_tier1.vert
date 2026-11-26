@@ -167,7 +167,7 @@ void main() {
     // POSITION: Stuff -> MC2 frame swizzle — identical to the GL VS.
     vec3 world_mc2 = mc2ToRender(world_stuff.xyz);
     vec4 clip = uFrame.worldToClipGL * vec4(world_mc2, 1.0);
-    clip.z += uFrame.objectDepthBias * clip.w;
+    clip.z += uFrame.objectDepthBias * clip.z;
     gl_Position = clip;
     vWorldPos = world_mc2;
     vSunDirStuff = vec3(0.0);
@@ -218,7 +218,7 @@ void main() {
         float phase = uFrame.sway.x * 1.3 + dot(world_mc2.xy, vec2(0.017,0.023));
         world_mc2.xy += vec2(1.0,0.6) * sin(phase) * height * height * min(canopy.y * 0.025,1.5);
         clip = uFrame.worldToClipGL * vec4(world_mc2,1.0);
-        clip.z += uFrame.objectDepthBias * clip.w;
+        clip.z += uFrame.objectDepthBias * clip.z;
         gl_Position = clip; vWorldPos = world_mc2;
     }
     vNormalStuff = localNormal * mat3(inst.modelMatrix);
