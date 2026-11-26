@@ -177,19 +177,22 @@ void MechBayScreen::update()
 	setDefsElementText( "game.mcl_mb_layout.text.weight_warning",
 		overLimit ? "OVER DROP LIMIT: REMOVE 'MECHS TO CONTINUE" : "" );
 	getButton( MB_MSG_NEXT )->disable( overLimit );
+	setDefsElementDisabled( "game.mcl_mb_layout.button.next_button", overLimit );
 
 	// Buy +5 t drop weight: boxes either side of the gauge (left BUY, right price + bought tons). Greyed when
 	// unaffordable, hidden in multiplayer.
+	mc2::fmt::to_buf( str, "BUY\n+{:d} T", mc2::fmt::as_i32( LogisticsData::instance->rules().dropWeightStep ) );
+	setDefsElementText( "game.mcl_mb_layout.button.buy_drop_weight_button", str );
 	const long price = LogisticsData::instance->getDropWeightPrice();
-	const int bought = LogisticsData::instance->getDropWeightPurchases() * 5;
+	const int bought = LogisticsData::instance->getDropWeightPurchases() * LogisticsData::instance->rules().dropWeightStep;
 	if ( bought > 0 )
 		mc2::fmt::to_buf( str, "{:d}\nC-BILLS\n+{:d} T", mc2::fmt::as_i32( price ), mc2::fmt::as_i32( bought ) );
 	else
 		mc2::fmt::to_buf( str, "{:d}\nC-BILLS", mc2::fmt::as_i32( price ) );
 	setDefsElementText( "game.mcl_mb_layout.button.drop_weight_price_box", str );
 	setDefsElementDisabled( "game.mcl_mb_layout.button.buy_drop_weight_button", LogisticsData::instance->getCBills() < price );
-	setDefsElementVisible( "game.mcl_mb_layout.button.buy_drop_weight_button", !MPlayer );
-	setDefsElementVisible( "game.mcl_mb_layout.button.drop_weight_price_box", !MPlayer );
+	setDefsElementVisible( "game.mcl_mb_layout.button.buy_drop_weight_button", !MPlayer && LogisticsData::instance->rules().dropWeightPurchase );
+	setDefsElementVisible( "game.mcl_mb_layout.button.drop_weight_price_box", !MPlayer && LogisticsData::instance->rules().dropWeightPurchase );
 
 
 	// update drag and drop

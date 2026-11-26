@@ -68,7 +68,7 @@ int	LogisticsData::getPilots( LogisticsPilot** pArray, long& count )
 
 int LogisticsData::getMaxDropWeight() const
 {
-	return  missionInfo->getCurrentDropWeight() + dropweight::kTonsPerPurchase * missionInfo->getDropWeightPurchases();
+	return  missionInfo->getCurrentDropWeight() + rules().dropWeightStep * missionInfo->getDropWeightPurchases();
 }
 
 bool LogisticsData::isOverDropLimit() const
@@ -89,7 +89,7 @@ long LogisticsData::getDropWeightPrice() const
 bool LogisticsData::buyDropWeight()
 {
 	const long price = getDropWeightPrice();
-	if ( missionInfo->getCBills() < price )
+	if ( !rules().dropWeightPurchase || missionInfo->getCBills() < price )
 		return false;
 	missionInfo->decrementCBills( static_cast<int>( price ) );
 	missionInfo->addDropWeightPurchase();

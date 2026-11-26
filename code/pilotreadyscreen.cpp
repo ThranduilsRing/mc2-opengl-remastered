@@ -542,6 +542,7 @@ void PilotReadyScreen::update()
 		const bool overLimit = LogisticsData::instance->isOverDropLimit();
 		if ( overLimit )
 			buttons[1].disable( 1 );
+		setDefsElementDisabled( "game.mcl_pr_layout.button.launch_button", overLimit );
 		setDefsElementText( "game.mcl_pr_layout.text.weight_warning",
 			overLimit ? "OVER DROP LIMIT: GO BACK AND REMOVE 'MECHS" : "" );
 
