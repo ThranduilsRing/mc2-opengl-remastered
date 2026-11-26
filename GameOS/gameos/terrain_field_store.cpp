@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <mdspan>
 
 #include "mc2fmt.h"
 #include "utils/mc2log.h"
@@ -28,28 +29,24 @@ uint64_t nextVersion() {
 // kMin takes the window minimum, otherwise its mean. src and dst may be the same field.
 template <bool kMin>
 void windowFilter(const float* src, float* tmp, float* dst, int side, int radius) {
-    for (int a = 0; a < side; ++a) {
-        for (int b = 0; b < side; ++b) {
-            const int lo = (std::max)(b - radius, 0), hi = (std::min)(b + radius, side - 1);
-            float acc = kMin ? src[a * side + lo] : 0.0f;
-            for (int k = lo; k <= hi; ++k) {
-                const float v = src[a * side + k];
-                acc = kMin ? (std::min)(acc, v) : acc + v;
-            }
-            tmp[a * side + b] = kMin ? acc : acc / static_cast<float>(hi - lo + 1);
+    const std::mdspan<const float, std::dextents<size_t, 2>> in(src, side, side);
+    const std::mdspan<float, std::dextents<size_t, 2>> mid(tmp, side, side), out(dst, side, side);
+    // One output: the window runs along the second argument of `at` (columns of the field, rows of the field).
+    const auto along = [side, radius](const auto& at, int a, int b) {
+        const int lo = (std::max)(b - radius, 0), hi = (std::min)(b + radius, side - 1);
+        float acc = kMin ? at(a, lo) : 0.0f;
+        for (int k = lo; k <= hi; ++k) {
+            const float v = at(a, k);
+            acc = kMin ? (std::min)(acc, v) : acc + v;
         }
-    }
-    for (int a = 0; a < side; ++a) {
-        for (int b = 0; b < side; ++b) {
-            const int lo = (std::max)(b - radius, 0), hi = (std::min)(b + radius, side - 1);
-            float acc = kMin ? tmp[lo * side + a] : 0.0f;
-            for (int k = lo; k <= hi; ++k) {
-                const float v = tmp[k * side + a];
-                acc = kMin ? (std::min)(acc, v) : acc + v;
-            }
-            dst[b * side + a] = kMin ? acc : acc / static_cast<float>(hi - lo + 1);
-        }
-    }
+        return kMin ? acc : acc / static_cast<float>(hi - lo + 1);
+    };
+    for (int a = 0; a < side; ++a)
+        for (int b = 0; b < side; ++b)
+            mid[a, b] = along([&](int r, int c) { return in[r, c]; }, a, b);
+    for (int a = 0; a < side; ++a)
+        for (int b = 0; b < side; ++b)
+            out[b, a] = along([&](int r, int c) { return mid[c, r]; }, a, b);
 }
 
 }  // namespace
