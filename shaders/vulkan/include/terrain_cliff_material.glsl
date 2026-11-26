@@ -181,7 +181,7 @@ void crApply(vec3 macroN, vec3 wpDx, vec3 wpDy, vec3 planeLod, float blocked, in
         float o = 160.0 * uT.atlasOneOverWorldUnits;
         tone = 0.25 * (textureLod(u_colormap, c + vec2(o, o), 0.0).rgb + textureLod(u_colormap, c + vec2(-o, o), 0.0).rgb
                      + textureLod(u_colormap, c + vec2(o, -o), 0.0).rgb + textureLod(u_colormap, c + vec2(-o, -o), 0.0).rgb);
-        tone *= cliffDelightGain(dot(tone, vec3(0.299, 0.587, 0.114)), cliffReferenceLumaOnce());
+        tone *= cliffDelightGain(dot(tone, vec3(0.299, 0.587, 0.114)), mv_cliffRefLuma);
     }
     float tl = dot(tone, vec3(0.299, 0.587, 0.114));
     tone = mix(mix(vec3(tl), tone, 0.6), vec3(uT.tintRockR, uT.tintRockG, uT.tintRockB) * (tl / max(dot(vec3(uT.tintRockR, uT.tintRockG, uT.tintRockB), vec3(0.299, 0.587, 0.114)), 0.05)), 0.3) * 0.85;

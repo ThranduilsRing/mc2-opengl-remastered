@@ -182,14 +182,6 @@ float cliffReferenceLuma(vec2 worldXY) {
 }
 
 float mv_cliffRefLuma = 0.0;
-bool mv_cliffRefLumaDone = false;
-float cliffReferenceLumaOnce() {
-    if (!mv_cliffRefLumaDone) {
-        mv_cliffRefLuma = cliffReferenceLuma(v_worldPos.xy);
-        mv_cliffRefLumaDone = true;
-    }
-    return mv_cliffRefLuma;
-}
 
 #include "include/terrain_cliff_material.glsl"   // MATV_CLIFF_*, mv_cliffMaterial, crApply
 
@@ -403,8 +395,12 @@ void main() {
     vec3 baseNormal = mv_smoothTerrainNormal(v_worldPos.xy);
     vec3 prelitBase = base;
     float delitShare = (1.0 - pureConcrete) * (1.0 - smoothstep(0.55, 0.85, abs(baseNormal.z)));
+    if (!TS_authoredMaterialsOnly && TS_colormapReady != 0 &&
+        (delitShare > 0.0 || (TS_lightingEnabled != 0 && TS_detailEnabled != 0 && pureConcrete < 1.0 &&
+                             (TS_concreteDetail & 2) != 0 && cliffRockWeight(abs(baseNormal.z)) > 0.01)))
+        mv_cliffRefLuma = cliffReferenceLuma(v_worldPos.xy);
     if (!TS_authoredMaterialsOnly && delitShare > 0.0 && TS_colormapReady != 0) {
-        float gain = cliffDelightGain(dot(base, vec3(0.299, 0.587, 0.114)), cliffReferenceLumaOnce());
+        float gain = cliffDelightGain(dot(base, vec3(0.299, 0.587, 0.114)), mv_cliffRefLuma);
         base *= mix(1.0, gain, delitShare);
     }
     vec3 baseColor = base;
@@ -555,7 +551,7 @@ void main() {
         // Static ground mask and current-frame movers share the same visibility
         // floor. Cement receives both, exactly like the surrounding terrain.
         vec3 shadowN=baseNormal;
-        float staticS=TS_enableShadows!=0?(mv_roadStaticShadow>=0.0?mv_roadStaticShadow:terrainStaticShadow(v_worldPos)):1.0;
+        float staticS=TS_enableShadows!=0?(roadCoverage>0.0 && mv_roadStaticShadow>=0.0?mv_roadStaticShadow:terrainStaticShadow(v_worldPos)):1.0;
 #ifdef MC2_RT_SUN_SHADOWS
         if (TS_enableShadows!=0 && v_worldPos.z>=uT.shorelineWaterElev && distance(v_worldPos,mc2ToRender(uT.cameraPosMC2.xyz))<1536.0)
             staticS=min(staticS,mix(sunShadowFloor(0.4),1.0,rtPropSunVisibility(v_worldPos,shadowN,moverFrame.sun.xyz)));
