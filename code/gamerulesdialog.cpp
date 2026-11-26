@@ -74,6 +74,10 @@ std::string modId(std::size_t i) { return i < 5 ? builtins[i].id : addons()[i - 
 std::string modName(std::size_t i) {
 	if (i < 5) return builtins[i].name;
 	const auto& a = addons()[i - 5];
+	if (a.id == "core_unlocks") return "RARE WEAPONS";
+	if (a.id == "sample_equipment") return "HOT MEDIUM LASER";
+	if (a.id == "sample_new_variant") return "ATLAS SAMPLER";
+	if (a.id == "sample_variant") return "ATLAS LASERBOAT";
 	if (a.id == "magic-ballistic-weapons") return "BALLISTICS";
 	if (a.id == "magic-gamesys-tweaks") return "SYSTEM TUNING";
 	return a.name.substr(0, a.name.find(" ("));
@@ -81,6 +85,10 @@ std::string modName(std::size_t i) {
 std::string modDescription(std::size_t i) {
 	if (i < 5) return builtins[i].description;
 	const auto& a = addons()[i - 5];
+	if (a.id == "core_unlocks") return "Buy Clan Gauss Rifles and ER PPCs.";
+	if (a.id == "sample_equipment") return "Adds a harder-hitting medium laser.";
+	if (a.id == "sample_new_variant") return "Adds an Atlas with ER PPC and large laser.";
+	if (a.id == "sample_variant") return "Adds an Atlas loaded with energy weapons.";
 	if (a.id == "magic-ballistic-weapons") return "Rebalanced ballistics and new weapons.";
 	if (a.id == "magic-gamesys-tweaks") return "Retuned ranges, sensors and pilot skills.";
 	return "Adds gameplay content for this campaign.";
