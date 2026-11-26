@@ -12,7 +12,7 @@
 #extension GL_GOOGLE_include_directive : require
 #define TERRAIN_RESOURCE_SET 3
 #include "include/terrain_frame_vk.glsl"
-#define MC2_FOG_GPU
+#define MC2_FOG_GPU 1
 #define MC2_FOG_SET 0
 #define MC2_FOG_BINDING 27
 #include "../include/fog_policy.hglsl"

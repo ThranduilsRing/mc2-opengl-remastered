@@ -17,7 +17,7 @@
 // island uploads the depth image so texel (u,v) maps the same way as the GL sample.
 #version 450
 #extension GL_GOOGLE_include_directive : require
-#define MC2_FOG_GPU
+#define MC2_FOG_GPU 1
 #define MC2_FOG_SET 0
 #define MC2_FOG_BINDING 1
 #include "../include/fog_policy.hglsl"

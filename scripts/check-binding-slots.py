@@ -119,7 +119,7 @@ def macro_states(lines):
             if op in ('if', 'ifdef', 'ifndef'):
                 # Unknown feature conditions retain both branches for the census.
                 known = (arg not in defs if op == 'ifndef' else True if op == 'ifdef' and arg in defs
-                         else bool(int(arg)) if op == 'if' and arg in ('0', '1') else None)
+                         else bool(int(defs.get(arg, arg))) if op == 'if' and defs.get(arg, arg) in ('0', '1') else None)
                 stack.append([dict(defs), [], active, known, False])
                 active = active and known is not False
             elif op in ('else', 'elif') and stack:

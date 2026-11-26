@@ -72,7 +72,10 @@ MC2_FOG_INLINE float mc2FogRangeViewFactor(float rayVerticalSin) {
 #endif
 
 // GPU fog has one evaluator, used before opaque/effect composition.
-#ifdef MC2_FOG_GPU
+#ifndef MC2_FOG_GPU
+#define MC2_FOG_GPU 0
+#endif
+#if MC2_FOG_GPU
 layout(set = MC2_FOG_SET, binding = MC2_FOG_BINDING, std140) uniform EdgeFogParams {
     mat4  invViewProj;
     vec3  u_fogColor;
