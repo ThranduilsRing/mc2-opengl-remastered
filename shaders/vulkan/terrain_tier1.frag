@@ -277,7 +277,9 @@ void main() {
             // Word bit23 => the atlas cell carries its own coverage in alpha; composite OVER base.
             bool cementOwnAlpha = (cw & 0x00800000u) != 0u;
             if (isTransition && cementOwnAlpha) {
-                float cOwnA = concreteCoverage(cTileUV, float(cLayerIdx), cGx, cGy);
+                vec4 edge = concreteSample(cTileUV, float(cLayerIdx), cGx, cGy);
+                float cOwnA = edge.a;
+                cementColor = mix(edge.rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB), cementColor, step(0.999, cementTexel.a));
                 base = mix(base, cementColor, cOwnA);
                 pureConcrete = cOwnA;
                 cementHit = cOwnA > 0.5;
