@@ -1163,7 +1163,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 152,
+        "line": 158,
         "role": "uTreeObjectMap",
         "std": null,
         "type": "sampler2DShadow",

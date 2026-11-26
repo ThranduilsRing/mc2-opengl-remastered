@@ -36,9 +36,9 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/tests/test_abl_static_alloc.py` | 88 | `nofocus.run` | offscreen |
 | `scripts/tests/test_gpu_routing.py` | 60 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_harness_desktop_safety.py` | 173 | `nofocus.spawn` | offscreen |
-| `scripts/tests/test_harness_desktop_safety.py` | 450 | `nofocus.spawn` | offscreen |
-| `scripts/tests/test_harness_desktop_safety.py` | 454 | `nofocus.spawn` | offscreen |
-| `scripts/tests/test_harness_desktop_safety.py` | 507 | `nofocus.run` | offscreen |
+| `scripts/tests/test_harness_desktop_safety.py` | 451 | `nofocus.spawn` | offscreen |
+| `scripts/tests/test_harness_desktop_safety.py` | 455 | `nofocus.spawn` | offscreen |
+| `scripts/tests/test_harness_desktop_safety.py` | 508 | `nofocus.run` | offscreen |
 | `scripts/tests/test_host_lease.py` | 98 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_launcher_save_dir.py` | 35 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_launcher_save_dir.py` | 41 | `nofocus.spawn` | offscreen |
