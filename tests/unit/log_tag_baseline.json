@@ -6770,7 +6770,12 @@
     "casters_total",
     "movers_in_view",
     "texel_wu",
-    "sharp"
+    "sharp",
+    "extent_wu",
+    "caster",
+    "radius_wu",
+    "eye_distance_wu",
+    "view_yaw_deg"
    ],
    "count": 1
   },
