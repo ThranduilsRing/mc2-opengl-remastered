@@ -1,6 +1,7 @@
 #include "save_archive.h"
 #include "save_sections.h"
 #include "save_brain_section.h"
+#include "brain_execution_policy.h"
 #include "save_fix_section.h"
 #include <optional>
 #include <cstdlib>
@@ -658,6 +659,9 @@ void Mission::loadLogistics(MissionLoadFrame& f) {
 	}
 	LogisticsData::instance->setResourcePoints(rps);
 	LogisticsData::instance->publishRules(); // first point the saved rules are read: they replace the old mission's snapshot (current() is stale until here)
+	FullPathFileName savedMissionFit;
+	savedMissionFit.init(missionPath, missionFileName, ".fit");
+	mc2::brainpolicy::decide(static_cast<const char*>(savedMissionFit), missionPath, missionFileName);
 
 	logisticsFile.close();
 

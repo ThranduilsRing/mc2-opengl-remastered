@@ -1011,6 +1011,22 @@ target_sources(mc2_tests PRIVATE
     ${MC2_WORKTREE_ROOT}/code/logisticsmissioninfo_query.cpp
 )
 
+mc2_height_slice(review_save code/saveload_load.cpp
+    "\tLogisticsData::instance->publishRules(); // first point" "\tlogisticsFile.close();")
+mc2_height_slice(review_launch code/mission_init.cpp
+    "\tif (loadType == MISSION_LOAD_SP_QUICKSTART" "\tf.missionFileView =")
+mc2_height_slice(review_beacon GameOS/gameos/gos_terrain_lighting.cpp
+    "void gos_terrain_lighting::QueueBeaconLight" "// Step 7")
+mc2_height_slice(review_decide code/brain_execution_policy.cpp
+    "void decide(" "}  // namespace mc2::brainpolicy")
+mc2_height_slice(review_campaign code/logisticsdata.h
+    "\tbool                hasCampaignRules()" "\tvoid\t\t\t\tsetRules(")
+foreach(part save launch beacon decide campaign)
+    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/review_${part}.inc" CONTENT "${review_${part}}")
+endforeach()
+target_sources(mc2_tests PRIVATE test_review_rules.cpp)
+set_source_files_properties(test_review_rules.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
+
 # Keep all production objects in the full tier; scoped links extract only needed
 # objects from the same archive. Stubs (including allocation overrides) are
 # object-linked so the CRT cannot silently replace the allocation probe.

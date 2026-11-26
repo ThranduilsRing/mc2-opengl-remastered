@@ -40,6 +40,7 @@ std::vector<gos_terrain_lighting::GpuTerrainLight> s_beaconLights;
 }
 
 void gos_terrain_lighting::QueueBeaconLight(const GpuTerrainLight& light) {
+    if (!IsEnabled()) return;
     s_beaconLights.push_back(light);
 }
 

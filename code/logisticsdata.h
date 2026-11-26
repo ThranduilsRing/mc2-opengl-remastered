@@ -114,6 +114,7 @@ public:
 	// Game rules of the running campaign / skirmish (code/game_rules.h). Editable between missions; the next mission start publishes the
 	// snapshot mc2::rules::current(). There is no campaign dirty flag: the next save carries the new rules.
 	const mc2::rules::GameRules& rules() const;
+	bool                hasCampaignRules() const { return missionInfo != nullptr; }
 	void				setRules( const mc2::rules::GameRules& r );
 	// Publishes rules() (defaults in multiplayer) as mc2::rules::current(); called at mission start and after an in-mission save is restored.
 	void				publishRules() const;
