@@ -10,6 +10,7 @@
 #pragma once
 
 #include <charconv>
+#include "../mclib/campaign_mods.h"
 #include <cstddef>
 #include <optional>
 #include <string>
@@ -29,6 +30,7 @@ inline constexpr long kCalledOff = 0, kCalledFloors = 1, kCalledClassic = 2;
 inline constexpr long kSalvageGenerous = 0, kSalvageMC2 = 1, kSalvageScarce = 2;
 
 struct GameRules {
+    std::string mods;          // campaign add-on folder IDs and @ gameplay choices, comma-separated
     bool purchaseVehicles     = false;
     long ai                   = 0;             // 0 = Stock, 1 = Smarter (TechBrain)
     long dropLimitMode        = kDropTonnage;   // what caps a drop: tonnage (today), battle value, or nothing (tonnage still shown as info)
@@ -206,6 +208,7 @@ inline std::vector<CfgEntry> cfgEntries(const GameRules& g) {
         if (r.kind == Kind::Bool) out.push_back({key, g.*(r.b) ? "TRUE" : "FALSE", 'b'});
         else out.push_back({key, std::to_string(g.*(r.l)), 'l'});
     }
+    out.push_back({"GameRulesMods", "\"" + (g.mods.empty() ? std::string("-") : g.mods) + "\"", 's'});
     return out;
 }
 
@@ -223,6 +226,13 @@ inline void loadCfgText(GameRules& g, std::string_view text) {
         const std::size_t sp = name.find_last_of(" \t");   // drop the type letter ("l ", "b ")
         if (sp != std::string_view::npos) name = name.substr(sp + 1);
         if (name.size() <= prefix.size() || !detail::equalsNoCase(name.substr(0, prefix.size()), prefix)) continue;
+        if (detail::equalsNoCase(name, "GameRulesMods")) {
+            auto value = detail::trim(line.substr(eq + 1));
+            if (value.size() >= 2 && value.front() == '"' && value.back() == '"') value = value.substr(1, value.size() - 2);
+            g.mods.clear();
+            for (const auto& id : mc2::mods::split(value)) { if (!g.mods.empty()) g.mods += ','; g.mods += id; }
+            continue;
+        }
         const auto idx = find(name.substr(prefix.size()));
         if (!idx || seen[*idx]) continue;
         seen[*idx] = true;
@@ -240,6 +250,7 @@ template <class File>
 void writeFit(File& file, const GameRules& g) {
     if (g == GameRules{}) return;
     file.writeBlock(kFitBlock);
+    if (!g.mods.empty()) file.writeIdString("Mods", g.mods.c_str());
     for (const Rule& r : kRules) {
         if (r.kind == Kind::Bool) file.writeIdBoolean(r.key, g.*(r.b));
         else file.writeIdLong(r.key, g.*(r.l));
@@ -251,6 +262,10 @@ template <class File>
 GameRules readFit(File& file) {
     GameRules g;
     if (file.seekBlock(kFitBlock) != 0) return g;
+    char mods[4096] = {};
+    if (file.readIdString("Mods", mods, sizeof(mods) - 1) == 0) {
+        for (const auto& id : mc2::mods::split(mods)) { if (!g.mods.empty()) g.mods += ','; g.mods += id; }
+    }
     for (const Rule& r : kRules) {
         if (r.kind == Kind::Bool) {
             bool v = g.*(r.b);
@@ -268,7 +283,9 @@ GameRules readFit(File& file) {
 // load is running), mirroring mc2::options::current(). Publish only while no sim tick runs. A tool that never publishes sees the defaults.
 inline GameRules g_current{};
 inline const GameRules& current() { return g_current; }
-inline void publish(const GameRules& g) { g_current = g; }
+inline bool g_published = false;
+inline void publish(const GameRules& g) { g_current = g; g_published = true; }
+inline bool campaignToggle(std::string_view id, bool launcher) { return g_published ? mc2::mods::selected(g_current.mods, id) : launcher; }
 
 // What a mission start publishes: the campaign / skirmish rules for a solo game, the defaults for any networked one (legacy MPlayer or the
 // lockstep mc2::net session): the wire carries no rules, so every peer must simulate the same ones.

@@ -1,4 +1,4 @@
-﻿#define LOGISTICSDATA_CPP
+#define LOGISTICSDATA_CPP
 /*************************************************************************************************\
 LogisticsData.cpp			: Implementation of the LogisticsData component.
 //---------------------------------------------------------------------------//
@@ -122,6 +122,7 @@ bool				LogisticsData::startNewCampaign( mc2::czstring fileName )
 		}
 	}
 
+	mc2::rules::publish( prefs.gameRules );
 	ensureMechBayDataLoaded("campaign-start");
 #ifndef VIEWER
 	if ( MPlayer )

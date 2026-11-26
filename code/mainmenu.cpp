@@ -352,9 +352,10 @@ bool MainMenu::beginCampaignRules( std::string_view campaignFile )
 	if ( MPlayer || mc2::net::active() || !GameRulesDialog::init() )
 		return false;
 	rulesCampaign = campaignFile;
+	introOver = true; // a relaunched campaign may open Rules before the splash animation finishes
 	bLoadCampaign = false;
 	bRulesDlg = true;
-	GameRulesDialog::instance()->begin( prefs.gameRules );
+	GameRulesDialog::instance()->begin( prefs.gameRules, true );
 	return true;
 }
 
@@ -743,6 +744,8 @@ void MainMenu::update()
 		return;
 	}
 
+	if ( !introMovie && !bRulesDlg && (intro.allAnimObjectsDone() || introOver) && mc2::gate::str<"MC2_BOOT_TO_SCREEN">() == "game_rules" )
+		beginCampaignRules("campaign");
 	if ( bRulesDlg )
 	{
 		GameRulesDialog* dlg = GameRulesDialog::instance();
@@ -765,6 +768,7 @@ void MainMenu::update()
 				const mc2::rules::GameRules chosen = dlg->rules();
 				prefs.gameRules = chosen;	// remembered as the next new campaign's starting point
 				(void)prefs.save();
+				if ( !PlayerFrontEnd::prepareCampaignRules( chosen, rulesCampaign ) ) return;
 				if ( LogisticsData::instance->startNewCampaign( rulesCampaign.c_str() ) )
 				{
 					LogisticsData::instance->setRules( chosen );
@@ -1184,7 +1188,7 @@ void MainMenu::render()
 	}
 	else
 		LogisticsSaveDialog::instance()->render();
-	if ( !xDelta && !yDelta && !bSave && !bLoad && !bLoadSingle && !bLoadCampaign && !bLegal )
+	if ( !xDelta && !yDelta && !bRulesDlg && !bSave && !bLoad && !bLoadSingle && !bLoadCampaign && !bLegal )
 	{
 		static bool markedReady = false;
 		if ( !markedReady )
@@ -1216,6 +1220,7 @@ void MainMenu::render()
 	if ( bRulesDlg )
 	{
 		GameRulesDialog::instance()->render();
+		mc2::screen_settle::tickFrontEnd(-5, -5);
 	}
 	if ( bHostLeftDlg )
 	{

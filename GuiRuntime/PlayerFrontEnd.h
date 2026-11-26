@@ -1,5 +1,6 @@
 #pragma once
 #include "Gates/render_options.h"
+#include "../code/game_rules.h"
 #include <string>
 #include <string_view>
 #include <vector>
@@ -8,6 +9,7 @@ namespace PlayerFrontEnd {
 // The game owns CPrefs; the shared UI also links into tools without CPrefs.
 extern bool (*saveRenderOptions)(const mc2::options::RenderOptions&);
 void loadSettings();
+bool prepareCampaignRules(const mc2::rules::GameRules& rules, std::string_view fit);
 void drawMainMenu(bool showCredits);
 void drawOptions();
 void requestCampaignStart(std::string fit);

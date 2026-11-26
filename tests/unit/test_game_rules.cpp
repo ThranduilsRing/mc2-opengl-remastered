@@ -1,3 +1,4 @@
+#include "../../mclib/campaign_mod_catalogue.h"
 // Trigger: code/game_rules.h, the [GameRules] campaign save block (LogisticsMissionInfo::save/load) and the options.cfg GameRules keys.
 // rules-core: nothing reads the rules for gameplay yet, so these pin the defaults, the descriptor table, validation, persistence and the
 // "an old save without the block plays under today's rules" boundary.
@@ -181,7 +182,7 @@ TEST_CASE("game rules: options.cfg keys round trip garbage and out-of-range valu
     bool sawKey = false;
     for (const auto& v : snapshot) sawKey |= v.key == "GameRulesHeat" && v.text == "2" && v.type == 'l';
     CHECK(sawKey);
-    CHECK(snapshot.size() == base + kRuleCount);
+    CHECK(snapshot.size() == base + kRuleCount + 1);
     const std::string text = rewritePreferences("", {}, snapshot);
     GameRules reloaded;
     loadCfgText(reloaded, text);
@@ -387,4 +388,59 @@ TEST_CASE("game rules: AI persists in options and campaign saves") {
     loadCfgText(back, "l GameRulesAI = 2\n");
     CHECK(back.ai == 1);
     std::remove(path.c_str());
+}
+
+TEST_CASE("game rules: campaign mods persist and override launcher choices") {
+    GameRules chosen;
+    chosen.mods = "magic-gamesys-tweaks,@purchase-all";
+    std::string cfg;
+    for (const auto& e : cfgEntries(chosen)) cfg += e.key + "=" + e.text + "\n";
+    GameRules back;
+    loadCfgText(back, cfg);
+    CHECK(back == chosen);
+    LogisticsMissionInfo info;
+    info.setRules(chosen);
+    const auto path = saveToFile(info, "game_rules_mods");
+    FitIniFile in;
+    REQUIRE(in.open(path.c_str()) == NO_ERR);
+    CHECK(readFit(in) == chosen);
+    in.close();
+    std::remove(path.c_str());
+    publish(chosen);
+    CHECK(campaignToggle("@purchase-all", false));
+    CHECK_FALSE(campaignToggle("@infinite-money", true));
+    publish(GameRules{});
+    CHECK_FALSE(campaignToggle("@purchase-all", true));
+    CHECK(rulesToPublish(true, chosen).mods.empty());
+}
+
+TEST_CASE("game rules: campaign mod conflicts and campaign-only ladder selection") {
+    namespace fs = std::filesystem;
+    const fs::path root = "game_rules_mod_fixture";
+    fs::create_directories(root / "first/data/objects");
+    fs::create_directories(root / "second/data/objects");
+    fs::create_directories(root / "visual/data/effects");
+    fs::create_directories(root / "campaign/data/missions");
+    for (const auto& id : {"first", "second", "visual", "campaign"}) {
+        std::ofstream manifest(root / id / "mod.json");
+        manifest << "{\"id\":\"" << id << "\",\"type\":\"" << (std::string(id) == "campaign" ? "campaign" : "assets")
+                 << "\",\"description\":\"Test description\"}";
+    }
+    std::ofstream(root / "first/data/objects/CompBas.csv") << "first";
+    std::ofstream(root / "second/data/objects/compbas.csv") << "second";
+    std::ofstream(root / "visual/data/effects/Fireball.json") << "visual";
+    const auto addons = mc2::mods::catalogue(root);
+    REQUIRE(addons.size() == 2);
+    CHECK(addons[0].description == "Test description");
+    CHECK(mc2::mods::conflict(addons[1], addons, "first").find("data/objects/compbas.csv") != std::string::npos);
+    CHECK(mc2::mods::conflict(addons[1], addons, "").empty());
+    CHECK(mc2::mods::dependencies("first,visual", "second,@purchase-all", addons) == "second,visual");
+    CHECK(mc2::mods::dependencies("first,visual", "", addons) == "visual");
+    CHECK(mc2::mods::split("../escape,first").size() == 1);
+    std::string selection;
+    mc2::mods::toggle(selection, "first");
+    CHECK(mc2::mods::selected(selection, "first"));
+    mc2::mods::toggle(selection, "first");
+    CHECK(selection.empty());
+    fs::remove_all(root);
 }

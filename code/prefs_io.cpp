@@ -1,11 +1,24 @@
+#include "../mclib/campaign_mod_catalogue.h"
 // Copyright (C) Microsoft Corporation. All rights reserved.
 #include "mc2_czstring.h"
 #include "platform_io.h"
 #include "platform_str.h"
 #include "prefs.h"
+#include "Gates/gate.h"
 #include "net/user_paths.h"
 #include "Gates/preferences_cfg.h"
 #include "Gates/render_options_publish.h"
+static std::string launcherModDefaults() {
+    std::string ids;
+    static const auto addons = mc2::mods::catalogue("mods");
+    for (const auto& addon : addons)
+        if (mc2::mods::selected(mc2::gate::str<"MC2_MOD_DEPS">(), addon.id) && mc2::mods::conflict(addon, addons, ids).empty()) mc2::mods::toggle(ids, addon.id);
+    for (const auto& [id, on] : {std::pair{"@faster-weapons", mc2::gate::get<"MC2_DIRECT_FIRE_STRAIGHT">()},
+         {"@infinite-money", mc2::gate::get<"MC2_CHEAT_INFINITE_MONEY">()}, {"@salvage-all", mc2::gate::get<"MC2_CHEAT_SALVAGE_ALL">()},
+         {"@purchase-all", mc2::gate::get<"MC2_PURCHASE_ALL">()}, {"@jumpjets-all", mc2::gate::get<"MC2_JUMPJETS_ALL">()}})
+        if (on) mc2::mods::toggle(ids, id);
+    return ids;
+}
 extern int loadPreferenceHotKeys(FitIniFile&);
 extern int savePreferenceHotKeys(std::string&);
 extern unsigned long long preferenceHotKeysFingerprint();
@@ -17,7 +30,7 @@ std::vector<mc2::options::PreferenceValue> CPrefs::snapshotValues() const {
     const auto defaults = mc2::rules::cfgEntries(mc2::rules::GameRules{});
     const auto current = mc2::rules::cfgEntries(gameRules);
     for (std::size_t i = 0; i < current.size(); ++i) {
-        if (current[i].text == defaults[i].text && !mc2::options::cfg::get(sourceText_, current[i].key).has_value()) continue;
+        if ((current[i].key != "GameRulesMods" || launcherModDefaults().empty()) && current[i].text == defaults[i].text && !mc2::options::cfg::get(sourceText_, current[i].key).has_value()) continue;
         out.push_back({current[i].key, current[i].text, current[i].type});
     }
     return out;
@@ -46,6 +59,7 @@ int CPrefs::load(mc2::czstring name) {
     mc2::options::cfg::loadFromText(render, sourceText_, &rejects);
     for (const auto& reject : rejects)
         mc2::options::logRejectedOption(reject.key, reject.text, reject.why, mc2::options::find(reject.key));
+    if (!mc2::options::cfg::get(sourceText_, "GameRulesMods") || mc2::gate::isSet<"MC2_LAUNCHED">()) gameRules.mods = launcherModDefaults();
     loadedValues_ = snapshotValues();
     // Startup reads these before SoundSystem exists; loading the defaults-screen draft must not publish it.
     if (this == &prefs) mc2::options::runtimePreferences() = static_cast<const mc2::options::Preferences&>(*this);

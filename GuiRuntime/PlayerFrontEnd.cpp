@@ -1,3 +1,4 @@
+#include "../mclib/campaign_mod_catalogue.h"
 #include "PlayerFrontEnd.h"
 #include "GuiRuntime_internal.h"
 #include "PlayerOptionRows.h"
@@ -470,6 +471,13 @@ bool relaunchForCampaign(std::string_view key) {
     campaignFit = fit;
     autoBase();
     return commitRelaunch(mod, base, texture, dependencies(), "start_campaign", fit);
+}
+
+bool prepareCampaignRules(const mc2::rules::GameRules& rules, std::string_view fit) {
+    const auto deps = mc2::mods::dependencies(activeModDeps(), rules.mods, mc2::mods::catalogue("mods"));
+    if (deps == activeModDeps()) return true;
+    commitRelaunch(activeModId(), {}, {}, deps, "start_campaign", fit);
+    return false; // also refuse starting with stale layers when saving/relaunching failed
 }
 
 bool relaunchForSave(bool recorded, std::string_view savedMod, std::string_view savedDeps, std::string_view saveFile) {

@@ -1,3 +1,4 @@
+#include "Gates/gate_cold.h"
 #include "doctest.h"
 #include "inifile.h"
 #include "gamelog.h"
@@ -247,6 +248,13 @@ TEST_CASE("Preferences/fresh options.cfg writes no GameRules key until one diffe
     REQUIRE(fresh.save().has_value());
     CPrefs reloaded; REQUIRE(reloaded.load() == 0);
     CHECK(reloaded.gameRules.heat == mc2::rules::kHeatMC2);
+    fresh.gameRules.mods = "@purchase-all";
+    REQUIRE(fresh.save().has_value());
+    mc2::gate::ScopedOverride<"MC2_LAUNCHED"> launcher("1");
+    mc2::gate::ScopedOverride<"MC2_CHEAT_INFINITE_MONEY"> money("1");
+    CPrefs preselected; REQUIRE(preselected.load() == 0);
+    CHECK(mc2::mods::selected(preselected.gameRules.mods, "@infinite-money"));
+    CHECK_FALSE(mc2::mods::selected(preselected.gameRules.mods, "@purchase-all"));
 }
 
 TEST_CASE("Preferences/explicit empty indexed names override the legacy fallback") {

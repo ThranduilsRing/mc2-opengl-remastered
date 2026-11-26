@@ -1,3 +1,4 @@
+#include "game_rules.h"
 // LogisticsVariant: the variant stat getters, component placement checks and lookups, save, and the LogisticsVehicle setup.
 // Declared in the class headers; shared names in logisticsvariant_internal.h.
 #include "logisticsvariant_internal.h"
@@ -142,7 +143,7 @@ int		LogisticsVariant::getMaxHeat() const
 // its drop target, and the add-component validation all agree.
 bool LogisticsChassis::jumpJetsAllowed() const
 {
-	static const bool s_jumpjetsAll = mc2::gate::get<"MC2_JUMPJETS_ALL">();
+	const bool s_jumpjetsAll = mc2::rules::campaignToggle("@jumpjets-all", mc2::gate::get<"MC2_JUMPJETS_ALL">());
 	return canHaveJumpJets || s_jumpjetsAll;
 }
 

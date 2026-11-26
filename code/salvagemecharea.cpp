@@ -1,4 +1,5 @@
-﻿#define SALVAGEMECHAREA_CPP
+#include "game_rules.h"
+#define SALVAGEMECHAREA_CPP
 /*************************************************************************************************\
 SalvageMechArea.cpp			: Implementation of the SalvageMechArea component.
 //---------------------------------------------------------------------------//
@@ -25,8 +26,8 @@ SalvageMechArea.cpp			: Implementation of the SalvageMechArea component.
 // Interactive cheat gates — read once at startup, default OFF
 // The launcher writes these into launcher_env.json, which main() applies after static initialization, so they
 // are read at first use rather than in a namespace-scope initializer.
-static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CHEAT_INFINITE_MONEY">(); return on; }
-static bool cheatSalvageAll() { static const bool on = mc2::gate::get<"MC2_CHEAT_SALVAGE_ALL">(); return on; }
+static bool cheatInfiniteMoney() { const bool on = mc2::rules::campaignToggle("@infinite-money", mc2::gate::get<"MC2_CHEAT_INFINITE_MONEY">()); return on; }
+static bool cheatSalvageAll() { const bool on = mc2::rules::campaignToggle("@salvage-all", mc2::gate::get<"MC2_CHEAT_SALVAGE_ALL">()); return on; }
 
 std::unique_ptr<aAnimButton> SalvageListItem::templateCheckButton = nullptr;
 

@@ -1,3 +1,4 @@
+#include "game_rules.h"
 #include "utils/mc2log.h"
 // LogisticsData: updateAvailability, the front-end state dump and the availability append.
 // Declared in the class headers; shared names in logisticsdata_internal.h.
@@ -28,7 +29,7 @@ long LogisticsData::updateAvailability()
 	bNewWeapons = 0;
 
 	// Existing launcher sandbox option: all loaded chassis and components.
-	static const bool s_purchaseAll = mc2::gate::get<"MC2_PURCHASE_ALL">();
+	const bool s_purchaseAll = mc2::rules::campaignToggle("@purchase-all", mc2::gate::get<"MC2_PURCHASE_ALL">());
 
 	std::string purchaseFileName = mc2::str::ascii_lower( missionInfo->getCurrentPurchaseFile() );
 

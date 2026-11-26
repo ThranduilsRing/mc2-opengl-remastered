@@ -1,4 +1,5 @@
-﻿#include "Gates/preferences_legacy.h"
+#include "game_rules.h"
+#include "Gates/preferences_legacy.h"
 #define MECHLABSCREEN_CPP
 /*************************************************************************************************\
 MechLabScreen.cpp			: Implementation of the MechLabScreen component.
@@ -28,7 +29,7 @@ MechLabScreen.cpp			: Implementation of the MechLabScreen component.
 // Interactive cheat gate
 // The launcher writes these into launcher_env.json, which main() applies after static initialization, so they
 // are read at first use rather than in a namespace-scope initializer.
-static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CHEAT_INFINITE_MONEY">(); return on; }
+static bool cheatInfiniteMoney() { const bool on = mc2::rules::campaignToggle("@infinite-money", mc2::gate::get<"MC2_CHEAT_INFINITE_MONEY">()); return on; }
 #include"chatwindow.h"
 #include"multplyr.h"
 #include"prefs.h"

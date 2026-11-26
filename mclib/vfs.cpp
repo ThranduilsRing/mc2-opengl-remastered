@@ -1,3 +1,5 @@
+#include "campaign_mod_catalogue.h"
+#include "campaign_mods.h"
 //---------------------------------------------------------------------------
 // Mod overlay — session-scoped, single active mod.
 //
@@ -882,10 +884,12 @@ void InitModSearchPaths(mc2::czstring modsRoot) {
     const bool stockMode = !envMod[0];
     // Campaign-free packs are shared content. Mount their files before listing units.
     std::vector<std::string> installedAssets;
+    const auto campaignAddons = mc2::mods::catalogue(modsRoot);
     std::error_code packError;
     for (const auto& dir : std::filesystem::directory_iterator(modsRoot, packError)) {
         const auto manifest = ReadModJson((dir.path() / "mod.json").string().c_str());
         if (!manifest || manifest->type == "campaign") continue;
+        if (std::any_of(campaignAddons.begin(), campaignAddons.end(), [&](const auto& addon) { return addon.id == dir.path().filename().string(); })) continue;
         const auto data = dir.path() / "data";
         const bool campaign = !manifest->campaign.empty() ||
             std::filesystem::exists(data / "campaign", packError) ||

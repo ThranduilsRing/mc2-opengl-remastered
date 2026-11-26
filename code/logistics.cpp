@@ -1,3 +1,4 @@
+#include "game_rules.h"
 #include "utils/mc2log.h"
 //******************************************************************************************
 // logistics.cpp - This file contains the logistics class header
@@ -71,7 +72,7 @@ bool Logistics::initObjectiveFixture(mc2::czstring missionName)
 	    (std::string_view(missionName) != "e6e_win" && std::string_view(missionName) != "e6e_loss") ||
 	    mc2::gate::get<"MC2_SOAK_AUTOWIN">() ||
 	    mc2::gate::isNonEmpty<"MC2_BOOT_TO_BAY">() ||
-	    mc2::gate::get<"MC2_PURCHASE_ALL">()) {
+	    mc2::rules::campaignToggle("@purchase-all", mc2::gate::get<"MC2_PURCHASE_ALL">())) {
 		mc2::fmt::print_err("[OBJECTIVE_FIXTURE] incompatible boot configuration\n");
 		return false;
 	}

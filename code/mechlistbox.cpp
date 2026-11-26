@@ -1,4 +1,5 @@
-﻿#include "utils/mc2log.h"
+#include "game_rules.h"
+#include "utils/mc2log.h"
 #define MECHLISTBOX_CPP
 /*************************************************************************************************\
 MechListBox.cpp			: Implementation of the MechListBox component.
@@ -26,7 +27,7 @@ MechListBox.cpp			: Implementation of the MechListBox component.
 // Interactive cheat gate (set in logisticsdata.cpp; extern here for UI bypass)
 // The launcher writes these into launcher_env.json, which main() applies after static initialization, so they
 // are read at first use rather than in a namespace-scope initializer.
-static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CHEAT_INFINITE_MONEY">(); return on; }
+static bool cheatInfiniteMoney() { const bool on = mc2::rules::campaignToggle("@infinite-money", mc2::gate::get<"MC2_CHEAT_INFINITE_MONEY">()); return on; }
 #include"render_submissions.h"
 #include "mc2fmt.h"
 #include "mc2str.h"

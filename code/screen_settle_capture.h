@@ -13,6 +13,7 @@ struct ScreenCell { const char* name; int x; int y; };
 inline constexpr int kPromotionCell = -4;
 inline constexpr ScreenCell kScreens[] = {
     {"mainmenu", -1, -1},
+    {"game_rules", -5, -5},
     {"loadgame", -3, -3},
     {"encyclopedia", -2, -2},
     {"promotion", kPromotionCell, kPromotionCell}, // post-mission panel, captured by promotionTick, not a grid cell

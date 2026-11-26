@@ -990,3 +990,20 @@ GuiButton {
     legacyAnimateBmp = false
     legacyAnimateText = false
 }
+
+GuiText {
+    key = "game.mcl_gamerules.text.description"
+    pageKey = "game.mcl_gamerules"
+    role = "text"
+    layer = "text"
+    rect = "130,472,540,32"
+    controlRect = "130,472,540,32"
+    textRect = "130,472,540,32"
+    visibleText = ""
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "left"
+    textAnchor = "left"
+    wrapText = false
+    colorArgb = "0xffc66600"
+}
