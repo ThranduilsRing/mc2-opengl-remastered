@@ -256,7 +256,7 @@ private:
     OwnedQueryPool incQueries_;
     VkDescriptorSet incComputeSet_[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE}, incWindowSet_[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
     // MC2_SHADOW_DIAG: the dirty-updated mask read back and compared with a fresh bake of the same state.
-    bool diagRequest_ = false, diagPending_ = false, diagForceFull_ = false, diagSwept_ = false;
+    bool diagRequest_ = false, diagPending_ = false, diagForceFull_ = false;
     uint64_t diagEpoch_ = 0;
     OwnedBuffer diagBuf_;
     std::vector<uint8_t> diagInc_;

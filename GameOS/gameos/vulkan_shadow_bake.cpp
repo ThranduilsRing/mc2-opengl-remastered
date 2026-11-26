@@ -1135,16 +1135,6 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     }
     mc2shadow::StaticCasterSet& set = mc2shadow::staticCasterSet();
     mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore();
-    // MC2_SHADOW_DIAG: one pass of every sub-tile through the dirty path, so the comparison below covers the whole map.
-    if (diagOn() && !diagSwept_) {
-        diagSwept_ = true;
-        const int n = layout_.texels / mc2shadow::kSubTileTexels;
-        std::vector<mc2shadow::SubTile> all;
-        for (int y = 0; y < n; ++y)
-            for (int x = 0; x < n; ++x) all.push_back({x, y});
-        dirty_.add(all);
-        eventsSinceDrain_ = true;
-    }
     if (set.hasEvents()) {
         for (const auto& ev : set.takeEvents()) {
             objectDirty_ = true;
