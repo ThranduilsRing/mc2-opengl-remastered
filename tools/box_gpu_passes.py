@@ -3,10 +3,15 @@
 
     box_gpu_passes.py run --install DIR --out DIR [--name gpu_passes]   # fixed poses, off-screen, own fresh log dir
     box_gpu_passes.py compare BASE.json TIP.json                         # per-pass ratios; under-sampled passes are NOT MEASURED
+    box_gpu_passes.py run --install DIR --out DIR --poses owner4k [--baseline BASELINE.json]
+                                                                        # PC/XTX advisory GPU-ms row: owner_100933 + wolfman, 4K, parked
 
 Source is the engine's `[VK_GPU_PASSES v1]` line (one window mean per 120 frames). A sample is one window mean after the
 first --skip-windows warm-up windows. Ratios only: the box is not a ms source (lane rules).
 Only this run's own logs count: the run wipes its dir first and a log older than the run start is ignored.
+owner4k (docs/merge-queue-v2.md "GPU profiling"): two parked 4K poses through tools/tracy_capture_compare.py; --baseline compares
+with the stored baseline of this machine and prints WARN when Frame.span p50 grew more than WARN_SPAN_PCT (advisory: exit 0). A
+missing baseline is stored from this run.
 """
 import argparse
 import json
@@ -24,14 +29,20 @@ sys.path.append(str(ROOT / "scripts"))
 import console_child  # noqa: E402  (windowless console children without a conhost each)
 
 POSES = (("mc2_01", "day"), ("mc2_10", "night"), ("mc2_24", "battle"))
+# The owner's parked 4K poses, camera parked at frame 30000 like the perf studies so the scene is dense and settled.
+OWNER_POSES = (("mc2_01", "owner_100933", "3604.4360,648.5728,-174.5,20.375,1729.8385@30000"),
+               ("mc2_10", "wolfman", "-2880,2752,0,60,6000@30000"))
+PARK_SETTLE = 200    # frames after the park before a window counts
+WARN_SPAN_PCT = 10   # advisory: tip/baseline Frame.span p50 above +10% prints WARN
 DURATION = 20
 SKIP_WINDOWS = 2     # warm-up windows (240 frames) dropped
 FLOOR = 6            # fewer samples than this: NOT MEASURED, no number
 TAG = "[VK_GPU_PASSES v1] frame="
 
 
-def parse_log(text, skip_windows=SKIP_WINDOWS):
-    """{scope: [window mean ms]}; header span/sum become Frame.span/Frame.sum. Windows with dropped/overflow timestamps are skipped."""
+def parse_log(text, skip_windows=SKIP_WINDOWS, min_frame=0):
+    """{scope: [window mean ms]}; header span/sum become Frame.span/Frame.sum. Windows with dropped/overflow timestamps are skipped,
+    and so (parked poses) are windows before min_frame."""
     scopes, windows = {}, 0
     for line in text.splitlines():
         if TAG not in line:
@@ -41,10 +52,11 @@ def parse_log(text, skip_windows=SKIP_WINDOWS):
         if not sep or "n" not in f or "span_ms" not in f:
             continue
         windows += 1
-        if windows <= skip_windows or int(f.get("dropped", 0)) or int(f.get("overflow", 0)):
+        if windows <= skip_windows or int(f.get("frame", 0)) < min_frame or int(f.get("dropped", 0)) or int(f.get("overflow", 0)):
             continue
         scopes.setdefault("Frame.span", []).append(float(f["span_ms"]))
         scopes.setdefault("Frame.sum", []).append(float(f["sum_ms"]))
+        scopes.setdefault("Frame.unattributed", []).append(float(f.get("unattributed_ms", 0)))
         for name, val in re.findall(r"(\S+?)=([\d.]+)\(x[\d.]+\)", tail):
             if name.startswith("VKIsl."):
                 scopes.setdefault(name, []).append(float(val))
@@ -105,17 +117,50 @@ def run_pose(install, out, mission, duration, skip=SKIP_WINDOWS, ref_commit=None
     return p.returncode, parse_log(collect_logs(d, t0), skip)
 
 
+def run_parked(install, out, mission, label, pose, duration, skip=SKIP_WINDOWS):
+    """One parked 4K pose through tools/tracy_capture_compare.py (it waits for the acknowledged park); returns (rc, scope values)."""
+    d = Path(out) / label
+    shutil.rmtree(d, ignore_errors=True)   # the run's own dir: nothing from an earlier run may be counted
+    d.mkdir(parents=True)
+    cmd = [sys.executable, str(ROOT / "tools" / "tracy_capture_compare.py"), "capture", "--install", install, "--arm", "vk",
+           "--mission", mission, "--capture-arms", "visible0", "--seconds", str(duration), "--pose", pose, "-o", str(d / "capture.tracy"),
+           "--env", "MC2_WIDTH=3840", "--env", "MC2_HEIGHT=2160", "--env", "MC2_FRAME_JOBS_WORKERS=1"]
+    p = subprocess.run(cmd, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
+                       **console_child.child_kwargs(redirected=True))
+    (d / "capture.out").write_text(p.stdout, encoding="utf-8")
+    (d / "capture.tracy").unlink(missing_ok=True)   # the pass table comes from the game log; traces are never kept
+    log = d / "capture.game.log"
+    park = int(pose.rsplit("@", 1)[1]) if "@" in pose else 0
+    return p.returncode, parse_log(log.read_text(encoding="utf-8", errors="replace") if log.exists() else "", skip, park + PARK_SETTLE)
+
+
+def against_baseline(path, tip_path, tip):
+    """Lines comparing with the stored baseline at `path`; none exists yet: store this run as the baseline (first owner4k run here)."""
+    path = Path(path)
+    if not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(tip_path, path)
+        return [f"[gpu-passes] baseline stored: {path} (refresh it only after the owner accepts a cost)"]
+    return compare(json.loads(path.read_text(encoding="utf-8")), tip)
+
+
 def do_run(a):
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
-    result = {"version": 1, "floor": a.floor, "skip_windows": a.skip_windows, "duration_s": a.duration, "poses": []}
-    for mission, label in POSES:
-        rc, scopes = run_pose(a.install, out / a.name, mission, a.duration, a.skip_windows, a.ref_commit)
+    owner = a.poses == "owner4k"
+    result = {"version": 1, "floor": a.floor, "skip_windows": a.skip_windows, "duration_s": a.duration, "parked": owner, "poses": []}
+    for mission, label, *pose in (OWNER_POSES if owner else POSES):
+        if owner:
+            rc, scopes = run_parked(a.install, out / a.name, mission, label, pose[0], a.duration, a.skip_windows)
+        else:
+            rc, scopes = run_pose(a.install, out / a.name, mission, a.duration, a.skip_windows, a.ref_commit)
         result["poses"].append({"mission": mission, "label": label, "rc": rc,
                                 "scopes": {k: stats(v, a.floor) for k, v in scopes.items()},
                                 "samples": scopes})
     (out / f"{a.name}.json").write_text(json.dumps(result, indent=1), encoding="utf-8")
     text = table(result)
+    if a.baseline:
+        text += "\n" + "\n".join(against_baseline(a.baseline, out / f"{a.name}.json", result))
     (out / f"{a.name}.txt").write_text(text + "\n", encoding="utf-8")
     print(text)
     measured = any(s["measured"] for p in result["poses"] for s in p["scopes"].values())
@@ -144,6 +189,12 @@ def compare(base, tip):
                 note = "  IDENTICAL SAMPLE LISTS (same exe or stale log?)"
             lines.append(f"  {name:<28}{t['mean'] / b['mean']:>9.3f}{t['p50'] / b['p50']:>9.3f}{ns:>12}{note}" if b["mean"] > 0 and b["p50"] > 0
                          else f"  {name:<28}{'base 0':>18}{ns:>12}")
+        if base.get("parked"):   # the advisory GPU-ms row: parked poses only, the box A/B keeps its ratios-only output
+            b, t = bp["scopes"].get("Frame.span"), tp["scopes"].get("Frame.span")
+            if b and t and b["measured"] and t["measured"]:
+                pct = (t["p50"] / b["p50"] - 1) * 100
+                flag = f"WARN +{pct:.1f}% span (advisory, non-blocking)" if round(pct, 1) > WARN_SPAN_PCT else f"OK {pct:+.1f}% span"
+                lines.append(f"  span p50 {b['p50']:.3f} -> {t['p50']:.3f} ms: {flag}")
     return lines
 
 
@@ -168,6 +219,8 @@ def main(argv=None):
     r.add_argument("--floor", type=int, default=FLOOR)
     r.add_argument("--ref-commit", help="commit the exe was built from when it is not worktree HEAD")
     r.add_argument("--skip-windows", type=int, default=SKIP_WINDOWS)
+    r.add_argument("--poses", choices=("box", "owner4k"), default="box", help="owner4k = the owner's parked 4K poses (PC/XTX)")
+    r.add_argument("--baseline", help="owner4k: stored baseline json of this machine; WARN above +10%% span, a missing one is stored")
     r.set_defaults(fn=do_run)
     c = sub.add_parser("compare")
     c.add_argument("base")
