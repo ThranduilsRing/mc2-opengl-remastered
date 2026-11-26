@@ -965,10 +965,11 @@ def magic_brain_payload(src_root, target):
     items = [(str(p), p.relative_to(src_root).as_posix(), "support")
              for p in profile.rglob("*") if p.is_file()]
     generated = Path(src_root) / "build/magic-brain-1.45"
-    stock_fst = Path(target) / "mission.fst"
-    if not stock_fst.is_file():
+    try:
+        stock_entries = list(fst_entries(str(Path(target) / "mission.fst")))
+    except FileNotFoundError:
         return items  # no stock FST at the target (bare test target): the loose profile still ships
-    for off, comp, real, name, is_lz, data in fst_entries(str(stock_fst)):
+    for off, comp, real, name, is_lz, data in stock_entries:
         key = name.lower().replace('\\', '/')
         if not key.startswith("data/missions/warriors/") or not key.endswith((".abl", ".abi")):
             continue
