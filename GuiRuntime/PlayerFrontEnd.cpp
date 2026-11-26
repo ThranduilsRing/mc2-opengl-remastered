@@ -45,8 +45,9 @@ using Json = nlohmann::json;
 bool (*saveRenderOptions)(const mc2::options::RenderOptions&) = nullptr;
 void (*applyRuleToggles)(std::string_view) = nullptr;
 // The Cheats rows and Faster weapons are campaign toggles too: the @ ids (code/game_rules.h) their rows switch on.
-static const char* const kRuleRows[][2] = {{"MC2_CHEAT_INFINITE_MONEY", "@infinite-money"}, {"MC2_CHEAT_SALVAGE_ALL", "@salvage-all"},
-    {"MC2_PURCHASE_ALL", "@purchase-all"}, {"MC2_JUMPJETS_ALL", "@jumpjets-all"}, {"last_faster_weapons", "@faster-weapons"}};
+static const std::pair<const char*, const char*> kRuleRows[] = {{mc2::gate::name<"MC2_CHEAT_INFINITE_MONEY">(), "@infinite-money"},
+    {mc2::gate::name<"MC2_CHEAT_SALVAGE_ALL">(), "@salvage-all"}, {mc2::gate::name<"MC2_PURCHASE_ALL">(), "@purchase-all"},
+    {mc2::gate::name<"MC2_JUMPJETS_ALL">(), "@jumpjets-all"}, {"last_faster_weapons", "@faster-weapons"}};
 namespace {
 struct Pack {
     std::string id, name, description, credits, author, kind, group;

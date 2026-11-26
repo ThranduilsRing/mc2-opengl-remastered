@@ -55,11 +55,6 @@ long ablFileOpenCB (void** file, mc2::czstring fName) {
 		ABLi_noteProfileSource(name.c_str(), stock && !profile.empty());
 		if (stock && !profile.empty())
 			name = profile;
-		else if (stock && mc2::rules::current().ai == 1) {
-			static std::uint32_t reported = 0;
-			if (std::exchange(reported, mc2::brainpolicy::generation()) != mc2::brainpolicy::generation())
-				mc2::fmt::print_err("[BRAIN_POLICY] magic profile missing, stock brain key={}\n", mc2::fmt::safe(name.c_str()));
-		}
 	}
 	long result = opened->open(name.c_str());
 	if (result != NO_ERR) {
