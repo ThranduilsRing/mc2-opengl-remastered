@@ -1016,10 +1016,16 @@ struct AblFrameScope {
 		exitReturn = g_ablExec->ExitWithReturn, exitOrder = g_ablExec->ExitFromTacOrder;
 	const int uncaught = std::uncaught_exceptions();
 	const bool profile, previous = g_ablProfileFrame;
-	explicit AblFrameScope (mc2::czstring fileName) : profile(profileSource(fileName)) { g_ablProfileFrame = profile; }
+	StackItemPtr bottom = g_ablExec->ownStack.empty() ? stack + eternalOffset : g_ablExec->ownStack.data();
+	std::vector<StackItem> savedStack;
+	explicit AblFrameScope (mc2::czstring fileName) : profile(profileSource(fileName)) {
+		if (profile && tos >= bottom) savedStack.assign(bottom, tos + 1);
+		g_ablProfileFrame = profile;
+	}
 	~AblFrameScope () {
 		g_ablProfileFrame = previous;
 		if (profile && std::uncaught_exceptions() > uncaught) {
+			std::copy(savedStack.begin(), savedStack.end(), bottom);
 			g_ablExec->tos = tos;
 			g_ablExec->stackFrameBasePtr = base;
 			g_ablExec->level = level;

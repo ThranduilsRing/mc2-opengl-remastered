@@ -523,7 +523,7 @@ TEST_CASE("ABLSave/tagged values restore static variables and completed orders")
     CHECK(sizeof(ABLStackItem) == 16);
     CHECK(sizeof(StackFrameHeader) == 32);
     CHECK(sizeof(ModuleEntry) == 96);
-    CHECK(sizeof(ABLModule) == 88);
+    CHECK(sizeof(ABLModule) == 128); // Transient retry state is not part of the save format.
 #endif
     std::string image;
     Counts expected{};
