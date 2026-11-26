@@ -421,6 +421,8 @@ class BattleMech : public Mover {
 	public:
 
 		void operator = (BattleMech copy);
+
+		long getDescription() override { return descID; }
 		
 		virtual void init (bool create);
 		

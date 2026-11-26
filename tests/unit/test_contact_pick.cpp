@@ -187,6 +187,27 @@ TEST_CASE("pick occlusion: box intersection rejects misses and behind-eye boxes"
     CHECK_FALSE(mc2::pickBoxHit(miss, down, lo, hi, t));
 }
 
+TEST_CASE("contact pick: mover hover uses concrete description rather than GameObject sentinel")
+{
+    const auto root = std::filesystem::path(MC2_REPO_ROOT);
+    for (const char* file : {"code/mech.h", "code/gvehicl.h"}) {
+        std::ifstream input(root / file);
+        REQUIRE(input.good());
+        const std::string text(std::istreambuf_iterator<char>(input), {});
+        CHECK(text.find("getDescription() override { return descID; }") != std::string::npos);
+    }
+    // Stock, BT2018, MW5 and vehicles all resolve through the same hover path.
+    for (bool vehicle : {false, true}) {
+        const auto visible = mc2::contactVisibility(CONTACT_VISUAL);
+        long moverName = 1234, propName = 5678;
+        long* target = &propName;
+        mc2::pick::refreshHover(false, target, [] {}, [&] { return &moverName; });
+        REQUIRE(target == &moverName);
+        CHECK(mc2::hoverNameId(visible.quality, 55, *target, vehicle) == moverName);
+        CHECK(mc2::hoverNameId(CONTACT_NONE, 55, *target, vehicle) == 0);
+    }
+}
+
 TEST_CASE("contact pick: sensor naming never leaks DEMO or visual identification")
 {
     for (bool vehicle : {false, true}) {
