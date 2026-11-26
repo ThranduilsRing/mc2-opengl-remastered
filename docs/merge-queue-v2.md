@@ -98,3 +98,15 @@ Contracts: `run_nightly` rows and unscoped checks run nightly; the remaining row
 ## GPU profiling
 
 RGP is a weekly orchestrator checkpoint, never a per-change proof. Lanes do not capture `.rgp` to prove a change. The orchestrator captures weekly at the worst-case poses (mc2_01 `cross_map_view`, mc2_03 `scout_*`, mc2_10/24 `wolfman`) and the default pose. Suite: `C:/Users/Joe/Downloads/RadeonDeveloperToolSuite-2026-02-02-1757` (see `tools/host_inventory.py`). Video-decode runs weekly only.
+
+Advisory GPU-ms row (owner 4K poses, 2026-11-26; never blocks and is not a `merge_gate.py` stage). Per promote, on the XTX:
+
+```
+py -3 tools/box_gpu_passes.py run --install <promoted install> --out <proof dir> --poses owner4k --name tip --baseline G:/mc2-proofs/gpu-owner4k/baseline.json
+```
+
+- Two parked 4K poses through `tools/tracy_capture_compare.py` (mc2_01 `owner_100933`, mc2_10 `wolfman`; camera parked at frame 30000 like the perf studies, one frame worker). Only windows after the park count.
+- Per-pass tip/baseline ratios from `[VK_GPU_PASSES v1]`; `Frame.span` p50 more than +10% over the stored baseline prints `WARN +N% span (advisory, non-blocking)`. Exit code is 0 either way: a WARN is an owner cost item, never a merge refusal.
+- The baseline is this machine's (XTX ms are not portable; the box `gpu-passes` row stays ratios-only). The first run stores it. Refresh it (`copy` the new `tip.json` over it) only after the owner accepts the cost.
+- Parked comparisons require successful captures with matching machine, Vulkan device, effective options, resolution and camera pose. Missing provenance or mismatches print `NOT MEASURED` without ratios; recapture older baselines that lack this context.
+- Why: +1.1 ms GPU span at owner_100933 4K landed between b53208797 and d5817fe4f with no gate signal (`studies/gpu-frame-plan-2026-11-26.md` P0-1).

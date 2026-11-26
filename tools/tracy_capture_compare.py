@@ -273,7 +273,7 @@ CAPTURE_ARMS = {
             "MC2_TERRAIN_LOD_CHUNK_FORCE_LOD=2"],
     "visible0": ["MC2_FORCE_ALL_VISIBLE=0"],
 }
-POST_LOAD_TIMEOUT = 300
+POST_LOAD_TIMEOUT = 600  # parked frame 30000 can take over five minutes on the pinned game core
 POST_LOAD_COMMAND_TIMEOUT = 120
 POST_LOAD_SETTLE = 2
 

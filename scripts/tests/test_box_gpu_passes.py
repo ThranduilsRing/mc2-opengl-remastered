@@ -83,6 +83,65 @@ def test_compare_ratios_not_measured_and_identical():
     assert "IDENTICAL SAMPLE LISTS" in next(ln for ln in out.splitlines() if "Frame.span" in ln)
 
 
+def parked(span):
+    r = result({"mc2_01": {"VKIsl.Terrain": [2.0] * 8, "Frame.span": [span] * 8}})
+    r["parked"] = True
+    r["poses"][0]["context"] = {"machine": "xtx-host", "device": "RX 7900 XTX", "options": {"RtSunShadows": True},
+                                "resolution": [3840, 2160], "pose": "owner@30000"}
+    return r
+
+
+def test_parse_log_min_frame_drops_pre_park_windows():
+    text = "\n".join([line(120 * i, 9.0) for i in range(1, 250)] + [line(30240 + 120 * i, 4.0) for i in range(7)])
+    s = gp.parse_log(text, skip_windows=0, min_frame=30000 + gp.PARK_SETTLE)
+    assert set(s["Frame.span"]) == {4.0} and len(s["Frame.span"]) == 7     # the pre-park windows (another scene) never count
+    assert set(s["Frame.unattributed"]) == {0.1}
+
+
+def test_run_parked_pins_the_4k_pose_and_counts_only_post_park_windows(tmp_path, monkeypatch):
+    pose = "-2880,2752,0,60,6000@30000"
+
+    def fake_run(cmd, **kw):
+        d = Path(cmd[cmd.index("-o") + 1]).parent
+        assert d == tmp_path / "wolfman" and cmd[cmd.index("--pose") + 1] == pose and "tracy_capture_compare" in cmd[1]
+        assert "MC2_WIDTH=3840" in cmd and "MC2_HEIGHT=2160" in cmd and cmd[cmd.index("--mission") + 1] == "mc2_10"
+        (d / "capture.game.log").write_text("\n".join([line(29880, 9.0), line(30100, 9.0)]
+                                                     + [line(30240 + 120 * i, 4.0) for i in range(7)]))
+        return subprocess.CompletedProcess(cmd, 0, stdout="ok")
+
+    monkeypatch.setattr(gp.subprocess, "run", fake_run)
+    rc, scopes = gp.run_parked("inst", tmp_path, "mc2_10", "wolfman", pose, 20, skip=0)
+    assert rc == 0 and len(scopes["Frame.span"]) == 7 and set(scopes["Frame.span"]) == {4.0}
+
+
+def test_span_warn_is_advisory_and_parked_only():
+    assert "WARN +12.5% span (advisory, non-blocking)" in "\n".join(gp.compare(parked(4.0), parked(4.5)))
+    assert "OK +10.0% span" in "\n".join(gp.compare(parked(4.0), parked(4.4)))      # the threshold itself is not a warning
+    plain = result({"mc2_01": {"Frame.span": [4.0] * 8}})                            # the box A/B: no span verdict line
+    assert "span p50" not in "\n".join(gp.compare(plain, parked(4.5)))
+
+
+def test_missing_baseline_is_stored_then_compared(tmp_path):
+    import json
+    base, tip = tmp_path / "baseline.json", tmp_path / "tip.json"
+    tip.write_text(json.dumps(parked(4.0)))
+    assert "baseline stored" in "\n".join(gp.against_baseline(base, tip, parked(4.5))) and base.exists()
+    assert "WARN +12.5% span" in "\n".join(gp.against_baseline(base, tip, parked(4.5)))
+
+
+def test_parked_comparison_requires_same_context_and_success():
+    for key, value in (("machine", "other"), ("device", "other"), ("options", {"RtSunShadows": False}),
+                       ("resolution", [1920, 1080]), ("pose", "other@30000")):
+        tip = parked(5.0)
+        tip["poses"][0]["context"][key] = value
+        text = "\n".join(gp.compare(parked(4.0), tip))
+        assert "NOT MEASURED" in text and "WARN" not in text and "1.250" not in text
+    for key, value in (("context", None), ("rc", 1)):
+        tip = parked(5.0)
+        tip["poses"][0][key] = value
+        assert "NOT MEASURED" in "\n".join(gp.compare(parked(4.0), tip))
+
+
 def test_table_flags_missing_run():
     r = result({"mc2_01": {}})
     assert "NOT MEASURED: no [VK_GPU_PASSES v1]" in gp.table(r)
