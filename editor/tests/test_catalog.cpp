@@ -1,5 +1,6 @@
 #include "../../tests/unit/doctest.h"
 #include "ObjectCatalog.h"
+#include "TestInputs.h"
 
 #include <chrono>
 #include <fstream>
@@ -319,7 +320,7 @@ namespace {
 std::filesystem::path repositoryRoot()
 {
     // Cached objects can retain __FILE__ from a different worktree.
-    return std::filesystem::current_path();
+    return editor::tests::inputs().repositoryRoot;
 }
 std::string corpusFst(const std::vector<std::pair<std::string, std::string>>& entries)
 {

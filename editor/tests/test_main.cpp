@@ -4,8 +4,12 @@
 #include "ObjectCatalog.h"
 
 #include <iostream>
+#include <fstream>
 #include <string_view>
 #include <vector>
+#ifdef MC2_EDITOR_READER_TESTS
+#include "PanelProof.h"
+#endif
 
 namespace editor::tests {
 namespace {
@@ -18,6 +22,15 @@ const TestInputs& inputs() { return *activeInputs; }
 int run(int argc, char** argv)
 {
     TestInputs fixtures;
+    auto executable = std::filesystem::absolute(argv[0]);
+    auto root = executable.parent_path();
+    while (!std::filesystem::is_directory(root / "editor/tests/goldens") && root.has_relative_path())
+        root = root.parent_path();
+    if (!std::filesystem::is_directory(root / "editor/tests/goldens")) {
+        std::cerr << "Cannot locate editor fixtures above " << executable << '\n';
+        return 2;
+    }
+    fixtures.repositoryRoot = root;
     std::vector<const char*> arguments{argv[0]};
     bool requireCorpus{};
     for (int i = 1; i < argc; ++i) {
@@ -51,6 +64,53 @@ int run(int argc, char** argv)
         else arguments.push_back(argv[i]);
     }
 
+    // Keep generated inputs and all relative scratch paths outside the source tree.
+    const auto output = std::filesystem::temp_directory_path() / "mc2-editor-tests" / executable.stem();
+    std::filesystem::create_directories(output);
+    for (auto* path : {&fixtures.stockDirectory, &fixtures.byteGradeDirectory, &fixtures.placementBase,
+        &fixtures.placementMods, &fixtures.placementGoldens, &fixtures.placementOutput})
+        if (!path->empty()) *path = std::filesystem::absolute(*path);
+    std::filesystem::current_path(output);
+    if (fixtures.placementBase.empty()) {
+        for (const auto& candidate : {root, std::filesystem::path("G:/mc2-installs/_lean-seed"),
+            std::filesystem::path("A:/Games/mc2-opengl/mc2-win64-v0.4c"),
+            std::filesystem::path("A:/Games/mc2-opengl/mc2-win64-v0.4")}) {
+            if (std::filesystem::is_regular_file(candidate / "mission.fst")) {
+                fixtures.placementBase = candidate;
+                break;
+            }
+        }
+    }
+    if (fixtures.placementMods.empty()) fixtures.placementMods = "A:/Games/mc2-opengl";
+    if (fixtures.placementGoldens.empty()) fixtures.placementGoldens = root / "editor/tests/goldens/e5a-stock";
+    if (fixtures.placementOutput.empty()) fixtures.placementOutput = output / "placements";
+    std::filesystem::create_directories(fixtures.placementOutput);
+    for (const auto* extension : {".fit", ".pak"})
+        std::filesystem::copy_file(fixtures.placementGoldens / (std::string("e5_reference_before") + extension),
+            fixtures.placementOutput / (std::string("e5_reference_before") + extension),
+            std::filesystem::copy_options::overwrite_existing);
+#ifdef MC2_EDITOR_READER_TESTS
+    const bool generateReaderFixture = fixtures.byteGradeDirectory.empty();
+#endif
+    if (fixtures.byteGradeDirectory.empty()) fixtures.byteGradeDirectory = output / "byte-grade";
+    std::filesystem::create_directories(fixtures.byteGradeDirectory);
+    if (fixtures.stockDirectory.empty()) {
+        fixtures.stockDirectory = output / "stock";
+        std::filesystem::create_directories(fixtures.stockDirectory);
+        auto resolver = document::FileResolver::mount({fixtures.placementBase});
+        if (!resolver) { std::cerr << "Cannot mount stock editor inputs\n"; return 2; }
+        for (int i = 1; i <= 24; ++i) {
+            const auto stem = std::string("mc2_") + (i < 10 ? "0" : "") + std::to_string(i);
+            for (const auto* extension : {".fit", ".pak"}) {
+                const auto name = stem + extension;
+                auto file = resolver->read("data/missions/" + name);
+                if (!file) { std::cerr << "Missing stock fixture " << name << '\n'; return 2; }
+                std::ofstream stream(fixtures.stockDirectory / name, std::ios::binary);
+                stream.write(reinterpret_cast<const char*>(file->bytes.data()), file->bytes.size());
+            }
+        }
+        requireCorpus = true;
+    }
     std::error_code error;
     const bool haveStock = !fixtures.stockDirectory.empty() && std::filesystem::is_directory(fixtures.stockDirectory, error);
     if (requireCorpus) {
@@ -85,6 +145,30 @@ int run(int argc, char** argv)
         context.addFilter("test-suite-exclude", "stock-fixture");
     }
     activeInputs = &fixtures;
+#ifdef MC2_EDITOR_READER_TESTS
+    if (generateReaderFixture) {
+        auto seed = fixtures.placementGoldens / "e5_reference_before";
+        auto doc = document::MissionDocument::read(seed.string() + ".fit", seed.string() + ".pak", {}, fixtures.markerObjects);
+        if (!doc) { std::cerr << "Cannot load reader seed\n"; return 2; }
+        document::CommandHistory history(*doc);
+        shell::EntityPanels panels(*doc, history);
+        auto* imgui = ImGui::CreateContext();
+        auto& io = ImGui::GetIO(); io.IniFilename = nullptr;
+        io.DisplaySize = ImVec2(1440, 960); io.DeltaTime = 1.0f / 60.0f;
+        unsigned char* pixels{}; int width{}, height{};
+        io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+        shell::PanelProof proof(*doc, history, panels, fixtures.byteGradeDirectory, "objectives_panel", [](const std::string&) {}, false);
+        bool running = true;
+        while (running) {
+            ImGui::NewFrame();
+            ImGui::SetNextWindowPos(ImVec2(0, 0)); ImGui::SetNextWindowSize(ImVec2(1440, 230));
+            ImGui::Begin("Files"); proof.drawFiles(); ImGui::End();
+            panels.draw(); ImGui::Render(); running = proof.tick();
+        }
+        ImGui::DestroyContext(imgui);
+        if (!proof.passed()) { std::cerr << "Reader fixture generation failed\n"; return 2; }
+    }
+#endif
     const int result = context.run();
     activeInputs = nullptr;
     if (context.shouldExit())

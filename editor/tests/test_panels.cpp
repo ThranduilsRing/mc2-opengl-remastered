@@ -11,7 +11,7 @@ TEST_CASE("panels/chooser marker and objective reference rows and resolve reach 
     const auto& paths = editor::tests::inputs();
     for (const auto* kind : {"chooser", "chooser_mod", "chooser_player", "chooser_render", "marker_panel", "objectives_panel", "objectives_crud_panel"}) {
         CAPTURE(kind);
-        const auto directory = std::filesystem::path("scratch/e5b2-widget-tests") /
+        const auto directory = paths.placementOutput /
             std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) / kind;
         std::filesystem::create_directories(directory);
         std::ofstream log(directory / "shell.log");

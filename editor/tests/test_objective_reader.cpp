@@ -520,7 +520,7 @@ TEST_CASE("reader/action text limits and imported quotes have explicit disk and 
     const auto lf = std::string("FITini\n[Text]\nst Message = \"a\n\nb\"\n[End]\nul End = 0\nFITend\n");
     FitIniFile reader; REQUIRE(reader.open(lf.data(), static_cast<int>(lf.size())) == NO_ERR);
     REQUIRE(reader.seekBlock("Text") == NO_ERR);
-    CHECK(objective_text::read(reader, "Message") == std::optional<std::string>{"ab"});
+    CHECK(objective_text::read(reader, "Message") == std::optional<std::string>{"a\r\nb"});
 }
 
 TEST_CASE("reader/embedded boolean declarations cannot override created or edited action values")

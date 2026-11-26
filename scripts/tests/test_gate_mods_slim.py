@@ -87,6 +87,26 @@ def test_a_red_blocking_row_still_fails(offline):
     assert [n for n, _ in gate.FAILED_STAGES] == ["tier1"]
 
 
+def test_editor_failure_is_reported_without_blocking(offline):
+    assert gate.tier_includes("editor", 1) and gate.tier_includes("editor", 2)
+    assert "editor" not in nightly_gate.required_stages(["editor"])
+    runner = lambda command, **kw: types.SimpleNamespace(returncode=1, stdout="editor suite: FAIL")
+    assert gate.execute([("editor", ["editor"], {})], "head", runner=runner) == 0
+    assert gate.FAILED_STAGES == []
+    assert gate.ROW_RESULTS["editor"]["status"].startswith("ADVISORY FAIL")
+
+
+def test_editor_runner_attempts_all_suites_after_a_failure(monkeypatch):
+    import merge_gate_editor as editor
+    calls = []
+    def run(command, **kwargs):
+        calls.append(command)
+        return int(len(calls) == 2)
+    monkeypatch.setattr(editor.subprocess, "call", run)
+    assert editor.main(2) == 1
+    assert [Path(c[0]).stem for c in calls[1:]] == list(editor.TESTS)
+
+
 def test_promotion_does_not_require_the_slim_row():
     executed = {n: {"status": "PASS"} for n in nightly_gate.stage_names(False)}
     executed["mods-slim"] = {"status": "ADVISORY FAIL (1) (non-blocking; needs a dedicated fix lane)"}
