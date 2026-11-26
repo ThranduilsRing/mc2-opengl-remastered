@@ -76,7 +76,7 @@ def tool(name, env, candidates):
 
 def run(cmd, log, env=None, ok=(0,)):
     with log.open("w", encoding="utf-8") as stream:
-        result = subprocess.run(list(map(str, cmd)), stdout=stream, stderr=subprocess.STDOUT,  # background-launch: allow asset tools only; console_child suppresses desktop windows
+        result = subprocess.run(list(map(str, cmd)), stdout=stream, stderr=subprocess.STDOUT,
                                 env=env, **console_child.child_kwargs(redirected=True))
     if result.returncode not in ok:
         raise RuntimeError(f"exit {result.returncode}; see {log}")
