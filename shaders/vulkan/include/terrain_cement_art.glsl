@@ -30,6 +30,7 @@ vec3 shadeRoadArt(vec4 art, uint road, uint cw, vec2 dx, vec2 dy) {
     } else if (!adopt) {
         color *= vec3(0.82, 0.80, 0.76);
     }
+    vec3 albedo = color;
     color *= vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);
     vec3 normal = vec3(0, 0, 1);
     float shadow = min(TS_enableShadows != 0 ? terrainStaticShadow(v_worldPos) : 1.0,
@@ -46,11 +47,11 @@ vec3 shadeRoadArt(vec4 art, uint road, uint cw, vec2 dx, vec2 dy) {
     if (!cementTile) {
         float dist = distance(v_worldPos.xy, mc2ToRender(uT.cameraPosMC2.xyz).xy);
         float fog = clamp(1.0 - exp(-dist * MC2_FOG_EXP_COEFFICIENT * exp(-max(v_worldPos.z, 0.0) * 0.002)), 0.0, 0.70);
-        color = mix(color, vec3(0.58, 0.65, 0.75), fog);
+        color = mix(color, uEnv.sceneLight.x < 1.0 ? uEnv.ambLive.rgb : vec3(0.58, 0.65, 0.75), fog);
     }
     if (uT.numPoolLights > 0) {
         float unusedContact = 0.0;
-        color += tlp_terrainPoolLight(v_worldPos, uT.numPoolLights,
+        color += (uEnv.sceneLight.x < 1.0 ? albedo : vec3(1.0)) * tlp_terrainPoolLight(v_worldPos, uT.numPoolLights,
             uT.lightGridDim, vec2(uT.lightGridMinX, uT.lightGridMinY),
             vec2(uT.lightGridInvCellX, uT.lightGridInvCellY),
             uT.lightPoolSoft, uT.lightPoolMoverDim, uT.lightPoolMoverScale,
@@ -58,7 +59,7 @@ vec3 shadeRoadArt(vec4 art, uint road, uint cw, vec2 dx, vec2 dy) {
             normal, vec3(0, 0, 1), false, 0.0);
     }
     if (uT.halfMap > 0.0)
-        color = mix(color, vec3(0.58, 0.65, 0.75),
+        color = mix(color, uEnv.sceneLight.x < 1.0 ? uEnv.ambLive.rgb : vec3(0.58, 0.65, 0.75),
             smoothstep(uT.halfMap - mc2FogDistance(256.0), uT.halfMap - mc2FogDistance(32.0), max(abs(v_worldPos.x), abs(v_worldPos.y))));
     return color;
 }
