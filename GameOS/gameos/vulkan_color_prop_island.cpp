@@ -2159,11 +2159,12 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
     // MC2_VK_SHADOW_MATRIX_DIAG: the object matrix the props are projected with next to the live camera matrix, so a light-space leak into the colour pass shows.
 
 
-    // Lazy init / rebuild on size change.
+    // Viewport/scissor are dynamic. Keep map geometry, material residency and pipelines across resizes.
     mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
-    if (!supplied) if (const ColorPropIsland* parked = parkedIsland(); parked && (parked->w != w || parked->h != h)) {
-        slotCtx.retireIsland(mc2vk::IslandSlot::Water);
-        slotCtx.retireIsland(mc2vk::IslandSlot::ColorProp);
+    if (!supplied) if (ColorPropIsland* parked = parkedIsland(); parked && (parked->w != w || parked->h != h)) {
+        parked->w = w;
+        parked->h = h;
+        vlog("viewport resized: %dx%d; mission resources retained.", w, h);
     }
     if (!supplied && !islandSlot()) {
         ZoneScopedN("VKIsl.Props.Init");

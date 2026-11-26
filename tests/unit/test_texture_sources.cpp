@@ -6,6 +6,28 @@
 #include "../../mclib/sim_overlap.h"
 #include <barrier>
 #include <future>
+#include "../../GameOS/gameos/load_scope.h"
+
+TEST_CASE("EditorLoad/checkpoints stay on the loading thread and stop outside loads") {
+    static thread_local int beats = 0;
+    beats = 0;
+    mc2::load::checkpoint = [] { ++beats; };
+    auto* entry = mc2::load::entry("editor.checkpoint.test");
+    { mc2::load::Scope inactive(entry); }
+    CHECK(beats == 0);
+    mc2::load::begin();
+    { mc2::load::Scope outer(entry); { mc2::load::Scope inner(entry); } }
+    CHECK(beats == 2);
+    CHECK(std::async(std::launch::async, [entry] {
+        mc2::load::Scope worker(entry);
+        return mc2::load::checkpoint == nullptr;
+    }).get());
+    CHECK(beats == 2);
+    CHECK(mc2::load::report().find("editor.checkpoint.test=") != std::string::npos);
+    { mc2::load::Scope inactive(entry); }
+    CHECK(beats == 2);
+    mc2::load::checkpoint = nullptr;
+}
 
 namespace {
 struct Sources {

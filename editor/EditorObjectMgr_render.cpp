@@ -1,6 +1,7 @@
 // EditorObjectMgr: per-frame update and render, building appearance lookup/priming and static-prop registration.
 // Declared in the class headers; shared names in EditorObjectMgr_internal.h.
 #include "EditorObjectMgr_internal.h"
+#include "../GameOS/gameos/load_scope.h"
 #include "Gates/gate.h"
 #include "../GameOS/gameos/static_caster_set.h"   // the shadow bake's caster set
 
@@ -48,10 +49,15 @@ void EditorObjectMgr::update()
 						// back to tile intersections). We only need to refresh z to the terrain
 						// height at the building's (possibly sub-cell) x,y.
 						pos.z = land->getTerrainElevation(pos);
+						const bool heightChanged = pos.z != pBAppr->position.z;
 						pBAppr->position = pos;
 						gosASSERT((8 > pBAppr->teamId) && (-1 <= pBAppr->teamId));
 						pBAppr->setObjectParameters(pos, pBAppr->rotation, pBAppr->selected, pBAppr->teamId, homeRelations[pBAppr->teamId+1]);
-						pBAppr->update();
+						// Match the game: camera motion only touches already baked, unedited props.
+						if (!heightChanged && !pBAppr->selected && pBAppr->IsStaticNow())
+							pBAppr->touch();
+						else
+							pBAppr->update();
 						pBAppr->setVisibility(true,true);
 					}
 				}
@@ -328,6 +334,7 @@ void EditorObjectMgr::primeAllBuildingAppearanceTypes()
 		for (auto bldgIter = grp.buildings.begin(); bldgIter != grp.buildings.end(); bldgIter++)
 		{
 			Building& bldg = *bldgIter;
+			MC2_LOAD_SCOPE("editor.primePaletteType");
 
 			if (bldg.type != BLDG_TYPE && bldg.type != TREED_TYPE)
 				continue;

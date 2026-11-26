@@ -50,6 +50,8 @@ inline Entry g_entries[kMaxEntries];
 inline int g_entryCount = 0;
 inline uint32_t g_capacityDrops = 0;
 inline std::atomic<bool> g_active{false};
+// A loading host may service its UI at scope boundaries. Worker scopes never call the host's pump.
+inline thread_local void (*checkpoint)() = nullptr;
 inline std::mutex g_entryMutex;
 inline uint64_t g_generation = 0;
 inline std::thread::id g_owner;
@@ -106,6 +108,7 @@ public:
             if (parent_ && parent_->generation_ == generation_) parent_->children_ += elapsed;
         }
         entry_ = nullptr;
+        if (checkpoint) checkpoint();
     }
     ~Scope() { if (entry_) end(clockNs()); }
     Scope(const Scope&) = delete;

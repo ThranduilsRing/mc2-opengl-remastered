@@ -1134,8 +1134,6 @@ void EditorInterface::syncHScroll()
 	float bound = SQRT_2 * maxVisual;
 
 	float scrollPos = ((glm::dot(direction, eyeDisplacement)) / bound * 0.5f + 0.5f) * HSCROLLBAR_RANGE;
-	SetScrollRange( SB_HORZ, 0, HSCROLLBAR_RANGE, true );
-	SetScrollPos(SB_HORZ, (int)scrollPos);
 
 	{
 		/* figure out what proportion of the map is visible */
@@ -1150,10 +1148,14 @@ void EditorInterface::syncHScroll()
 		float dy = world2.y - world1.y;
 		float span = sqrt(dx * dx + dy * dy);
 		/* make the size of the scroll bar proportional to the proportion of the map that's visible */
-		SCROLLINFO si;
-		GetScrollInfo(SB_HORZ, &si, SIF_PAGE);
+		// Publish range, page and position together: intermediate states toggle the bar and resize the renderer.
+		SCROLLINFO si{};
+		si.cbSize = sizeof(si);
+		si.nMin = 0;
+		si.nMax = HSCROLLBAR_RANGE;
+		si.nPos = (int)scrollPos;
 		si.nPage = HSCROLLBAR_RANGE * span / ( 2.0 * bound);
-		si.fMask = SIF_PAGE;
+		si.fMask = SIF_RANGE | SIF_POS | SIF_PAGE;
 		SetScrollInfo(SB_HORZ, &si);
 	}
 
@@ -1187,8 +1189,6 @@ void EditorInterface::syncVScroll()
 	float bound = SQRT_2 * maxVisual;
 
 	float scrollPos = ((glm::dot(direction, eyeDisplacement)) / bound * 0.5f + 0.5f) * VSCROLLBAR_RANGE;
-	SetScrollRange( SB_VERT, 0, VSCROLLBAR_RANGE, false );
-	SetScrollPos(SB_VERT, (int)scrollPos);
 
 	{
 		/* figure out what proportion of the map is visible */
@@ -1203,10 +1203,13 @@ void EditorInterface::syncVScroll()
 		float dy = world2.y - world1.y;
 		float span = sqrt(dx * dx + dy * dy);
 		/* make the size of the scroll bar proportional to the proportion of the map that's visible */
-		SCROLLINFO si;
-		GetScrollInfo(SB_VERT, &si, SIF_PAGE);
+		SCROLLINFO si{};
+		si.cbSize = sizeof(si);
+		si.nMin = 0;
+		si.nMax = VSCROLLBAR_RANGE;
+		si.nPos = (int)scrollPos;
 		si.nPage = VSCROLLBAR_RANGE * span / ( 2.0 * bound);
-		si.fMask = SIF_PAGE;
+		si.fMask = SIF_RANGE | SIF_POS | SIF_PAGE;
 		SetScrollInfo(SB_VERT, &si);
 	}
 
