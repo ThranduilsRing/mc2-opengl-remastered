@@ -114,7 +114,8 @@ PATH_EXEMPTIONS: dict[str, list[tuple[str, str]]] = {
     ],
     "tools/bt2018_import/stock_props.py": [
         ("A:/Games/mc2-srcdata/tgl",
-         "PC-only BT2018 prop-import cook INPUT (stock .ase/.ini source for size and luminance guards); --srcdata overrides "
+         "PC-only BT2018 prop-import cook INPUT (stock .ase/.ini source for size and luminance guards); "
+         "stock_props.py and extract_bt2018_props.py both accept --srcdata to override this fallback, "
          "and no shipped output depends on it -- the offline cook class this gate excludes"),
     ],
     "tools/import_mechs.py": [
