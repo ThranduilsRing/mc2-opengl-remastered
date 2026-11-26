@@ -426,7 +426,7 @@ void WeaponBolt::drawPacket (const mc2::render_view::FxPacket& view, const mc2::
                 mc2ToRender(render, world);
                 Stuff::Vector4D clip;
                 clip.MultiplyPoint(render, eye->getWorldToClip());
-                return mc2::beam::Vertex{{clip.x, clip.y, clip.z, clip.w}, {u, v},
+                return mc2::beam::Vertex{mc2::beam::cameraClip({clip.x, clip.y, clip.z, clip.w}, eye->getUsePerspective()), {u, v},
                     {static_cast<float>((color >> 24) & 255), static_cast<float>((color >> 16) & 255),
                      static_cast<float>((color >> 8) & 255), static_cast<float>(color & 255)}};
             };

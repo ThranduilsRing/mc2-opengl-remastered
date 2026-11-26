@@ -14,6 +14,12 @@ struct Polygon {
     int count = 0;
 };
 
+// Camera's perspective pixel-homogeneous volume has negative W in front.
+// Negate the entire vector so clipping uses positive W without changing NDC.
+inline glm::vec4 cameraClip(const glm::vec4& clip, bool perspective) {
+    return perspective ? -clip : clip;
+}
+
 inline glm::vec2 screenPosition(const glm::vec4& clip, bool perspective,
                                const glm::vec2& mul, const glm::vec2& add) {
     return (perspective ? glm::vec2(clip) / clip.w : glm::vec2(1.0f) - glm::vec2(clip)) * mul + add;

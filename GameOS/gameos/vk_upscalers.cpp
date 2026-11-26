@@ -97,6 +97,8 @@ bool dispatchUpscaler(RenderCore::IUpscalerProvider& up, RenderCore::UpscalerFra
     f.commandList = cb;
     f.motionVectors = {reinterpret_cast<uint64_t>(motionVectors), 0, VK_FORMAT_R16G16_SFLOAT, sampled, f.renderWidth, f.renderHeight};
     f.reactive = {reinterpret_cast<uint64_t>(reactive), 0, VK_FORMAT_R8_UNORM, sampled, f.renderWidth, f.renderHeight};
+    // Unit coverage is fully reactive: also discard temporal locks there. The HUD is already drawn in the present tail.
+    f.transparency = f.reactive;
     return up.dispatch(f);
 }
 }  // namespace mc2vk
