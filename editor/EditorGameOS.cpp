@@ -466,6 +466,16 @@ extern bool gosExitGameOS();
 
 DWORD __stdcall RunGameOSLogic()
 {
+    extern bool g_cliSmokeCamera;
+    static int cameraFrame = 0;
+    const auto cameraStart = GetTickCount64();
+    const int cameraPhase = cameraFrame / 45;
+    if (g_cliSmokeCamera && eye && land) {
+        if (cameraPhase == 1) eye->moveRight(20.0f);
+        if (cameraPhase == 2) eye->ZoomOut(0.01f * eye->getScaleFactor());
+        if (cameraPhase == 3) eye->ZoomIn(0.01f * eye->getScaleFactor());
+        if (cameraPhase == 4) eye->rotateLeft(1.0f);
+    }
     EditorWatchdog_Heartbeat();  // main-thread liveness for the stall watchdog
 
     if (!g_editorRenderWindow || !getGosRenderer())
@@ -673,6 +683,11 @@ DWORD __stdcall RunGameOSLogic()
     graphics::limit_editor_frame();
     EditorFramePhase_Mark("present");
     EditorFramePhase_End();
+    if (g_cliSmokeCamera && land) {
+        fprintf(stderr, "[EDITOR_CAMERA v1] frame=%d phase=%d active_ms=%llu size=%dx%d\n",
+                cameraFrame++, cameraPhase, GetTickCount64() - cameraStart, viewport_w, viewport_h);
+        fflush(stderr);
+    }
 
 #ifdef TRACY_ENABLE
     FrameMark;

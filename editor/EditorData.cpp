@@ -47,7 +47,7 @@ void EditorDataTrace(const char* fmt, ...)
 	FILE* f = fopen("editor-startup.log", "a");
 	if (!f)
 		return;
-	fputs(buf, f);
+	fprintf(f, "[EDLOAD_TICK ms=%llu] %s", GetTickCount64(), buf);
 	fputc('\n', f);
 	fclose(f);
 }

@@ -169,6 +169,7 @@ bool         g_cliPlaytestDone       = false; // verdict emitted; guards the exi
 // to a TGA after N rendered frames with a mission loaded, then let the smoke exit timer end the run.
 // Backend-neutral: the GL backend reads the back buffer, Vulkan asks the present path for its readback.
 std::string  g_cliCapturePath;
+bool         g_cliSmokeCamera = false;
 int          g_cliCaptureFrame       = 150;
 const char*  EditorCliCapturePath()  { return g_cliCapturePath.c_str(); }
 int          EditorCliCaptureFrame() { return g_cliCaptureFrame; }
@@ -443,6 +444,10 @@ static void s_cli_parse(const char* cmd)
 		else if (s_cli_flag_match(tok, "-playtest", "--playtest"))
 		{
 			g_cliPlaytest = true;
+		}
+		else if (s_cli_flag_match(tok, "-smoke-camera", "--smoke-camera"))
+		{
+			g_cliSmokeCamera = true;
 		}
 		else if (s_cli_starts_with(tok, "-capture=", &rest) || s_cli_starts_with(tok, "--capture=", &rest))
 		{

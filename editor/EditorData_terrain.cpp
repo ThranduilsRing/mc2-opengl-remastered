@@ -3,6 +3,7 @@
 #include "EditorData_internal.h"
 #include "mc2fmt.h"
 #include "mc2str.h"
+#include "../GameOS/gameos/load_scope.h"
 
 
 static void EditorDataWarmTerrain(const char* where)
@@ -40,6 +41,13 @@ static void EditorDataWarmTerrain(const char* where)
 
 bool EditorData::initTerrainFromPCV( const char* fileName )
 {
+	mc2::load::begin();
+	struct LoadReport {
+		ULONGLONG start = GetTickCount64();
+		~LoadReport() {
+			EditorDataTrace("[LOAD_SCOPES v1] host=editor total_ms=%llu%s", GetTickCount64() - start, mc2::load::report().c_str());
+		}
+	} loadReport;
 	EditorDataTrace("EditorData::initTerrainFromPCV: enter fileName=%s", fileName ? fileName : "<null>");
 	if (!fileName || !fileName[0]) return false;
 	EditorFit::MissionTextReader file;
@@ -244,7 +252,10 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	// placing a Bridge (or any other type absent from the starter map) hits the
 	// late-register path (s_geometryFinalized==true at registerType time) and
 	// renders solid black.
-	EditorObjectMgr::instance()->primeAllBuildingAppearanceTypes();
+	{
+		MC2_LOAD_SCOPE("editor.primeAllBuildingAppearanceTypes");
+		EditorObjectMgr::instance()->primeAllBuildingAppearanceTypes();
+	}
 	EditorDataTrace("EditorData::initTerrainFromPCV: after primeAllBuildingAppearanceTypes");
 
 	// Steps 11-13 (game lines 3136-3143): finalize batcher geometry, then build indirect buffer.
