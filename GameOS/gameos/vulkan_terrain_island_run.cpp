@@ -407,7 +407,7 @@ struct TerrainRecPlan {
     mc2vk::VulkanContext* ctx = nullptr;   // const entry-point table only (cmdBeginRendering/cmdEndRendering/cmdPipelineBarrier2)
     VkImageView colorView = VK_NULL_HANDLE, normalView = VK_NULL_HANDLE, depthView = VK_NULL_HANDLE; VkFormat depthFormat = VK_FORMAT_UNDEFINED;
     VkPipeline pipe = VK_NULL_HANDLE, skirtPipe = VK_NULL_HANDLE;
-    VkPipelineLayout playout = VK_NULL_HANDLE; VkDescriptorSet set = VK_NULL_HANDLE; uint32_t dynOffs[4]{};
+    VkPipelineLayout playout = VK_NULL_HANDLE; VkDescriptorSet set = VK_NULL_HANDLE, sunSet = VK_NULL_HANDLE; uint32_t dynOffs[4]{};
     int w = 0, h = 0; float jx = 0, jy = 0, clearColor[4]{};
     VkBuffer drawBuf = VK_NULL_HANDLE; VkDeviceAddress recBase = 0; VkDeviceSize cmdBase = 0;
     std::vector<Run> patchRuns, skirtRuns;
@@ -447,6 +447,7 @@ static bool record_terrain_cmds(const TerrainRecPlan& p, VkCommandBuffer cb) {
     mc2vkts::GpuTimer::cmdWrite(cb, p.timerPool, p.timerCount, 1);
 
     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, p.playout, 0, 1, &p.set, 4, p.dynOffs);
+    if (p.sunSet) vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, p.playout, 1, 1, &p.sunSet, 0, nullptr);
 
     // One record (TerrainPatchConstants, read through buffer device address by gl_DrawID) and one VkDrawIndexedIndirectCommand per draw; a run of
     // consecutive draws that share a mesh is one vkCmdDrawIndexedIndirect. All patches draw first, then all skirt strips.
@@ -496,6 +497,7 @@ static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, uint32_
     plan.ctx = &rctx; plan.colorView = s->colorRes->view.get(); plan.normalView = s->normalRes->view.get(); plan.depthView = s->depthRes->view.get();
     plan.depthFormat = s->depthRes->format;
     plan.pipe = s->specSelected; plan.skirtPipe = s->skirtPipe.get();
+    plan.sunSet = s->sunSet;
     plan.playout = s->playout.get(); plan.set = s->set[par]; plan.w = w; plan.h = h;
     plan.scissor={{0,0},{static_cast<uint32_t>(w),static_cast<uint32_t>(h)}};
     std::copy_n(dynOffs, 4, plan.dynOffs);
@@ -771,9 +773,17 @@ static int run_terrain(int w, int h, TerrainIsland* supplied = nullptr,
     const auto specBegin = std::chrono::steady_clock::now();
     const auto specKey = mc2::terrain::terrainSpecKey(common, target != nullptr,
         {static_cast<uint32_t>(s->colorRes->format), static_cast<uint32_t>(s->normalRes->format), static_cast<uint32_t>(s->depthRes->format)});
-    const TerrainPipelineRecipe specRecipe{s->device, s->vert.get(), s->frag.get(), s->playout.get(),
+    const auto sunTlas = target ? nullptr : mc2vk::rt::scene::sunShadowTlas();
+    const bool useSun = sunTlas && s->sunPipe;
+    s->sunSet = VK_NULL_HANDLE;
+    if (useSun) {
+        s->sunSets[par].writeTlas(s->device, 0, sunTlas);
+        s->sunSet = s->sunSets[par].set();
+    }
+    const TerrainPipelineRecipe specRecipe{s->device, s->vert.get(), useSun ? s->sunFrag.get() : s->frag.get(), s->playout.get(),
         s->colorRes->format, s->normalRes->format, s->depthRes->format, common.csmDebugMode, target != nullptr, false, rctx.tracker().frameNo()};
-    const auto* variant = s->specVariants.select(specKey, mc2::gate::get<"MC2_TERRAIN_SPEC">(),
+    auto& variants = useSun ? s->sunVariants : s->specVariants;
+    const auto* variant = variants.select(specKey, mc2::gate::get<"MC2_TERRAIN_SPEC">(),
         [specRecipe, specKey] {
             const auto begin = std::chrono::steady_clock::now();
             auto pipe = build_terrain_pipeline(specRecipe, &specKey);
@@ -781,7 +791,7 @@ static int run_terrain(int w, int h, TerrainIsland* supplied = nullptr,
                 static_cast<unsigned long long>(specKey.bits), static_cast<bool>(pipe), std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - begin).count());
             return pipe;
         }, [&rctx](mc2vk::OwnedPipeline&& pipe) { rctx.retire(std::move(pipe)); });
-    s->specSelected = variant ? variant->get() : (target ? s->planarPipe.get() : s->pipe.get());
+    s->specSelected = variant ? variant->get() : (useSun ? s->sunPipe.get() : target ? s->planarPipe.get() : s->pipe.get());
     if (s->specLoggedKey != specKey.bits || s->specLoggedPipe != s->specSelected || s->specLoggedCompiling != s->specVariants.compiling()) {
         vlog("[TERRAIN_SPEC] select frame=%llu view=%s key=%llu formats=%u,%u,%u pipeline=%llu specialized=%d compiling=%d select_us=%.3f",
             static_cast<unsigned long long>(g_mc2RenderFrame), s->planar ? "reflection" : "main", static_cast<unsigned long long>(specKey.bits),

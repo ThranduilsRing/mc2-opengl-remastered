@@ -29,6 +29,10 @@ inline constexpr std::array<BindingDesc, 3> kSmokeBindings = {{
     {2, BindingKind::StorageBuffer, "results"},    // out: 1 x vec4 per ray (x = hit flag, y = t, z = primitive id, w = instance custom index)
 }};
 
+inline constexpr std::array<BindingDesc, 1> kSunShadowBindings = {{
+    {0, BindingKind::AccelerationStructure, "tlas"},
+}};
+
 // shaders/vulkan/rt_scene_probe.comp.slang: the RT scene material probe (vk_rt_scene.cpp, MC2_VK_RT_SELFTEST). Push constants: kSceneProbePushBytes.
 inline constexpr std::array<BindingDesc, 13> kSceneProbeBindings = {{
     {0, BindingKind::AccelerationStructure, "tlas"},
@@ -115,7 +119,8 @@ namespace mc2vk::rt {
 // compute-stage visible.
 class RayQuerySet {
 public:
-    bool create(const VulkanContext& ctx, std::span<const BindingDesc> table = kSmokeBindings, uint32_t pushBytes = 0);
+    bool create(const VulkanContext& ctx, std::span<const BindingDesc> table = kSmokeBindings, uint32_t pushBytes = 0,
+                VkShaderStageFlags stages = VK_SHADER_STAGE_COMPUTE_BIT);
     // Writes the TLAS and the two storage buffers (whole range) into the set (kSmokeBindings).
     void write(VkDevice device, VkAccelerationStructureKHR tlas, VkBuffer rays, VkBuffer results) const;
     void writeTlas(VkDevice device, uint32_t binding, VkAccelerationStructureKHR tlas) const;

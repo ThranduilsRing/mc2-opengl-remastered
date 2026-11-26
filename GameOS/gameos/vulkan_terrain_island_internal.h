@@ -17,6 +17,7 @@
 #include "vk_image_resource.h"
 #include "vk_island_util.h"
 #include "vk_owned.h"
+#include "vk_rt_descriptors.h"
 #include "vulkan_terrain_spec_key.h"
 #include "vk_texture_residency.h"
 #include "vk_gpu_timestamps.h"   // VK-DRAW-PERF-1: MC2_VK_GPU_TIMESTAMPS GPU segment timers
@@ -193,6 +194,11 @@ struct TerrainIsland : mc2vk::IslandState {
     uint64_t setRev[mc2vk::kMaxFramesInFlight] = {};            // new value on every write to set[i]'s ground-copied bindings
     mc2vk::DescWriteStamp moverStamp[mc2vk::kMaxFramesInFlight]; // binding 24 of set[i]; terrain run and overlay share the set and the stamp
     Mc2GroundLightingFrame groundFrame{};
+    mc2vk::rt::RayQuerySet sunSets[mc2vk::kMaxFramesInFlight];
+    mc2vk::OwnedShaderModule sunFrag;
+    mc2vk::OwnedPipeline sunPipe;
+    mc2::terrain::TerrainSpecVariants<mc2vk::OwnedPipeline> sunVariants;
+    VkDescriptorSet sunSet = VK_NULL_HANDLE;
     uint64_t groundFrameNo = ~static_cast<uint64_t>(0);
     mc2vk::OwnedPipelineLayout  playout;
     mc2vk::OwnedPipeline        pipe;
@@ -358,7 +364,7 @@ struct TerrainIsland : mc2vk::IslandState {
     TerrainIsland() = default;
     // retireIsland waits for GPU idle before reset (vulkan_context.cpp); failed
     // initialization also waits before fresh.reset (vulkan_terrain_island_run.cpp).
-    ~TerrainIsland() override { specVariants.drain(); gpuTimer.destroy(); }
+    ~TerrainIsland() override { sunVariants.drain(); specVariants.drain(); gpuTimer.destroy(); }
 };
 
 const uint32_t kOvlTexPerPool = 480;   // textures per pool of the overlay's descriptor chain

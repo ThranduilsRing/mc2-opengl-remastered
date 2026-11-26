@@ -686,8 +686,14 @@ bool init_island(TerrainIsland* s, int w, int h) {
 
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        const VkDescriptorSetLayout setLayout = s->dsl.get();
-        plci.setLayoutCount = 1; plci.pSetLayouts = &setLayout;
+        VkDescriptorSetLayout setLayouts[2] = {s->dsl.get(), VK_NULL_HANDLE};
+        auto& sunContext = mc2vk::getOrCreateEngineVulkanContext();
+        if (sunContext.rt().rayQuery) {
+            for (auto& sunSet : s->sunSets)
+                if (!sunSet.create(sunContext, mc2vk::rt::kSunShadowBindings, 0, VK_SHADER_STAGE_FRAGMENT_BIT)) return false;
+            setLayouts[1] = s->sunSets[0].setLayout();
+        }
+        plci.setLayoutCount = setLayouts[1] ? 2u : 1u; plci.pSetLayouts = setLayouts;
         const VkPushConstantRange patchRange{VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(uint64_t)};   // device address of the run's first TerrainPatchConstants record
         plci.pushConstantRangeCount = 1;
         plci.pPushConstantRanges = &patchRange;
@@ -700,6 +706,14 @@ bool init_island(TerrainIsland* s, int w, int h) {
             s->colorRes->format, s->normalRes->format, s->depthRes->format, csmDebugSpec};
         s->pipe = build_terrain_pipeline(recipe);
         if (!s->pipe) { vlog("vkCreateGraphicsPipelines failed."); setFallback("pipeline_failed"); return false; }
+        if (setLayouts[1]) {
+            s->sunFrag = load_spv(s->device, spv_dir() + "terrain_tier1_rt.frag.spv");
+            if (!s->sunFrag) return false;
+            auto sunRecipe = recipe;
+            sunRecipe.frag = s->sunFrag.get();
+            s->sunPipe = build_terrain_pipeline(sunRecipe);
+            if (!s->sunPipe) return false;
+        }
         recipe.planar = true;
         s->planarPipe = build_terrain_pipeline(recipe);
         if (!s->planarPipe) { vlog("vkCreateGraphicsPipelines (planar) failed."); setFallback("pipeline_failed"); return false; }

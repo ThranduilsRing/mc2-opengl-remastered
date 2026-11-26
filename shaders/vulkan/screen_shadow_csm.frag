@@ -1,8 +1,14 @@
 // Unified object receiver: one static D16 gather and the moverVisibility seam.
-#version 450
+#version 460
+#ifdef MC2_RT_SUN_SHADOWS
+#extension GL_EXT_ray_query : require
+#endif
 #extension GL_GOOGLE_include_directive : require
 #include "../include/axis.hglsl"
 #include "include/mover_shadow.glsl"
+#ifdef MC2_RT_SUN_SHADOWS
+#include "include/rt_sun_shadow.glsl"
+#endif
 layout(location=0) in vec2 TexCoord;
 layout(location=0) out vec4 FragColor;
 layout(set=0,binding=0) uniform sampler2D sceneDepthTex;
@@ -39,6 +45,9 @@ void main() {
     vec3 decodedNormal=normalize(normalData.rgb*2.0-1.0);
     vec3 N=prop?mc2ToRender(decodedNormal):decodedNormal;
     float shadow=u.enableShadows!=0 && !prop?objectStaticVisibility(worldPos):1.0;
+#ifdef MC2_RT_SUN_SHADOWS
+    shadow=min(shadow,mix(sunShadowFloor(0.4),1.0,rtPropSunVisibility(worldPos,N,moverFrame.sun.xyz)));
+#endif
     if (u.enableDynamicShadows!=0) {
         float v=moverVisibilityEx(worldPos,N,prop?1.0:0.0);
         if (!prop && u.mechSoft>0.0)

@@ -33,6 +33,29 @@ TEST_CASE("rt scene: demand requires capability and a registered consumer") {
     CHECK_FALSE(d.needed(true));
 }
 
+TEST_CASE("rt scene: sun consumer coexists with selftest and excludes unsafe casters") {
+    Demand d;
+    d.set(Consumer::SunShadows, true);
+    d.set(Consumer::SelfTest, true);
+    CHECK_FALSE(d.set(Consumer::SelfTest, false));
+    CHECK(d.needed(true));
+    CHECK(d.set(Consumer::SunShadows, false));
+    CHECK_FALSE(d.needed(true));
+    CHECK(sunPropEligible(0, true, false));
+    CHECK(sunPropEligible(1, true, false));
+    CHECK_FALSE(sunPropEligible(4, true, false)); // RT has no sway parity
+    CHECK_FALSE(sunPropEligible(0, true, true));  // alpha holes stay on raster
+    CHECK_FALSE(sunPropEligible(0, false, false)); // delayed material feed is not opaque proof
+    CHECK((kMaskSunProp & (kMaskStatic | kMaskMover)) == 0);
+    float placement[16];
+    model(0, 0, 0, placement);
+    const PropPlacement props[] = {{1, 0x100001, placement, 4}, {1, 0x100001, placement, 0}};
+    const auto records = buildRecords(props, 0);
+    REQUIRE(records.size() == 2);
+    CHECK_FALSE(sunPropEligible(records[0].flags, true, false));
+    CHECK(sunPropEligible(records[1].flags, true, false));
+}
+
 TEST_CASE("rt scene: first demand samples current placements and invalidated snapshots rebuild") {
     Demand d;
     float oldModel[16], currentModel[16];

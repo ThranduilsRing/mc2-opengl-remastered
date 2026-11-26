@@ -38,6 +38,7 @@ struct RenderOptions {
 
     // Shadows and terrain lighting.
     int shadowQuality = 2; // 0 Potato, 1 Medium, 2 High
+    bool rtSunShadows = true; // near-field opaque prop sun contacts; raster fallback
     int baseQuality = 2;   // 0 Potato, 1 Low, 2 Medium/High; bandwidth/ALU budget
     bool shorelineLegacySuppress = true;    // suppress the legacy shoreline post pass
     int waterReflections = 2; // 0 Off, 1 Sky only, 2 Half-res; spatial, no history
@@ -106,6 +107,7 @@ inline constexpr Option kOptions[] = {
     detail::floatOpt("HdrPeakNits",                   &RenderOptions::hdrPeakNits, 0.0, 10000.0),
     detail::longOpt ("SpatialAA",                     &RenderOptions::spatialAA, 0, 4),
     detail::longOpt ("ShadowQuality", &RenderOptions::shadowQuality, 0, 2),
+    detail::boolOpt ("RtSunShadows", &RenderOptions::rtSunShadows),
     detail::longOpt ("BaseQuality", &RenderOptions::baseQuality, 0, 2),
     detail::longOpt ("WaterReflections", &RenderOptions::waterReflections, 0, 2),
     detail::longOpt ("ReflectionQuality", &RenderOptions::reflectionQuality, 0, 3),

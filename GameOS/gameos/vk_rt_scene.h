@@ -35,7 +35,7 @@ namespace mc2vk::rt::scene {
 
 enum class Kind : uint8_t { Terrain = 0, StaticProp = 1, Mover = 2 };
 
-enum class Consumer : uint32_t { SelfTest = 1 };
+enum class Consumer : uint32_t { SelfTest = 1, SunShadows = 2 };
 struct Demand {
     uint32_t consumers = 0;
     // Returns true only when the last consumer leaves (invalidate snapshots).
@@ -57,6 +57,11 @@ inline constexpr uint32_t kMechIdLast = 0x3FFFF;
 inline constexpr uint32_t kCustomIndexMask = 0xFFFFFF;   // VkAccelerationStructureInstanceKHR::instanceCustomIndex is 24 bits
 inline constexpr uint8_t kMaskStatic = 0x01;              // instance mask bit of terrain + static props
 inline constexpr uint8_t kMaskMover = 0x02;               // skinned movers (mechs, vehicles): gameplay-hidden in the fog, so a consumer can exclude them
+inline constexpr uint8_t kMaskSunProp = 0x04;             // opaque, non-swaying props only; trees and cutouts retain raster shadows
+
+constexpr bool sunPropEligible(uint32_t instanceFlags, bool hasMaterials, bool hasCutout) {
+    return (instanceFlags & 4u) == 0 && hasMaterials && !hasCutout;
+}
 
 // MOVERS (part 2): one updatable BLAS per actor (a mech or a vehicle), built in the frame command buffer straight from the GPU skin output
 // (MechSkinPass, no readback), refit every frame it is drawn and rebuilt on a topology / LOD change or after kRefitsBeforeRebuild refits. Its TLAS
@@ -90,6 +95,7 @@ struct Record {
     Key key;
     uint32_t typeId = 0;          // static props: the registry typeID (the BLAS slot); terrain: 0
     float transform[12] = {};     // row-major 3x4, object -> TLAS space
+    uint32_t flags = 0;           // raster instance flags: sway excludes a sun caster
 };
 
 // The 24-bit instance custom index holds a bounded ID only: a static prop's per-type object ID (0x100000 | recipe) or terrain's 0. A 32-bit generational
@@ -107,6 +113,7 @@ struct PropPlacement {
     uint32_t typeId = 0;
     uint32_t objectId = 0;
     const float* model = nullptr;   // 16 floats
+    uint32_t flags = 0;
 };
 
 // Lighting, fog and raster visibility do not change the ray-visible placement.
@@ -235,6 +242,7 @@ constexpr MaterialRow moverMaterialRow() {
 #ifndef MC2_RT_PURE_ONLY
 
 struct VkCommandBuffer_T;   // VkCommandBuffer, without pulling volk into every includer
+struct VkAccelerationStructureKHR_T;
 
 namespace mc2vk {
 class VulkanContext;
@@ -246,6 +254,8 @@ namespace mc2vk::rt::scene {
 // the last consumer invalidates cached placements; feeds are sampled on demand.
 bool demanded();
 void setConsumer(Consumer consumer, bool registered);
+// Static snapshot only: sun contacts do not request mover refits. Null while unavailable or disabled.
+VkAccelerationStructureKHR_T* sunShadowTlas();
 
 // The terrain island's frame feed: rebuilds the terrain BLAS (and the TLAS) when the surface changed. Main thread.
 void noteTerrain(const TerrainSource& t);

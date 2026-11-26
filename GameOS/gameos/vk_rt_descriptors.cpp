@@ -19,7 +19,7 @@ VkDescriptorType typeOf(BindingKind k) {
 }
 }  // namespace
 
-bool RayQuerySet::create(const VulkanContext& ctx, std::span<const BindingDesc> table, uint32_t pushBytes) {
+bool RayQuerySet::create(const VulkanContext& ctx, std::span<const BindingDesc> table, uint32_t pushBytes, VkShaderStageFlags stages) {
     static_assert(bindingsAreValid(kSmokeBindings.data(), static_cast<uint32_t>(kSmokeBindings.size())));
     static_assert(bindingsAreValid(kSceneProbeBindings.data(), static_cast<uint32_t>(kSceneProbeBindings.size())));
     const VkDevice device = ctx.device();
@@ -32,7 +32,7 @@ bool RayQuerySet::create(const VulkanContext& ctx, std::span<const BindingDesc> 
         b[i].binding = table[i].binding;
         b[i].descriptorType = typeOf(table[i].kind);
         b[i].descriptorCount = 1;
-        b[i].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+        b[i].stageFlags = stages;
         bool found = false;
         for (VkDescriptorPoolSize& s : sizes)
             if (s.type == b[i].descriptorType) { ++s.descriptorCount; found = true; }
