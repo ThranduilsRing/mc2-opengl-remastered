@@ -31,6 +31,8 @@ inline constexpr long kSalvageGenerous = 0, kSalvageMC2 = 1, kSalvageScarce = 2;
 
 struct GameRules {
     std::string mods;          // campaign add-on folder IDs and @ gameplay choices, comma-separated
+    // Mods holds "-" (split() ignores it) for the player's explicit empty selection; empty means none was ever made, which is
+    // also what a save block without Mods means (see migrateLegacyMods).
     bool purchaseVehicles     = false;
     long ai                   = 0;             // 0 = Stock, 1 = Smarter (Magic ABL 1.45)
     long dropLimitMode        = kDropTonnage;   // what caps a drop: tonnage (today), battle value, or nothing (tonnage still shown as info)
@@ -58,6 +60,15 @@ inline GameRules battleTechPreset() {
     r.pilotSkillWeight   = 150;
     r.salvage            = kSalvageScarce;
     r.cbillMultiplier    = 75;
+    return r;
+}
+
+// What a new campaign starts from (owner 11-26: the Magic gameplay packs on): the campaign-start dialog's first open, its Defaults
+// button and the options.cfg diff baseline. GameRules{} stays the legacy stock baseline that old saves, an absent key and networked
+// games read, so a player who explicitly picks Stock keeps Stock.
+inline GameRules newCampaignDefaults() {
+    GameRules r;
+    r.mods = "magic-ballistic-weapons,magic-gamesys-tweaks";
     return r;
 }
 
@@ -208,7 +219,7 @@ inline std::vector<CfgEntry> cfgEntries(const GameRules& g) {
         if (r.kind == Kind::Bool) out.push_back({key, g.*(r.b) ? "TRUE" : "FALSE", 'b'});
         else out.push_back({key, std::to_string(g.*(r.l)), 'l'});
     }
-    out.push_back({"GameRulesMods", "\"" + (g.mods.empty() ? std::string("-") : g.mods) + "\"", 's'});
+    out.push_back({"GameRulesMods", g.mods.empty() ? "\"\"" : "\"" + g.mods + "\"", 's'});   // no selection made: empty; "-" is the explicit empty one
     return out;
 }
 
@@ -229,7 +240,7 @@ inline void loadCfgText(GameRules& g, std::string_view text) {
         if (detail::equalsNoCase(name, "GameRulesMods")) {
             auto value = detail::trim(line.substr(eq + 1));
             if (value.size() >= 2 && value.front() == '"' && value.back() == '"') value = value.substr(1, value.size() - 2);
-            g.mods.clear();
+            g.mods = value == "-" ? "-" : "";
             for (const auto& id : mc2::mods::split(value)) { if (!g.mods.empty()) g.mods += ','; g.mods += id; }
             continue;
         }
@@ -250,7 +261,7 @@ template <class File>
 void writeFit(File& file, const GameRules& g) {
     if (g == GameRules{}) return;
     file.writeBlock(kFitBlock);
-    if (!g.mods.empty()) file.writeIdString("Mods", g.mods.c_str());
+    if (!g.mods.empty()) file.writeIdString("Mods", g.mods.c_str());   // "-" is written as stored: an explicit empty selection is never migrated
     for (const Rule& r : kRules) {
         if (r.kind == Kind::Bool) file.writeIdBoolean(r.key, g.*(r.b));
         else file.writeIdLong(r.key, g.*(r.l));
@@ -264,7 +275,8 @@ GameRules readFit(File& file) {
     if (file.seekBlock(kFitBlock) != 0) return g;
     char mods[4096] = {};
     if (file.readIdString("Mods", mods, sizeof(mods) - 1) == 0) {
-        for (const auto& id : mc2::mods::split(mods)) { if (!g.mods.empty()) g.mods += ','; g.mods += id; }
+        if (std::string_view(mods) == "-") g.mods = "-";   // the explicit empty selection
+        else for (const auto& id : mc2::mods::split(mods)) { if (!g.mods.empty()) g.mods += ','; g.mods += id; }
     }
     for (const Rule& r : kRules) {
         if (r.kind == Kind::Bool) {
@@ -275,6 +287,23 @@ GameRules readFit(File& file) {
             if (file.readIdLong(r.key, v) == 0) setLong(g, r, v);
         }
     }
+    return g;
+}
+
+// Missing is not empty. A block without Mods (or no block) was saved before add-on selection and ran with `legacy`: the launcher
+// toggles and every add-on the older builds auto-mounted. The selection is restored once and then saved; nothing to restore (a
+// stock or harness install) leaves the save exactly as it was.
+inline void migrateLegacyMods(GameRules& g, std::string_view legacy) {
+    if (!g.mods.empty()) return;   // a selection (a list, or "-" for explicitly none) is never migrated
+    g.mods = legacy;
+}
+
+// readFit with that migration; `legacy` is a callable returning the selection (legacyCampaignMods, defined in code/prefs_io.cpp).
+std::string legacyCampaignMods();
+template <class File, class Legacy>
+GameRules readFit(File& file, Legacy&& legacy) {
+    GameRules g = readFit(file);
+    migrateLegacyMods(g, legacy());
     return g;
 }
 

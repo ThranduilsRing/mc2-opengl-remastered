@@ -239,7 +239,7 @@ std::expected<void, long> LogisticsData::load( FitIniFile& file )
 		}
 	}
 
-	mc2::rules::publish( mc2::rules::readFit(file) );
+	mc2::rules::publish( mc2::rules::readFit(file, mc2::rules::legacyCampaignMods) );
 	ensureMechBayDataLoaded("save-load");
 	resetCampaignRoster();
 	resourcePoints = 0;

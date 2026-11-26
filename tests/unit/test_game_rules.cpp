@@ -444,3 +444,79 @@ TEST_CASE("game rules: campaign mod conflicts and campaign-only ladder selection
     CHECK(selection.empty());
     fs::remove_all(root);
 }
+
+TEST_CASE("game rules: GameRules{} is the frozen legacy stock baseline (change a value only with a save migration)") {
+    const GameRules g;
+    CHECK(g.mods.empty());
+    CHECK_FALSE(g.purchaseVehicles);
+    CHECK(g.ai == 0);
+    CHECK(g.dropLimitMode == kDropTonnage);
+    CHECK_FALSE(g.dropWeightPurchase);
+    CHECK(g.dropWeightStep == 5);
+    CHECK(g.heat == kHeatMC2);
+    CHECK(g.ammoExplosions == kAmmoExplMC2);
+    CHECK(g.calledShots == kCalledFloors);
+    CHECK(g.pilotSkillWeight == 100);
+    CHECK(g.salvage == kSalvageMC2);
+    CHECK(g.cbillMultiplier == 100);
+}
+
+TEST_CASE("game rules: new-campaign defaults, legacy add-on migration and the add-on exclusions") {
+    // newCampaignDefaults differs from GameRules{} in Mods only: old saves, an absent key and networked games stay on stock.
+    auto stock = newCampaignDefaults();
+    stock.mods.clear();
+    CHECK(stock == GameRules{});
+    CHECK(mc2::mods::selected(newCampaignDefaults().mods, "magic-ballistic-weapons"));
+    CHECK(mc2::mods::selected(newCampaignDefaults().mods, "magic-gamesys-tweaks"));
+    CHECK(rulesToPublish(true, newCampaignDefaults()) == GameRules{});
+    // A default save writes no block.
+    LogisticsMissionInfo info;
+    const auto plain = saveToFile(info, "game_rules_plain");
+    CHECK_FALSE(hasRulesBlock(plain));
+    std::remove(plain.c_str());
+    // An old save (no block) ran with the launcher toggles and its add-on layers: restored once, then saved as a selection.
+    GameRules old;
+    migrateLegacyMods(old, "@faster-weapons,magic-ballistic-weapons,magic-gamesys-tweaks");
+    CHECK(mc2::mods::selected(old.mods, "@faster-weapons"));
+    CHECK(mc2::mods::selected(old.mods, "magic-ballistic-weapons"));
+    info.setRules(old);
+    const auto migrated = saveToFile(info, "game_rules_migrated");
+    FitIniFile in;
+    REQUIRE(in.open(migrated.c_str()) == NO_ERR);
+    CHECK(readFit(in, [] { return std::string("@infinite-money"); }) == old);   // a selection is never migrated again
+    in.close();
+    std::remove(migrated.c_str());
+    // An explicit empty selection ("-" in the block) is not migrated either.
+    GameRules empty; empty.mods = "-";
+    info.setRules(empty);
+    const auto chosen = saveToFile(info, "game_rules_chosen");
+    REQUIRE(in.open(chosen.c_str()) == NO_ERR);
+    CHECK(readFit(in, [] { return std::string("magic-ballistic-weapons"); }).mods == "-");
+    in.close();
+    std::remove(chosen.c_str());
+    // Nothing to restore (a stock or harness install) leaves the save as it was.
+    GameRules bare;
+    migrateLegacyMods(bare, "");
+    CHECK(bare == GameRules{});
+    // options.cfg: an explicit Stock ("-", no Magic pack) survives a round trip; no selection made stores an empty value.
+    GameRules stockPick; stockPick.mods = "-";
+    std::string cfg;
+    for (const auto& e : cfgEntries(stockPick)) cfg += e.key + "=" + e.text + "\n";
+    GameRules back;
+    loadCfgText(back, cfg);
+    CHECK(back == stockPick);
+    CHECK(cfgEntries(GameRules{}).back().text == "\"\"");
+    namespace fs = std::filesystem;
+    const fs::path root = "game_rules_excluded_fixture";
+    for (const auto& id : {"mc2x-compat", "mco-compat", "mw5_mechs", "mw5-vehicles", "bt2018_mechs", "sample_kit", "magic-brain-1.45", "magic-gamesys-tweaks"}) {
+        fs::create_directories(root / id / "data/defs/equipment");
+        std::ofstream(root / id / "mod.json") << "{\"id\":\"" << id << "\",\"type\":\"assets\"}";
+        std::ofstream(root / id / "data/defs/equipment/weapons.csv") << id;
+    }
+    const auto addons = mc2::mods::catalogue(root);
+    REQUIRE(addons.size() == 1);
+    CHECK(addons[0].id == "magic-gamesys-tweaks");
+    // A compat layer the campaign mounted stays in the saved ModDeps with no add-on selected.
+    CHECK(mc2::mods::selected(mc2::mods::dependencies("mc2x-compat", "", addons), "mc2x-compat"));
+    fs::remove_all(root);
+}

@@ -263,6 +263,8 @@ int GameRulesDialog::handleMessage( unsigned long, unsigned long who )
 		const auto addons = mc2::mods::catalogue("mods");
 		for ( const auto& addon : addons )
 			if ( mc2::mods::selected(working.mods, addon.id) && !mc2::mods::conflict(addon, addons, working.mods).empty() ) return 0;
+		// The result is the player's selection; an empty one is marked only where a legacy migration would add something back.
+		if ( working.mods.empty() && !mc2::rules::legacyCampaignMods().empty() ) working.mods = "-";
 		status = YES;
 		bDone = true;
 	}

@@ -8,15 +8,28 @@
 #include "net/user_paths.h"
 #include "Gates/preferences_cfg.h"
 #include "Gates/render_options_publish.h"
-static std::string launcherModDefaults() {
-    std::string ids;
+static const std::vector<mc2::mods::Addon>& installedAddons() {
     static const auto addons = mc2::mods::catalogue("mods");
+    return addons;
+}
+std::string mc2::rules::launcherModDefaults() {
+    std::string ids;
+    const auto& addons = installedAddons();
     for (const auto& addon : addons)
         if (mc2::mods::selected(mc2::gate::str<"MC2_MOD_DEPS">(), addon.id) && mc2::mods::conflict(addon, addons, ids).empty()) mc2::mods::toggle(ids, addon.id);
     for (const auto& [id, on] : {std::pair{"@faster-weapons", mc2::gate::get<"MC2_DIRECT_FIRE_STRAIGHT">()},
          {"@infinite-money", mc2::gate::get<"MC2_CHEAT_INFINITE_MONEY">()}, {"@salvage-all", mc2::gate::get<"MC2_CHEAT_SALVAGE_ALL">()},
          {"@purchase-all", mc2::gate::get<"MC2_PURCHASE_ALL">()}, {"@jumpjets-all", mc2::gate::get<"MC2_JUMPJETS_ALL">()}})
         if (on) mc2::mods::toggle(ids, id);
+    return ids;
+}
+// What a campaign saved before add-on selection ran with: the launcher toggles and the add-on layers its ModDeps lists (the older
+// builds auto-mounted every add-on and recorded them there; the loader runs with that ModDeps as MC2_MOD_DEPS).
+std::string mc2::rules::legacyCampaignMods() {
+    std::string ids = launcherModDefaults();
+    const auto mounted = mc2::gate::str<"MC2_MOD_DEPS">();
+    for (const auto& addon : installedAddons())
+        if (mc2::mods::selected(mounted, addon.id) && !mc2::mods::selected(ids, addon.id)) mc2::mods::toggle(ids, addon.id);
     return ids;
 }
 extern int loadPreferenceHotKeys(FitIniFile&);
@@ -27,10 +40,12 @@ std::vector<mc2::options::PreferenceValue> CPrefs::snapshotValues() const {
     auto out = mc2::options::preferenceSnapshot(*this, render);
     // A rule key equal to the default is never added to options.cfg; a key already in the file stays tracked so a revert to the default
     // still rewrites the stored non-default value.
-    const auto defaults = mc2::rules::cfgEntries(mc2::rules::GameRules{});
+    // A new campaign's starting rules are the baseline, so a player who explicitly picks Stock keeps Stock.
+    const auto defaults = mc2::rules::cfgEntries(mc2::rules::newCampaignDefaults());
     const auto current = mc2::rules::cfgEntries(gameRules);
     for (std::size_t i = 0; i < current.size(); ++i) {
-        if ((current[i].key != "GameRulesMods" || launcherModDefaults().empty()) && current[i].text == defaults[i].text && !mc2::options::cfg::get(sourceText_, current[i].key).has_value()) continue;
+        if (current[i].key == "GameRulesMods" && gameRules.mods.empty()) continue; // no selection made: nothing to persist
+        if ((current[i].key != "GameRulesMods" || mc2::rules::launcherModDefaults().empty()) && current[i].text == defaults[i].text && !mc2::options::cfg::get(sourceText_, current[i].key).has_value()) continue;
         out.push_back({current[i].key, current[i].text, current[i].type});
     }
     return out;
@@ -59,7 +74,7 @@ int CPrefs::load(mc2::czstring name) {
     mc2::options::cfg::loadFromText(render, sourceText_, &rejects);
     for (const auto& reject : rejects)
         mc2::options::logRejectedOption(reject.key, reject.text, reject.why, mc2::options::find(reject.key));
-    if (!mc2::options::cfg::get(sourceText_, "GameRulesMods") || mc2::gate::isSet<"MC2_LAUNCHED">()) gameRules.mods = launcherModDefaults();
+    if (!mc2::options::cfg::get(sourceText_, "GameRulesMods") || mc2::gate::isSet<"MC2_LAUNCHED">()) gameRules.mods = mc2::rules::launcherModDefaults();
     loadedValues_ = snapshotValues();
     // Startup reads these before SoundSystem exists; loading the defaults-screen draft must not publish it.
     if (this == &prefs) mc2::options::runtimePreferences() = static_cast<const mc2::options::Preferences&>(*this);
