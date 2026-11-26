@@ -2133,6 +2133,16 @@
    "count": 1
   },
   {
+   "tag": "CAMPAIGN_PICKER",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "pid",
+    "priority_class"
+   ],
+   "count": 1
+  },
+  {
    "tag": "CAPTURE_FOCUS",
    "ver": 1,
    "stream": "stderr",

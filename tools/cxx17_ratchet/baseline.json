@@ -195,7 +195,7 @@
    "LG08": 4,
    "LG09": 2,
    "LG10": 9,
-   "LG11": 56,
+   "LG11": 54,
    "LG12a": 35,
    "LG12b": 6,
    "LG13": 15,
@@ -1531,6 +1531,7 @@
   "code/dradio.h": {
    "LG14": 1
   },
+  "code/dropweight_rules.h": {},
   "code/dtacordr.h": {},
   "code/dteam.h": {
    "LG14": 1
@@ -3099,7 +3100,7 @@
   "mclib/mod_conflict.h": {},
   "mclib/model_override_registry.cpp": {
    "LG05": 2,
-   "LG11": 3
+   "LG11": 1
   },
   "mclib/model_override_registry.h": {},
   "mclib/mouse.cpp": {
@@ -3493,7 +3494,7 @@
    "LG20": 1
   }
  },
- "head": "e9b71e4cc",
+ "head": "7edb14ea4",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
