@@ -259,6 +259,33 @@ def clans(game, work, env, recipes, report):
         report.append(("clans", name, "FAIL", f"{exc}; UE5.5 requires matching MW5_USMAP; encrypted containers may also need MW5_AES (not derived or bundled)"))
 
 
+def merge_bt_pack(pack, target):
+    from tools.bt2018_mechs import compile as compiler
+    from tools.bt2018_mechs.build_pack import sha256, write_text
+
+    fresh = json.loads((pack / "content/report.json").read_text())
+    previous = json.loads((target / "content/report.json").read_text())
+    merged = pack.with_name("bt2018_merged")
+    shutil.copytree(target, merged)
+    shutil.copytree(pack, merged, dirs_exist_ok=True)
+    profiles = [json.loads(p.read_text()) for p in sorted((merged / "content").glob("*.profile.json"))]
+    changed = ["data/defs/text/en_us/bt2018_mechs.fit"]
+    write_text(merged / changed[0], compiler.emit_strings(profiles))
+    for index, profile in enumerate(profiles):
+        rel = f"data/objects/{profile['stem']}.csv"
+        text = (merged / rel).read_text()
+        for field, sid in zip(("DescIndex", "AbbrIndex"), compiler.string_ids(profile, index).values()):
+            text = re.sub(rf"(?m)^({field},)\d+", rf"\g<1>{sid}", text)
+        write_text(merged / rel, text)
+        changed.append(rel)
+    for key in ("generated", "assets", "stock_references_unmodified", "native_clip_counts", "clip_manifest", "profiles"):
+        fresh[key] = {**previous[key], **fresh[key]}
+    for rel in changed:
+        fresh["generated"][rel] = sha256(merged / rel)
+    write_text(merged / "content/report.json", json.dumps(fresh, indent=2) + "\n")
+    return merged
+
+
 def battletech(game, install, work, env, names, report):
     from tools.bt2018_import.convert_all_bt2018 import convert_bundle
     bundles = game / LAYOUTS["bt"]
@@ -290,6 +317,8 @@ def battletech(game, install, work, env, names, report):
          "--out", pack, "--only", ",".join(row["btname"] for row in rows)], work / "build.log", env)
     validate(pack, dump)
     target = install / "mods/bt2018_mechs"
+    if target.exists():
+        pack = merge_bt_pack(pack, target)
     if target.exists():
         shutil.rmtree(target)
     shutil.copytree(pack, target)
