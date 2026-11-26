@@ -113,12 +113,17 @@ inline void selectTiles(std::span<Light> lights, float camX, float camY, bool en
     struct Cand { uint32_t index; float d2; uint64_t key; int tile; };
     Cand best[kTiles];
     uint32_t nBest = 0;
+    for (auto& light : lights) light.lightType &= ~0xF0u;
     if (enabled) {
         for (uint32_t i = 0; i < count; ++i) {
             const uint32_t lt = lights[i].lightType;
             if ((lt & 0xFu) == 0u || (lt >> 24) == 0u || lights[i]._pad1 > 0.5f) continue;
             const float dx = lights[i].position[0] - camX, dy = lights[i].position[1] - camY;
-            const Cand c{i, dx * dx + dy * dy, 0, -1};
+            const uint64_t key = tileKey(lights[i].position, lt, lights[i].farDistance);
+            bool incumbent = false;
+            for (const auto& tile : g_tiles) if (tile.used && tile.key == key) incumbent = true;
+            // Incumbents retain membership until a challenger is >20% closer.
+            const Cand c{i, (dx * dx + dy * dy) * (incumbent ? 0.69f : 1.0f), 0, -1};
             if (nBest < kTiles) { best[nBest++] = c; continue; }
             uint32_t worst = 0;
             for (uint32_t k = 1; k < nBest; ++k) if (best[k].d2 > best[worst].d2) worst = k;

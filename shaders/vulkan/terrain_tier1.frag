@@ -544,7 +544,7 @@ void main() {
         vec3 shadowN=baseNormal;
         float staticS=TS_enableShadows!=0?terrainStaticShadow(v_worldPos):1.0;
 #ifdef MC2_RT_SUN_SHADOWS
-        if (TS_enableShadows!=0 && v_worldPos.z>=uT.shorelineWaterElev && distance(v_worldPos,mc2ToRender(uT.cameraPosMC2.xyz))<1536.0)
+        if (TS_enableShadows!=0 && v_worldPos.z>=uT.shorelineWaterElev)
             staticS=min(staticS,mix(sunShadowFloor(0.4),1.0,rtPropSunVisibility(v_worldPos,shadowN,moverFrame.sun.xyz)));
 #endif
         float dynS=kPlanarReflection != 0 && kReflectCutMovers != 0 ? 1.0 : terrainDynamicShadow(v_worldPos,shadowN);

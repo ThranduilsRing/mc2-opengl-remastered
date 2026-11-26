@@ -1,6 +1,7 @@
 #include "doctest.h"
 #include "camera_frustum_math.h"
 #include "camera_elevation.h"
+#include "../../GameOS/gameos/shadow_mover_fit.h"
 #include "math/mc2_xform.h"
 #include "../../3rdparty/glm/glm/gtc/matrix_transform.hpp"
 
@@ -78,4 +79,41 @@ TEST_CASE("camera sweep: diagonal cone and pick rays across poses") {
     }
     CHECK(altitudeMaxForAngle(45,45,45,100,200)==100);
     CHECK(sphereInCone(0.7f,0.8f,30,100));
+}
+
+TEST_CASE("camera sweep: shadow footprint circle covers tilted views at every yaw") {
+    using namespace mc2shadow;
+    const auto basis=lightBasis(normalized({1,1,1}));
+    const std::array bounds{MoverSphere{{-50000,-50000,0},1000},MoverSphere{{50000,50000,800},1000}};
+    for(float pitch : {18.0f,45.0f,88.0f}) {
+        float expected=0;
+        for(int yaw=0;yaw<360;yaw+=45) {
+            glm::mat4 pose(1);
+            mc2::math::buildRotation(pose,mc2::math::Euler(glm::radians(-pitch),glm::radians(float(yaw)),0));
+            mc2::math::buildTranslation(pose,mc2::math::localForwardInWorld(pose)*1200.0f);
+            const float tx=std::tan(glm::radians(40.0f)/2), ty=tx*0.75f;
+            glm::mat4 projection(0);
+            projection[0][0]=1/tx; projection[1][1]=1/ty;
+            projection[2][2]=100.0f/99900; projection[3][2]=-1; projection[2][3]=10000000.0f/99900;
+            const auto matrix=glm::inverse(pose)*projection;
+            // Ground helper takes MC2 Z-up world rows.
+            float rows[16];
+            for(int c=0;c<4;++c) {
+                rows[c*4]=-matrix[c][0]; rows[c*4+1]=matrix[c][2];
+                rows[c*4+2]=matrix[c][1]; rows[c*4+3]=matrix[c][3];
+            }
+            auto region=moverGroundFootprint(rows,0,50000);
+            float band=0; region.radius=moverRadiusBand(region.radius,band);
+            const auto window=fitMoverWindow(bounds,basis,0,4096,region);
+            if(!expected) expected=window.texelWorld;
+            CHECK(window.texelWorld==expected);
+            const auto inverse=glm::inverse(glm::dmat4(matrix));
+            for(float x : {-1.0f,1.0f}) for(float y : {-1.0f,1.0f}) {
+                auto h=glm::dvec4(x,y,1,1)*inverse;
+                const glm::vec3 origin=mc2::math::getTranslation(pose), ray=glm::vec3(h/h.w)-origin;
+                const auto hit=origin+ray*(-origin.y/ray.y);
+                CHECK(glm::length(glm::vec2(hit.x,hit.z))<=region.radius+0.1f);
+            }
+        }
+    }
 }
