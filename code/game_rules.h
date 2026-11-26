@@ -32,7 +32,7 @@ inline constexpr long kSalvageGenerous = 0, kSalvageMC2 = 1, kSalvageScarce = 2;
 struct GameRules {
     std::string mods;          // campaign add-on folder IDs and @ gameplay choices, comma-separated
     bool purchaseVehicles     = false;
-    long ai                   = 0;             // 0 = Stock, 1 = Smarter (TechBrain)
+    long ai                   = 0;             // 0 = Stock, 1 = Smarter (Magic ABL 1.45)
     long dropLimitMode        = kDropTonnage;   // what caps a drop: tonnage (today), battle value, or nothing (tonnage still shown as info)
     bool dropWeightPurchase   = false;          // the player may buy extra drop weight
     long dropWeightStep       = 5;              // tons (or BV points per ton-equivalent later) per purchase
@@ -84,7 +84,7 @@ inline constexpr std::string_view kHeatLabels[]    = {"Off", "MC2 Default (On)",
 inline constexpr std::string_view kAmmoLabels[]    = {"Off", "MC2 Default (On)", "Lethal"};
 inline constexpr std::string_view kCalledLabels[]  = {"Off", "MC2 Default (Floors)", "Classic"};
 inline constexpr std::string_view kSalvageLabels[] = {"Generous", "MC2 Default", "Scarce"};
-inline constexpr std::string_view kAiLabels[] = {"Stock", "Smarter (TechBrain)"};
+inline constexpr std::string_view kAiLabels[] = {"Stock", "Smarter (Magic AI)"};
 }  // namespace detail
 
 inline constexpr Rule kRules[] = {

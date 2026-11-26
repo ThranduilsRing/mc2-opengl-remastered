@@ -15,11 +15,22 @@
 //
 // MC2_BRAIN_POLICY=legacy forces Legacy (kill-switch); =techbrain forces TechBrain (test fixtures);
 // unset or "auto" uses the saved AI rule: Stock keeps ABL; Smarter enables authored TechBrain
-// policies and detected-target selection for units without authored brain data.
+// policies; other units use Magic's ABL library 1.45.
 #include <cstdint>
 #include <string_view>
+#include <string>
 
 namespace mc2::brainpolicy {
+
+// Input is a normalized relative ABL key. Empty means use the original asset.
+inline std::string magicAsset(std::string_view key, long ai) {
+	if (ai != 1 || key.find("..") != std::string_view::npos) return {};
+	if (key == "data/missions/corebrain.abx" ||
+		(key.starts_with("data/missions/warriors/") &&
+		 (key.ends_with(".abl") || key.ends_with(".abi"))))
+		return std::string("mods/magic-brain-1.45/").append(key);
+	return {};
+}
 
 enum class Policy : std::uint8_t { Legacy = 0, TechBrain = 1 };
 

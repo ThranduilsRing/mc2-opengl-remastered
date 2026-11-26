@@ -987,7 +987,23 @@ static void ablReportSkippedErroredModule (long handle, mc2::czstring fileName, 
 	}
 }
 
-long ABLModule::execute (ABLParamPtr paramList) {
+// Quarantine only this failed instance; existing tactical orders keep running.
+long ABLModule::stopAfterRuntimeError(mc2::czstring message) {
+	mc2::fmt::print_err("[ABL_FALLBACK] module={} file={} line={} action=disable-instance retain-orders message={}\n",
+		getName(), getFileName(), g_ablExec->execLineNumber, message);
+	fflush(stderr);
+	runtimeFailed = true;
+	returnVal.integer = 1;
+	g_ablExec->resetStack();
+	g_ablExec->NewStateSet = false;
+	g_ablExec->AutoReturnFromOrders = false;
+	g_ablExec->ExitWithReturn = false;
+	g_ablExec->ExitFromTacOrder = false;
+	return 0;
+}
+
+long ABLModule::execute (ABLParamPtr paramList) try {
+	if (runtimeFailed) return 0;
 
 	// Errored modules may contain malformed bytecode that underflows the VM stack.
 	if (ablSkipErroredModulesEnabled() && ModuleRegistry[handle].compileErrorCount > 0) {
@@ -1067,11 +1083,14 @@ long ABLModule::execute (ABLParamPtr paramList) {
 	memcpy(&returnVal, &g_ablExec->returnValue, sizeof(StackItem));
 
 	return(g_ablExec->execStatementCount);	
+} catch (const ABLRuntimeFailure& error) {
+	return stopAfterRuntimeError(error.what());
 }
 
 //---------------------------------------------------------------------------
 
-long ABLModule::execute (ABLParamPtr moduleParamList, SymTableNodePtr functionIdPtr) {
+long ABLModule::execute (ABLParamPtr moduleParamList, SymTableNodePtr functionIdPtr) try {
+	if (runtimeFailed) return 0;
 
 	// OMNITECH-ABL-EXECEXPRESSION-RECON-1: skip errored-compile modules (see overload above).
 	if (ablSkipErroredModulesEnabled() && ModuleRegistry[handle].compileErrorCount > 0) {
@@ -1212,6 +1231,8 @@ long ABLModule::execute (ABLParamPtr moduleParamList, SymTableNodePtr functionId
 	//-----------
 	// Summary...
 	return(g_ablExec->execStatementCount);	
+} catch (const ABLRuntimeFailure& error) {
+	return stopAfterRuntimeError(error.what());
 }
 
 //---------------------------------------------------------------------------

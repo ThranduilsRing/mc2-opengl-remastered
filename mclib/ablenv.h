@@ -166,6 +166,8 @@ class ABLModule {
 		unsigned long*			orderCallFlags;
 		StackItem				returnVal;
 		bool					initCalled;
+		bool runtimeFailed = false;
+		long stopAfterRuntimeError(mc2::czstring message);
 		SymTableNodePtr			prevState;
 		SymTableNodePtr			state;
 		// Owned, debugger builds only. The managers keep their ABL-pool operator new/delete, which

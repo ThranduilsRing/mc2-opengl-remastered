@@ -255,7 +255,7 @@ TEST_CASE("BrainSavePolicy/sidecars select TechBrain only from a temporary mod o
     smarter.ai = 1;
     mc2::rules::publish(smarter);
     decide("data/missions/missing.fit", "data/missions/", "mc2_01");
-    CHECK(techBrain()); // no sidecar: generic detected-target policy
+    CHECK(current() == Policy::Legacy); // no sidecar: Magic's ABL tactics execute
     SUBCASE("legacy kill switch overrides Smarter") {
         mc2::gate::ScopedOverride<"MC2_BRAIN_POLICY"> forced("legacy");
         decide("data/missions/missing.fit", "data/missions/", "mc2_01");

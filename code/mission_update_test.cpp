@@ -209,8 +209,12 @@ void Mission::updateMissionTest(bool report) {
         auto point = condition->GetObjectivePosition();
         // Unit IDs identify objective combat targets; navigation keeps the authored marker.
         if (auto* specific = dynamic_cast<CSpecificUnitObjectiveCondition*>(condition)) {
-            if (!objectiveTarget && condition->Species() == DESTROY_SPECIFIC_ENEMY_UNIT)
+            if (!objectiveTarget && (condition->Species() == DESTROY_SPECIFIC_ENEMY_UNIT
+                || condition->Species() == CAPTURE_UNIT)) {
                 objectiveTarget = ObjectManager->getByWatchID(specific->UnitWatchID());
+                captureObjective = condition->Species() == CAPTURE_UNIT;
+                if (captureObjective && objectiveTarget) location = objectiveTarget->getPosition();
+            }
             continue;
         }
         // Work on the first unfinished condition with a position, rather than
@@ -279,6 +283,7 @@ void Mission::updateMissionTest(bool report) {
             for (long c = 0; c < count; ++c) {
                 auto* enemy = ObjectManager->get(contacts[c]);
                 if (!enemy || !enemy->getExists() || enemy->isDisabled() || enemy->isDestroyed()
+                    || (captureObjective && enemy == objectiveTarget)
                     || !mover->isEnemy(enemy->getTeam()) || !mover->lineOfSight(enemy)) continue;
                 const float distance = mover->distanceFrom(enemy->getPosition());
                 if (distance > std::max(300.0f, mover->getMaxFireRange())) continue;
@@ -405,6 +410,10 @@ void Mission::updateMissionTest(bool report) {
         auto intent = producePlayerIntent(mover->getPilot(), location,
             extracting ? squads[index].targetWatchId
                 : objectiveTarget && !captureObjective ? objectiveTarget->getWatchID() : 0, squads[index], scenarioTime);
+        if (captureObjective && objectiveTarget && intent.targetWatchId == objectiveTarget->getWatchID()) {
+            intent = {static_cast<long>(mover->getWatchID()), mc2::player::Goal::Move, location};
+            intent.posture = mc2::player::Posture::Advance;
+        }
         // Keep the force outside its own pending strike, including moving/capturing units.
         if (scenarioTime < test.airstrikeUntil && !mover->isRefit() && !mover->isRecover()
             && !mover->isGuardTower()) {

@@ -55,11 +55,23 @@ TEST_CASE("ReviewRules/save load refreshes policy in both directions before BRN1
     for (const long ai : {1L, 0L}) {
         data.saved.ai = ai;
         loadRules();
-        CHECK(mc2::brainpolicy::techBrain() == (ai == 1));
+        CHECK_FALSE(mc2::brainpolicy::techBrain()); // sidecar-free Smarter uses Magic ABL
+        CHECK(mc2::rules::current().ai == ai);
     }
     LogisticsData::instance = nullptr;
     mc2::rules::publish(oldRules);
     mc2::brainpolicy::g_policy = oldPolicy;
+}
+
+TEST_CASE("ReviewRules/Magic profile is restricted to Smarter ABL assets") {
+    using mc2::brainpolicy::magicAsset;
+    for (const auto key : {"data/missions/corebrain.abx", "data/missions/warriors/patrol.abl"}) {
+        CHECK(magicAsset(key, 0).empty());
+        CHECK(magicAsset(key, 1) == std::string("mods/magic-brain-1.45/") + key);
+    }
+    for (const auto key : {"data/missions/mc2_01.abl", "data/missions/orders.abx",
+                           "data/missions/warriors/pilot.fit", "data/missions/warriors/../x.abl"})
+        CHECK(magicAsset(key, 1).empty());
 }
 TEST_CASE("ReviewRules/campaign rules win including quickstart without logistics") {
     const auto oldRules = mc2::rules::current();

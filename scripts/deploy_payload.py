@@ -912,6 +912,74 @@ def example_mods_payload(src_root):
     return items
 
 
+def magic_brain_145(source):
+    """FixABL's 1.45 call migration, preserving bytes outside the changed calls.
+
+    The original VB6 binary's UTF-16 replacement table (0x427c..0x47d0)
+    redirects coreAttack/coreAttackTactic and drops obsolete state/range args.
+    Parse arguments rather than matching its hard-coded variable spellings.
+    """
+    text = source.decode('latin1')
+    pattern = r'//[^\r\n]*|/\*.*?\*/|"[^"\r\n]*"|\b(coreAttackTactic|coreAttack|magicAttack|coreGuard|corePatrolDelayed|corePatrol|coreEscort|coreWait)\s*\('
+    edits = []
+    for match in re.finditer(pattern, text, re.I | re.S):
+        # Commented-out examples must stay comments, including block comments.
+        if match.group(1) is None:
+            continue
+        start = match.end()
+        depth, args, arg_start = 1, [], start
+        for pos in range(start, len(text)):
+            ch = text[pos]
+            if ch == '(':
+                depth += 1
+            elif ch == ')':
+                depth -= 1
+                if depth == 0:
+                    args.append(text[arg_start:pos].strip())
+                    break
+            elif ch == ',' and depth == 1:
+                args.append(text[arg_start:pos].strip())
+                arg_start = pos + 1
+        else:
+            raise ValueError('unterminated ABL call')
+        name = match.group(1).lower()
+        if name in ('coreattack', 'coreattacktactic', 'magicattack'):
+            replacement = 'magicAttack(' + args[0] + ')'
+        else:
+            arity = {'coreguard': 2, 'corepatrol': 2, 'corepatroldelayed': 3,
+                     'coreescort': 1, 'corewait': 2}[name]
+            if len(args) <= arity:
+                continue
+            replacement = match.group(1) + '(' + ', '.join(args[:arity]) + ')'
+        edits.append((match.start(), pos + 1, replacement))
+    for start, end, replacement in reversed(edits):
+        text = text[:start] + replacement + text[end:]
+    return text.encode('latin1')
+
+
+def magic_brain_payload(src_root, target):
+    """Build the rule-selected profile from stock FST brains, never loose mod brains."""
+    sys.path.insert(0, str(src_root))
+    from tools.mc2x_import.fst import fst_entries, decompress_entry
+    profile = Path(src_root) / "mods/magic-brain-1.45"
+    items = [(str(p), p.relative_to(src_root).as_posix(), "support")
+             for p in profile.rglob("*") if p.is_file()]
+    generated = Path(src_root) / "build/magic-brain-1.45"
+    for off, comp, real, name, is_lz, data in fst_entries(str(Path(target) / "mission.fst")):
+        key = name.lower().replace('\\', '/')
+        if not key.startswith("data/missions/warriors/") or not key.endswith((".abl", ".abi")):
+            continue
+        source = decompress_entry(off, comp, real, is_lz, data)
+        fixed = magic_brain_145(source)
+        if fixed == source:
+            continue
+        dest = generated / key
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(fixed)
+        items.append((str(dest), "mods/magic-brain-1.45/" + key, "support"))
+    return items
+
+
 FFMPEG_DLLS = [
     "avcodec-61.dll",
     "avformat-61.dll",
@@ -3919,6 +3987,7 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
         items = enumerate_payload(src_root, build_dir, exe_name, pdb_name,
                                   build64_root=args.build64_root, code_only=reuse,
                                   no_example_mods=getattr(args, "no_example_mods", False))
+        items.extend(magic_brain_payload(src_root, target))
     if exe_name != "mc2":
         with deploy_phase("viewer payload", 120):
             items.extend(viewer_payload(build_dir, args.build64_root, source_head, src_root))

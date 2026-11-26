@@ -827,7 +827,12 @@ void execSetWillRequestHelp (void) {
 void execTDebugString (void) {
 	// args: C (string). No return. Debug print; route to debug window.
 	char* s = ABLi_popCharPtr();
-	if (s) DEBUGWINS_print(s, 0);
+	if (s) {
+		if (std::string_view(s).starts_with("[MAGIC_ATTACK]"))
+			mc2::fmt::print_err("{} unit={} time={:.2f}\n", mc2::fmt::safe(s),
+				mc2::fmt::as_i32(CurWarrior && CurWarrior->getVehicle() ? CurWarrior->getVehicle()->getPartId() : -1), scenarioTime);
+		DEBUGWINS_print(s, 0);
+	}
 }
 
 
