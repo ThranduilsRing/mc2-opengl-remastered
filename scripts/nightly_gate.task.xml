@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Daily 04:30: laptop_gate.py nightly builds published nifty on the farm laptop (Sundays weekly).
      Nightly stages: deploy + tier-1 rows + the slim, non-blocking mods-slim check (one short load per mod, reported per mod,
-     never fails the gate); Sundays run the full mods battery instead. The PC only provisions and pulls.
+     never fails the gate); Sundays run the full mods battery instead. The PC provisions and pulls; a laptop that does not
+     answer one ssh probe moves the same rows to the PC (A:/Games/mc2-nightly, under the host lease).
      This file is a TEMPLATE: @PY@ is the full launcher path (the task's PATH has no `py`; the 04:30 run failed with 0x80070002).
      Render + register (orchestrator only): py -3 scripts\nightly_gate_task.py   (prints the schtasks /Create /XML command)
      Remove the dead one:          schtasks /Delete /TN "\mc2-smoke-overnight" /F

@@ -16,6 +16,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import laptop_gate  # noqa: E402
 import deploy_payload  # noqa: E402
 import gate_hosts  # noqa: E402
+import merge_gate  # noqa: E402
 
 
 def _manifest(path, files):
@@ -603,6 +604,146 @@ def test_nightly_resolves_published_tip_after_long_data_seed(monkeypatch):
         return 0
     monkeypatch.setattr(laptop_gate, "pull_nightly", accept)
     assert laptop_gate.pc_main(SimpleNamespace(window="nightly-2026-11-12", gate_args=["--nightly"])) == 0
+
+
+# ---- scheduled host choice: the laptop when it answers one ssh probe, else the same rows on the PC ----
+class _Children:
+    """Fake subprocess.Popen for every child (the ssh probe, the PC gate command); console_child stays real, so each recorded
+    child carries its kwargs. ssh answers ssh_rc, the PC gate command gate(argv)."""
+    spawned, ssh_rc, gate = [], 255, staticmethod(lambda argv: 0)
+
+    def __init__(self, argv, *_, **kw):
+        self.args, self.argv, self.kw, self.returncode = argv, list(argv), kw, None   # args: subprocess.run reads it back
+        type(self).spawned.append(self)
+
+    def communicate(self, input=None, timeout=None):
+        self.returncode = type(self).ssh_rc if Path(self.argv[0]).name.lower().startswith("ssh") else type(self).gate(self.argv)
+        return "", ""
+
+    def poll(self):
+        return self.returncode
+
+    def kill(self):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+@pytest.fixture
+def pc(monkeypatch, tmp_path):
+    """The PC side of a scheduled run against a private tree: -> (_Children, prepare_worktree calls)."""
+    import nightly_gate
+    calls = []
+    _Children.spawned, _Children.ssh_rc, _Children.gate = [], 255, staticmethod(lambda argv: 0)
+    monkeypatch.setattr(laptop_gate.subprocess, "Popen", _Children)
+    monkeypatch.setattr(laptop_gate, "PROOFS", tmp_path / "laptop-gate")
+    for name, value in (("ROOT", str(tmp_path)), ("TMP_DIR", str(tmp_path)), ("nightly_base", lambda: "b" * 40),
+                        ("git", lambda *a, **kw: ""), ("prepare_worktree", lambda: calls.append("prepared")),
+                        ("wait_for_lease", lambda: True)):
+        monkeypatch.setattr(nightly_gate, name, value)
+    return _Children, calls
+
+
+def _gate_child(argv):
+    """gate_wait's rc for a gate that ran exactly its --stages green on a published HEAD (no baseline to compare with)."""
+    proof, asked = Path(argv[argv.index("--proofs-dir") + 1]), argv[argv.index("--stages") + 1:]
+    skipped = {n: merge_gate.NO_BASELINE_REASON for n in asked if n in ("capture-before", "compare-captures")}
+    proof.mkdir(parents=True)
+    (proof / "gate-verdict.json").write_text(json.dumps(dict(head=HEAD, tier=1, verdict="PARTIAL", failed=[], skipped=skipped,
+        executed={n: {"status": "PASS"} for n in asked if n not in skipped})))
+    return 1
+
+
+@pytest.mark.parametrize("weekly", [False, True])
+def test_unreachable_laptop_prints_the_pc_plan_with_the_tier_stages_and_runs_nothing(pc, capsys, monkeypatch, weekly):
+    import nightly_gate
+    from types import SimpleNamespace
+    monkeypatch.setattr(nightly_gate, "prepare_worktree", lambda: pytest.fail("a dry run prepared the PC tree"))
+    assert laptop_gate.nightly(SimpleNamespace(window="nightly-2026-11-27", gate_args=["--weekly" if weekly else "--nightly"]), dry_run=True) == 0
+    tier = ["contracts", *nightly_gate.stage_names(weekly)]
+    assert "determinism-mc2_01" in tier and ("mods" in tier) == weekly and ("mods-slim" in tier) != weekly
+    out = capsys.readouterr().out
+    assert out.startswith("NIGHTLY host=pc reason=laptop-unreachable\nNIGHTLY plan: ")
+    for needle in ("--isolated-verdict", f"--proofs-dir {laptop_gate.PROOFS.parent.as_posix()}/merge-gate/nightly-2026-11-27", "--base " + "b" * 40,
+                   "--weekly" if weekly else "--nightly", "--stages " + " ".join(tier), "/scripts/gate_wait.py",
+                   f"{nightly_gate.ROOT}/scripts/merge_gate.py"):
+        assert needle in out
+    probe, = pc[0].spawned
+    assert probe.argv[0] == "ssh" and "ConnectTimeout=10" in probe.argv and probe.argv[-2:] == [laptop_gate.HOST, "exit 0"]
+
+
+def test_reachable_laptop_keeps_the_laptop_run(pc, capsys, monkeypatch):
+    import nightly_gate
+    from types import SimpleNamespace
+    pc[0].ssh_rc = 0
+    ran = []
+    monkeypatch.setattr(laptop_gate, "pc_main", lambda a: ran.append(a.window) or 0)
+    monkeypatch.setattr(nightly_gate, "prepare_worktree", lambda: pytest.fail("PC tree prepared though the laptop answers"))
+    args = SimpleNamespace(window="nightly-2026-11-27", gate_args=["--nightly"])
+    assert laptop_gate.nightly(args) == 0 and ran == ["nightly-2026-11-27"]
+    assert laptop_gate.nightly(args, dry_run=True) == 0
+    out = capsys.readouterr().out
+    assert "host=pc" not in out
+    assert "NIGHTLY host=laptop reason=reachable\nNIGHTLY plan: " + laptop_gate.remote_run_cmd("nightly-2026-11-27", ["--nightly"]) in out
+    assert all(c.argv[0] == "ssh" for c in pc[0].spawned)
+
+
+@pytest.mark.parametrize("mode, rc, line, rows", [
+    ("accepted", 0, "nightly PASS: ", "all"), ("lease-held", 1, "nightly FAIL: ", ["contracts", "deploy"]),
+    ("no-verdict", 1, "nightly FAIL: ", "all"), ("unprepared", 1, "nightly FAIL: ", [])])
+def test_pc_nightly_runs_the_rows_under_console_child_and_the_verdict_decides_rc(pc, capsys, monkeypatch, mode, rc, line, rows):
+    import nightly_gate
+    children, calls = pc
+    dest = laptop_gate.PROOFS.parent / "merge-gate" / "nightly-2026-11-27"
+    children.gate = staticmethod(lambda argv: 3 if mode == "no-verdict" else _gate_child(argv))
+    if mode == "unprepared":
+        monkeypatch.setattr(nightly_gate, "prepare_worktree", lambda: "nightly worktree is dirty")
+    if mode == "lease-held":
+        monkeypatch.setattr(nightly_gate, "wait_for_lease", lambda: False)
+    assert laptop_gate.pc_nightly("nightly-2026-11-27", False) == rc
+    out = capsys.readouterr().out
+    assert out.startswith("NIGHTLY host=pc reason=laptop-unreachable\nNIGHTLY plan: ")
+    assert line + str(dest) + "/gate-verdict.json" in out
+    assert (calls == ["prepared"]) == (mode != "unprepared")
+    gates = [c for c in children.spawned if c.argv[0] != "ssh"]
+    v = json.loads((dest / "gate-verdict.json").read_text())
+    if mode == "unprepared":
+        assert not gates and v["verdict"] == "INFRA" and "is dirty" in v["reason"]
+        return
+    child, = gates
+    names = ["contracts", *nightly_gate.stage_names(False)] if rows == "all" else rows
+    assert child.argv == nightly_gate.gate_cmd(False, names, "b" * 40, None, dest.as_posix())
+    assert child.kw["cwd"] == nightly_gate.ROOT and child.kw["env"]["TMP"] == nightly_gate.TMP_DIR
+    if sys.platform == "win32":   # BELOW_NORMAL is console_child's mark: the child went through it
+        assert child.kw["creationflags"] & laptop_gate.subprocess.BELOW_NORMAL_PRIORITY_CLASS
+    assert v["verdict"] == ("INFRA" if mode == "no-verdict" else "PARTIAL")
+    assert ("NOT RUN" in out) == (mode == "lease-held")
+
+
+def test_nightly_cli_dry_run_prints_the_host_plan_without_detaching(pc, monkeypatch, capsys):
+    monkeypatch.setattr(sys, "argv", ["laptop_gate.py", "nightly", "--dry-run"])
+    monkeypatch.setattr(laptop_gate, "detach_self", lambda a: pytest.fail("a dry run detached"))
+    assert laptop_gate.main() == 0
+    out = capsys.readouterr().out
+    assert "NIGHTLY host=pc reason=laptop-unreachable" in out and "--stages contracts " in out
+
+
+def test_published_head_baseline_skip_is_met_and_any_other_unrun_row_is_not(monkeypatch):
+    import merge_gate, exe_fingerprint, lane_merge_stage, nightly_gate
+    monkeypatch.setattr(exe_fingerprint, "extract", lambda path: dict(present=True, sha=HEAD))
+    skipped = {n: e["MC2_GATE_SKIP_REASON"] for n, _c, e in merge_gate.nightly_capture_baseline(merge_gate.plan(1), HEAD)
+               if e.get("MC2_GATE_SKIP_REASON")}
+    assert {"capture-before", "compare-captures"} <= set(skipped)
+    rows = [n for n in nightly_gate.stage_names(False) if n not in merge_gate.NON_BLOCKING_STAGES]
+    executed = {n: {"status": "PASS"} for n in rows if n not in skipped}
+    v = dict(tier=1, verdict="PARTIAL", failed=[], executed=executed, skipped=skipped)
+    assert lane_merge_stage.nightly_unmet(v) == []
+    del executed["player-path"]
+    assert lane_merge_stage.nightly_unmet(v) == ["player-path"]
 
 
 # ---- --sim (determinism + saveload on the gate's deployed candidate) and the campaign-mods mirror ----

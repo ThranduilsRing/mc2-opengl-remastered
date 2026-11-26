@@ -134,7 +134,9 @@ NIGHTLY_PROOFS = (PROOF_ROOT + '/merge-gate')
 
 
 def nightly_unmet(verdict: dict) -> list[str]:
-    """Required stages of the verdict's nightly/weekly tier that did not execute green. A PARTIAL with no recorded tier proves nothing."""
+    """Required stages of the verdict's nightly/weekly tier that did not execute green. A PARTIAL with no recorded tier proves nothing.
+    A before/compare row merge_gate skipped because the published exe already is HEAD (no baseline payload exists) counts as met
+    (`skipped` is write_verdict's {row: reason})."""
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
     import merge_gate
     if "tier" not in verdict:
@@ -142,10 +144,11 @@ def nightly_unmet(verdict: dict) -> list[str]:
     tier = verdict.get("tier") or 0
     if tier < 1:
         return ["(verdict records no nightly tier)"]
-    executed = verdict.get("executed") or {}
+    executed, skipped = verdict.get("executed") or {}, verdict.get("skipped") or {}
     required = [n for n, _c, _e in merge_gate.plan(1) if n not in merge_gate.NON_BLOCKING_STAGES
                 and (n == "deploy" or 1 <= merge_gate.stage_tier(n) <= tier)]
-    return [n for n in required if not merge_gate.stage_passed(str((executed.get(n) or {}).get("status", "")))]
+    return [n for n in required if not merge_gate.stage_passed(str((executed.get(n) or {}).get("status", "")))
+            and merge_gate.NO_BASELINE_REASON not in str(skipped.get(n, ""))]
 
 
 COMPARE_BOOKMARKS = ("mc2_01_saved_205644", "mc2_10_saved_204523")   # merge_gate's day/night capture pair

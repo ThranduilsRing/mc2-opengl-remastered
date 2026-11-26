@@ -65,6 +65,7 @@ The PC task `scripts/nightly_gate.task.xml` (daily 04:30) launches `py -3 tools/
 The PC only provisions inputs and pulls results: the farm laptop builds published nifty and runs contracts (including nightly rows), deploy and the tier's game stages. The six mod-battery overlays are seeded once from read-only PC mod inputs; their data, assets and mission archives stay outside git on the laptop.
 Stock `.pak`/`.fit` bytes are verified on the PC, copied once by hash into `C:/mc2gate/stock-missions`, and passed through `MC2_STOCK_MISSIONS_DIR` to every laptop gate row.
 Verdicts land under `G:/mc2-proofs/merge-gate/nightly-<date>/` (`--isolated-verdict`); reruns with an existing verdict append a time suffix. No nightly payload is packed, and window evidence is untouched.
+A laptop that does not answer one ssh probe (10 s connect timeout) moves the same rows to the PC (`NIGHTLY host=pc reason=laptop-unreachable`): `gate_wait.py -- merge_gate.py --nightly --isolated-verdict --stages contracts <tier stages>` in the detached worktree `A:/Games/mc2-nightly`, every game row under the host lease. The task exits 0 only for an accepted verdict (nothing failed, every required stage green; a before/compare row skipped because the published exe already is HEAD counts as met).
 The detached job in `G:/mc2-tmp/jobs` and the laptop farm queue serialize runs; `<window> -- --nightly` also selects this dated nightly path. Only the orchestrator registers the task:
 
 ```

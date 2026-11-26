@@ -1,8 +1,9 @@
-"""Schedule the published nifty's nightly/weekly gate on the farm laptop.
+"""Schedule the published nifty's nightly/weekly gate: on the farm laptop, or on the PC when the laptop does not answer.
 
     py -3 scripts/nightly_gate.py [--dry-run] [--weekly]
 
-The PC invokes tools/laptop_gate.py nightly (Sundays: --weekly) and only provisions/pulls.
+The PC invokes tools/laptop_gate.py nightly (Sundays: --weekly): the laptop runs the tier and the PC provisions/pulls, or
+(tools/laptop_gate.py pc_nightly) the same rows run in this script's detached nifty worktree (ROOT), every game row under the host lease.
 Results: G:/mc2-proofs/merge-gate/nightly-<date>/gate-verdict.json.
 Planning/receipt helpers remain available to the laptop and existing receipt readers.
 """
@@ -53,7 +54,7 @@ def run_child(cmd, label):
 
 def prepare_worktree():
     """Create (once), move to nifty, configure (first use) and build (keeps the tree warm). -> reason string on failure, else None."""
-    py = [sys.executable] if os.name != "nt" else ["py", "-3"]
+    py = [sys.executable]
     if not os.path.isdir(ROOT):
         out = subprocess.run(["git", "-C", MAIN_ROOT, "worktree", "add", "--detach", ROOT, NIFTY], capture_output=True, text=True,
                              **console_child.child_kwargs(redirected=True))
@@ -216,7 +217,7 @@ def make_plan(weekly, today, names=None):
 
 
 def gate_cmd(weekly, names, base, window, proof):
-    py = [sys.executable] if os.name != "nt" else ["py", "-3"]
+    py = [sys.executable]
     return py + [f"{ROOT}/scripts/gate_wait.py", "--timeout", "7200", "--log", f"{proof}/gate_wait.log", "--"] + py + [
         f"{ROOT}/scripts/merge_gate.py", "--weekly" if weekly else "--nightly", "--proofs-dir", proof, "--isolated-verdict",
         "--base", base, *(["--window", str(window)] if window else []), "--stages"] + names
