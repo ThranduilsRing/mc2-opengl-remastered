@@ -296,6 +296,32 @@ TEST_CASE("static caster set: an owner that keeps moving becomes a mover and emi
     REQUIRE(leaves.size() == 1);
 }
 
+TEST_CASE("static caster set: first settled move removes once and demotes immediately") {
+    RecipeFeed feed;
+    feed.add(1, 10); feed.add(2, 10); feed.add(3, 10);
+    recipes[2][0].modelMatrix[3] = 13.0f;
+    recipes[2][0].modelMatrix[7] = 7.0f;
+    recipes[3][0].modelMatrix[3] = 26.0f;
+    int walker = 0;
+    mc2shadow::StaticCasterSet set;
+    set.beginRebuild(); set.add({&walker, 1, 1}); set.endRebuild();
+    set.settleLoadSnapshot();
+    set.ownerInvalidated(&walker, 1); set.ownerRegistered(&walker, 2);
+    const auto events = set.takeEvents();
+    REQUIRE(events.size() == 1);
+    CHECK(events[0].before.size() == 1);
+    CHECK(events[0].after.empty());
+    CHECK(events[0].moverDemotion);
+    CHECK(set.isMoverOwner(&walker));
+    CHECK(set.recipeMask()[2] == 0);
+    set.ownerInvalidated(&walker, 2); set.ownerRegistered(&walker, 3);
+    CHECK(set.takeEvents().empty());
+    std::vector<GpuStaticPropInstance> leaves;
+    set.appendMoverLeaves(leaves);
+    REQUIRE(leaves.size() == 1);
+    CHECK(leaves[0].modelMatrix[3] == 26.0f);
+}
+
 // A building going intact -> damaged -> destroyed -> rubble makes three shape changes (= kDemoteAfterChanges). A typeID change resets the churn count,
 // so only same-shape matrix moves demote an owner and the rubble keeps its static shadow.
 TEST_CASE("static caster set: a building that goes intact, damaged, destroyed, rubble stays static") {

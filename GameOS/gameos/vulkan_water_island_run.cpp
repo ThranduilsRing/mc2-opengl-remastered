@@ -177,6 +177,7 @@ extern "C" int mc2_vk_water_island_prewarm(int w,int h) {
     }
     auto* s=parkedIsland();
     if (![&] { MC2_LOAD_SCOPE("water.hdriShore"); return ensure_hdri(s, mc2vk::hdriCpuGeneration()) && ensure_shore(s); }()) return 0;
+    if (!ensure_shore_surface(s)) return 0;
     if(!s->native) s->native=std::make_unique<mc2vk::NativeProducers>();
     if (![&] { MC2_LOAD_SCOPE("water.pipelines"); return s->native->prewarmPipelines(ctx); }()) return 0;
     if (![&] { MC2_LOAD_SCOPE("water.native"); return prepareNative(s, ctx); }()) return 0;

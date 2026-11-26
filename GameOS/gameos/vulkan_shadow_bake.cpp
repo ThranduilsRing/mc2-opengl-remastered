@@ -1081,7 +1081,7 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     }
     if (set.hasEvents()) {
         for (const auto& ev : set.takeEvents()) {
-            objectDirty_ = true;
+            if (!ev.moverDemotion) objectDirty_ = true;
             applyLiveEvent(ev.before, ev.after);
             for (const auto* side : {&ev.before, &ev.after}) {
                 if (const auto r = leavesFootprint(*side)) {
