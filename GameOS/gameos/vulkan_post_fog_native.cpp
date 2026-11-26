@@ -396,7 +396,7 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         VkDescriptorBufferInfo edgeUboInfo{ frame.edgeUbo.get(), 0, VK_WHOLE_SIZE };
         VkDescriptorBufferInfo oobUboInfo { frame.oobUbo.get(), 0, VK_WHOLE_SIZE };
         VkDescriptorBufferInfo valleyUboInfo { frame.valleyUbo.get(), 0, VK_WHOLE_SIZE };
-        VkWriteDescriptorSet writes[5]{};
+        VkWriteDescriptorSet writes[6]{};
         writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         writes[0].dstSet = frame.edgeSet; writes[0].dstBinding = 0; writes[0].descriptorCount = 1;
         writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -417,7 +417,9 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         writes[4].dstSet = frame.valleySet; writes[4].dstBinding = 1; writes[4].descriptorCount = 1;
         writes[4].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         writes[4].pBufferInfo = &valleyUboInfo;
-        vkUpdateDescriptorSets(s->device, 5, writes, 0, nullptr);
+        writes[5] = writes[0];
+        writes[5].dstSet = frame.valleySet;
+        vkUpdateDescriptorSets(s->device, 6, writes, 0, nullptr);
     }
 
     // Pipelines over one fullscreen-triangle vertex shader (edge_fog.vert) — fixed-function state IDENTICAL to the subgraph's
