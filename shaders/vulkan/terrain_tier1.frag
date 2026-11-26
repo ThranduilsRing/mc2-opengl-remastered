@@ -555,7 +555,7 @@ void main() {
         // Static ground mask and current-frame movers share the same visibility
         // floor. Cement receives both, exactly like the surrounding terrain.
         vec3 shadowN=baseNormal;
-        float staticS=TS_enableShadows!=0?terrainStaticShadow(v_worldPos):1.0;
+        float staticS=TS_enableShadows!=0?(mv_roadStaticShadow>=0.0?mv_roadStaticShadow:terrainStaticShadow(v_worldPos)):1.0;
 #ifdef MC2_RT_SUN_SHADOWS
         if (TS_enableShadows!=0 && v_worldPos.z>=uT.shorelineWaterElev && distance(v_worldPos,mc2ToRender(uT.cameraPosMC2.xyz))<1536.0)
             staticS=min(staticS,mix(sunShadowFloor(0.4),1.0,rtPropSunVisibility(v_worldPos,shadowN,moverFrame.sun.xyz)));
