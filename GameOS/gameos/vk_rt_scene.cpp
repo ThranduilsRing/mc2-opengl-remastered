@@ -973,6 +973,7 @@ void setConsumer(Consumer consumer, bool registered) {
 
 void noteTerrain(const TerrainSource& t) {
     if (!demanded()) return;
+    if ((consumers().consumers & static_cast<uint32_t>(Consumer::SelfTest)) == 0) return;
     VulkanContext* ctx = rayContext();
     if (!ctx || !terrainUsable(t)) return;
     const uint64_t key = terrainKey(t);
@@ -1091,6 +1092,17 @@ static void updatePropsNow(uint64_t propVbo) {
     std::vector<GpuStaticPropInstance> inst;
     std::vector<int32_t> leafRecipe;
     GpuStaticPropRegistry::getRtPropInstances(inst, leafRecipe);   // per-leaf recipe: every node of a multi-node prop, not only node 0
+    if ((consumers().consumers & static_cast<uint32_t>(Consumer::SelfTest)) == 0) {
+        // The sun ray cannot see swaying trees; do not build their BLASes or TLAS instances.
+        size_t kept = 0;
+        for (size_t i = 0; i < inst.size(); ++i) {
+            if ((inst[i].flags & 4u) != 0) continue;
+            inst[kept] = inst[i];
+            leafRecipe[kept++] = leafRecipe[i];
+        }
+        inst.resize(kept);
+        leafRecipe.resize(kept);
+    }
     std::vector<uint32_t> ids(inst.size(), 0);
     for (size_t i = 0; i < inst.size(); ++i) {
         const int32_t recipe = leafRecipe[i];
