@@ -2,7 +2,6 @@
 #include "doctest.h"
 #include "mission.h"
 #include "mover.h"
-#include "brain_special_dispatch.h"
 #include "heap.h"
 #include "mission_init_frame.h"
 #include "mech.h"
@@ -878,7 +877,6 @@ struct Pilot : MechWarrior {
 };
 struct RouteMech : BattleMech {
     void attach(MechWarrior& warrior) { pilot = &warrior; watchID = 1; setExists(true); }
-    void place(glm::vec3 point) { position = point; }
 };
 struct RouteActors {
     struct Watches : GameObjectManager {
@@ -910,27 +908,6 @@ struct RouteActors {
         pilot.setMoveWayPath(&path, code == TACTICAL_ORDER_PATROL_PATH);
     }
 };
-TEST_CASE("MissionCommander/arrived extraction units do not scout because of terrain elevation") {
-    auto* previousObjects = ObjectManager;
-    {
-        RouteActors actors;
-        actors.mech.place({10, 20, 811});
-        actors.pilot.setBrainRuntimeMode(BrainRuntimeMode::Enhanced);
-        auto* runtime = actors.pilot.getBrainRuntime();
-        runtime->playerBestDistance = 811;
-        runtime->playerProgressTime = 0;
-        runtime->playerRecoverUntil = 200;
-        runtime->playerRecoveries = 3;
-        mc2::player::SquadIntent squad;
-        squad.extracting = true;
-        const auto intent = producePlayerIntent(&actors.pilot, {0, 0, 0}, 0, squad, 100);
-        CHECK(intent.goal == mc2::player::Goal::Move);
-        CHECK(intent.location == actors.mech.getPosition());
-        CHECK(runtime->playerRecoverUntil == 0);
-        CHECK(runtime->playerProgressTime == 100);
-    }
-    ObjectManager = previousObjects;
-}
 struct Access {
     Actor& actor;
     bool& evidence;

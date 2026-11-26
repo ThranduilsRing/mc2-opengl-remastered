@@ -1354,8 +1354,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         runtime->postSet = true;
     }
     const glm::vec3 home{runtime->postPos[0], runtime->postPos[1], runtime->postPos[2]};
-    const float distanceToGoal = squad.extracting ? glm::length(glm::vec2(position - objective))
-        : glm::distance(position, objective);
+    const float distanceToGoal = glm::distance(position, objective);
     const float sideFightRange = std::max(200.0f, unit->getMaxFireRange());
     const bool objectiveChanged = runtime->playerBestDistance < 0
         || glm::distance(runtime->playerObjective, objective) > 300;
@@ -1370,14 +1369,6 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
     if (distanceToGoal < runtime->playerBestDistance - 40) {
         runtime->playerBestDistance = distanceToGoal;
         runtime->playerProgressTime = now;
-    }
-    // Extraction areas are planar. Arrived units wait for stragglers rather than scouting optional markers.
-    if (squad.extracting && !objectiveTarget && distanceToGoal < 128) {
-        runtime->playerProgressTime = now;
-        runtime->playerRecoverUntil = 0;
-        runtime->engageTargetWID = 0;
-        intent.location = position;
-        return intent;
     }
 
     float health = 0, maximum = 0, armor = 0, maxArmor = 0;
@@ -1596,7 +1587,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
     }
     if (now < runtime->playerRecoverUntil) {
         glm::vec3 scout = objective;
-        if (runtime->playerRecoveries > 2 && !squad.extracting) {
+        if (runtime->playerRecoveries > 2) {
             unsigned marker = 0;
             for (auto* candidate : Team::home->objectives) {
                 if (!candidate->DisplayMarker() || candidate->IsHiddenTrigger()
