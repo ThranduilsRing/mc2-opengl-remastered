@@ -19,10 +19,13 @@ def main(jobs):
         return result
     results = (
         (TESTS[0], subprocess.call(["build64-ninja/out/editor/editor_document_tests.exe"],
+                                  executable=str(ROOT / "build64-ninja/out/editor/editor_document_tests.exe"),
                                   cwd=ROOT, **console_child.child_kwargs(redirected=True))),
         (TESTS[1], subprocess.call(["build64-ninja/out/editor/editor_panel_tests.exe"],
+                                  executable=str(ROOT / "build64-ninja/out/editor/editor_panel_tests.exe"),
                                   cwd=ROOT, **console_child.child_kwargs(redirected=True))),
         (TESTS[2], subprocess.call(["build64-ninja/out/editor/editor_objective_reader_tests.exe"],
+                                  executable=str(ROOT / "build64-ninja/out/editor/editor_objective_reader_tests.exe"),
                                   cwd=ROOT, **console_child.child_kwargs(redirected=True))),
     )
     failed = False
