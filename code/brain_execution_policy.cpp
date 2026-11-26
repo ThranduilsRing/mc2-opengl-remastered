@@ -50,12 +50,18 @@ bool missionFitHasBrainBlock(std::string_view missionFitPath) {
 
 }  // namespace
 
+bool profileInstalled(std::string_view root) {
+	const std::string base = std::string(root) + "/magic-brain-1.45";
+	return fileExists(base + "/mod.json") && fileExists(base + "/data/missions/corebrain.abx");
+}
+
 void decide(std::string_view missionFitPath, std::string_view missionDir, std::string_view missionName) {
 	const char* why = "none";
 	Policy p = Policy::Legacy;
 	if (mc2::gate::is<"MC2_BRAIN_POLICY", "legacy">()) {
 		why = "forced-legacy";
-	} else if (mc2::gate::get<"MC2_PLAY_MISSION">()) {
+	} else if (mc2::gate::get<"MC2_PLAY_MISSION">() && mc2::rules::current().ai != 1) {
+		// A single-mission run honours the Smarter rule like a campaign mission does; the player-commander default yields to it.
 		p = Policy::TechBrain; why = "player-commander";
 	} else if (mc2::gate::is<"MC2_BRAIN_POLICY", "techbrain">()) {
 		p = Policy::TechBrain; why = "forced-techbrain";

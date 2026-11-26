@@ -45,9 +45,21 @@ long ablFileOpenCB (void** file, mc2::czstring fName) {
 	*file = nullptr;
 	// Archive lookup requires lowercase names.
 	std::string name = mc2::vfs::key(fName);
-	// This profile is selected by the saved AI rule, never by the launcher's mod stack.
-	if (const auto profile = mc2::brainpolicy::magicAsset(name, mc2::rules::current().ai); !profile.empty()) {
-		if (name.ends_with(".abx") || fileExists(profile.c_str())) name = profile;
+	// This profile is selected by the saved AI rule, never by the launcher's mod stack. Only stock-owned content is replaced: a
+	// campaign's own corebrain.abx or warrior file keeps its mod's version, and an install without the profile keeps the stock brain.
+	if (mc2::brainpolicy::profileKey(name)) {
+		const auto winner = mc2::vfs::lookup(name);
+		const bool stock = !winner || winner->provider != mc2::vfs::Provider::Mod;
+		const auto profile = mc2::brainpolicy::magicAsset(name, mc2::rules::current().ai, [](std::string_view path) {
+			return fileExists(std::string(path).c_str()); });
+		ABLi_noteProfileSource(name.c_str(), stock && !profile.empty());
+		if (stock && !profile.empty())
+			name = profile;
+		else if (stock && mc2::rules::current().ai == 1) {
+			static std::uint32_t reported = 0;
+			if (std::exchange(reported, mc2::brainpolicy::generation()) != mc2::brainpolicy::generation())
+				mc2::fmt::print_err("[BRAIN_POLICY] magic profile missing, stock brain key={}\n", mc2::fmt::safe(name.c_str()));
+		}
 	}
 	long result = opened->open(name.c_str());
 	if (result != NO_ERR) {
