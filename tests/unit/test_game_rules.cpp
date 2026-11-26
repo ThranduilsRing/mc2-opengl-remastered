@@ -198,8 +198,11 @@ TEST_CASE("game rules: options.cfg keys round trip garbage and out-of-range valu
     GameRules fresh;
     loadCfgText(fresh, "FITini\n[MechCommander2]\nl MusicVolume = 10\nFITend\n");
     CHECK(fresh == GameRules{});
-    CHECK(fresh.purchaseVehicles);
-    CHECK(GameRules{}.purchaseVehicles); // new campaign, before any options are read
+    CHECK_FALSE(fresh.purchaseVehicles);
+    CHECK_FALSE(GameRules{}.purchaseVehicles); // new campaign, before any options are read
+    GameRules explicitOn;
+    loadCfgText(explicitOn, "b GameRulesPurchaseVehicles = true\n");
+    CHECK(explicitOn.purchaseVehicles);
     GameRules explicitOff;
     loadCfgText(explicitOff, "b GameRulesPurchaseVehicles = false\n");
     CHECK_FALSE(explicitOff.purchaseVehicles); // preserve an intentional owner choice
@@ -315,7 +318,7 @@ TEST_CASE("game rules: dialog page rows equal the descriptor table presets round
 
     const GameRules defaults;
     for (const Rule& r : kRules)
-        if (r.kind == Kind::Enum)
+        if (r.kind == Kind::Enum && r.key != "AI")
             CHECK(std::string(r.labels[getLong(defaults, r) - r.lo]).rfind("MC2 Default", 0) == 0);
 }
 
@@ -360,4 +363,28 @@ TEST_CASE("game rules: numeric rules are snapping sliders and the presets land o
     CHECK(nudgeValue(kRules[step], 50, 1) == 50);
     CHECK(nudgeValue(kRules[step], 1, -1) == 1);
     CHECK(nudgeValue(kRules[pilot], 110, 1) == 125);
+}
+
+TEST_CASE("game rules: AI persists in options and campaign saves") {
+    GameRules smarter;
+    loadCfgText(smarter, "l GameRulesAI = 1\n");
+    CHECK(smarter.ai == 1);
+    std::string text;
+    for (const auto& e : cfgEntries(smarter)) text += e.key + "=" + e.text + "\n";
+    GameRules back;
+    loadCfgText(back, text);
+    CHECK(back == smarter);
+    LogisticsMissionInfo info;
+    info.setRules(smarter);
+    const auto path = saveToFile(info, "game_rules_ai");
+    FitIniFile in;
+    REQUIRE(in.open(path.c_str()) == NO_ERR);
+    LogisticsMissionInfo loaded;
+    REQUIRE(loaded.load(in).has_value());
+    in.close();
+    CHECK(loaded.getRules().ai == 1);
+    CHECK(GameRules{}.ai == 0);
+    loadCfgText(back, "l GameRulesAI = 2\n");
+    CHECK(back.ai == 1);
+    std::remove(path.c_str());
 }

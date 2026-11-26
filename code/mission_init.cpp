@@ -1021,6 +1021,11 @@ void Mission::init (mc2::czstring missionName, MissionLoadType loadType, long dr
 	MissionInitFrame f;
 	mc2::content::resetMission();
 	if (LogisticsData::instance) LogisticsData::instance->publishRules(); // immutable game-rules snapshot for this mission (code/game_rules.h)
+	if (loadType == MISSION_LOAD_SP_QUICKSTART) {
+		auto rules = mc2::rules::current();
+		rules.ai = prefs.gameRules.ai;
+		mc2::rules::publish(mc2::rules::rulesToPublish(MPlayer || mc2::net::active(), rules));
+	}
 	f.missionFileView = &missionFile;
 	f.missionName = missionName;
 	resetOrderIngress(); // Old tokens cannot cross reinitialization.

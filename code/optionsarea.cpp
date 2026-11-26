@@ -18,6 +18,8 @@ OptionsArea.cpp			: Implementation of the OptionsArea component.
 #include "../resource.h"
 #include"prefs.h"
 #include"missiongui.h"
+#include "logisticsdata.h"
+#include "net/runtime.h"
 #include"logisticsdialog.h"
 #include"gamesound.h"
 #include"loadscreen.h"
@@ -1015,6 +1017,11 @@ void OptionsGamePlay::init(long xOffset, long yOffset)
 
 int		OptionsGamePlay::handleMessage( unsigned long message, unsigned long fromWho )
 {
+	if (fromWho == 408 && !MPlayer && !mc2::net::active()) {
+		aiChoice = 1 - aiChoice;
+		setDefsElementText("game.mcl_optionsgameplay.button.ai", aiChoice ? "AI: SMARTER (TECHBRAIN)" : "AI: STOCK");
+		return 1;
+	}
 	if ( fromWho >= MSG_GREEN && fromWho < MSG_ELITE+1 )
 	{
 		for ( int i = MSG_GREEN; i < MSG_ELITE+1; i++ )
@@ -1151,6 +1158,10 @@ void OptionsGamePlay::begin()
 {
 	helpTextArrayID = 2;
 	reset(prefs);
+	if (LogisticsData::instance && !MPlayer && !mc2::net::active()) {
+		aiChoice = LogisticsData::instance->rules().ai;
+		setDefsElementText("game.mcl_optionsgameplay.button.ai", aiChoice ? "AI: SMARTER (TECHBRAIN)" : "AI: STOCK");
+	}
 
 	//Do NOT setup a camera in mission.
 	// A.  We don't need it cause the option is greyed out.
@@ -1169,6 +1180,14 @@ void OptionsGamePlay::begin()
 
 void OptionsGamePlay::end()
 {
+	if (!MPlayer && !mc2::net::active()) {
+		prefs.gameRules.ai = aiChoice;
+		if (LogisticsData::instance) {
+			auto rules = LogisticsData::instance->rules();
+			rules.ai = aiChoice;
+			LogisticsData::instance->setRules(rules);
+		}
+	}
 	for ( int i  = MSG_GREEN; i < MSG_ELITE + 1; i++ )
 	{
 		if ( getButton( i )->isPressed() )
@@ -1198,6 +1217,9 @@ void OptionsGamePlay::end()
 }
 void OptionsGamePlay::reset(const CPrefs& newPrefs)
 {
+	aiChoice = newPrefs.gameRules.ai;
+	setDefsElementText("game.mcl_optionsgameplay.button.ai", aiChoice ? "AI: SMARTER (TECHBRAIN)" : "AI: STOCK");
+	setDefsElementVisible("game.mcl_optionsgameplay.button.ai", !MPlayer && !mc2::net::active());
 	for ( int i  = MSG_GREEN; i < MSG_ELITE + 1; i++ )
 	{
 		getButton( i )->press( 0 );

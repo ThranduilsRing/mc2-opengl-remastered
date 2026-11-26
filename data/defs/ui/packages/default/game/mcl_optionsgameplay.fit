@@ -2229,3 +2229,30 @@ GuiText {
     legacyFontComment = "use agency fb 11"
     borderColorArgb = "0x00000000"
 }
+
+GuiButton {
+    key = "game.mcl_optionsgameplay.button.ai"
+    pageKey = "game.mcl_optionsgameplay"
+    role = "button"
+    layer = "control"
+    rect = "310,290,240,26"
+    controlRect = "310,290,240,26"
+    hitRect = "310,290,240,26"
+    textRect = "310,290,240,26"
+    visibleText = "AI: STOCK"
+    legacyId = 408
+    font = "Agency Regular"
+    fontSize = 17
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = false
+    normalTextColorArgb = "0xff5C96C2"
+    colorArgb = "0xff5C96C2"
+    pressedTextColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    fillColorArgb = "0xff101c28"
+    borderColorArgb = "0xff005392"
+    legacyAnimateBmp = false
+    legacyAnimateText = false
+}

@@ -14,7 +14,8 @@
 //             overrides ABL for the units it describes; every other unit keeps its ABL brain.
 //
 // MC2_BRAIN_POLICY=legacy forces Legacy (kill-switch); =techbrain forces TechBrain (test fixtures);
-// unset or "auto" lets decide() choose.
+// unset or "auto" uses the saved AI rule: Stock keeps ABL; Smarter enables authored TechBrain
+// policies and detected-target selection for units without authored brain data.
 #include <cstdint>
 #include <string_view>
 

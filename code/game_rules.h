@@ -29,7 +29,8 @@ inline constexpr long kCalledOff = 0, kCalledFloors = 1, kCalledClassic = 2;
 inline constexpr long kSalvageGenerous = 0, kSalvageMC2 = 1, kSalvageScarce = 2;
 
 struct GameRules {
-    bool purchaseVehicles     = true;
+    bool purchaseVehicles     = false;
+    long ai                   = 0;             // 0 = Stock, 1 = Smarter (TechBrain)
     long dropLimitMode        = kDropTonnage;   // what caps a drop: tonnage (today), battle value, or nothing (tonnage still shown as info)
     bool dropWeightPurchase   = false;          // the player may buy extra drop weight
     long dropWeightStep       = 5;              // tons (or BV points per ton-equivalent later) per purchase
@@ -81,6 +82,7 @@ inline constexpr std::string_view kHeatLabels[]    = {"Off", "MC2 Default (On)",
 inline constexpr std::string_view kAmmoLabels[]    = {"Off", "MC2 Default (On)", "Lethal"};
 inline constexpr std::string_view kCalledLabels[]  = {"Off", "MC2 Default (Floors)", "Classic"};
 inline constexpr std::string_view kSalvageLabels[] = {"Generous", "MC2 Default", "Scarce"};
+inline constexpr std::string_view kAiLabels[] = {"Stock", "Smarter (TechBrain)"};
 }  // namespace detail
 
 inline constexpr Rule kRules[] = {
@@ -94,6 +96,7 @@ inline constexpr Rule kRules[] = {
     detail::enumRule("Salvage",            &GameRules::salvage,          kSalvageScarce, detail::kSalvageLabels),
     detail::pctRule ("CBillMultiplier",    &GameRules::cbillMultiplier,  50, 200),
     detail::boolRule("PurchaseVehicles",   &GameRules::purchaseVehicles),
+    detail::enumRule("AI",                 &GameRules::ai,               1,              detail::kAiLabels),
 };
 
 inline constexpr std::size_t kRuleCount = sizeof(kRules) / sizeof(kRules[0]);

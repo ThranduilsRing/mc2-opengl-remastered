@@ -10,6 +10,7 @@
 #include "file.h"
 #include "mc2fmt.h"
 #include "brain_missionfit_oporbd.h"
+#include "game_rules.h"
 
 namespace mc2::brainpolicy {
 
@@ -58,12 +59,15 @@ void decide(std::string_view missionFitPath, std::string_view missionDir, std::s
 		p = Policy::TechBrain; why = "player-commander";
 	} else if (mc2::gate::is<"MC2_BRAIN_POLICY", "techbrain">()) {
 		p = Policy::TechBrain; why = "forced-techbrain";
-	} else {
+	} else if (mc2::rules::current().ai == 1) {
+		p = Policy::TechBrain; why = "player-smarter-generic";
 		const std::string base = std::string(missionDir).append(missionName);
 		if (missionFitHasBrainBlock(missionFitPath))                    { p = Policy::TechBrain; why = "mission.fit Brain{}"; }
 		else if (overlayBrainFile(base + "_specials.fit"))              { p = Policy::TechBrain; why = "mod _specials.fit"; }
 		else if (overlayBrainFile(base + "_ai.fit"))                    { p = Policy::TechBrain; why = "mod _ai.fit"; }
 		else if (!mc2::gate::str<"MC2_BRAIN_SPECIAL_FIT">().empty())    { p = Policy::TechBrain; why = "special-fit-gate"; }
+	} else {
+		why = "player-stock";
 	}
 	g_policy = p;
 	++g_generation;
