@@ -61,6 +61,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from smoke_lib import nofocus  # noqa: E402
+import seed_parity  # noqa: E402
 from smoke_lib import host_lease, exe_guard  # noqa: E402
 from console_child import child_kwargs  # noqa: E402
 import exe_fingerprint  # noqa: E402
@@ -386,6 +387,10 @@ def dependency_manifest(deploy: Path, destination: Path, allowlist: dict | None 
     a changed catalog. Unknown loose data also needs an explicit allowance.
     """
     allowlist = allowlist or {}
+    parity = {path.lower(): digest for path, digest in
+              (seed_parity.read_snapshot(seed_parity.default_seed()) or {}).items()
+              if seed_parity.is_parity(path)}
+    declared = read_json_object(REPO / "intentional-asset-changes.json")
     archives, resolved = {}, {}
     system = fit_fields((deploy / "system.cfg").read_bytes())
     count = int(system["FastFiles/NumFastFiles"][0].split(" ", 1)[1])
@@ -421,12 +426,17 @@ def dependency_manifest(deploy: Path, destination: Path, allowlist: dict | None 
         archived = resolved.get(relative)
         allowance = allowlist.get(relative, {})
         allowed = allowance.get("sha256") == digest and bool(allowance.get("reason", "").strip())
+        reason = allowance.get("reason") if allowed else None
+        if not allowed and parity.get(relative) == digest:
+            allowed, reason = True, "seed parity snapshot sha256"
+        if not allowed and declared.get(relative) == digest:
+            allowed, reason = True, "intentional-asset-changes.json sha256"
         stock = archived is not None and archived["sha256"] == digest
         fact = dict(path=relative, sha256=digest, source="loose",
                     archive=archived["archive"] if archived else None,
                     archive_sha256=archived["archive_sha256"] if archived else None,
                     archive_entry_sha256=archived["sha256"] if archived else None,
-                    stock=stock, reason=allowance.get("reason") if allowed else None)
+                    stock=stock, reason=reason)
         shadows.append(fact)
         resolved[relative] = fact
         if not stock and not allowed:

@@ -600,6 +600,39 @@ class EditorSmokeTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "mod.ini"):
                     smoke.dependency_manifest(temp, destination)
 
+    def test_dependency_audit_requires_known_parity_and_declared_hashes(self):
+        self.audit.stop()
+        with scratch_directory() as temp:
+            (temp / "system.cfg").write_bytes(b'[FastFiles]\nl NumFastFiles = 0\n')
+            parity = "data/textures/known.txm"
+            declared = "data/model_overrides/known.glb"
+            unknown = "data/textures/unknown.txm"
+            excluded = "data/textures/txm_backup/known.txm"
+            digest = smoke.hashlib.sha256(b"known").hexdigest()
+            (temp / "intentional-asset-changes.json").write_text(json.dumps({declared: digest}))
+            destination = temp / "dependencies.json"
+            with patch.object(smoke, "REPO", temp), patch.object(
+                    smoke.seed_parity, "read_snapshot", return_value={parity: digest, excluded: digest}):
+                for relative in (parity, declared):
+                    with self.subTest(accepted=relative):
+                        path = temp / relative
+                        path.parent.mkdir(parents=True, exist_ok=True)
+                        path.write_bytes(b"known")
+                        facts = smoke.dependency_manifest(temp, destination)
+                        self.assertFalse(facts["violations"])
+                        self.assertTrue(next(f["reason"] for f in facts["loose_files"] if f["path"] == relative))
+                        path.write_bytes(b"changed")
+                        with self.assertRaisesRegex(ValueError, relative):
+                            smoke.dependency_manifest(temp, destination)
+                        path.write_bytes(b"known")
+                for relative in (unknown, excluded):
+                    path = temp / relative
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_bytes(b"known")
+                    with self.assertRaisesRegex(ValueError, relative):
+                        smoke.dependency_manifest(temp, destination)
+                    path.unlink()
+
     def test_stock_preparation_is_scratch_only_and_records_overlay_removal(self):
         with scratch_directory() as temp:
             (temp / "system.cfg").write_bytes(b'[FastFiles]\nl NumFastFiles = 1\nst File0 = "art.fst"\n')
