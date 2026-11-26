@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from sockets import load_glb, package_nodes  # noqa: E402
 from build_glb import DEFAULT_RECIPE, build, load_recipe, read_accessor, trs_mat  # noqa: E402
+from tools.mw5_mechs.parity import Asset, stride_speeds, distance_curves  # noqa: E402
 
 KEEP = ("Gestures", "Bounds", "SmokeNode0", "JumpJetNode0", "FootNode0", "FootNode1", "FootPrint")
 
@@ -253,6 +254,30 @@ def emit_ini(host_text, weapon_nodes, recipe=None):
     return "\n".join(out + ["FITend", ""])
 
 
+def bind_stationary(doc):
+    """Bind this chassis's stationary clips; missing shutdowns hold its own Stand."""
+    animations = {a['name']: a for a in doc['animations']}
+    idle = animations.get('atlas_moveCoreIdle')
+    if idle is None:
+        return
+    for name in ('atlas_shutdownPwroff', 'atlas_shutdownIdle', 'atlas_shutdownPwron'):
+        if name in animations:
+            continue
+        clip = json.loads(json.dumps(idle))
+        clip['name'] = name
+        for sampler in clip['samplers']:
+            for key in ('input', 'output'):
+                accessor = dict(doc['accessors'][sampler[key]], count=1)
+                if key == 'input':
+                    accessor['max'] = accessor['min']
+                else:
+                    accessor.pop('min', None)
+                    accessor.pop('max', None)
+                sampler[key] = len(doc['accessors'])
+                doc['accessors'].append(accessor)
+        doc['animations'].append(clip)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--install", required=True)
@@ -287,6 +312,7 @@ def main():
               attachments=attachments, recipe=recipe)
     doc, buf = load_glb(glb)
     face_movement(doc)
+    bind_stationary(doc)
     write_glb(glb, doc, buf)
     clips = {clip["name"] for clip in doc.get("animations", []) if clip["channels"]}
     expected = set(recipe["clips"].values()) | set(recipe["hold_clips"]) if not a.glb else set()
@@ -321,6 +347,8 @@ def main():
     pkg = {"schema": "bt2018-mech-package/2", "chassisId": recipe["chassis_id"], "sourceGlb": f"{stem}.glb", "nodes": nodes,
            "socketOffsets": offsets, "trueHeightM": height, "restSoleHeightM": rest_sole_height(doc, buf),
            "materials": materials, "featureBits": ["HAS_NORMAL"],
+           "strideSpeeds": stride_speeds(Asset(glb)),
+           "distanceCurves": distance_curves(Asset(glb)),
            "grounding": {clip: role for clip, role in recipe.get("grounding", {}).items() if clip in clips}}
     (tgl / f"{stem}.package.json").write_text(json.dumps(pkg, indent=2) + "\n")
     (out / "mod.json").write_text(json.dumps({
