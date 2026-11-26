@@ -2544,6 +2544,8 @@
    "LG05": 1
   },
   "mclib/camera_update.cpp": {},
+  "mclib/campaign_mod_catalogue.h": {},
+  "mclib/campaign_mods.h": {},
   "mclib/celement.cpp": {},
   "mclib/celement.h": {},
   "mclib/celine.cpp": {},
@@ -3494,7 +3496,7 @@
    "LG20": 1
   }
  },
- "head": "862d501a8",
+ "head": "0eeb07c5d",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

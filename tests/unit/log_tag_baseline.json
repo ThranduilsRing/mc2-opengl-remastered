@@ -101,6 +101,31 @@
    "count": 1
   },
   {
+   "tag": "ABL_FALLBACK",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "module",
+    "file",
+    "line",
+    "action",
+    "message"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ABL_FATAL",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "code",
+    "module",
+    "line",
+    "message"
+   ],
+   "count": 1
+  },
+  {
    "tag": "ABL_FILE_LINE_BAD",
    "ver": -1,
    "stream": "log",
