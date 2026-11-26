@@ -175,6 +175,10 @@ void ablFatalCallback (long code, mc2::czstring s) {
 
 	if (slotCount < kSlots) {
 		slots[slotCount++] = { h, 1 };
+		mc2::fmt::print_err("[ABL_FATAL] code={} module={} line={} message={}\n",
+			code, g_ablExec->CurModule ? g_ablExec->CurModule->getName() : "(none)",
+			g_ablExec->execLineNumber, s ? s : "");
+		fflush(stderr);
 		STOP((s));
 	} else if (!tableFull) {
 		tableFull = true;
