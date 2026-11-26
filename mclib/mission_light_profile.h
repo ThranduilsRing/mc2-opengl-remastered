@@ -52,9 +52,11 @@ inline bool matches(std::string_view missionFileName, std::string_view profile)
 }
 
 struct MissionLightProfile { const char* mission; float light; float ambient; float ground; };
-inline constexpr MissionLightProfile kDefaultNightProfile{nullptr, 0.65f, 0.6f, 0.8f};
+// Prelit maps share the stock night receiver scale, including mod/legacy burnins.
+inline constexpr float kNightGroundScale = 0.55f;
+inline constexpr MissionLightProfile kDefaultNightProfile{nullptr, 0.65f, 0.6f, kNightGroundScale};
 inline constexpr MissionLightProfile kMissionLightProfiles[] = {
-	{"mc2_10", 0.45f, 0.40f, 0.55f},   // airbase raid just after sunset: fairly dark, lamps carry it
+	{"mc2_10", 0.45f, 0.40f, kNightGroundScale},   // airbase raid just after sunset: fairly dark, lamps carry it
 };
 inline const MissionLightProfile& missionLightProfile(std::string_view missionName)
 {

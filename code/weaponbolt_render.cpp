@@ -444,8 +444,9 @@ void WeaponBolt::drawPacket (const mc2::render_view::FxPacket& view, const mc2::
                             const auto& p = polygon.vertices[indices[j]];
                             const float rhw = 1.0f / p.clip.w;
                             auto& out = vertices[j];
-                            out.x = (eye->getUsePerspective() ? p.clip.x * rhw : 1.0f - p.clip.x) * eye->viewMulX + eye->viewAddX;
-                            out.y = (eye->getUsePerspective() ? p.clip.y * rhw : p.clip.y) * eye->viewMulY + eye->viewAddY;
+                            const auto screen = mc2::beam::screenPosition(p.clip, eye->getUsePerspective(),
+                                {eye->viewMulX, eye->viewMulY}, {eye->viewAddX, eye->viewAddY});
+                            out.x = screen.x; out.y = screen.y;
                             out.z = p.clip.z * rhw;
                             out.rhw = eye->getUsePerspective() ? rhw : 0.000001f;
                             out.u = p.uv.x; out.v = p.uv.y;

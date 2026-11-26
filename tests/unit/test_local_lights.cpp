@@ -220,7 +220,14 @@ TEST_CASE("mission profiles keep frontend colors ground and save markers camera 
     CHECK(sceneScale(day) == 1.0f);
     CHECK_FALSE(day.missionLightApplied);
     day.lightPitch = 270;
-    CHECK(sceneScale(day) == doctest::Approx(0.8f));
+    CHECK(sceneScale(day) == doctest::Approx(0.55f));
+    CameraFixture modNight;
+    modNight.missionLightName = "sudden defend";
+    modNight.lightPitch = 270;
+    apply(modNight, false);
+    CHECK(sceneScale(modNight) == sceneScale(mission));
+    modNight.lightPitch = 90;
+    CHECK(sceneScale(modNight) == 1.0f);
 }
 
 TEST_CASE("mover night shadow keeps a readable floor and leaves the day alone") {

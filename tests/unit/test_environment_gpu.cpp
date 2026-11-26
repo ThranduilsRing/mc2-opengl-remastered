@@ -8,6 +8,9 @@
 #include <array>
 #include <cmath>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
+#include <iterator>
 #include "../../mclib/mission_light_profile.h"
 
 TEST_CASE("EnvironmentGpu/shared night output and shadow inputs reset between missions") {
@@ -147,6 +150,18 @@ TEST_CASE("EnvironmentGpu/night switch dims the full baked daylight, not just it
     CHECK(flatRatio(day, moon, ambient, 0.0f, 0)[0] > 1.0f); // old ambient-only amplification
     CHECK((flatRatio(day, day.sun, day.amb, 0.5f, 0) == std::array<float,3>{1,1,1}));
     CHECK((flatRatio(AuthoredSun{}, moon, ambient, 0.0f, 0, true) == std::array<float,3>{1,1,1})); // native night
+
+    // Pin the production caller as well: the ratio must precede the day-only
+    // SH relight guard, otherwise this helper's night branch is unreachable.
+    std::ifstream caller(std::filesystem::path(MC2_REPO_ROOT) / "code/gamecam.cpp");
+    REQUIRE(caller.good());
+    const std::string source{std::istreambuf_iterator<char>(caller), {}};
+    const auto begin = source.find("void GameCamera::renderTerrainSceneState()");
+    const auto call = source.find("mc2_FlatLightRatio(flatIntensity", begin);
+    const auto guard = source.find("if (!eye->getIsNight())", begin);
+    REQUIRE(call != std::string::npos);
+    REQUIRE(guard != std::string::npos);
+    CHECK(call < guard);
 }
 
 TEST_CASE("EnvironmentGpu/a keyed save keeps the authored sun across load") {

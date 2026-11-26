@@ -14,6 +14,11 @@ struct Polygon {
     int count = 0;
 };
 
+inline glm::vec2 screenPosition(const glm::vec4& clip, bool perspective,
+                               const glm::vec2& mul, const glm::vec2& add) {
+    return (perspective ? glm::vec2(clip) / clip.w : glm::vec2(1.0f) - glm::vec2(clip)) * mul + add;
+}
+
 // Camera's legacy homogeneous volume is 0 <= x,y,z <= w. Clip before
 // division: ScreenXY's behind-camera fallback is a HUD position, not a beam.
 inline Polygon clipTriangle(const std::array<Vertex, 3>& triangle) {
