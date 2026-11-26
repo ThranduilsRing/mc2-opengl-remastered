@@ -472,7 +472,7 @@ bool init_island(VfxIsland* s, int w, int h) {
         sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = kVfxSlots;
         sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC; sizes[1].descriptorCount = kVfxSlots;
         sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = 2 * kVfxSlots;
-        sizes[3].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[3].descriptorCount = 2 * kVfxSlots;
+        sizes[3].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[3].descriptorCount = 3 * kVfxSlots;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pci.maxSets = kVfxSlots; pci.poolSizeCount = 4; pci.pPoolSizes = sizes;
@@ -562,8 +562,8 @@ bool init_island(VfxIsland* s, int w, int h) {
         VkPhysicalDeviceProperties props{};
         vkGetPhysicalDeviceProperties(s->phys, &props);
         s->indexed = mc2vk::profile::featureEnabled(ctx.profile(), "shaderSampledImageArrayNonUniformIndexing") &&
-            props.limits.maxPerStageDescriptorSamplers >= kSpritePagesPerPool + 2 &&
-            props.limits.maxPerStageDescriptorSampledImages >= kSpritePagesPerPool + 2;
+            props.limits.maxPerStageDescriptorSamplers >= kSpritePagesPerPool + 7 &&
+            props.limits.maxPerStageDescriptorSampledImages >= kSpritePagesPerPool + 7;
         if (s->indexed) {
             s->indexedVert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "vfx_indexed.vert.spv"));
             s->indexedFrag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "vfx_indexed.frag.spv"));
