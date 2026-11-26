@@ -205,6 +205,8 @@ def mercs(game, install, work, env, recipes, report):
     stage = work / "base"
     base_install(install, stage)
     for recipe_path, recipe in recipes:
+        if recipe.get("game", "mw5") != "mw5":
+            continue
         name = recipe["family"]
         dest = work / name
         dest.mkdir()
@@ -327,7 +329,8 @@ def main(argv=None):
     env, errors = preflight(games, work)
     report = []
     for kind, game in games.items():
-        names = bt_names if kind == "bt" else [r["family"] for _, r in recipes]
+        game_recipes = [(p, r) for p, r in recipes if r.get("game", "mw5") == kind]
+        names = bt_names if kind == "bt" else [r["family"] for _, r in game_recipes]
         if not names:
             continue
         dest = work / kind
@@ -336,9 +339,9 @@ def main(argv=None):
             if errors[kind]:
                 raise RuntimeError("; ".join(errors[kind]))
             if kind == "mw5":
-                mercs(game, install, dest, env, recipes, report)
+                mercs(game, install, dest, env, game_recipes, report)
             elif kind == "clans":
-                clans(game, dest, env, recipes, report)
+                clans(game, dest, env, game_recipes, report)
             else:
                 battletech(game, install, dest, env, names, report)
         except Exception as exc:

@@ -87,6 +87,20 @@ def test_report_excludes_roster_metadata(tmp_path, monkeypatch, capsys):
     assert "bt  _source" not in output
 
 
+def test_report_routes_clan_recipe_to_clans_only(tmp_path, monkeypatch, capsys):
+    install = tmp_path / "install"
+    (install / "data").mkdir(parents=True)
+    monkeypatch.setenv("TEMP", str(tmp_path))
+    with patch.object(importer, "detect", return_value={"mw5": tmp_path / "mercs", "clans": tmp_path / "clans"}), \
+         patch.object(importer, "preflight", return_value=({}, {"mw5": ["missing tool"], "clans": ["missing tool"]})):
+        assert importer.main(["--install", str(install)]) == 1
+    output = capsys.readouterr().out
+    assert "clans  timberwolf  FAIL" in output
+    assert "mw5  timberwolf" not in output
+    assert "mw5  atlas  FAIL" in output
+    assert "clans  atlas" not in output
+
+
 def test_detect_steam_libraries_epic_and_common(tmp_path):
     steam, library, epic, common = [tmp_path / n for n in ("steam", "library", "epic", "games")]
     (steam / "steamapps").mkdir(parents=True)
@@ -150,7 +164,8 @@ def test_mercs_continues_after_failure_and_publishes_only_validated_pack(tmp_pat
          patch.object(importer, "run", side_effect=build), patch.object(importer, "validate") as validate:
         report = []
         importer.mercs(tmp_path / "game", tmp_path / "install", tmp_path, {},
-                       [(Path(n + ".json"), {"family": n}) for n in ("bad", "good")], report)
+                       [(Path(n + ".json"), {"family": n}) for n in ("bad", "good")]
+                       + [(Path("clan.json"), {"family": "timberwolf", "game": "clans"})], report)
     assert calls == ["bad.json", "good.json"]
     assert [row[2] for row in report] == ["FAIL", "PASS"]
     validate.assert_called_once()
