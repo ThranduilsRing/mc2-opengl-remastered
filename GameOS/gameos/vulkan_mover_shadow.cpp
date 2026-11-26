@@ -1,3 +1,4 @@
+#include "../../mclib/camera.h"
 #include "vulkan_mover_shadow.h"
 #include "shadow_quality.h"
 #include "visual_tuning_profile.h"
@@ -17,6 +18,7 @@
 #include <cstring>
 
 extern void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
+extern void gos_GetTerrainCameraPos(float* x, float* y, float* z);
 float mc2NightLightFactor();   // mclib/camera.cpp: 0 day .. 1 full night
 float mc2MoverShadowNightFade(float* darkness, float* moonLum, float* ambientLum);   // mclib/camera.cpp
 
@@ -208,7 +210,10 @@ bool MoverShadowState::prepare(uint64_t epoch, int mapSide, const float cameraRo
     frame_.mask[2]=1.0f/((std::max)(side-1,1)*kWorldUnitsPerVertex); frame_.mask[3]=maskReady?1.0f:0.0f;
     if (!spheres_.empty()) {
         const auto basis=lightBasis(sun);
-        const Window window=fitMoverWindow(spheres_,basis,ground_,mapSide,extent_);
+        const auto focus = eye ? eye->getPosition() : glm::vec3(0.0f);
+        const MoverSphere region{{focus.x,focus.y,focus.z}, eye ? eye->getCameraAltitude() : 1200.0f};
+        const Window window=fitMoverWindow(spheres_,basis,ground_,mapSide,region);
+        extent_=window.texelWorld*mapSide;
         windowMatrix(basis,window,frame_.matrix);
         frame_.params[0]=window.texelWorld; frame_.params[1]=1.0f/(window.dMax-window.dMin);
         frame_.params[2]=(std::max)(0.2f,window.texelWorld*0.35f); frame_.params[3]=1.0f/mapSide;
@@ -219,11 +224,17 @@ bool MoverShadowState::prepare(uint64_t epoch, int mapSide, const float cameraRo
     if (!active_) return false;
     std::memcpy(active_.ptr,&frame_,sizeof(frame_)); // the engine ring is host coherent
     activeFrame_=ctx.frameContext().frame;
-    if (activeFrame_%120==0 && mc2_diag::tagRequested("MOVER_SHADOW"))   // MC2_DIAG_TAGS=MOVER_SHADOW
-        mc2::fmt::print_err("[MOVER_SHADOW] frame={} mask_ready={} props_total={} casters_total={} movers_in_view={} texel_wu={:.3f} sharp={:.1f}\n",
+    if (activeFrame_%30==0 && mc2_diag::tagRequested("MOVER_SHADOW")) {   // MC2_DIAG_TAGS=MOVER_SHADOW
+        Vec3 camera{};
+        gos_GetTerrainCameraPos(&camera.x,&camera.y,&camera.z); // render space (west, up, north)
+        const MoverSphere caster=mech_.actors.empty()?MoverSphere{}:mech_.actors.front().sphere;
+        const Vec3 delta{-caster.center.x-camera.x,caster.center.z-camera.y,caster.center.y-camera.z};
+        mc2::fmt::print_err("[MOVER_SHADOW] frame={} mask_ready={} props_total={} casters_total={} movers_in_view={} texel_wu={:.3f} sharp={:.1f} extent_wu={:.3f} caster={:.3f},{:.3f},{:.3f} radius_wu={:.3f} eye_distance_wu={:.3f} view_yaw_deg={:.3f}\n",
             activeFrame_,maskReady?1:0,props.size(),casters,
             std::count_if(mech_.actors.begin(),mech_.actors.end(),[](const mc2shadow::MechActorTable::Actor& a){ return a.inView; }),
-            frame_.params[0],sharp);
+            frame_.params[0],sharp,extent_,caster.center.x,caster.center.y,caster.center.z,caster.radius,
+            std::sqrt(dot(delta,delta)),std::atan2(cameraRows[1],cameraRows[0])*57.295779513f);
+    }
     return true;
 }
 

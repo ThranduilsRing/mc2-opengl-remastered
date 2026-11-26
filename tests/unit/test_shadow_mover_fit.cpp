@@ -62,8 +62,7 @@ TEST_CASE("mover fit: an offscreen caster is admitted when its swept shadow meet
 TEST_CASE("mover fit: the window contains caster spheres and their ground reach") {
     const std::array spheres{MoverSphere{{-100,30,80},12}, MoverSphere{{180,-40,160},24}};
     const LightBasis basis = lightBasis(clampSunAltitude({1,1,0},15));
-    float extent = 0;
-    const Window window = fitMoverWindow(spheres, basis, -20, 4096, extent);
+    const Window window = fitMoverWindow(spheres, basis, -20, 4096, {{0,0,80},300});
     float matrix[16];
     windowMatrix(basis, window, matrix);
     for (const auto& s : spheres) {
@@ -82,20 +81,27 @@ TEST_CASE("mover fit: the window contains caster spheres and their ground reach"
     CHECK((window.lx0 + window.lx1) / (2*window.texelWorld) == doctest::Approx(std::round((window.lx0+window.lx1)/(2*window.texelWorld))).epsilon(0.001));
 }
 
-TEST_CASE("mover fit: sqrt two extents retain a ten percent shrink hysteresis") {
-    const float extent = stabilizedMoverExtent(100,0);
-    CHECK(extent >= 100);
-    CHECK(extent < 100*std::sqrt(2.0f));
-    CHECK(stabilizedMoverExtent(extent*0.7f, extent) == extent);
-    CHECK(stabilizedMoverExtent(extent*0.6f, extent) < extent);
-    CHECK(stabilizedMoverExtent(extent+0.1f, extent) > extent);
+TEST_CASE("mover fit: yaw visibility cannot change projection extent or texel density") {
+    const auto basis = lightBasis(normalized({1,1,1}));
+    const MoverSphere region{{35,-20,0},200};
+    const std::array spheres{MoverSphere{{0,0,80},110}, MoverSphere{{180,-40,160},153},
+                            MoverSphere{{-220,130,30},40}};
+    const auto reference = fitMoverWindow(spheres,basis,-20,4096,region);
+    for (size_t yaw = 0; yaw < 4; ++yaw) {
+        const auto visible = std::span(spheres).subspan(yaw % 3, 1 + (yaw == 0));
+        const auto window = fitMoverWindow(visible,basis,-20,4096,region);
+        CHECK(window.texelWorld == reference.texelWorld);
+        CHECK(window.lx0 == reference.lx0); CHECK(window.lx1 == reference.lx1);
+        CHECK(window.ly0 == reference.ly0); CHECK(window.ly1 == reference.ly1);
+    }
+    CHECK(reference.texelWorld <= 0.125f); // retain close-up crispness
+    CHECK(fitMoverWindow(spheres,basis,-20,4096,{{35,-20,0},400}).texelWorld > reference.texelWorld);
 }
 
 TEST_CASE("mover coverage: packed intervals include receivers behind every caster") {
     const std::array spheres{MoverSphere{{-100,30,80},12}, MoverSphere{{180,-40,160},24}};
     const LightBasis basis = lightBasis(clampSunAltitude({1,1,0},15));
-    float extent = 0;
-    const Window window = fitMoverWindow(spheres, basis, -20, 4096, extent);
+    const Window window = fitMoverWindow(spheres, basis, -20, 4096, {{0,0,80},300});
     MoverShadowFrame frame{};
     windowMatrix(basis, window, frame.matrix);
     buildMoverCoverage(frame, spheres, basis, window);
@@ -151,9 +157,8 @@ TEST_CASE("mover fit: a hundred spread movers use one count independent window")
     std::vector<MoverSphere> spheres;
     for (int y=0;y<10;++y) for (int x=0;x<10;++x)
         spheres.push_back({{float(x*600-2700),float(y*600-2700),24},12});
-    float extent=0;
     const auto basis=lightBasis(normalized({1,1,1}));
-    const Window window=fitMoverWindow(spheres,basis,0,4096,extent);
+    const Window window=fitMoverWindow(spheres,basis,0,4096,{{0,0,0},6000});
     CHECK(window.texels==4096);
     CHECK(window.texelWorld<3.0f);
     MoverShadowFrame frame{};

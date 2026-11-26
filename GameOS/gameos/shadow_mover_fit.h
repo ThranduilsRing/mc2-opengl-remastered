@@ -84,34 +84,25 @@ inline bool propShadowReachesMover(MoverSphere prop, MoverSphere mover, Vec3 sun
     return d.x * d.x + d.y * d.y + d.z * d.z <= reach * reach;
 }
 
-// Only the extent has hysteresis; the image is cleared and redrawn every frame.
-// No accumulated samples, reprojection, history texture or temporal filtering.
-inline float stabilizedMoverExtent(float required, float previous) {
-    constexpr float step = 1.41421356237f;
-    if (previous >= required && required >= previous / step * 0.9f) return previous;
-    return std::pow(step, std::ceil(std::log((std::max)(required, 8.0f)) / std::log(step)));
-}
-
+// XY covers a rotation-invariant view region, never the set of visible casters.
+// Caster bounds affect depth only; changing visibility cannot change texel density.
 inline Window fitMoverWindow(std::span<const MoverSphere> spheres, const LightBasis& basis,
-                             float ground, int mapSide, float& previousExtent) {
+                             float ground, int mapSide, MoverSphere region) {
     Window w{};
     if (spheres.empty()) return w;
-    float x0 = 1e30f, y0 = 1e30f, x1 = -1e30f, y1 = -1e30f;
     w.dMin = 1e30f; w.dMax = -1e30f;
     for (const auto& s : spheres) {
         const Vec3 q = toLight(basis, s.center), e = toLight(basis, shadowEnd(s, basis.toward, ground));
-        x0 = (std::min)(x0, q.x - s.radius); x1 = (std::max)(x1, q.x + s.radius);
-        y0 = (std::min)(y0, q.y - s.radius); y1 = (std::max)(y1, q.y + s.radius);
         w.dMin = (std::min)(w.dMin, e.z - s.radius - 4.0f);
         w.dMax = (std::max)(w.dMax, q.z + s.radius + 4.0f);
     }
-    const float required = (std::max)(x1 - x0, y1 - y0) + 16.0f;
-    previousExtent = stabilizedMoverExtent(required, previousExtent);
-    w.texels = mapSide; w.texelWorld = previousExtent / static_cast<float>(mapSide);
-    const float cx = std::round((x0 + x1) * 0.5f / w.texelWorld) * w.texelWorld;
-    const float cy = std::round((y0 + y1) * 0.5f / w.texelWorld) * w.texelWorld;
-    w.lx0 = cx - previousExtent * 0.5f; w.lx1 = cx + previousExtent * 0.5f;
-    w.ly0 = cy - previousExtent * 0.5f; w.ly1 = cy + previousExtent * 0.5f;
+    const float extent = 2.0f * (std::max)(region.radius, 4.0f) + 16.0f;
+    const Vec3 center = toLight(basis, region.center);
+    w.texels = mapSide; w.texelWorld = extent / static_cast<float>(mapSide);
+    const float cx = std::round(center.x / w.texelWorld) * w.texelWorld;
+    const float cy = std::round(center.y / w.texelWorld) * w.texelWorld;
+    w.lx0 = cx - extent * 0.5f; w.lx1 = cx + extent * 0.5f;
+    w.ly0 = cy - extent * 0.5f; w.ly1 = cy + extent * 0.5f;
     w.dMin = std::floor(w.dMin); w.dMax = std::ceil((std::max)(w.dMax, w.dMin + 16.0f));
     return w;
 }
