@@ -1087,7 +1087,7 @@ void measureClipStrides(ImportedAnimEntry& e) {
     for (const char* clip : kClips) {
         // MW5 packs carry offline stance measurements in source glTF units/s.
         if (e.strideSpeed.contains(clip)) {
-            e.strideSpeed[clip] *= e.simScale;
+            e.strideSpeed[clip] *= e.scale;
             continue;
         }
         auto dur = clipDurationSec(e.scene, clip);
@@ -1104,8 +1104,8 @@ void measureClipStrides(ImportedAnimEntry& e) {
             }
         }
         const auto stride = mc2clip::measureStride(pos, *dur);
-        if (stride.speed() * e.simScale > 0.5f) {
-            e.strideSpeed[clip] = stride.speed() * e.simScale;
+        if (stride.speed() * e.scale > 0.5f) {
+            e.strideSpeed[clip] = stride.speed() * e.scale;
             mc2::fmt::print_err("[MECH_IMPORT] stride '{}' planted={:.4f} estimate={:.4f} local u/s selected={:.2f} u/s (cycle {:.2f}s)\n",
                 clip, stride.planted, stride.estimate, e.strideSpeed[clip], *dur);
         }
@@ -1827,9 +1827,9 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
         // same pack scale as the skeleton. Both sides of a walk/run fade match it.
         const auto matchDistance = [&](std::string_view clip, float& time, float& rate) {
             const auto it = e.distanceCurves.find(std::string(clip));
-            if (it == e.distanceCurves.end() || e.simScale <= 0) return;
+            if (it == e.distanceCurves.end() || e.scale <= 0) return;
             const auto& [name, curve] = *it;
-            time = curve.advance(time, speed * dt / e.simScale);
+            time = curve.advanceWorld(time, speed * dt, e.scale);
             rate = 0;
         };
         if (s.locomotion) matchDistance(s.activeClip, s.clipTimeSec, s.playRate);
@@ -2089,7 +2089,7 @@ long ImportGeometryFromFile(mc2::czstring path, TG_TypeMultiShape* out, bool aut
 		animateImport = mechImportAnimateEnabled() || mechImportGpuEnabled();
 
 		// Qualified import packages use chassis heights and the vertical bind extent.
-		// Preserve the legacy scale for simulation sockets and animation clocks.
+		// Preserve the legacy scale for simulation sockets; clocks follow visible stride.
 		if (bake.active) {
 			const float targetH = chassisHeight > 0.0f ? chassisHeight : mc2::gate::get<"MC2_MECH_SKEL_HEIGHT">();
 			float lo[3] = {1e30f, 1e30f, 1e30f}, hi[3] = {-1e30f, -1e30f, -1e30f};

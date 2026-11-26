@@ -20,6 +20,11 @@
 #include <filesystem>
 #include <map>
 #include "mc2fmt.h"
+#include "mech_import_scale.h"
+#include <nlohmann/json.hpp>
+#include <fstream>
+#include <regex>
+#include <sstream>
 
 namespace imported_scale_test {
 struct ActorAnimState {
@@ -599,6 +604,83 @@ TEST_CASE("clip state: fades use longer prone transitions and advance outgoing c
     CHECK(advanceClipTime(0.5f, 0.1f, 2, 1, Mode::Loop) == doctest::Approx(0.7f));
     CHECK(advanceClipTime(0.9f, 0.1f, 2, 1, Mode::Loop) == doctest::Approx(0.1f));
     CHECK(advanceClipTime(0.9f, 0.1f, 2, 1, Mode::Once) == 1);
+}
+
+TEST_CASE("clip state: world distance follows rendered chassis scale") {
+    DistanceCurve curve{1, {0, 1, 2, 3, 4}};
+    for (float scale : {0.5f, 2.0f, 4.0f}) {
+        CHECK(curve.advanceWorld(0, scale, scale) == doctest::Approx(0.25f));
+        CHECK(curve.advanceWorld(0.75f, scale * 2, scale) == doctest::Approx(0.25f));
+        CHECK(curve.advanceWorld(0.25f, 0, scale) == doctest::Approx(0.25f));
+    }
+}
+
+TEST_CASE("clip state: MW5 runtime distance slip at installed gesture speeds") {
+    const char* root = std::getenv("MW5_TEST_TGL");
+    if (!root) { WARN("set MW5_TEST_TGL to private installed pack"); return; }
+    int chassis = 0;
+    for (const auto& asset : std::filesystem::directory_iterator(root)) {
+        if (asset.path().extension() != ".glb") continue;
+        auto package = asset.path(); package.replace_extension(".package.json");
+        std::ifstream input(package); nlohmann::json pkg; input >> pkg;
+        const float height = mc2mechscale::targetHeight(pkg.at("chassisId").get<std::string>());
+        REQUIRE(height > 0);
+        Assimp::Importer importer;
+        const auto* scene = importer.ReadFile(asset.path().string(), 0);
+        REQUIRE(scene != nullptr);
+        float low = 1e30f, high = -1e30f;
+        for (unsigned m = 0; m < scene->mNumMeshes; ++m)
+            for (unsigned v = 0; v < scene->mMeshes[m]->mNumVertices; ++v) {
+                const float y = scene->mMeshes[m]->mVertices[v].y;
+                low = std::min(low, y); high = std::max(high, y);
+            }
+        const float scale = height / (high - low);
+        auto ini = asset.path(); ini.replace_extension(".ini");
+        std::ifstream iniInput(ini);
+        const std::string text((std::istreambuf_iterator<char>(iniInput)), {});
+        const auto plan = mc2skel::BuildPlan(scene, {"j_LFoot", "j_RFoot"});
+        for (int gesture : {kGestureWalk, kGestureRun, kGestureReverse, kGestureLimpLeft, kGestureLimpRight}) {
+            INFO(asset.path().stem().string(), " gesture=", gesture);
+            std::smatch match;
+            REQUIRE(std::regex_search(text, match, std::regex("\\[Gestures" + std::to_string(gesture) + "\\][\\s\\S]*?EndVel=([0-9.]+)")));
+            const float speed = std::stof(match[1]);
+            Phase phase;
+            const auto choice = select(gesture, speed, 0, 0, false, false, "", phase);
+            REQUIRE(choice.locomotion);
+            std::istringstream encoded(pkg.at("distanceCurves").at(choice.clip).get<std::string>());
+            DistanceCurve curve; encoded >> curve.duration;
+            float d; while (encoded >> d) curve.distance.push_back(d);
+            REQUIRE(curve.valid());
+            // Compare independent sampled foot travel to world travel through the runtime clock.
+            float lo[2] = {1e30f, 1e30f}, hi[2] = {-1e30f, -1e30f};
+            std::vector<mc2skel::GpuBone> bones;
+            for (int f = 0; f <= 120; ++f) {
+                REQUIRE(mc2skel::EvaluateClipGpuBones(*plan, choice.clip, f * curve.duration / 4, bones));
+                for (int k = 0; k < 2; ++k) { lo[k] = std::min(lo[k], bones[k].m[11]); hi[k] = std::max(hi[k], bones[k].m[11]); }
+            }
+            float time = 0, error = 0, travel = 0;
+            const float moved = speed / 240;
+            for (int f = 0; f < 2400; ++f) {
+                REQUIRE(mc2skel::EvaluateClipGpuBones(*plan, choice.clip, time * 30, bones));
+                const float before[2] = {bones[0].m[11], bones[1].m[11]};
+                const float next = curve.advanceWorld(time, moved, scale);
+                REQUIRE(mc2skel::EvaluateClipGpuBones(*plan, choice.clip, next * 30, bones));
+                for (int k = 0; k < 2; ++k) {
+                    const float after = bones[k].m[11], mid = (before[k] + after) / 2;
+                    const float delta = (after - before[k]) * (gesture == kGestureReverse ? 1 : -1);
+                    if (next > time && delta > 0 && mid > lo[k] + .25f * (hi[k] - lo[k]) && mid < lo[k] + .75f * (hi[k] - lo[k])) {
+                        error += std::abs(delta * scale - moved); travel += moved;
+                    }
+                }
+                time = next;
+            }
+            REQUIRE(travel > 0);
+            std::printf("MW5_RUNTIME %s %s speed=%.3f scale=%.4f slip=%.3f%%\n", asset.path().stem().string().c_str(), choice.clip, speed, scale, 100 * error / travel);
+            if (gesture == kGestureWalk || gesture == kGestureRun) CHECK(error / travel < .05f);
+        }
+        ++chassis;
+    }
+    CHECK(chassis >= 48);
 }
 
 TEST_CASE("clip state: BT2018 planted stride bone oracle") {
