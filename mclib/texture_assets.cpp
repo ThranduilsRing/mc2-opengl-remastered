@@ -61,12 +61,12 @@ bool stockMeshAssets(std::initializer_list<std::string_view> paths) {
 }
 std::string stockPbrOverride(std::string_view legacy, bool vehicle, StockPbrTextures& maps, bool stockMesh) {
     const std::string original(legacy);
-    if (!stockMesh) {
+    const auto base = RenderCore::stockPbrBase(legacy, vehicle);
+    if (!stockMesh || base.empty()) {
         maps = {};
         return original;
     }
     const auto stem = RenderCore::stockPbrStem(legacy);
-    const auto base = RenderCore::stockPbrBase(legacy, vehicle);
     const auto albedo = base + "_albedo.png";
     File probe;
     const bool exists = probe.open(albedo.c_str()) == NO_ERR;

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Stock mech/vehicle PBR normal + ORM maps cooked to sibling BC7 KTX2 with a full mip chain.
+"""Stock vehicle PBR normal + ORM maps cooked to sibling BC7 KTX2 with a full mip chain.
 
-data/textures/{mech,vehicle}_pbr/<stem>_normal.png and <stem>_orm.png get <stem>_normal.ktx2 / <stem>_orm.ktx2 beside them
+data/textures/vehicle_pbr/<stem>_normal.png and <stem>_orm.png get <stem>_normal.ktx2 / <stem>_orm.ktx2 beside them
 (BC7 UNORM, linear). The texture loader prefers a same-stem sidecar over its PNG (mclib/texture_assets.cpp), and a loose
 PNG shipped by a mod still wins over the base sidecar. Albedo stays PNG (the CPU repaint reads it).
 Normals use mip_chain("normal") (renormalised), ORM mip_chain("orm") (linear box). Pins: data/kit/actor-pbr-pins.json.
@@ -21,7 +21,7 @@ REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 from tools.content_pipeline import texcook  # noqa: E402
 
-TREES = ("data/textures/mech_pbr", "data/textures/vehicle_pbr")
+TREES = ("data/textures/vehicle_pbr",)
 KINDS = {"_normal": "normal", "_orm": "orm"}
 PINS = "data/kit/actor-pbr-pins.json"
 

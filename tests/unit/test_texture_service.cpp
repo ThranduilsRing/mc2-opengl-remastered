@@ -27,6 +27,9 @@ TEST_CASE("StockPbr resolves stock UV atlas names and preserves mod priority") {
     CHECK(stockPbrStem("VutlureRGB.tga") == "vutlure");
     CHECK(stockPbrStem("vtolrgb.tga") == "vtolrgb");
     CHECK(stockPbrStem("vedette.tga") == "vedette");
+    CHECK(stockPbrBase("data/tgl/128/BushwackerRGB.tga", false).empty());
+    CHECK(stockPbrBase("data/tgl/128/MadCatRGB.tga", false).empty());
+    CHECK(stockPbrBase("data/tgl/128/vedette.tga", true) == "data/textures/vehicle_pbr/vedette");
     CHECK(preferStockPbr(true, false, 100, 100));
     CHECK_FALSE(preferStockPbr(false, false, 100, 100));
     CHECK_FALSE(preferStockPbr(true, true, 0, 100));

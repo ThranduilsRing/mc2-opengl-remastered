@@ -96,32 +96,27 @@ TEST_CASE("texture lock: fused BGRA copy matches the legacy word swizzle") {
     mc2tex::writeBgraLockPixels({}, {});
 }
 
-TEST_CASE("StockPbr: every shipped actor atlas resolves and decodes through the texture service") {
+TEST_CASE("StockPbr: every shipped vehicle atlas resolves and decodes through the texture service") {
     auto root = std::filesystem::current_path();
     while (!std::filesystem::exists(root / "RenderCore/StockPbr.h") && root != root.parent_path())
         root = root.parent_path();
     REQUIRE(std::filesystem::exists(root / "RenderCore/StockPbr.h"));
-    const std::vector<std::string> mechs = {
-        "anubis", "atlas", "bloodasp", "bushwacker", "catapult", "couger", "cyclops", "enfield",
-        "fireant", "ghoul", "highlander", "hollander", "hunchback", "jagermech", "lauhu", "madcat",
-        "menshen", "raven", "ryoken", "shadowcat", "shayu", "shootist", "starslayer", "thor",
-        "uller", "urbanmech", "vutlure", "werewolf", "wolfhound", "zeus"};
     const std::vector<std::string> vehicles = {
         "aerospotter", "ambulance", "armoredcar", "drillson", "hetzer", "hunter", "jeep", "mobilehq",
         "monsoon", "partisan", "smalltruckmap", "srmc", "storm", "trooptransport", "vedette", "vtolrgb"};
     RenderCore::TextureService service;
     uint32_t node = 0;
-    for (const bool vehicle : {false, true}) {
-        const auto& stems = vehicle ? vehicles : mechs;
+    for (const bool vehicle : {true}) {
+        const auto& stems = vehicles;
         size_t shipped = 0;
-        const auto directory = root / "data/textures" / (vehicle ? "vehicle_pbr" : "mech_pbr");
+        const auto directory = root / "data/textures" / "vehicle_pbr";
         for (const auto& entry : std::filesystem::directory_iterator(directory))
             if (entry.path().filename().string().ends_with("_albedo.png")) ++shipped;
         REQUIRE(shipped == stems.size());
         for (const auto& stem : stems) {
             const auto legacy = "data/tgl/128/" + stem + (vehicle ? ".tga" : "RGB.tga");
             const auto base = RenderCore::stockPbrBase(legacy, vehicle);
-            REQUIRE(base == "data/textures/" + std::string(vehicle ? "vehicle_pbr/" : "mech_pbr/") + stem);
+            REQUIRE(base == "data/textures/" + std::string("vehicle_pbr/") + stem);
             for (const auto* suffix : {"_albedo.png", "_normal.png", "_orm.png"}) {
                 const auto name = base + suffix;
                 INFO(name);
@@ -132,8 +127,8 @@ TEST_CASE("StockPbr: every shipped actor atlas resolves and decodes through the 
                 const auto decoded = mc2tex::decodeMemory(bytes.data(), bytes.size(), name.c_str(),
                     gos_Texture_Solid, gosHint_MipmapFilter0 | gosHint_DontShrink);
                 REQUIRE(decoded);
-                // Shipped tiers: scripts/tests/test_stock_pbr_assets.py (ghoul has no 2048 set).
-                const int edge = vehicle ? (stem == "jeep" ? 256 : 512) : (stem == "ghoul" ? 512 : 2048);
+                // Shipped vehicle tiers: scripts/tests/test_stock_pbr_assets.py.
+                const int edge = stem == "jeep" ? 256 : 512;
                 CHECK(decoded->width == edge);
                 CHECK(decoded->height == edge);
                 CHECK(decoded->pixels.size() == static_cast<size_t>(edge * edge * 4));
@@ -157,7 +152,7 @@ TEST_CASE("StockPbr: every shipped actor atlas resolves and decodes through the 
                 vehicle ? "vehicle" : "mech", stem.c_str());
         }
     }
-    CHECK(service.liveCount() == 2 * 3 * (30 + 16));
+    CHECK(service.liveCount() == 2 * 3 * 16);
 }
 
 TEST_CASE("texture decode: mipmaps are opt-in and DisableMipmap wins") {
@@ -496,15 +491,15 @@ TEST_CASE("HUD atlas SIMD mips match scalar bytes") {
     auto root = std::filesystem::current_path();
     while (!std::filesystem::exists(root / "RenderCore/StockPbr.h") && root != root.parent_path())
         root = root.parent_path();
-    const auto path = root / "data/textures/mech_pbr/anubis_albedo.png";
+    const auto path = root / "data/textures/vehicle_pbr/vedette_albedo.png";
     std::ifstream input(path, std::ios::binary);
     REQUIRE(input.is_open());
     const std::vector<uint8_t> bytes((std::istreambuf_iterator<char>(input)), {});
-    const auto decoded = mc2tex::decodeMemory(bytes.data(), bytes.size(), "anubis_albedo.png", gos_Texture_Alpha, gosHint_DontShrink);
+    const auto decoded = mc2tex::decodeMemory(bytes.data(), bytes.size(), "vedette_albedo.png", gos_Texture_Alpha, gosHint_DontShrink);
     REQUIRE(decoded);
-    REQUIRE(decoded->width == 2048);
+    REQUIRE(decoded->width == 512);
     REQUIRE(decoded->height == decoded->width);
-    CHECK(mc2hud::premultipliedMips(decoded->pixels, 2048) == reference(decoded->pixels, 2048));
+    CHECK(mc2hud::premultipliedMips(decoded->pixels, 512) == reference(decoded->pixels, 512));
 }
 
 TEST_CASE("mip box filter: non-square and 1-texel edges, malformed input rejected") {
