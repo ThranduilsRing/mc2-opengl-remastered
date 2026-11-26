@@ -96,7 +96,7 @@ sys.path.insert(0, str(ROOT / "tools" / "visual_verify"))
 from ab import payload_identity, stamp_identity  # noqa: E402
 # BACKGROUND-SMOKE-1: no agent capture may take focus / fullscreen / the cursor.
 from smoke_lib import nofocus  # noqa: E402
-from smoke_lib import capture_backend, render_options_pin, render_resolution  # noqa: E402
+from smoke_lib import capture_backend, crash_delta, render_options_pin, render_resolution  # noqa: E402
 from smoke_lib import exe_guard  # noqa: E402
 from smoke_lib.firewall_dialog import Guard as FirewallGuard
 
@@ -575,11 +575,14 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
 
     # Detect whether the engine's capture path even fired (RC may predate S9).
     fired = False
+    logtxt = ""
     try:
         logtxt = log_path.read_text(encoding="utf-8", errors="replace")
         fired = "[VISUAL_CAPTURE" in logtxt
     except Exception:
         pass
+    # A crashed engine explains every missing PNG and sidecar below: the result names the crash, never "no sidecar" as the headline.
+    crash = crash_delta.log_crash(logtxt)
 
     # The engine's own report of the options is the record; this module's reading of the install must agree with it (a disagreement means the
     # grammar port or the launch environment is wrong, and the capture cannot be attributed).
@@ -589,10 +592,13 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
         print(f"[viscap] FAIL render options: harness reading and engine report disagree: {line}", file=sys.stderr)
 
     # The backend the capture asked for must be the one that drew it: a Vulkan request that fell back to GL is not a Vulkan capture.
+    # A crashed process has no sidecar to grade; the crash is the reason.
     want_backend = capture_backend.requested(env)
-    backend_disagree = capture_backend.check(want_backend, sidecars)
+    backend_disagree = capture_backend.check(want_backend, () if crash else sidecars)
     for line in backend_disagree:
         print(f"[viscap] FAIL render backend: {line}", file=sys.stderr)
+    if crash:
+        print(f"[viscap] FAIL crash: {crash[0]} (bundle {crash[1] or 'not named in the log'})", file=sys.stderr)
 
     # The GPU the run asked for and the one the engine logged, so A/Bs never mix GPUs.
     try:
@@ -621,6 +627,8 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
         "show_window": show_window,
         "bookmarks": bm_results,
         "log": str(log_path),
+        # (reason, bundle dir) of the crash the engine log announces; None when the process did not crash.
+        "crash": crash,
         # CAPTURE-ENV-PIN-1: what the engine actually saw.
         "mc2_env": env_record,
     }
@@ -629,6 +637,8 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
 def fail_reasons(result: dict) -> "list[str]":
     """Why a capture result is a FAIL, one line each (empty when it passes): the manifest used to say FAIL and nothing else."""
     reasons = []
+    if result.get("crash"):
+        reasons.append(f"crash: {result['crash'][0]} (bundle {result['crash'][1] or 'not named in the log'})")   # first: it explains what is missing below
     if not result["all_present"]:
         reasons.append("not every bookmark produced a PNG")
     if not result["engine_capture_fired"]:

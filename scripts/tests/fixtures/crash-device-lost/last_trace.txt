@@ -1,0 +1,16 @@
+[INSTR v1] enabled: destroy=0 smoke=1 water_fp=0 water_parity=0 vp_fast=0 vp_parity=0 terrain_indirect=1 terrain_indirect_parity=0 terrain_indirect_mine=1 terrain_indirect_overlay=1 terrain_indirect_overlay_parity=0 gpu_objects=1 obj_recon_tracy=0 static_update_trace=0 static_prop_registry=1 gpu_cull_substrate=1 gpu_cull_aabb_parity=0 shader_hot_reload=0 reverse_z_trace=0 camera_motion=1 build=a86c41d236ee
+[GAME_RULES] snapshot networked=false calledShots=1 pilotSkillWeight=100 salvage=1 cbillMultiplier=100
+
+[ABL v1] event=functions_registered count=311/512
+Heat profile=1 cool=20 window=60 ai=0 thresholds=0
+
+logistics: chassis 'data/objects/heavycopter.csv' armor display-only: invalid CSV rows 17/18
+
+logistics: chassis 'data/objects/mediumcopter.csv' armor display-only: invalid CSV rows 17/18
+
+logistics: chassis 'data/objects/scoutcopter.csv' armor display-only: invalid CSV rows 17/18
+
+logistics: parsed 32 mech files in 178 ms
+
+[HEARTBEAT] frames=70 elapsed_ms=5400 fps=13.0
+fatal backend exit 3: Vulkan device lost

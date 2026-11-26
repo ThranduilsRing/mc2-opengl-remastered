@@ -83,6 +83,8 @@ try:
     from scripts.smoke_lib import crash_evidence as _crash_evidence
 except Exception:
     _crash_evidence = None
+# gate-devlost-1: a real crash bundle that appears under <install>/crashes/ during a mission fails it, whatever its buckets said.
+from scripts.smoke_lib import crash_delta as _crash_delta
 
 # No default exe path: callers must either pass --exe explicitly or let the
 # deploy-lease system auto-select the least-recently-used deploy folder. This
@@ -1810,6 +1812,7 @@ def main():
 
         print(f"[runner] running {label} (tier={tier} duration={duration})",
               file=sys.stderr)
+        crash_watch = _crash_delta.Watch(Path(cfg.exe[0]).resolve().parent)
         if args.runtime_bridge or args.runtime_bridge_script or os.environ.get("MC2_BRIDGE") == "1":
             from scripts.smoke_lib.runtime_bridge import RuntimeBridge
             bridge_output = Path(cfg.exe[0]).resolve().parent / "debug_state/latest_runtime_bridge.json"
@@ -1821,6 +1824,11 @@ def main():
             # Normal harness launches cannot inherit a dev socket selector.
             cfg.env_extra.update(MC2_BRIDGE="0", MC2_BRIDGE_PORT="0", MC2_BRIDGE_SESSION="")
             result = run_one(cfg)
+        for _bundle, _reason in crash_watch.new_real():
+            print(f"[runner] [CRASH_BUNDLE] {label}: {_bundle} ({_reason})", file=sys.stderr)
+            result.verdict.buckets.append("crash_bundle")
+            result.verdict.details.append(f"{_bundle} ({_reason})")
+            result.verdict.passed = False
         if e.stem == args.quiet_sample:
             (artifact_dir / "quiet_sample.json").write_text(json.dumps({
                 "mission": e.stem, "env_extra": cfg.env_extra,

@@ -112,6 +112,10 @@ def evaluate(s: LogSummary, cfg: GateConfig, *,
 
     if s.abl_failures > 0:
         buckets.append("abl_failure"); details.append(f"{s.abl_failures} ABL failures")
+    # The crash handler ran after the summary was printed (teardown): a printed PASS is not a pass. The engine's own fail bucket above still applies.
+    if s.crash_handler_hit and s.smoke_summary_result is not None:
+        buckets.append("crash_after_summary")
+
     if s.pool_nulls > 0:
         buckets.append("pool_null"); details.append(f"{s.pool_nulls} NULLs")
     if s.asset_oob > 0 and not cfg.allow_asset_oob:

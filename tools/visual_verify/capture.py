@@ -264,9 +264,14 @@ def capture_sweep(install: Path, bookmark_files: "list[Path]", out_dir: Path,
             "backend_disagree": (result.get("backend") or {}).get("disagree") or [],
             "seconds": round(dt, 1),
             "log": result.get("log"),
+            # [reason, bundle dir] of the crash the pose's engine log announces; None when the process did not crash.
+            "crash": list(result["crash"]) if result.get("crash") else None,
             "harness_set": (result.get("mc2_env") or {}).get("harness_set") or {},
         })
-        ok = "OK" if (primary and primary.get("present")) else "MISSING"
+        # A crashed pose is CRASH(<reason>) with its bundle, never MISSING: the device was lost on 11-26 and two gates read it as a missing capture.
+        crash = result.get("crash")
+        ok = (f"CRASH({crash[0]})" + (f" bundle={crash[1]}" if crash[1] else "") if crash
+              else "OK" if (primary and primary.get("present")) else "MISSING")
         log(f"    {ok}  fired={result.get('engine_capture_fired')} "
             f"det={primary.get('engine_deterministic') if primary else None} "
             f"{dt:.1f}s")
@@ -489,6 +494,12 @@ def main(argv=None) -> int:
     print(f"[vv-capture] manifest: {out_dir / 'capture_run.json'}")
     n_det = sum(1 for p in manifest["poses"] if p.get("engine_deterministic") is True)
     print(f"[vv-capture] deterministic poses: {n_det}/{manifest['n_captured']}")
+    crashed = [p["crash"] for p in manifest["poses"] if p.get("crash")]
+    if crashed:
+        for reason, bundle in crashed:
+            print(f"[vv-capture] FAIL crash: {reason} (bundle {bundle or 'not named in the log'})")
+        print("[vv-capture] FAIL: the engine crashed during the sweep (see the bundles above); its PNGs are not evidence")
+        return 1
     bad_backend = backend_failures(manifest)
     if bad_backend:
         for m in bad_backend:

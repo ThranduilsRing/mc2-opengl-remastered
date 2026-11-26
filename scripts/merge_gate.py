@@ -33,6 +33,7 @@ import gate_reuse
 ROOT = Path(__file__).resolve().parents[1]
 #: Drive holding installs and proofs. The laptop gate overrides this with a local folder.
 from smoke_lib.paths import ASSET_STORE_ROOT, WRITE_DRIVE
+from smoke_lib import crash_delta
 EROOT = os.environ.get("MC2_GATE_EROOT", WRITE_DRIVE).rstrip("/\\")
 #: The one determinism row that keeps a window and a GPU (a guard for the windowed path); the others run headless.
 WINDOWED_DETERMINISM = "mc2_10"
@@ -52,6 +53,8 @@ ACTIVE_STATE = None
 ROW_RESULTS = {}      # name -> {status, seconds, wait, device}: execute() fills it; the durable verdict reads it
 TIMINGS = {}          # preparation / queue_wait / execution / cache / cleanup seconds for the verdict (promotion: lane_merge --promote)
 CLEANUP_ERRORS = []   # cleanup failures: recorded beside the verdict, never change it
+CRASHES = []          # real crash bundles the runtime rows left behind: {row, dir, reason}; the verdict carries them (`crashes`)
+CRASH_STATUS = "FAIL: crash bundle "
 VERDICT_FILE = "build64-ninja/gate-verdict.json"
 PREREQUISITE = "tier1"   # the validation-enabled tier1 smoke: first game row after deploy, fail-fast
 
@@ -1487,6 +1490,7 @@ def write_verdict(paths, *, head, branch, verdict, steps, skipped, artifacts, ti
                              for n, r in sorted(ROW_RESULTS.items(), key=lambda kv: -kv[1].get("seconds", 0.0))],
                 not_run=[n for n, _, _ in steps if n not in ROW_RESULTS and n not in skipped],
                 failed=[dict(name=n, status=s) for n, s in FAILED_STAGES],
+                crashes=list(CRASHES),
                 advisory=[dict(name=n, status=r["status"]) for n, r in ROW_RESULTS.items() if r["status"].startswith(ADVISORY_PREFIX)],
                 artifacts=artifacts, timings={k: round(v, 1) for k, v in timings.items()},
                 cleanup_errors=list(cleanup_errors), written=time.time())
@@ -2037,6 +2041,7 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
             measured = None
             result = None
             lease_reports = child_lease_reports(overrides)
+            crashes = crash_delta.Watch(crash_delta.row_install(command))   # <install>/crashes/ before the row runs
             try:
                 if git("rev-parse", "HEAD") != head:
                     raise RuntimeError("HEAD changed during gate; rerun verification and gate")
@@ -2152,7 +2157,13 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
             if status.startswith(ADVISORY_PREFIX):
                 print(f"[merge_gate] ADVISORY {name} (non-blocking by owner ruling 2026-11-08): {status[len(ADVISORY_PREFIX):]}", flush=True)
             status = post_deploy_data_status(name, command, status)
-            failed |= not stage_passed(status) and name not in NON_BLOCKING_STAGES
+            # A real crash bundle is a red whatever the row said (owner rule: a lost device is a real red), so it is read after every advisory
+            # path above and is not swallowed by them. The sentinel record of a harness-killed game is not a bundle (crash_delta.real).
+            if new_crashes := crashes.new_real():
+                status = CRASH_STATUS + ", ".join(f"{d} ({r})" for d, r in new_crashes)
+                CRASHES.extend(dict(row=name, dir=d, reason=r) for d, r in new_crashes)
+                print(f"[merge_gate] {name}: {status}", flush=True)
+            failed |= (not stage_passed(status) and name not in NON_BLOCKING_STAGES) or bool(new_crashes)
             if name == 'deploy' and status == "PASS" and '--allow-new-target' in command:
                 cache_started = time.monotonic()
                 gate_reuse.save_deployed(command[command.index('--allow-new-target') - 1], ROOT, head)
@@ -2172,7 +2183,8 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
         print(f"| {name} | {status} | {elapsed:.1f} |")
         ROW_RESULTS.setdefault(name, dict(status=status, seconds=round(elapsed, 1), wait=0.0, device=None))
     for name, status, _ in results:
-        if not stage_passed(status) and not status.startswith(("DRY-RUN", "SKIP")) and name not in NON_BLOCKING_STAGES:
+        # A crash bundle reds a non-blocking row too: only the row's own FAIL stays advisory.
+        if not stage_passed(status) and not status.startswith(("DRY-RUN", "SKIP")) and (name not in NON_BLOCKING_STAGES or status.startswith(CRASH_STATUS)):
             FAILED_STAGES.append((name, status))
     for name, _, overrides in steps:
         if overrides.get("MC2_GATE_COVERAGE"):
@@ -2490,7 +2502,7 @@ def main(argv=None):
                     print("[merge_gate] failed stages: " + ", ".join(f"{name} ({status})" for name, status in FAILED_STAGES))
                 for name in NON_BLOCKING_STAGES:
                     row = ROW_RESULTS.get(name)
-                    if row and not stage_passed(row["status"]) and not row["status"].startswith(("SKIP", "DRY-RUN")):
+                    if row and not stage_passed(row["status"]) and not row["status"].startswith(("SKIP", "DRY-RUN", CRASH_STATUS)):
                         print(f"[merge_gate] advisory {name} red (verdict unaffected): {row['status']}")
                 if args.isolated_verdict and not args.install and not args.dry_run:
                     record_isolated_verdict(head, verdict)
