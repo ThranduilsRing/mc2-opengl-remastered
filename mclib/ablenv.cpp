@@ -988,7 +988,7 @@ static void ablReportSkippedErroredModule (long handle, mc2::czstring fileName, 
 }
 
 // Quarantine only this failed instance; existing tactical orders keep running.
-long ABLModule::stopAfterRuntimeError(const char* message) {
+long ABLModule::stopAfterRuntimeError(mc2::czstring message) {
 	mc2::fmt::print_err("[ABL_FALLBACK] module={} file={} line={} action=disable-instance retain-orders message={}\n",
 		getName(), getFileName(), g_ablExec->execLineNumber, message);
 	fflush(stderr);
