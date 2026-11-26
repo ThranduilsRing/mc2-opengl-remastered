@@ -124,3 +124,28 @@ TEST_CASE("XY grid dominance preserves the object consumer cap") {
     std::vector<uint32_t> selected;dominance.appendCell(lights,indices,-1,-1,1,1,selected);
     CHECK((selected==std::vector<uint32_t>{0,kObjectPoolLights}));
 }
+
+TEST_CASE("Thousand local lights retain contribution across small camera and receiver moves") {
+    REQUIRE(kObjectPoolLights >= 1000);
+    std::vector<GpuTerrainLight> lights;
+    for (unsigned i=0; i<1000; ++i)
+        lights.push_back(light(float(i%20)-10, float(i/20)-25, 0.001f, 0.002f, 0.003f, false));
+    LightGridInputs grid;
+    CHECK(grid.update(lights));
+    std::array<float,3> previous{};
+    for (int step=0; step<3; ++step) {
+        // A camera pan changes no world lights and must not rebuild or select a subset.
+        CHECK_FALSE(grid.update(lights));
+        const float receiver[3]={0.01f*step, 0, 0};
+        std::array<bool,kObjectPoolLights> keep;
+        CullObjectPool(lights,receiver,receiver,1,1,true,true,keep);
+        CHECK(std::count(keep.begin(),keep.end(),true) == 1000);
+        const auto reference=evaluate(lights,receiver,nullptr,true,true);
+        const auto selected=evaluate(lights,receiver,&keep,true,true);
+        for (unsigned c=0;c<3;++c) {
+            CHECK(selected[c] == doctest::Approx(reference[c]));
+            if (step) CHECK(std::abs(selected[c]-previous[c]) < 0.001f);
+        }
+        previous=selected;
+    }
+}

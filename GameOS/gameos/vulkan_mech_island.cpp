@@ -127,7 +127,7 @@ std::string spv_dir() { return vk_island_util::spvDir(); }
 VkShaderModule load_spv(VkDevice device, std::string_view path) { return vk_island_util::loadSpv(device, path, vlog); }
 
 // VK-PARITY-MECH-1: object light-pool SSBO cap (GpuTerrainLight 48B; GL caps 256).
-const uint32_t kMaxPoolLights = 256;
+const uint32_t kMaxPoolLights = gos_terrain_lighting::kObjectPoolLights;
 
 const VkFormat kColorFmt = VK_FORMAT_R16G16B16A16_SFLOAT;
 
