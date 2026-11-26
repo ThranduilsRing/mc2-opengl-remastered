@@ -15,7 +15,7 @@ TEST_CASE("save fields: ABL native union and module census") {
         REQUIRE(last != std::string::npos);
         source = source.substr(first + std::strlen(start), last - first - std::strlen(start));
         source = std::regex_replace(source, std::regex("//[^\\n]*"), "");
-        const std::regex member("\\b([A-Za-z_]\\w*)\\s*(?:\\[[^\\]]*\\])?\\s*;");
+        const std::regex member("\\b([A-Za-z_]\\w*)\\s*(?:\\[[^\\]]*\\])?\\s*(?:=[^;]*)?;");
         std::vector<std::string> names;
         for (std::sregex_iterator i(source.begin(), source.end(), member), endIt; i != endIt; ++i)
             names.push_back((*i)[1]);
@@ -27,7 +27,7 @@ TEST_CASE("save fields: ABL native union and module census") {
     // Encoded fields plus the derived fields documented in abl_module_archive.h.
     CHECK(fields("mclib/ablenv.h", "class ABLModule {", "// A2:") ==
         std::vector<std::string>{"id", "name", "handle", "staticData", "orderCallFlags",
-            "returnVal", "initCalled", "prevState", "state", "watchManager", "breakPointManager",
+            "returnVal", "initCalled", "runtimeFailed", "prevState", "state", "watchManager", "breakPointManager",
             "trace", "step", "traceEntry", "traceExit"});
 }
 
