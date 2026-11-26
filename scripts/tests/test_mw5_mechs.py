@@ -208,6 +208,36 @@ def fixture(tmp_path):
     return skm, psk, psa, qs, ps
 
 
+def test_madcat_shoulder_pods_survive_import(fixture, tmp_path):
+    from tools.mw5_mechs.make_mech import weapon_attachments
+
+    recipe = B.load_recipe(B.DEFAULT_RECIPE.with_name('madcat_alt.json'))
+    skm = fixture[0]
+    hull = json.loads(skm.read_text())
+    hull['nodes'][2]['name'] = 'Torso_Pitch'
+    skm.write_text(json.dumps(hull))
+    specs = weapon_attachments(recipe, tmp_path)[:2]
+    for side, spec in zip(('Left', 'Right'), specs):
+        source, bone = spec.rsplit('=', 1)
+        assert Path(source).stem == f'Weapon_Mech_TBR_Shoulder_{side}_MH1_Missile15_SKM'
+        assert bone == 'Torso_Pitch'
+        path = Path(source)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        weapon = {**hull, 'nodes': [{'name': 'Root'}]}
+        weapon['buffers'] = [{'uri': str(skm.with_name('fixture.bin'))}]
+        path.write_text(json.dumps(weapon))
+    doc = B.build(skm, None, tmp_path / 'pods.glb', 'albedo.png', clips=[],
+                  attachments=specs, recipe=recipe)
+    pods = doc['extras']['mw5Attachments']
+    assert len(pods) == 2 and all(pod['meshes'] for pod in pods)
+    for pod in pods:
+        assert pod['joint'] == recipe['bone_rename'].get('Torso_Pitch', 'Torso_Pitch')
+        for mesh in pod['meshes']:
+            primitive = doc['meshes'][mesh]['primitives'][0]
+            assert doc['accessors'][primitive['indices']]['count'] == 3
+            assert doc['nodes'][doc['skins'][mesh]['joints'][0]]['name'] == pod['joint']
+
+
 def test_basis_round_trip_and_psa(fixture):
     skm, psk, psa, qs, ps = fixture
     bones = B.read_psk(psk)

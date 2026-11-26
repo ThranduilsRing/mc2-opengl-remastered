@@ -36,8 +36,8 @@
       "hull": "/Game/DLC7/Objects/Mechs/CLANS/TimberWolf/Model/Body/TBR_TP_Cockpit_DM0_STM"
     },
     "weapons": {
-      "Weapon_Mech_TBR_Torso_Left_MH2_Missile10_SKM": "/Game/DLC7/Objects/Mechs/CLANS/TimberWolf/Model/Weapons/Weapon_Mech_TBR_Torso_Left_MH2_Missile10_SKM",
-      "Weapon_Mech_TBR_Torso_Right_MH2_Missile10_SKM": "/Game/DLC7/Objects/Mechs/CLANS/TimberWolf/Model/Weapons/Weapon_Mech_TBR_Torso_Right_MH2_Missile10_SKM",
+      "Weapon_Mech_TBR_Shoulder_Left_MH1_Missile15_SKM": "/Game/DLC7/Objects/Mechs/CLANS/TimberWolf/Model/Weapons/Weapon_Mech_TBR_Shoulder_Left_MH1_Missile15_SKM",
+      "Weapon_Mech_TBR_Shoulder_Right_MH1_Missile15_SKM": "/Game/DLC7/Objects/Mechs/CLANS/TimberWolf/Model/Weapons/Weapon_Mech_TBR_Shoulder_Right_MH1_Missile15_SKM",
       "Weapon_Mech_TBR_Torso_Left_EH1_Laser_SKM": "/Game/DLC7/Objects/Mechs/CLANS/TimberWolf/Model/Weapons/Weapon_Mech_TBR_Torso_Left_EH1_Laser_SKM",
       "Weapon_Mech_TBR_Torso_Center_EH1_Laser_SKM": "/Game/DLC7/Objects/Mechs/CLANS/TimberWolf/Model/Weapons/Weapon_Mech_TBR_Torso_Center_EH1_Laser_SKM",
       "Weapon_Mech_TBR_Torso_Right_EH1_Laser_SKM": "/Game/DLC7/Objects/Mechs/CLANS/TimberWolf/Model/Weapons/Weapon_Mech_TBR_Torso_Right_EH1_Laser_SKM",
@@ -181,7 +181,7 @@
   "loadout": [
     {
       "node": "weapon_0",
-      "mesh": "Weapon_Mech_TBR_Torso_Left_MH2_Missile10_SKM",
+      "mesh": "Weapon_Mech_TBR_Shoulder_Left_MH1_Missile15_SKM",
       "bone": "Torso_Pitch",
       "type": 1,
       "fires": [
@@ -190,7 +190,7 @@
     },
     {
       "node": "weapon_1",
-      "mesh": "Weapon_Mech_TBR_Torso_Right_MH2_Missile10_SKM",
+      "mesh": "Weapon_Mech_TBR_Shoulder_Right_MH1_Missile15_SKM",
       "bone": "Torso_Pitch",
       "type": 1,
       "fires": [
