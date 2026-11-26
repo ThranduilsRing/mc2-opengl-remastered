@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in mechbayscreen_internal.h.
 #include "mechbayscreen_internal.h"
 #include "mc2fmt.h"
+#include "dropweight_rules.h"
 
 
 void MechBayScreen::drawWeightMeter(long xOffset, long yOffset)
@@ -191,8 +192,8 @@ void MechBayScreen::update()
 		mc2::fmt::to_buf( str, "{:d}\nC-BILLS", mc2::fmt::as_i32( price ) );
 	setDefsElementText( "game.mcl_mb_layout.button.drop_weight_price_box", str );
 	setDefsElementDisabled( "game.mcl_mb_layout.button.buy_drop_weight_button", LogisticsData::instance->getCBills() < price );
-	setDefsElementVisible( "game.mcl_mb_layout.button.buy_drop_weight_button", !MPlayer && LogisticsData::instance->rules().dropWeightPurchase );
-	setDefsElementVisible( "game.mcl_mb_layout.button.drop_weight_price_box", !MPlayer && LogisticsData::instance->rules().dropWeightPurchase );
+	setDefsElementVisible( "game.mcl_mb_layout.button.buy_drop_weight_button", dropweight::purchaseAvailable( MPlayer != nullptr ) );
+	setDefsElementVisible( "game.mcl_mb_layout.button.drop_weight_price_box", dropweight::purchaseAvailable( MPlayer != nullptr ) );
 
 
 	// update drag and drop

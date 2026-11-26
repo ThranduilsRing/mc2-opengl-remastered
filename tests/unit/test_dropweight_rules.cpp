@@ -3,6 +3,11 @@
 
 #include "dropweight_rules.h"
 
+TEST_CASE("drop weight purchase visibility follows the always-active lance warning") {
+    CHECK(dropweight::purchaseAvailable(false));
+    CHECK_FALSE(dropweight::purchaseAvailable(true));
+}
+
 TEST_CASE("drop weight price grows log-style per purchase") {
     CHECK(dropweight::priceForNext(0) == 25000);
     CHECK(dropweight::priceForNext(-3) == 25000);
