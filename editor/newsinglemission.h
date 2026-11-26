@@ -14,6 +14,11 @@
 /////////////////////////////////////////////////////////////////////////////
 // NewSingleMission dialog
 
+#include <string>
+
+// Absolute install paths keep dialogs independent of Windows' last folder.
+std::string EditorInstallPath(const char* relative);
+
 class NewSingleMission : public CDialog
 {
 // Construction
@@ -42,6 +47,9 @@ protected:
 	// Generated message map functions
 	//{{AFX_MSG(NewSingleMission)
 	afx_msg void OnLoadMission();
+	afx_msg void OnStockMission();
+	afx_msg void OnRecentMission();
+	afx_msg void OnModMission();
 	afx_msg void OnNewmission();
 	afx_msg void OnMapGenerator();
 	virtual void OnCancel();

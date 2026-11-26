@@ -201,10 +201,10 @@ void Editor::init( char* loader )
 					}
 					else
 					{
-					CFileDialog fileDlg( 1,  "pak", nullptr, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR, szPAKFilter );
-					// When a Mod Project is open, default to <root>\data\missions; else unchanged.
-					{ const char* pd = EditorModProject::SaveDirOverride();
-					  fileDlg.m_ofn.lpstrInitialDir = pd ? pd : missionPath; }
+					const char* project = EditorModProject::SaveDirOverride();
+					const std::string folder = project ? project : EditorInstallPath("data/missions");
+					CFileDialog fileDlg(1, "pak", (folder + "\\").c_str(), OFN_FILEMUSTEXIST | OFN_HIDEREADONLY | OFN_NOCHANGEDIR, szPAKFilter);
+					fileDlg.m_ofn.lpstrInitialDir = folder.c_str();
 
 					bOK = false;
 					while ( !bOK )
@@ -1266,10 +1266,10 @@ int EditorInterface::FileOpen()
 		return false;
 	}
 
-	CFileDialog fileDlg( 1,  "pak", nullptr, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR, szPAKFilter );
-	// When a Mod Project is open, default to <root>\data\missions; else unchanged.
-	{ const char* pd = EditorModProject::SaveDirOverride();
-	  fileDlg.m_ofn.lpstrInitialDir = pd ? pd : missionPath; }
+	const char* project = EditorModProject::SaveDirOverride();
+	const std::string folder = project ? project : EditorInstallPath("data/missions");
+	CFileDialog fileDlg(1, "pak", (folder + "\\").c_str(), OFN_FILEMUSTEXIST | OFN_HIDEREADONLY | OFN_NOCHANGEDIR, szPAKFilter);
+	fileDlg.m_ofn.lpstrInitialDir = folder.c_str();
 
 	if (  IDOK == fileDlg.DoModal() )
 	{

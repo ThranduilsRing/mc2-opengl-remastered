@@ -518,6 +518,7 @@ void EditorCheckTglAssets()
 
 BOOL EditorMFCApp::InitInstance()
 {
+	::SetProcessDPIAware(); // Scale MFC dialog units and Segoe UI to the system DPI.
 	editor_set_default_env_vars();
 
 	// EditRel builds with DISABLE_GAMEOS_MAIN, so none of gameosmain's gate hooks run here.

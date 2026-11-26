@@ -53,6 +53,7 @@ target_sources(EditorShellSmoke PRIVATE shell/PanelProof.cpp shell/ObjectiveProo
 target_compile_definitions(EditorShellSmoke PRIVATE MC2_EDITOR_SMOKE_HOST=1)
 
 set(editor_document_test_sources tests/test_main.cpp tests/test_document.cpp tests/test_structure.cpp
+    tests/test_launcher.cpp
     tests/test_catalog.cpp
     tests/test_brain_paths.cpp
     tests/test_placement.cpp
