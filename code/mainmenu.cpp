@@ -352,6 +352,7 @@ bool MainMenu::beginCampaignRules( std::string_view campaignFile )
 	if ( MPlayer || mc2::net::active() || !GameRulesDialog::init() )
 		return false;
 	rulesCampaign = campaignFile;
+	introOver = true; // a relaunched campaign may open Rules before the splash animation finishes
 	bLoadCampaign = false;
 	bRulesDlg = true;
 	GameRulesDialog::instance()->begin( prefs.gameRules, true );
