@@ -63,6 +63,7 @@ struct LogisticsMech {
     int getForceGroup() { return forceGroup; }
     const std::string& getName() { return variant->name; }
     LogisticsVariant* getVariant() { return variant; }
+    int getFitID() const { return 0; }
     void setVariant(LogisticsVariant* v) {
         // Detect the invalid write before touching reclaimed storage.
         if (!live.contains(this)) std::_Exit(86);
@@ -78,7 +79,7 @@ struct LogisticsData {
     LogisticsMech* currentlyModifiedMech = nullptr;
     LogisticsVariant* oldVariant = nullptr;
     std::unique_ptr<LogisticsVariant> modifiedVariant;
-    struct DeployedMechSnapshot { std::string variantName; LogisticsVariant* pVariant; };
+    struct DeployedMechSnapshot { std::string variantName; LogisticsVariant* pVariant; long fitID = 0; };
     std::vector<DeployedMechSnapshot> deployedMechSnapshot;
     MissionInfo info;
     MissionInfo* missionInfo = &info;

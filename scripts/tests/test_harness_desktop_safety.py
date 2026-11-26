@@ -446,7 +446,8 @@ def test_nofocus_records_only_engine_children(tmp_path, monkeypatch):
     pinned = []
     monkeypatch.setattr(host_lease, "apply_affinity", lambda proc: pinned.append(proc.pid))
     monkeypatch.setattr(child_registry, "record", lambda pid, exe, **k: seen.append((pid, str(exe))))
-    monkeypatch.setattr(subprocess, "Popen", lambda argv, **k: types.SimpleNamespace(pid=7, poll=lambda: 0))
+    monkeypatch.setattr(subprocess, "Popen", lambda argv, **k: types.SimpleNamespace(
+        pid=7, poll=lambda: 0, terminate=lambda: None, kill=lambda: None))
     nofocus.spawn([sys.executable, "-c", "pass"])
     assert seen == []
     exe = _install(tmp_path, "mc2-win64-ok", FRESH_SHA)
