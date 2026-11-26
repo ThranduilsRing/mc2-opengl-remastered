@@ -427,8 +427,8 @@ void WeaponBolt::drawPacket (const mc2::render_view::FxPacket& view, const mc2::
                 Stuff::Vector4D clip;
                 clip.MultiplyPoint(render, eye->getWorldToClip());
                 return mc2::beam::Vertex{{clip.x, clip.y, clip.z, clip.w}, {u, v},
-                    {float((color >> 24) & 255), float((color >> 16) & 255),
-                     float((color >> 8) & 255), float(color & 255)}};
+                    {static_cast<float>((color >> 24) & 255), static_cast<float>((color >> 16) & 255),
+                     static_cast<float>((color >> 8) & 255), static_cast<float>(color & 255)}};
             };
             const auto drawBeam = [&](const glm::vec3* ribbon) {
                 const auto a = vertex(ribbon[0], startUV, 0, (rvType->edgeAlpha << 24) + rvType->midEdgeRGB);
@@ -449,8 +449,8 @@ void WeaponBolt::drawPacket (const mc2::render_view::FxPacket& view, const mc2::
                             out.z = p.clip.z * rhw;
                             out.rhw = eye->getUsePerspective() ? rhw : 0.000001f;
                             out.u = p.uv.x; out.v = p.uv.y;
-                            out.argb = (DWORD(p.argb.x + 0.5f) << 24) | (DWORD(p.argb.y + 0.5f) << 16) |
-                                       (DWORD(p.argb.z + 0.5f) << 8) | DWORD(p.argb.w + 0.5f);
+                            out.argb = (static_cast<DWORD>(p.argb.x + 0.5f) << 24) | (static_cast<DWORD>(p.argb.y + 0.5f) << 16) |
+                                       (static_cast<DWORD>(p.argb.z + 0.5f) << 8) | static_cast<DWORD>(p.argb.w + 0.5f);
                         }
                         if (useImmediate) gos_DrawTriangles(vertices, 3);
                         else mc2::renderSubmissions().addVertices(mcTextureHandle, vertices, MC2_ISEFFECTS | MC2_DRAWONEIN);
