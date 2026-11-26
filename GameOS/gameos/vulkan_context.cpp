@@ -817,7 +817,6 @@ bool VulkanContext::init(bool wantPresent) {
         qF.pNext = &qDf;
         vkGetPhysicalDeviceFeatures2(phys_, &qF);
         enDf.deviceFault = qDf.deviceFault;
-        enDf.deviceFaultVendorBinary = qDf.deviceFaultVendorBinary;
     }
     deviceFault_ = enDf.deviceFault == VK_TRUE;
     if (deviceFault_) devExts.push_back(VK_EXT_DEVICE_FAULT_EXTENSION_NAME);
