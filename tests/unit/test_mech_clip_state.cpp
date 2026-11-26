@@ -110,6 +110,27 @@ TEST_CASE("clip state: imported calibration preserves simulation sockets and LOS
 
 using namespace mc2clip;
 
+TEST_CASE("clip state: repair bay stock gesture sequence powers down imported chassis") {
+    // mstates.h Walk -> Park is 2, 5, 0; Park -> Stand is 1, 2.
+    for (bool authoredShutdown : {false, true}) {
+        Phase ph;
+        const auto has = [=](std::string_view name) {
+            return name == "atlas_moveCoreIdle" || (authoredShutdown &&
+                (name == "atlas_shutdownPwroff" || name == "atlas_shutdownIdle" ||
+                 name == "atlas_shutdownPwron"));
+        };
+        for (int gesture : {2, 5, 0, 1, 2, 13}) {
+            const auto choice = select(gesture, 0, 0, 0, false, false, "atlas_moveCoreWalkFwd", ph);
+            const auto clip = resolveClip(choice.clip, "atlas_moveCoreWalkFwd", has);
+            CHECK_FALSE(choice.locomotion);
+            CHECK(choice.immediate);
+            CHECK(clip == (authoredShutdown && gesture == 5 ? "atlas_shutdownPwroff" :
+                           authoredShutdown && gesture == 0 ? "atlas_shutdownIdle" :
+                           authoredShutdown && gesture == 1 ? "atlas_shutdownPwron" : "atlas_moveCoreIdle"));
+        }
+    }
+}
+
 TEST_CASE("clip state: distance matching inverts nonlinear travel and wraps cycles") {
     const DistanceCurve c{2, {0, 1, 4}};
     REQUIRE(c.valid());

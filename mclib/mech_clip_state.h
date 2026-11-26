@@ -108,7 +108,7 @@ struct Phase {
     bool landing = false;       // land clip owed after the jump gesture ended
 };
 
-inline constexpr int kGesturePark = 0, kGestureStandToPark = 1, kGestureParkToStand = 5,
+inline constexpr int kGesturePark = 0, kGestureStandToPark = 5, kGestureParkToStand = 1,
                      kGestureWalk = 4, kGestureRun = 7, kGestureReverse = 9, kGestureLimpLeft = 11,
                      kGestureLimpRight = 12, kGestureFallBackward = 14, kGestureFallForward = 15,
                      kGestureHitFront = 16, kGestureHitBack = 17, kGestureHitLeft = 18, kGestureHitRight = 19,
