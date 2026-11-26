@@ -801,7 +801,12 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     const mc2shadow::Rect full{-halfMap_,halfMap_-span,-halfMap_+span,halfMap_};
     const auto objectWindow=mc2shadow::casterWindow(basis_,full,terrainMin_,terrainTop_,casterTop_,tanT,objectMapSize());
     mc2shadow::windowMatrix(basis_,objectWindow,recordedObjectMatrix_.data());
-    objectPartial_ = objectInitialized_ && !recordedMask_ && !heightsMoved_ && !liveStale_ && !objectFullDirty_ && objectDirtyRect_ && recordedObjectMatrix_ == objectMatrix_;
+    const char* fallback = !objectInitialized_ ? "uninitialized" : recordedMask_ ? "mask" :
+        objectHeightVersion_ != store->heightVersion() ? "heights" : liveStale_ ? "live_stale" :
+        objectFullDirty_ ? "full_dirty" : !objectDirtyRect_ ? "no_region" :
+        recordedObjectMatrix_ != objectMatrix_ ? "projection" : "none";
+    objectPartial_ = std::strcmp(fallback, "none") == 0;
+    mc2::fmt::print_err("[SHADOW_BAKE] object record fallback={}\n", fallback);
     objectScissor_ = {{0, 0}, {static_cast<uint32_t>(objectMapSize()), static_cast<uint32_t>(objectMapSize())}};
     if (objectPartial_) {
         auto r = *objectDirtyRect_;
@@ -980,11 +985,21 @@ void ShadowBake::planRegion(mc2shadow::Rect r, int originX, int originY, int reg
     // Scratch reused across regions (one planner thread): no per-region allocation once warm.
     thread_local std::vector<uint32_t> picked, types;
     picked.clear(); types.clear();
+    const float ray = ((std::max)(casterTop, hMax) - hMin) / (std::max)(basis_.toward.z, 0.05f);
+    const float pad = (2.0f * mc2shadow::penumbraWorld(ray, tanT) + 4.0f + tw.window.texelWorld) / (std::max)(basis_.toward.z, 0.05f);
+    const mc2shadow::Rect receivers{r.x0 - pad, r.y0 - pad, r.x1 + pad, r.y1 + pad};
     for (size_t c = 0; c < cv.boxes->size(); ++c)
         if (mc2shadow::casterInWindow((*cv.boxes)[c], tw.window)) {
             tw.casterTop = (std::max)(tw.casterTop, (*cv.tops)[c]);
             const auto& box = (*cv.boxes)[c];
-            if (needed.overlaps({box.lx0, box.ly0, box.lx1, box.ly1})) picked.push_back((*cv.live)[c]);
+            if (!needed.overlaps({box.lx0, box.ly0, box.lx1, box.ly1})) continue;
+            const auto& leaf = (*cv.leaves)[(*cv.live)[c]];
+            mc2shadow::Vec3 lo, hi;
+            instanceBox(leaf.modelMatrix, typeBounds_[leaf.typeID].mn, typeBounds_[leaf.typeID].mx, lo, hi);
+            // A projected AABB also includes empty corners; reject casters whose
+            // actual world-space sun sweep cannot reach these receivers.
+            if (hi.z >= hMin && receivers.overlaps(mc2shadow::shadowFootprint(lo, hi, sun_, hMin, 0.0f)))
+                picked.push_back((*cv.live)[c]);
         }
     const auto& leaves = *cv.leaves;
     std::sort(picked.begin(), picked.end(), [&leaves](uint32_t a, uint32_t b) { return leaves[a].typeID < leaves[b].typeID; });
@@ -1232,7 +1247,7 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
         ZoneScopedN("ShadowBake.Dirty.ReadHeights");
         if (!readHeightGrid()) return false;
     }
-    if (liveStale_) { ZoneScopedN("ShadowBake.Dirty.RebuildLive"); objectFullDirty_ = true; rebuildLive(); }
+    if (liveStale_) { ZoneScopedN("ShadowBake.Dirty.RebuildLive"); rebuildLive(); }
     if (!ensureTransients() || !ensureIncremental()) return false;
     mc2shadow::DirtyBatch pendingBatch(dirty_, kSubTilesPerFrame);
     const auto& batch = pendingBatch.tiles;
@@ -1438,7 +1453,7 @@ void ShadowBake::applyLiveEvent(const std::vector<GpuStaticPropInstance>& before
             found = true;
             break;
         }
-        if (!found) { liveStale_ = true; ++liveRebuilds_; return; }
+        if (!found) { liveStale_ = true; objectFullDirty_ = true; ++liveRebuilds_; return; }
     }
     for (const GpuStaticPropInstance& leaf : after) appendLive(leaf);
 }
