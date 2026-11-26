@@ -376,6 +376,27 @@ def window_of(model):
     return c, h
 
 
+def cap_crown_coverage(model, nearer, res=256):
+    """Bound enlarged coarse cards by the nearer crown, retaining the card budget."""
+    c, h = window_of(nearer)
+    windows = [view_window(c, h, az, el) for az, el in VIEWS]
+    limits = [rasterize(nearer, az, el, win, res).sum()
+              for (az, el), win in zip(VIEWS, windows)]
+    leaves = [m for m in model['meshes'] if m['cls'] == 'leaf']
+    original = [m['attrs']['POSITION'].reshape(-1, 4, 3).copy() for m in leaves]
+    centers = [p.mean(1, keepdims=True) for p in original]
+    scale = 1.
+    for _ in range(32):
+        coverage = [rasterize(model, az, el, win, res).sum()
+                    for (az, el), win in zip(VIEWS, windows)]
+        if all(a <= b for a, b in zip(coverage, limits)):
+            return scale
+        scale *= .96
+        for m, p, center in zip(leaves, original, centers):
+            m['attrs']['POSITION'] = (center + scale * (p - center)).reshape(-1, 3)
+    raise ValueError('coarse crown still exceeds nearer coverage')
+
+
 def view_window(c, h, az, el):
     r, u, _ = view_basis(az, el)
     return float(c @ r), float(c @ u), float(h)
@@ -445,7 +466,8 @@ def cook(source, texdir, outdir, sheet=False, log=print):
     barks = [i for i, m in enumerate(base) if m['cls'] == 'bark']
     cards = {i: card_hulls(base[i], m0['tex'][base[i]['tex']]) for i in leaves}
     rng = np.random.default_rng(1114)
-    order = {i: np.argsort(-(np.log(rng.random(cards[i]['nc'])) / cards[i]['weight'])) for i in leaves}
+    # Area already determines survivor size; weighting selection by it again biases crown colour.
+    order = {i: rng.permutation(cards[i]['nc']) for i in leaves}
     ncards = sum(cards[i]['nc'] for i in leaves)
     bark0 = tris(base, 'bark')
     lvl = {0: base}
@@ -478,11 +500,24 @@ def cook(source, texdir, outdir, sheet=False, log=print):
     shutil.copyfile(source, outdir / stem.format('lod0'))
     for L in range(1, 5):
         p = outdir / stem.format(LEVELS[L])
+        if L >= 3:
+            for i in leaves:
+                keep = len(models[L - 1]['meshes'][i]['idx']) // 6
+                if len(lvl[L][i]['idx']) // 6 > keep:
+                    if keep:
+                        attrs, idx, scale = leaf_level(base[i], cards[i], order[i], n_keep=keep)
+                        lvl[L][i] = dict(lvl[L][i], attrs=attrs, idx=idx, scale=scale)
+                    else:
+                        lvl[L][i] = dict(lvl[L][i], attrs={k: v[:0] for k, v in base[i]['attrs'].items()}, idx=base[i]['idx'][:0])
         write_level(m0, lvl[L], p)
         models[L] = load(p, texdir)
         if L == 2:
             pruned = prune_unseen_cards(models[L])
             write_level(m0, pruned['meshes'], p)
+            models[L] = load(p, texdir)
+        if L >= 3:
+            cap_crown_coverage(models[L], models[L - 1])
+            write_level(m0, models[L]['meshes'], p)
             models[L] = load(p, texdir)
     nodes0 = sum('mesh' in n for n in m0['doc']['nodes'])
     b0 = geometry_bytes(base)

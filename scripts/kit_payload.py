@@ -736,7 +736,7 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run, *, kit_rel=KIT_REL
             if row:
                 return glb_sha, row
             result = cooker([str(tool), (kit_rel / rel).as_posix(), *IMPORT_ARGS],
-                            cwd=target, capture_output=True, text=True, timeout=120,
+                            cwd=target, capture_output=True, text=True, timeout=600,
                             env=dict(os.environ, OMP_NUM_THREADS="1"),
                             **console_child.child_kwargs(redirected=True))
             if result.returncode:
