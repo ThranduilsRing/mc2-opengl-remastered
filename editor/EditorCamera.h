@@ -28,6 +28,10 @@ EditorCamera.h			: Interface for the EditorCamera component.
 #include "EditorRenderTimer.h"                      // MC2_EDITOR_GPU_TIMERS per-pass GPU timing
 #include "AuthoredMissionState.h"
 #include "../GameAdapters/VegetationAdapter.h"   // grass/ground-patch flush: same pass the game runs after water
+#include "../GameAdapters/MissionEnvironmentAdapter.h"
+#include "../GameOS/gameos/utils/terrain_daylight.h"
+#include "../GameOS/gameos/gos_postprocess.h"
+#include <algorithm>
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -252,6 +256,34 @@ public:
 			glm::vec3 camOrig = getCameraOrigin();
 			gos_SetTerrainCameraPos(camOrig.x, camOrig.y, camOrig.z);
 			gos_SetTerrainLightDir(lightDirection.x, lightDirection.y, lightDirection.z);
+			// Publish the same mission and prop lighting inputs as GameCamera.
+			RenderCore::LegacyMissionLighting lighting;
+			lighting.cameraDirection = lighting.effectiveDirection = {lightDirection.x, lightDirection.y, lightDirection.z};
+			const DWORD sun = getLightColor(0), ambient = getLightColor(1);
+			for (int i = 0; i < 3; ++i) {
+				const int shift = 16 - 8 * i;
+				lighting.directionalColor[i] = float((sun >> shift) & 255u) / 255.0f;
+				lighting.ambientColor[i] = float((ambient >> shift) & 255u) / 255.0f;
+			}
+			const float intensity = std::clamp(lightDirection.z, 0.0f, 1.0f);
+			lighting.flatLight = {getLightRed(intensity)/255.0f, getLightGreen(intensity)/255.0f, getLightBlue(intensity)/255.0f};
+			lighting.authoredPitch = getDayLightPitch();
+			lighting.night = getIsNight();
+			lighting.nightFactor = getNightFactor();
+			lighting.daylightLevel = terrain_daylight::level(lighting.authoredPitch, lighting.night, lighting.nightFactor);
+			lighting.skyNumber = gos_GetSkyNumber();
+			const auto& resolved = GameAdapters::Environment::publishLighting(lighting);
+			gos_SetTerrainMissionFlatLight(resolved.flatLight[0], resolved.flatLight[1], resolved.flatLight[2]);
+			extern void gos_SetNightState(bool, float);
+			extern void gos_SetTerrainDaylightLevel(float);
+			gos_SetNightState(resolved.night, resolved.nightFactor);
+			gos_SetTerrainDaylightLevel(resolved.daylightLevel);
+			int S[3], A[3], F; float D[3];
+			getPropLightContract(S, A, F, D);
+			const float Sf[3] = {float(S[0]), float(S[1]), float(S[2])};
+			const float Af[3] = {float(A[0]), float(A[1]), float(A[2])};
+			extern void gos_SetPropLightContract(const float*, const float*, float, const float*);
+			gos_SetPropLightContract(Sf, Af, float(F), D);
 
 			EditorRenderTimer_Begin();                            // CPU phase timing + native GPU pass collection
 

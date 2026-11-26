@@ -178,7 +178,8 @@ void TGAWnd::OnPaint()
 		CRect rect;
 		GetWindowRect( rect );
 
-		dc.SetStretchBltMode( STRETCH_DELETESCANS );
+		dc.SetStretchBltMode( HALFTONE );
+		dc.SetBrushOrg(0, 0);
 		dc.StretchBlt( 0, 0, rect.Width(), rect.Height(), m_pMemDC, 0, 0, m_pBmi->bmiHeader.biWidth, 
 			-m_pBmi->bmiHeader.biHeight, SRCCOPY );
 
