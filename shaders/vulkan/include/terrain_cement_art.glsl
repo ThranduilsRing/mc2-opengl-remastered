@@ -9,8 +9,6 @@
 #endif
 #include "../../include/fog_policy.hglsl"
 
-float mv_roadStaticShadow = -1.0;
-
 // CEMENT-MIP-EDGE-1: antialiased "x < 0.5" for the cement transition cut; fw = the cut form's
 // per-pixel footprint, so the edge is one pixel of coverage at any distance instead of a hard stair.
 float cCutLt(float x, float fw) {
@@ -76,7 +74,7 @@ vec3 shadeRoadArt(vec4 art, uint road, uint cw, vec2 dx, vec2 dy) {
     }
     color *= vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);
     vec3 normal = vec3(0, 0, 1);
-    float shadow = min(TS_enableShadows != 0 ? (mv_roadStaticShadow = terrainStaticShadow(v_worldPos)) : 1.0,
+    float shadow = min(TS_enableShadows != 0 ? terrainStaticShadow(v_worldPos) : 1.0,
                        terrainDynamicShadow(v_worldPos, normal));
     vec3 spec = vec3(0);
     if (TS_concreteDetail != 0) {
