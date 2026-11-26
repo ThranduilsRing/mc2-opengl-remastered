@@ -13,7 +13,7 @@ layout(constant_id = 11) const int kReflectCutPom = 1;   // used by the cliff pa
 layout(constant_id = 12) const int kReflectCutDetail = 1;
 layout(constant_id = 13) const int kReflectCutPools = 1;
 layout(constant_id = 14) const int kReflectCutMovers = 1;
-#define GROUND_POOL_ENABLED false // pools compose once after terrain/road coverage below
+#define GROUND_POOL_ENABLED (kPlanarReflection == 0 || kReflectCutPools == 0 || uEnv.sceneLight.x < 1.0)
 #define GROUND_MOVER_CONTACT (kPlanarReflection != 0 && kReflectCutMovers != 0 ? 0.0 : uT.moverContactShadow)
 #include "../include/noise.hglsl"   // VK-PARITY-F3: fbm() for the GL colour break-up (terrain_lod_chunk.frag:1839)
 vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod);
@@ -688,20 +688,6 @@ void main() {
     // uniform flow also preserves derivatives across partially covered edges.
     lit = mix(lit, roadColor, roadCoverage);
     gbufN = normalize(mix(gbufN, vec3(0.0, 0.0, 1.0), roadCoverage));
-    // A lamp illuminates the receiver across tile/material boundaries. Adding
-    // it before the road/pad replacement lets that coverage cut the pool.
-    if (TS_lightingEnabled != 0 && uT.numPoolLights > 0 &&
-        (kPlanarReflection == 0 || kReflectCutPools == 0 || uEnv.sceneLight.x < 1.0)) {
-        float moverContact = 0.0;
-        vec3 pool = tlp_terrainPoolLight(v_worldPos, uT.numPoolLights,
-            uT.lightGridDim, vec2(uT.lightGridMinX, uT.lightGridMinY),
-            vec2(uT.lightGridInvCellX, uT.lightGridInvCellY),
-            uT.lightPoolSoft, uT.lightPoolMoverDim, uT.lightPoolMoverScale,
-            uT.lightPoolMoverMax, uT.lightPoolCompress, GROUND_MOVER_CONTACT,
-            moverContact, baseNormal, baseNormal, false, 0.0);
-        lit += pool * (uEnv.sceneLight.x < 1.0 ? vec3(0.3) : vec3(1.0));
-        lit *= 1.0 - 0.55 * moverContact;
-    }
     fragColor = vec4(lit, 1.0);   // opaque in-place (a=1, NOT premult)
 
     // ★TERRAIN GBuffer1: the real shading normal in rgb (guide buffer for temporal/denoise consumers) and
