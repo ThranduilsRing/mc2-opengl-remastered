@@ -6,21 +6,28 @@
   "specializationParams": [],
   "artifact": "mech.vert.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "ae763c288367bc6d70e97811598dcf41cdd143b5ffc0acb8562702540e2048fb",
-  "spirv_sha256": "b9656ed9a7d5bcea11b19d413218fa8f1cb6e76adc7906a4fd4c2cdf3c36ef16",
+  "source_sha256": "7a06b2e622cbe21cc70f9f7211c04564bd0236a37dfaea29b0290250e69b162f",
+  "spirv_sha256": "350b4f19cc3ceca69c63247ebabdda31dbf781d959453d08f1b5ac680395a227",
   "bindings": {
     "ubos": [
       {
-        "type": "_91",
+        "type": "_107",
+        "name": "EnvironmentUBO",
+        "block_size": 496,
+        "set": 0,
+        "binding": 26
+      },
+      {
+        "type": "_147",
         "name": "MechFrameUBO",
-        "block_size": 544,
+        "block_size": 272,
         "set": 0,
         "binding": 0
       }
     ],
     "ssbos": [
       {
-        "type": "_149",
+        "type": "_169",
         "name": "LightsData",
         "readonly": true,
         "block_size": 0,
@@ -28,7 +35,7 @@
         "binding": 4
       },
       {
-        "type": "_473",
+        "type": "_503",
         "name": "InstanceBuffer",
         "readonly": true,
         "block_size": 0,
@@ -36,7 +43,7 @@
         "binding": 1
       },
       {
-        "type": "_526",
+        "type": "_556",
         "name": "BoneBuffer",
         "readonly": true,
         "block_size": 0,
@@ -48,7 +55,131 @@
     "images": []
   },
   "types": {
-    "_91": {
+    "_107": {
+      "name": "EnvironmentUBO",
+      "members": [
+        {
+          "name": "shDiffuse",
+          "type": "vec4",
+          "array": [
+            9
+          ],
+          "array_size_is_literal": [
+            true
+          ],
+          "offset": 0,
+          "array_stride": 16
+        },
+        {
+          "name": "hemiSky",
+          "type": "vec4",
+          "offset": 144
+        },
+        {
+          "name": "sceneLight",
+          "type": "vec4",
+          "offset": 160
+        },
+        {
+          "name": "sunDirLive",
+          "type": "vec4",
+          "offset": 176
+        },
+        {
+          "name": "sunAuthFromLive",
+          "type": "vec4",
+          "array": [
+            3
+          ],
+          "array_size_is_literal": [
+            true
+          ],
+          "offset": 192,
+          "array_stride": 16
+        },
+        {
+          "name": "pitchUndo",
+          "type": "vec4",
+          "offset": 240
+        },
+        {
+          "name": "ambRelight",
+          "type": "vec4",
+          "offset": 256
+        },
+        {
+          "name": "sunRelight",
+          "type": "vec4",
+          "offset": 272
+        },
+        {
+          "name": "sunLive",
+          "type": "vec4",
+          "offset": 288
+        },
+        {
+          "name": "sunLiveDir",
+          "type": "vec4",
+          "offset": 304
+        },
+        {
+          "name": "ambLive",
+          "type": "vec4",
+          "offset": 320
+        },
+        {
+          "name": "sunBake",
+          "type": "vec4",
+          "offset": 336
+        },
+        {
+          "name": "sunBakeDir",
+          "type": "vec4",
+          "offset": 352
+        },
+        {
+          "name": "ambBake",
+          "type": "vec4",
+          "offset": 368
+        },
+        {
+          "name": "fog",
+          "type": "vec4",
+          "offset": 384
+        },
+        {
+          "name": "cementSky",
+          "type": "vec4",
+          "offset": 400
+        },
+        {
+          "name": "edgeHazeSky",
+          "type": "vec4",
+          "offset": 416
+        },
+        {
+          "name": "lightingParams",
+          "type": "vec4",
+          "offset": 432
+        },
+        {
+          "name": "nightState",
+          "type": "vec4",
+          "offset": 448
+        },
+        {
+          "name": "outputParams",
+          "type": "vec4",
+          "offset": 464
+        },
+        {
+          "name": "shadowParams",
+          "type": "vec4",
+          "offset": 480
+        }
+      ]
+    },
+    "_147": {
       "name": "MechFrameUBO",
       "members": [
         {
@@ -118,96 +249,14 @@
           "offset": 192
         },
         {
-          "name": "environmentAmbient",
-          "type": "vec4",
-          "offset": 208
-        },
-        {
           "name": "prevFromCurClip",
           "type": "mat4",
-          "offset": 224,
+          "offset": 208,
           "matrix_stride": 16
-        },
-        {
-          "name": "sunAuthFromLive",
-          "type": "vec4",
-          "array": [
-            3
-          ],
-          "array_size_is_literal": [
-            true
-          ],
-          "offset": 288,
-          "array_stride": 16
-        },
-        {
-          "name": "pitchUndo",
-          "type": "vec4",
-          "offset": 336
-        },
-        {
-          "name": "ambRelight",
-          "type": "vec4",
-          "offset": 352
-        },
-        {
-          "name": "sunRelight",
-          "type": "vec4",
-          "offset": 368
-        },
-        {
-          "name": "sunLive",
-          "type": "vec4",
-          "offset": 384
-        },
-        {
-          "name": "sunLiveDir",
-          "type": "vec4",
-          "offset": 400
-        },
-        {
-          "name": "ambLive",
-          "type": "vec4",
-          "offset": 416
-        },
-        {
-          "name": "sunBake",
-          "type": "vec4",
-          "offset": 432
-        },
-        {
-          "name": "sunBakeDir",
-          "type": "vec4",
-          "offset": 448
-        },
-        {
-          "name": "ambBake",
-          "type": "vec4",
-          "offset": 464
-        },
-        {
-          "name": "fog",
-          "type": "vec4",
-          "offset": 480
-        },
-        {
-          "name": "cementSky",
-          "type": "vec4",
-          "offset": 496
-        },
-        {
-          "name": "edgeHazeSky",
-          "type": "vec4",
-          "offset": 512
-        },
-        {
-          "name": "lightingParams",
-          "type": "vec4",
-          "offset": 528
         }
       ]
     },
-    "_139": {
+    "_160": {
       "name": "ObjectLights",
       "members": [
         {
@@ -256,7 +305,7 @@
         }
       ]
     },
-    "_147": {
+    "_167": {
       "name": "ObjectLights",
       "members": [
         {
@@ -315,12 +364,12 @@
         }
       ]
     },
-    "_149": {
+    "_169": {
       "name": "LightsData",
       "members": [
         {
           "name": "light",
-          "type": "_147",
+          "type": "_167",
           "array": [
             0
           ],
@@ -332,7 +381,7 @@
         }
       ]
     },
-    "_468": {
+    "_498": {
       "name": "GpuMechInstance",
       "members": [
         {
@@ -377,7 +426,7 @@
         }
       ]
     },
-    "_471": {
+    "_501": {
       "name": "GpuMechInstance",
       "members": [
         {
@@ -432,12 +481,12 @@
         }
       ]
     },
-    "_473": {
+    "_503": {
       "name": "InstanceBuffer",
       "members": [
         {
           "name": "instances",
-          "type": "_471",
+          "type": "_501",
           "array": [
             0
           ],
@@ -449,7 +498,7 @@
         }
       ]
     },
-    "_521": {
+    "_551": {
       "name": "GpuMechBone",
       "members": [
         {
@@ -470,7 +519,7 @@
         }
       ]
     },
-    "_524": {
+    "_554": {
       "name": "GpuMechBone",
       "members": [
         {
@@ -495,12 +544,12 @@
         }
       ]
     },
-    "_526": {
+    "_556": {
       "name": "BoneBuffer",
       "members": [
         {
           "name": "bones",
-          "type": "_524",
+          "type": "_554",
           "array": [
             0
           ],
@@ -512,7 +561,7 @@
         }
       ]
     },
-    "_924": {
+    "_954": {
       "name": "gl_PerVertex",
       "members": [
         {

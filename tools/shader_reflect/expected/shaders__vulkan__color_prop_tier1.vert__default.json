@@ -11,7 +11,7 @@
           "matrix_stride": null,
           "name": "i",
           "offset": 0,
-          "type": "_419"
+          "type": "_429"
         }
       ],
       "name": "Instances"
@@ -133,21 +133,21 @@
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "isNight",
+          "name": "lightFloor",
           "offset": 104,
-          "type": "int"
+          "type": "float"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "nightFactor",
+          "name": "_padLighting0",
           "offset": 108,
           "type": "float"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "nightDarkness",
+          "name": "_padLighting1",
           "offset": 112,
           "type": "float"
         },
@@ -196,22 +196,8 @@
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "sunColor",
-          "offset": 176,
-          "type": "vec4"
-        },
-        {
-          "array_stride": null,
-          "matrix_stride": null,
-          "name": "ambientColor",
-          "offset": 192,
-          "type": "vec4"
-        },
-        {
-          "array_stride": null,
-          "matrix_stride": null,
           "name": "specDir",
-          "offset": 208,
+          "offset": 176,
           "type": "vec4"
         }
       ],
@@ -344,6 +330,27 @@
           "matrix_stride": null,
           "name": "lightingParams",
           "offset": 432,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "nightState",
+          "offset": 448,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "outputParams",
+          "offset": 464,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "shadowParams",
+          "offset": 480,
           "type": "vec4"
         }
       ],
