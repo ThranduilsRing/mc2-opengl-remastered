@@ -23,7 +23,7 @@ TEST_CASE("EditorLoad/checkpoints stay on the loading thread and stop outside lo
         return mc2::load::checkpoint == nullptr;
     }).get());
     CHECK(beats == 2);
-    CHECK(mc2::load::report().find("editor.checkpoint.test=") != std::string::npos);
+    CHECK(mc2::load::report().scopes.find("editor.checkpoint.test=") != std::string::npos);
     { mc2::load::Scope inactive(entry); }
     CHECK(beats == 2);
     mc2::load::checkpoint = nullptr;
