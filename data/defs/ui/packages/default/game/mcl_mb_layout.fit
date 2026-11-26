@@ -2939,7 +2939,7 @@ GuiImage {
 GuiButton {
     key = "game.mcl_mb_layout.button.buy_drop_weight_button"
     pageKey = "game.mcl_mb_layout"
-    legacyComment = "buy drop weight box (left of gauge; message 58)"
+    legacyComment = "buy drop weight box (left of gauge; message 59)"
     role = "button"
     layer = "control"
     rect = "355,196,32,44"
@@ -2967,7 +2967,7 @@ GuiButton {
     pressedTextColorArgb = "0xffffffff"
     highlightTextColorArgb = "0xffffffff"
     disabledTextColorArgb = "0xff5a6400"
-    legacyId = 58
+    legacyId = 59
     legacyTextOutline = "TRUE"
     legacyAnimateBmp = 0
     legacyAnimateText = 0

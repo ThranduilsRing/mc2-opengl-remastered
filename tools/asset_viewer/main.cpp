@@ -85,6 +85,8 @@ int main(int argc, char* argv[])
         return AssetViewerApp::runSmokeCentralMergePreserve(
             argc >= 3 ? argv[2] : ".", argc >= 4 ? argv[3] : ".");
 
+    if (argc >= 2 && strcmp(argv[1], "--smoke-asset-panels") == 0)
+        return AssetViewerApp::runSmokeAssetPanels(argc >= 3 ? argv[2] : ".");
 
     // --view <textures <file> | materials | props <name.tgl> | workbench>: open a view at launch (screenshot runs, MC2_TOOL_CAPTURE).
     const char* viewKind = nullptr;

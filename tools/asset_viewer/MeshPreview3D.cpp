@@ -276,6 +276,7 @@ void MeshPreview3D::draw(const ImVec2& availableSize) {
     // -----------------------------------------------------------------------
     // Controls strip (parity with Materials mode)
     // -----------------------------------------------------------------------
+    if (!compact_ || ImGui::CollapsingHeader("View / light / texture controls")) {
     ImGui::SeparatorText("View");
     ImGui::SliderFloat("Orbit yaw",   &yaw_,   -3.14159f, 3.14159f);
     ImGui::SliderFloat("Orbit pitch", &pitch_, -1.5f, 1.5f);
@@ -335,6 +336,7 @@ void MeshPreview3D::draw(const ImVec2& availableSize) {
             mesh_.reloadAlbedo(deployDir_, tier_);
         }
     }
+    }   // controls
     ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.2f, 1.0f),
         "Local preview (not exact MC2 shader)");
     ImGui::Separator();
