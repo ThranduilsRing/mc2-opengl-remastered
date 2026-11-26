@@ -181,6 +181,16 @@ float cliffReferenceLuma(vec2 worldXY) {
     return dot(reference, vec3(0.299, 0.587, 0.114));
 }
 
+float mv_cliffRefLuma = 0.0;
+bool mv_cliffRefLumaDone = false;
+float cliffReferenceLumaOnce() {
+    if (!mv_cliffRefLumaDone) {
+        mv_cliffRefLuma = cliffReferenceLuma(v_worldPos.xy);
+        mv_cliffRefLumaDone = true;
+    }
+    return mv_cliffRefLuma;
+}
+
 #include "include/terrain_cliff_material.glsl"   // MATV_CLIFF_*, mv_cliffMaterial, crApply
 
 // --- GL detail-normal accumulation (terrain_lod_chunk.frag chunkDetailNormal,
@@ -394,7 +404,7 @@ void main() {
     vec3 prelitBase = base;
     float delitShare = (1.0 - pureConcrete) * (1.0 - smoothstep(0.55, 0.85, abs(baseNormal.z)));
     if (!TS_authoredMaterialsOnly && delitShare > 0.0 && TS_colormapReady != 0) {
-        float gain = cliffDelightGain(dot(base, vec3(0.299, 0.587, 0.114)), cliffReferenceLuma(v_worldPos.xy));
+        float gain = cliffDelightGain(dot(base, vec3(0.299, 0.587, 0.114)), cliffReferenceLumaOnce());
         base *= mix(1.0, gain, delitShare);
     }
     vec3 baseColor = base;
