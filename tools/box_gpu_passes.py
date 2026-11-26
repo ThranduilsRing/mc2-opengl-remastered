@@ -17,6 +17,7 @@ import argparse
 import json
 import math
 import os
+import platform
 import re
 import shutil
 import subprocess
@@ -150,11 +151,20 @@ def do_run(a):
     owner = a.poses == "owner4k"
     result = {"version": 1, "floor": a.floor, "skip_windows": a.skip_windows, "duration_s": a.duration, "parked": owner, "poses": []}
     for mission, label, *pose in (OWNER_POSES if owner else POSES):
+        context = None
         if owner:
             rc, scopes = run_parked(a.install, out / a.name, mission, label, pose[0], a.duration, a.skip_windows)
+            d = out / a.name / label
+            options = d / "capture.options.json"
+            log = d / "capture.game.log"
+            device = re.search(r'\[VK_DEVICE\] ([^\n]+)', log.read_text(encoding="utf-8", errors="replace") if log.exists() else "")
+            context = {"machine": platform.node(), "device": device.group(1).strip() if device else None,
+                       "options": json.loads(options.read_text(encoding="utf-8")).get("values") if options.exists() else None,
+                       "resolution": [3840, 2160], "pose": pose[0]}
         else:
             rc, scopes = run_pose(a.install, out / a.name, mission, a.duration, a.skip_windows, a.ref_commit)
         result["poses"].append({"mission": mission, "label": label, "rc": rc,
+                                "context": context,
                                 "scopes": {k: stats(v, a.floor) for k, v in scopes.items()},
                                 "samples": scopes})
     (out / f"{a.name}.json").write_text(json.dumps(result, indent=1), encoding="utf-8")
@@ -177,6 +187,13 @@ def compare(base, tip):
         if not tp:
             lines.append("  NOT MEASURED: pose missing in tip")
             continue
+        if base.get("parked") or tip.get("parked"):
+            context = bp.get("context") or {}
+            if (not base.get("parked") or not tip.get("parked") or bp["rc"] or tp["rc"]
+                    or not context.get("device") or not context.get("options")
+                    or context != tp.get("context")):
+                lines.append("  NOT MEASURED: missing or mismatched machine/device/options/pose, or failed capture")
+                continue
         lines.append(f"  {'pass':<28}{'mean x':>9}{'p50 x':>9}{'n base/tip':>12}")
         for name in sorted(set(bp["scopes"]) | set(tp["scopes"])):
             b, t = bp["scopes"].get(name), tp["scopes"].get(name)
@@ -191,7 +208,7 @@ def compare(base, tip):
                          else f"  {name:<28}{'base 0':>18}{ns:>12}")
         if base.get("parked"):   # the advisory GPU-ms row: parked poses only, the box A/B keeps its ratios-only output
             b, t = bp["scopes"].get("Frame.span"), tp["scopes"].get("Frame.span")
-            if b and t and b["measured"] and t["measured"]:
+            if b and t and b["measured"] and t["measured"] and b["p50"] > 0:
                 pct = (t["p50"] / b["p50"] - 1) * 100
                 flag = f"WARN +{pct:.1f}% span (advisory, non-blocking)" if round(pct, 1) > WARN_SPAN_PCT else f"OK {pct:+.1f}% span"
                 lines.append(f"  span p50 {b['p50']:.3f} -> {t['p50']:.3f} ms: {flag}")

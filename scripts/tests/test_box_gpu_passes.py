@@ -86,6 +86,8 @@ def test_compare_ratios_not_measured_and_identical():
 def parked(span):
     r = result({"mc2_01": {"VKIsl.Terrain": [2.0] * 8, "Frame.span": [span] * 8}})
     r["parked"] = True
+    r["poses"][0]["context"] = {"machine": "xtx-host", "device": "RX 7900 XTX", "options": {"RtSunShadows": True},
+                                "resolution": [3840, 2160], "pose": "owner@30000"}
     return r
 
 
@@ -125,6 +127,19 @@ def test_missing_baseline_is_stored_then_compared(tmp_path):
     tip.write_text(json.dumps(parked(4.0)))
     assert "baseline stored" in "\n".join(gp.against_baseline(base, tip, parked(4.5))) and base.exists()
     assert "WARN +12.5% span" in "\n".join(gp.against_baseline(base, tip, parked(4.5)))
+
+
+def test_parked_comparison_requires_same_context_and_success():
+    for key, value in (("machine", "other"), ("device", "other"), ("options", {"RtSunShadows": False}),
+                       ("resolution", [1920, 1080]), ("pose", "other@30000")):
+        tip = parked(5.0)
+        tip["poses"][0]["context"][key] = value
+        text = "\n".join(gp.compare(parked(4.0), tip))
+        assert "NOT MEASURED" in text and "WARN" not in text and "1.250" not in text
+    for key, value in (("context", None), ("rc", 1)):
+        tip = parked(5.0)
+        tip["poses"][0][key] = value
+        assert "NOT MEASURED" in "\n".join(gp.compare(parked(4.0), tip))
 
 
 def test_table_flags_missing_run():

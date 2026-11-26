@@ -107,4 +107,5 @@ py -3 tools/box_gpu_passes.py run --install <promoted install> --out <proof dir>
 - Two parked 4K poses through `tools/tracy_capture_compare.py` (mc2_01 `owner_100933`, mc2_10 `wolfman`; camera parked at frame 30000 like the perf studies, one frame worker). Only windows after the park count.
 - Per-pass tip/baseline ratios from `[VK_GPU_PASSES v1]`; `Frame.span` p50 more than +10% over the stored baseline prints `WARN +N% span (advisory, non-blocking)`. Exit code is 0 either way: a WARN is an owner cost item, never a merge refusal.
 - The baseline is this machine's (XTX ms are not portable; the box `gpu-passes` row stays ratios-only). The first run stores it. Refresh it (`copy` the new `tip.json` over it) only after the owner accepts the cost.
+- Parked comparisons require successful captures with matching machine, Vulkan device, effective options, resolution and camera pose. Missing provenance or mismatches print `NOT MEASURED` without ratios; recapture older baselines that lack this context.
 - Why: +1.1 ms GPU span at owner_100933 4K landed between b53208797 and d5817fe4f with no gate signal (`studies/gpu-frame-plan-2026-11-26.md` P0-1).
