@@ -60,6 +60,8 @@
 #define MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND
 #include "vulkan_shared_scene_depth.h"
 #include "vk_shared_gbuffer_gate.h"
+#include "vk_vegetation_ground.h"
+#include "terrain_field_store.h"
 #include "vulkan_post_chain.h"
 
 // Fixed-timestep clock so the animated OOB FBM time matches the GL path under smoke.
@@ -73,6 +75,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <chrono>
+#include <optional>
 #include <string>
 #include <vector>
 #include "../../mclib/battle_bench_wait.h"
@@ -135,6 +138,20 @@ struct FogOobParams {
 };
 static_assert(sizeof(FogOobParams) == 96, "FogOobParams std140 offsets drifted");
 
+// std140 POD of shaders/vulkan/valley_fog.frag ValleyFogParams; offsets are offline-checked by check_ubo_layout.py postfog_valley.
+struct ValleyFogParams {
+    float invViewProj[16];    // off 0
+    float eye[4];             // off 64  xyz camera, w highest fog floor on the map
+    float layer[4];           // off 80  thickness wu, sigma per wu, coverage threshold, noise scale wu
+    float shape[4];           // off 96  top relief wu, soft top wu, time s, quality
+    float fogColor[4];        // off 112 rgb
+    float sunTint[4];         // off 128 rgb sun multiplier, w static-shadow strength
+};
+static_assert(sizeof(ValleyFogParams) == 144, "ValleyFogParams std140 offsets drifted");
+constexpr float kValleyNoiseScale = 900.0f;   // bank size (wu)
+constexpr float kValleyRelief = 90.0f;        // rolling of the lit top (wu)
+constexpr float kValleySoftTop = 60.0f;       // density ramp under the top (wu)
+
 } // namespace
 
 // Persistent state. Lazy init at the fog site; torn down by destroyFBOs (resize)
@@ -158,10 +175,10 @@ struct gosPostProcess::VkPostFogNative {
 
     // Match the engine frame ring so fog does not serialize next-frame setup.
     struct Frame {
-        VkDescriptorSet edgeSet = VK_NULL_HANDLE, oobSet = VK_NULL_HANDLE;
+        VkDescriptorSet edgeSet = VK_NULL_HANDLE, oobSet = VK_NULL_HANDLE, valleySet = VK_NULL_HANDLE;
         VkCommandBuffer cbuf = VK_NULL_HANDLE;
         mc2vk::OwnedCommandPool cpool;   // per-frame-slot pool: vkResetCommandPool instead of per-cb reset
-        mc2vk::OwnedBuffer edgeUbo, oobUbo;
+        mc2vk::OwnedBuffer edgeUbo, oobUbo, valleyUbo;
         uint64_t ticket = 0;
     } frames[mc2vk::kMaxFramesInFlight];
 
@@ -177,6 +194,14 @@ struct gosPostProcess::VkPostFogNative {
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline   edgePipe;
     mc2vk::OwnedPipeline   oobPipe;
+    mc2vk::OwnedShaderModule valleyFrag;
+    mc2vk::OwnedPipeline   valleyPipe;
+    mc2veg::GroundLighting groundLighting;   // set 1 of the valley fog: the terrain's frame UBO and live environment
+    // VALLEY-FOG (ground-fog-4): the loaded mission's fog floor (TerrainFieldStore::fogFloor), re-uploaded when the height
+    // field's version changes.
+    mc2vk::OwnedBuffer fogFloorBuf;
+    size_t   fogFloorCapacity = 0;   // floats
+    uint64_t fogFloorVersion = 0;
 };
 
 namespace {
@@ -274,6 +299,7 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
     for (auto& frame : s->frames) {
         if (!make_buffer(s, sizeof(EdgeFogParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, frame.edgeUbo, "postfog.edgeUbo")) return false;
         if (!make_buffer(s, sizeof(FogOobParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, frame.oobUbo, "postfog.oobUbo")) return false;
+        if (!make_buffer(s, sizeof(ValleyFogParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, frame.valleyUbo, "postfog.valleyUbo")) return false;
     }
 
     // Render pass: 1 attachment = SHARED scene color0. LOAD (fog blends OVER the
@@ -326,38 +352,42 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         }
     }
 
-    // Descriptor layout / pool / 2 sets (subgraph interface: 0=sampler, 1=UBO, frag).
+    // Descriptor layout / pool / 3 sets (subgraph interface: 0=sampler, 1=UBO, frag). VALLEY-FOG (ground-fog-4) adds
+    // 2 = the fog-floor SSBO and 3 = the terrain static-shadow mask copy; the edge/oob shaders read neither.
     {
-        VkDescriptorSetLayoutBinding binds[2]{};
+        VkDescriptorSetLayoutBinding binds[4]{};
         binds[0].binding = 0; binds[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         binds[0].descriptorCount = 1; binds[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         binds[1].binding = 1; binds[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         binds[1].descriptorCount = 1; binds[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        binds[2] = {2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr};
+        binds[3] = {3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr};
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 2; lci.pBindings = binds;
+        lci.bindingCount = 4; lci.pBindings = binds;
         if (!mc2vk::create(s->dsl, s->device, [&](VkDescriptorSetLayout* h) { r = vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); return r; })) {
             vlog("vkCreateDescriptorSetLayout failed (%d).", static_cast<int>(r)); return false;
         }
-        VkDescriptorPoolSize sizes[2]{};
-        sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[0].descriptorCount = 2 * mc2vk::kMaxFramesInFlight;
-        sizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;         sizes[1].descriptorCount = 2 * mc2vk::kMaxFramesInFlight;
+        VkDescriptorPoolSize sizes[3]{};
+        sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[0].descriptorCount = 6 * mc2vk::kMaxFramesInFlight;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;         sizes[1].descriptorCount = 3 * mc2vk::kMaxFramesInFlight;
+        sizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;         sizes[2].descriptorCount = 3 * mc2vk::kMaxFramesInFlight;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pci.maxSets = 2 * mc2vk::kMaxFramesInFlight; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
+        pci.maxSets = 3 * mc2vk::kMaxFramesInFlight; pci.poolSizeCount = 3; pci.pPoolSizes = sizes;
         if (!mc2vk::create(s->pool, s->device, [&](VkDescriptorPool* h) { r = vkCreateDescriptorPool(s->device, &pci, nullptr, h); return r; })) {
             vlog("vkCreateDescriptorPool failed (%d).", static_cast<int>(r)); return false;
         }
     }
     for (auto& frame : s->frames) {
-        VkDescriptorSetLayout layouts[2] = { s->dsl.get(), s->dsl.get() };
-        VkDescriptorSet setsOut[2] = { VK_NULL_HANDLE, VK_NULL_HANDLE };
+        VkDescriptorSetLayout layouts[3] = { s->dsl.get(), s->dsl.get(), s->dsl.get() };
+        VkDescriptorSet setsOut[3] = { VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE };
         VkDescriptorSetAllocateInfo dsai{};
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = 2; dsai.pSetLayouts = layouts;
+        dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = 3; dsai.pSetLayouts = layouts;
         r = MC2_VK_ALLOC_SETS(s->device, &dsai, setsOut);
         if (r != VK_SUCCESS) { vlog("vkAllocateDescriptorSets failed (%d).", static_cast<int>(r)); return false; }
-        frame.edgeSet = setsOut[0]; frame.oobSet = setsOut[1];
+        frame.edgeSet = setsOut[0]; frame.oobSet = setsOut[1]; frame.valleySet = setsOut[2];
 
         VkDescriptorImageInfo imgInfo{};
         imgInfo.sampler = s->depthSampler.get();
@@ -365,7 +395,8 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         imgInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         VkDescriptorBufferInfo edgeUboInfo{ frame.edgeUbo.get(), 0, VK_WHOLE_SIZE };
         VkDescriptorBufferInfo oobUboInfo { frame.oobUbo.get(), 0, VK_WHOLE_SIZE };
-        VkWriteDescriptorSet writes[4]{};
+        VkDescriptorBufferInfo valleyUboInfo { frame.valleyUbo.get(), 0, VK_WHOLE_SIZE };
+        VkWriteDescriptorSet writes[5]{};
         writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         writes[0].dstSet = frame.edgeSet; writes[0].dstBinding = 0; writes[0].descriptorCount = 1;
         writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -382,24 +413,30 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         writes[3].dstSet = frame.oobSet; writes[3].dstBinding = 1; writes[3].descriptorCount = 1;
         writes[3].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         writes[3].pBufferInfo = &oobUboInfo;
-        vkUpdateDescriptorSets(s->device, 4, writes, 0, nullptr);
+        writes[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[4].dstSet = frame.valleySet; writes[4].dstBinding = 1; writes[4].descriptorCount = 1;
+        writes[4].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writes[4].pBufferInfo = &valleyUboInfo;
+        vkUpdateDescriptorSets(s->device, 5, writes, 0, nullptr);
     }
 
-    // Two pipelines — fixed-function state IDENTICAL to the subgraph's (fullscreen
-    // tri, no vertex input, cull none, AlphaBlend SRC_ALPHA/ONE_MINUS_SRC_ALPHA,
-    // no depth attachment). Shaders reused verbatim.
+    // Pipelines over one fullscreen-triangle vertex shader (edge_fog.vert) — fixed-function state IDENTICAL to the subgraph's
+    // (no vertex input, cull none, AlphaBlend SRC_ALPHA/ONE_MINUS_SRC_ALPHA, no depth attachment). Fog shaders reused verbatim.
     {
         s->edgeVert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "edge_fog.vert.spv"));
         s->edgeFrag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "edge_fog.frag.spv"));
         s->oobVert  = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "fog_oob.vert.spv"));
         s->oobFrag  = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "fog_oob.frag.spv"));
-        if (!s->edgeVert || !s->edgeFrag || !s->oobVert || !s->oobFrag) {
+        s->valleyFrag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "valley_fog.frag.spv"));
+        if (!s->edgeVert || !s->edgeFrag || !s->oobVert || !s->oobFrag || !s->valleyFrag) {
             setFallback("spv_load_failed"); return false;
         }
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        const VkDescriptorSetLayout dslHandle = s->dsl.get();
-        plci.setLayoutCount = 1; plci.pSetLayouts = &dslHandle;
+        // Set 1 (the terrain's lighting subset) is bound by the valley fog draw only.
+        if (!s->groundLighting.init(s->device, true)) { setFallback("ground_lighting_init_failed"); return false; }
+        const VkDescriptorSetLayout setLayouts[2] = { s->dsl.get(), s->groundLighting.layout() };
+        plci.setLayoutCount = 2; plci.pSetLayouts = setLayouts;
         if (!mc2vk::create(s->playout, s->device, [&](VkPipelineLayout* h) { r = vkCreatePipelineLayout(s->device, &plci, nullptr, h); return r; })) {
             vlog("vkCreatePipelineLayout failed (%d).", static_cast<int>(r)); return false;
         }
@@ -463,6 +500,7 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         };
         if (!make_pipeline(s->edgeVert.get(), s->edgeFrag.get(), s->edgePipe, "postfog.edgePipe")) return false;
         if (!make_pipeline(s->oobVert.get(), s->oobFrag.get(), s->oobPipe, "postfog.oobPipe")) return false;
+        if (!make_pipeline(s->edgeVert.get(), s->valleyFrag.get(), s->valleyPipe, "postfog.valleyPipe")) return false;
     }
 
     {
@@ -490,6 +528,35 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
          "(samples shared scene depth, blends into shared scene color0 in place; "
          "ZERO copies, ZERO readbacks, no private device).", w, h);
     return true;
+}
+
+// VALLEY-FOG: the baked fog floor of the loaded mission in the SSBO (binding 2 of the valley sets), re-uploaded when the
+// height field's version changes (mission load, craters). Null while no terrain is loaded.
+const mc2terrain::TerrainFieldStore* sync_fog_floor(gosPostProcess::VkPostFogNative* s) {
+    const auto* store = gos_TerrainFieldStore();
+    if (!store || store->mapSide() <= 0) return nullptr;
+    const auto& floor = store->fogFloor();
+    if (floor.size() > s->fogFloorCapacity) {
+        // A bigger map than this buffer ever held: another frame slot may still read the old floor, so retire it first.
+        mc2vk::getOrCreateEngineVulkanContext().waitIdle("fog_floor_grow");
+        s->fogFloorBuf.reset();
+        if (!make_buffer(s, static_cast<VkDeviceSize>(floor.size()) * sizeof(float), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                         s->fogFloorBuf, "postfog.fogFloor")) return nullptr;
+        s->fogFloorCapacity = floor.size();
+        s->fogFloorVersion = 0;
+        for (auto& frame : s->frames) {
+            VkDescriptorBufferInfo info{ s->fogFloorBuf.get(), 0, VK_WHOLE_SIZE };
+            VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+            write.dstSet = frame.valleySet; write.dstBinding = 2; write.descriptorCount = 1;
+            write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; write.pBufferInfo = &info;
+            vkUpdateDescriptorSets(s->device, 1, &write, 0, nullptr);
+        }
+    }
+    if (s->fogFloorVersion != store->heightVersion()) {
+        if (!s->fogFloorBuf.upload(floor.data(), floor.size() * sizeof(float))) return nullptr;
+        s->fogFloorVersion = store->heightVersion();
+    }
+    return store;
 }
 
 } // namespace
@@ -558,8 +625,14 @@ bool gosPostProcess::runVkPostFogNative()
 {
     ZoneScopedN("VKIsl.Post.Fog");
     if (mc2::options::lowCost()) return true;
-    const auto fog=RenderCore::vulkan::selectFogPasses(sceneHasTerrain_,edgeFogEnabled_,fogOobEnabled_,mapHalfExtent_);
-    if (!fog.edge && !fog.oob) return false;
+    // VALLEY-FOG (ground-fog-4): banks on missions keyed with a thickness (visual_tuning valleyFogThickness), scaled by the
+    // player's ValleyFog option. The pass reads the terrain's lighting set, published once the terrain drew this frame.
+    const int valleyOption = std::clamp(mc2::options::current().valleyFog, 0, 2);
+    const bool valleyWanted = sceneHasTerrain_ && valleyFogThickness_ > 0.0f && valleyOption > 0;
+    auto fog=RenderCore::vulkan::selectFogPasses(sceneHasTerrain_,edgeFogEnabled_,fogOobEnabled_,mapHalfExtent_,valleyWanted);
+    const auto ground = valleyWanted ? mc2_vk_ground_lighting_frame() : std::nullopt;
+    fog.valley = fog.valley && ground.has_value();
+    if (!fog.edge && !fog.oob && !fog.valley) return false;
     // The GL fog passes' stencil sky-exclusion (SKYBOX-FOG-EXCLUDE-1) has no VK port, but
     // with the horizon clamp both fog passes are exactly zero above fogHorizonFadeEnd
     // (5 deg), the only elevations the exclusion would touch, so native fog runs without
@@ -605,6 +678,9 @@ bool gosPostProcess::runVkPostFogNative()
     const clk::time_point t0 = clk::now();
 
     // ---- UBOs (values IDENTICAL to the GL runEdgeFog()/runFogOob() uploads). ----
+    const float animTime = SmokeMode::fixedTimestepEnabled()
+                               ? static_cast<float>(SmokeMode::fixedClockSeconds())
+                               : static_cast<float>(SDL_GetTicks()) / 1000.0f;
     if (fog.edge) {
         EdgeFogParams p{};
         fillWorldFogParams(p);
@@ -623,12 +699,44 @@ bool gosPostProcess::runVkPostFogNative()
         p.u_horizonClampEnabled = fogHorizonClampEnabled_ ? 1 : 0;
         p.u_horizonFadeStartSin = fogHorizonFadeStartSin_;
         p.u_horizonFadeEndSin   = fogHorizonFadeEndSin_;
-        p.u_time = SmokeMode::fixedTimestepEnabled()
-                     ? static_cast<float>(SmokeMode::fixedClockSeconds())
-                     : static_cast<float>(SDL_GetTicks()) / 1000.0f;
+        p.u_time = animTime;
         if (void* m = frame.oobUbo.map()) {
             std::memcpy(m, &p, sizeof(p));
             frame.oobUbo.unmap();
+        }
+    }
+    if (fog.valley) {
+        ValleyFogParams p{};
+        std::memcpy(p.invViewProj, inverseViewProj_, sizeof(p.invViewProj));
+        // The camera is the near-plane centre of this ray set (edge_fog.frag's wNear): on the view ray, so the slab is the same.
+        const float w = inverseViewProj_[3] + inverseViewProj_[11];
+        for (int c = 0; c < 3; ++c) p.eye[c] = (inverseViewProj_[c] + inverseViewProj_[8 + c]) / w;
+        const bool low = valleyOption < 2;
+        p.layer[0] = valleyFogThickness_;
+        p.layer[1] = valleyFogSigma_ * (low ? 0.7f : 1.0f);
+        p.layer[2] = valleyFogCoverage_;
+        p.layer[3] = kValleyNoiseScale;
+        p.shape[0] = kValleyRelief;
+        p.shape[1] = kValleySoftTop;
+        p.shape[2] = animTime;
+        p.shape[3] = low ? 1.0f : 2.0f;
+        for (int c = 0; c < 3; ++c) p.fogColor[c] = valleyFogColor_[c];
+        p.sunTint[0] = p.sunTint[1] = p.sunTint[2] = 1.0f;
+        p.sunTint[3] = 0.5f;   // static terrain shadow: faint
+        const auto* store = sync_fog_floor(s);
+        if (!store) fog.valley = false;
+        else {
+            p.eye[3] = store->fogFloorMax();
+            if (void* m = frame.valleyUbo.map()) {
+                std::memcpy(m, &p, sizeof(p));
+                frame.valleyUbo.unmap();
+            }
+            s->groundLighting.copy(s->device, mc2vk::getOrCreateEngineVulkanContext().frameContext().slot, *ground);
+            // The terrain's static-shadow mask into this slot's set (the slot's previous use has completed above).
+            VkCopyDescriptorSet maskCopy{VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET};
+            maskCopy.srcSet = ground->set; maskCopy.srcBinding = 17;
+            maskCopy.dstSet = frame.valleySet; maskCopy.dstBinding = 3; maskCopy.descriptorCount = 1;
+            vkUpdateDescriptorSets(s->device, 0, nullptr, 1, &maskCopy);
         }
     }
 
@@ -644,6 +752,15 @@ bool gosPostProcess::runVkPostFogNative()
     mc2vk::postchain::beginPass(s->rpass.get(), s->fb.get(), static_cast<uint32_t>(s->width), static_cast<uint32_t>(s->height));
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Post.Fog");
     const auto fogDraws = fog.record([&](RenderCore::vulkan::PostprocessSubPassId pass) {
+        if (pass==RenderCore::vulkan::PostprocessSubPassId::ValleyFog) {
+            MC2_VK_GPU_SCOPE(valleyScope, cb, "VKIsl.Post.ValleyFog");
+            mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->valleyPipe.get());
+            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &frame.valleySet, 0, nullptr);
+            const auto groundSet = s->groundLighting.set(mc2vk::getOrCreateEngineVulkanContext().frameContext().slot);
+            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &groundSet, 4, ground->offsets.data());
+            vkCmdDraw(cb, 3, 1, 0, 0);
+            return;
+        }
         const bool edge=pass==RenderCore::vulkan::PostprocessSubPassId::EdgeFog;
         const auto pipeline=edge ? s->edgePipe.get() : s->oobPipe.get();
         const auto descriptor=edge ? frame.edgeSet : frame.oobSet;

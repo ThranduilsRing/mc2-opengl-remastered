@@ -24,7 +24,50 @@ uint64_t nextVersion() {
     return ++sequence;
 }
 
+// Separable window filter over a row-major side x side field (rows, then columns), the window clamped at the map edge:
+// kMin takes the window minimum, otherwise its mean. src and dst may be the same field.
+template <bool kMin>
+void windowFilter(const float* src, float* tmp, float* dst, int side, int radius) {
+    for (int a = 0; a < side; ++a) {
+        for (int b = 0; b < side; ++b) {
+            const int lo = (std::max)(b - radius, 0), hi = (std::min)(b + radius, side - 1);
+            float acc = kMin ? src[a * side + lo] : 0.0f;
+            for (int k = lo; k <= hi; ++k) {
+                const float v = src[a * side + k];
+                acc = kMin ? (std::min)(acc, v) : acc + v;
+            }
+            tmp[a * side + b] = kMin ? acc : acc / static_cast<float>(hi - lo + 1);
+        }
+    }
+    for (int a = 0; a < side; ++a) {
+        for (int b = 0; b < side; ++b) {
+            const int lo = (std::max)(b - radius, 0), hi = (std::min)(b + radius, side - 1);
+            float acc = kMin ? tmp[lo * side + a] : 0.0f;
+            for (int k = lo; k <= hi; ++k) {
+                const float v = tmp[k * side + a];
+                acc = kMin ? (std::min)(acc, v) : acc + v;
+            }
+            dst[b * side + a] = kMin ? acc : acc / static_cast<float>(hi - lo + 1);
+        }
+    }
+}
+
 }  // namespace
+
+void TerrainFieldStore::bakeFogFloor() const {
+    constexpr int kMinRadius = 8, kBlurRadius = 2;   // 1024 wu on the 128 wu grid, then a 4-cell box
+    fogFloorVersion_ = heightVersion_;
+    fogFloor_.assign(height_.begin(), height_.end());
+    fogFloorMax_ = 0.0f;
+    if (mapSide_ <= 0 || fogFloor_.size() != static_cast<size_t>(mapSide_) * static_cast<size_t>(mapSide_)) {
+        fogFloor_.clear();
+        return;
+    }
+    std::vector<float> tmp(fogFloor_.size());
+    windowFilter<true>(fogFloor_.data(), tmp.data(), fogFloor_.data(), mapSide_, kMinRadius);
+    windowFilter<false>(fogFloor_.data(), tmp.data(), fogFloor_.data(), mapSide_, kBlurRadius);
+    fogFloorMax_ = *std::max_element(fogFloor_.begin(), fogFloor_.end());
+}
 
 bool TerrainFieldStore::setHeight(const float* elevations, int mapSide) {
     if (!elevations || mapSide <= 0 || mapSide > kMaxSide) {

@@ -39,6 +39,8 @@ REGISTRY = [
      "shaders/include/fog_policy.hglsl", "EdgeFogParams"),
     ("postfog_oob", "GameOS/gameos/vulkan_post_fog_native.cpp", "FogOobParams",
      "shaders/vulkan/fog_oob.frag", "FogOobParams"),
+    ("postfog_valley", "GameOS/gameos/vulkan_post_fog_native.cpp", "ValleyFogParams",
+     "shaders/vulkan/valley_fog.frag", "ValleyFogParams"),
     # Native cloud-shadow + shoreline UBOs.
     ("screenfx_cloud", "GameOS/gameos/vulkan_post_screenfx_native.cpp", "ScreenFxCloudParams",
      "shaders/vulkan/cloud_shadow.frag", "CloudFxParams"),

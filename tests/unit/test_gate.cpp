@@ -1508,7 +1508,7 @@ TEST_CASE("render option keys are unique and findable") {
     CHECK(mo::find("NotAnOption") == nullptr);
     CHECK(mo::find("cpuphongretire") == mo::find("CpuPhongRetire"));   // keys are case-insensitive like options.cfg
     CHECK(mo::find("PostCAS") != mo::find("PostCASSharpness"));
-    CHECK(mo::kOptionCount == 34);   // includes RtSunShadows
+    CHECK(mo::kOptionCount == 35);   // includes RtSunShadows
 }
 
 TEST_CASE("RT sun shadows default on and the player can persist Off") {
