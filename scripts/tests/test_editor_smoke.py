@@ -578,11 +578,12 @@ class EditorSmokeTests(unittest.TestCase):
             loose.write_bytes(b"stock")
             entry = (0, 5, 5, "data/art/Buildings.csv", False, b"stock")
             destination = temp / "dependencies.json"
-            with patch.object(smoke, "fst_entries", return_value=[entry]), patch.object(
-                    smoke, "reference_data_hashes", return_value={"data/art/buildings.csv": smoke.hashlib.sha256(b"stock").hexdigest()}):
+            stock_hash = smoke.hashlib.sha256(b"stock").hexdigest()
+            with patch.object(smoke, "fst_entries", return_value=[entry]), patch.object(smoke, "tracked_data_hashes", return_value={}), patch.object(
+                    smoke, "reference_data_hash", side_effect=lambda ref, rel, size: stock_hash if rel == "data/art/buildings.csv" else None):
                 facts = smoke.dependency_manifest(temp, destination)
                 self.assertTrue(facts["loose_files"][0]["stock"])
-                with patch.object(smoke, "reference_data_hashes", return_value={}):
+                with patch.object(smoke, "reference_data_hash", return_value=None):
                     with self.assertRaisesRegex(ValueError, "non-stock loose"):
                         smoke.dependency_manifest(temp, destination)
                 loose.write_bytes(b"MECH mod")
@@ -619,7 +620,10 @@ class EditorSmokeTests(unittest.TestCase):
             source = reference / parity
             source.parent.mkdir(parents=True)
             source.write_bytes(b"known")
-            with patch.object(smoke, "REPO", temp), patch.object(smoke.seed_parity, "DEFAULT_REF", reference):
+            tracked = "data/defs/menus/editor/tracked.fit"
+            tracked_digest = smoke.hashlib.sha256(b"tracked").hexdigest()
+            with patch.object(smoke, "REPO", temp), patch.object(smoke.seed_parity, "DEFAULT_REF", reference), patch.object(
+                    smoke, "tracked_data_hashes", return_value={tracked: tracked_digest}):
                 for relative in (parity, declared):
                     with self.subTest(accepted=relative):
                         path = temp / relative
@@ -632,6 +636,25 @@ class EditorSmokeTests(unittest.TestCase):
                         with self.assertRaisesRegex(ValueError, relative):
                             smoke.dependency_manifest(temp, destination)
                         path.write_bytes(b"known")
+                (temp / tracked).parent.mkdir(parents=True)
+                (temp / tracked).write_bytes(b"tracked")
+                self.assertFalse(smoke.dependency_manifest(temp, destination)["violations"])
+                (temp / tracked).write_bytes(b"edited")
+                with self.assertRaisesRegex(ValueError, tracked):
+                    smoke.dependency_manifest(temp, destination)
+                (temp / tracked).unlink()
+                stamp = temp / "data/art/known.csv.cookstamp"
+                stamp.write_bytes(b"mc2-stock-v1 5c605451e9453d8f")
+                self.assertFalse(smoke.dependency_manifest(temp, destination)["violations"])
+                stamp.write_bytes(b"mc2-stock-v1 notahash; extra")
+                with self.assertRaisesRegex(ValueError, "cookstamp"):
+                    smoke.dependency_manifest(temp, destination)
+                stamp.write_bytes(b"mc2-stock-v1 5c605451e9453d8f")
+                (temp / parity).write_bytes(b"changed")
+                with self.assertRaisesRegex(ValueError, "known.csv"):
+                    smoke.dependency_manifest(temp, destination)
+                (temp / parity).write_bytes(b"known")
+                stamp.unlink()
                 for relative in (unknown, excluded):
                     path = temp / relative
                     path.parent.mkdir(parents=True, exist_ok=True)

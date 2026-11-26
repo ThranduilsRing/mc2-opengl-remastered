@@ -381,24 +381,40 @@ class StockInputs:
 
 
 _REFERENCE_HASHES = {}
+_STAMP = re.compile(rb"mc2-stock-v1 [0-9a-f]{1,16}\r?\n?")
 
 
-def reference_data_hashes(ref: Path) -> dict:
-    """Reuse unchanged reference hashes; stat and inventory changes invalidate cached entries."""
-    ref = ref.resolve()
-    previous = _REFERENCE_HASHES.get(ref, {})
-    current = {}
-    for path in (ref / "data").rglob("*"):
-        if not path.is_file():
-            continue
-        relative = path.relative_to(ref).as_posix().lower()
+def reference_data_hash(ref: Path, relative: str, size: int):
+    """sha256 of the live reference file when its size matches (else None); stat-validated cache."""
+    path = ref / relative
+    try:
         stat = path.stat()
-        signature = (stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns, stat.st_ino, stat.st_dev)
-        cached = previous.get(relative)
-        digest = cached[1] if cached and cached[0] == signature else seed_parity._sha(path)
-        current[relative] = (signature, digest)
-    _REFERENCE_HASHES[ref] = current
-    return {relative: entry[1] for relative, entry in current.items()}
+    except OSError:
+        return None
+    if not path.is_file() or stat.st_size != size:
+        return None
+    signature = (stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns, stat.st_ino, stat.st_dev)
+    cached = _REFERENCE_HASHES.get((ref, relative))
+    if cached is None or cached[0] != signature:
+        cached = _REFERENCE_HASHES[(ref, relative)] = (signature, seed_parity._sha(path))
+    return cached[1]
+
+
+def tracked_data_hashes() -> dict:
+    """{data path: sha256} of the data files tracked at the repo HEAD (editor/UI defs newer than v0.4)."""
+    tree = subprocess.run(["git", "-C", str(REPO), "ls-tree", "-r", "HEAD", "data"], capture_output=True, check=True,
+                          **child_kwargs(redirected=True)).stdout.decode().splitlines()
+    entries = [(line.split("\t", 1)[1].lower(), line.split()[2]) for line in tree if line.split()[1] == "blob"]
+    blobs = subprocess.run(["git", "-C", str(REPO), "cat-file", "--batch"], input="".join(f"{sha}\n" for _, sha in entries).encode(),
+                           capture_output=True, check=True, **child_kwargs(redirected=True)).stdout
+    out, at = {}, 0
+    for path, _ in entries:
+        end = blobs.index(b"\n", at)
+        size = int(blobs[at:end].split()[2])
+        out[path] = hashlib.sha256(blobs[end + 1:end + 1 + size]).hexdigest()
+        at = end + size + 2
+    return out
+
 
 
 def dependency_manifest(deploy: Path, destination: Path, allowlist: dict | None = None) -> dict:
@@ -408,8 +424,9 @@ def dependency_manifest(deploy: Path, destination: Path, allowlist: dict | None 
     a changed catalog. Unknown loose data also needs an explicit allowance.
     """
     allowlist = allowlist or {}
-    parity = reference_data_hashes(seed_parity.DEFAULT_REF)
+    ref = seed_parity.DEFAULT_REF.resolve()
     declared = read_json_object(REPO / "intentional-asset-changes.json")
+    tracked = tracked_data_hashes()
     archives, resolved = {}, {}
     system = fit_fields((deploy / "system.cfg").read_bytes())
     count = int(system["FastFiles/NumFastFiles"][0].split(" ", 1)[1])
@@ -436,20 +453,26 @@ def dependency_manifest(deploy: Path, destination: Path, allowlist: dict | None 
                 raise ValueError(f"stock archive length mismatch: {name}/{relative}")
             resolved[relative] = dict(path=relative, sha256=hashlib.sha256(data).hexdigest(),
                                       archive=name, archive_sha256=archive_hash, source="archive")
-    shadows, violations = [], []
+    shadows, violations, accepted = [], [], set()
     for loose in sorted((deploy / "data").rglob("*")):
         if not loose.is_file():
             continue
         relative = loose.relative_to(deploy).as_posix().lower()
-        digest = hashlib.sha256(loose.read_bytes()).hexdigest()
+        data = loose.read_bytes()
+        digest = hashlib.sha256(data).hexdigest()
         archived = resolved.get(relative)
         allowance = allowlist.get(relative, {})
         allowed = allowance.get("sha256") == digest and bool(allowance.get("reason", "").strip())
         reason = allowance.get("reason") if allowed else None
-        if not allowed and parity.get(relative) == digest:
+        if not allowed and reference_data_hash(ref, relative, len(data)) == digest:
             allowed, reason = True, "v0.4 reference sha256"
+        if not allowed and tracked.get(relative) == digest:
+            allowed, reason = True, "tracked repo data sha256"
         if not allowed and declared.get(relative) == digest:
             allowed, reason = True, "intentional-asset-changes.json sha256"
+        if not allowed and relative.endswith(".cookstamp") and _STAMP.fullmatch(data):
+            allowed = relative[:-len(".cookstamp")] in accepted
+            reason = "stock cook receipt format (inert if sibling bytes differ)" if allowed else None
         stock = archived is not None and archived["sha256"] == digest
         fact = dict(path=relative, sha256=digest, source="loose",
                     archive=archived["archive"] if archived else None,
@@ -458,7 +481,9 @@ def dependency_manifest(deploy: Path, destination: Path, allowlist: dict | None 
                     stock=stock, reason=reason)
         shadows.append(fact)
         resolved[relative] = fact
-        if not allowed:
+        if allowed:
+            accepted.add(relative)
+        else:
             violations.append(relative)
     manifest = dict(version=1, system_sha256=hashlib.sha256((deploy / "system.cfg").read_bytes()).hexdigest(),
                     archives=archives, loose_files=shadows,
