@@ -102,8 +102,16 @@ float markerElevation(const glm::vec3& worldPos)
 
 float cameraClearanceHeight(const glm::vec3& eye, const glm::vec3 (&nearOffsets)[4], float minimum)
 {
-	float height = std::max(sampleVisualHeight(eye), land ? Terrain::waterElevation : 0.0f);
-	if (!land || s_cpuVisualV < 2) return height + minimum;
+	auto surface = [](glm::vec3 p) {
+		if (land) {
+			const float side = s_cpuVisualV > 1 ? (s_cpuVisualV - 1) * Terrain::worldUnitsPerVertex / 4.0f
+				: Terrain::worldUnitsMapSide - Terrain::worldUnitsPerVertex;
+			p.x = std::clamp(p.x, Terrain::mapTopLeft3d.x, Terrain::mapTopLeft3d.x + side);
+			p.y = std::clamp(p.y, Terrain::mapTopLeft3d.y - side, Terrain::mapTopLeft3d.y);
+		}
+		return std::max(sampleVisualHeight(p), sampleVisibleGroundHeight(p));
+	};
+	float height = std::max(surface(eye), land ? Terrain::waterElevation : 0.0f);
 	glm::vec3 lo = eye, hi = eye;
 	float bottom = 0.0f;
 	for (const auto& offset : nearOffsets) {
@@ -111,8 +119,9 @@ float cameraClearanceHeight(const glm::vec3& eye, const glm::vec3 (&nearOffsets)
 		lo = glm::min(lo, corner);
 		hi = glm::max(hi, corner);
 		bottom = std::min(bottom, offset.z);
-		height = std::max(height, sampleVisualHeight(corner));
+		height = std::max(height, surface(corner));
 	}
+	if (!land || s_cpuVisualV < 2) return height + minimum - bottom;
 	// Bilinear patches cannot exceed their vertices. Include every vertex of
 	// every cell touched by the footprint's bounding rectangle, not just its
 	// corners: a narrow ridge can pass through the middle of the near plane.
@@ -124,8 +133,8 @@ float cameraClearanceHeight(const glm::vec3& eye, const glm::vec3 (&nearOffsets)
 	const int y1 = std::clamp(static_cast<int>(std::ceil((Terrain::mapTopLeft3d.y - lo.y) * inv)), 0, last);
 	for (int y = y0; y <= y1; ++y)
 		for (int x = x0; x <= x1; ++x) {
-			const glm::vec3 p(Terrain::mapTopLeft3d.x + x / inv, Terrain::mapTopLeft3d.y - y / inv, 0.0f);
-			height = std::max(height, sampleVisualHeight(p));
+			const size_t i = static_cast<size_t>(y) * s_cpuVisualV + x;
+			height = std::max({height, s_cpuVisualHeight[i], s_cpuGroundHeight[i]});
 		}
 	return height + minimum - bottom;
 }

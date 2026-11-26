@@ -10,6 +10,7 @@
 #include "Gates/render_options.h"
 #include "camera_elevation.h"
 #include "diagnostic_trace.h"
+#include "terrain_runtime.h"
 
 extern bool useFog;
 
@@ -188,17 +189,24 @@ long Camera::update (void)
 		static bool wasMovie = false;
 		static std::vector<double> samples;
 		const auto now = Clock::now();
-		if (inMovieMode && wasMovie)
-			samples.push_back(std::chrono::duration<double, std::milli>(now - previous).count());
+		if (inMovieMode && wasMovie) {
+			const double ms = std::chrono::duration<double, std::milli>(now - previous).count();
+			samples.push_back(ms);
+			if (mc2_diag::tagRequested("HITCH")) {
+				const glm::vec3 p(-physicalPos.x, physicalPos.z, physicalPos.y);
+				mc2::fmt::print_err("[INTRO_GLIDE] ms={:.3f} eye_z={:.2f} ground_z={:.2f} margin={:.2f}\n",
+					ms, p.z, TerrainRuntime::sampleVisibleGroundHeight(p), std::max(AltitudeMinimum, 10.0f));
+			}
+		}
 		if (!samples.empty() && (samples.size() == 120 || !inMovieMode)) {
 			std::sort(samples.begin(), samples.end());
 			double sum = 0.0;
-			unsigned over50 = 0;
-			for (double ms : samples) { sum += ms; if (ms > 50.0) ++over50; }
+			unsigned over50 = 0, over10 = 0;
+			for (double ms : samples) { sum += ms; if (ms > 50.0) ++over50; if (ms > 10.0) ++over10; }
 			const size_t n = samples.size();
-			if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) mc2::fmt::print_err("[CINEMATIC] frames={} avg_ms={:.3f} p50_ms={:.3f} p95_ms={:.3f} p99_ms={:.3f} max_ms={:.3f} over50={}\n",
+			if (mc2::gate::get<"MC2_DIAG_VERBOSE">() || mc2_diag::tagRequested("HITCH")) mc2::fmt::print_err("[CINEMATIC] frames={} avg_ms={:.3f} p50_ms={:.3f} p95_ms={:.3f} p99_ms={:.3f} max_ms={:.3f} over50={} over10={}\n",
 				n, sum / n, samples[(n - 1) / 2], samples[(n - 1) * 95 / 100],
-				samples[(n - 1) * 99 / 100], samples.back(), over50);
+					samples[(n - 1) * 99 / 100], samples.back(), over50, over10);
 			samples.clear();
 		}
 		if (wasMovie && !inMovieMode) mc2::fmt::print_err("[CINEMATIC_END] turn={}\n", turn);
