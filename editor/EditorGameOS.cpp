@@ -479,6 +479,8 @@ DWORD __stdcall RunGameOSLogic()
         if (cameraPhase == 2) eye->ZoomOut(0.01f * eye->getScaleFactor());
         if (cameraPhase == 3) eye->ZoomIn(0.01f * eye->getScaleFactor());
         if (cameraPhase == 4) eye->rotateLeft(1.0f);
+        if (cameraPhase > 0 && cameraPhase < 5 && EditorInterface::instance())
+            EditorInterface::instance()->syncScrollBars();
     }
     EditorWatchdog_Heartbeat();  // main-thread liveness for the stall watchdog
 

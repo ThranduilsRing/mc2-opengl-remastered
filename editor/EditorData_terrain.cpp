@@ -45,7 +45,11 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	struct LoadReport {
 		ULONGLONG start = GetTickCount64();
 		~LoadReport() {
-			EditorDataTrace("[LOAD_SCOPES v1] host=editor total_ms=%llu%s", GetTickCount64() - start, mc2::load::report().c_str());
+			const auto results = mc2::load::report();
+			if (FILE* log = fopen("editor-startup.log", "a")) {
+				fprintf(log, "[LOAD_SCOPES v1] host=editor total_ms=%llu%s\n", GetTickCount64() - start, results.scopes.c_str());
+				fclose(log);
+			}
 		}
 	} loadReport;
 	EditorDataTrace("EditorData::initTerrainFromPCV: enter fileName=%s", fileName ? fileName : "<null>");
