@@ -466,21 +466,18 @@ void Camera::setCameraOrigin (void)
 			// aiming into the ground with the pre-lift pitch.
 			if (land)
 			{
-				// Fixed bilinear samples keep the visual floor continuous across bake cells.
-				float terrainAtCam = Terrain::waterElevation;
-				constexpr float radius = 32.0f;
-				for (int y = -1; y <= 1; ++y)
-					for (int x = -1; x <= 1; ++x)
-					{
-						// An eye past the map edge (focus pinned at the scroll limit, low tilt, long altitude) samples 0 off-map:
-						// no floor, so the camera sat below the edge terrain and showed the map underside. Floor on the edge height.
-						glm::vec3 sample = actualPosition + glm::vec3(x * radius, y * radius, 0.0f);
-						const float edge = Terrain::worldUnitsMapSide * 0.5f - Terrain::worldUnitsPerVertex * 2.0f;
-						sample.x = std::clamp(sample.x, -edge, edge);
-						sample.y = std::clamp(sample.y, -edge, edge);
-						terrainAtCam = std::max(terrainAtCam, TerrainRuntime::sampleVisualHeight(sample));
-					}
-				const float floor = terrainAtCam + std::max(AltitudeMinimum, 10.0f);
+				// Bound the near plane for every tilt, including the repointed pose
+				// below. A fixed eye radius misses wide/long near planes and ridges.
+				const glm::mat4 inverseProjection = glm::inverse(cameraToClipGL);
+				float radius = 0.0f;
+				for (int y : {-1, 1}) for (int x : {-1, 1}) {
+					const glm::vec4 p = glm::vec4(static_cast<float>(x), static_cast<float>(y), 1.0f, 1.0f) * inverseProjection;
+					radius = std::max(radius, glm::length(glm::vec3(p) / p.w));
+				}
+				const glm::vec3 offsets[4] = {{-radius,-radius,-radius}, {radius,-radius,-radius},
+					{-radius,radius,-radius}, {radius,radius,-radius}};
+				const glm::vec3 eyePosition(-translation.x, translation.z, translation.y);
+				const float floor = TerrainRuntime::cameraClearanceHeight(eyePosition, offsets, std::max(AltitudeMinimum, 10.0f));
 				const float clearance = translation.y - floor;
 				// Spatial soft maximum: matching slopes at both band edges, always
 				// above the floor, with no frame history or delayed collision response.
