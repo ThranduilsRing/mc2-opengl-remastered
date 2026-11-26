@@ -13,7 +13,7 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from scripts import deploy_payload
+from scripts import console_child, deploy_payload
 from scripts.smoke_lib import host_lease, nofocus, render_options_pin
 
 
@@ -86,7 +86,7 @@ def warm(install: Path, missions: list[str]) -> None:
                        "--exe", str(install / "mc2.exe"), "--mission", mission,
                        "--duration", "2", "--keep-logs", "--no-lease", "--wait-timeout", "600"]
             result = subprocess.run(command, cwd=ROOT, env=child_env, capture_output=True,
-                                    text=True, timeout=780, **nofocus.hidden_kwargs())
+                                    text=True, timeout=780, **console_child.child_kwargs(redirected=True))
             artifact_root.mkdir(parents=True, exist_ok=True)
             (artifact_root / "runner.txt").write_text(result.stdout + result.stderr, encoding="utf-8")
             if result.returncode:

@@ -68,7 +68,7 @@ struct CauseScope {
         auto& c = causes();
         std::lock_guard<std::mutex> lock(c.mutex);
         if (ms > c.largest.ms) c.largest = {name, ms};
-        if (!last || c.frame - last >= 60) {
+        if ((!last || c.frame - last >= 60) && mc2_diag::tagRequested("HITCH")) {
             last = c.frame;
             std::fprintf(stderr, "[HITCH_CAUSE v1] zone=%s ms=%.3f\n", name, ms);
         }

@@ -217,6 +217,16 @@ def diff(counter, baseline, consumed=None):
     """Differences from the frozen census. With `consumed` (tags a Python parser reads) only those tags fail, and only
     when an emitter shape (tag, version, stream, key order) appears or vanishes; count changes and unconsumed tags are documentary."""
     base = collections.Counter({(r["tag"], r["ver"], r["stream"], tuple(r["keys"])): r["count"] for r in baseline["emitters"]})
+    # Approved frame-pacing diagnostics append fields; the frozen prefix stays exact.
+    appended = {("PERF", 1, "stdout"): ("over10", "over16"),
+                ("VK_GPU_PASSES", 1, "stderr"): ("max_frame_ms", "max_scope")}
+    counter = counter.copy()
+    for shape in list(counter):
+        suffix = appended.get(shape[:3])
+        if suffix and shape[3][-len(suffix):] == suffix:
+            prefix = (*shape[:3], shape[3][:-len(suffix)])
+            if prefix in base:
+                counter[prefix] += counter.pop(shape)
     lines = []
     for k in sorted(set(base) | set(counter)):
         if consumed is not None and (k[0] not in consumed or (base[k] > 0) == (counter[k] > 0)):
