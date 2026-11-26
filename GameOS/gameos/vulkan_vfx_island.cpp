@@ -125,10 +125,10 @@ struct VfxGroupPush {
     float    uvOffset[2];
     float    uvSize[2];
     uint32_t atlasColumns;
-    uint32_t oneOne;
+    uint32_t blendMode;
 };
 static_assert(sizeof(VfxGroupPush) == 24, "VfxGroupPush push-constant size (vfx_particle.vert)");
-static_assert(offsetof(VfxGroupPush, uvSize) == 8 && offsetof(VfxGroupPush, atlasColumns) == 16 && offsetof(VfxGroupPush, oneOne) == 20);
+static_assert(offsetof(VfxGroupPush, uvSize) == 8 && offsetof(VfxGroupPush, atlasColumns) == 16 && offsetof(VfxGroupPush, blendMode) == 20);
 static_assert(offsetof(VfxGeometryVertex, pad0) == 12);
 
 // std430 Group in vfx_particle.vert; the record's unused pad at byte 12 selects it.
@@ -798,7 +798,7 @@ static int run_vfx(
                 pageImages.push_back({s->samp.get(), resident->bound[par], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL});
                 page = pageSets.end() - 1;
             }
-            groups[it.tag] = {{{it.u0, it.v0}, {it.us, it.vs}, it.atlas, it.blend == VFX_ADD_ONE_ONE ? 1u : 0u},
+            groups[it.tag] = {{{it.u0, it.v0}, {it.us, it.vs}, it.atlas, it.blend},
                               static_cast<uint32_t>(page - pageSets.begin()), it.blend};
         }
     }
@@ -858,7 +858,7 @@ static int run_vfx(
         else if (d.additive == 5) want = s->oneInvAlphaPipe.get();
         else if (d.additive == 3) want = s->opaquePipe.get();
         if (indexed) want = s->indexedPipes[mc2vfx::plan_pipe(d.additive)].get();
-        const VfxGroupPush push{ {d.u0, d.v0}, {d.us, d.vs}, d.atlasColumns, d.additive == VFX_ADD_ONE_ONE ? 1u : 0u };
+        const VfxGroupPush push{ {d.u0, d.v0}, {d.us, d.vs}, d.atlasColumns, d.additive };
         const uint32_t expansion = d.atlasColumns == kVfxGeometryAtlas ? 1u : 6u;
         recDraws.push_back({want, indexed ? VK_NULL_HANDLE : *groupPage[gi], push, nativeIdx ? pd.count : pd.count * expansion, nativeIdx ? pd.start : pd.start * expansion});
     }

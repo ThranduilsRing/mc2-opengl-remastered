@@ -13,11 +13,12 @@
 #include "include/environment_ubo_vk.glsl"
 #include "include/lighting_vk.glsl"
 
+layout(location = 6) flat in uint v_blend;
+
 #ifdef VFX_INDEXED
 #extension GL_EXT_nonuniform_qualifier : require
 layout(set = 1, binding = 0) uniform sampler2D uPages[64];
 layout(location = 5) flat in uint v_page;
-layout(location = 6) flat in uint v_blend;
 #define uAtlas uPages[nonuniformEXT(v_page)]
 // Premultiplied fold: one pipeline (ONE, ONE_MINUS_SRC_ALPHA) draws blend modes 0/1/2/5; the record's mode picks
 //   0 alpha SRC_ALPHA/1-SRC_ALPHA: (rgb*a, a)   1 SRC_ALPHA/ONE: (rgb*a, 0)
@@ -41,7 +42,13 @@ layout(location = 2) flat in uint v_flags;   // bit 0 = head sprite, bit 1 = pur
 layout(location = 0) out vec4 o_color;   // shared scene color0
 layout(location = 1) out vec4 o_normal;  // shared scene normal (writemask 0 -> inert)
 
-// Authored effect radiance stays exact by day; night shares mission scale and ambient chroma.
+// Additive radiance and beam heads are emission. Alpha-blended smoke/dust
+// receives the mission's diffuse night scale and ambient chroma.
+bool effectIsEmissive() {
+    return (v_flags & 1u) != 0u || v_blend == 1u || v_blend == 2u;
+}
+
+// Authored diffuse effect colour stays exact by day.
 vec3 effectIncidentLight() {
     vec3 ambient = uEnv.ambLive.rgb;
     float peak = max(max(ambient.r, ambient.g), ambient.b);
@@ -62,7 +69,7 @@ void main() {
     vec4 tex = (v_flags & 32u) != 0u ? vec4(1.0) : textureLod(uAtlas, uv, 0.0);
     if ((v_flags & 12u) != 0u) {
         vec4 c = tex * v_color;
-    c.rgb *= effectIncidentLight();
+        if (!effectIsEmissive()) c.rgb *= effectIncidentLight();
         if ((v_flags & 8u) != 0u) {
             if ((v_flags & 2u) != 0u) {
                 if (max(max(c.r, c.g), c.b) <= 0.0001) discard;
@@ -79,7 +86,7 @@ void main() {
     // MC2 sprite pages mark transparent texels with magenta (0xFF00FF).
     if (tex.r > 0.9 && tex.g < 0.1 && tex.b > 0.9) discard;
     vec4 c = tex * v_color;
-    c.rgb *= effectIncidentLight();
+    if (!effectIsEmissive()) c.rgb *= effectIncidentLight();
     // Head sprites (the bright leading particle of a beam / trail) draw 1.5x brighter.
     if ((v_flags & 1u) != 0u) c.rgb *= 1.5;
     // OneOne (ONE,ONE) ignores alpha: the MLR path adds the sprite colour whatever the vertex alpha is
