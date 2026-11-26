@@ -149,10 +149,13 @@ extern DebuggerPtr debugger;
 
 //***************************************************************************
 
+bool g_ablProfileFrame = false;
+
 void ABL_Fatal (long errCode, mc2::czstring s) {
 
 	ABLFatalCallback(errCode, s);
-	throw ABLRuntimeFailure(s ? s : "ABL fatal error");
+	if (g_ablProfileFrame)
+		throw ABLRuntimeFailure(s ? s : "ABL fatal error");
 }
 
 //---------------------------------------------------------------------------
@@ -207,12 +210,15 @@ void runtimeError (RuntimeErrorType errCode) {
 		const char* srcFile = (FileNumber > -1) ? g_ablExec->CurModule->getSourceFile(FileNumber) : "unavailable";
 		mc2::fmt::to_buf(softMsg, "[ABL_SOFTFAIL] func=(runtime) module={} file={} line={:d} errCode={:d} — {}", mc2::fmt::safe(g_ablExec->CurModule ? g_ablExec->CurModule->getName() : "(unknown)"), mc2::fmt::safe(srcFile), mc2::fmt::as_i32(g_ablExec->execLineNumber), mc2::fmt::as_i32(code), mc2::fmt::safe(runtimeErrorMessages[code]));
 		mc2::fmt::print_out("{}\n", mc2::fmt::safe(softMsg)); fflush(stdout);
-
+		// Stock scripts keep the shipped log-and-continue; only the base stack-overflow throw and a profile frame unwind.
+		if (!g_ablProfileFrame && errCode != ABL_ERR_RUNTIME_STACK_OVERFLOW)
+			return;
 	}
 	else
 		ABL_Fatal(-std::to_underlying(RuntimeErrorType::ABL_ERR_RUNTIME_ABORT), message);
 	// A failed instruction must never resume at the same bytecode token.
-	throw ABLRuntimeFailure(message);
+	if (errCode == ABL_ERR_RUNTIME_STACK_OVERFLOW || g_ablProfileFrame)
+		throw ABLRuntimeFailure(message);
 }
 
 //***************************************************************************

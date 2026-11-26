@@ -113,7 +113,10 @@ struct ABLSyntaxFailure {};
 struct ABLRuntimeFailure : std::runtime_error { using std::runtime_error::runtime_error; };
 [[noreturn]] void syntaxError (SyntaxErrorType errCode);
 void runtimeError (RuntimeErrorType errCode);
-[[noreturn]] void ABL_Fatal (long errCode, mc2::czstring s);
+// True while a module compiled from the AI-rule profile executes. Only then does a fatal unwind (ABLRuntimeFailure); everywhere else
+// ABL_Fatal's callback returns in the shipped game and its callers (save value reads, module init) carry on from its return.
+extern bool g_ablProfileFrame;
+void ABL_Fatal (long errCode, mc2::czstring s);
 void ABL_Assert (bool test, long errCode, mc2::czstring s);
 
 //***************************************************************************
