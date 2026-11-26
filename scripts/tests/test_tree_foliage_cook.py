@@ -54,6 +54,19 @@ def test_nested_subsets_preserve_visible_area():
         prev = len(idx)
 
 
+def test_leaf_card_winding_agrees_with_authored_normals():
+    for sign in (-1, 1):
+        m = _leaf_mesh()
+        m['attrs']['NORMAL'] *= sign
+        cards = c.card_hulls(m, TEX)
+        for keep in (40, 10):
+            attrs, idx, _ = c.leaf_level(m, cards, np.arange(40), n_keep=keep)
+            tri = idx.reshape(-1, 3)
+            pos = attrs['POSITION'][tri]
+            face = np.cross(pos[:, 1] - pos[:, 0], pos[:, 2] - pos[:, 0])
+            assert np.all(np.sum(face * attrs['NORMAL'][tri[:, 0]], axis=1) > 0)
+
+
 def test_bark_chain_is_monotonic_and_respects_cap():
     n = 40
     g = np.mgrid[0:n, 0:n].reshape(2, -1).T.astype(np.float32)

@@ -187,6 +187,8 @@ def card_hulls(m, tex):
     nrm = msum(a['NORMAL'][used].astype(np.float64))
     nrm /= np.maximum(np.linalg.norm(nrm, axis=1, keepdims=True), 1e-12)
     en = en * np.where((en * nrm).sum(1) < 0, -1, 1)[:, None]
+    # PCA axes have arbitrary handedness; front faces must agree with the authored normal.
+    e2 = e2 * np.where((np.cross(e1, e2) * en).sum(1) < 0, -1, 1)[:, None]
     A, B = (D * e1[vl]).sum(1), (D * e2[vl]).sum(1)
     order = np.argsort(vl, kind='stable')
     starts = np.r_[0, np.cumsum(cnt.astype(np.int64))[:-1]]
