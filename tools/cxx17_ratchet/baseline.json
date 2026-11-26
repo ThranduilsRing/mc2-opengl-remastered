@@ -1372,6 +1372,7 @@
   },
   "code/battle_value.cpp": {},
   "code/battle_value.h": {},
+  "code/beam_clip.h": {},
   "code/bldng.cpp": {
    "LG03": 1
   },
@@ -3491,7 +3492,7 @@
    "LG20": 1
   }
  },
- "head": "fea8225e6",
+ "head": "8f253d025",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

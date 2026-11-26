@@ -251,7 +251,7 @@ struct WaterIsland : mc2vk::IslandState {
     mc2vk::ResidentTextureRef shMTexture;
     mc2vk::OwnedShaderModule vert, frag, fragEarly;
     mc2vk::OwnedPipelineLayout playout;
-    mc2vk::OwnedPipeline pipe, pipeEarly;
+    mc2vk::OwnedPipeline pipe, pipeEarly, absorption;
     mc2vk::OwnedPipeline debugWater[3];
     mc2vk::OwnedCommandPool cpool[mc2vk::kMaxFramesInFlight];   // per-slot pools: vkResetCommandPool per frame; cpool[0] also serves the synchronous one-shot
 

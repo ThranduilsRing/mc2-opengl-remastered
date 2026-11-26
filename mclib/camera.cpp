@@ -899,12 +899,12 @@ unsigned char Camera::getLightBlue (float intensity)
 }
 
 // R = liveFlat / authoredFlat per channel at light z: how far the per-mission sun keys moved the flat light (sun*z +
-// ambient) away from what the prelit colormap and other authored art were burned with. Exactly 1 with no keys, at night
-// and with no mission. The ground, decals and grass multiply it in (EnvironmentUBO.sceneLight.yzw); cement already
+// ambient) away from what the prelit colormap and other authored art were burned with. Exactly 1 with no keys, in native
+// night missions and with no mission. The ground, decals and grass multiply it in (EnvironmentUBO.sceneLight.yzw); cement already
 // uses the live flat light, so ground and cement move together.
 void mc2_FlatLightRatio(float z, const unsigned char liveSun[3], const unsigned char liveAmb[3], float out[3])
 {
-	const auto r = mc2::authored_sun::flatRatio(s_authoredSun, {liveSun[0], liveSun[1], liveSun[2]}, {liveAmb[0], liveAmb[1], liveAmb[2]}, z, mc2NightAmbientFloor());
+	const auto r = mc2::authored_sun::flatRatio(s_authoredSun, {liveSun[0], liveSun[1], liveSun[2]}, {liveAmb[0], liveAmb[1], liveAmb[2]}, z, mc2NightAmbientFloor(), eye && eye->getIsNight());
 	out[0] = r[0]; out[1] = r[1]; out[2] = r[2];}
 
 // The authored sun next to the live one (authored_sun.h OneSun): rotation, pitch undo, ambient and sun-colour relights. Identity / 1 with no keys.

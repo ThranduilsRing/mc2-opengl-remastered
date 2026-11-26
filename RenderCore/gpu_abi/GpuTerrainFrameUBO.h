@@ -50,12 +50,11 @@ struct TerrainFrameUBO {
     int32_t _lightPad0;   // read as the per-cell pool light budget (0 = unlimited); kept under the pad name for the layout gen
     int32_t _lightPad1;   // read as the lean-preset flag (1 on Low/Potato): water skips its ripple noise
     int32_t _lightPad2;
-    float   terrainLightDir[4];  // @vec4
     float   staticLightSpaceMatrix[16];  // @mat4
     int32_t lightingEnabled;   // MC2_VK_TERRAIN_LIGHTING gate
     int32_t enableShadows;   // static shadow map imported+valid this frame
     float   shadowSoftness;   // GL default 2.5
-    float   reserved220;       // was sceneLightScale (the prelit ground's mission night scale); now EnvironmentUBO.sceneLight.x
+    float   reserved220;       // authored-only terrain materials (1); zero retains earth materials
     // VK-TERRAIN-DETAIL sub-slice: terrain normal perturbation (macro slope + material
     // detail normal) so grass reads with NdotL relief like GL. LOCKSTEP with the frag.
     int32_t detailEnabled;   // MC2_VK_TERRAIN_DETAIL gate (requires lighting)
@@ -180,7 +179,7 @@ struct TerrainFrameUBO {
     float groundAoShape;
     float groundAoMaterial;
     float groundAoSource;  // 0..1: material AO from the detail-normal cavity proxy (0) to the cooked source AO where a layer carries it (1)
-    int32_t _pad[28];  // @cpp_only slot tail padding to the 1024B stride
+    int32_t _pad[32];  // @cpp_only slot tail padding to the 1024B stride
 };
 
 #include "GpuTerrainFrameUBO.layout.gen.h"

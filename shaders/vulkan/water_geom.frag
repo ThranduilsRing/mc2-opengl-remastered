@@ -20,6 +20,7 @@ layout(early_fragment_tests) in;
 #endif
 layout(constant_id = 11) const int kReflectionCoverage = 0;
 layout(constant_id = 13) const int kWaterDbgPass = 0;
+layout(constant_id = 14) const int kWaterAbsorption = 0;
 #define PREC highp
 #define TERRAIN_RESOURCE_SET 1
 #define TERRAIN_OBJECT_RECEIVER 1
@@ -263,7 +264,7 @@ float u_waterReflStrength;
 vec2  u_waterScreenSize;
 PREC vec4 cameraPos;
 
-const float SKY_AMBIENT   = 0.18;
+#define SKY_AMBIENT uEnv.cementSky.w
 const float WAVE_FREQ     = 0.030;
 const float WAVE_SPEED    = 6.0;
 const float WAVE_FADE_NEAR = 9000.0;
@@ -562,6 +563,17 @@ void main(void)
     float softnessThick = hasVisual && !hasField ? F.f7.x - waterFineHeight(WorldPos.xy) : fieldThick;
     const float fieldThickFw = fwidth(fieldThick);
     PREC float tintThick = hasField ? max(fieldThick, 0.0) : WaterThickness;
+    if (kWaterAbsorption != 0) {
+        if (tintThick <= 0.0) discard;
+        // Multiply every submerged receiver, not just the seabed. Keep the
+        // seabed's RGB Beer-Lambert law; reflection and foam are added later.
+        vec3 eye = normalize(viewVec);
+        vec3 transmission = exp(-vec3(0.07, 0.022, 0.024) * tintThick
+                                * (1.0 + 1.0 / max(abs(eye.z), 0.25)));
+        FragColor = vec4(transmission, 1.0 - min(transmission.r, min(transmission.g, transmission.b)));
+        GBuffer1 = vec4(0.0);
+        return;
+    }
     // Recover horizontal shore distance from the depth field already sampled above.
     // World-space gradients keep the wash width stable across camera zoom and shore slopes.
     // Derivatives precede coverage discard so helper lanes remain defined at the coast.
@@ -673,13 +685,13 @@ void main(void)
     vec3  dNx = dFdx(waveN), dNy = dFdy(waveN);
     float kernelVar = 0.25 * (dot(dNx, dNx) + dot(dNy, dNy));
     float nearGloss = (1.0 - smoothstep(NEAR_GLOSS_START, NEAR_GLOSS_END, length(viewVec)))
-                    * (1.0 - clamp(F.f3.z / 0.6, 0.0, 1.0));
+                    * (1.0 - clamp((0.6 * uEnv.nightState.z) / 0.6, 0.0, 1.0));
     float alpha0 = mix(WATER_ALPHA0, NEAR_ALPHA0, nearGloss);
     float specAlpha2 = clamp(alpha0 * alpha0
                              + 2.0 * (waveVar + RIPPLE_SLOPE_VAR * (1.0 - waveLOD) * (RIPPLE_GAIN / 0.22))
                              + min(2.0 * kernelVar, 0.18), 0.0, 0.36);
     // Coastal night (f3.z: the mission night dim, 0 by day): moonlight, a soft moon path, a dim desaturated column, faint foam.
-    float coastNight = shorelineLook == 1 ? clamp(F.f3.z / 0.6, 0.0, 1.0) : 0.0;
+    float coastNight = shorelineLook == 1 ? clamp((0.6 * uEnv.nightState.z) / 0.6, 0.0, 1.0) : 0.0;
     if (shorelineLook == 1) specAlpha2 = max(specAlpha2, mix(0.008, 0.04, coastNight));   // coastal: no mirror-sharp blobs on the long trains
     PREC float trans   = clamp(exp(-tintThick * ABSORPTION_DENSITY), 0.0, 1.0);
     PREC vec3  waterCol = mix(DEEP_COLOR, SHALLOW_COLOR, trans);
@@ -687,7 +699,7 @@ void main(void)
         vec3 lagoon = mix(vec3(0.055, 0.24, 0.23), SHALLOW_COLOR, smoothstep(0.0, 24.0, max(shoreDepth, 0.0)));
         waterCol = mix(waterCol, lagoon, coastWeight * 0.65);
     }
-    // Coastal look: the terrain absorbs the seabed per channel (terrain_tier1.frag); the water adds only the light the
+    // Coastal look: the absorption draw attenuates all receivers per channel; this draw adds only the light the
     // column scatters back, jade over the shelf turning navy offshore (owner refs E:/mc2-ref/refs/water).
     if (shorelineLook == 1)
         waterCol = mix(vec3(0.03, 0.26, 0.24), vec3(0.008, 0.075, 0.17), smoothstep(16.0, 90.0, tintThick))
@@ -720,10 +732,10 @@ void main(void)
 
     // Night: the scattered light, sky ambient floor, glint, sky tint and reflected sky take the mission's night
     // dim (f3.z, 0 by day), so open water reads as dark as the ground around it instead of daylight teal.
-    PREC float nightSky = 1.0 - clamp(F.f3.z, 0.0, 1.0);
+    PREC float nightSky = 1.0 - clamp((0.6 * uEnv.nightState.z), 0.0, 1.0);
     PREC vec3  vertexLightRGB = Color.bgra.rgb * nightSky;
-    PREC vec3  col = waterCol * max(vertexLightRGB, vec3(SKY_AMBIENT * nightSky))
-                   + waterCol * SKY_AMBIENT * 0.5 * nightSky;
+    PREC vec3  col = incidentLight(waterCol * SKY_AMBIENT * 0.5 * nightSky,
+                       waterCol * max(vertexLightRGB, vec3(SKY_AMBIENT * nightSky)), vec3(1), 1.0);
     // No crest or glint brightening: highlights come only from the sun/lamp specular on the perturbed normal.
     //PORT-END:waterBaseColor
     // A shallow wash rolls toward the coast and recedes in the SAME water draw.
@@ -814,7 +826,7 @@ void main(void)
     }
     col = mix(col, F.f9.xyz * nightSky, clamp(F.f8.w, 0.0, 1.0));
     if (shorelineLook == 1) {   // ocean.glsl: sunlight glowing through thin crests seen against the sun
-        vec2 toSun = normalize(uT.terrainLightDir.xy + vec2(1e-4, 0.0)), toEye = normalize(vdir.xy + vec2(1e-4, 0.0));
+        vec2 toSun = normalize(uEnv.sunDirLive.xy + vec2(1e-4, 0.0)), toEye = normalize(vdir.xy + vec2(1e-4, 0.0));
         float back = pow(clamp(-dot(toSun, toEye), 0.0, 1.0), 4.0);
         col += vertexLightRGB * sunVis * vec3(0.05, 0.26, 0.25) * smoothstep(0.55, 0.95, rippleCrest) * (0.03 + 0.5 * back);
     }
@@ -884,10 +896,10 @@ void main(void)
     // and the radiance is the vertex sun light, so sunset tints the glitter path and shadows remove it.
     {
         float glintScale = GLINT_GAIN / 0.30;
-        vec3  Ls = uT.terrainLightDir.xyz;
+        vec3  Ls = uEnv.sunDirLive.xyz;
         Ls = normalize(vec3(Ls.xy, max(Ls.z, max(uT.shadowMinSunSin, 0.05))));
         // The vertex light saturates at white, so the sun keys' colour never reached it: sunRelight (live/authored sun colour, 1 without keys) tints the glint.
-        vec3  sunRad = Color.bgra.rgb * uEnv.sunRelight.rgb * (1.0 - 0.5 * clamp(F.f3.z / 0.6, 0.0, 1.0));
+        vec3  sunRad = Color.bgra.rgb * uEnv.sunRelight.rgb * (1.0 - 0.5 * clamp((0.6 * uEnv.nightState.z) / 0.6, 0.0, 1.0));
         if (F.debug.w > 0.0) {
             // waterGlintWarm: blend toward the flat-light chroma instead of adding white onto a blue body (additive glint clips all channels).
             float sg = SUN_SPEC_GAIN * glintScale * sunVis * waterGgxSpec(waveN, vdir, Ls, specAlpha2);
@@ -911,7 +923,7 @@ void main(void)
         GBuffer1 = vec4(0.5, 0.5, 1.0, 0.875); return;
     }
     if (shorelineLook == 1) {
-        // Coastal look: col is premultiplied radiance (in-scatter + reflection + glints) over the absorbed seabed; only
+        // Coastal look: col is premultiplied radiance (in-scatter + reflection + glints) over the absorbed scene; only
         // the reflected share hides it. Foam covers both; fog scales the added light by its own coverage.
         float foamA = clamp(foamMix, 0.0, 1.0) * shore * (1.0 - 0.65 * coastNight), fogT = 1.0;
         if (F.fog_color.x > 0.0 || F.fog_color.y > 0.0 || F.fog_color.z > 0.0 || F.fog_color.w > 0.0) fogT = FogValue;

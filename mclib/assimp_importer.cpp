@@ -892,6 +892,7 @@ struct ImportedAnimEntry {
     std::string         showcaseClip;      // optional package clips.showcase
     std::map<std::string, std::string> groundingRoles; // package clip -> feet/body/none
     std::map<std::string, float> strideSpeed;  // P9: locomotion clip -> planted-foot speed (world units/s)
+    std::map<std::string, mc2clip::DistanceCurve> distanceCurves;
     std::map<std::string, std::string> nodeManifest;  // 1A: MC2 node name -> source joint
     std::map<std::string, aiVector3D> socketOffsets;  // P10: socket name -> point in its joint's local frame
                                             // (from bt2018_mech_package.json "nodes").
@@ -1075,6 +1076,11 @@ void measureClipStrides(ImportedAnimEntry& e) {
     }
     if (feet[0] < 0 || feet[1] < 0) return;
     for (const char* clip : kClips) {
+        // MW5 packs carry offline stance measurements in source glTF units/s.
+        if (e.strideSpeed.contains(clip)) {
+            e.strideSpeed[clip] *= e.scale;
+            continue;
+        }
         auto dur = clipDurationSec(e.scene, clip);
         if (!dur || *dur < 0.1f) continue;
         const int frames = static_cast<int>(*dur * 30.0f);
@@ -1125,7 +1131,9 @@ void LoadMechPackage(mc2::czstring glbPath, std::map<std::string, std::string>& 
                      std::string& aoOut, std::string& normalOut, std::string& ormOut,
                      std::map<std::string, aiVector3D>* socketOut = nullptr,
                      std::string* showcaseOut = nullptr,
-                     std::map<std::string, std::string>* groundingOut = nullptr) {
+                     std::map<std::string, std::string>* groundingOut = nullptr,
+                     std::map<std::string, float>* strideOut = nullptr,
+                     std::map<std::string, mc2clip::DistanceCurve>* distanceOut = nullptr) {
     if (!glbPath) return;
     std::string p(glbPath);
     size_t dot = p.rfind(".glb");
@@ -1173,6 +1181,41 @@ void LoadMechPackage(mc2::czstring glbPath, std::map<std::string, std::string>& 
     };
     readMap("\"nodes\"", out);
     if (groundingOut) readMap("\"grounding\"", *groundingOut);
+    if (distanceOut) {
+        std::map<std::string, std::string> encoded;
+        readMap("\"distanceCurves\"", encoded);
+        for (const auto& [clip, values] : encoded) {
+            mc2clip::DistanceCurve curve;
+            const char* p = values.c_str();
+            char* end = nullptr;
+            curve.duration = strtof(p, &end);
+            p = end;
+            while (*p) {
+                const float d = strtof(p, &end);
+                if (end == p) break;
+                curve.distance.push_back(d);
+                p = end;
+            }
+            if (curve.valid()) (*distanceOut)[clip] = std::move(curve);
+        }
+    }
+    if (strideOut) {
+        const size_t key = buf.find("\"strideSpeeds\"");
+        const size_t start = key == std::string::npos ? key : buf.find('{', key);
+        const size_t end = start == std::string::npos ? start : buf.find('}', start);
+        size_t i = start == std::string::npos ? start : start + 1;
+        while (i < end) {
+            const size_t k0 = buf.find('"', i);
+            const size_t k1 = k0 == std::string::npos ? k0 : buf.find('"', k0 + 1);
+            const size_t colon = k1 == std::string::npos ? k1 : buf.find(':', k1 + 1);
+            if (colon >= end) break;
+            float speed = 0;
+            if (sscanf(buf.c_str() + colon + 1, "%f", &speed) == 1 && std::isfinite(speed) && speed > 0)
+                (*strideOut)[buf.substr(k0 + 1, k1 - k0 - 1)] = speed;
+            const size_t comma = buf.find(',', colon + 1);
+            i = comma < end ? comma + 1 : end;
+        }
+    }
     // P10: "socketOffsets" flat map, socket -> "x y z" in the joint's local frame
     // (tools/bt2018_mechs/sockets.py). Muzzles sit on the geometry, not at joint centres.
     if (socketOut) {
@@ -1237,7 +1280,7 @@ void RegisterImportedAnim(mc2::czstring path, TG_TypeMultiShape* out, const Skel
     e.names = bake.names;
     e.plan = mc2skel::BuildPlan(scene, e.names);
     e.torsoTwist = mc2skel::ResolveTorsoTwist(*e.plan);
-    LoadMechPackage(path, e.nodeManifest, e.aoTexName, e.normalTexName, e.ormTexName, &e.socketOffsets, &e.showcaseClip, &e.groundingRoles);
+    LoadMechPackage(path, e.nodeManifest, e.aoTexName, e.normalTexName, e.ormTexName, &e.socketOffsets, &e.showcaseClip, &e.groundingRoles, &e.strideSpeed, &e.distanceCurves);
     if (!e.showcaseClip.empty() && !clipDurationSec(scene, e.showcaseClip)) {
         if (mc2_diag::tagRequested("MECH_IMPORT"))
             mc2::fmt::print_err("[MECH_IMPORT] unknown showcase clip '{}' in '{}'; using fallback\n", e.showcaseClip, path);
@@ -1694,8 +1737,8 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
     } else if (advanceClock && e.pinnedClip.empty()) {
         float speed = 0.0f, turnRate = 0.0f;
         if (s.havePrev) {
-            const float ddx = motion.px - s.prevPx, ddy = motion.py - s.prevPy, ddz = motion.pz - s.prevPz;
-            speed = sqrtf(ddx*ddx + ddy*ddy + ddz*ddz) / dt;
+            const float ddx = motion.px - s.prevPx, ddy = motion.py - s.prevPy;
+            speed = sqrtf(ddx*ddx + ddy*ddy) / dt;
             float dh = motion.legHeadingDeg - s.prevHeading;
             while (dh > 180.0f) dh -= 360.0f;
             while (dh < -180.0f) dh += 360.0f;
@@ -1711,10 +1754,14 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
         const bool finished = (s.mode == mc2clip::Mode::Once) && s.clipTimeSec >= s.durationSec - 1e-4f;
         mc2clip::Choice want = mc2clip::select(motion.gestureId, speed, turnRate, s.turnStreak,
                                                      motion.destroyed, finished, s.activeClip.c_str(), s.phase);
+        want.clip = mc2clip::resolveClip(want.clip, s.activeClip,
+            [&](std::string_view name) { return clipDurationSec(e.scene, std::string(name)).has_value(); }).data();
         want.clip = mc2clip::standingClip(want.clip,
             [&](std::string_view name) { return clipDurationSec(e.scene, std::string(name)).has_value(); }).data();
         auto adopt = [&](const mc2clip::Choice& c, bool restart) {
             if (auto nd = clipDurationSec(e.scene, c.clip)) {
+                const float nextTime = mc2clip::locomotionPhase(s.clipTimeSec, s.durationSec, *nd);
+                const bool keepPhase = s.locomotion && c.locomotion && !restart;
                 mc2skel::BeginActorClipFade(*e.plan, s);
                 adopted = true;
                 s.activeClip = c.clip;
@@ -1724,6 +1771,7 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
                 s.playRate = c.mode == mc2clip::Mode::Once
                     ? mc2clip::onceRate(c.clip, s.durationSec, motion.gestureFrames, motion.gestureRate) : 1.0f;
                 if (restart) s.clipTimeSec = 0.0f;
+                else if (keepPhase) s.clipTimeSec = nextTime;
             }
             s.pendingStreak = 0;
         };
@@ -1741,11 +1789,24 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
             s.playRate = 1.0f;
             if (e.strideSpeed.contains(s.activeClip))
                 s.playRate = mc2clip::strideRate(speed, e.strideSpeed.at(s.activeClip));
+            if (e.strideSpeed.contains(s.previousClip))
+                s.previousPlayRate = mc2clip::strideRate(speed, e.strideSpeed.at(s.previousClip));
             static unsigned strideLogTick = 0;
             if ((++strideLogTick % 120u) == 0 && mc2_diag::tagRequested("MECH_STRIDE"))
                 mc2::fmt::print_err("[MECH_STRIDE] clip={} speed={:.1f} stride={:.1f} rate={:.2f} dt={:.4f}\n", s.activeClip, speed,
                     e.strideSpeed.contains(s.activeClip) ? e.strideSpeed.at(s.activeClip) : 0.0f, s.playRate, dt);
         }
+        // Curves are in source metres. Convert measured ground travel using the
+        // same pack scale as the skeleton. Both sides of a walk/run fade match it.
+        const auto matchDistance = [&](std::string_view clip, float& time, float& rate) {
+            const auto it = e.distanceCurves.find(std::string(clip));
+            if (it == e.distanceCurves.end() || e.scale <= 0) return;
+            const auto& [name, curve] = *it;
+            time = curve.advance(time, speed * dt / e.scale);
+            rate = 0;
+        };
+        if (s.locomotion) matchDistance(s.activeClip, s.clipTimeSec, s.playRate);
+        if (!adopted) matchDistance(s.previousClip, s.previousClipTimeSec, s.previousPlayRate);
     }
     const bool holdAtEnd = (preview || e.pinnedClip.empty()) && s.mode == mc2clip::Mode::Once;
     if (advanceClock) {

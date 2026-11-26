@@ -13534,21 +13534,6 @@
    "ver": -1,
    "stream": "stdout",
    "keys": [
-    "path",
-    "view",
-    "v0",
-    "v1",
-    "v2",
-    "argb0",
-    "tex"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VK_VFX_TRACE",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
     "route",
     "wrap",
     "numWeapons",

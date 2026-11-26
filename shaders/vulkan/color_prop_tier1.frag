@@ -163,7 +163,7 @@ layout(set = 0, binding = 14) uniform sampler2DShadow uTreeObjectMap;
 
 // GL static_prop.frag's pool term: albedo-modulated additive pool light at the MC2-frame world position.
 vec3 propPoolLight(vec3 albedo) {
-    if ((kPlanarReflection != 0 && kReflectCutPools != 0 && uFrame.nightDarkness <= 0.0) || uFrame.poolI.x <= 0) return vec3(0.0);
+    if ((kPlanarReflection != 0 && kReflectCutPools != 0 && uEnv.nightState.z <= 0.0) || uFrame.poolI.x <= 0) return vec3(0.0);
     return albedo * olp_objectPoolLight(vWorldPos, uFrame.poolI.x, uFrame.poolI.y,
                                         uFrame.poolF.x, uFrame.poolF.y,
                                         uFrame.poolI.z, uFrame.poolI.w,
@@ -287,12 +287,12 @@ void main() {
         }
         // Detail-map coverage cannot turn off an authored lamp surface.
         if (uPropMaterials.materials[uPacket.materialId].metadata.x == SURF_CLASS_EMISSIVE && (vMaterialFlags & 3u) == 0u)
-            rgb = propAddWindowEmission(rgb, propDecodeColor(materialAlbedo) * uFrame.nightDarkness);
+            rgb = propAddWindowEmission(rgb, propDecodeColor(materialAlbedo) * uEnv.nightState.z);
     }
     if (treeMaterial) {
         bool foliage = uPacket.packetAlphaTest != 0;
         vec3 N = normalize(mc2ToRender(outputNormalStuff));
-        vec3 Lauth = oneSunAuthFromLive() * uT.terrainLightDir.xyz;   // authored sun direction (one-sun rule)
+        vec3 Lauth = oneSunAuthFromLive() * uEnv.sunDirLive.xyz;   // authored sun direction (one-sun rule)
         vec3 L = Lauth / max(length(Lauth),1e-6);
         vec2 uv = vec2((vWorldPos.x-uT.atlasTopLeftX)*uT.atlasOneOverWorldUnits,
                        (uT.atlasTopLeftY-vWorldPos.y)*uT.atlasOneOverWorldUnits);
@@ -327,7 +327,7 @@ void main() {
         // clamping to albedo flattened every sufficiently lit leaf to one colour.
         float forestSky = vTree.z;
         float vis = vTree.w < 1.0 ? treeVisibility(N) : 1.0;
-        vec3 irradiance = max(ambient,vec3(0))*vTree.x*materialAO*forestSky + direct*(vTree.w*mix(vis, 1.0, vTree.w)); // above the baked shadow line the crown is lit
+        vec3 irradiance = incidentLight(max(ambient,vec3(0))*vTree.x*materialAO*forestSky, direct, vec3(1), vTree.w*mix(vis, 1.0, vTree.w)); // above the baked shadow line the crown is lit
         // Mission SH already carries the night sky. A second fixed fill overwhelms
         // that dim ambient on lighter foliage, independently of the mission light.
         rgb = propEncodeColor(albedo * (irradiance / 3.14159265));
@@ -335,13 +335,13 @@ void main() {
         if (any(notEqual(poolLight, vec3(0)))) treePoolLight = propEncodeColor(albedo) * poolLight;
         rgb += treePoolLight + vHighlight.rgb*vHighlight.a;
     }
-    if (vWindow.x != 0u && uFrame.nightDarkness > 0.0 && (vMaterialFlags & 1u) == 0u) {
+    if (vWindow.x != 0u && uEnv.nightState.z > 0.0 && (vMaterialFlags & 1u) == 0u) {
         uint h = vWindow.x ^ vWindow.y;
         h ^= h >> 16; h *= 0x7feb352du;
         h ^= h >> 15; h *= 0x846ca68bu; h ^= h >> 16;
         if (float(h & 0xffffu) < 0.35 * 65536.0) {
             float warmth = float(h >> 16) / 65535.0;
-            vec3 emission = uFrame.nightDarkness * propDecodeColor(
+            vec3 emission = uEnv.nightState.z * propDecodeColor(
                 mix(vec3(0.72, 0.36, 0.12), vec3(1.0, 0.70, 0.34), warmth));
             // Compose radiance before the scene fog/tonemap passes. Keep coverage in oColor.a.
             rgb = propAddWindowEmission(rgb, emission);

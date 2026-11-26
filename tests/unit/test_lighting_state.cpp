@@ -1,3 +1,4 @@
+#include "../../GameOS/gameos/mission_environment_gpu.h"
 #include "doctest.h"
 #include "../../mclib/lighting_legacy.h"
 #include "../../mclib/lighting_state.h"
@@ -119,6 +120,21 @@ TodCurve sunCurve()
 	return c;
 }
 } // namespace
+
+TEST_CASE("LightingState/stock camera inputs survive the shared shader ABI") {
+    for (const auto& m : kStock) {
+        const auto live = evaluate(nullptr, 0.5f, authoredOf(m));
+        EnvironmentUBO gpu;
+        mc2::environment::fillGpu({}, 1, gpu, live, live);
+        for (int c = 0; c < 3; ++c) {
+            CHECK(std::lround(gpu.sunLive[c] * 255.0f) == live.sun[c]);
+            CHECK(std::lround(gpu.ambLive[c] * 255.0f) == live.amb[c]);
+            CHECK(gpu.sunLiveDir[c] == live.sunDir[c]);
+        }
+        CHECK(gpu.fog[3] == live.fogStart);
+        CHECK(gpu.lightingParams[2] == live.fogFull);
+    }
+}
 
 TEST_CASE("LightingState/no curve returns the authored state byte for byte for stock mission keys") {
 	for (const auto& m : kStock) {

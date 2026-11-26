@@ -4,7 +4,7 @@
 #pragma once
 
 static_assert(std::is_trivially_copyable<EnvironmentUBO>::value, "EnvironmentUBO must be trivially copyable");
-static_assert(sizeof(EnvironmentUBO) == 448, "EnvironmentUBO size must match std140 GLSL struct");
+static_assert(sizeof(EnvironmentUBO) == 496, "EnvironmentUBO size must match std140 GLSL struct");
 static_assert(offsetof(EnvironmentUBO, shDiffuse) == 0, "shDiffuse offset");
 static_assert(offsetof(EnvironmentUBO, hemiSky) == 144, "hemiSky offset");
 static_assert(offsetof(EnvironmentUBO, sceneLight) == 160, "sceneLight offset");
@@ -23,3 +23,6 @@ static_assert(offsetof(EnvironmentUBO, fog) == 384, "fog offset");
 static_assert(offsetof(EnvironmentUBO, cementSky) == 400, "cementSky offset");
 static_assert(offsetof(EnvironmentUBO, edgeHazeSky) == 416, "edgeHazeSky offset");
 static_assert(offsetof(EnvironmentUBO, lightingParams) == 432, "lightingParams offset");
+static_assert(offsetof(EnvironmentUBO, nightState) == 448, "nightState offset");
+static_assert(offsetof(EnvironmentUBO, outputParams) == 464, "outputParams offset");
+static_assert(offsetof(EnvironmentUBO, shadowParams) == 480, "shadowParams offset");

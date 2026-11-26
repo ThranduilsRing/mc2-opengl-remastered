@@ -32,6 +32,8 @@ layout(early_fragment_tests) in;
 
 // Per-frame UBO: generated from RenderCore/gpu_abi/GpuMechFrameUBO.h.
 #include "include/mech_frame_ubo_vk.glsl"
+#include "include/environment_ubo_vk.glsl"
+#include "include/lighting_vk.glsl"
 
 #define MC2_TEX_SET 2
 #include "include/texture_table_vk.glsl"
@@ -44,6 +46,7 @@ layout(early_fragment_tests) in;
 // mech-lab panel pass. No terrain set 1 (no light pools, no ground grid), and the HDR
 // result is exposed and tonemapped in-shader because the RGBA8 panel target gets no post.
 #ifndef MECH_PREVIEW
+#undef TERRAIN_RESOURCE_SET
 #define TERRAIN_RESOURCE_SET 1
 #define TERRAIN_OBJECT_RECEIVER 1
 #include "include/terrain_frame_vk.glsl"
@@ -130,7 +133,7 @@ void main() {
             // Mild sky-tinted fresnel rim so silhouettes separate from terrain.
             vec3 Vr = normalize(uFrame.cameraWorldPos.xyz - vWorldPos);
             float rim = pow(1.0 - clamp(dot(Nshade, Vr), 0.0, 1.0), 3.0) * (0.5 + 0.5 * Nshade.z);   // z = up in the MC2 world frame
-            rgb += tex_color.rgb * uFrame.environmentAmbient.rgb * (0.35 * rim);
+            rgb += tex_color.rgb * uEnv.hemiSky.rgb * (0.35 * rim);
         }
         if ((vImportedMech & 2u) != 0u)
             rgb *= surface.ao;
@@ -191,7 +194,7 @@ void main() {
                 bool authored = (vImportedMech & 8u) != 0u;
                 vec3 f0 = authored ? mix(vec3(0.04), tex_color.rgb, surface.metallic) : vec3(1.0);
                 if (authored)
-                    rgb += mechGgxSpecular(Nshade, V, vMechSunDirGL, tex_color.rgb, surface.metallic, surface.roughness, kernelVar, uFrame.shadeA.y) * uFrame.sunRelight.rgb;   // takes the sun keys' colour (1 without keys)
+                    rgb += mechGgxSpecular(Nshade, V, vMechSunDirGL, tex_color.rgb, surface.metallic, surface.roughness, kernelVar, uFrame.shadeA.y) * uEnv.sunRelight.rgb;   // takes the sun keys' colour (1 without keys)
                 else
                 rgb += f0 * msh_blinnSpecular(Nshade, V, vMechSunDirGL, !authored && isGlass,
                                          authored ? surface.roughness : uFrame.shadeA.z, uFrame.shadeA.w, uFrame.shadeA.y);

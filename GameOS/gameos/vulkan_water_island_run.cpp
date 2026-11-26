@@ -672,6 +672,11 @@ extern "C" int mc2_vk_water_island_run(
                 vkCmdDrawIndirect(cb, s->native->drawArgs(par), 0, 1, 16);
             }
         } else {
+            if (mc2::options::current().shorelineLook == 1) {
+                mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->absorption.get());
+                vkCmdDrawIndirect(cb, s->native->drawArgs(par), 0, 1, 16);
+                mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, earlyWater ? s->pipeEarly.get() : s->pipe.get());
+            }
             mc2::battlebench::add(mc2::battlebench::DrawWater), vkCmdDrawIndirect(cb, s->native->drawArgs(par), 0, 1, 16);
         }
         if (profileMode >= 0) {

@@ -7,9 +7,35 @@ The reflected-sky lift supplies near gloss without adding a second broad sun lob
 from pathlib import Path
 import re
 import struct
+import math
 
 ROOT = Path(__file__).resolve().parents[2]
 SRC = (ROOT / "shaders/vulkan/water_geom.frag").read_text(encoding="utf-8")
+
+
+def test_foamfirst_absorbs_without_reflection_or_foam():
+    block = SRC.split("if (kWaterAbsorption != 0) {", 1)[1].split("// Recover horizontal shore", 1)[0]
+    assert "u_waterReflStrength" not in block and "foamMix" not in block
+    assert "exp(-vec3(0.07, 0.022, 0.024) * tintThick" in block
+    assert "* (1.0 + 1.0 / max(abs(eye.z), 0.25))" in block
+    assert "FragColor = vec4(transmission, 1.0 - min(transmission.r, min(transmission.g, transmission.b)))" in block
+    assert "if (tintThick <= 0.0) discard;" in block
+    previous = 0.0
+    for depth in (0.0, 1.0, 10.0, 90.0):
+        transmission = [math.exp(-k * depth * 2.0) for k in (0.07, 0.022, 0.024)]
+        coverage = 1.0 - min(transmission)
+        assert previous <= coverage <= 1.0
+        assert depth == 0.0 or coverage > 0.0
+        previous = coverage
+    init = (ROOT / "GameOS/gameos/vulkan_water_island_init.cpp").read_text(encoding="utf-8")
+    absorption = init.split("const int32_t absorption = 1;", 1)[1].split("stages[1].pSpecializationInfo = nullptr;", 1)[0]
+    assert "ds.depthWriteEnable = VK_FALSE;" in absorption
+    assert "srcColorBlendFactor = VK_BLEND_FACTOR_ZERO;" in absorption
+    assert "dstColorBlendFactor = VK_BLEND_FACTOR_SRC_COLOR;" in absorption
+    run = (ROOT / "GameOS/gameos/vulkan_water_island_run.cpp").read_text(encoding="utf-8")
+    assert run.index("s->absorption.get()") < run.index("mc2::battlebench::add(mc2::battlebench::DrawWater)")
+    terrain = (ROOT / "shaders/vulkan/terrain_tier1.frag").read_text(encoding="utf-8")
+    assert "exp(-vec3(0.07, 0.022, 0.024)" not in terrain
 
 
 def test_water_cache_binary32_rounded_tap_escape():
@@ -101,7 +127,7 @@ def test_night_water_is_unchanged():
 
 
 def test_shader_wiring_keeps_lean_and_specular_aa():
-    assert "(1.0 - clamp(F.f3.z / 0.6, 0.0, 1.0))" in SRC
+    assert "(1.0 - clamp((0.6 * uEnv.nightState.z) / 0.6, 0.0, 1.0))" in SRC
     assert "fres = max(fres, NEAR_REFL_FLOOR * nearGloss);" in SRC
     assert "float alpha0 = mix(WATER_ALPHA0, NEAR_ALPHA0, nearGloss);" in SRC
     assert re.search(r"specAlpha2 = clamp\(alpha0 \* alpha0\s*\n\s*\+ 2\.0 \* \(waveVar", SRC)

@@ -366,6 +366,13 @@ def generate_all(root):
         out = build(info, src, glsl_rel)
         results.append((lay_rel, out["layout"]))
         results.append((glsl_rel, out["glsl"]))
+        if info["cpp"] == "EnvironmentUBO":
+            # All members are float4 lanes; Slang and GLSL share these std140 offsets.
+            slang = out["glsl"].replace("_GEN_GLSL", "_GEN_SLANG")
+            slang = re.sub(r"layout\([^\n]+\) uniform EnvironmentUBO", "struct EnvironmentUBO", slang)
+            slang = re.sub(r"\bvec4\b", "float4", slang)
+            slang = slang.replace("} uEnv;", "};\n[[vk::binding(26, 0)]] ConstantBuffer<EnvironmentUBO> uEnv;")
+            results.append((glsl_rel.replace(".glsl", ".slang"), slang))
     return results
 
 

@@ -80,7 +80,7 @@ SurfaceMaterial propSurface(int id, vec3 albedo, out float coverage, bool needBa
     // Window nodes and authored lamp materials supply emitted radiance separately.
     s.emission = (vMaterialFlags & 2u) != 0u ? s.baseColor * propDecodeColor(vMaterialSeed)
         : row.metadata.x == SURF_CLASS_EMISSIVE && (vMaterialFlags & 1u) == 0u
-            ? s.baseColor * uFrame.nightDarkness : vec3(0);
+            ? s.baseColor * uEnv.nightState.z : vec3(0);
     s.alphaMode = row.metadata.y;
     s.materialClass = row.metadata.x;
     return s;

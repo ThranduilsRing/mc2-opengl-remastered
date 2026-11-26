@@ -126,11 +126,11 @@ void main() {
     vec3 N = normalize(mix(rootN, cardN, 0.30*(1.0-v_vegData.y)*bladeFade));
     float staticS = uT.enableShadows != 0 ? terrainStaticShadow(v_shadowWorld) : 1.0;
     float shadow = min(staticS, terrainDynamicShadow(v_shadowWorld, rootN));
-    float normalLight = computeNdotLBand(N, uT.terrainLightDir.xyz);
+    float normalLight = computeNdotLBand(N, uEnv.sunDirLive.xyz);
     // Thin-leaf transmission, bounded and shadowed with direct light once.
-    normalLight += 0.08 * max(dot(-cardN, uT.terrainLightDir.xyz), 0.0) * (1.0-v_vegData.y);
+    normalLight += 0.08 * max(dot(-cardN, uEnv.sunDirLive.xyz), 0.0) * (1.0-v_vegData.y);
     // Grass tips are thin enough to glow when backlit (either card face).
-    if (grass) normalLight += 0.10 * bladeFade * tip * tip * abs(dot(cardN, uT.terrainLightDir.xyz));
+    if (grass) normalLight += 0.10 * bladeFade * tip * tip * abs(dot(cardN, uEnv.sunDirLive.xyz));
     vec3 lit = uT.lightingEnabled != 0 ? shadeGround(albedo, rootN, normalLight, shadow, 0.0, v_worldPos, rootN, false, 0.0) : albedo;
     o_color = vec4(lit, 1.0);
     o_normal = rc_gbuffer1_shadowHandled(N);

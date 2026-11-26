@@ -9,7 +9,7 @@
 // One terrain/cover compose. Existing sun-band, pool, ambient and contact inputs;
 // no new light producer or terrain cover term. Preserve terrain operation order.
 vec3 composeGroundLighting(vec3 baseColor, vec3 ambient, vec3 direct, float shadow, vec3 localLight) {
-    return baseColor * ambient + baseColor * direct * shadow + localLight;
+    return incidentLight(baseColor * ambient, baseColor * direct, vec3(1), shadow) + localLight;
 }
 // Ground AO: the ambient-share occlusion (1 = none) the caller resolves before shadeGround; scales the prelit body, never the pool lights.
 float g_groundAoMul = 1.0;
@@ -29,12 +29,15 @@ vec3 shadeGround(vec3 baseColor, vec3 N, float normalLight, float shadow,
         // reshape is baked into the pool by the shared CPU producer.
         float moverContact = 0.0;
         if (GROUND_POOL_ENABLED && uT.numPoolLights > 0) {
-            lit += tlp_terrainPoolLight(worldPos, uT.numPoolLights,
+            vec3 pool = tlp_terrainPoolLight(worldPos, uT.numPoolLights,
                                         uT.lightGridDim, vec2(uT.lightGridMinX, uT.lightGridMinY),
                                         vec2(uT.lightGridInvCellX, uT.lightGridInvCellY),
                                         uT.lightPoolSoft, uT.lightPoolMoverDim, uT.lightPoolMoverScale,
                                         uT.lightPoolMoverMax, uT.lightPoolCompress,
                                         GROUND_MOVER_CONTACT, moverContact, N, macroNormal, resolveNormal, normalLod);
+            // Burnin darkness is baked illumination, not lamp reflectance. A shared
+            // modest night response keeps pools continuous across road/tile seams.
+            lit += pool * (uEnv.sceneLight.x < 1.0 ? vec3(0.3) : vec3(1.0));
         }
         // The burnin already contains mission ambient; no second ambient floor.
 

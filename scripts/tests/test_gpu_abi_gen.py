@@ -83,6 +83,10 @@ def _tmp_root(tmp_path):
             dst = tmp_path / rel
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(os.path.join(ROOT, rel), dst)
+    for rel, content in g.generate_all(ROOT):
+        dst = tmp_path / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_bytes(content.encode("utf-8"))
     for shader, _, _ in g.MIRRORS:
         dst = tmp_path / shader
         dst.parent.mkdir(parents=True, exist_ok=True)
@@ -340,8 +344,8 @@ def test_ivec4_annotation_needs_int32_quad():
 
 
 @pytest.mark.parametrize("header,size,block", [
-    ("GpuColorFrameUBO.h", 224, "ColorFrameUBO"),  # 368 - 9 vec4 SH-L2: iblSh moved to the EnvironmentUBO (binding 26), U1 environment-gpu
-    ("GpuMechFrameUBO.h", 544, "MechFrameUBO"),  # T2 appends ten vec4s to the 384-byte S4 block
+    ("GpuColorFrameUBO.h", 192, "ColorFrameUBO"),  # sun/ambient and night state live in EnvironmentUBO
+    ("GpuMechFrameUBO.h", 272, "MechFrameUBO"),  # no private environment tail
     ("GpuLegacyFrameUBO.h", 80, "LegacyFrameUBO"),
 ])
 def test_vk_frame_ubos_are_registered_with_their_historical_sizes(header, size, block):
@@ -367,4 +371,13 @@ def test_environment_t2_size_and_tail_offset():
     with open(os.path.join(ROOT, entry[0]), encoding="utf-8") as f:
         info = g.parse_source(f.read(), "EnvironmentUBO")
     _, _, size = g.struct_offsets(info["fields"], "std140")
-    assert size == 448 and info["block"] == "uEnv"
+    assert size == 496 and info["block"] == "uEnv"
+
+
+def test_environment_slang_uses_generated_std140_lanes():
+    files = dict(g.generate_all(ROOT))
+    slang = files["shaders/vulkan/include/environment_ubo_vk.slang"]
+    assert "[[vk::binding(26, 0)]] ConstantBuffer<EnvironmentUBO> uEnv;" in slang
+    assert "float4  shDiffuse[9];  // off 0" in slang
+    assert "float4  nightState;  // off 448" in slang
+    assert "float4  shadowParams;  // off 480" in slang

@@ -32,10 +32,9 @@ struct ColorFrameUBO {
     // Ambient: the SH-L2 coefficients are the EnvironmentUBO's (binding 26); this class owns only its strength option.
     float   iblShStrength;      // 0.0 = feature off
     int32_t lightingReady;      // 1 = LightsData SSBO copied this frame -> ambientTerm real
-    // Night state of the eye (the hot-colour night tags light windows, building base lights and runway fixtures).
-    int32_t isNight;            // 0/1
-    float   nightFactor;        // 0..1 day->night blend
-    float   nightDarkness;      // mc2NightLightFactor(): 0 day/evening .. 1 full night (diffuse night light, dimmed authored vertex light)
+    float   lightFloor;         // material minimum encoded light byte
+    float   _padLighting0;
+    float   _padLighting1;
     int32_t hotTableReady;      // 1 = the per-type hot-colour table is the real one (else the one-entry placeholder)
     float   pbrV1Strength;      // StaticPropPbr option: strength of the Schlick-Fresnel sun specular (0 = off)
     float   pbrV1RoughnessOverride;  // StaticPropPbr roughness override (the tuning slider): >= 0 replaces the literal roughness, < 0 keeps it
@@ -43,8 +42,6 @@ struct ColorFrameUBO {
     // Night light pools on props: the knobs of the GL static_prop.frag pool term (GetObjectLightPoolParams).
     float   poolF[4];           // @vec4 moverDim, moverScale, objScale, -
     int32_t poolI[4];           // @ivec4 numPoolLights (0 = term off), soft, moverMax, compress
-    float   sunColor[4];        // @vec4 contract S: camera lightRed/Green/Blue (0..255); .w = published
-    float   ambientColor[4];    // @vec4 contract A: camera ambientRed/Green/Blue (0..255); .w = F night floor
     float   specDir[4];         // @vec4 Dspec: worldLights[0] localForwardInWorld (Stuff frame), as the row carried it
 };
 

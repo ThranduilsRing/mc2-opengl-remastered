@@ -15,6 +15,160 @@
   "shader": "shaders/vulkan/vfx_particle.frag",
   "ssbos": [],
   "stage": "frag",
-  "ubos": [],
+  "ubos": [
+    {
+      "binding": 26,
+      "members": [
+        {
+          "array_stride": 16,
+          "matrix_stride": null,
+          "name": "shDiffuse",
+          "offset": 0,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "hemiSky",
+          "offset": 144,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "sceneLight",
+          "offset": 160,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "sunDirLive",
+          "offset": 176,
+          "type": "vec4"
+        },
+        {
+          "array_stride": 16,
+          "matrix_stride": null,
+          "name": "sunAuthFromLive",
+          "offset": 192,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "pitchUndo",
+          "offset": 240,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "ambRelight",
+          "offset": 256,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "sunRelight",
+          "offset": 272,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "sunLive",
+          "offset": 288,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "sunLiveDir",
+          "offset": 304,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "ambLive",
+          "offset": 320,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "sunBake",
+          "offset": 336,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "sunBakeDir",
+          "offset": 352,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "ambBake",
+          "offset": 368,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "fog",
+          "offset": 384,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "cementSky",
+          "offset": 400,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "edgeHazeSky",
+          "offset": 416,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "lightingParams",
+          "offset": 432,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "nightState",
+          "offset": 448,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "outputParams",
+          "offset": 464,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "shadowParams",
+          "offset": 480,
+          "type": "vec4"
+        }
+      ],
+      "name": "EnvironmentUBO"
+    }
+  ],
   "variant": "default"
 }

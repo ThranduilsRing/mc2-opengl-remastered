@@ -1,5 +1,6 @@
 #include "mission_environment_gpu.h"
 #include "../../RenderCore/IblShCoeffs.h"
+#include "../../mclib/mission_light_profile.h"
 #include <algorithm>
 #include <cmath>
 
@@ -64,6 +65,17 @@ void fillGpu(const RenderCore::MissionEnvironment& env, float sceneLightScale, E
     out.lightingParams[0] = static_cast<float>(live.mode);
     out.lightingParams[1] = live.mode == mc2::lighting::Mode::Fixed ? 0.0f : live.todWeight;
     out.lightingParams[2] = live.fogFull;
+    out.nightState[0] = l.night ? 1.0f : 0.0f;
+    out.nightState[1] = l.nightFactor;
+    out.nightState[2] = env.mission.empty() ? 0.0f : mc2_mission_light::darkness(live.pitch);
+    out.outputParams[0] = env.output.exposureMultiplier;
+    out.outputParams[1] = env.output.exposureEV.value_or(0.0f);
+    out.shadowParams[0] = env.legacyTuning.contains("shadowSoftness")
+        ? env.legacyTuning.at("shadowSoftness") : 2.5f;
+    out.shadowParams[1] = 0.4f;
+    out.shadowParams[2] = mc2_mission_light::moverNightFade(out.nightState[2],
+        0.299f*live.sun[0] + 0.587f*live.sun[1] + 0.114f*live.sun[2],
+        0.299f*live.amb[0] + 0.587f*live.amb[1] + 0.114f*live.amb[2]);
 }
 
 }

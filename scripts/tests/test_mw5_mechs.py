@@ -522,6 +522,22 @@ def test_bridge_requires_animation_directory(fixture, tmp_path):
         B.build(fixture[0], None, tmp_path / 'bad.glb', 'albedo.png')
 
 
+def test_stride_uses_backward_midstance_instead_of_lower_swing_ankle(monkeypatch):
+    from tools.mw5_mechs import parity as P
+    # Both feet travel backwards at 4 u/s, then swing forwards at 12 u/s.
+    # The opposite ankle's height must not decide which part is stance.
+    foot = [[-4 * f / 30, f / 30, 0] for f in range(31)]
+    foot += [[-4 + 12 * f / 30, 0, 0] for f in range(1, 11)]
+    monkeypatch.setattr(P, 'foot_tracks', lambda *a: ([foot, foot], 4 / 3))
+    asset = type('Asset', (), {'doc': {'animations': [{'name': 'atlas_moveCoreWalkFwd'}]}})()
+    assert P.stride_speeds(asset)['atlas_moveCoreWalkFwd'] == pytest.approx(4)
+    asset.doc['animations'][0]['name'] = 'atlas_moveCoreWalkBwd'
+    assert P.stride_speeds(asset)['atlas_moveCoreWalkBwd'] == pytest.approx(12)
+    monkeypatch.setattr(P, 'foot_tracks', lambda *a: ([[[0, 0, 0]] * 3] * 2, 1))
+    with pytest.raises(ValueError, match='no planted-foot sweep'):
+        P.stride_speeds(asset)
+
+
 def test_parity_sample_normalizes_short_arc():
     from tools.mw5_mechs.parity import sample
     q = sample([0, 1], [[0, 0, 0, 1], [0, 0, -1, 0]], .5, True)
@@ -529,6 +545,28 @@ def test_parity_sample_normalizes_short_arc():
     assert np.allclose(q, [0, 0, -np.sqrt(.5), np.sqrt(.5)])
     assert sample([0, 1], [[0, 0, 0, 1], [0, 0, 0, -1]], .5, True) == [0, 0, 0, 1]
     assert sample([0, 1], [[0, 2, 4], [2, 4, 6]], .5, False) == [1, 3, 5]
+
+
+def test_distance_curve_preserves_variable_planted_travel(monkeypatch):
+    from tools.mw5_mechs import parity as P
+    foot = [[x, 0, 0] for x in (0, -.1, -.4, -.9, -1, -.5, 0)]
+    monkeypatch.setattr(P, 'foot_tracks', lambda *a: ([foot, foot], 1))
+    asset = type('Asset', (), {'doc': {'animations': [{'name': 'atlas_moveCoreWalkFwd'}]}})()
+    duration, *distance = map(float, P.distance_curves(asset)['atlas_moveCoreWalkFwd'].split())
+    assert duration == 1
+    assert distance[:5] == pytest.approx([0, .1, .4, .9, 1])
+    assert all(b > a for a, b in zip(distance, distance[1:]))
+    assert np.all(np.diff(np.asarray(distance, dtype=np.float32)) > 0)
+
+
+def test_shutdown_fallback_holds_own_stand(fixture, tmp_path):
+    from tools.mw5_mechs.build_pack import bind_stationary
+    doc = B.build(fixture[0], tmp_path, tmp_path / 'stand.glb', 'a.png')
+    bind_stationary(doc)
+    for name in ('atlas_shutdownPwroff', 'atlas_shutdownIdle', 'atlas_shutdownPwron'):
+        clip = next(a for a in doc['animations'] if a['name'] == name)
+        assert clip['channels']
+        assert all(doc['accessors'][s[k]]['count'] == 1 for s in clip['samplers'] for k in ('input', 'output'))
 
 
 def test_empty_native_hold_channel_names_source(fixture, tmp_path):
