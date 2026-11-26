@@ -370,4 +370,35 @@ void EditorInterface::runWorkflowSmoke(const char* campaignPath)
 	EditorSmokePanelFact("campaign_links", "CampaignOverview", linked, true);
 	MapGeneratorDialog::Open();
 	MapGeneratorDialog::ExecutePreview();
+
+	// Keep a compact authored route for the game witness and viewport capture.
+	loadedBrain = dynamic_cast<Unit*>(mgr->getObjectAtLocation(brainPosition.x, brainPosition.y));
+	bool routeSaved = loadedBrain != nullptr;
+	if (loadedBrain)
+	{
+		mgr->unselectAll();
+		mgr->select(*loadedBrain, true);
+		auto* clear = new ModifyUnitOrderAction();
+		clear->capture(loadedBrain);
+		loadedBrain->clearWaypoints();
+		loadedBrain->setOrderType(Unit::ORDER_NONE);
+		loadedBrain->setOrderAuthored(true);
+		clear->commit(loadedBrain);
+		undoMgr.AddAction(clear);
+		UnitBrainPanel::BeginWaypointPlace(loadedBrain->getID());
+		for (const auto offset : {glm::vec3(96, 0, 0), glm::vec3(96, 96, 0), glm::vec3(0, 96, 0)})
+		{
+			auto point = brainPosition + offset;
+			point.z = land->getTerrainElevation(point);
+			routeSaved = UnitBrainPanel::HandlePlacementClick(point.x, point.y, point.z) && routeSaved;
+		}
+		UnitBrainPanel::EndWaypointPlace();
+		routeSaved = routeSaved && EditorData::instance->save("terrain_gen_out/editor_patrol.pak", true);
+		EditorInterface::frameSelectedObjects();
+	}
+	EditorSmokePanelFact("teams_abl", "PatrolRoute", routeSaved);
+	MapGeneratorDialog::Close();
+	ObjectivesSummaryPanel::Close();
+	CampaignSummaryPanel::Close();
+	UnitBrainPanel::Open();
 }

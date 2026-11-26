@@ -26,8 +26,8 @@ namespace EditorDebugOverlay
 	// enabled or no terrain is loaded.  Safe with a null camera.
 	void RenderWorldOverlay( Camera* eye );
 
-	// Draw the selected unit's patrol/move path (team-color dashed line + dots +
-	// direction arrows). No-op unless the AI/Brain/Orders panel is open. Call in
+	// Draw selected patrol/move routes in red, plus other routes when AI is open.
+	// Uses the ImGui pass for Vulkan screen-space lines. Call in
 	// the same render frame as RenderWorldOverlay.
 	void RenderPatrolPaths( Camera* eye );
 

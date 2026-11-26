@@ -173,7 +173,7 @@ bool Unit::save( FitIniFile* file, int WarriorNumber )
 	// Patrol/Move order authoring (additive — only written when the user has
 	// AUTHORED an order in-editor, so stock missions whose patrol lives in the
 	// brain .abl and was only imported for display are NOT rewritten).
-	if ( orderAuthored && ( orderType != ORDER_NONE || !waypoints.empty() ) )
+	if ( orderAuthored )
 	{
 		file->writeIdLong( "OrderType", orderType );
 		file->writeIdLong( "OrderStance", stance );

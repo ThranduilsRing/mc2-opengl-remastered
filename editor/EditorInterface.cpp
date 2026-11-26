@@ -105,6 +105,11 @@ void EditorInterface::handleKeyDown( int Key )
 
 	if ( lastKey != Key ) // only want to do these if something has changed
 	{
+		if (Key == KEY_DELETE && UnitBrainPanel::WaypointPlaceActive())
+		{
+			UnitBrainPanel::DeleteRoutePoint();
+			return;
+		}
 		// Frame camera on the current selection (UE-style 'F'). Plain key, no
 		// modifiers (Ctrl+Alt+F is the fog toggle below). WantTextInput already
 		// consumed keystrokes when an ImGui field is focused, so the Outliner
@@ -122,6 +127,7 @@ void EditorInterface::handleKeyDown( int Key )
 
 		if ( Key == KEY_ESCAPE)
 		{
+			UnitBrainPanel::EndWaypointPlace();
 			Select();
 			DragRough();
 
@@ -980,7 +986,7 @@ void EditorInterface::render()
 	// Pure visual; same frame/projection context as the foliage preview.
 	EditorDebugOverlay::RenderWorldOverlay( eye );
 
-	// Selected unit's patrol/move path overlay (only while the AI/Brain panel is open).
+	// Selected unit's patrol/move route stays visible even with the AI panel closed.
 	EditorDebugOverlay::RenderPatrolPaths( eye );
 
 	ModifyStyle( 0, WS_HSCROLL | WS_VSCROLL );
