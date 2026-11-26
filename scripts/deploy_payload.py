@@ -328,6 +328,7 @@ def prune_retired_seed_payload(target_dir, preserve=()):
 # runtime (both readers tolerate absence), but shipping without them silently
 # drops per-mission/material tuning that was authored assuming the file loads.
 GAME_DATA_PAYLOAD = [
+    "data/textures/moon_detail_normal.ktx2",         # Existing moon inventory normal, selected by mc2_13.biome.fit.
     "CREDITS.txt",
     "THIRD_PARTY_NOTICES.txt",
     "data/art/asset_sizes.csv",

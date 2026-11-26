@@ -2,5 +2,6 @@ FITini
 
 [TerrainMaterials]
 b AuthoredOnly = true
+st DetailNormal = "data/textures/moon_detail_normal.tga"
 
 FITend
