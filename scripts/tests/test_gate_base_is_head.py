@@ -22,7 +22,8 @@ def test_nightly_base_uses_newest_ancestor_tag(tmp_path, monkeypatch):
     monkeypatch.setattr(gate, "ROOT", tmp_path)
     def git(*args):
         return subprocess.check_output(["git", "-c", "user.name=Test", "-c", "user.email=test@local",
-                                        *args], cwd=tmp_path, text=True).strip()
+                                        *args], cwd=tmp_path, text=True,
+                                       **gate.console_child.child_kwargs(redirected=True)).strip()
     git("init")
     git("commit", "--allow-empty", "-m", "base")
     git("tag", "promote-old")
