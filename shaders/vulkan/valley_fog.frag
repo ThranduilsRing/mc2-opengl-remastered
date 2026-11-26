@@ -65,22 +65,24 @@ void main() {
     float rawDepth = texture(depthTex, TexCoord).r;
     if (rawDepth <= 0.0 || fog.layer.x <= 0.0) { outFog = vec4(0.0); return; }
     vec2 ndc = TexCoord * 2.0 - 1.0;
+    vec4 nearPoint = fog.invViewProj * vec4(ndc, 1.0, 1.0);
+    vec3 eye = nearPoint.xyz / nearPoint.w;
     vec4 hit = fog.invViewProj * vec4(ndc, rawDepth, 1.0);
     vec3 surface = hit.xyz / hit.w;
     // A straight ray whose both ends are above the highest fog top never enters the layer: ridges, tree tops, tall units.
     float maxTop = fog.eye.w + fog.layer.x + fog.shape.x;
-    if (min(fog.eye.z, surface.z) > maxTop) { outFog = vec4(0.0); return; }
-    vec3 ray = surface - fog.eye.xyz;
+    if (min(eye.z, surface.z) > maxTop) { outFog = vec4(0.0); return; }
+    vec3 ray = surface - eye;
     float span = length(ray);
     ray /= span;
     // Slab entry (wu from the camera): the camera itself, or where the ray crosses the highest fog top.
-    float start = fog.eye.z > maxTop ? (maxTop - fog.eye.z) / ray.z : 0.0;
+    float start = eye.z > maxTop ? (maxTop - eye.z) / ray.z : 0.0;
     int samples = fog.shape.w < 1.5 ? 4 : 6;
     float ds = (span - start) / float(samples);
     float tau = 0.0;
-    vec3 lit = fog.eye.xyz + ray * start;   // the last sample before the fog turns opaque: the surface the pixel sees
+    vec3 lit = eye + ray * start;   // the last sample before the fog turns opaque: the surface the pixel sees
     for (int i = 0; i < samples; ++i) {
-        vec3 p = fog.eye.xyz + ray * (start + (float(i) + 0.5) * ds);
+        vec3 p = eye + ray * (start + (float(i) + 0.5) * ds);
         float rho = valleyDensity(p);
         if (rho > 0.0 && tau < 1.0) lit = p;
         tau += rho * ds;
@@ -99,7 +101,7 @@ void main() {
     // The terrain's baked static shadow over the bank (one mask tap at the slab entry, indexed like ground_shadow.glsl):
     // faint, fog scatters around it.
     if (fog.sunTint.w > 0.0 && textureSize(staticMask, 0).x > 1) {
-        vec3 entry = fog.eye.xyz + ray * start;
+        vec3 entry = eye + ray * start;
         vec2 uv = vec2(entry.x + uT.halfMap, uT.halfMap - entry.y) / (128.0 * float(max(uT.mapSide - 1, 1)));
         if (all(greaterThanEqual(uv, vec2(0.0))) && all(lessThanEqual(uv, vec2(1.0)))) {
             float shadow = texture(staticMask, uv).r;

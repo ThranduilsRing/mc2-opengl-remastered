@@ -708,9 +708,7 @@ bool gosPostProcess::runVkPostFogNative()
     if (fog.valley) {
         ValleyFogParams p{};
         std::memcpy(p.invViewProj, inverseViewProj_, sizeof(p.invViewProj));
-        // The camera is the near-plane centre of this ray set (edge_fog.frag's wNear): on the view ray, so the slab is the same.
-        const float w = inverseViewProj_[3] + inverseViewProj_[11];
-        for (int c = 0; c < 3; ++c) p.eye[c] = (inverseViewProj_[c] + inverseViewProj_[8 + c]) / w;
+        // Each pixel reconstructs its own near-plane ray origin in the shader.
         const bool low = valleyOption < 2;
         p.layer[0] = valleyFogThickness_;
         p.layer[1] = valleyFogSigma_ * (low ? 0.7f : 1.0f);
