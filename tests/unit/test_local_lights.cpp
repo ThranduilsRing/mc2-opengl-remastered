@@ -32,7 +32,8 @@ GpuTerrainLight lamp(float x, float y, float ax, float ay, float az, bool mover)
 }  // namespace
 
 TEST_CASE("PackPoolLightType round-trips through the shader decode") {
-    const float aims[][3] = {{0, 0, -1}, {0.349f, 0.268f, -0.898f}, {-0.3f, -0.514f, -0.804f}, {1, 0, 0}, {0, 0.6f, 0.8f}};
+    const float aims[][3] = {{0, 0, -1}, {0.349f, 0.268f, -0.898f}, {-0.3f, -0.514f, -0.804f}, {1, 0, 0}, {0, 0.6f, 0.8f},
+                            {0, 1, -0.25f}, {0, -1, -0.25f}, {1, 0, -0.25f}, {-1, 0, -0.25f}};
     for (const auto& a : aims) {
         const float l = std::sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
         const float in[3] = {a[0] / l, a[1] / l, a[2] / l};

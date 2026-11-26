@@ -343,7 +343,8 @@ long GenericAppearance::update (bool animate)
 		// reverts) and night check all live inside
 		// QueueBeaconGlow, so this is a no-op for every non-beacon prop.
 		if (eye && eye->isNight)
-			mc2_cone_glow::QueueBeaconGlow(eye->getViewUniforms(), genShape.get(), eye->getNightFactor());
+			mc2_cone_glow::QueueBeaconGlow(eye->getViewUniforms(), genShape.get(), eye->getNightFactor(),
+				appearType ? appearType->name : nullptr);
 	}
 
 	if ((!simPresentationPass || !simulationOwned()) && animate && genFrameRate != 0.0f)

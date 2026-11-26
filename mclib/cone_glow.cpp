@@ -949,7 +949,8 @@ DWORD beaconRgbFromName(mc2::czstring nodeName)
 
 } // namespace
 
-void QueueBeaconGlow(mc2::tgl::ViewUniforms view, TG_MultiShape* shape, float nightFactor)
+void QueueBeaconGlow(mc2::tgl::ViewUniforms view, TG_MultiShape* shape, float nightFactor,
+                     mc2::czstring fixtureName)
 {
     // Existing default-ON lighting controls also act as kill switches.
     if (!realism_enabled() || !glow_enabled() || !shape || !view.cameraValid) return;
@@ -957,7 +958,7 @@ void QueueBeaconGlow(mc2::tgl::ViewUniforms view, TG_MultiShape* shape, float ni
 
     const float peak = realism_beacon_alpha() * nightFactor;
     if (peak < 1.0f) return;
-    const float radius = realism_beacon_radius();
+    const float radius = realism_beacon_radius() * 0.4f;
 
     if (s_queueTurn != turn)
     {
@@ -999,20 +1000,29 @@ void QueueBeaconGlow(mc2::tgl::ViewUniforms view, TG_MultiShape* shape, float ni
 
         const DWORD rgb = beaconRgbFromName(child->getNodeName());
 
-        // Light receivers through the shared cluster pool, not a projected disc.
-        const auto origin = mc2ToRender(mc2::math::transformPoint(glm::vec3(0), recp->shapeToWorld));
-        gos_terrain_lighting::GpuTerrainLight light{};
-        light.position[0] = origin.x;
-        light.position[1] = origin.y;
-        light.position[2] = origin.z + 4.0f;
-        light.lightType = 1u; // point
-        light.color[0] = static_cast<float>((rgb >> 16) & 255) / 255.0f;
-        light.color[1] = static_cast<float>((rgb >> 8) & 255) / 255.0f;
-        light.color[2] = static_cast<float>(rgb & 255) / 255.0f;
-        light.farDistance = radius;
-        light.oneOverDistance = 1.0f / radius;
-        light.intensity = peak / 70.0f;
-        gos_terrain_lighting::QueueBeaconLight(light);
+        // Only runway fixtures spill onto receivers; beacons retain their core.
+        // Follow the fixture axis (the long stock runway rows use local X).
+        if (nameHasCI(fixtureName, "runwaylight"))
+        {
+            const auto origin = mc2ToRender(mc2::math::transformPoint(glm::vec3(0), recp->shapeToWorld));
+            auto aim = mc2ToRender(mc2::math::transformPoint(glm::vec3(1, 0, 0), recp->shapeToWorld)) - origin;
+            aim.z = 0.0f;
+            aim = glm::normalize(aim);
+            aim.z = -0.25f;
+            aim = glm::normalize(aim);
+            gos_terrain_lighting::GpuTerrainLight light{};
+            light.position[0] = origin.x;
+            light.position[1] = origin.y;
+            light.position[2] = origin.z + 1.0f;
+            light.lightType = gos_terrain_lighting::PackPoolLightType(1u, aim.x, aim.y, aim.z, 0.8660254f, 0u);
+            light.color[0] = static_cast<float>((rgb >> 16) & 255) / 255.0f;
+            light.color[1] = static_cast<float>((rgb >> 8) & 255) / 255.0f;
+            light.color[2] = static_cast<float>(rgb & 255) / 255.0f;
+            light.farDistance = radius;
+            light.oneOverDistance = 1.0f / radius;
+            light.intensity = peak / 350.0f;
+            gos_terrain_lighting::QueueBeaconLight(light);
+        }
 
         // Project the node origin exactly the way the cone path does.
         glm::mat4 shapeToClip;
