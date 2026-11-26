@@ -625,14 +625,14 @@ void frameSwapWindow(graphics::RenderWindowHandle win) {
 // Sleep to the mission / menu frame cap unless vsync paces the loop.
 void frameFrameCap(bool s_vsync_active, int s_fps_cap_mission, int s_fps_cap_menu, uint64_t start_tick) {
         if (mc2vk::present_thread::enabled()) {
-            const int cap = s_vsync_active ? 0 : SmokeMode::missionHasStarted() ? s_fps_cap_mission : s_fps_cap_menu;
+            const int cap = SmokeMode::missionHasStarted() ? (s_vsync_active ? 0 : s_fps_cap_mission) : s_fps_cap_menu;
             mc2vk::present_thread::pace(cap);
             return;
         }
         // Frame cap: sleep to hold target frame time and reduce GPU thrashing.
         // Skipped when vsync is active (vsync already owns pacing).
-        // Uses mission-state-aware cap: 90 FPS in menus, 165 FPS in missions.
-        if (!s_vsync_active) {
+        // Menus remain bounded even on high-refresh FIFO displays.
+        if (!s_vsync_active || !SmokeMode::missionHasStarted()) {
             bool inMission = SmokeMode::missionHasStarted();
             int cap = inMission ? s_fps_cap_mission : s_fps_cap_menu;
             static bool s_capTraceLast = !inMission;

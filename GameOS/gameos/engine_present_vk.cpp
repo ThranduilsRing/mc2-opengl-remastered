@@ -198,9 +198,7 @@ bool chooseQueuesAndPresentMode(EnginePresentVk::Impl& s, std::string& reason) {
     // Same family: the render-finished binary semaphore orders the two queues without ownership transfers.
     s.presentQ = s.ctx->presentQueue();
 
-    // Present mode mapping (plan §6/R8): FIFO when MC2_VSYNC=1 (vsync-equivalent,
-    // matches the GL swap-interval), else MAILBOX if available else IMMEDIATE
-    // (preserve today's uncapped GL default). FIFO is always supported.
+    // Player pacing; MC2_VSYNC remains a developer override.
     uint32_t pmCount = 0;
     vkGetPhysicalDeviceSurfacePresentModesKHR(s.phys, s.surface.get(), &pmCount, nullptr);
     std::vector<VkPresentModeKHR> pms(pmCount);
@@ -211,19 +209,21 @@ bool chooseQueuesAndPresentMode(EnginePresentVk::Impl& s, std::string& reason) {
         if (m == VK_PRESENT_MODE_MAILBOX_KHR)   haveMailbox = true;
         if (m == VK_PRESENT_MODE_IMMEDIATE_KHR) haveImmediate = true;
     }
-    const bool vsyncOn = mc2::gate::get<"MC2_VSYNC">();
-    if (vsyncOn) {
-        // FIFO_RELAXED (AMD guide): a late frame presents at once instead of waiting a whole extra vblank; FIFO when the surface lacks it.
-        s.presentMode = haveRelaxed ? VK_PRESENT_MODE_FIFO_RELAXED_KHR : VK_PRESENT_MODE_FIFO_KHR;
-    } else if (haveMailbox) {
-        s.presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+    s.requestedVsync = mc2::options::current().vsync;
+    const int vsync = mc2::gate::isSet<"MC2_VSYNC">() ? (mc2::gate::get<"MC2_VSYNC">() ? 1 : 0) : s.requestedVsync;
+    if (vsync == 1) {
+        s.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+    } else if (vsync == 2) {
+        s.presentMode = haveMailbox ? VK_PRESENT_MODE_MAILBOX_KHR : VK_PRESENT_MODE_FIFO_KHR;
     } else if (haveImmediate) {
         s.presentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+    } else if (haveMailbox) {
+        s.presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
     } else {
-        s.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+        s.presentMode = haveRelaxed ? VK_PRESENT_MODE_FIFO_RELAXED_KHR : VK_PRESENT_MODE_FIFO_KHR;
     }
     plog("present mode = %s (MC2_VSYNC=%s; mailbox_avail=%d immediate_avail=%d)",
-         presentModeName(s.presentMode), vsyncOn ? "1" : "0/unset",
+         presentModeName(s.presentMode), vsync == 1 ? "1" : "0/unset",
          haveMailbox ? 1 : 0, haveImmediate ? 1 : 0);
     return true;
 }
@@ -2587,6 +2587,16 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     // so the swapchain is rebuilt for the restored size instead of failing a zero-extent rebuild here.
     if (drawableW == 0 || drawableH == 0) {
         return true;   // nothing to present; try again next frame
+    }
+
+    if (!s.offscreen && s.requestedVsync != mc2::options::current().vsync) {
+        std::string reason;
+        if (!chooseQueuesAndPresentMode(s, reason) || !rebuildSwapchain(s, drawableW, drawableH, health_, reason)) {
+            health_.fallback_reason = reason;
+            return false;
+        }
+        health_.present_mode = static_cast<int>(s.presentMode);
+        health_.present_mode_name = presentModeName(s.presentMode);
     }
 
     // WSI results are consumed only after main has transferred the next frame.

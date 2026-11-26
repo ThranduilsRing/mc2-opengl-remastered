@@ -22,6 +22,8 @@ enum class ShorelineLook { Current, FoamFirst, RealWaves };
 
 // Defaults here ARE the shipped defaults: a missing key, a missing file, and a tool that never loads options.cfg all behave alike.
 struct RenderOptions {
+    int frameRateLimit = 0; // 0 Off, 1..5: 60/120/144/165/240, 6 Match display
+    int vsync = 0; // 0 Off, 1 On (FIFO), 2 Fast (MAILBOX)
     int cameraView = 2; // 0 Stock, 1 Closer, 2 Wide
     bool remasteredBuildings = false; // bundled building art (default OFF = Classic, owner 2026-11-13); Classic leaves campaign/mod assets intact
     bool stockOverlayConcrete = false; // concrete look: false = new detail layers + terrain-matched overlay cement (default), true = stock overlay splotches
@@ -98,6 +100,8 @@ constexpr Option floatOpt(const char* k, float RenderOptions::*m, double lo, dou
 }  // namespace detail
 
 inline constexpr Option kOptions[] = {
+    detail::longOpt ("FrameRateLimit", &RenderOptions::frameRateLimit, 0, 6),
+    detail::longOpt ("VSync", &RenderOptions::vsync, 0, 2),
     detail::boolOpt ("RemasteredBuildings",           &RenderOptions::remasteredBuildings),
     detail::boolOpt ("PostCAS",                       &RenderOptions::postCas),
     detail::floatOpt("PostCASSharpness",              &RenderOptions::postCasSharpness, 0.0, 1.0),
@@ -284,6 +288,14 @@ inline const RenderOptions& current(std::source_location where = std::source_loc
     return g_current;
 }
 // Device-local VRAM the renderer planned against (bytes), published once by the Vulkan device init; 0 = unknown (no device yet).
+inline int effectiveFrameCap(int selection, int displayHz, bool overrideSet, int overrideCap, bool inMission) {
+    if (overrideSet) return overrideCap;
+    if (!inMission) return 90;
+    constexpr int caps[] = {0, 60, 120, 144, 165, 240};
+    if (selection == 6) return displayHz > 0 ? displayHz : 60;
+    return selection >= 0 && selection < 6 ? caps[selection] : 0;
+}
+
 inline unsigned long long g_deviceVramBytes = 0;
 // Resolved texture tier 0 Low .. 3 Ultra. Auto (-1) picks by VRAM; unknown VRAM or <= 512 MB is Low (the potato floor: stock resolution, no
 // overlay normal maps). Pure function of the option and g_deviceVramBytes so the harness can test it.

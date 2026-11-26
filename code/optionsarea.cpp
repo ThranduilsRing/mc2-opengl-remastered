@@ -593,6 +593,18 @@ void OptionsGraphics::update()
 		static const std::string kReflectionKey = "game.mcl_optionsgraphics.combo.water_reflections";
 		static const std::string kDetailKey = "game.mcl_optionsgraphics.combo.water_detail";
 		auto water = mc2::options::current();
+		static const std::string kLimitKey = "game.mcl_optionsgraphics.combo.frame_limit";
+		static const std::string kVsyncKey = "game.mcl_optionsgraphics.combo.vsync";
+		if (getDefsListItemCount(kLimitKey) == 0) {
+			setDefsListItems(kLimitKey, {"Off", "60", "120", "144", "165", "240", "Match display"});
+			frameLimitSelection = -1;
+		}
+		if (getDefsListItemCount(kVsyncKey) == 0) {
+			setDefsListItems(kVsyncKey, {"Off", "On", "Fast"});
+			vsyncSelection = -1;
+		}
+		if (frameLimitSelection != water.frameRateLimit) setDefsListSelection(kLimitKey, water.frameRateLimit);
+		if (vsyncSelection != water.vsync) setDefsListSelection(kVsyncKey, water.vsync);
 		if (getDefsListItemCount(kReflectionKey) == 0) {
 			setDefsListItems(kReflectionKey, {"High", "Medium", "Low", "Off"});
 			waterReflectionSelection = -1;
@@ -635,8 +647,13 @@ void OptionsGraphics::update()
 		LogisticsScreen::update();
 		const int reflection = getDefsListSelection(kReflectionKey);
 		const int detail = getDefsListSelection(kDetailKey);
+		const int limit = getDefsListSelection(kLimitKey);
+		const int vsync = getDefsListSelection(kVsyncKey);
 		if (reflection >= 0 && reflection < 4 && detail >= 0 && detail < 2 &&
-			(reflection != 3 - water.reflectionQuality || detail != 1 - water.waterDetail)) {
+			limit >= 0 && limit <= 6 && vsync >= 0 && vsync <= 2 &&
+			(reflection != 3 - water.reflectionQuality || detail != 1 - water.waterDetail || limit != water.frameRateLimit || vsync != water.vsync)) {
+			water.frameRateLimit = limit;
+			water.vsync = vsync;
 			water.reflectionQuality = 3 - reflection;
 			water.waterDetail = 1 - detail;
 			if (PlayerFrontEnd::saveRenderOptions && PlayerFrontEnd::saveRenderOptions(water)) {
@@ -645,11 +662,15 @@ void OptionsGraphics::update()
 				water = mc2::options::current();
 				setDefsListSelection(kReflectionKey, 3 - water.reflectionQuality);
 				setDefsListSelection(kDetailKey, 1 - water.waterDetail);
-				setDefsElementText("game.mcl_optionsgraphics.text.water_status", "Could not save water quality.");
+				setDefsListSelection(kLimitKey, water.frameRateLimit);
+				setDefsListSelection(kVsyncKey, water.vsync);
+				setDefsElementText("game.mcl_optionsgraphics.text.water_status", "Could not save graphics settings.");
 			}
 		}
 		waterReflectionSelection = 3 - water.reflectionQuality;
 		waterDetailSelection = 1 - water.waterDetail;
+		frameLimitSelection = water.frameRateLimit;
+		vsyncSelection = water.vsync;
 		const int guiResSel  = getDefsListSelection(kResKey);
 		if (guiResSel >= 0 && guiResSel != resolutionList.GetSelectedItem())
 			resolutionList.SelectItem(guiResSel);

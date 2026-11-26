@@ -9,6 +9,7 @@
 #include <atomic>
 #include <print>
 #include "mc2fmt.h"
+#include "Gates/render_options.h"
 #include "gameos.hpp"
 #include "hitch_stats.h"
 #include "../../RenderCore/TextureService.h"
@@ -1103,29 +1104,6 @@ int main(int argc, char** argv)
 	timing::init();
 
 
-    // MC2_FPS_CAP: max FPS override. Applies to both menu and mission.
-    //   unset → menu=90, mission=165 (defaults)
-    //   0     → uncapped
-    //   N     → N FPS in both states
-    // timeBeginPeriod(1) brings Windows Sleep() to 1ms resolution.
-    // Cap is skipped entirely when vsync is active (native FIFO presentation).
-    // A set value (even an empty or non-numeric one: atoi -> 0, uncapped) overrides both caps; the row's own
-    // default (90) is the menu cap, the mission cap stays 165 when unset.
-    const bool fpsCapIsSet = mc2::gate::isSet<"MC2_FPS_CAP">();
-    const int fpsCapSet = fpsCapIsSet
-        ? (mc2::gate::isNonEmpty<"MC2_FPS_CAP">() ? mc2::gate::get<"MC2_FPS_CAP">() : 0) : -1;
-    static const int s_fps_cap_menu    = fpsCapIsSet ? fpsCapSet : 90;
-    static const int s_fps_cap_mission = fpsCapIsSet ? fpsCapSet : 165;
-    bool s_vsync_active = false;
-#ifdef MC2_VULKAN
-    const auto& nativePresent = mc2vk::getOrCreateEnginePresentVk();
-    s_vsync_active = nativePresent.valid() && nativePresent.health().present_mode == VK_PRESENT_MODE_FIFO_KHR;
-#endif
-    mc2::fmt::print_out("[FRAMECAP] MC2_FPS_CAP={} vsync={} -- menu={} FPS mission={} FPS{}\n",
-           mc2::fmt::safe(fpsCapIsSet ? mc2::gate::raw<"MC2_FPS_CAP">() : "(unset)"),   // echoed as typed
-           s_vsync_active ? "ON" : "OFF",
-           s_fps_cap_menu, s_fps_cap_mission,
-           s_vsync_active ? " (cap inactive, vsync owns pacing)" : "");
 #ifdef _WIN32
     timeBeginPeriod(1);
 #endif
@@ -1261,6 +1239,30 @@ int main(int argc, char** argv)
         // after the timer FrameEnd; advisory, OFF=zero cost.
         gos_frame_pass_stats::FrameEnd(static_cast<unsigned long>(g_mc2FrameCounter.load(std::memory_order_relaxed)));
 
+    // Re-evaluated each frame so graphics settings apply immediately.
+    const bool fpsCapIsSet = mc2::gate::isSet<"MC2_FPS_CAP">();
+    const int fpsCapSet = fpsCapIsSet
+        ? (mc2::gate::isNonEmpty<"MC2_FPS_CAP">() ? mc2::gate::get<"MC2_FPS_CAP">() : 0) : -1;
+    const auto& pacing = mc2::options::current();
+    SDL_DisplayMode displayMode{};
+    const int displayIndex = g_sdl_window ? SDL_GetWindowDisplayIndex(g_sdl_window) : 0;
+    if (pacing.frameRateLimit == 6) SDL_GetDesktopDisplayMode(displayIndex >= 0 ? displayIndex : 0, &displayMode);
+    const int s_fps_cap_menu = mc2::options::effectiveFrameCap(pacing.frameRateLimit, displayMode.refresh_rate, fpsCapIsSet, fpsCapSet, false);
+    const int s_fps_cap_mission = mc2::options::effectiveFrameCap(pacing.frameRateLimit, displayMode.refresh_rate, fpsCapIsSet, fpsCapSet, true);
+    bool s_vsync_active = false;
+#ifdef MC2_VULKAN
+    const auto& nativePresent = mc2vk::getOrCreateEnginePresentVk();
+    s_vsync_active = nativePresent.valid() && nativePresent.health().present_mode == VK_PRESENT_MODE_FIFO_KHR;
+#endif
+    static int lastMenu = -1, lastMission = -1, lastVsync = -1, lastOption = -1;
+    if (lastMenu != s_fps_cap_menu || lastMission != s_fps_cap_mission || lastVsync != s_vsync_active || lastOption != pacing.vsync) {
+    mc2::fmt::print_out("[FRAMECAP] MC2_FPS_CAP={} vsync={} -- menu={} FPS mission={} FPS{}\n",
+           mc2::fmt::safe(fpsCapIsSet ? mc2::gate::raw<"MC2_FPS_CAP">() : "(unset)"),   // echoed as typed
+           s_vsync_active ? "ON" : "OFF",
+           s_fps_cap_menu, s_fps_cap_mission,
+           s_vsync_active ? " (cap inactive, vsync owns pacing)" : "");
+    lastMenu = s_fps_cap_menu; lastMission = s_fps_cap_mission; lastVsync = s_vsync_active; lastOption = pacing.vsync;
+    }
     const bool asyncPresent = mc2vk::present_thread::enabled();
     if (asyncPresent) frameFrameCap(s_vsync_active, s_fps_cap_mission, s_fps_cap_menu, start_tick);
     frameSwapWindow(win);   // the shared host present also ends the Vulkan frame and advances the handle-slot clock
