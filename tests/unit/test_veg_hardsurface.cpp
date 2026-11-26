@@ -167,6 +167,18 @@ TEST_CASE("VegClumps/member masks reject roads water buildings stock trees and s
     CHECK(clumpSurfaceAllowed(true,false,false,0,36,false));
 }
 
+TEST_CASE("VegClumps/pad fringe is sparse grass within six WU of open ground") {
+    const auto pad = [](float x, float) { return x >= 0.0f ? 1.0f : 0.0f; };
+    CHECK(clumpPadFringe(3,0,false,0.1f,pad));
+    CHECK_FALSE(clumpPadFringe(6,0,false,0.1f,pad));
+    CHECK_FALSE(clumpPadFringe(-1,0,false,0.1f,pad));
+    CHECK_FALSE(clumpPadFringe(3,0,true,0.1f,pad));
+    CHECK_FALSE(clumpPadFringe(3,0,false,0.28f,pad));
+    for (const auto masks : {std::array<bool,3>{false,true,false}, {true,false,true}, {true,true,false}})
+        CHECK_FALSE(clumpSurfaceAllowed(masks[0],masks[1],masks[2],0,0,false));
+    CHECK_FALSE(clumpSurfaceAllowed(true,false,false,0,50,false));
+}
+
 TEST_CASE("VegClumps/load shipped biome recipes and reject unsafe mod recipes") {
     const auto root=std::filesystem::path(MC2_REPO_ROOT);
     for (const char* name : {"grasslands","grasslands_dense","snow","desert","swamp"}) {

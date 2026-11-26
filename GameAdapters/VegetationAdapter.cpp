@@ -380,8 +380,11 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                         clumpStaticOccupied(gameMap->cellAt(cr,cc), fieldRecipe.has_value() && biome != Biome::Snow);
                 }
                 const float coverage = gos_terrain_indirect_HardSurfaceCoverage(instWx,instWy);
+                const bool padFringe = clumpPadFringe(instWx,instWy,member.woody,
+                    clumpRoll(col,row,seed,1200),gos_terrain_indirect_HardSurfaceCoverageReadOnly);
                 const float slope = land->getTerrainAngle(instPos,&normal);
-                if (!clumpSurfaceAllowed(true,elevation<=Terrain::waterElevation,occupied,coverage,slope,member.woody)) {
+                if (!clumpSurfaceAllowed(true,elevation<=Terrain::waterElevation,occupied,
+                                         padFringe ? 0.0f : coverage,slope,member.woody)) {
                     if (elevation<=Terrain::waterElevation) ++instRejWater;
                     else if (occupied || coverage>=0.15f) ++instRejOverlay;
                     else ++instRejSlope;
