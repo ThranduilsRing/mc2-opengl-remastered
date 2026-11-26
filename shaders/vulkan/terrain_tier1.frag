@@ -231,7 +231,7 @@ void main() {
     // self-shadow on it (terrain_lod_chunk.frag:894 + :902-907). We mirror that: on a
     // solid-cement hit -> flat-lit with ordinary static and dynamic shadows. (The GL dynamic building shadow on
     // concrete is a SEPARATE dynamic map, still deferred here.)
-    bool pureConcrete = false;
+    float pureConcrete = 0.0;
     bool cementHit = false;   // a solid cement atlas texel won (the shoreline wet band skips it, as GL)
     // Bounded shallow refraction of the seabed material, fading to zero at the waterline.
     // Displace texture reads only: terrain coverage, shadows and material classification stay fixed.
@@ -287,9 +287,12 @@ void main() {
             // Word bit23 => the atlas cell carries its own coverage in alpha; composite OVER base.
             bool cementOwnAlpha = (cw & 0x00800000u) != 0u;
             if (isTransition && cementOwnAlpha) {
-                float cOwnA = cementTexel.a;
+                vec4 edge = concreteSample(cTileUV, ivec2(ctX, ctY), 0, cGx, cGy);
+                float cOwnA = edge.a;
+                cementColor = mix(edge.rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB), cementColor, step(0.999, cementTexel.a));
                 base = mix(base, cementColor, cOwnA);
-                if (cOwnA > 0.5) { cementHit = true; pureConcrete = true; }
+                pureConcrete = cOwnA;
+                cementHit = cOwnA > 0.5;
             } else if (isTransition) {
                 if (TS_useTransitionMask != 0) {
                     float u = cTileUV.x, v = cTileUV.y;
@@ -330,12 +333,12 @@ void main() {
                         alpha = max(cCutLt((1.0 - u) + v, cFu + cFv), cCutLt(u + (1.0 - v), cFu + cFv));
                     }
                     base = mix(base, cementColor, alpha);
-                    if (alpha > 0.5) { cementHit = true; pureConcrete = true; }
+                    if (alpha > 0.5) { cementHit = true; pureConcrete = 1.0; }
                 }
             } else {
                 base = cementColor;
                 cementHit = true;
-                pureConcrete = true;
+                pureConcrete = 1.0;
             }
         }
 
@@ -352,7 +355,7 @@ void main() {
                 if (dnValid && !dnTransition) {
                     uint dLayerIdx = dnw & 0xFFFFu;
                     base = textureGrad(u_cementArt, vec3(dTileUV, float(dLayerIdx)), cGx, cGy).rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);  // CEMENT-NIGHT-LIGHT-1
-                    pureConcrete = true;
+                    pureConcrete = 1.0;
                     cementHit = true;   // as GL's diag-connect branch
                 }
             }
@@ -377,13 +380,13 @@ void main() {
     vec4 materialW = vec4(max(1.0 - materials.x - materials.y - materials.w, 0.0), materials.x, materials.y, materials.w);
     vec3 baseNormal = mv_smoothTerrainNormal(v_worldPos.xy);
     vec3 prelitBase = base;
-    float delitShare = pureConcrete || cementHit ? 0.0 : 1.0 - smoothstep(0.55, 0.85, abs(baseNormal.z));
+    float delitShare = (1.0 - pureConcrete) * (1.0 - smoothstep(0.55, 0.85, abs(baseNormal.z)));
     if (delitShare > 0.0 && TS_colormapReady != 0) {
         float gain = cliffDelightGain(dot(base, vec3(0.299, 0.587, 0.114)), cliffReferenceLuma(v_worldPos.xy));
         base *= mix(1.0, gain, delitShare);
     }
     vec3 baseColor = base;
-    float F3pc = pureConcrete ? 1.0 : 0.0;
+    float F3pc = pureConcrete;
     {
         vec4 f3W = materialW; float f3Snow = materialSnow;
         f3W = mix(f3W, vec4(0.0, 0.0, 0.0, 1.0), F3pc);
@@ -429,7 +432,7 @@ void main() {
         float natural = materialW.y + materialW.z;   // grass + dirt: the natural-ground weight
         float slopeClean = smoothstep(0.80, 0.92, abs(baseNormal.z));   // steep ground keeps the cliff/rock look
         // uT.vegetationEnabled carries the vegetation switch (see vulkan_terrain_island_run.cpp): the mottle is vegetation, off with it.
-        float wMottle = (uT.vegetationEnabled != 0 ? 1.0 : 0.0) * clamp(natural, 0.0, 1.0) * (1.0 - materialSnow) * (1.0 - F3pc) * (cementHit ? 0.0 : 1.0) * slopeClean;
+        float wMottle = (uT.vegetationEnabled != 0 ? 1.0 : 0.0) * clamp(natural, 0.0, 1.0) * (1.0 - materialSnow) * (1.0 - F3pc) * slopeClean;
         float coastDry = 0.0;
         if (TS_shorelineOn != 0) {
             float aboveW = v_worldPos.z - uT.shorelineWaterElev;
@@ -473,7 +476,7 @@ void main() {
         vec3 N = vec3(0.0, 0.0, 1.0);                            // flat-up terrain normal (default)
         bool resolveLampNormal = false;
         vec3 dbgBaseN = vec3(0.0, 0.0, 1.0); vec3 dbgDN = vec3(0.0);  // CSM-BLACKOUT-RECON-1 taps
-        if (TS_detailEnabled != 0 && !pureConcrete) {
+        if (TS_detailEnabled != 0 && pureConcrete < 1.0) {
             vec3 baseN = baseNormal;
             vec4 detailW = mv_groundDetailWeights(materialW, baseN.z);
             vec3 dN    = vec3(0.0);
@@ -499,6 +502,7 @@ void main() {
                                                (1.0 - blocked) * max(detailW.x, cliffRockWeight(abs(baseN.z))), N, baseColor);
             if (kPlanarReflection != 0 && kReflectCutDetail != 0) N = normalize(macroPert);
             dbgBaseN = baseN; dbgDN = dN;                        // CSM-BLACKOUT-RECON-1 taps
+            N = normalize(mix(N, vec3(0.0, 0.0, 1.0), pureConcrete));
         }
         // Evaluate the ratio after material sampling so its inputs do not stay
         // live across the detail/cliff texture walks. dbgBaseN already retains
@@ -510,7 +514,7 @@ void main() {
         float normalLight = clamp(max(dot(N, lightDir), normalLightFloor) / macroNdotL, 0.5, 1.5);
         // The cliff burnin already carries ambient. Only its sun share receives
         // another directional modulation; a back-facing face has no sun to occlude.
-        float cliffShare = pureConcrete ? 0.0 : 1.0 - smoothstep(0.55, 0.85, abs(baseNormal.z));
+        float cliffShare = (1.0 - pureConcrete) * (1.0 - smoothstep(0.55, 0.85, abs(baseNormal.z)));
         float cliffSun = cliffDirectShare(dot(macroN, lightDir), normalLightFloor);
         normalLight = mix(normalLight, mix(1.0, normalLight, cliffSun), cliffShare);
 
@@ -518,7 +522,7 @@ void main() {
         // fragments skip the material detail-normal fetches, so the two concrete fetches replace them (no net fetch increase).
         vec3 cdSpec = vec3(0.0);
         vec2 cdWpDx = dFdx(v_worldPos.xy), cdWpDy = dFdy(v_worldPos.xy);   // uniform flow, late: nothing extra stays live through the detail-normal block
-        if ((kPlanarReflection == 0 || kReflectCutDetail == 0) && TS_concreteDetail != 0 && pureConcrete) cdApply(cdRoad > 0.5 ? CD_LAYER_ROAD : CD_LAYER_PAD, v_worldPos.xy, cdWpDx, cdWpDy, lightDir, 1.0, baseColor, normalLight, cdSpec, N);
+        if ((kPlanarReflection == 0 || kReflectCutDetail == 0) && TS_concreteDetail != 0 && pureConcrete > 0.0) cdApply(cdRoad > 0.5 ? CD_LAYER_ROAD : CD_LAYER_PAD, v_worldPos.xy, cdWpDx, cdWpDy, lightDir, pureConcrete, baseColor, normalLight, cdSpec, N);
         gbufN = N;
 
         // Static ground mask and current-frame movers share the same visibility
@@ -560,7 +564,7 @@ void main() {
             float aoAll = clamp(mix(1.0, aoShape, uT.groundAoShape), 0.0, 1.0) * clamp(mix(1.0, aoMat, uT.groundAoMaterial), 0.0, 1.0);
             g_groundAoMul = mix(1.0, aoAll, 1.0 - cliffSun * shadow);
         }
-        lit = shadeGround(baseColor, N, normalLight, shadow, pureConcrete ? 1.0 : 0.0, v_worldPos, macroN, resolveLampNormal, lampLod);
+        lit = shadeGround(baseColor, N, normalLight, shadow, pureConcrete, v_worldPos, macroN, resolveLampNormal, lampLod);
         lit = max(lit + cdSpec * shadow, vec3(0.0));
 
         // TERRAIN-EDGE-FEATHER-1 (GL terrain_lod_chunk.frag, after the mover contact): the last tile band of the map fades to the sky haze
