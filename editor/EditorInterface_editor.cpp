@@ -3,6 +3,7 @@
 // Declared in the class headers; shared names in EditorInterface_internal.h.
 #include "EditorInterface_internal.h"
 #include "MapGeneratorDialog.h"
+#include "EditorRenderTimer.h"
 
 
 
@@ -480,6 +481,7 @@ void Editor::render()
 
 void Editor::update()
 {
+	EditorCpuPhase_Begin();
 	// S2.9 — Editor's analog to code/mission.cpp Mission::update pre-pause-branch
 	// substrate_frameBegin (commit f8d6b171). Editor::update() is invoked
 	// unconditionally from DoGameLogic() every tick (Editor.cpp:198) — no
@@ -517,6 +519,7 @@ void Editor::update()
 	if ( land )
 	{
 		eye->update();
+		EditorCpuPhase_Mark("camera");
 		if (land->terrainTextures2 && !(land->terrainTextures2->colorMapStarted) && (EditorInterface::instance()))
 		{
 			if (EditorInterface::instance())
@@ -548,15 +551,20 @@ void Editor::update()
 			eye->changeResolution(newRes);
 		}
 
+		EditorCpuPhase_Mark("terrainUpdate");
 		land->clearObjBlocksActive();
 		land->geometry();
+		EditorCpuPhase_Mark("terrainGeometry");
 	}
 
 	if (EditorInterface::instance())
 	{
 		EditorInterface::instance()->update();
 	}
+	EditorCpuPhase_Mark("interface");
 	EditorObjectMgr::instance()->update();
+	EditorCpuPhase_Mark("objects");
+	EditorCpuPhase_End();
 
 
 }

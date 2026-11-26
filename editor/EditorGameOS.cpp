@@ -281,6 +281,10 @@ void __stdcall InitGameOS(HINSTANCE /*hInstance*/, HWND hWindow, char* commandLi
         int h = rc.bottom - rc.top;
         if (w <= 0) w = 1024;
         if (h <= 0) h = 768;
+        if (mc2::gate::get<"MC2_WINDOW_OFFSCREEN">()) {
+            if (mc2::gate::get<"MC2_WIDTH">() > 0) w = mc2::gate::get<"MC2_WIDTH">();
+            if (mc2::gate::get<"MC2_HEIGHT">() > 0) h = mc2::gate::get<"MC2_HEIGHT">();
+        }
 
         Environment.screenWidth = w;
         Environment.screenHeight = h;
@@ -493,6 +497,10 @@ DWORD __stdcall RunGameOSLogic()
         ::GetClientRect(hwnd, &rc);
         int w = rc.right - rc.left;
         int h = rc.bottom - rc.top;
+        if (mc2::gate::get<"MC2_WINDOW_OFFSCREEN">()) {
+            if (mc2::gate::get<"MC2_WIDTH">() > 0) w = mc2::gate::get<"MC2_WIDTH">();
+            if (mc2::gate::get<"MC2_HEIGHT">() > 0) h = mc2::gate::get<"MC2_HEIGHT">();
+        }
         // Compare against the last REAL client size (not Environment, which we shrink
         // below for the docked scene viewport -- otherwise this fires every frame).
         static int s_lastClientW = -1, s_lastClientH = -1;
