@@ -466,7 +466,6 @@ vec3 waterPoolLights(vec3 wp, vec3 N, vec3 V, float alpha2, out vec3 spec){
         hi = int(cell.x + cell.y);
         indexed = true;
     }
-    if (TLP_POOL_BUDGET > 0) hi = min(hi, lo + TLP_POOL_BUDGET);
     vec3 pool = vec3(0.0), poolMover = vec3(0.0);
     for (int k = lo; k < hi; ++k) {
         int i = indexed ? int(lightGridIndices[k]) : k;
@@ -475,10 +474,9 @@ vec3 waterPoolLights(vec3 wp, vec3 N, vec3 V, float alpha2, out vec3 spec){
         bool  mover = poolLights[i]._plPad1 > 0.5;
         float nearD = poolLights[i].closeDistance;
         float len, falloff;
-        if (!lpa_falloff(vtl, mover, uT.lightPoolMoverScale, uT.lightPoolSoft, nearD,
-                         poolLights[i].farDistance, poolLights[i].oneOverDistance, len, falloff)) continue;
-        falloff = lpa_spotCone(vtl, poolLights[i].lightType, len, poolLights[i].farDistance, falloff);
-        if (falloff <= 0.0) continue;
+        if (!lpa_evaluate(wp, poolLights[i].position, poolLights[i].lightType,
+                          mover, uT.lightPoolMoverScale, uT.lightPoolSoft, nearD,
+                          poolLights[i].farDistance, poolLights[i].oneOverDistance, len, falloff)) continue;
         vec3 plCol = poolLights[i].color * poolLights[i].intensity;
         if (mover) plCol *= uT.lightPoolMoverDim;
         spec += plCol * (falloff * waterGgxSpec(N, V, -vtl / max(len, 1e-3), alpha2));
@@ -896,7 +894,7 @@ void main(void)
         } else
         col += min(sunRad * (SUN_SPEC_GAIN * glintScale * sunVis * waterGgxSpec(waveN, vdir, Ls, specAlpha2)), vec3(shorelineLook == 1 ? mix(1.6, 0.4, coastNight) : 4.0));
         // The lamp specular and the flat pool term come from one light walk (waterPoolLights), added right after the sun glint.
-        if (F.debug.y < 0.5 && uT.numPoolLights > 0 && nightSky < 1.0) {
+        if (uT.numPoolLights > 0) {
             vec3 lampSpec;
             vec3 poolTerm = waterPoolLights(WorldPos, waveN, vdir, specAlpha2, lampSpec);
             col += min(lampSpec * (LAMP_SPEC_GAIN * glintScale), vec3(shorelineLook == 1 ? 0.25 : 4.0));   // coastal: no lamp flecks on the fine ripples

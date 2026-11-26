@@ -23,15 +23,12 @@ void olp_addPoolLight(int i, vec3 worldPosMC2, int poolSoft, float moverDim,
                       float moverScale, int moverMax, inout vec3 pool, inout vec3 poolMover)
 {
     if (poolLights[i].lightType == 0u) return;
-    vec3  vtl = worldPosMC2 - poolLights[i].position;
     bool  mover = poolLights[i]._plPad1 > 0.5;
     float nearD = poolLights[i].closeDistance;
     float len, falloff;
-    if (!lpa_falloff(vtl, mover, moverScale, poolSoft, nearD,
-                     poolLights[i].farDistance, poolLights[i].oneOverDistance, len, falloff)) return;
-    falloff = lpa_spotCone(vtl, poolLights[i].lightType, len, poolLights[i].farDistance, falloff);   // LOCAL-LIGHTS-1/3
-    if (falloff <= 0.0) return;
-    falloff *= lpa_localShadow(worldPosMC2, poolLights[i].position, poolLights[i].lightType, poolLights[i].farDistance);   // LOCAL-LIGHTS-2
+    if (!lpa_evaluate(worldPosMC2, poolLights[i].position, poolLights[i].lightType,
+                      mover, moverScale, poolSoft, nearD, poolLights[i].farDistance,
+                      poolLights[i].oneOverDistance, len, falloff)) return;
     vec3 plCol = poolLights[i].color * poolLights[i].intensity;
     if (mover) {
         plCol *= moverDim;
@@ -89,10 +86,6 @@ vec3 olp_objectPoolLight(vec3 worldPosMC2, int numPoolLights, int poolSoft,
         uvec2 range = lightGridCells[cell.y * uT.lightGridDim + cell.x];
         lo = int(range.x); hi = int(range.x + range.y); indexed = true;
     }
-#endif
-#ifdef MC2_OBJECT_POOL_BUDGET
-    // Spatial lists retain nearby pools; bound fragment work on 24-EU/shared-DDR4 presets.
-    if (MC2_OBJECT_POOL_BUDGET > 0) hi = min(hi, lo + MC2_OBJECT_POOL_BUDGET);
 #endif
     for (int k = lo; k < hi; ++k) {
         int i = k;

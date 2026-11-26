@@ -112,7 +112,6 @@ static std::vector<uint32_t> s_gridIndices;
 static std::vector<uint32_t> s_gridCounts;   // scratch: per-cell counter
 static std::vector<uint32_t> s_objectPoolUpload;
 static bool s_objectPoolDirty = true;
-static float s_poolCamXY[2] = {0.0f, 0.0f};   // camera target of the last pack: which lights the capped object pool keeps
 static uint32_t s_lightGridDim     = 0;      // 0 => grid not active this frame
 static float    s_lightGridMin[2]  = {0.0f, 0.0f};
 static float    s_lightGridInvCell[2] = {0.0f, 0.0f};
@@ -327,52 +326,11 @@ const void* GetObjectLightPoolUpload(size_t& bytes) {
     if (s_objectPoolDirty || s_objectPoolUpload.empty()) {
         ObjectPoolHeader header{};
         const uint32_t count = std::min(s_lastNumLights, kObjectPoolLights);
-        static bool warnedOverflow = false;
-        if (s_lastNumLights > kObjectPoolLights && !warnedOverflow) {
-            warnedOverflow = true;
-            MC2_DIAGFE(stderr, "[OBJECT_POOL_CAP v1] wanted=%u cap=%u policy=nearest_to_camera dropped=%u\n",
-                s_lastNumLights, kObjectPoolLights, s_lastNumLights - kObjectPoolLights);
-        }
-        // Over the cap, keep the lights whose circle reaches closest to the camera (not the first by source order),
-        // in source order, and remap the grid's indices to the kept slots.
-        std::vector<uint32_t> keptHeader, keptIndices;
+        // The world pool and every receiver share the same capacity and indices.
         const auto gridOpt = GetLightGridCpu();
         const bool indexed = gridOpt.has_value();
-        LightGridCpu grid = gridOpt.value_or(LightGridCpu{});
-        if (s_lastNumLights > kObjectPoolLights) {
-            std::vector<std::pair<float, uint32_t>> order(s_lastNumLights);
-            for (uint32_t i = 0; i < s_lastNumLights; ++i) {
-                const GpuTerrainLight& L = s_lightBuf[i];
-                const float dx = L.position[0] - s_poolCamXY[0], dy = L.position[1] - s_poolCamXY[1];
-                order[i] = { std::max(0.0f, std::sqrt(dx * dx + dy * dy) - L.farDistance), i };
-            }
-            std::nth_element(order.begin(), order.begin() + count, order.end());
-            std::vector<uint32_t> keep(count);
-            for (uint32_t k = 0; k < count; ++k) { const auto& [dist, index] = order[k]; (void)dist; keep[k] = index; }
-            std::sort(keep.begin(), keep.end());
-            std::vector<uint32_t> remap(s_lastNumLights, UINT32_MAX);
-            for (uint32_t k = 0; k < count; ++k) {
-                remap[keep[k]] = k;
-                header.lights[k] = s_lightBuf[keep[k]];
-            }
-            if (indexed) {
-                const uint32_t cells = grid.headerWords / 2u;
-                keptHeader.resize(grid.headerWords);
-                for (uint32_t c = 0; c < cells; ++c) {
-                    keptHeader[c * 2u] = static_cast<uint32_t>(keptIndices.size());
-                    for (uint32_t j = 0; j < grid.header[c * 2u + 1u]; ++j) {
-                        const uint32_t m = remap[grid.indices[grid.header[c * 2u] + j]];
-                        if (m != UINT32_MAX) keptIndices.push_back(m);
-                    }
-                    keptHeader[c * 2u + 1u] = static_cast<uint32_t>(keptIndices.size()) - keptHeader[c * 2u];
-                }
-                grid.header = keptHeader.data();
-                grid.indices = keptIndices.data();
-                grid.indexWords = static_cast<uint32_t>(keptIndices.size());
-            }
-        } else if (count) {
-            std::memcpy(header.lights, s_lightBuf.data(), count * sizeof(GpuTerrainLight));
-        }
+        const LightGridCpu grid = gridOpt.value_or(LightGridCpu{});
+        if (count) std::memcpy(header.lights, s_lightBuf.data(), count * sizeof(GpuTerrainLight));
         size_t words = 0;
         if (indexed) {
             header.minInvXY[0] = grid.minXY[0]; header.minInvXY[1] = grid.minXY[1];
@@ -443,7 +401,7 @@ void mission_init(uint32_t numVertices, uint32_t maxLights) {
     mission_shutdown();
 
     s_numVertices = numVertices;
-    s_maxLights   = (maxLights > 0) ? maxLights : 1u;
+    s_maxLights   = std::clamp(maxLights, 1u, kObjectPoolLights);
 
     // LIGHT-POOL-CAP-1 (user directive, 2026-07-24: "ok just increase the
     // number of lights available"). Fixtures were silently losing their ground
@@ -462,9 +420,9 @@ void mission_init(uint32_t numVertices, uint32_t maxLights) {
     {
         // Row: default 0 (use the built-in default below), range(0, 4096).
         static const uint32_t s_capOverride = static_cast<uint32_t>(mc2::gate::get<"MC2_LIGHT_POOL_MAX">());
-        const uint32_t defaultCap = 256u;
+        const uint32_t defaultCap = kObjectPoolLights;
         const uint32_t want = s_capOverride ? s_capOverride : defaultCap;
-        s_maxLights = std::max(s_maxLights, want);
+        s_maxLights = std::clamp(want, s_maxLights, kObjectPoolLights);
     }
 
     // Pre-size pack buffers
@@ -602,20 +560,10 @@ void PackAndDispatch() {
 
     }
 
-    // --- Pack light input SSBO (lights starting at index 2 — first two factored into sun) ---
-    // quad.cpp:1325: "First two lights are already factored into the above equations!"
-    // The shader receives only lights [2..N-1]; u_numLights = count of those.
+    // Pack local world lights independently of camera visibility and terrain tiles.
+    // Sun and ambient are supplied separately by the shared environment.
     uint32_t numLights = 0;
     if (eye) {
-        // LIGHT-POOL-VIS-GATE-1 (2026-07-21, fog-of-war leak): the legacy CPU
-        // consumer honors TG_Light::active (tgl.cpp:2123) but this pack loop
-        // did not — INACTIVE lights (mover appearances set active=false for
-        // enemy movers without visual contact; camera sets it false for
-        // off-screen point/spot lights) were packed anyway, so night light
-        // pools rendered at red sensor-blip positions of UNSEEN enemies
-        // (positional intel leak) and off-screen lights burned pool budget.
-        // Skip !active — legacy parity. Killswitch MC2_LIGHT_POOL_VIS_GATE=0.
-        static const bool s_visGate = true;   // default ON
         // NIGHT-LIGHT-POOLS-2a: mover-light classification for the pool
         // consumer (frag dims mover pools; the compute vertex-lighting
         // consumer ignores the pad field — no legacy deviation). Slot tags
@@ -666,16 +614,16 @@ void PackAndDispatch() {
                 static_cast<unsigned long>(s_poolDumpFrame), eye->isNight ? 1 : 0,
                 static_cast<long>(eye->getNumTerrainLights()));
         }
-        const long nLights = eye->getNumTerrainLights();
+        const long nLights = worldLights ? MAX_LIGHTS_IN_WORLD : 0;
         // LIGHT-POOL-CAP-1: measure real DEMAND, not just what fit. The loop no
         // longer breaks at the cap — it keeps scanning and counts the lights it
         // had to drop, so the log states the worst-case slot requirement for a
         // scene instead of just reporting "full". s_poolWanted counts every
         // light that passed the visibility gate and therefore wanted a slot.
         uint32_t poolWanted = 0, poolDropped = 0;
-        for (long i = 2; i < nLights; ++i) {
-            TG_LightPtr tl = eye->getTerrainLight(i);
-            if (!tl) continue;
+        for (long i = 0; i < nLights; ++i) {
+            TG_LightPtr tl = worldLights[i];
+            if (!tl || tl->lightType < TG_LIGHT_POINT || tl->lightType > TG_LIGHT_TERRAIN) continue;
             if (dumpThisFrame) {
                 const long slot = slotOf(tl);
                 mc2_spotlight_diag::SourceClass src;
@@ -695,10 +643,13 @@ void PackAndDispatch() {
                               : src == mc2_spotlight_diag::Mech ? "mech" : "gv")
                            : "other",
                     reinterpret_cast<std::uintptr_t>(mc2_spotlight_diag::slot_owner(eye, slot)),
-                    (!s_visGate || tl->active) ? 1 : 0);
+                    tl->ownerEnabled ? 1 : 0);
                 std::fflush(stderr);
             }
-            if (s_visGate && !tl->active) continue;   // LIGHT-POOL-VIS-GATE-1
+            // Camera::active uses screen probes, not a conservative volume test.
+            // Keep owner intent (FoW/status); the world grid culls per receiver.
+            if (!tl->ownerEnabled) continue;
+            if (!eye->isNight && mc2_spotlight_diag::is_e_slot(eye, i) == mc2_spotlight_diag::Bldg) continue;
             ++poolWanted;                              // LIGHT-POOL-CAP-1 demand
             if (numLights >= s_maxLights) { ++poolDropped; continue; }
             GpuTerrainLight& gl = s_lightBuf[numLights];
@@ -799,12 +750,14 @@ void PackAndDispatch() {
         // starving scene names the number of slots it actually needs.
         {
             static uint32_t s_peakWanted = 0;
+            static bool reported = false;
             static bool     s_warnedDrop = false;
             const bool newPeakWanted = poolWanted > s_peakWanted;
-            if (newPeakWanted) {
+            if (newPeakWanted || !reported) {
+                reported = true;
                 s_peakWanted = poolWanted;
                 MC2_DIAGFE(stderr,
-                    "[LIGHT_POOL_CAP v1] peak_wanted=%u packed=%u cap=%u dropped=%u\n",
+                    "[LIGHT_POOL_CAP v1] peak_wanted=%u packed=%u cap=%u dropped=%u receiver_dropped=0\n",
                     s_peakWanted, numLights, s_maxLights, poolDropped);
                 std::fflush(stderr);
             }
@@ -825,7 +778,6 @@ void PackAndDispatch() {
     {
         const bool shadowTiles = eye && mc2_vk_local_shadows_capable() != 0;
         const float camX = eye ? eye->getPosition().x : 0.0f, camY = eye ? eye->getPosition().y : 0.0f;
-        s_poolCamXY[0] = camX; s_poolCamXY[1] = camY;
         mc2localshadow::selectTiles(std::span(s_lightBuf.data(), numLights), camX, camY, shadowTiles);
     }
     // NIGHT-LIGHT-POOLS-1: publish this frame's packed count for the forward

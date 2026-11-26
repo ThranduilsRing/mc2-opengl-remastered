@@ -183,7 +183,7 @@ void main() {
 #endif
 
 
-        // A ground vehicle keeps its legacy look: no specular sheen, no light pools.
+        // Ground vehicles retain their material response and receive shared local pools.
 #ifndef MECH_PREVIEW
         if (uFrame.shadeA.y > 0.0 && vMechSunFound != 0 && (vLegacyVehicle == 0u || (vImportedMech & 8u) != 0u)) {
             bool isGlass = msh_isGlass(tex_color.rgb, uFrame.shadeB.x, uFrame.shadeB.y);
@@ -203,7 +203,7 @@ void main() {
 #endif
 
 #ifndef MECH_PREVIEW
-        if (uFrame.poolI.x > 0 && vLegacyVehicle == 0u)
+        if (uFrame.poolI.x > 0)
             rgb += tex_color.rgb * olp_objectPoolLight(vWorldPos, uFrame.poolI.x, uFrame.poolI.y,
                                                        uFrame.poolF.x, uFrame.poolF.y,
                                                        uFrame.poolI.z, uFrame.poolI.w,
