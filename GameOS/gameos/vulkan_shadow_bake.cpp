@@ -806,7 +806,6 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
         objectFullDirty_ ? "full_dirty" : !objectDirtyRect_ ? "no_region" :
         recordedObjectMatrix_ != objectMatrix_ ? "projection" : "none";
     objectPartial_ = std::strcmp(fallback, "none") == 0;
-    mc2::fmt::print_err("[SHADOW_BAKE] object record fallback={}\n", fallback);
     objectScissor_ = {{0, 0}, {static_cast<uint32_t>(objectMapSize()), static_cast<uint32_t>(objectMapSize())}};
     if (objectPartial_) {
         auto r = *objectDirtyRect_;
@@ -948,18 +947,18 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     // Only a pass that records the mask consulted the cache; an object-map-only update has no cache read and must not overwrite the load's answer with "miss".
     if (recordedMask_) mc2_hitch2::stats().bakeCache.store(warm ? "hit" : "miss");
     if (recordedMask_ && warm) {
-        mc2::fmt::print_err("[SHADOW_BAKE] warm: mask {}^2 BC4 from the cook cache (key {:016x}, read {:.2f} ms), object map re-recorded, cpu_ms={:.2f}\n",
-                            layout_.texels, mc2::fmt::as_u64(contentKey_), warmReadMs, cpuMs_);
+        mc2::fmt::print_err("[SHADOW_BAKE] warm: mask {}^2 BC4 from the cook cache (key {:016x}, read {:.2f} ms), object map re-recorded, cpu_ms={:.2f}, fallback {}\n",
+                            layout_.texels, mc2::fmt::as_u64(contentKey_), warmReadMs, cpuMs_, fallback);
     } else if (recordedMask_) {
         mc2::fmt::print_err("[SHADOW_BAKE] recorded mask={}^2 texel_wu={:.3f} tiles={} casters={} binned_instances={} sun=({:.3f},{:.3f},{:.3f}) theta_deg={:.2f} "
-                            "fade=({:.0f},{:.0f},{:.3f}) water={:.1f} heights={}^2@{:.0f}wu cpu_ms={:.2f}\n",
+                            "fade=({:.0f},{:.0f},{:.3f}) water={:.1f} heights={}^2@{:.0f}wu cpu_ms={:.2f}, fallback {}\n",
                             layout_.texels, layout_.texelWorld, tileCount, mc2::fmt::as_size(leaves_.size()), binnedInstances_, sun_.x, sun_.y, sun_.z,
                             mc2shadow::kSunAngularRadiusDeg, mc2shadow::kFadeStartWorld, mc2shadow::kFadeEndWorld, fadeMax_, waterZ_, heightSide_,
-                            heightSpacing_, cpuMs_);
+                            heightSpacing_, cpuMs_, fallback);
     } else {
-        mc2::fmt::print_err("[SHADOW_BAKE] object map re-recorded: generation={} casters={} timings(ms): total {:.3f}, height {:.3f}, resolve {:.3f}, bin {:.3f}, record {:.3f}\n",
+        mc2::fmt::print_err("[SHADOW_BAKE] object map re-recorded: generation={} casters={} timings(ms): total {:.3f}, height {:.3f}, resolve {:.3f}, bin {:.3f}, record {:.3f}, fallback {}\n",
                             mc2::fmt::as_u64(recordedObjectGeneration_), mc2::fmt::as_size(objInst.size()), cpuMs_, heightMs, resolveMs, cpuStage_[2],
-                            std::chrono::duration<double, std::milli>(clk::now() - tRecord).count());
+                            std::chrono::duration<double, std::milli>(clk::now() - tRecord).count(), fallback);
     }
     return true;
 }
