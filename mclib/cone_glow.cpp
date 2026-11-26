@@ -29,6 +29,7 @@
 #include <vector>
 #include "Gates/gate.h"
 #include "../RenderCore/axis_convert.h"
+#include "../GameOS/gameos/gos_terrain_lighting.h"
 #include "mc2fmt.h"
 
 namespace mc2_cone_glow {
@@ -897,15 +898,14 @@ void QueueConeGlow(mc2::tgl::ViewUniforms view, TG_MultiShape* shape, long nodeI
 
 // ---- LIGHT-REALISM-1: beacon emission ---------------------------------------
 
-// Beacon glow intensity: peak alpha (0..255) at the disc centre. Restrained by
-// design — a beacon spills a gentle colored pool, never a headlight.
+// Beacon intensity, shared by the physical point and its emissive core.
 static float realism_beacon_alpha()
 {
     static const float s = mc2::gate::get<"MC2_LIGHT_REALISM_BEACON">();
     return s;
 }
 
-// Ground-disc radius in world units.
+// Physical point-light radius in world units.
 static float realism_beacon_radius()
 {
     static const float s = mc2::gate::get<"MC2_LIGHT_REALISM_BEACON_RADIUS">();
@@ -951,7 +951,7 @@ DWORD beaconRgbFromName(mc2::czstring nodeName)
 
 void QueueBeaconGlow(mc2::tgl::ViewUniforms view, TG_MultiShape* shape, float nightFactor)
 {
-    // Default-OFF gate -> byte-identical.
+    // Existing default-ON lighting controls also act as kill switches.
     if (!realism_enabled() || !glow_enabled() || !shape || !view.cameraValid) return;
     if (nightFactor <= 0.001f) return;
 
@@ -968,19 +968,7 @@ void QueueBeaconGlow(mc2::tgl::ViewUniforms view, TG_MultiShape* shape, float ni
     const float viewMulX = view.viewMulX, viewAddX = view.viewAddX;
     const float viewMulY = view.viewMulY, viewAddY = view.viewAddY;
 
-    // Project the beacon node's OWN origin through the proven QueueConeGlow
-    // transform (shapeToClip = shapeToWorld * s_worldToClip, msl.cpp:2068).
-    //
-    // BEACON-GEOMETRY-1: an earlier revision built the disc as a world-space
-    // ring and projected it with s_worldToClip ALONE. That collapsed — the
-    // rendered blob was identical at radius 30 and radius 200 — because
-    // s_worldToClip is only half of the legacy transform; it is composed with
-    // the node matrix, never applied to world points on its own. So the disc
-    // is now built in SCREEN space around the projected node origin, which is
-    // both correct and what a glow sprite would do anyway. The world radius is
-    // converted to pixels with the standard perspective relation
-    // (screen size of world length L ~= L * viewMulX * rhw), so distant
-    // beacons still get proportionally smaller pools.
+    // Project only the tiny core through the same node transform as the light.
     struct SV { float x, y, z, rhw; bool ok; };
 
     // BEACON-DIAG-1 (MC2_LIGHT_CONE_DIAG=1): attribute a missing beacon glow to
@@ -1010,6 +998,21 @@ void QueueBeaconGlow(mc2::tgl::ViewUniforms view, TG_MultiShape* shape, float ni
         }
 
         const DWORD rgb = beaconRgbFromName(child->getNodeName());
+
+        // Light receivers through the shared cluster pool, not a projected disc.
+        const auto origin = mc2ToRender(mc2::math::transformPoint(glm::vec3(0), recp->shapeToWorld));
+        gos_terrain_lighting::GpuTerrainLight light{};
+        light.position[0] = origin.x;
+        light.position[1] = origin.y;
+        light.position[2] = origin.z + 4.0f;
+        light.lightType = 1u; // point
+        light.color[0] = static_cast<float>((rgb >> 16) & 255) / 255.0f;
+        light.color[1] = static_cast<float>((rgb >> 8) & 255) / 255.0f;
+        light.color[2] = static_cast<float>(rgb & 255) / 255.0f;
+        light.farDistance = radius;
+        light.oneOverDistance = 1.0f / radius;
+        light.intensity = peak / 70.0f;
+        gos_terrain_lighting::QueueBeaconLight(light);
 
         // Project the node origin exactly the way the cone path does.
         glm::mat4 shapeToClip;
@@ -1041,16 +1044,14 @@ void QueueBeaconGlow(mc2::tgl::ViewUniforms view, TG_MultiShape* shape, float ni
         c.ok = (c.z >= 0.0f) && (c.z < 1.0f);
         if (!c.ok) { ++dClipped; continue; }
 
-        float radPx = radius * pixPerWu;
-        if (radPx < 2.0f)   { ++dClipped; continue; }   // sub-pixel -> skip
-        radPx = std::min(radPx, 400.0f);                // sanity clamp
+        const float radPx = std::clamp(1.0f * pixPerWu, 1.0f, 2.5f);
 
         // A quad carries a unit-disc coordinate to legacy_shape_tier1.frag.
         // Its analytic falloff avoids the old five flat bands and twelve-sided rim.
         // U in [-102,-100] is reserved for this untextured additive beacon batch.
         if (s_tris.size() + 2 > kMaxFrameTris) { ++dEmitted; return; }
         const float zBias = c.z * 1.002f; // reverse-Z: move toward the camera
-        const float aScale = clampf(peak / 255.0f, 0.0f, 1.0f);
+        const float aScale = clampf(peak / 70.0f, 0.0f, 1.0f);
         const DWORD R = static_cast<DWORD>(static_cast<float>((rgb >> 16) & 0xFFu) * aScale);
         const DWORD G = static_cast<DWORD>(static_cast<float>((rgb >> 8) & 0xFFu) * aScale);
         const DWORD B = static_cast<DWORD>(static_cast<float>(rgb & 0xFFu) * aScale);

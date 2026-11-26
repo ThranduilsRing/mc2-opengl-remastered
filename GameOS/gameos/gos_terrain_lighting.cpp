@@ -35,6 +35,14 @@
 extern DWORD BaseVertexColor;  // defined in code/mechcmd2.cpp / code/logmain.cpp
 extern bool  useFog;           // defined in mclib/terrain.cpp
 
+namespace {
+std::vector<gos_terrain_lighting::GpuTerrainLight> s_beaconLights;
+}
+
+void gos_terrain_lighting::QueueBeaconLight(const GpuTerrainLight& light) {
+    s_beaconLights.push_back(light);
+}
+
 // Step 7 (VPL retirement): MC2_HAZE_PARITY probe — env-gated default-off.
 // Compares the inline-worldPos hazeFactor formula (CPU-recomputed from
 // v.vx/v.vy/v.elevation + swizzled camera pos + Camera:: constants) against the
@@ -441,6 +449,7 @@ void mission_init(uint32_t numVertices, uint32_t maxLights) {
 // mission_shutdown — per-mission teardown
 // ---------------------------------------------------------------------------
 void mission_shutdown() {
+    s_beaconLights.clear();
     if (!s_initialized) return;
 
     s_lightGridDim         = 0;
@@ -743,6 +752,14 @@ void PackAndDispatch() {
             }
             ++numLights;
         }
+
+        for (const auto& light : s_beaconLights) {
+            ++poolWanted;
+            if (numLights >= s_maxLights) { ++poolDropped; continue; }
+            s_lightBuf[numLights++] = light;
+        }
+        // Presentation continues while the simulation turn is frozen.
+        s_beaconLights.clear();
 
         // LIGHT-POOL-CAP-1: report peak demand + any starvation. Always-on but
         // rate-limited to transitions of the high-water mark, so a scene that
