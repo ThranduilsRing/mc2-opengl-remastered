@@ -13,10 +13,10 @@
     "mod": "MC2X-CVE-G",
     "mission": "metropolitan",
     "error_class": "ammo",
-    "count_ceiling": 5,
+    "count_ceiling": 6,
     "first_window": 121,
     "expires_window": 124,
-    "owner_note": "Owner W95 assignment 2026-10-31 accepts known errors in tools/mod_known_failures.json; renewed unchanged (same message hash and count ceiling) for windows 121-123 under the owner's standing approval 2026-11-02 (unchanged renewals need no per-window approval); a new signature still stops the window.",
+    "owner_note": "Owner mods-cveg-1 assignment 2026-11-26 permits absorbing mod content noise after comparison. Metropolitan produces six orphan ammo 205 events on both promote-1125e (147b59875cdf) and stage-1126a (67b9b89179a5), with mechs 18/0 and AI OK; ammo/loadout paths are unchanged across those promotes. Raise only this existing hash from five to six. Evidence: G:/mc2-proofs/mods-cveg-1/1125e-metropolitan.log and 1126a-nightly-metropolitan.log; original acceptance: owner W95, 2026-10-31.",
     "message_sha256": "aecdbdfb1e28ff5ffd4a0030941c4c8cee082318d8984fdf4382f048a9889d64"
   },
   {

@@ -60,8 +60,8 @@ def test_content_signatures_reject_replacement_error_in_same_class():
 def test_split_ammo_budget_enforces_each_hash(capsys):
     entries = [e for e in ms.load_known_failures()
                if e['mod'] == 'MC2X-CVE-G' and e['error_class'] == 'ammo']
-    assert sorted(e['count_ceiling'] for e in entries) == [1, 1, 5]
-    assert sum(e['count_ceiling'] for e in entries) == 7
+    assert sorted(e['count_ceiling'] for e in entries) == [1, 1, 6]
+    assert sum(e['count_ceiling'] for e in entries) == 8
     for entry in entries:
         signature = 'ammo:' + entry['message_sha256']
         counts = {signature: entry['count_ceiling']}
