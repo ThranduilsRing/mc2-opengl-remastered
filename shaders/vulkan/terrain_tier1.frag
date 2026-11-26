@@ -2,7 +2,10 @@
 // MRT0: opaque colormap with cement, material detail, shadows and local lighting.
 // MRT1: flat-up normal plus alpha=1, the terrain's self-shadowed receiver class.
 // Colormap UVs and material shading retain terrain_lod_chunk.frag conventions.
-#version 450
+#version 460
+#ifdef MC2_RT_SUN_SHADOWS
+#extension GL_EXT_ray_query : require
+#endif
 #extension GL_GOOGLE_include_directive : require
 #ifndef PREC
 #define PREC highp
@@ -19,6 +22,9 @@ layout(constant_id = 14) const int kReflectCutMovers = 1;
 vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod);
 #define TLP_LAMP_NORMAL mv_lampPoolNormal
 #include "include/terrain_frame_vk.glsl"   // TerrainFrameUBO + set-0 resources + CSM shadow helpers
+#ifdef MC2_RT_SUN_SHADOWS
+#include "include/rt_sun_shadow.glsl"
+#endif
 #define TS_authoredMaterialsOnly (uT.reserved220 != 0.0)
 
 // -1 preserves the uniform path for generic and skirt pipelines.
@@ -537,6 +543,10 @@ void main() {
         // floor. Cement receives both, exactly like the surrounding terrain.
         vec3 shadowN=baseNormal;
         float staticS=TS_enableShadows!=0?terrainStaticShadow(v_worldPos):1.0;
+#ifdef MC2_RT_SUN_SHADOWS
+        if (TS_enableShadows!=0 && v_worldPos.z>=uT.shorelineWaterElev && distance(v_worldPos,uT.cameraPosMC2.xyz)<1536.0)
+            staticS=min(staticS,mix(sunShadowFloor(0.4),1.0,rtPropSunVisibility(v_worldPos,shadowN,moverFrame.sun.xyz)));
+#endif
         float dynS=kPlanarReflection != 0 && kReflectCutMovers != 0 ? 1.0 : terrainDynamicShadow(v_worldPos,shadowN);
         float shadow = min(mix(staticS, mix(1.0, staticS, cliffSun), cliffShare), dynS);
         // CSM-BLACKOUT-RECON-1: one-shot debug viz (env MC2_SHADOW_DEBUG_MODE=N).

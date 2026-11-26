@@ -56,6 +56,7 @@ std::vector<Record> buildRecords(std::span<const PropPlacement> props, uint32_t 
         Record r;
         r.key = Key{Kind::StaticProp, p.objectId, nextOrdinal[p.objectId]++};
         r.typeId = p.typeId;
+        r.flags = p.flags;
         propTransform(p.model, r.transform);
         out.push_back(r);
     }

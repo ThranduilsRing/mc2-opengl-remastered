@@ -1467,6 +1467,7 @@ TEST_CASE("render options default to what the gate rows they replaced defaulted 
     CHECK(d.postCasSharpness == 0.5f);
     CHECK(d.tonemapMode == 0);
     CHECK(d.shadowQuality == 2);
+    CHECK(d.rtSunShadows);
     CHECK(d.waterReflections == 2);
     CHECK(d.shorelineLegacySuppress);
     CHECK(d.cpuPhongRetire);
@@ -1507,7 +1508,18 @@ TEST_CASE("render option keys are unique and findable") {
     CHECK(mo::find("NotAnOption") == nullptr);
     CHECK(mo::find("cpuphongretire") == mo::find("CpuPhongRetire"));   // keys are case-insensitive like options.cfg
     CHECK(mo::find("PostCAS") != mo::find("PostCASSharpness"));
-    CHECK(mo::kOptionCount == 33);   // includes ShorelineLook review selector
+    CHECK(mo::kOptionCount == 34);   // includes RtSunShadows
+}
+
+TEST_CASE("RT sun shadows default on and the player can persist Off") {
+    namespace mo = mc2::options;
+    mo::RenderOptions loaded{};
+    CHECK(mo::cfg::loadFromText(loaded, "[MechCommander2]\nb RtSunShadows = FALSE\n") == 1);
+    CHECK_FALSE(loaded.rtSunShadows);
+    std::vector<mo::Reject> rejected;
+    CHECK(mo::applyOverrides(loaded, "RtSunShadows=1", rejected) == 1);
+    CHECK(loaded.rtSunShadows);
+    CHECK(rejected.empty());
 }
 
 TEST_CASE("shoreline candidates default to foam and reject invalid selections") {

@@ -66,6 +66,8 @@
 #include "vulkan_shared_scene_depth.h"
 #include "vulkan_shadow_island_live.h"
 #include "vulkan_mover_shadow.h"
+#include "vk_rt_scene.h"
+#include "vk_rt_descriptors.h"
 #include "gos_postprocess_internal.h"   // mc2ShadowGuardClampedSun
 #include "vk_shared_gbuffer_gate.h"
 #include "vulkan_post_chain.h"
@@ -217,6 +219,7 @@ struct gosPostProcess::VkPostScreenFx {
         VkCommandBuffer cbuf[2]{}; // shadow, then cloud/shoreline
         mc2vk::OwnedCommandPool cpool[2];   // one pool per cb (the two are recorded and submitted at different points of the frame): vkResetCommandPool instead of per-cb reset
         mc2vk::OwnedBuffer cloudUbo, shoreUbo, shadowUbo;
+        mc2vk::rt::RayQuerySet sunSet;
         uint64_t ticket[2]{};
     } frames[mc2vk::kMaxFramesInFlight];
 
@@ -239,6 +242,8 @@ struct gosPostProcess::VkPostScreenFx {
     mc2vk::OwnedPipeline    cloudPipe;
     mc2vk::OwnedPipeline    shorePipe;
     mc2vk::OwnedPipeline    shadowPipe;
+    mc2vk::OwnedShaderModule sunFrag;
+    mc2vk::OwnedPipeline sunPipe;
 };
 
 namespace {
@@ -552,6 +557,15 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         r = mc2vk::createChecked(s->shorePlayout, s->device, [&](auto* h) { return vkCreatePipelineLayout(s->device, &plci, nullptr, h); });
         if (r != VK_SUCCESS) { vlog("vkCreatePipelineLayout(shore) failed (%d).", static_cast<int>(r)); return false; }
         plci.pSetLayouts = &shadowDslForLayout;
+        VkDescriptorSetLayout sunLayouts[2] = {shadowDslForLayout, VK_NULL_HANDLE};
+        auto& sunContext = mc2vk::getOrCreateEngineVulkanContext();
+        if (sunContext.rt().rayQuery) {
+            for (auto& frame : s->frames)
+                if (!frame.sunSet.create(sunContext, mc2vk::rt::kSunShadowBindings, 0, VK_SHADER_STAGE_FRAGMENT_BIT)) return false;
+            sunLayouts[1] = s->frames[0].sunSet.setLayout();
+            plci.setLayoutCount = 2;
+            plci.pSetLayouts = sunLayouts;
+        }
         r = mc2vk::createChecked(s->shadowPlayout, s->device, [&](auto* h) { return vkCreatePipelineLayout(s->device, &plci, nullptr, h); });
         if (r != VK_SUCCESS) { vlog("vkCreatePipelineLayout(shadow) failed (%d).", static_cast<int>(r)); return false; }
 
@@ -615,6 +629,10 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         if (!make_pipeline(s->cloudVert.get(), s->cloudFrag.get(), s->cloudPlayout.get(), s->cloudPipe, "screenfx.cloudPipe")) return false;
         if (!make_pipeline(s->shoreVert.get(), s->shoreFrag.get(), s->shorePlayout.get(), s->shorePipe, "screenfx.shorePipe")) return false;
         if (!make_pipeline(s->shadowVert.get(), s->shadowFrag.get(), s->shadowPlayout.get(), s->shadowPipe, "screenfx.shadowPipe")) return false;
+        if (sunLayouts[1]) {
+            s->sunFrag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "screen_shadow_rt.frag.spv"));
+            if (!s->sunFrag || !make_pipeline(s->shadowVert.get(), s->sunFrag.get(), s->shadowPlayout.get(), s->sunPipe, "screenfx.sunPipe")) return false;
+        }
     }
 
     {
@@ -746,6 +764,9 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     p.mechSoft=mc2::gate::get<"MC2_SHADOW_MECH_SOFT">();
     p.enableShadows = hasStaticShadow ? 1 : 0;
     p.debugMode = 0;
+    const auto sunTlas = mc2vk::rt::scene::sunShadowTlas();
+    const bool useSun = sunTlas && s->sunPipe;
+    if (useSun) frame.sunSet.writeTlas(s->device, 0, sunTlas);
     void* m = nullptr;
     if ((m = frame.shadowUbo.map()) != nullptr) {
         std::memcpy(m, &p, sizeof(p));
@@ -787,8 +808,12 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     mc2vk::postchain::beginPass(s->rpass.get(), s->fb.get(), static_cast<uint32_t>(s->width), static_cast<uint32_t>(s->height));
     {
         MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Post.ShadowResolve");
-        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->shadowPipe.get());
+        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, useSun ? s->sunPipe.get() : s->shadowPipe.get());
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->shadowPlayout.get(), 0, 1, &frame.shadowSet, 0, nullptr);
+        if (useSun) {
+            const VkDescriptorSet sunSet = frame.sunSet.set();
+            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->shadowPlayout.get(), 1, 1, &sunSet, 0, nullptr);
+        }
         vkCmdDraw(cb, 3, 1, 0, 0);
         gpuScope.end();
     }

@@ -118,6 +118,7 @@ constexpr int phaseRank(Phase p) { return static_cast<int>(p); }
 // Stage / access masks as plain 64-bit values (the numeric values of the sync2 bits; vk_rt_acceleration.cpp static_asserts each against the Vulkan header).
 inline constexpr uint64_t kStageTransfer = 0x1000ull;
 inline constexpr uint64_t kStageComputeShader = 0x800ull;
+inline constexpr uint64_t kStageFragmentShader = 0x80ull;
 inline constexpr uint64_t kStageRayTracingShader = 0x200000ull;
 inline constexpr uint64_t kStageAsBuild = 0x02000000ull;
 inline constexpr uint64_t kStageAsCopy = 0x10000000ull;
@@ -155,7 +156,7 @@ constexpr Barrier barrierBetween(Phase from, Phase to) {
             b.dstAccess = kAccessAsRead | kAccessAsWrite | (from == Phase::Upload ? kAccessShaderRead : 0);
             break;
         case Phase::Copy: b.dstStage = kStageAsBuild; b.dstAccess = kAccessAsRead | kAccessAsWrite; break;
-        case Phase::Consumer: b.dstStage = kStageComputeShader; b.dstAccess = kAccessAsRead; break;
+        case Phase::Consumer: b.dstStage = kStageComputeShader | kStageFragmentShader; b.dstAccess = kAccessAsRead; break;
     }
     b.valid = true;
     return b;

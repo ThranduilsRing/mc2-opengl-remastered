@@ -18,6 +18,7 @@
 #include <utility>
 
 #include "Gates/gate.h"
+#include "Gates/render_options.h"
 #include "../../RenderCore/gpu_abi/GpuStaticPropInstance.h"
 #include "../../RenderWorld/RenderWorld.h"
 #include "gos_static_prop_registry.h"
@@ -391,7 +392,7 @@ std::optional<AccelStructure> buildTlas(VulkanContext& ctx, State& s, const std:
     s.pendingMaterialBytes = rowCount * sizeof(MaterialRow) + uvBytes;
     std::vector<PropPlacement> placements;
     placements.reserve(s.instances.size());
-    for (size_t i = 0; i < s.instances.size(); ++i) placements.push_back({s.instances[i].typeID, s.objectIds[i], s.instances[i].modelMatrix});
+    for (size_t i = 0; i < s.instances.size(); ++i) placements.push_back({s.instances[i].typeID, s.objectIds[i], s.instances[i].modelMatrix, s.instances[i].flags});
     const std::vector<Record> records = buildRecords(placements, static_cast<uint32_t>(terrain.size()), &dropped);
     auto propAddress = [&](uint32_t type) -> VkDeviceAddress {
         for (const auto& [t, a] : added)
@@ -410,7 +411,19 @@ std::optional<AccelStructure> buildTlas(VulkanContext& ctx, State& s, const std:
         uint32_t sbt = kMoverRow;
         if (r.key.kind == Kind::Terrain) sbt = terrainBase + r.key.ordinal;
         else if (r.typeId < typeRowBase.size() && typeRowBase[r.typeId] != kNoRow) sbt = kPropRowBase + typeRowBase[r.typeId];
-        inst.push_back(makeInstance(blas, r.transform, customIndexOf(r.key), kMaskStatic, sbt));
+        uint8_t mask = kMaskStatic;
+        if (r.key.kind == Kind::StaticProp && r.typeId < typeRowBase.size() && typeRowBase[r.typeId] != kNoRow) {
+            const uint32_t first = typeRowBase[r.typeId];
+            uint32_t end = static_cast<uint32_t>(propRows.size());
+            for (uint32_t base : typeRowBase) if (base > first && base < end) end = base;
+            bool cutout = false, materials = first < end;
+            for (uint32_t row = first; row < end; ++row) {
+                cutout |= (propRows[row].flags & kMatCutout) != 0;
+                materials &= propRows[row].albedoLayer >= 0;
+            }
+            if (sunPropEligible(r.flags, materials, cutout)) mask |= kMaskSunProp;
+        }
+        inst.push_back(makeInstance(blas, r.transform, customIndexOf(r.key), mask, sbt));
         propCount += r.key.kind == Kind::StaticProp ? 1u : 0u;
     }
     instanceCount = static_cast<uint32_t>(inst.size());
@@ -459,14 +472,15 @@ void logPublish(const State& s, std::string_view why, const BuildStats& st, doub
     // Byte ledger: every resident RT byte by kind. instance_bytes is the TLAS build input (64 per instance, uploaded per build, retired after it).
     // material_bytes: the material table + the uv-index buffer (resident with the TLAS).
     const uint64_t tlasBytes = s.tlas ? s.tlas.size() : 0, instanceBytes = static_cast<uint64_t>(s.tlasInstances) * kInstanceBytes;
-    uint32_t cutouts = 0;
+    uint32_t cutouts = 0, sunProps = 0;
+    for (const auto& instance : s.staticInst) sunProps += (instance.mask & kMaskSunProp) != 0 ? 1u : 0u;
     for (const MaterialRow& r : s.propRows) cutouts += (r.flags & kMatCutout) ? 1u : 0u;
     MC2_EVENT(Vk, "VK_RT_SCENE", 1, "publish why={} tlas_instances={} terrain_tiles={} props={} prop_types={} dropped={} blas_bytes={} built_bytes={} compacted={} "
          "compacted_bytes={} tlas_bytes={} scratch_bytes={} instance_bytes={} material_bytes={} material_rows={} cutout_rows={} total_bytes={} blas_build_calls={} "
-         "batch_scratch_bytes={} build_ms={:.1f}",
+         "batch_scratch_bytes={} build_ms={:.1f} sun_props={}",
          why, s.tlasInstances, s.terrainBlas.size(), s.tlasProps, types, s.dropped, blasBytes, st.builtBytes, st.compacted, st.finalBytes, tlasBytes,
          s.scratch.capacity(), instanceBytes, s.materialBytes, 1 + s.propRows.size() + s.terrainBlas.size(), cutouts,
-         blasBytes + tlasBytes + s.scratch.capacity() + instanceBytes + s.materialBytes, st.buildCalls, st.scratchSpan, ms);
+         blasBytes + tlasBytes + s.scratch.capacity() + instanceBytes + s.materialBytes, st.buildCalls, st.scratchSpan, ms, sunProps);
 }
 
 bool terrainOccluder(const State& s, uint32_t id, uint32_t prim, float x, float y, float z);
@@ -934,7 +948,17 @@ void logMoverLedger(const VulkanContext& ctx, State& s, uint64_t frame, uint32_t
 
 }  // namespace
 
-bool demanded() { return consumers().needed(rayContext() != nullptr); }
+bool demanded() {
+    const auto* ctx = rayContext();
+    setConsumer(Consumer::SunShadows, ctx && ctx->rt().rayQuery && mc2::options::current().rtSunShadows);
+    return consumers().needed(ctx != nullptr);
+}
+
+VkAccelerationStructureKHR_T* sunShadowTlas() {
+    VulkanContext* ctx = rayContext();
+    if (!ctx || !ctx->rt().rayQuery || !mc2::options::current().rtSunShadows || !State::exists()) return nullptr;
+    return State::instance().tlas.get();
+}
 
 void setConsumer(Consumer consumer, bool registered) {
     if (!consumers().set(consumer, registered)) return;
@@ -949,6 +973,7 @@ void setConsumer(Consumer consumer, bool registered) {
 
 void noteTerrain(const TerrainSource& t) {
     if (!demanded()) return;
+    if ((consumers().consumers & static_cast<uint32_t>(Consumer::SelfTest)) == 0) return;
     VulkanContext* ctx = rayContext();
     if (!ctx || !terrainUsable(t)) return;
     const uint64_t key = terrainKey(t);
@@ -1067,6 +1092,17 @@ static void updatePropsNow(uint64_t propVbo) {
     std::vector<GpuStaticPropInstance> inst;
     std::vector<int32_t> leafRecipe;
     GpuStaticPropRegistry::getRtPropInstances(inst, leafRecipe);   // per-leaf recipe: every node of a multi-node prop, not only node 0
+    if ((consumers().consumers & static_cast<uint32_t>(Consumer::SelfTest)) == 0) {
+        // The sun ray cannot see swaying trees; do not build their BLASes or TLAS instances.
+        size_t kept = 0;
+        for (size_t i = 0; i < inst.size(); ++i) {
+            if ((inst[i].flags & 4u) != 0) continue;
+            inst[kept] = inst[i];
+            leafRecipe[kept++] = leafRecipe[i];
+        }
+        inst.resize(kept);
+        leafRecipe.resize(kept);
+    }
     std::vector<uint32_t> ids(inst.size(), 0);
     for (size_t i = 0; i < inst.size(); ++i) {
         const int32_t recipe = leafRecipe[i];
@@ -1088,7 +1124,7 @@ static void updatePropsNow(uint64_t propVbo) {
     }
     bool sameInstances = ids == s.objectIds && inst.size() == s.instances.size();
     for (size_t i = 0; sameInstances && i < inst.size(); ++i)
-        sameInstances = samePlacement({inst[i].typeID, ids[i], inst[i].modelMatrix},
+        sameInstances = ((inst[i].flags ^ s.instances[i].flags) & 4u) == 0 && samePlacement({inst[i].typeID, ids[i], inst[i].modelMatrix},
                                      {s.instances[i].typeID, s.objectIds[i], s.instances[i].modelMatrix});
     if (!updateNeeded(s.propGen != kNone, s.compactedDirty || !types.empty() || !sameInstances)) {
         s.propGen = gen;   // registry light/fog writes are irrelevant to RT
@@ -1366,6 +1402,7 @@ void invalidateProps() {
 
 void recordMovers(VkCommandBuffer_T* cb, uint32_t slot, std::span<const MoverGeometry> geos) {
     if (!demanded()) return;
+    if ((consumers().consumers & static_cast<uint32_t>(Consumer::SelfTest)) == 0) return;
     VulkanContext* ctx = rayContext();
     if (!ctx || cb == nullptr) return;
     if (geos.empty() && !State::exists()) return;

@@ -130,7 +130,7 @@ TEST_CASE("rt layout: the build-phase barrier chain upload -> BLAS -> TLAS -> co
     REQUIRE(tlas.valid);
     CHECK(tlas.srcStage == kStageAsBuild);
     CHECK(tlas.srcAccess == kAccessAsWrite);
-    CHECK(tlas.dstStage == kStageComputeShader);   // compute ray query; the ray-pipeline stage is invalid on a query-only device
+    CHECK(tlas.dstStage == (kStageComputeShader | kStageFragmentShader)); // inline queries in compute and sun-shadow receivers; no ray-pipeline stage
     CHECK(tlas.dstAccess == kAccessAsRead);
 }
 
