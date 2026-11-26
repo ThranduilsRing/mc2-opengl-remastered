@@ -17,10 +17,16 @@ def main(jobs):
     if result:
         print(f"editor build: FAIL ({result})", flush=True)
         return result
+    results = (
+        (TESTS[0], subprocess.call(["build64-ninja/out/editor/editor_document_tests.exe"],
+                                  cwd=ROOT, **console_child.child_kwargs(redirected=True))),
+        (TESTS[1], subprocess.call(["build64-ninja/out/editor/editor_panel_tests.exe"],
+                                  cwd=ROOT, **console_child.child_kwargs(redirected=True))),
+        (TESTS[2], subprocess.call(["build64-ninja/out/editor/editor_objective_reader_tests.exe"],
+                                  cwd=ROOT, **console_child.child_kwargs(redirected=True))),
+    )
     failed = False
-    for name in TESTS:
-        result = subprocess.call([str(ROOT / "build64-ninja/out/editor" / (name + ".exe"))],
-                                 cwd=ROOT, **console_child.child_kwargs(redirected=True))
+    for name, result in results:
         print(f"editor suite {name}: {'FAIL' if result else 'PASS'} ({result})", flush=True)
         failed |= bool(result)
     return int(failed)
