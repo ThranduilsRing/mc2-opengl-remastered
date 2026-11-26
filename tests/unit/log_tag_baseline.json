@@ -13315,7 +13315,8 @@
     "total_bytes",
     "blas_build_calls",
     "batch_scratch_bytes",
-    "build_ms"
+    "build_ms",
+    "sun_props"
    ],
    "count": 1
   },
