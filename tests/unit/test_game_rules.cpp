@@ -421,7 +421,8 @@ TEST_CASE("game rules: campaign mod conflicts and campaign-only ladder selection
     fs::create_directories(root / "second/data/objects");
     fs::create_directories(root / "visual/data/effects");
     fs::create_directories(root / "campaign/data/missions");
-    for (const auto& id : {"first", "second", "visual", "campaign"}) {
+    for (const auto& id : {"first", "second", "visual", "campaign", "sample_equipment", "sample_variant", "sample_new_variant", "mc2x-compat", "mco-compat", "mw5_mechs", "mw5-vehicles", "bt2018_mechs"}) {
+        fs::create_directories(root / id);
         std::ofstream manifest(root / id / "mod.json");
         manifest << "{\"id\":\"" << id << "\",\"type\":\"" << (std::string(id) == "campaign" ? "campaign" : "assets")
                  << "\",\"description\":\"Test description\"}";
@@ -429,6 +430,10 @@ TEST_CASE("game rules: campaign mod conflicts and campaign-only ladder selection
     std::ofstream(root / "first/data/objects/CompBas.csv") << "first";
     std::ofstream(root / "second/data/objects/compbas.csv") << "second";
     std::ofstream(root / "visual/data/effects/Fireball.json") << "visual";
+    for (const auto& id : {"sample_equipment", "sample_variant", "sample_new_variant", "mc2x-compat", "mco-compat", "mw5_mechs", "mw5-vehicles", "bt2018_mechs"}) {
+        fs::create_directories(root / id / "data/objects");
+        std::ofstream(root / id / "data/objects/compbas.csv") << "hidden";
+    }
     const auto addons = mc2::mods::catalogue(root);
     REQUIRE(addons.size() == 2);
     CHECK(addons[0].description == "Test description");
@@ -443,4 +448,24 @@ TEST_CASE("game rules: campaign mod conflicts and campaign-only ladder selection
     mc2::mods::toggle(selection, "first");
     CHECK(selection.empty());
     fs::remove_all(root);
+}
+
+TEST_CASE("game rules: weapon supply and vehicle toggle persist with campaign inventory") {
+    LogisticsMissionInfo info;
+    GameRules rules;
+    rules.weaponSupply = 1;
+    rules.mods = "@salvage-all,@salvage-vehicles";
+    info.setRules(rules);
+    info.weaponSupply.settle({{7, 2}, {8, -3}});
+    const auto path = saveToFile(info, "game_rules_supply");
+    FitIniFile file;
+    REQUIRE(file.open(path.c_str()) == NO_ERR);
+    LogisticsMissionInfo restored;
+    REQUIRE(restored.load(file).has_value());
+    CHECK(restored.getRules() == rules);
+    CHECK(restored.weaponSupply.spare == info.weaponSupply.spare);
+    CHECK(restored.weaponSupply.bought == info.weaponSupply.bought);
+    CHECK_FALSE(restored.weaponSupply.allows(2, {{7, 1}}));
+    file.close();
+    std::remove(path.c_str());
 }

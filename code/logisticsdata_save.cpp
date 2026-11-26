@@ -12,6 +12,8 @@
 #include "objective_text.h"
 #include "purchase_catalog.h"
 #include "economy_rules.h"
+#include "gvehicl.h"
+#include "objmgr.h"
 #include "../GuiRuntime/PlayerFrontEnd.h"
 #include "../GameOS/gameos/diagnostic_trace.h"
 #include "../GameOS/gameos/utils/mc2log.h"
@@ -564,6 +566,20 @@ void	LogisticsData::setMissionCompleted( )
 	if (observation) {
 		observation->settled = true;
 		if (missionInfo->campaignOver()) { observation->Finish(); }
+	}
+	missionInfo->weaponSupply.bought.clear(); // a completed mission replenishes the purchase allowance
+	// Vehicle salvage uses the same inventory and bay as purchased vehicles.
+	for (int i = 0; i < ObjectManager->numVehicles; ++i) {
+		auto* vehicle = ObjectManager->getVehicle(i);
+		if (!mc2::rules::salvageVehicleEligible(
+			mc2::mods::selected(rules().mods, "@salvage-all"), mc2::mods::selected(rules().mods, "@salvage-vehicles"),
+			vehicle->isEnemy(Team::home), vehicle->getMoveType() == MOVETYPE_AIR, vehicle->isDisabled(), vehicle->isDestroyed())) continue;
+		for (auto& variant : variants) {
+			if (variant->getChassis()->isVehicle() && variant->getChassis()->fitID == vehicle->getTypeHandle()) {
+				addMechToInventory(variant.get(), nullptr, 0);
+				break;
+			}
+		}
 	}
 	// Recover surviving pilots and their vehicles for the next mission.
 	Team* pTeam = Team::home;

@@ -4,6 +4,50 @@
 #include <algorithm>
 #include "dropweight_rules.h"
 
+namespace {
+std::map<long, long> weaponCounts(LogisticsVariant* variant) {
+	std::map<long, long> result;
+	if (!variant) return result;
+	long count = variant->getComponentCount();
+	std::vector<LogisticsComponent*> components(count);
+	variant->getComponents(count, components.data());
+	for (long i = 0; i < count; ++i)
+		if (components[i] && components[i]->isWeapon()) ++result[components[i]->getID()];
+	return result;
+}
+}
+
+bool LogisticsData::canAddWeapon(LogisticsComponent* component) {
+	const long cap = mc2::rules::weaponSupplyCap(rules().weaponSupply);
+	if (!cap || !component || !component->isWeapon()) return true;
+	auto delta = weaponCounts(modifiedVariant.get());
+	++delta[component->getID()];
+	for (const auto& [id, count] : weaponCounts(oldVariant)) delta[id] -= count;
+	if (!component->isAvailable() && delta[component->getID()] > missionInfo->weaponSupply.spare[component->getID()]) return false;
+	return missionInfo->weaponSupply.allows(cap, delta);
+}
+
+bool LogisticsData::hasRecoveredWeapon(LogisticsComponent* component) {
+	if (!rules().weaponSupply || !component || !component->isWeapon()) return false;
+	const auto id = component->getID();
+	const auto& spare = missionInfo->weaponSupply.spare;
+	return (spare.contains(id) && spare.at(id) > 0) || weaponCounts(oldVariant)[id] > 0;
+}
+
+bool LogisticsData::settleWeaponSupply(LogisticsVariant* target, bool commit) {
+	const long cap = mc2::rules::weaponSupplyCap(rules().weaponSupply);
+	if (!cap) return true;
+	auto delta = weaponCounts(target);
+	for (const auto& [id, count] : weaponCounts(oldVariant)) delta[id] -= count;
+	for (const auto& [id, count] : delta) {
+		auto component = getComponent(static_cast<int>(id));
+		if (component && !component->get().isAvailable() && count > missionInfo->weaponSupply.spare[id]) return false;
+	}
+	if (!missionInfo->weaponSupply.allows(cap, delta)) return false;
+	if (commit) missionInfo->weaponSupply.settle(delta);
+	return true;
+}
+
 
 const std::string& LogisticsData::getCurrentMission() const
 {
@@ -311,6 +355,7 @@ std::expected<void, int> LogisticsData::acceptMechModifications( mc2::czstring n
 	// still keeps grandfathered equipment; reusing its old variant is allowed.
 	if (!modifiedVariant || !mc2pkg::canSaveLocationVariant(modifiedVariant->locationRecord()))
 		return std::unexpected(INVALID_VARIANT);
+	if (!settleWeaponSupply(modifiedVariant.get(), true)) return std::unexpected(INVALID_VARIANT);
 
 	bool bFound = 0;
 	if ( oldVariant )
@@ -403,6 +448,8 @@ std::expected<void, int> LogisticsData::acceptMechModificationsUseOldVariant( mc
 {
 	if ( !currentlyModifiedMech )
 		return std::unexpected(-1);
+	auto target = getVariant(name);
+	if (!target || !settleWeaponSupply(&target->get(), true)) return std::unexpected(INVALID_VARIANT);
 
 	if ( oldVariant )
 	{
