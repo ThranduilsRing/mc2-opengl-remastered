@@ -215,29 +215,16 @@ def capture_sweep(install: Path, bookmark_files: "list[Path]", out_dir: Path,
     # inherits os.environ, so set it here (and MC2_LOG is set inside the runner).
     os.environ["MC2_NO_LAUNCHER"] = "1"
 
+    results = rvc.batch_capture(
+        bookmark_files, out_dir, exe=exe, trigger_frame=frame, settle=settle,
+        duration=duration, deterministic_clock=det_clock, show_window=show_window,
+        declared_env=declared_env)
     poses: list[dict] = []
     for i, bmk in enumerate(bookmark_files, 1):
-        stem = bmk.stem  # e.g. mc2_10_saved_204523
+        stem = bmk.stem
         pose_dir = out_dir / stem
-        pose_dir.mkdir(parents=True, exist_ok=True)
-        log(f"[{i}/{len(bookmark_files)}] {stem}  ->  {pose_dir}")
-        t0 = time.time()
-        # Reuse the hardened, own-PID-safe in-engine capture. One JSON = one
-        # sequential launch; run_one blocks until the child exits.
-        result = run_pose(
-            exe=exe,
-            mission=stem,               # informational; runner reads mission from JSON
-            bookmarks_path=bmk,
-            out_dir=pose_dir,
-            trigger_frame=frame,
-            settle=settle,
-            duration=duration,
-            deterministic_clock=det_clock,
-            show_window=show_window,
-            declared_env=declared_env,
-            log=log,
-        )
-        dt = time.time() - t0
+        result = results[bmk]
+        dt = result["seconds"]
         # Pick the PRIMARY pose PNG (the non-dup one) for grading.
         primary = None
         for b in result.get("bookmarks", []):
