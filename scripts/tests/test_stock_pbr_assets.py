@@ -33,6 +33,9 @@ def test_stock_mech_retextures_are_retired(tmp_path):
     tree = "data/textures/mech_pbr"
     assert tree not in dp.GAME_LOOSE_ART_TREES
     assert tree not in cook_actor_pbr.TREES
+    import json
+    declared = json.loads((ROOT / "intentional-asset-changes.json").read_text())
+    assert not any(rel.startswith(tree + "/") for rel in declared)
     assert not any(rel.startswith(tree + "/") for rel in dp.actor_pbr_payload(ROOT))
     assert len(dp.actor_pbr_payload(ROOT)) == 32
     retired = {rel: sha for rel, sha in dp.RETIRED_SEED_PAYLOAD.items() if rel.startswith(tree + "/")}
