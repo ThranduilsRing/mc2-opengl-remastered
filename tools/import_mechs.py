@@ -181,11 +181,18 @@ def check_material_defaults(defaults):
                            "MW5_MATERIAL_DEFAULTS to matching player-extracted S/V defaults. Values will not be guessed")
 
 
+def link_or_copy(source, dest):
+    try:
+        os.link(source, dest)
+    except OSError:
+        shutil.copy2(source, dest)
+
+
 def base_install(install, stage):
     """Builders read base data here and write only mods; hardlinks avoid copying bytes."""
-    shutil.copytree(install / "data", stage / "data", copy_function=os.link)
+    shutil.copytree(install / "data", stage / "data", copy_function=link_or_copy)
     for path in install.glob("*.fst"):
-        os.link(path, stage / path.name)
+        link_or_copy(path, stage / path.name)
 
 
 def validate(pack, dump=None):
@@ -282,7 +289,10 @@ def battletech(game, install, work, env, names, report):
          "--conversions", conv, "--texture-source", tex, "--bundles", game / LAYOUTS["bt"],
          "--out", pack, "--only", ",".join(row["btname"] for row in rows)], work / "build.log", env)
     validate(pack, dump)
-    shutil.copytree(pack, install / "mods/bt2018_mechs", dirs_exist_ok=True)
+    target = install / "mods/bt2018_mechs"
+    if target.exists():
+        shutil.rmtree(target)
+    shutil.copytree(pack, target)
     built = {row["btname"] for row in rows}
     for name in names:
         if not any(r[:2] == ("bt", name) for r in report):

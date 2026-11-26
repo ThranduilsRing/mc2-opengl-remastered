@@ -170,3 +170,54 @@ def test_mercs_continues_after_failure_and_publishes_only_validated_pack(tmp_pat
     assert [row[2] for row in report] == ["FAIL", "PASS"]
     validate.assert_called_once()
     assert (tmp_path / "install/mods/mw5_mechs/mod.json").read_text() == "good.json"
+
+
+@pytest.mark.parametrize("cross_volume", [False, True])
+def test_base_install_stages_data_and_fsts(tmp_path, cross_volume):
+    install, stage = tmp_path / "install", tmp_path / "stage"
+    (install / "data/nested").mkdir(parents=True)
+    files = {"data/nested/base.fit": b"base data", "objects.fst": b"archive"}
+    for rel, content in files.items():
+        (install / rel).write_bytes(content)
+    with patch.object(importer.os, "link", side_effect=OSError("different volumes")
+                      if cross_volume else importer.os.link) as link:
+        importer.base_install(install, stage)
+    assert link.call_count == len(files)
+    for rel, content in files.items():
+        assert (stage / rel).read_bytes() == (install / rel).read_bytes() == content
+        assert (stage / rel).samefile(install / rel) is not cross_volume
+
+
+def test_bt_only_rebuild_replaces_pack_with_matching_names(tmp_path):
+    import re
+    from tools.bt2018_mechs import compile as compiler
+
+    install = tmp_path / "install"
+    target = install / "mods/bt2018_mechs"
+    def convert(_bundle, name, conv, _dump):
+        (conv / (name + ".glb")).touch()
+        return {"btname": name}
+    def build(cmd, *_args):
+        if Path(cmd[1]).name != "build_pack.py":
+            return
+        pack = Path(cmd[cmd.index("--out") + 1])
+        pack.mkdir()
+        profiles = [{"family": n, "name": n.title(), "details": n + " details"}
+                    for n in sorted(cmd[cmd.index("--only") + 1].split(","))]
+        (pack / "strings.fit").write_text(compiler.emit_strings(profiles))
+        for i, profile in enumerate(profiles):
+            (pack / (profile["family"] + ".csv")).write_text(str(compiler.string_ids(profile, i)["name"]))
+    with patch("tools.bt2018_import.convert_all_bt2018.convert_bundle", side_effect=convert), \
+         patch.object(importer, "run", side_effect=build), patch.object(importer, "validate") as validate:
+        for i, names in enumerate((["archer", "atlas"], ["atlas"])):
+            work = tmp_path / str(i)
+            work.mkdir()
+            report = []
+            importer.battletech(tmp_path / "game", install, work, {"KTX": "ktx"}, names, report)
+            assert all(row[2] == "PASS" for row in report)
+            strings = {int(sid): text for text, sid in re.findall(
+                r'text = "([^"]*)"\s+legacyId = (\d+)', (target / "strings.fit").read_text())}
+            assert {p.stem for p in target.glob("*.csv")} == set(names)
+            for chassis in target.glob("*.csv"):
+                assert strings[int(chassis.read_text())] == chassis.stem.title()
+        assert validate.call_count == 2
