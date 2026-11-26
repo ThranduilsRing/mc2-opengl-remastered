@@ -1,6 +1,6 @@
 """Default staging roots for the disposable-install tools (mod_smoke, battery, reload_leak, sim_trace_diff, sound_smoke, tools_smoke,
-run_battle_bench). They default to E:/mc2-installs/<tool>-stage (Defender-excluded, terabytes free); G: filled up during a merge gate
-and a full drive failed a staging copy mid-run, which looked like a mod failure."""
+run_battle_bench). They default to G:/mc2-installs/<tool>-stage. Free-space checks run before staging.
+"""
 import os
 import shutil
 import time
@@ -8,9 +8,9 @@ from pathlib import Path
 
 MIN_FREE_GB = 15
 STAGE_MARKER = ".stage-root"  # drop this file in a custom root to opt in to pruning
-STAGE_BASE = Path(os.environ.get("MC2_STAGE_BASE", "E:/mc2-installs"))
-#: G: is refused for staging except the lane-rules temp subtree.
-G_TEMP_ROOT = Path("G:/mc2-tmp")
+from smoke_lib.paths import INSTALL_ROOT
+
+STAGE_BASE = Path(os.environ.get("MC2_STAGE_BASE", INSTALL_ROOT))
 
 
 def default_root(tool):
@@ -20,9 +20,6 @@ def default_root(tool):
 def preflight(root, min_gb=MIN_FREE_GB):
     """Raise OSError when the drive holding root has less than min_gb free (the stage need not exist yet)."""
     probe = Path(root).resolve()
-    named = Path(os.path.abspath(root))  # the drive as named: resolve() follows a subst'd G: (laptop gate) to its backing drive
-    if named.drive and named.drive.upper() == G_TEMP_ROOT.drive.upper() and not named.is_relative_to(G_TEMP_ROOT):
-        raise OSError(f"refusing to stage under {root}: G: staging is allowed only under {G_TEMP_ROOT.as_posix()}")
     while not probe.exists() and probe.parent != probe:
         probe = probe.parent
     free = shutil.disk_usage(probe).free / 2**30

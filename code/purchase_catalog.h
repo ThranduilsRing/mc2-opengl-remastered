@@ -65,18 +65,27 @@ struct Unlock {
 };
 
 inline int missionNumber(std::string_view path) {
+    // Custom campaigns keep their authored stock lists and get the starting additions.
     const auto slash = path.find_last_of("/\\");
     path.remove_prefix(slash == path.npos ? 0 : slash + 1);
     if (path.size() != 14 || path.substr(0, 8) != "purchase" || path.substr(10) != ".fit" ||
-        path[8] < '0' || path[8] > '9' || path[9] < '0' || path[9] > '9') return 0;
+        path[8] < '0' || path[8] > '9' || path[9] < '0' || path[9] > '9') return 1;
     const int n = (path[8] - '0') * 10 + path[9] - '0';
     return n >= 1 && n <= 24 ? n : 0;
 }
 
 inline bool unlocked(std::string_view chassis, int mission, const std::vector<Unlock>& table) {
+    // Every installed MW5 chassis is purchasable from the start, including vehicles.
+    if (chassis.substr(0, 4) == "mw5_") return true;
     return std::any_of(table.begin(), table.end(), [&](const Unlock& row) {
         return row.chassis == chassis && mission >= row.mission && row.mission > 0;
     });
+}
+
+inline bool supplementalAvailable(std::string_view chassis, bool package, int mission,
+    const std::vector<Unlock>& table) {
+    const bool listed = std::any_of(table.begin(), table.end(), [&](const Unlock& row) { return row.chassis == chassis; });
+    return unlocked(chassis, mission, table) || (package && !listed);
 }
 
 
@@ -119,7 +128,7 @@ inline std::vector<Group> group(const std::vector<Item>& items, std::string_view
             return candidate.source == items[i].source && candidate.vehicle == items[i].vehicle;
         });
         if (g == groups.end()) {
-            groups.push_back({items[i].source, {}, items[i].source == campaignSource, items[i].vehicle});
+            groups.push_back({items[i].source, {}, !items[i].vehicle || items[i].source == campaignSource, items[i].vehicle});
             g = groups.end() - 1;
         }
         g->items.push_back(i);

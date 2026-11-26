@@ -38,7 +38,9 @@ from smoke_lib import fingerprint, nofocus  # noqa: E402
 from smoke_lib import via_menu  # noqa: E402
 
 SCEN_DIR = ROOT / "tests" / "player_path"
-DEFAULT_PROOFS = Path("E:/mc2-archive-2026-10/proofs/player-path")
+from smoke_lib.paths import PROOF_ROOT
+
+DEFAULT_PROOFS = Path((PROOF_ROOT + '/player-path'))
 STRIP_ENV = via_menu.STRIP_ENV + ("MC2_BOOT_TO_BAY", "MC2_BOOT_VIDEO", "MC2_MENU_CANARY_SKIP_INTRO", "MC2_INPUT_SCRIPT")
 DEFAULT_FORBID = [r"^CRASH:", r"MC2 Remastered Crash Report", r"requireOwner"]
 REAL_SAVE_DIR = Path.home() / ".mechcommander2" / "savegame"   # the player's saves: a run must never write here
@@ -254,7 +256,7 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--install", required=True, help="install dir holding mc2.exe (a lane install; never the owner's)")
     ap.add_argument("--scenario", default="all", help="scenario name (tests/player_path/<name>.pp), comma list, or all")
-    ap.add_argument("--out", default="", help="evidence root (default E:/mc2-archive-2026-10/proofs/player-path/<stamp>)")
+    ap.add_argument("--out", default="", help="evidence root (default G:/mc2-proofs/player-path/<stamp>)")  # drive-path: ok PC path in user-facing help
     ap.add_argument("--env", action="append", default=[], metavar="K=V", help="extra engine env (e.g. MC2_SIM_OVERLAP=0)")
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--scenario-dir", default="", help="directory of .pp scenarios (default tests/player_path; mod-only scripts live in tests/player_path_mods so the stock sweeps never run them)")

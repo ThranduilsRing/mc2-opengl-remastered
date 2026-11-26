@@ -740,7 +740,7 @@ def main():
     ap.add_argument("--exe", default=None,
                     help="explicit path to mc2.exe; skips auto-selection but still "
                          "leases the folder (use --no-lease to bypass leasing). "
-                         "Use this for lane installs (E:/mc2-installs/<branch>/mc2.exe); "
+                         "Use this for lane installs (G:/mc2-installs/<branch>/mc2.exe); "
                          "--deploy accepts only the short names")
     ref = ap.add_mutually_exclusive_group()
     ref.add_argument("--ref-commit", metavar="SHA",
@@ -935,7 +935,7 @@ def main():
         if args.deploy and re.search(r"[\\/:]", args.deploy) or (args.deploy and _lease_available and args.deploy not in dict(_deploy_lease.DEPLOY_FOLDERS)):
             print(f"[runner] ERROR: --deploy takes only a short name "
                   f"({', '.join(n for n, _ in (_deploy_lease.DEPLOY_FOLDERS if _lease_available else ()))}), got '{args.deploy}'. "
-                  f"For a lane install such as E:/mc2-installs/<branch> pass --exe <path>/mc2.exe.",
+                  f"For a lane install such as G:/mc2-installs/<branch> pass --exe <path>/mc2.exe.",
                   file=sys.stderr)
             sys.exit(2)
         if args.exe is not None and not Path(args.exe).is_file():

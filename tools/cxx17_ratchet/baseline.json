@@ -326,6 +326,7 @@
   "GameOS/gameos/crash_content_writer.h": {
    "LG11": 1
   },
+  "GameOS/gameos/crash_session_sentinel.h": {},
   "GameOS/gameos/dbg_asset_globals.cpp": {},
   "GameOS/gameos/debug_line_project.h": {
    "LG05": 1
@@ -1891,6 +1892,7 @@
   },
   "code/mechpurchasescreen.h": {},
   "code/media_cue_archive.h": {},
+  "code/missile_presentation.h": {},
   "code/mission.cpp": {
    "LG03": 9,
    "LG05": 3
@@ -3488,7 +3490,7 @@
    "LG20": 1
   }
  },
- "head": "b4ffc41df",
+ "head": "598549a00",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

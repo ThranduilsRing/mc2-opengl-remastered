@@ -188,7 +188,7 @@ def test_dll_sources_are_this_repo_or_the_toolchain():
 
 
 def test_target_path_names_positional_arg():
-    r = subprocess.run([sys.executable, str(ROOT / "scripts/deploy_payload.py"), "--target", "E:/mc2-installs/lane9"],
+    r = subprocess.run([sys.executable, str(ROOT / "scripts/deploy_payload.py"), "--target", "G:/mc2-installs/lane9"],
                        capture_output=True, text=True, timeout=60, **console_child.child_kwargs(redirected=True))
     assert r.returncode == 2 and "positional target_dir" in r.stderr and "preset name" in r.stderr
 

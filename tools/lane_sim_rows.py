@@ -37,7 +37,11 @@ SIM_PATHS_FILE = os.path.join(HERE, "sim_sensitive_paths.json")
 #: The gate's own stage names (scripts/merge_gate.plan); the precheck reuses those commands and the --mask verbatim.
 SIM_ROWS = ("saveload-mc2_01", "saveload-mc2_10", "determinism-mc2_10")
 SIM_NOT_RUN_RCS = (4, 75)   # host lease busy / GATE QUIET refusals of the launchers: infra, not a verdict on the tip
-SIM_PROOF_BASE = "E:/mc2-archive-2026-10/proofs/precheck-sim"
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+from smoke_lib.paths import INSTALL_ROOT, PROOF_ROOT
+
+SIM_PROOF_BASE = (PROOF_ROOT + '/precheck-sim')
 
 
 def sim_patterns(path: str = SIM_PATHS_FILE) -> list[str]:
@@ -91,7 +95,7 @@ def first_diff_line(text: str) -> str:
 
 def default_sim_install(root: str) -> str | None:
     m = re.fullmatch(r"mc2-(lane\d+)", os.path.basename(os.path.abspath(root)))
-    return "E:/mc2-installs/" + m.group(1) if m else None
+    return (INSTALL_ROOT + '/') + m.group(1) if m else None
 
 
 def gate_quiet_reason() -> str | None:

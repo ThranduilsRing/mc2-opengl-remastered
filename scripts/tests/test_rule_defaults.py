@@ -89,7 +89,7 @@ def test_configure_ninja_compile_cache_on_by_default():
 def test_deploy_payload_refuses_implicit_target_from_lane_worktree():
     import deploy_payload as dp
     assert dp.implicit_target_refusal("A:/Games/mc2-flash5", None)
-    assert dp.implicit_target_refusal("A:/Games/mc2-flash5", "E:/mc2-installs/x") is None
+    assert dp.implicit_target_refusal("A:/Games/mc2-flash5", "G:/mc2-installs/x") is None
     assert dp.implicit_target_refusal("A:/Games/mc2-main", None) is None
 
 

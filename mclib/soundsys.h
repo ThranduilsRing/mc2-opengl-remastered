@@ -194,6 +194,9 @@ class SoundSystem
 		
 		HGOSAUDIO			stream3Handle;
 		bool				stream3Active;
+		std::vector<std::string> pendingStreams;
+		std::optional<long> startDigitalStream(mc2::czstring streamName);
+		void updateDigitalStreams();
 
 		std::vector<DigitalMusicEntry>	digitalMusic;
 				
@@ -275,6 +278,7 @@ class SoundSystem
 			
 			stream3Handle = nullptr;
 			stream3Active = false;
+			pendingStreams.clear();
 			
 			numBettySamples = 0;
 			bettyHandle = nullptr;

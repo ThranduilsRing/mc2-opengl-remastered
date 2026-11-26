@@ -713,6 +713,7 @@ void BattleMech::extractRenderView (mc2::render_view::RenderView& view)
 	contactView = mc2::contactVisibility(getContactStatus(Team::home->getId(), true), getTeamId() == Team::home->getId()
 		|| isDestroyed() || isDisabled() || ShowMovers
 		|| (MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]));
+	contactView = displayContactHold.update(contactView, scenarioTime);
 	view.contact = contactView;
 	if (!Terrain::IsGameSelectTerrainPosition(position))
 		return;

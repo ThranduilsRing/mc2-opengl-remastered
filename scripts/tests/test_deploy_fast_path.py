@@ -320,7 +320,7 @@ def test_full_verify_copies_even_unchanged_files(tmp_path, monkeypatch):
 def test_lane_worktree_must_name_its_install():
     assert dp.implicit_target_refusal("A:/Games/mc2-flash3", None)
     assert dp.implicit_target_refusal("a:\\games\\mc2-lane7", None)
-    assert dp.implicit_target_refusal("A:/Games/mc2-flash3", "E:/mc2-installs/flash3") is None
+    assert dp.implicit_target_refusal("A:/Games/mc2-flash3", "G:/mc2-installs/flash3") is None
     assert dp.implicit_target_refusal("A:/Games/mc2-main", None) is None
     assert dp.implicit_target_refusal("D:/work/checkout", None) is None
 

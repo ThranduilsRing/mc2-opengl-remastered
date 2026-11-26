@@ -6,7 +6,7 @@ Smoke mode skips the movie decode (code/mc2movie.cpp), so a movie opened from th
 with MC2_BOOT_VIDEO=1 (decode on, passthrough in Gates/gate_rows_0.inc) and MC2_SIM_OVERLAP at its default (ON), and
 fails on a [SIM_OVERLAP v1] VIOLATION, or when no "[VIDEO] init: opened" line shows the movie really played.
 
-  py -3 scripts/video_decode_smoke.py --exe E:/mc2-installs/<lane>/mc2.exe [--mission mc2_01 ...]
+  py -3 scripts/video_decode_smoke.py --exe G:/mc2-installs/<lane>/mc2.exe [--mission mc2_01 ...]
 """
 import argparse
 import json

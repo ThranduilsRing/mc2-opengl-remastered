@@ -4,7 +4,7 @@
 WHAT: battery wrapper around scripts/run_tool_capture.py (the existing launch-and-screenshot harness). It optionally builds
   the opt-in targets (mc2fx_preview, mc2weapon_gui) through scripts/ninja_build.py, then runs the three captures --
   asset_viewer, mc2fx_preview, mc2weapon_gui -- and fails if any of them fails. Captures and logs are staged under
-  E:/mc2-installs/tools_smoke-stage/.
+  G:/mc2-installs/tools_smoke-stage/.
 WHY: the three tools had no single command and nothing checked that the optional targets were actually built; a missing exe
   made run_tool_capture exit 2 with no aggregator around it.
 USAGE (battery command line):

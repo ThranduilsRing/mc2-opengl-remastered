@@ -6,6 +6,7 @@
 #include "vk_render_infra.h"
 #include "vk_texture_residency.h"
 #include "render_backend_select.h"
+#include "gos_crashbundle.h"
 #include "../../mclib/sim_overlap.h"
 #include "../../mclib/battle_bench_wait.h"
 #include "Gates/gate.h"
@@ -107,6 +108,7 @@ void waitStarted(std::unique_lock<std::mutex>& lock, Pred pred) {
 
 void run() {
     isWorker = true;
+    crashbundle_guard_thread_stack();
     mc2::overlap::registerThread(mc2::overlap::Owner::Render);
     {
         std::lock_guard lock(mutex);

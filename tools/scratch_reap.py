@@ -7,7 +7,7 @@
 
 Deletes only: <root>/<slotNN> under the two scratch roots, or a name in LEGACY. Refuses (and prints why): anything outside those,
 the archive, owner-test-*, v0.4/v0.4c, A:/Games/mc2-opengl, a worktree, a slot with a live (registry-claimed) lane, and any tree
-holding a crashes/ dir or *.dmp/*.mdmp that is not mirrored (same name and size) under E:/mc2-archive-2026-10/crashes/.
+holding a crashes/ dir or *.dmp/*.mdmp that is not mirrored (same name and size) under G:/mc2-crashes/.
 Prints the bytes freed (apparent size, hardlinks counted once) and the paths it kept.
 """
 import argparse
@@ -21,9 +21,11 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts"))
 import console_child  # noqa: E402  (windowless console children; scripts/console_child.py)
 
-ROOTS = ("E:/mc2-tmp", "G:/mc2-tmp")  # drive-path: ok PC slot scratch roots (lane-rules section 5); never run on the laptop gate
+from smoke_lib.paths import CRASH_ROOT, SCRATCH_ROOT
+
+ROOTS = (SCRATCH_ROOT, "E:/mc2-tmp")  # drive-path: ok PC slot scratch roots (lane-rules section 5); never run on the laptop gate
 ARCHIVE = "E:/mc2-archive-2026-10"  # drive-path: ok PC archive, refused as a delete target
-CRASH_MIRROR = ARCHIVE + "/crashes"
+CRASH_MIRROR = CRASH_ROOT
 MAIN_ROOT = "A:/Games/mc2-main"  # drive-path: ok PC canonical worktree (worktree list, slot paths)
 SLOT_COUNT = 12
 LEGACY_PARENT = "E:/"  # drive-path: ok PC legacy E:/mc2-tmp-<name> scratch parent
@@ -57,6 +59,8 @@ def ensure_slot_scratch(slot):
     """Create (idempotent, best effort) the slot's two scratch roots; returns their paths."""
     out = slot_dirs(slot)
     for d in out:
+        if not d.startswith(SCRATCH_ROOT + "/"):
+            continue  # legacy E: scratch is eligible for reaping only
         try:
             os.makedirs(d, exist_ok=True)
         except OSError as e:

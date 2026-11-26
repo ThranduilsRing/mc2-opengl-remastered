@@ -11,7 +11,7 @@ The tool also counts the recovery lines: `[VK_PRESENT] present failure treated a
 `[VK_PRESENT] deferred init recovered` (the re-init). It reports both counts but requires neither, because a minimize that
 the swapchain rebuild absorbs is a pass too.
 
-    py -3 tools/window_cycle.py --install E:/mc2-installs/<lane> [--mission mc2_01] [--out G:/mc2-tmp/<lane>/window_cycle]
+    py -3 tools/window_cycle.py --install G:/mc2-installs/<lane> [--mission mc2_01] [--out G:/mc2-tmp/<lane>/window_cycle]
 """
 from __future__ import annotations
 
@@ -78,7 +78,7 @@ def wait_for(pred, timeout_s: float, step_s: float = 0.25) -> bool:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--install", required=True, help="install dir holding mc2.exe (a lane's own E:/mc2-installs/<branch>)")
+    ap.add_argument("--install", required=True, help="install dir holding mc2.exe (a lane's own G:/mc2-installs/<branch>)")  # drive-path: ok PC path in user-facing help
     ap.add_argument("--mission", default="mc2_01")
     ap.add_argument("--duration", type=int, default=40, help="engine --duration seconds")
     ap.add_argument("--settle", type=float, default=12.0, help="seconds after the window appears before the first cycle")
@@ -107,6 +107,10 @@ def main(argv=None) -> int:
     for k in runner.POPPED_ENV:
         env.pop(k, None)
     u32 = _user32()
+    # Each cycle also loses and regains focus the way an alt-tab does: the input script queues the real SDL focus events.
+    script = out / "focus_script.txt"
+    script.write_text("", encoding="utf-8")
+    env["MC2_INPUT_SCRIPT"] = str(script)
     argv_exe = [str(exe), "--profile", "stock", "--mission", args.mission, "--duration", str(args.duration)]
     # show_window: start restored (offscreen), not minimized, so the first minimize is one this tool makes.
     with open(log_path, "w", encoding="utf-8", errors="replace") as fo:
@@ -124,10 +128,15 @@ def main(argv=None) -> int:
                 if proc.poll() is not None:
                     break
                 w, h = SIZES[i % len(SIZES)]
+                with open(script, "a", encoding="utf-8") as fs:
+                    fs.write("focus lost\n")
+                time.sleep(args.hold)
                 u32.ShowWindow(hwnd, SW_SHOWMINNOACTIVE)
                 time.sleep(args.hold)
                 u32.ShowWindow(hwnd, SW_SHOWNOACTIVATE)
                 time.sleep(args.hold)
+                with open(script, "a", encoding="utf-8") as fs:
+                    fs.write("focus gained\n")
                 u32.SetWindowPos(hwnd, None, 0, 0, w, h, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE)
                 time.sleep(args.hold)
                 done += 1
@@ -142,9 +151,11 @@ def main(argv=None) -> int:
     stalls = len(STALL.findall(text))
     fatals = len(FATAL.findall(text))
     transient, recovered = text.count(TRANSIENT), text.count(RECOVERED)
-    ok = rc == 0 and done == args.cycles and stalls == 0 and fatals == 0
-    print(f"window_cycle: {'PASS' if ok else 'FAIL'} exit={rc} cycles={done}/{args.cycles} stall={stalls} fatal={fatals} "
-          f"transient={transient} recovered={recovered} log={log_path}")
+    focus = text.count("cmd=focus lost")
+    bundles = text.count("[CRASHBUNDLE]")
+    ok = rc == 0 and done == args.cycles and stalls == 0 and fatals == 0 and bundles == 0 and focus == done
+    print(f"window_cycle: {'PASS' if ok else 'FAIL'} exit={rc} cycles={done}/{args.cycles} focus_lost={focus} stall={stalls} "
+          f"fatal={fatals} crashbundle={bundles} transient={transient} recovered={recovered} log={log_path}")
     return 0 if ok else 1
 
 

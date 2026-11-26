@@ -143,6 +143,7 @@ static int musicSlotChannel (int slot)
 //---------------------------------------------------------------------------
 void SoundSystem::destroy (void)
 {
+	pendingStreams.clear();
     supportPreloadFile = nullptr;
     releaseSupportPlayback(supportHandle);
     for (auto& resource : supportResources) gosAudio_DestroyResource(&resource);
@@ -521,6 +522,7 @@ void SoundSystem::update (void)
 		}
 	}
 	
+	updateDigitalStreams();
 	if ((largestSensorContact > -1) && (sensorBeepUpdateTime > MAX_SENSOR_UPDATE_TIME))
 	{
 		playDigitalSample(SENSOR2);
@@ -671,6 +673,13 @@ std::optional<long> SoundSystem::playDigitalStream (mc2::czstring streamName)
         return std::nullopt;
     }
     mc2::overlap::assertMainThread("SoundSystem::playDigitalStream");
+    if (useSound && streamName) pendingStreams.emplace_back(streamName);
+    updateDigitalStreams();
+    return NO_ERR;
+}
+
+std::optional<long> SoundSystem::startDigitalStream(mc2::czstring streamName)
+{
 	const char* accepted = "disabled";
 	std::string resourcePath;
 	bool resourceAccepted = false;
@@ -722,7 +731,8 @@ long SoundSystem::playBettySample (unsigned long bettySampleId)
 {
     const bool queued = mc2::tick::defer(mc2::tick::Queue::Sound, [this, bettySampleId] { playBettySample(bettySampleId); });
     if (!queued) mc2::overlap::assertMainThread("SoundSystem::playBettySample");
-	if (!queued && (useSound && bettySoundBite.empty()))	//Playing Betty takes precedence
+	if (!queued && useSound && bettySoundBite.empty() && !isPlayingVoiceOver() &&
+		!isChannelPlaying(RADIO_CHANNEL) && !isChannelPlaying(SUPPORT_CHANNEL))
 	{
 
 		if (bettySampleId >= numBettySamples)
@@ -781,7 +791,8 @@ long SoundSystem::playSupportSample (unsigned long supportSampleId, mc2::czstrin
         mc2::tick::defer(mc2::tick::Queue::Sound, [this, supportSampleId, name, named] { playSupportSample(supportSampleId, named ? name.c_str() : nullptr); });
     }
     if (!queued) mc2::overlap::assertMainThread("SoundSystem::playSupportSample");
-	if (!queued && useSound && !supportHandle)		//Playing Support takes precedence
+	if (!queued && useSound && !supportHandle && !isPlayingVoiceOver() &&
+		!isChannelPlaying(RADIO_CHANNEL) && !isChannelPlaying(BETTY_CHANNEL))
 	{
 		if (!fileName)
 		{
@@ -883,6 +894,15 @@ bool SoundSystem::isPlayingVoiceOver (void)
 }
 
 //---------------------------------------------------------------------------
+void SoundSystem::updateDigitalStreams()
+{
+    if (pendingStreams.empty() || isPlayingVoiceOver() || isChannelPlaying(RADIO_CHANNEL) ||
+        isChannelPlaying(BETTY_CHANNEL) || isChannelPlaying(SUPPORT_CHANNEL)) return;
+    const auto name = pendingStreams.front();
+    pendingStreams.erase(pendingStreams.begin());
+    startDigitalStream(name.c_str());
+}
+
 bool SoundSystem::isDigitalMusicPlaying (void)
 {
 	if (musicSlots[0].handle || musicSlots[1].handle)
@@ -1012,6 +1032,7 @@ void SoundSystem::stopSupportSample (void)
 {
     if (mc2::tick::defer(mc2::tick::Queue::Sound, [this] { stopSupportSample(); })) return;
     mc2::overlap::assertMainThread("SoundSystem::stopSupportSample");
+	pendingStreams.clear();
 	if (stream3Handle)
 	{
 		gosAudio_DestroyResource(&stream3Handle);
@@ -1243,6 +1264,12 @@ bool SoundSystem::beginVideoPCMStream(int rate, int channels)
     Mix_HookMusic(videoMixHook, nullptr);
     Mix_ResumeMusic();
     g_va.active = true;
+    // A briefing may start after a hint: stop all other speech before its PCM is pushed.
+    for (int channel : {RADIO_CHANNEL, BETTY_CHANNEL, SUPPORT_CHANNEL, STREAM3CHANNEL})
+        gosAudio_SetChannelPlayMode(channel, gosAudio_Stop);
+    gosAudio_DestroyResource(&stream3Handle);
+    stream3Handle = nullptr;
+    stream3Active = false;
     return true;
 }
 

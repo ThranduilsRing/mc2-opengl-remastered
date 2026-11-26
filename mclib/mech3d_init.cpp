@@ -227,6 +227,7 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		
 		sensorTriangleShapeOwner_.reset(GVAppearanceType::SensorTriangleShape->CreateFrom());
 		sensorTriangleShape = sensorTriangleShapeOwner_.get();
+		sensorTriangleShape->SetIsHudElement();
 		
 		if (mechType->leftArm)
 		{
@@ -277,6 +278,7 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		{
 			sensorSquareShapeOwner_.reset(Mech3DAppearanceType::SensorSquareShape->CreateFrom());
 			sensorSquareShape = sensorSquareShapeOwner_.get();
+		sensorSquareShape->SetIsHudElement();
 			for (int i=0;i<sensorSquareShape->GetNumTextures();i++)
 			{
 				char txmName[1024];
@@ -314,6 +316,7 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		{
 			sensorSquareShapeOwner_.reset(GVAppearanceType::SensorCircleShape->CreateFrom());
 			sensorSquareShape = sensorSquareShapeOwner_.get();
+		sensorSquareShape->SetIsHudElement();
 			for (int i=0;i<sensorSquareShape->GetNumTextures();i++)
 			{
 				char txmName[1024];

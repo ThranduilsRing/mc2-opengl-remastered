@@ -16,7 +16,7 @@ def test_owner_paths_refused(path):
     assert "refusing" in sim.owner_install_refusal(path, False)
 
 
-@pytest.mark.parametrize("path", ["E:/mc2-installs/harness-guards-1", "A:/Games/mc2-opengl-other/x"])
+@pytest.mark.parametrize("path", ["G:/mc2-installs/harness-guards-1", "A:/Games/mc2-opengl-other/x"])
 def test_other_paths_allowed(path):
     assert sim.owner_install_refusal(path, False) == ""
 
@@ -38,7 +38,7 @@ def test_refusal_rc_is_not_the_starved_rc():
 def test_battery_determinism_refuses_owner_install_loudly():
     import battery
     assert battery.RC_OWNER_INSTALL == sim.RC_OWNER_INSTALL and battery.OWNER_INSTALL_ROOT == sim.OWNER_INSTALL_ROOT
-    assert battery.install_is_owner_owned(OWNER) and not battery.install_is_owner_owned("E:/mc2-installs/x")
+    assert battery.install_is_owner_owned(OWNER) and not battery.install_is_owner_owned("G:/mc2-installs/x")
 
     class Ctx:
         install = OWNER

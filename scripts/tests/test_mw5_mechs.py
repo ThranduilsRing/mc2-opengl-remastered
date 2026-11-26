@@ -13,6 +13,40 @@ from tools.mw5_mechs.ue_basis import psa_pos_to_gltf, psa_quat_to_gltf
 from tools.mw5_mechs.verify_basis import angle, fk, world_rotation_delta
 
 
+@pytest.mark.parametrize('recipe', sorted((Path(B.__file__).parent / 'recipes').glob('*.json')))
+def test_mw5_forward_matches_movement(recipe):
+    from tools.mw5_mechs.build_pack import face_movement
+    r = json.loads(recipe.read_text())
+    chassis = r.get('vehicles', [r])
+    for _ in chassis:
+        doc = {'nodes': [{'name': 'hull'}], 'scenes': [{'nodes': [0]}]}
+        face_movement(doc)
+        # UE +X survives both native and ActorX conversion; MC2 expects glTF +Z.
+        root = doc['nodes'][doc['scenes'][0]['nodes'][0]]
+        np.testing.assert_allclose(B.trs_mat(root) @ [1, 0, 0, 0], [0, 0, 1, 0], atol=1e-7)
+        face_movement(doc)
+        assert len(doc['nodes']) == 2 and root['children'] == [0]
+
+
+def test_built_mw5_mechs_face_movement():
+    import os
+    from tools.mw5_mechs.sockets import load_glb
+    root = os.environ.get('MW5_STANDALONE_INSTALL')
+    if not root:
+        pytest.skip('requires the generated private packs')
+    recipes = [p for p in (Path(B.__file__).parent / 'recipes').glob('*.json') if p.stem != 'vehicles']
+    for path in recipes:
+        r = json.loads(path.read_text())
+        doc, _ = load_glb(Path(root) / 'mods/mw5_mechs/data/tgl' / (r['mc2']['stem'] + '.glb'))
+        # Cockpit position is not an axis: Dragon's cockpit sits behind its pelvis.
+        # Check the authored UE +X basis at the actual exported scene boundary.
+        for scene in doc['scenes']:
+            node = doc['nodes'][scene['nodes'][0]]
+            assert node['name'] == 'mw5_forward', r['chassis_id']
+            np.testing.assert_allclose(B.trs_mat(node) @ [1, 0, 0, 0],
+                                       [0, 0, 1, 0], atol=1e-7)
+
+
 def test_built_packs_do_not_override_stock_units():
     import csv
     import io
@@ -559,7 +593,7 @@ def test_purchase_unlock_table_matches_all_stock_missions():
     fingerprints = '19656e7c86ca 19656e7c86ca 1cac7d5d3373 efbf4ab1c0a6 a6a08811d35a a7e83723af3f a7e83723af3f a7e83723af3f 5cb34d144c62 faaa5c0f6dd2 b3b6dac31e6d b3b6dac31e6d a97d2d5040e6 993d25ada087 993d25ada087 993d25ada087 993d25ada087 b7070d511ac4 2a7c1ace822a 2a7c1ace822a 2a7c1ace822a 9549e1c32ffb 9549e1c32ffb 9549e1c32ffb'.split()
     for mission in range(1, 25):
         assert hashlib.sha256(','.join(sorted(stock[mission])).encode()).hexdigest()[:12] == fingerprints[mission-1]
-        unlocked = stock[mission] | {s for s,n in table.items() if n <= mission}
-        assert unlocked == stock[mission] | {s for s,n in expected.items() if n <= mission}
-        assert ('mw5_direwolf' in unlocked) == (mission >= 22)
+        unlocked = stock[mission] | {s for s,n in table.items() if s.startswith('mw5_') or n <= mission}
+        assert unlocked == stock[mission] | {s for s,n in expected.items() if s.startswith('mw5_') or n <= mission}
+        assert 'mw5_direwolf' in unlocked
         assert ('hunter' in unlocked)

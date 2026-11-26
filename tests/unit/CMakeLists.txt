@@ -75,6 +75,7 @@ add_executable(mc2_tests
     test_present_handoff.cpp
     test_terrain_record_cache.cpp  # H8 terrain-submit-cut: record cache (static camera 0 rebuilds, one dirty = one)
     test_present_wait.cpp  # PRESENT-HARDEN: pumped bounded main waits, failure seen at seal, start-spaced cap pacing
+    test_crash_session_sentinel.cpp  # ALTTAB-CRASH: a session that died with no handler is recorded at the next launch
     test_loading_pump_meter.cpp
     test_commander_team.cpp # COMMANDER-TEAM: commanderPartTeam fallback (first part wins, team 0, non-home team, no parts)
     test_pilot_kill_result.cpp
@@ -964,6 +965,10 @@ file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/radio_playback.inc" CONTENT "$
 mc2_height_slice(voiceover_playback mclib/soundsys.cpp
     "bool SoundSystem::isPlayingVoiceOver (void)" "bool SoundSystem::isDigitalMusicPlaying (void)")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/voiceover_playback.inc" CONTENT "${voiceover_playback}")
+mc2_height_slice(vehicle_recovery code/logisticsdata_save.cpp
+    "void LogisticsData::recoverDeployedVehicle(" "// A pilot already flying a live mech")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/vehicle_recovery.inc" CONTENT "${vehicle_recovery}")
+set_source_files_properties(test_file_inifile.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 target_sources(mc2_tests PRIVATE test_radio_playback.cpp)
 set_source_files_properties(test_radio_playback.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 # Mission-load exclusive accounting (standalone header).
@@ -986,6 +991,15 @@ file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/terrain_gesture_status.inc" CO
 set_source_files_properties(test_terrain_dirty_queue.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 # Header-only economy rule helpers (code/economy_rules.h); before the selected-tier snapshot below so `--only` can select it.
 target_sources(mc2_tests PRIVATE test_economy_rules.cpp test_screen_layer_order.cpp)
+
+# Campaign guards: LogisticsMissionInfo init rejection and null-groups accessors (the class TUs, game-free).
+target_sources(mc2_tests PRIVATE
+    test_logistics_mission_info_guards.cpp
+    test_game_rules.cpp
+    ${MC2_WORKTREE_ROOT}/code/logisticsmissioninfo.cpp
+    ${MC2_WORKTREE_ROOT}/code/logisticsmissioninfo_progress.cpp
+    ${MC2_WORKTREE_ROOT}/code/logisticsmissioninfo_query.cpp
+)
 
 # Keep all production objects in the full tier; scoped links extract only needed
 # objects from the same archive. Stubs (including allocation overrides) are
@@ -1052,12 +1066,3 @@ if(MC2_UNIT_ONLY_SOURCES)
 endif()
 
 target_sources(mc2_tests PRIVATE test_veg_population_cache.cpp)
-
-# Campaign guards: LogisticsMissionInfo init rejection and null-groups accessors (the class TUs, game-free).
-target_sources(mc2_tests PRIVATE
-    test_logistics_mission_info_guards.cpp
-    test_game_rules.cpp
-    ${MC2_WORKTREE_ROOT}/code/logisticsmissioninfo.cpp
-    ${MC2_WORKTREE_ROOT}/code/logisticsmissioninfo_progress.cpp
-    ${MC2_WORKTREE_ROOT}/code/logisticsmissioninfo_query.cpp
-)

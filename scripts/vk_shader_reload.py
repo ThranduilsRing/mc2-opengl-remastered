@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compile and ABI-check a native Vulkan shader, then request a frame-boundary reload.
 
-Example: py -3 scripts/vk_shader_reload.py --install E:/mc2-installs/mc2-win64-render
+Example: py -3 scripts/vk_shader_reload.py --install G:/mc2-installs/mc2-win64-render
          --shader terrain_lod.frag [--source path/to/edited.frag]
 The game logs success or failure_keeps_old. No renderer/simulation update is run by this command.
 """

@@ -43,6 +43,13 @@ void crashbundle_trigger_test_crash(void);
 // Fatal-path bundle: appends `what` to the ring, then writes crash.txt, last_trace.txt and a minidump (stack = caller). The caller then aborts.
 void crashbundle_fatal(std::string_view what);
 
+// Session sentinel (crash_session_sentinel.h): open when the frame loop starts, close when it ends. A sentinel whose process is gone
+// becomes a crash record at the next launch; exit() with the sentinel still open writes one at once.
+void crashbundle_session_open();
+void crashbundle_session_close();
+// Reserve stack for the crash filter on the calling thread, so a stack overflow still leaves a bundle.
+void crashbundle_guard_thread_stack();
+
 // std::format line -> stdout + crash-bundle ring. Cap is the line buffer size (output truncated to Cap-1 bytes); prefix is
 // prepended inside that cap (use "" for none).
 template <size_t Cap, class... Args>

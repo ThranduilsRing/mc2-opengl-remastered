@@ -20,7 +20,9 @@ import console_child
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = Path(__file__).with_name("visual_regions.json")
-GOLDEN = Path("E:/mc2-archive-2026-10/golden/visual-a")
+from smoke_lib.paths import PROOF_ROOT
+
+GOLDEN = Path(PROOF_ROOT) / "golden/visual-a"
 
 
 def validate_schema(doc):

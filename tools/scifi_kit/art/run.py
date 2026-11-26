@@ -31,7 +31,10 @@ ROOT = HERE.parents[2]
 sys.path.insert(0, str(ROOT / 'tools/blender_pipeline'))
 from blender_runner import find_blender_exe  # noqa: E402
 
-OUT = Path('E:/mc2-ref/scifi-kit/art')
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
+from smoke_lib.paths import SCIFI_OUTPUT_ROOT
+
+OUT = Path((SCIFI_OUTPUT_ROOT + '/art'))
 THUMBS = Path('E:/mc2-archive-2026-10/asset-modernize/docs/assets/sheets/thumbs')
 BLENDER_VERSION = '5.1.1'  # Reference bake toolchain; warn on any version drift.
 CONDITIONS = ['pristine', 'worn', 'abandoned', 'partial', 'destroyed']
@@ -297,7 +300,7 @@ def main():
     elif a.command == 'stockviews':
         # Full stock model from all sides (never a single iso view) for counts/silhouette.
         import drafts
-        job = {'kind': 'stock_views', 'tag': a.tag, 'out': 'E:/mc2-ref/scifi-kit/studies/stock-views',
+        job = {'kind': 'stock_views', 'tag': a.tag, 'out': (SCIFI_OUTPUT_ROOT + '/studies/stock-views'),
                'assemblies': a.only.split(',') if a.only else list(drafts.DRAFTS)}
         blender(job, OUT / 'logs' / f'{a.tag}.log')
     elif a.command == 'build':

@@ -6,14 +6,14 @@ reimplements none of them. A step whose tool is not in this tree is reported NEE
 WHY: a battery session is a fixed sequence with a fixed budget; a driver keeps the order, the staging dirs and the verdicts
 in one place instead of a hand-typed list of commands.
 
-  py -3 tools/battery.py --install E:/mc2-installs/<lane> --owner-present
-  py -3 tools/battery.py --install E:/mc2-installs/<lane> --dry-run
-  py -3 tools/battery.py --only preflight,resave --install E:/mc2-installs/<lane>
-  py -3 tools/battery.py --install E:/mc2-installs/<lane> --skip perf,simtrace
+  py -3 tools/battery.py --install G:/mc2-installs/<lane> --owner-present
+  py -3 tools/battery.py --install G:/mc2-installs/<lane> --dry-run
+  py -3 tools/battery.py --only preflight,resave --install G:/mc2-installs/<lane>
+  py -3 tools/battery.py --install G:/mc2-installs/<lane> --skip perf,simtrace
   py -3 tools/battery.py --list
 
 Steps (run-book order): preflight, resave, campaign, sound, determinism, mods, tools, perf, reload, simtrace, triage.
-Staging: disposable copies go under E:/mc2-installs/battery-stage/<step>/ (created). Nothing is written inside a game install except by the
+Staging: disposable copies go under G:/mc2-installs/battery-stage/<step>/ (created). Nothing is written inside a game install except by the
 runners' own --deploy paths, and mc2-win64-v0.4c is refused outright.
 --owner-present: the visible Tracy window and the sound listen need the owner at the desk; without the flag those two items
 are recorded NEEDS_REVIEW rather than substituting minimized FPS numbers or a dummy audio driver.
@@ -34,7 +34,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)
-import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)
+import stage_root as stages  # noqa: E402  (default staging roots on G:, free-space preflight)
 
 DEFAULT_STAGE = str(stages.default_root("battery"))
 FORBIDDEN_INSTALL = "mc2-win64-v0.4c"

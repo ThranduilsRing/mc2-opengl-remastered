@@ -10,6 +10,14 @@
 #include <fstream>
 #include <iterator>
 
+TEST_CASE("purchase_catalog/third party chassis outside the unlock table stay available") {
+    const std::vector<mc2purchase::Unlock> table{{"mw5_atlas", 9}};
+    CHECK(mc2purchase::supplementalAvailable("bt2018_marauder", true, 1, table));
+    CHECK(mc2purchase::supplementalAvailable("mw5_atlas", true, 1, table));  // every MW5 chassis is available from mission one
+    CHECK(mc2purchase::supplementalAvailable("mw5_atlas", true, 9, table));
+    CHECK_FALSE(mc2purchase::supplementalAvailable("atlas", false, 1, table));
+}
+
 TEST_CASE("purchase_catalog/vehicle rule defaults on and filters every vehicle source") {
     mc2::rules::GameRules rules;
     CHECK(rules.purchaseVehicles);
@@ -96,22 +104,46 @@ TEST_CASE("purchase_catalog/installed assets mount without selecting a campaign"
 }
 
 TEST_CASE("purchase_catalog/availability preserves stock progression") {
-    const std::vector<mc2purchase::Unlock> table{{"hunter", 1}, {"mw5_atlas", 9}, {"mw5_direwolf", 22}};
+    const std::vector<mc2purchase::Unlock> table{{"hunter", 1}, {"vedette", 3}, {"mw5_atlas", 9}, {"mw5_direwolf", 22}};
     for (int mission = 1; mission <= 24; ++mission) {
         CHECK(mc2purchase::unlocked("hunter", mission, table));
-        CHECK(mc2purchase::unlocked("mw5_atlas", mission, table) == (mission >= 9));
-        CHECK(mc2purchase::unlocked("mw5_direwolf", mission, table) == (mission >= 22));
+        CHECK(mc2purchase::unlocked("vedette", mission, table) == (mission >= 3));
+        CHECK(mc2purchase::unlocked("mw5_atlas", mission, table));
+        CHECK(mc2purchase::unlocked("mw5_direwolf", mission, table));
         CHECK_FALSE(mc2purchase::unlocked("unknown_pack", mission, table));
         const auto path = "data/missions/purchase" + std::string(mission < 10 ? "0" : "") + std::to_string(mission) + ".fit";
         CHECK(mc2purchase::missionNumber(path) == mission);
     }
-    CHECK(mc2purchase::missionNumber("data/missions/purchase_all.fit") == 0);
+    CHECK(mc2purchase::missionNumber("data/missions/purchase_all.fit") == 1);
+    CHECK(mc2purchase::unlocked("hunter", mc2purchase::missionNumber("data/missions/purchaseKVe.fit"), table));
+    CHECK(mc2purchase::unlocked("mw5_atlas", mc2purchase::missionNumber("purchaseKVe.fit"), table));
     CHECK(mc2purchase::missionNumber("purchase00.fit") == 0);
     CHECK(mc2purchase::missionNumber("purchase25.fit") == 0);
     CHECK_FALSE(mc2purchase::unlocked("hunter", 0, table));
     CHECK(mc2purchase::source("bt2018", "skin") == "bt2018");
     CHECK(mc2purchase::source("", "desertfox") == "desertfox");
     CHECK(mc2purchase::source("", "").empty());
+}
+
+TEST_CASE("purchase_catalog/mission one and custom campaigns list every MW5 chassis") {
+    FitIniFile file;
+    REQUIRE(file.open((std::string(MC2_REPO_ROOT) + "/data/defs/purchase/unlocks.fit").c_str()) == NO_ERR);
+    REQUIRE(file.seekBlock("Unlocks") == NO_ERR);
+    std::vector<mc2purchase::Unlock> table;
+    for (int i = 0; ; ++i) {
+        char stem[256];
+        long mission = 0;
+        if (file.readIdString(("Unit" + std::to_string(i)).c_str(), stem, sizeof(stem)) != NO_ERR) break;
+        REQUIRE(file.readIdLong(("Mission" + std::to_string(i)).c_str(), mission) == NO_ERR);
+        table.push_back({stem, mission});
+    }
+    for (const auto* purchase : {"purchase01.fit", "purchase02.fit", "purchaseKVe.fit"}) {
+        const int mission = mc2purchase::missionNumber(purchase);
+        for (const auto& row : table)
+            CHECK(mc2purchase::unlocked(row.chassis, mission, table) ==
+                (row.chassis.substr(0, 4) == "mw5_" || mission >= row.mission));
+        CHECK(mc2purchase::unlocked("mw5_future_chassis", mission, {}));
+    }
 }
 
 TEST_CASE("purchase_catalog/vehicles have separate stable dropdowns") {
@@ -126,7 +158,7 @@ TEST_CASE("purchase_catalog/vehicles have separate stable dropdowns") {
     CHECK(groups[2].source == "mw5-vehicles");
 }
 
-TEST_CASE("purchase_catalog/sections count sort and open only campaign source") {
+TEST_CASE("purchase_catalog/normal launch exposes installed mech sections") {
     const std::vector<mc2purchase::Item> items = {
         {"bt2018", "Marauder", 75}, {"", "Atlas", 100},
         {"bt2018", "Archer", 70}, {"omnitech", "Raven", 35},
@@ -134,15 +166,15 @@ TEST_CASE("purchase_catalog/sections count sort and open only campaign source") 
     const auto groups = mc2purchase::group(items, "omnitech");
     REQUIRE(groups.size() == 3);
     CHECK(groups[0].source.empty());
-    CHECK_FALSE(groups[0].open);
+    CHECK(groups[0].open);
     CHECK(groups[1].source == "bt2018");
-    CHECK_FALSE(groups[1].open);
+    CHECK(groups[1].open);
     CHECK(groups[1].items == std::vector<std::size_t>{4, 0, 2});
     CHECK(groups[2].open);
     const auto stock = mc2purchase::group(items, "");
     CHECK(stock[0].open);
-    CHECK_FALSE(stock[1].open);
-    CHECK_FALSE(stock[2].open);
+    CHECK(stock[1].open);
+    CHECK(stock[2].open);
     CHECK(mc2purchase::group({}, "").empty());
 }
 

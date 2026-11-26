@@ -13,6 +13,7 @@ import csv
 import io
 import json
 import shutil
+import struct
 import sys
 from pathlib import Path
 import numpy as np
@@ -23,6 +24,26 @@ from sockets import load_glb, package_nodes  # noqa: E402
 from build_glb import DEFAULT_RECIPE, build, load_recipe, read_accessor, trs_mat  # noqa: E402
 
 KEEP = ("Gestures", "Bounds", "SmokeNode0", "JumpJetNode0", "FootNode0", "FootNode1", "FootPrint")
+
+
+def face_movement(doc):
+    """MW5 +X forward -> MC2's glTF +Z forward, including clips and sockets."""
+    if any(n.get('name') == 'mw5_forward' for n in doc['nodes']):
+        return
+    for scene in doc['scenes']:
+        root = len(doc['nodes'])
+        doc['nodes'].append(dict(name='mw5_forward', children=scene['nodes'],
+                                 rotation=[0, -2**-.5, 0, 2**-.5]))
+        scene['nodes'] = [root]
+
+
+def write_glb(path, doc, binary):
+    text = json.dumps(doc, separators=(',', ':')).encode()
+    text += b' ' * (-len(text) % 4)
+    binary += b'\0' * (-len(binary) % 4)
+    Path(path).write_bytes(struct.pack('<III', 0x46546c67, 2, 28 + len(text) + len(binary))
+                          + struct.pack('<II', len(text), 0x4e4f534a) + text
+                          + struct.pack('<II', len(binary), 0x004e4942) + binary)
 
 # New chassis inherit the nearest-tonnage MC2 variant, including its lab grid.
 TONNAGE = dict(champion=60, crusader=65, direwolf=100, executioner=95,
@@ -265,6 +286,8 @@ def main():
         build(source("source_skm"), source("anim_dir"), glb, f"{stem}_alb.png",
               attachments=attachments, recipe=recipe)
     doc, buf = load_glb(glb)
+    face_movement(doc)
+    write_glb(glb, doc, buf)
     clips = {clip["name"] for clip in doc.get("animations", []) if clip["channels"]}
     expected = set(recipe["clips"].values()) | set(recipe["hold_clips"]) if not a.glb else set()
     if not clips or expected - clips:

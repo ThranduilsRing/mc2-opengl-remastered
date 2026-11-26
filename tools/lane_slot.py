@@ -6,7 +6,7 @@ each slot keeps its warm Ninja tree between lanes.
         # pick/create a free slot; new branch = created at --base (default nifty); EXISTING branch = checked out at its own tip,
         # never moved (a differing --base is refused unless --reset-branch); prints HEAD, starts the warm build (pid in <tree>/warm.pid)
   py -3 tools/lane_slot.py release <slot|slot03|path> [--discard]   # refuses a dirty slot (--discard archives the diff to
-        # E:/mc2-archive-2026-10/stray-diffs first); drops the claim and detaches; retains install/scratch
+        # G:/mc2-proofs/stray-diffs first); drops the claim and detaches; retains install/scratch
   py -3 tools/lane_slot.py gc [--hours 72]                         # unclaimed merged/aged installs and slot scratch; archives crashes first
   py -3 tools/lane_slot.py status                                   # shows each claiming lane and its age
 
@@ -36,11 +36,13 @@ NIFTY = "claude/nifty-mendeleev"
 MAX_SLOTS = configure_ninja.SLOT_COUNT
 SLOT_PATHS = [f"A:/Games/mc2-slot{n:02d}" for n in range(1, MAX_SLOTS + 1)]
 MAIN_ROOT = "A:/Games/mc2-main"
-INSTALLS = "E:/mc2-installs"
-SCRATCH = "G:/mc2-tmp"
-STRAY_DIR = "E:/mc2-archive-2026-10/stray-diffs"
+from smoke_lib.paths import CRASH_ROOT, INSTALL_ROOT, SCRATCH_ROOT, STRAY_ROOT
+
+INSTALLS = INSTALL_ROOT
+SCRATCH = SCRATCH_ROOT
+STRAY_DIR = STRAY_ROOT
 PROTECTED =("owner-test-", "v0.4", "_", "merge-acceptance", "mc2-win64-v0.4", "mods")
-CRASH_ARCHIVE = "E:/mc2-archive-2026-10/proofs"
+CRASH_ARCHIVE = CRASH_ROOT
 
 
 def git(root, *args):
@@ -248,7 +250,7 @@ def _warm_slot(path, no_warm):
         import scratch_reap  # noqa: PLC0415
         dirs = scratch_reap.ensure_slot_scratch(os.path.basename(norm(path)))
         os.environ["MC2_LANE_SCRATCH"] = dirs[0]
-        print(f"[lane_slot] scratch (ALL lane scratch goes here; no new top-level E:/mc2-tmp-* dirs): {dirs[0]} and {dirs[1]}")
+        print(f"[lane_slot] scratch (ALL lane scratch goes here; no new top-level G:/mc2-tmp-* dirs): {dirs[0]} and {dirs[1]}")
         print(f"export MC2_LANE_SCRATCH={dirs[0]}")
     # Warm the slot's own tree at the branch tip (no --base: that would detach the branch we just created). The warm build holds
     # the tree's build lock (scripts/ninja_build.py), so the lane's own build waits for it; its PID is recorded in <tree>/warm.pid.
@@ -275,7 +277,7 @@ def slot_install(path):
 
 
 def install_dirs(branch):
-    """Lane installs owned by this branch: E:/mc2-installs/<branch> and E:/mc2-installs/<last component>."""
+    """Lane installs owned by this branch: G:/mc2-installs/<branch> and G:/mc2-installs/<last component>."""
     out = []
     for name in dict.fromkeys([branch, branch.rsplit("/", 1)[-1]]):
         if name and not name.startswith(PROTECTED) and ".." not in name:
@@ -400,7 +402,12 @@ def _gc(entries, hours):
             for p in evidence:
                 dst = archive / p.relative_to(path)
                 dst.parent.mkdir(parents=True, exist_ok=True)
-                shutil.move(str(p), str(dst))  # failure aborts; never delete unarchived evidence
+                try:
+                    shutil.move(str(p), str(dst))
+                except FileNotFoundError:
+                    if p.exists():
+                        raise  # destination failure: preserve the install and its evidence
+                    print(f"[lane_slot] gc evidence disappeared: {p}")
         shutil.rmtree(path)
         deleted.append(d)
         print(f"[lane_slot] gc deleted {d}; crash evidence archived first")

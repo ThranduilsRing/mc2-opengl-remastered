@@ -31,9 +31,9 @@ def _check(tmp_path, monkeypatch):
 
 
 def test_added_hardcoded_drive_path_is_flagged(tmp_path, monkeypatch):
-    _repo(tmp_path, 'OLD = "A:/Games/old"\n', 'OLD = "A:/Games/old"\nCACHE = "E:/mc2-cook-cache"\n')
+    _repo(tmp_path, 'OLD = "A:/Games/old"\n', 'OLD = "A:/Games/old"\nCACHE = "G:/mc2-cook-cache"\n')
     bad = _check(tmp_path, monkeypatch)
-    assert len(bad) == 1 and "scripts/x.py:2" in bad[0] and "E:/mc2-cook-cache" in bad[0]   # the pre-existing line is not re-flagged
+    assert len(bad) == 1 and "scripts/x.py:2" in bad[0] and "G:/mc2-cook-cache" in bad[0]   # the pre-existing line is not re-flagged
 
 
 def test_env_default_docstring_comment_marker_and_tests_are_fine(tmp_path, monkeypatch):
@@ -44,3 +44,11 @@ def test_env_default_docstring_comment_marker_and_tests_are_fine(tmp_path, monke
     _repo(tmp_path, "X = 1\n", new)
     assert _check(tmp_path, monkeypatch) == []
     assert not ndp.checked("scripts/tests/test_a.py") and not ndp.checked("tools/lane_slot.py") and ndp.checked("scripts/merge_gate.py")
+
+
+def test_pc_write_roots_use_g():
+    from smoke_lib import paths
+    assert paths.INSTALL_ROOT == "G:/mc2-installs"
+    assert paths.PROOF_ROOT == "G:/mc2-proofs"
+    assert paths.CRASH_ROOT == "G:/mc2-crashes"
+    assert paths.SCRATCH_ROOT == "G:/mc2-tmp"

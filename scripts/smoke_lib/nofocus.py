@@ -153,7 +153,7 @@ NOFOCUS_ENV = {
     # MC2_NO_LAUNCHER makes the engine read launcher_env.json next to the exe and
     # apply its MC2_* keys (shadow size, FPS cap, PBR, cheats...), so a harness run
     # would stop measuring the default configuration. MC2_LAUNCHER_ENV_JSON=0 is the
-    # engine's kill-switch for that read; it must always travel with MC2_NO_LAUNCHER.
+    # engine's kill-switch for that read; normal front-end captures explicitly opt in.
     "MC2_LAUNCHER_ENV_JSON": "0",
 }
 
@@ -277,6 +277,9 @@ def apply_env(env: "Optional[dict]" = None, *, small_window: bool = True,
     user-present opt-in that nothing in the tree sets -- is what grants it.
     """
     out = dict(os.environ if env is None else env)
+    # Normal front-end captures may explicitly retain the install's saved content choices.
+    defaults = dict(NOFOCUS_ENV)
+    defaults["MC2_LAUNCHER_ENV_JSON"] = out.get("MC2_LAUNCHER_ENV_JSON", "0")
     route_gpu(out, perf)
     if allow_foreground():
         # User-present session: the human asked for the window to be VISIBLE
@@ -285,7 +288,7 @@ def apply_env(env: "Optional[dict]" = None, *, small_window: bool = True,
         # ALWAYS background. So the focus/cursor/fullscreen vars still apply;
         # they are what makes SDL create the window with
         # SDL_HINT_WINDOW_NO_ACTIVATION_WHEN_SHOWN and skip ClipCursor/warp.
-        out.update(NOFOCUS_ENV)
+        out.update(defaults)
         return out
     if not offscreen:
         # Refuse BEFORE anything is spawned or established: there is no partial
@@ -301,7 +304,7 @@ def apply_env(env: "Optional[dict]" = None, *, small_window: bool = True,
             "MC2_SCREENSHOT_PATH, see scripts/run_visual_capture.py "
             "and scripts/mech_shot.py), which reads the Vulkan present image and is "
             "unaffected by where the window sits.")
-    out.update(NOFOCUS_ENV)
+    out.update(defaults)
     if small_window:
         for k, v in SMALL_WINDOW_ENV.items():
             out.setdefault(k, v)
