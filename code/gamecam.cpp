@@ -1061,6 +1061,7 @@ void GameCamera::render (void)
 					gos_SetActiveCamera(camRight, camUp);
 				}
 
+				if (auto* pp = getGosPostProcess()) pp->finishWorldLighting();
 				::mc2::particles::Batcher::Instance().ResolveTextures();  // resolve MLR->GOS after renderLists
 				// DRYRUN-OBSERVE-COVERAGE-1: observe-only. ParticleEffect (VFX) has no
 				// AmbientContract row and no declared FBO target -> ambient/FBO probe skips

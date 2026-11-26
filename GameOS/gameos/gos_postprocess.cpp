@@ -346,20 +346,28 @@ void gosPostProcess::beginScene()
     ensureDefaultSky();
     prevFrameHadTerrain_ = sceneHasTerrain_;
     sceneHasTerrain_ = false;
+    worldLightingFinished_ = false;
     // Scene clears belong to the native terrain prefix or host menu clear.
 
 }
 
-void gosPostProcess::endScene()
+void gosPostProcess::finishWorldLighting()
 {
-    ZoneScopedN("Render.PostProcess");
-    if (!initialized_) return;
+    if (!initialized_ || worldLightingFinished_) return;
+    worldLightingFinished_ = true;
     if (vkPostScreenFxNativeEnabled()) {
         runVkPostScreenShadowStaticNative();
         runVkPostScreenFxNative();
     }
     runVkPostFogNative();
     flushVkPostChain();
+}
+
+void gosPostProcess::endScene()
+{
+    ZoneScopedN("Render.PostProcess");
+    if (!initialized_) return;
+    finishWorldLighting();
     int x=0,y=0,w=outputWidth_,h=outputHeight_;
     int bx=0,by=0,bw=0,bh=0;
     if (gos_Compute43Box(outputWidth_,outputHeight_,&bx,&by,&bw,&bh)) { x=bx; y=by; w=bw; h=bh; }

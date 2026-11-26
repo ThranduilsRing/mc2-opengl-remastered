@@ -34,10 +34,8 @@ void main() {
         if (r >= 1.0) discard;
         c = vColor * ((1.0 - r) * (1.0 - r));
     }
-    if ((pc.flags & 2u) == 0u &&
-        (uFrame.fogColor.x > 0.0 || uFrame.fogColor.y > 0.0 ||
-         uFrame.fogColor.z > 0.0 || uFrame.fogColor.w > 0.0))
-        c.rgb = mix(uFrame.fogColor.rgb, c.rgb, vFogValue);
+    // Opaque screen fog owns distance/height attenuation.
+
     oColor = vec4(c.rgb, ((pc.flags & 4u) != 0u) ? 1.0 : c.a);
     oGBuffer1 = vec4(0.5, 0.5, 1.0, 0.0);
 }

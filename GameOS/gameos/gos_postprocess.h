@@ -14,6 +14,28 @@ struct Mc2SharedSceneColor;
 
 struct Mc2ColorPropFeed;
 
+struct EdgeFogParams {
+    float invViewProj[16];     // off 0  (same 16 floats the GL path uploads, GL_FALSE)
+    float u_fogColor[3];       // off 64
+    float _pad0;               // off 76
+    float u_halfExtent;        // off 80
+    float u_fogStart;          // off 84
+    float u_fogHeight;         // off 88
+    float u_fogMax;            // off 92
+    float u_waterElevation;    // off 96
+    int   u_horizonClampEnabled;   // off 100 (VK-PARITY-F3: FOG-HORIZON-CLAMP-1)
+    float u_horizonFadeStartSin;   // off 104
+    float u_horizonFadeEndSin;     // off 108
+    float u_hazeStart;             // off 112 (source wu; shader applies x1.5)
+    float u_hazeFull;              // off 116
+    int   u_fogProfile;            // off 120 (DrawDistance 0 = Stock)
+    float _pad1;                   // off 124
+    float u_atmoParams[4];         // off 128 quality, ground extinction/wu, height falloff/wu, HG g
+    float u_atmoSun[4];            // off 144 unit toward sun (Z up), in-scatter strength
+    float u_atmoColor[4];          // off 160 ambient scatter rgb, base elevation
+};
+static_assert(sizeof(EdgeFogParams) == 176, "EdgeFogParams std140 offsets drifted");
+
 class gosPostProcess {
 public:
     gosPostProcess();
@@ -28,6 +50,10 @@ public:
 
     // Composite the HDR scene into the Vulkan present image
     void endScene();
+    // Opaque lighting/fog completes before transparent world effects.
+    void finishWorldLighting();
+    void fillWorldFogParams(EdgeFogParams& p) const;
+    bool worldLightingFinished_ = false;
 
     bool   isHdriReady()  const { return hdriReady_; }
     uint64_t getHdriGeneration() const { return hdriCpu_ ? hdriCpuGeneration_ : 0; }

@@ -210,8 +210,7 @@ void main() {
                                                        uFrame.poolF.z);
 #endif
 
-        // Per-actor haze fog (mech.frag:404).
-        rgb = mix(rgb, vFog.rgb, vFog.a);
+        // World fog is applied once by the opaque pass; studio stays exempt.
     } else {
         // FLAT silhouette fill — the axis-swap / skinning proof (distinct hue vs props).
         rgb = vec3(0.75, 0.45, 0.25) * (0.6 + 0.4 * vUv.y);

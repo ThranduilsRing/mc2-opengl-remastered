@@ -10,8 +10,18 @@
 // so the FS emits straight color; the src-alpha factor premultiplies in HW.
 #version 450
 #extension GL_GOOGLE_include_directive : require
-#include "include/environment_ubo_vk.glsl"
-#include "include/lighting_vk.glsl"
+#define TERRAIN_RESOURCE_SET 3
+#include "include/terrain_frame_vk.glsl"
+#define MC2_FOG_GPU
+#define MC2_FOG_SET 0
+#define MC2_FOG_BINDING 27
+#include "../include/fog_policy.hglsl"
+layout(set = 0, binding = 0, std140) uniform VfxVsParams {
+    mat4 worldToClipGL;
+    vec4 camRight;
+    vec4 camUp;
+} U;
+layout(location = 7) in vec3 v_worldPos;
 
 layout(location = 6) flat in uint v_blend;
 
@@ -48,13 +58,28 @@ bool effectIsEmissive() {
     return (v_flags & 1u) != 0u || v_blend == 1u || v_blend == 2u;
 }
 
-// Authored diffuse effect colour stays exact by day.
+// Smoke has an isotropic diffuse response; only direct sun receives shadows.
 vec3 effectIncidentLight() {
-    vec3 ambient = uEnv.ambLive.rgb;
-    float peak = max(max(ambient.r, ambient.g), ambient.b);
-    vec3 tint = peak > 0.0 ? ambient / peak : vec3(1);
-    return incidentLight(mix(vec3(1), tint, uEnv.nightState.z), vec3(0),
-        vec3(mix(1.0, uEnv.sceneLight.x, uEnv.nightState.z)), 1.0);
+    vec3 N = vec3(0, 0, 1);
+    float shadow = min(terrainStaticShadow(v_worldPos), terrainDynamicShadow(v_worldPos, N));
+    vec3 light = incidentLight(uEnv.ambLive.rgb, 0.5 * uEnv.sunLive.rgb, vec3(1), shadow);
+    if (uT.numPoolLights > 0) {
+        float contactUnused = 0.0;
+        light += tlp_terrainPoolLight(v_worldPos, uT.numPoolLights,
+            uT.lightGridDim, vec2(uT.lightGridMinX, uT.lightGridMinY),
+            vec2(uT.lightGridInvCellX, uT.lightGridInvCellY),
+            uT.lightPoolSoft, uT.lightPoolMoverDim, uT.lightPoolMoverScale,
+            uT.lightPoolMoverMax, uT.lightPoolCompress, 0.0, contactUnused, N, N, false, 0.0);
+    }
+    return light;
+}
+
+vec4 fogEffect(vec4 c) {
+    vec2 ndc = gl_FragCoord.xy * vec2(U.camRight.w, U.camUp.w) - 1.0;
+    vec4 fog = mc2WorldFog(v_worldPos, ndc);
+    // Additive light loses radiance to extinction but introduces no fog coverage.
+    c.rgb = mix(c.rgb, (v_blend == 1u || v_blend == 2u) ? vec3(0) : fog.rgb, fog.a);
+    return c;
 }
 
 void main() {
@@ -79,7 +104,7 @@ void main() {
             if ((v_flags & 1024u) != 0u) c.a = 1.0;
         }
         // Mesh SRC_ALPHA/ONE keeps its authored alpha. Tube ONE/ONE uses RGB.
-        o_color = VFX_OUT(c);
+        o_color = VFX_OUT(fogEffect(c));
         o_normal = vec4(0.0);
         return;
     }
@@ -93,6 +118,6 @@ void main() {
     // (the halo cards carry alpha 0), so such a group neither multiplies by nor discards on alpha.
     if ((v_flags & 2u) != 0u) c.a = 1.0;
     else if (c.a < 0.01) discard;
-    o_color  = VFX_OUT(c);
+    o_color  = VFX_OUT(fogEffect(c));
     o_normal = vec4(0.0);   // GL VFX writes nothing to the normal target
 }

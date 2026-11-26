@@ -81,6 +81,7 @@ const uint ADDITIVE_ONE_ONE = 2u;   // pure additive (GL OneOne); ADDITIVE_* mir
 layout(location = 0) out vec2 v_uv;
 layout(location = 1) out vec4 v_color;
 layout(location = 2) flat out uint v_flags;
+layout(location = 7) out vec3 v_worldPos;
 
 layout(location = 3) out vec4 v_vegData;
 layout(location = 4) out vec2 v_vegAux;
@@ -97,7 +98,8 @@ void main() {
     v_vegData=vec4(0.0); v_vegAux=vec2(0.0);   // vegetation has its own vertex shader (vfx_vegetation.vert); the fragment shader still reads these
     if (G.atlasColumns == 0xfffffffdu) {
         uint b = uint(gl_VertexIndex) * 10u;
-        gl_Position = U.worldToClipGL * vec4(mc2ToRender(read3(b)), 1.0);
+        v_worldPos = mc2ToRender(read3(b));
+        gl_Position = U.worldToClipGL * vec4(v_worldPos, 1.0);
         v_color = read4(b+3u); v_uv = read2(b+7u); v_flags = words[b+9u];
         if ((v_flags & 128u) != 0u)
             gl_Position.xy += v_uv * vec2(U.camRight.w, U.camUp.w) * gl_Position.w;
@@ -109,6 +111,7 @@ void main() {
         // The terrain MVP includes the MC2-to-render conversion. Native
         // gosFX geometry is already in render space, so convert it back first.
         vec3 world = mc2ToRender(p.position);
+        v_worldPos = world;
         gl_Position = U.worldToClipGL * vec4(world, 1.0);
         // Surface flares need depth clearance, but moving their world corners
         // toward the camera enlarges explosions. Preserve authored screen size.
@@ -158,6 +161,7 @@ void main() {
                      + U.camRight.xyz * corner.x
                      + U.camUp.xyz    * corner.y;
 
+    v_worldPos = worldPos;
     gl_Position = U.worldToClipGL * vec4(worldPos, 1.0);
 
     vec2 frameOffset = vec2(0.0);

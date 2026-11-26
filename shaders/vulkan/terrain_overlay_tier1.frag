@@ -106,15 +106,7 @@ void main() {
     c.rgb = max(c.rgb * shadow + cdSpec * shadow, vec3(0.0));
     c.rgb *= mix(vec3(1.0), uEnv.sceneLight.x * uEnv.sceneLight.yzw, pc.artFlatExempt); // Live mission light already carries the night profile.
 
-    // In-shader distance fog (skipped on cement tiles: the shared screen-space fog does it once).
-    float camDist2D = distance(WorldPos.xy, mc2ToRender(uT.cameraPosMC2.xyz).xy);
-    float heightScale = exp(-max(WorldPos.z, 0.0) * 0.002);
-    float fogAmount = clamp(1.0 - exp(-camDist2D * MC2_FOG_EXP_COEFFICIENT * heightScale), 0.0, 0.70);
-    const vec3 fogCol = vec3(0.58, 0.65, 0.75);
-    if (!ovCementTile)
-        c.rgb = mix(c.rgb, fogCol, fogAmount);
-
-    // NIGHT-LIGHT-POOLS-2b: additive pool AFTER the fog mix (chunk terrain applies no fog to it).
+    // Local radiance is composed before the single opaque fog pass.
     if (uT.numPoolLights > 0) {
         float moverContactUnused = 0.0;
         c.rgb += (uEnv.sceneLight.x < 1.0 ? vec3(0.3) : vec3(1.0)) * tlp_terrainPoolLight(WorldPos, uT.numPoolLights,
@@ -124,13 +116,6 @@ void main() {
                                       uT.lightPoolMoverMax, uT.lightPoolCompress,
                                       0.0, moverContactUnused, surfaceN, shadowN, false, 0.0);
     }
-    // Map-edge haze (same ramp as gos_terrain.frag).
-    if (pc.mapHalfExtent > 0.0) {
-        const vec3 edgeSkyCol = vec3(0.58, 0.65, 0.75);
-        float edgeHaze  = edgeHazeAmount(WorldPos.xy, pc.mapHalfExtent);
-        c.rgb = mix(c.rgb, edgeSkyCol, edgeHaze);
-    }
-
     FragColor = c;
     GBuffer1  = vec4(0.5, 0.5, 1.0, 1.0);                      // rc_gbuffer1_shadowHandled_flatUp
 }
