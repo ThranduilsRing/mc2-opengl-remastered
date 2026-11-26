@@ -1,3 +1,6 @@
+#include "mission_environment_gpu.h"
+#include "visual_tuning_profile.h"
+#include "../../mclib/camera.h"
 // vk_native_producers.cpp -- see vk_native_producers.h.
 
 
@@ -58,7 +61,7 @@ bool NativeProducers::prewarmPipelines(const VulkanContext& ctx) {
     const std::string dir = vk_island_util::spvDir();
     const VkDescriptorType S = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, U = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     const VkDescriptorType SD = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, UD = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;   // frame-ring bindings
-    if (!lightP_.create(device_, dir + "terrain_lighting.comp.spv", {{0, SD}, {1, S}, {2, UD}}, "producers.terrainLighting")) return false;
+    if (!lightP_.create(device_, dir + "terrain_lighting.comp.spv", {{0, SD}, {1, S}, {2, UD}, {26, UD}}, "producers.terrainLighting")) return false;
     if (!cullP_.create(device_, dir + "water_cull_pack.comp.spv", {{0, S}, {1, S}, {2, S}, {3, UD}, {4, S}}, "producers.waterCull")) return false;
     if (!argsP_.create(device_, dir + "water_draw_args.comp.spv", {{0, S}, {1, S}, {2, U}}, "producers.waterArgs")) return false;
     if (!lightSets_.create(device_, lightP_, kSlots, "producers.lightSets") || !cullSets_.create(device_, cullP_, kSlots, "producers.cullSets") ||
@@ -138,21 +141,21 @@ uint32_t refChannel(float intensity, uint32_t lightChan, uint32_t amb) {
     return amb;
 }
 
-void refLight(const gos_terrain_lighting::GpuTerrainVertexInput& v, const VkTerrainLightingParams& P,
+void refLight(const gos_terrain_lighting::GpuTerrainVertexInput& v, const VkTerrainLightingParams& P, const EnvironmentUBO& env,
               uint32_t& outLight, uint32_t& outFog) {
     uint32_t lr = 255, lg = 255, lb = 255;
-    if (P.sunRgb[3] == 0) {
-        float li = v.normal[0] * P.sunDirRain[0] + v.normal[1] * P.sunDirRain[1] + v.normal[2] * P.sunDirRain[2];
+    if (P.weather[1] == 0) {
+        float li = v.normal[0] * env.sunLiveDir[0] + v.normal[1] * env.sunLiveDir[1] + v.normal[2] * env.sunLiveDir[2];
         if ((v.flags & 1u) && li > 0.2f) li = 0.2f;
-        lr = refChannel(li, static_cast<uint32_t>(P.sunRgb[0]), static_cast<uint32_t>(P.ambRgb[0]));
-        lg = refChannel(li, static_cast<uint32_t>(P.sunRgb[1]), static_cast<uint32_t>(P.ambRgb[1]));
-        lb = refChannel(li, static_cast<uint32_t>(P.sunRgb[2]), static_cast<uint32_t>(P.ambRgb[2]));
+        lr = refChannel(li, static_cast<uint32_t>(std::lround(env.sunLive[0] * 255.0f)), static_cast<uint32_t>(std::lround(env.ambLive[0] * 255.0f)));
+        lg = refChannel(li, static_cast<uint32_t>(std::lround(env.sunLive[1] * 255.0f)), static_cast<uint32_t>(std::lround(env.ambLive[1] * 255.0f)));
+        lb = refChannel(li, static_cast<uint32_t>(std::lround(env.sunLive[2] * 255.0f)), static_cast<uint32_t>(std::lround(env.ambLive[2] * 255.0f)));
         if (P.baseRgb[0] != 0 || P.baseRgb[1] != 0 || P.baseRgb[2] != 0) {
             lr = std::min(lr + static_cast<uint32_t>(P.baseRgb[0]), 255u);
             lg = std::min(lg + static_cast<uint32_t>(P.baseRgb[1]), 255u);
             lb = std::min(lb + static_cast<uint32_t>(P.baseRgb[2]), 255u);
         }
-        const float rain = P.sunDirRain[3];
+        const float rain = P.weather[0];
         if (rain < 1.0f) {
             lr = static_cast<uint32_t>(static_cast<float>(lr) * rain);
             lb = static_cast<uint32_t>(static_cast<float>(lb) * rain);
@@ -162,7 +165,7 @@ void refLight(const gos_terrain_lighting::GpuTerrainVertexInput& v, const VkTerr
     outLight = (0xFFu << 24) | (lr << 16) | (lg << 8) | lb;
     uint32_t fogResult = 0xFFu;
     const float fs = P.fogHaze[0], ff = P.fogHaze[1];
-    if (P.sunRgb[3] == 0 && P.baseRgb[3] != 0) fogResult = static_cast<uint32_t>(mc2FogHeightAlpha(v.elevation, fs, ff));
+    if (P.weather[1] == 0 && P.baseRgb[3] != 0) fogResult = static_cast<uint32_t>(mc2FogHeightAlpha(v.elevation, fs, ff));
     float haze;
     const bool outside = v.xy[0] <= P.playArea[0] || v.xy[0] >= P.playArea[2] || v.xy[1] <= P.playArea[1] || v.xy[1] >= P.playArea[3];
     if (outside) haze = 1.0f;
@@ -196,10 +199,15 @@ uint32_t NativeProducers::selfTestLighting() {
     }
     VkTerrainLightingParams P{};
     P.counts[0] = static_cast<int32_t>(numVertices_); P.counts[1] = NL; P.counts[2] = kFirst; P.counts[3] = N;
-    P.sunRgb[0] = 250; P.sunRgb[1] = 240; P.sunRgb[2] = 220; P.sunRgb[3] = 0;
-    P.ambRgb[0] = 30; P.ambRgb[1] = 32; P.ambRgb[2] = 40; P.ambRgb[3] = 7;
+    mc2::lighting::LightingState testLight;
+    testLight.sun[0] = 250; testLight.sun[1] = 240; testLight.sun[2] = 220;
+    testLight.amb[0] = 30; testLight.amb[1] = 32; testLight.amb[2] = 40;
+    testLight.sunDir[0] = 0.3f; testLight.sunDir[1] = -0.4f;
+    testLight.sunDir[2] = std::sqrt(1.0f - 0.09f - 0.16f);
+    testLight.fogStart = 200.0f; testLight.fogFull = 20.0f;
+    EnvironmentUBO env; mc2::environment::fillGpu({}, 1.0f, env, testLight, testLight);
     P.baseRgb[0] = 3; P.baseRgb[1] = 0; P.baseRgb[2] = 5; P.baseRgb[3] = 1;
-    P.sunDirRain[0] = 0.3f; P.sunDirRain[1] = -0.4f; P.sunDirRain[2] = std::sqrt(1.0f - 0.09f - 0.16f); P.sunDirRain[3] = 0.85f;
+    P.weather[0] = 0.85f;
     P.fogHaze[0] = 200.0f; P.fogHaze[1] = 20.0f; P.fogHaze[2] = 400.0f; P.fogHaze[3] = 1500.0f;
     P.playArea[0] = -1100.0f; P.playArea[1] = -1100.0f; P.playArea[2] = 1100.0f; P.playArea[3] = 1100.0f;
     P.camDist[0] = 10.0f; P.camDist[1] = -20.0f; P.camDist[2] = 150.0f; P.camDist[3] = 1.0f / 1100.0f;
@@ -207,7 +215,8 @@ uint32_t NativeProducers::selfTestLighting() {
     const uint32_t par = 0;
     VulkanContext& rctx = getOrCreateEngineVulkanContext();
     const VkDeviceSize al = rctx.frameAlignment();
-    const VkDeviceSize offIn = alignUp(sizeof(P), al);
+    const VkDeviceSize offEnv = alignUp(sizeof(P), al);
+    const VkDeviceSize offIn = alignUp(offEnv + sizeof(EnvironmentUBO), al);
     const FrameAlloc span = rctx.frameAlloc(offIn + sizeof(GpuTerrainVertexInput) * (kFirst + N));
     OwnedBuffer rb;
     if (!span || !rb.createHostWritable(allocator_, device_, static_cast<VkDeviceSize>(N) * 8u, VK_BUFFER_USAGE_TRANSFER_DST_BIT, "producers.selfTest")) {
@@ -215,11 +224,12 @@ uint32_t NativeProducers::selfTestLighting() {
         return 0;
     }
     std::memcpy(span.ptr, &P, sizeof(P));
+    std::memcpy(static_cast<uint8_t*>(span.ptr) + offEnv, &env, sizeof(env));
     std::memcpy(static_cast<uint8_t*>(span.ptr) + offIn + sizeof(GpuTerrainVertexInput) * kFirst, vin.data(), sizeof(GpuTerrainVertexInput) * N);
     ringBound_[par] = VK_NULL_HANDLE;
     syncInputs(par, span.buffer, span.range);
     lightSets_.write(device_, par, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, span.buffer, span.range);
-    const uint32_t offsets[2] = {static_cast<uint32_t>(span.offset + offIn), static_cast<uint32_t>(span.offset)};
+    const uint32_t offsets[3] = {static_cast<uint32_t>(span.offset + offIn), static_cast<uint32_t>(span.offset), static_cast<uint32_t>(span.offset + offEnv)};
     const bool ok = submitOneShot(*ctx_, [&](VkCommandBuffer cb) {
         lightP_.bind(cb, lightSets_.set(par), offsets);
         lightP_.dispatch(cb, (N + 63u) / 64u);
@@ -236,7 +246,7 @@ uint32_t NativeProducers::selfTestLighting() {
     uint32_t bad = 0, maxDelta = 0;
     for (uint32_t i = 0; i < N; ++i) {
         uint32_t el, ef;
-        refLight(vin[i], P, el, ef);
+        refLight(vin[i], P, env, el, ef);
         if (el != got[i].lightRGB || ef != got[i].fogRGB) ++bad;
         for (int sh = 0; sh < 32; sh += 8) {
             maxDelta = std::max<uint32_t>(maxDelta, static_cast<uint32_t>(std::abs(static_cast<int>((el >> sh) & 255u) - static_cast<int>((got[i].lightRGB >> sh) & 255u))));
@@ -265,6 +275,7 @@ void NativeProducers::writeAll() {
 void NativeProducers::syncInputs(uint32_t p, VkBuffer buffer, VkDeviceSize range) {
     if (ringBound_[p] == buffer) return;
     lightSets_.write(device_, p, 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, buffer, sizeof(VkTerrainLightingParams));
+    lightSets_.write(device_, p, 26, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, buffer, sizeof(EnvironmentUBO));
     cullSets_.write(device_, p, 3, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, buffer, sizeof(VkWaterCullParams));
     ringBound_[p] = buffer;
 }
@@ -292,8 +303,8 @@ bool NativeProducers::record(VkCommandBuffer cb, uint32_t par, const gos_terrain
     VkTerrainLightingParams lp{};
     lp.counts[0] = static_cast<int32_t>(L.numVertices); lp.counts[1] = static_cast<int32_t>(L.numLights);
     lp.counts[2] = static_cast<int32_t>(L.vertexOffset); lp.counts[3] = static_cast<int32_t>(L.windowCount);
-    for (int i = 0; i < 3; ++i) { lp.sunRgb[i] = L.lightRgb[i]; lp.ambRgb[i] = L.ambientRgb[i]; lp.baseRgb[i] = L.baseRgb[i]; lp.sunDirRain[i] = L.sunDir[i]; lp.camDist[i] = L.camPos[i]; }
-    lp.sunRgb[3] = L.rendererSW; lp.ambRgb[3] = L.lightening; lp.baseRgb[3] = L.useFog; lp.sunDirRain[3] = L.rain;
+    for (int i = 0; i < 3; ++i) { lp.baseRgb[i] = L.baseRgb[i]; lp.camDist[i] = L.camPos[i]; }
+    lp.weather[1] = static_cast<float>(L.rendererSW); lp.baseRgb[3] = L.useFog; lp.weather[0] = L.rain;
     lp.fogHaze[0] = L.fogStart; lp.fogHaze[1] = L.fogFull; lp.fogHaze[2] = L.minHaze; lp.fogHaze[3] = L.maxClip;
     for (int i = 0; i < 4; ++i) lp.playArea[i] = L.playArea[i];
     lp.camDist[3] = L.distFactor;
@@ -305,11 +316,17 @@ bool NativeProducers::record(VkCommandBuffer cb, uint32_t par, const gos_terrain
     wp.misc1[2] = static_cast<int32_t>(W.mapSide); wp.misc1[3] = W.biasLegacy;
     VulkanContext& rctx = getOrCreateEngineVulkanContext();
     const VkDeviceSize al = rctx.frameAlignment();
-    const VkDeviceSize offCull = alignUp(sizeof(VkTerrainLightingParams), al);
+    EnvironmentUBO env;
+    mc2::environment::fillGpu(visualTuning_environment(), mc2SceneLightScale(), env,
+        eye ? eye->currentLighting() : mc2::lighting::LightingState{},
+        eye ? eye->bakeReferenceLighting() : mc2::lighting::LightingState{});
+    const VkDeviceSize offEnv = alignUp(sizeof(VkTerrainLightingParams), al);
+    const VkDeviceSize offCull = alignUp(offEnv + sizeof(EnvironmentUBO), al);
     const FrameAlloc span = rctx.frameAlloc(offCull + sizeof(VkWaterCullParams));
     if (!span) return false;
     uint8_t* const base = static_cast<uint8_t*>(span.ptr);
     std::memcpy(base, &lp, sizeof(lp));
+    std::memcpy(base + offEnv, &env, sizeof(env));
     std::memcpy(base + offCull, &wp, sizeof(wp));
     const std::span<const uint64_t> versions(L.vertexVersions, L.numVertices);
     const auto ranges = vertexUploads_[par].pending(versions, L.vertexOffset, L.windowCount);
@@ -330,7 +347,7 @@ bool NativeProducers::record(VkCommandBuffer cb, uint32_t par, const gos_terrain
         vmaUnmapMemory(allocator_, lightIn_[par].allocation());
     }
     syncInputs(par, span.buffer, span.range);   // the island's slot fence retired this slot's last use; the other slot may be in flight and is not touched
-    const uint32_t lightOffsets[2] = {0u, static_cast<uint32_t>(span.offset)};   // the lighting shader reads no light list: bindings are vertices, output, params
+    const uint32_t lightOffsets[3] = {0u, static_cast<uint32_t>(span.offset), static_cast<uint32_t>(span.offset + offEnv)};   // the lighting shader reads no light list: bindings are vertices, output, params
     const uint32_t cullOffset = static_cast<uint32_t>(span.offset + offCull);
 
     // ---- record ----

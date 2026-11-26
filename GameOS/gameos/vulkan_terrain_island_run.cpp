@@ -217,10 +217,6 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     // VK-TERRAIN-LIGHTING: sun dir + static light-space matrix + toggles. The
     // shadow is only sampled when the gate is on AND a real GL map was copied
     // this frame (s->shadowReady) — else enableShadows=0 -> lit-only, no hole.
-    u.terrainLightDir[0] = feed.terrainLightDir[0];
-    u.terrainLightDir[1] = feed.terrainLightDir[1];
-    u.terrainLightDir[2] = feed.terrainLightDir[2];
-    u.terrainLightDir[3] = 0.0f;
     std::memcpy(u.staticLightSpaceMatrix, feed.staticLightSpaceMatrix,
                 sizeof(u.staticLightSpaceMatrix));
     mc2_vk_shadow_island_get_object_matrix(u.staticLightSpaceMatrix);

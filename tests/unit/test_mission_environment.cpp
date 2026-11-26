@@ -1,5 +1,6 @@
 #include "doctest.h"
 #include "../../GameOS/gameos/visual_tuning_profile.h"
+#include "../../GameOS/gameos/mission_environment_gpu.h"
 #include "../../mclib/lighting_tod_json.h"
 #include "Gates/gate_cold.h"
 #include "Gates/render_options.h"
@@ -128,6 +129,19 @@ TEST_CASE("MissionEnvironment/output defaults neutral and mission grade resets")
     CHECK(neutral.output.vignette==0);
     CHECK(neutral.output.topWarmthStrength==0);
     CHECK(neutral.effectiveHash!=warm.effectiveHash);
+}
+
+TEST_CASE("MissionEnvironment/shared GPU inputs follow mission and session precedence") {
+    const auto layer = source(R"({"defaults":{"exposure":1.2,"shadowSoftness":2.5},"missions":{"a":{"exposure":2,"shadowSoftness":4}}})");
+    EnvironmentUBO gpu;
+    mc2::environment::fillGpu(visualTuning_resolve("a", {layer}), 1, gpu);
+    CHECK(gpu.outputParams[0] == 2);
+    CHECK(gpu.outputParams[1] == doctest::Approx(1));
+    CHECK(gpu.shadowParams[0] == 4);
+    mc2::environment::fillGpu(visualTuning_resolve("b", {layer}, {{"exposure", 0}}), 1, gpu);
+    CHECK(gpu.outputParams[0] == 0);
+    CHECK(gpu.outputParams[1] == 0);
+    CHECK(gpu.shadowParams[0] == 2.5f);
 }
 
 TEST_CASE("MissionEnvironment/reject invalid versions colors types and ranges without stale values") {

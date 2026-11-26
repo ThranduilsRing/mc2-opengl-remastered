@@ -33,25 +33,7 @@ struct MechFrameUBO {
     float   poolF[4];           // @vec4 moverDim, moverScale, objScale, -
     int32_t poolI[4];           // @ivec4 numPoolLights, soft, moverMax, compress
     int32_t miscI[4];           // @ivec4 specDebugMask, mechFill, boneCount (object-motion tail start; 0 = none), -
-    float   environmentAmbient[4]; // @vec4 mission sky RGB; ground is half the sky
     float   prevFromCurClip[16];   // @mat4 previous-frame clip from current clip (camera reprojection), object motion vectors
-    // One sun (EnvironmentUBO's tail, copied by the producer): live sun direction -> authored direction rotation (columns) and the
-    // authored-sun ratios. Identity / 1 with no keys, at night, with no mission and in the mech lab.
-    float   sunAuthFromLive[3][4]; // @vec4xN columns; [0].w = 1 when an authored sun record exists
-    float   pitchUndo[4];          // @vec4 rgb
-    float   ambRelight[4];         // @vec4 rgb
-    float   sunRelight[4];         // @vec4 rgb
-    // Dynamic ToD T2: same fill-only tail as EnvironmentUBO; encoded colours, MC2-world directions.
-    float   sunLive[4];           // @vec4 rgb encoded sun; w reserved
-    float   sunLiveDir[4];        // @vec4 xyz live direction; w reserved
-    float   ambLive[4];           // @vec4 rgb encoded ambient; w reserved
-    float   sunBake[4];           // @vec4 rgb encoded load-time sun; w reserved
-    float   sunBakeDir[4];        // @vec4 xyz load-time direction; w reserved
-    float   ambBake[4];           // @vec4 rgb encoded load-time ambient; w reserved
-    float   fog[4];               // @vec4 rgb encoded fog; w start distance
-    float   cementSky[4];         // @vec4 rgb cement/overlay sky; w water SKY_AMBIENT
-    float   edgeHazeSky[4];       // @vec4 rgb EDGE_HAZE_SKY; w reserved
-    float   lightingParams[4];    // @vec4 mode (0 Fixed, 1 Live), todWeight (0 Fixed), fog full distance, reserved
 };
 
 #include "GpuMechFrameUBO.layout.gen.h"

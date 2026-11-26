@@ -28,15 +28,13 @@ class VulkanContext;
 // std140 mirror of LightingParams in shaders/vulkan/terrain_lighting.comp.slang.
 struct VkTerrainLightingParams {
     int32_t counts[4];      // numVertices, numLights, vertexOffset, windowCount
-    int32_t sunRgb[4];      // lightRed, lightGreen, lightBlue, rendererSW
-    int32_t ambRgb[4];      // ambientRed, ambientGreen, ambientBlue, lighteningLevel
     int32_t baseRgb[4];     // BaseVertexColor R, G, B, useFog
-    float   sunDirRain[4];  // sun direction xyz, rainLightLevel
+    float   weather[4];     // rainLightLevel, rendererSW, reserved, reserved
     float   fogHaze[4];     // fogStart, fogFull, minHazeDistance, maxClipDistance
     float   playArea[4];
     float   camDist[4];     // camera world position xyz, distanceFactor
 };
-static_assert(sizeof(VkTerrainLightingParams) == 128, "LightingParams std140 size (terrain_lighting.comp.slang)");
+static_assert(sizeof(VkTerrainLightingParams) == 96, "LightingParams std140 size (terrain_lighting.comp.slang)");
 
 // std140 mirror of WaterCullParams in shaders/vulkan/water_cull_pack.comp.slang.
 struct VkWaterCullParams {

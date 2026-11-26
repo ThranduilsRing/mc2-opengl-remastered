@@ -1,3 +1,6 @@
+#include "mission_environment_gpu.h"
+#include "visual_tuning_profile.h"
+#include "../../mclib/camera.h"
 // vulkan_vfx_island.cpp â€” VK-FIELD-VFX-1.
 //
 // Renders the GPU-particle billboard stream into the SHARED scene GBuffer color0
@@ -446,7 +449,7 @@ bool init_island(VfxIsland* s, int w, int h) {
 
     // Descriptor set: UBO(0, vert) + particle SSBO(1, vert).
     {
-        VkDescriptorSetLayoutBinding b[5]{};
+        VkDescriptorSetLayoutBinding b[6]{};
         b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         b[1].binding = 1; b[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
@@ -457,15 +460,16 @@ bool init_island(VfxIsland* s, int w, int h) {
         b[3].descriptorCount = 1; b[3].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         b[4].binding = 25; b[4].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         b[4].descriptorCount = 1; b[4].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        b[5] = {26, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr};
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 5; lci.pBindings = b;
+        lci.bindingCount = 6; lci.pBindings = b;
         if (!mc2vk::create(s->dsl, s->device, [&](VkDescriptorSetLayout* o) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, o); })) { vlog("vkCreateDescriptorSetLayout failed."); return false; }
         VkDescriptorPoolSize sizes[4]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = kVfxSlots;
         sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC; sizes[1].descriptorCount = kVfxSlots;
         sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = 2 * kVfxSlots;
-        sizes[3].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[3].descriptorCount = kVfxSlots;
+        sizes[3].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[3].descriptorCount = 2 * kVfxSlots;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pci.maxSets = kVfxSlots; pci.poolSizeCount = 4; pci.pPoolSizes = sizes;
@@ -647,6 +651,21 @@ void fill_frame_params(void* dst, const float* worldToClipGL, const float* camRi
 
 // Both draw paths borrow current shadow resources only after this parity retires.
 bool prepare_shadow_descriptors(VfxIsland* s, uint32_t par) {
+    auto& rctx = mc2vk::getOrCreateEngineVulkanContext();
+    const auto slice = rctx.frameAlloc(sizeof(EnvironmentUBO));
+    if (!slice) return false;
+    EnvironmentUBO environment;
+    mc2::environment::fillGpu(visualTuning_environment(), mc2SceneLightScale(), environment,
+        eye ? eye->currentLighting() : mc2::lighting::LightingState{},
+        eye ? eye->bakeReferenceLighting() : mc2::lighting::LightingState{});
+    std::memcpy(slice.ptr, &environment, sizeof(environment));
+    const VkDescriptorBufferInfo info{slice.buffer, slice.offset, sizeof(environment)};
+    VkWriteDescriptorSet envWrite{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+    envWrite.dstSet = s->set[par]; envWrite.dstBinding = 26; envWrite.descriptorCount = 1;
+    envWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; envWrite.pBufferInfo = &info;
+    vkUpdateDescriptorSets(s->device, 1, &envWrite, 0, nullptr);
+    mc2vk::noteDescWrites(1, 0);
+
     if (!mc2vk::bindMoverShadowDescriptors(s->device,s->set[par],&s->moverStamp[par])) return false;
     // The white page is a valid fallback while the bake is pending. This set
     // has retired its prior submission, so changing borrowed views is safe.

@@ -264,7 +264,7 @@ float u_waterReflStrength;
 vec2  u_waterScreenSize;
 PREC vec4 cameraPos;
 
-const float SKY_AMBIENT   = 0.18;
+#define SKY_AMBIENT uEnv.cementSky.w
 const float WAVE_FREQ     = 0.030;
 const float WAVE_SPEED    = 6.0;
 const float WAVE_FADE_NEAR = 9000.0;
@@ -685,13 +685,13 @@ void main(void)
     vec3  dNx = dFdx(waveN), dNy = dFdy(waveN);
     float kernelVar = 0.25 * (dot(dNx, dNx) + dot(dNy, dNy));
     float nearGloss = (1.0 - smoothstep(NEAR_GLOSS_START, NEAR_GLOSS_END, length(viewVec)))
-                    * (1.0 - clamp(F.f3.z / 0.6, 0.0, 1.0));
+                    * (1.0 - clamp((0.6 * uEnv.nightState.z) / 0.6, 0.0, 1.0));
     float alpha0 = mix(WATER_ALPHA0, NEAR_ALPHA0, nearGloss);
     float specAlpha2 = clamp(alpha0 * alpha0
                              + 2.0 * (waveVar + RIPPLE_SLOPE_VAR * (1.0 - waveLOD) * (RIPPLE_GAIN / 0.22))
                              + min(2.0 * kernelVar, 0.18), 0.0, 0.36);
     // Coastal night (f3.z: the mission night dim, 0 by day): moonlight, a soft moon path, a dim desaturated column, faint foam.
-    float coastNight = shorelineLook == 1 ? clamp(F.f3.z / 0.6, 0.0, 1.0) : 0.0;
+    float coastNight = shorelineLook == 1 ? clamp((0.6 * uEnv.nightState.z) / 0.6, 0.0, 1.0) : 0.0;
     if (shorelineLook == 1) specAlpha2 = max(specAlpha2, mix(0.008, 0.04, coastNight));   // coastal: no mirror-sharp blobs on the long trains
     PREC float trans   = clamp(exp(-tintThick * ABSORPTION_DENSITY), 0.0, 1.0);
     PREC vec3  waterCol = mix(DEEP_COLOR, SHALLOW_COLOR, trans);
@@ -732,10 +732,10 @@ void main(void)
 
     // Night: the scattered light, sky ambient floor, glint, sky tint and reflected sky take the mission's night
     // dim (f3.z, 0 by day), so open water reads as dark as the ground around it instead of daylight teal.
-    PREC float nightSky = 1.0 - clamp(F.f3.z, 0.0, 1.0);
+    PREC float nightSky = 1.0 - clamp((0.6 * uEnv.nightState.z), 0.0, 1.0);
     PREC vec3  vertexLightRGB = Color.bgra.rgb * nightSky;
-    PREC vec3  col = waterCol * max(vertexLightRGB, vec3(SKY_AMBIENT * nightSky))
-                   + waterCol * SKY_AMBIENT * 0.5 * nightSky;
+    PREC vec3  col = incidentLight(waterCol * SKY_AMBIENT * 0.5 * nightSky,
+                       waterCol * max(vertexLightRGB, vec3(SKY_AMBIENT * nightSky)), vec3(1), 1.0);
     // No crest or glint brightening: highlights come only from the sun/lamp specular on the perturbed normal.
     //PORT-END:waterBaseColor
     // A shallow wash rolls toward the coast and recedes in the SAME water draw.
@@ -826,7 +826,7 @@ void main(void)
     }
     col = mix(col, F.f9.xyz * nightSky, clamp(F.f8.w, 0.0, 1.0));
     if (shorelineLook == 1) {   // ocean.glsl: sunlight glowing through thin crests seen against the sun
-        vec2 toSun = normalize(uT.terrainLightDir.xy + vec2(1e-4, 0.0)), toEye = normalize(vdir.xy + vec2(1e-4, 0.0));
+        vec2 toSun = normalize(uEnv.sunDirLive.xy + vec2(1e-4, 0.0)), toEye = normalize(vdir.xy + vec2(1e-4, 0.0));
         float back = pow(clamp(-dot(toSun, toEye), 0.0, 1.0), 4.0);
         col += vertexLightRGB * sunVis * vec3(0.05, 0.26, 0.25) * smoothstep(0.55, 0.95, rippleCrest) * (0.03 + 0.5 * back);
     }
@@ -896,10 +896,10 @@ void main(void)
     // and the radiance is the vertex sun light, so sunset tints the glitter path and shadows remove it.
     {
         float glintScale = GLINT_GAIN / 0.30;
-        vec3  Ls = uT.terrainLightDir.xyz;
+        vec3  Ls = uEnv.sunDirLive.xyz;
         Ls = normalize(vec3(Ls.xy, max(Ls.z, max(uT.shadowMinSunSin, 0.05))));
         // The vertex light saturates at white, so the sun keys' colour never reached it: sunRelight (live/authored sun colour, 1 without keys) tints the glint.
-        vec3  sunRad = Color.bgra.rgb * uEnv.sunRelight.rgb * (1.0 - 0.5 * clamp(F.f3.z / 0.6, 0.0, 1.0));
+        vec3  sunRad = Color.bgra.rgb * uEnv.sunRelight.rgb * (1.0 - 0.5 * clamp((0.6 * uEnv.nightState.z) / 0.6, 0.0, 1.0));
         if (F.debug.w > 0.0) {
             // waterGlintWarm: blend toward the flat-light chroma instead of adding white onto a blue body (additive glint clips all channels).
             float sg = SUN_SPEC_GAIN * glintScale * sunVis * waterGgxSpec(waveN, vdir, Ls, specAlpha2);

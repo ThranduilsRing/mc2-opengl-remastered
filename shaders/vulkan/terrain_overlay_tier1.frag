@@ -87,7 +87,7 @@ void main() {
     }
     if (c.a < 0.5) discard;
 
-    vec3 lightDir3 = normalize(uT.terrainLightDir.xyz);
+    vec3 lightDir3 = normalize(uEnv.sunDirLive.xyz);
     const vec3 shadowN = vec3(0.0, 0.0, 1.0);                  // flat-up, matches GL overlay
     float shadow=min(uT.enableShadows!=0?terrainStaticShadow(WorldPos):1.0,
                      terrainDynamicShadow(WorldPos,shadowN));

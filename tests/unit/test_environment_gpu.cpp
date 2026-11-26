@@ -8,6 +8,39 @@
 #include <array>
 #include <cmath>
 #include <cstring>
+#include "../../mclib/mission_light_profile.h"
+
+TEST_CASE("EnvironmentGpu/shared night output and shadow inputs reset between missions") {
+    RenderCore::MissionEnvironment env;
+    env.mission = "mc2_10";
+    env.lighting.night = true;
+    env.lighting.nightFactor = 1;
+    env.output.exposureMultiplier = 2;
+    env.output.exposureEV = 1;
+    env.legacyTuning["shadowSoftness"] = 3;
+    mc2::lighting::LightingState live;
+    live.pitch = 10;
+    live.sun[0] = live.sun[1] = live.sun[2] = 40;
+    live.amb[0] = live.amb[1] = live.amb[2] = 40;
+    EnvironmentUBO out;
+    mc2::environment::fillGpu(env, 0.55f, out, live);
+    CHECK(out.nightState[0] == 1);
+    CHECK(out.nightState[1] == 1);
+    CHECK(out.nightState[2] == 1);
+    CHECK(out.sceneLight[0] == 0.55f);
+    CHECK(out.outputParams[0] == 2);
+    CHECK(out.outputParams[1] == 1);
+    CHECK(out.shadowParams[0] == 3);
+    CHECK(out.shadowParams[1] == 0.4f);
+    CHECK(out.shadowParams[2] == doctest::Approx(0.25f));
+    mc2::environment::fillGpu({}, 1, out, live);
+    CHECK(out.nightState[0] == 0);
+    CHECK(out.nightState[2] == 0);
+    CHECK(out.sceneLight[0] == 1);
+    CHECK(out.outputParams[0] == 1);
+    CHECK(out.shadowParams[0] == 2.5f);
+    CHECK(out.shadowParams[2] == 0);
+}
 
 namespace {
 struct V3 { float x, y, z; };
@@ -171,7 +204,7 @@ TEST_CASE("EnvironmentGpu/one sun: every field is finite for any live pitch (a N
 
 TEST_CASE("EnvironmentGpu/one sun: layout, and every field exactly identity/1 with no keys, at night, with no mission and for an old save") {
     using namespace mc2::authored_sun;
-    static_assert(sizeof(EnvironmentUBO) == 448);
+    static_assert(sizeof(EnvironmentUBO) == 496);
     static_assert(offsetof(EnvironmentUBO, sunDirLive) == 176 && offsetof(EnvironmentUBO, sunAuthFromLive) == 192 && offsetof(EnvironmentUBO, pitchUndo) == 240 &&
                   offsetof(EnvironmentUBO, ambRelight) == 256 && offsetof(EnvironmentUBO, sunRelight) == 272);
     const std::array<unsigned char,3> sun{255, 255, 225}, amb{71, 71, 78};

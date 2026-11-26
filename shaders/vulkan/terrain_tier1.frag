@@ -472,7 +472,7 @@ void main() {
     vec3 lit = base;
     vec3 gbufN = vec3(0.0, 0.0, 1.0);   // GBuffer1 rgb: the lit surface normal (flat-up when lighting is off)
     if (TS_lightingEnabled != 0) {
-        vec3 lightDir = uT.terrainLightDir.xyz;
+        vec3 lightDir = uEnv.sunDirLive.xyz;
         // Colormaps are prelit: authored burnins, or sources baked by the loader.
         // Only detail relative to the macro normal may modulate that illumination.
         // Cement retains its authored slab normal and receives the same visibility.

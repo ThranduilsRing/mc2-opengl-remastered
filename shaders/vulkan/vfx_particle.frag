@@ -9,6 +9,9 @@
 //   additive group: SRC_ALPHA / ONE                  (matches GL additive)
 // so the FS emits straight color; the src-alpha factor premultiplies in HW.
 #version 450
+#extension GL_GOOGLE_include_directive : require
+#include "include/environment_ubo_vk.glsl"
+#include "include/lighting_vk.glsl"
 
 #ifdef VFX_INDEXED
 #extension GL_EXT_nonuniform_qualifier : require
@@ -38,6 +41,15 @@ layout(location = 2) flat in uint v_flags;   // bit 0 = head sprite, bit 1 = pur
 layout(location = 0) out vec4 o_color;   // shared scene color0
 layout(location = 1) out vec4 o_normal;  // shared scene normal (writemask 0 -> inert)
 
+// Authored effect radiance stays exact by day; night shares mission scale and ambient chroma.
+vec3 effectIncidentLight() {
+    vec3 ambient = uEnv.ambLive.rgb;
+    float peak = max(max(ambient.r, ambient.g), ambient.b);
+    vec3 tint = peak > 0.0 ? ambient / peak : vec3(1);
+    return incidentLight(mix(vec3(1), tint, uEnv.nightState.z), vec3(0),
+        vec3(mix(1.0, uEnv.sceneLight.x, uEnv.nightState.z)), 1.0);
+}
+
 void main() {
     // Swept tubes advance U per profile beyond 1.0. Clamp only when authored:
     // clamping a repeating trail stretches its edge texel into a flat sheet.
@@ -50,6 +62,7 @@ void main() {
     vec4 tex = (v_flags & 32u) != 0u ? vec4(1.0) : textureLod(uAtlas, uv, 0.0);
     if ((v_flags & 12u) != 0u) {
         vec4 c = tex * v_color;
+    c.rgb *= effectIncidentLight();
         if ((v_flags & 8u) != 0u) {
             if ((v_flags & 2u) != 0u) {
                 if (max(max(c.r, c.g), c.b) <= 0.0001) discard;
@@ -66,6 +79,7 @@ void main() {
     // MC2 sprite pages mark transparent texels with magenta (0xFF00FF).
     if (tex.r > 0.9 && tex.g < 0.1 && tex.b > 0.9) discard;
     vec4 c = tex * v_color;
+    c.rgb *= effectIncidentLight();
     // Head sprites (the bright leading particle of a beam / trail) draw 1.5x brighter.
     if ((v_flags & 1u) != 0u) c.rgb *= 1.5;
     // OneOne (ONE,ONE) ignores alpha: the MLR path adds the sprite colour whatever the vertex alpha is
