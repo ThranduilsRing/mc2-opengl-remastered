@@ -247,6 +247,8 @@ private:
     uint64_t lastIncEpoch_ = 0, incRecordedEpoch_ = ~0ull, heightsGen_ = 1, incHeightsGen_[mc2vk::kMaxFramesInFlight] = {0, 0};
     uint32_t incSubTiles_ = 0, incBatches_ = 0, eventsLogged_ = 0;
     double incMaxGpuMs_ = 0.0, incSumGpuMs_ = 0.0;
+    double incStageMs_[5] = {};
+    uint32_t incQueryRegions_[mc2vk::kMaxFramesInFlight] = {};
     uint32_t incTimed_ = 0;
     uint32_t incInstanceCap_ = 0;
     bool incQueryUsed_[mc2vk::kMaxFramesInFlight] = {false, false};
@@ -278,6 +280,10 @@ private:
     OwnedImage objectImage_;
     OwnedImageView objectView_;
     bool objectInitialized_ = false;
+    std::optional<mc2shadow::Rect> objectDirtyRect_;
+    bool objectPartial_ = false, objectFullDirty_ = false;
+    VkRect2D objectScissor_{};
+    std::vector<mc2shadow::LightBox> terrainRows_;
     OwnedBuffer terrainVbo_, terrainIbo_;
     uint32_t terrainIndexCount_ = 0;
     uint64_t objectHeightVersion_ = ~0ull;
