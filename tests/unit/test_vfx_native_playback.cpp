@@ -96,7 +96,6 @@ struct Lights : mc2::particles::LightManager {
     void DeleteLight(gosFX::Light* light) override { samples.erase(light); }
 };
 struct Platform {
-    mc2::gate::ScopedOverride<"MC2_DISABLE_GOSFX"> mlr{"0"};
     mc2::gate::ScopedOverride<"MC2_GPU_PARTICLES"> gpu{"1"};
     mc2::gate::ScopedOverride<"MC2_VFX_ORACLE_SHAPE"> shapes{"1"};
     mc2::gate::ScopedOverride<"MC2_VFX_ORACLE_TUBE"> tubes{"1"};

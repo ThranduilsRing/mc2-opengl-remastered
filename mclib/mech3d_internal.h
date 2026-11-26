@@ -12,7 +12,6 @@
 #include "../code/gameobj.h"  // C3: full GameObject definition for obj->getHandle() in init()
 #include "../GameOS/gameos/gos_mech_batcher.h"
 #include "../GameOS/gameos/gos_mech_killswitch.h"
-#include "cpu_proj_cost_split.h"  // F3 CPU projection cost-baseline (RAII scope)
 #include "anim_override_registry.h"  // ANIM-OVERRIDE-MVP: declarative gesture-clip remap
 #include "mech_anim_runtime.h"  // BT2018-SKEL-ENGINE-1B-RUNTIME: imported-mech per-frame re-bake
 #include "../GameOS/gameos/diagnostic_trace.h"  // ANIM_CADENCE guard events

@@ -157,9 +157,6 @@ namespace mc2 { namespace fx_trace {
     void record_class(unsigned int, const char*) {}
 }}
 
-// CPU projection cost-split counter (not linked; no-op).
-namespace mc2_cpu_proj_cost { void add_workload_mlr_prim_clipped() {} }
-
 // ---------------------------------------------------------------------------
 // Particle bridge (render TU excluded). Never reached on the spec LOAD path.
 // ---------------------------------------------------------------------------

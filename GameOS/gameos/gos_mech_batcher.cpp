@@ -56,17 +56,6 @@ bool g_drawMechs = true;
 
 // VK-P14 MECH TIER-1: flush() BUILDS the instance, bone and run feeds on the CPU;
 // the caller (txmmgr) runs mc2_vk_mech_island_run() to co-write the mechs IN-PLACE into the shared GBuffer.
-// MC2_VK_MECH_FEED_NATIVE is DEPRECATED / a no-op (the native CPU feed is unconditional under the VK mech
-// island; the GL readback fallback is deleted). The name is still parsed so old command lines do not hit
-// unknown-variable behavior; setting it prints a one-line note.
-void noteDeprecatedMechFeedNative() {
-    static bool done = false;
-    if (done) return;
-    done = true;
-    if (mc2::gate::get<"MC2_VK_MECH_FEED_NATIVE">())
-        mc2::fmt::print_err("[VK_MECH_FEED] MC2_VK_MECH_FEED_NATIVE is deprecated and now a no-op: native CPU feed is always used under the VK mech island (GL readback fallback deleted).\n");
-}
-
 // VK-P14 MECH feed snapshots (persisted host-visible copies the island memcpy's).
 // Populated at flush() end.
 std::vector<GpuMechInstance> s_vkMechInstSnapshot;

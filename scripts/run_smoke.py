@@ -1280,15 +1280,6 @@ def main():
                     print(f"[runner] [PREFLIGHT-CACHE] save skipped: {_pse}",
                           file=sys.stderr)
 
-    # F1 unified-projection: forbid MC2_DISABLE_GOSFX=0 in smoke runs.
-    # Visual regression accepted only in dev-override sessions; smoke must
-    # represent shipped default state.
-    if os.environ.get("MC2_DISABLE_GOSFX") == "0":
-        print("[run_smoke] FATAL: MC2_DISABLE_GOSFX=0 conflicts with unified "
-              "projection; smoke would record regressed visuals. Unset or set =1.",
-              file=sys.stderr)
-        sys.exit(2)
-
     # Concurrency lock: prevent two smoke runners from stepping on each other.
     # A second invocation with --kill-existing would taskkill the first run's
     # owned mc2.exe (image-name kill, not PID-specific), producing crash_silent

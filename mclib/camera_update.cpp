@@ -465,10 +465,6 @@ long Camera::update (void)
     updateLights();
 
 	{
-		// F3 CPU projection cost-baseline: matrix_build site (b) â€”
-		// Per-camera CPU projection values, copied by each draw producer.
-		::mc2_cpu_proj_cost::Scope _f3_setcam_scope(
-		    ::mc2_cpu_proj_cost::BucketId::BUCKET_MATRIX_BUILD);
 		tglView.SetCameraMatrices(cameraOrigin,cameraToClip);
 	}
 	tglView.SetFog(fogColor,fogStart,fogFull);

@@ -9,7 +9,6 @@
 
 #ifndef GVACTOR_H
 #include"gvactor.h"
-#include "cpu_proj_cost_split.h"  // F3 CPU projection cost-baseline (RAII scope)
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "tgl_load_guard.h"       // META-FIX design B PART 1: required base-shape load guard
 #include "spotlight_diag.h"  // T1.16 — (E)-owned slot tagging for per-slot probe

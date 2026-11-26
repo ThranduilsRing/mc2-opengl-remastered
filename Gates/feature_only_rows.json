@@ -7,6 +7,13 @@
   "doc": "Reverse-Z depth via glClipControl GL_ZERO_TO_ONE (gameosmain.cpp:992). Always-on; MC2_REVERSE_Z_TRACE for trace."
  },
  {
+  "featureId": "MC2_FEATURE_TERRAIN_TESSELLATION",
+  "kind": "Feature",
+  "order": 3,
+  "defaultOn": true,
+  "doc": "TCS/TES terrain tessellation (gameos_graphics.cpp). Always-on; the kill-switch had no reader."
+ },
+ {
   "featureId": "MC2_FX_DEFS",
   "kind": "Feature",
   "order": -1,
@@ -77,7 +84,7 @@
   "doc": "Retired: reclassified as the MC2_SNAPSHOT_MECH_EXTRACT trace gate (observe-only diagnostic)."
  },
  {
- "featureId": "MC2_FEATURE_STATIC_PROP_INDIRECT",
+  "featureId": "MC2_FEATURE_STATIC_PROP_INDIRECT",
   "kind": "Retired",
   "order": 1,
   "defaultOn": true,

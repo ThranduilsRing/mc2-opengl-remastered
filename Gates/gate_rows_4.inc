@@ -4,10 +4,7 @@ P("MC2_TERRAIN_SHORELINE_FOAM_RUN", Float, 5.0, "terrain", "", "", rangeAbove(0.
 P("MC2_TERRAIN_SHORELINE_STRENGTH", Float, 1.0, "terrain", "", "", clampRange(0.0, 2.0) | verified),
 P("MC2_TERRAIN_SHORELINE_WET_RUN", Float, 16.0, "terrain", "", "", rangeAbove(0.0, 3.4028234663852886e38) | verified),
 P("MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN", Float, 0.78, "terrain", "", "Snow brightness dampen: <1 darkens detected-snow fragments.", verified),
-L(Exact1, "MC2_TERRAIN_SOLID_WINDOW_PARITY", Bool, false, "terrain", "", "", verified),
 L(Lead0Kill, "MC2_TERRAIN_SPEC", Bool, true, "terrain", "", "Terrain fragment specialization; 0 keeps the generic main and reflection pipelines.", passthrough | registry(Feature, "MC2_TERRAIN_SPEC", -1, true) | verified),
-// history: docs/gate-history.md#MC2_TERRAIN_TESS
-L(Lead0Kill, "MC2_TERRAIN_TESS", Bool, true, "gameos", "", "TCS/TES terrain tessellation (gameos_graphics.cpp).", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_TESSELLATION", 3, true)),
 // TERRAIN-HIRES-NEAR-1: ships ON (temporary kill-switch, =0 disables).
 // history: docs/gate-history.md#MC2_TERRAIN_VISUAL_DISPLACE
 L(Lead0Kill, "MC2_TERRAIN_VISUAL_DISPLACE", Bool, true, "terrain", "", "TERRAIN-HIRES-NEAR-1: draw the 4x visual height bake on VK terrain at every LOD (LOD0 at 4x density); no bake = unchanged.", passthrough | registry(Feature, "MC2_TERRAIN_VISUAL_DISPLACE", -1, true) | verified),
@@ -23,8 +20,6 @@ G("MC2_TEST_FSR_FAIL_FRAME", Int, 0, "gameos", "", "Diagnostic: fail the FSR pro
 // history: docs/gate-history.md#MC2_TEST_SPAWN
 L(Lead1, "MC2_TEST_SPAWN", Bool, false, "code", "", "GAMEPLAY-DRIVER-1: =1 arms the test-only spawn/teleport verbs on the MC2_UI_COMMAND_FILE channel.", passthrough | registry(Trace, "MC2_TRACE_TEST_SPAWN", -1, false) | verified),
 L(Presence, "MC2_TEXMGR_LOAD_TRACE", Bool, false, "code", "", "", passthrough | verified),
-// TRACKV quick-win: Probe-6 thin-record canary gate
-L(Presence, "MC2_THIN_DEBUG", Bool, false, "terrain", "", "", passthrough),
 // POST-FX-TONEMAP-V2 (SCOUR-1 #3): filmic tonemap on the composite.
 G("MC2_TOOLCHAINS", String, "", "harness", "", "Harness-owned box wrapper metadata; ignored by the engine.", passthrough),
 L(Presence, "MC2_TRACE_EXIT", Bool, false, "gameos", "", "", verified),
@@ -99,7 +94,6 @@ L(Lead0, "MC2_VK_FORCE_FAIL", Bool, false, "vk", "", "VK-P13-SELECTOR-1: presenc
 P("MC2_VK_FRAMES_IN_FLIGHT", Int, 3, "vk", "", "Frames in flight of the Vulkan present path: 3 (default); =2 retains two frames, =1 is the kill switch back to one frame.", passthrough | verified),
 G("MC2_VK_GPU_TIMESTAMPS", Bool, false, "vk", "", "GPU segment timestamps (verification/perf only): =1 arms, =0 or unset is off.", passthrough | verified),
 L(Lead0Kill, "MC2_VK_LIGHTFEED_DEDUP", Bool, true, "vk", "", "", verified | passthrough),
-L(Is01, "MC2_VK_MECH_FEED_NATIVE", Bool, false, "mech", "", "", verified | passthrough),
 // history: docs/gate-history.md#MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT
 // BUG-A pick-probe fixture (mouse->pick DPI regression fence)
 // history: docs/gate-history.md#MC2_VK_PICK_PROBE
@@ -126,19 +120,15 @@ L(Lead1, "MC2_VK_PROP_PERF", Bool, false, "vk", "", "", passthrough | verified),
 G("MC2_VK_PROP_TEX_SLOTS", Int, 0, "vk", "", "Test knob: cap the per-object prop texture slot count (0 = device derived); exercises the more-maps-than-slots path.", verified),
 G("MC2_VK_RT_SELFTEST", Bool, false, "vk", "", "Test hook (not a feature): =1 runs the one-shot ray-tracing infrastructure GPU self-test at device creation (GameOS/gameos/vk_rt_selftest.cpp).", verified),
 // VK-P8a SHADOW-INTEROP: the SECOND VK geometry region + FIRST VK-produces-depth gate.
-// history: docs/gate-history.md#MC2_VK_SHADOW_MATRIX_DIAG
-L(Lead0, "MC2_VK_SHADOW_MATRIX_DIAG", Bool, false, "vk", "", "VK shadow producer/consumer evidence (default OFF = zero cost; GameOS/gameos/vulkan_shadow_island_live.cpp).", passthrough | registry(Trace, "MC2_TRACE_VK_SHADOW_MATRIX_DIAG", -1, false)),
 // VK-P14 GATE-CONSOLIDATION-1: the ONE umbrella for the shared-GBuffer scene path.
 // history: docs/gate-history.md#MC2_VK_SHARED_GBUFFER
 L(Lead0Kill, "MC2_VK_SHARED_GBUFFER", Bool, true, "vk", "", "Retired: the Vulkan scene path is unconditional; =0 is ignored with a [RENDER_BACKEND] line (render_backend_select.cpp).", passthrough | registry(Feature, "MC2_FEATURE_VK_SHARED_GBUFFER", -1, true) | verified),
 // VK-TIER1 SHARED SCENE DEPTH: the shared-depth substrate slice (step 2).
 // history: docs/gate-history.md#MC2_VK_SHARED_SCENE_STRICT
-L(Presence, "MC2_VK_TERRAIN_COPY_STATS", Bool, false, "vk", "", "", passthrough),
 // VK-TERRAIN-LIGHTING: make the VK Tier-1 terrain LIT (directional relief + baked static shadow).
 // history: docs/gate-history.md#MC2_VK_TERRAIN_LODFADE
 // VK-P10 TERRAIN TIER-1: the terrain in-place shared-GBuffer co-write region.
 // history: docs/gate-history.md#MC2_VK_VFX_TRACE
-L(Presence, "MC2_VPL_CULL", Bool, false, "terrain", "", "VPL retirement: the MC2_VPL_CULL / MC2_VPL_REDUCE getenv reads are KEPT solely to gate the one-shot event=retired lifecycle lines emitted just before the...", verified),
 L(Lead1, "MC2_VSYNC", Bool, false, "vk", "", "", passthrough | verified),
 G("MC2_VULKAN_SPV_DIR", String, "shaders/vulkan", "vk", "", "", passthrough | verified),  // default not derivable from the tree
 G("MC2_VULKAN_VALIDATION", String, "", "vk", "", "", passthrough | verified),
@@ -166,7 +156,6 @@ L(Lead0Kill, "MC2_WATER_SHORE_MASK", Bool, true, "terrain", "", "WATER-SHORE-MAS
 // history: docs/gate-history.md#MC2_WATER_SHORE_MEANDER_FREQ
 G("MC2_WATER_SHORE_MODE", Enum, "", "terrain", "", "", tokens("|0|1|2|3") | verified),
 L(Lead0, "MC2_WATER_SKYTINT", Bool, false, "gameos", "", "", verified),
-L(Lead0Kill, "MC2_WATER_UPLOAD_NARROW", Bool, true, "terrain", "", ""),
 P("MC2_WIDTH", Int, 0, "gameos", "", "(c) #49 windowed-resolution oracle.", passthrough | verified),
 L(Lead0, "MC2_WINDOWED", Bool, false, "gameos", "", "", passthrough | verified),
 // ── NOFOCUS-HARDEN-1 ───────────────────────────────────────────────────

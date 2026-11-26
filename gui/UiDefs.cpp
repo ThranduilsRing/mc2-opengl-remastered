@@ -35,13 +35,6 @@ bool UiDefs::gameOsUiDefsEnabled()
     return true;   // Std row, default on
 }
 
-bool UiDefs::editorUiDefsEnabled()
-{
-    // Mission Editor shell overlay is data/defs-first by default.  Force it off
-    // with MC2_EDITOR_UI_DEFS=0 when comparing against the old pure-MFC shell.
-    return mc2::gate::get<"MC2_EDITOR_UI_DEFS">();   // Std row, default on
-}
-
 std::string UiDefs::replacementPathForEditorShell()
 {
     const std::filesystem::path path = defsRoot() / "ui" / "packages" / "default" / "editor" / "missionscrn.fit";

@@ -18,7 +18,6 @@ void updateSaveFixtures();
 #include "gos_crashbundle.h"
 #include "gos_smoke.h"            // S9D fixed-timestep deterministic smoke clock
 #include "gos_postprocess.h"   // VK-GL-LOST-DRAWS tags
-#include "cpu_proj_cost_split.h"  // F3 CPU projection cost-baseline (hard_reset)
 #include "sim_identity.h"         // SIM-IDENTITY-HASH-1 per-sim-frame world hash
 #include <cstdio>
 #include <cstring>

@@ -159,8 +159,8 @@ public:
     // Default ON (MC2_EDGE_FOG=0 to disable).
     bool  edgeFogEnabled_  = false;
     // FOG-EXPOSURE-HEADROOM-1: fog composites into sceneFBO_ BEFORE the composite
-    // pass applies exposure_ + the unconditional warm grade (postprocess.frag:89,
-    // 95-112). At the near-white {0.93,0.94,0.95} the graded missions (mc2_24
+    // pass applies exposure_ + the unconditional warm grade (postprocess_visual.frag:
+    // 26-41). At the near-white {0.93,0.94,0.95} the graded missions (mc2_24
     // exposure 1.1, mc2_10 1.05) drove fog past 1.0 -> blown-out white cloud
     // ("fog super bright in some spots"). Drop the base so exposure*grade has
     // headroom: 0.80 * 1.1(exp) * 1.10(grade) ~= 0.97, still a bright cloud bank

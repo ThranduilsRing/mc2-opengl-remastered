@@ -13,7 +13,6 @@
 #include "gos_object_recon_tracy.h"  // [OBJECT_RECON v1] slice-2 recon-zero
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "../GameOS/gameos/utils/mc2log.h"  // shape loaders reject malformed counts with a log line
-#include "cpu_proj_cost_split.h"     // F3 CPU projection cost-baseline (RAII scope)
 #include "../GameOS/gameos/gos_static_prop_batcher.h"    // Stage 2.D.2 CacheGpuLightData
 #include "../GameOS/gameos/gos_static_prop_killswitch.h" // g_useGpuObjects extern
 #include "../GameOS/gameos/gos_mech_killswitch.h"        // g_useGpuMechs extern (Slice B1)

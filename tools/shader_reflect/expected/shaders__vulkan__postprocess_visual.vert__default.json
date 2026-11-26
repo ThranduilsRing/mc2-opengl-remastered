@@ -1,9 +1,0 @@
-{
-  "defines": [],
-  "outputs": [],
-  "shader": "shaders/vulkan/postprocess_visual.vert",
-  "ssbos": [],
-  "stage": "vert",
-  "ubos": [],
-  "variant": "default"
-}

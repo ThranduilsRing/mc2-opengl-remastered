@@ -135,7 +135,7 @@ void mc2::VkSceneRenderer::renderListsTerrainSolid (RenderSubmissions& submissio
 		// legacy loop for the WHOLE FRAME — never partial-frame. The legacy
 		// ring data has been kept in sync by addVertices
 		// running unconditionally in quad.cpp.
-		// Bucket-census instrumentation (env-gated MC2_BUCKET_CENSUS=1).
+		// Bucket-census instrumentation.
 		// Count legacy-eligible nodes BEFORE flush() runs (both the legacy
 		// draw branch at ~1369 and the alternate reset branch at ~1382
 		// zero currentVertex per node, so end-of-zone undercounts). The
@@ -216,7 +216,7 @@ void mc2::VkSceneRenderer::renderListsTerrainSolid (RenderSubmissions& submissio
 				}
 			}
 		vkLegacyRun(submissions);   // VK-PARITY-F1: queued legacy SOLID nodes -> shared GBuffer
-		// Emit one [BUCKET_CENSUS v1] line per frame (env-gated). Runs
+		// Emit one [BUCKET_CENSUS v1] line per frame. Runs
 		// after flush() has populated the modern-side stats and after
 		// either branch has reset the legacy ring; legacy_eligible was
 		// captured pre-flush above. emitCensus() is a no-op when the

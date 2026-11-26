@@ -105,7 +105,6 @@ set(SOURCES ${SOURCES}
     projectz_trace.cpp
     projectz_overlay.cpp
     render_contract.cpp
-    cpu_proj_cost_split.cpp
     mapdata.cpp
     quad.cpp
     quad_setup.cpp

@@ -205,10 +205,6 @@ void Mech3DAppearance::updateGeometry (void)
 	else mc2mechanim::CopyImportedActorPose(simulationShape_.get(), mechShape, unitAnim().imported, unitAnim().torsoRotation);
     }
 	ZoneScopedN("GameLogic.Mech3D.UpdateGeometry");
-	// F3 CPU projection cost-baseline: sidecar bucket (NEVER in
-	// projection_total). One scope per visible mech per frame.
-	::mc2_cpu_proj_cost::SidecarScope _f3_skin_scope(
-	    ::mc2_cpu_proj_cost::SidecarId::SIDECAR_SKINNING_CHAIN);
 
 	// Unowned previews tick their draw actor; battle draws consume the published sim pose.
 

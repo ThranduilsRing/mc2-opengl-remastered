@@ -45,7 +45,7 @@ G("MC2_SIM_FAULT_INJECT", Int, 0, "code", "", "Test-only crash-bundle fault inje
 G("MC2_SIM_IDENTITY_TRACE", Bool, false, "code", "", "SIM-IDENTITY-HASH-1: emit one `[SIMID v1] simframe=N t=T n=C graded=.. visual=.. strict=..` line per SIM frame to stdout.", passthrough | registry(Trace, "MC2_SIM_IDENTITY_TRACE", -1, false) | verified),
 // history: docs/gate-history.md#MC2_SIM_IDENTITY_TRACE_DETAIL
 G("MC2_SIM_IDENTITY_TRACE_DETAIL", Bool, false, "code", "", "SIM-IDENTITY-HASH-1: with MC2_SIM_IDENTITY_TRACE on, additionally emit one `[SIMID v1 mover]` line per mover per sim frame.", passthrough | registry(Trace, "MC2_SIM_IDENTITY_TRACE_DETAIL", -1, false) | verified),
-L(Lead0Kill, "MC2_SIM_OVERLAP", Bool, true, "code", "2026-11-25", "G7b: run the banked sim tick on a worker during snapshot drawing; 0 = serial loop. Retire after three green merge windows.", passthrough | verified),
+L(Lead0Kill, "MC2_SIM_OVERLAP", Bool, true, "code", "", "G7b: run the banked sim tick on a worker during snapshot drawing; 0 = serial loop (permanent serial harness mode: the determinism reference).", passthrough | verified),
 P("MC2_SIM_OVERLAP_AUDIT", Int, 0, "code", "", "G7: 1 aborts on overlap violations; 2 also arms the render fence; 3..52 adds 0..(value-2) ms of jitter using a private RNG.", passthrough | clampRange(0, 52) | verified),
 P("MC2_SIM_SPEED", Float, 1.0, "code", "", "SIM-SPEED-BUTTON-1: play (wall clock) = seed of the HUD/dev-shell dt multiplier; harness fixed-step clock, unfocused = floor(N) 1/30 s steps per drawn frame.", passthrough | clampRange(0.25, 4.0) | verified),
 // BACKEND-DEFAULT-PARITY-1: skybox fog exclusion (was unregistered, and that
@@ -84,8 +84,6 @@ G("MC2_STABLE_LIGHT_SKIP", Bool, true, "props", "", "Std Bool row: any text othe
 // Static-prop ORM (PBR) — load-only feature + trace
 // history: docs/gate-history.md#MC2_STATICPROP_MATERIAL_PBR_SLOTS
 L(Lead0Kill, "MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP", Bool, true, "props", "", "", passthrough | verified),
-// history: docs/gate-history.md#MC2_STATIC_LIGHT_UPLOAD_SPLIT
-L(Lead0Kill, "MC2_STATIC_LIGHT_UPLOAD_SPLIT", Bool, true, "code", "", "STATICPROP-PERMANENT-INSTANCE-LIGHTS-1: upload the immutable static light prefix [0..S) once/dirty-only + the dynamic suffix [S..count) per frame, instead...", registry(Feature, "MC2_FEATURE_STATIC_LIGHT_UPLOAD_SPLIT", -1, true)),
 L(Presence, "MC2_STATIC_POP_SPLIT", Bool, false, "props", "", "", verified),
 // history: docs/gate-history.md#MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME
 P("MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME", Int, -1, "code", "", "STATIC-BLDG-SHADOW-REBAKE-1: deterministic repro hook (test-only, no production callers).", passthrough | registry(Trace, "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME", -1, false) | verified),
@@ -113,7 +111,6 @@ G("MC2_STATIC_UPDATE_TRACE", Bool, false, "terrain", "", "", verified),
 // history: docs/gate-history.md#MC2_TACTICAL_ARC_OVERLAY
 L(Lead0, "MC2_TACTICAL_ARC_OVERLAY", Bool, false, "code", "", "TACTICAL-ARC-OVERLAY-MVP-1: world-space range ring + facing line on each SELECTED mover, drawn in-scene by the debug renderer just before its flush...", registry(Trace, "MC2_FEATURE_TACTICAL_ARC_OVERLAY", -1, false) | verified),
 L(AtoiNZ, "MC2_TACTIC_WEIGHTS", Bool, false, "code", "", "TACTIC-WEIGHTS-A: load [Tactics] block from <missionName>_ai.fit into tacticWeights[].", verified),
-L(Lead0Kill, "MC2_TERRAIN_CLIFF_ROCK", Bool, true, "terrain", "2026-11-24","TERRAIN-CLIFF-ROCK: CC0 photoscan rock (albedo, normal, roughness, AO) on steep VK terrain faces, tinted to the mission palette; 0 = base look.", registry(Feature, "MC2_TERRAIN_CLIFF_ROCK", -1, true) | verified),
 L(Lead0, "MC2_TERRAIN_CLIFF_SHADOW_FLOOR", Bool, false, "terrain", "", "", verified),
 // TERRAIN-CLIFF-MATERIAL-TRIPLANAR-1: world-axis triplanar ROCK NORMAL + relief
 // on steep terrain cells (terrain_lod_chunk.frag useTriplanarCliff branch,
@@ -134,10 +131,6 @@ L(Lead0, "MC2_TERRAIN_CONTROLMAP", Bool, false, "terrain", "", "TERRAIN-CONTROLM
 P("MC2_TERRAIN_CONTROLMAP_ALBEDO_STRENGTH", Float, 0.0, "terrain", "", "", passthrough | verified),  // default not derivable from the tree
 // history: docs/gate-history.md#MC2_TERRAIN_CONTROLMAP_FILE
 G("MC2_TERRAIN_CONTROLMAP_FILE", String, "", "terrain", "", "TERRAIN-CONTROLMAP-SAMPLE-1: override the control-map sidecar path (default data/missions/<stem>.beauty/control_map.png).", passthrough | registry(Feature, "MC2_TERRAIN_CONTROLMAP_FILE", -1, false) | verified),
-// history: docs/gate-history.md#MC2_TERRAIN_DEBUG_MODE
-P("MC2_TERRAIN_DEBUG_MODE", Float, 0.0, "gameos", "", "TERRAIN-DEBUG-VIEWS-1: terrain fragment-shader debug-mode selector for the tessellated terrain path (gos_terrain.frag tessDebug.x).", registry(Trace, "MC2_DIAG_TERRAIN_DEBUG_MODE", -1, false)),  // default not derivable from the tree
-P("MC2_TERRAIN_DETAIL_FADE_END", Float, 3000.0, "gameos", "", ""),
-P("MC2_TERRAIN_DETAIL_FADE_START", Float, 1000.0, "gameos", "", ""),
 L(Lead0Kill, "MC2_TERRAIN_INDIRECT", Bool, true, "terrain", "", "", passthrough | verified),
 L(Lead0Kill, "MC2_TERRAIN_INDIRECT_MINE", Bool, true, "terrain", "", "", passthrough | verified),
 L(Lead0Kill, "MC2_TERRAIN_LIGHTING_GPU", Bool, true, "terrain", "", "", passthrough | verified),

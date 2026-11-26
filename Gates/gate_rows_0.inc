@@ -1,5 +1,4 @@
 L(Lead1, "MC2_ABL_ARG_GUARD", Bool, false, "code", "", "ABL crash-safety gates (ABL-OPCODE-BOUNDS-HARDEN) MC2_ABL_ARG_GUARD=1 - enables dispatch-bounds soft path + out-ptr null guards MC2_ABL_RUNTIME_SOFTFAIL=1 -...", passthrough | verified),
-L(Lead0Kill, "MC2_ABL_COMPILE_FATAL", Bool, true, "code", "", "ASAN-3-ABL-COMPILE-FATAL-1: fail at preprocess when ABL syntax errors leave partial bytecode; set =0 only for legacy execute-anyway diagnostics.", passthrough | registry(Feature, "MC2_ABL_COMPILE_FATAL", -1, true)),
 G("MC2_ABL_COMPILE_FATAL_REPRO", String, "", "code", "", "ASAN-3-ABL-COMPILE-FATAL-1: preprocess the supplied malformed-fixture path during ABL init to prove fail-loud behavior.", passthrough | registry(Trace, "MC2_ABL_COMPILE_FATAL_REPRO", -1, false) | verified),
 L(Presence, "MC2_ABL_REG_TRACE", Bool, false, "unclassified", "", "", verified),
 L(Lead1, "MC2_ABL_RUNTIME_SOFTFAIL", Bool, false, "code", "", "", passthrough | verified),
@@ -56,7 +55,6 @@ G("MC2_BRIDGE", Bool, false, "gameos", "", "Dev tool selector: harness-owned rea
 L(Presence, "MC2_BRIDGE_MOVER_STATE", Bool, false, "unclassified", "", "", passthrough | verified),
 P("MC2_BRIDGE_PORT", Int, 0, "gameos", "", "Harness loopback connect-back port; zero selects no transport.", verified),
 G("MC2_BRIDGE_SESSION", String, "", "gameos", "", "Fresh harness session GUID, echoed in the v1 hello.", verified),
-L(Presence, "MC2_BUCKET_CENSUS", Bool, false, "terrain", "", ""),
 // history: docs/gate-history.md#MC2_BURNIN_NO_JPG
 // GitHub-issue fix batch 2026-07-16, part 2 (issues #9, #17)
 L(Lead0Kill, "MC2_CALLED_SHOT_FIX", Bool, true, "mech", "", "ISSUE-9 default ON; =0 restores stock. Aimed floors: Head 0.30 / Arm 0.45 / Leg 0.50; aimed missile hits retain location.", passthrough | registry(Feature, "MC2_FEATURE_CALLED_SHOT_FIX", -1, true) | verified),
@@ -102,7 +100,6 @@ G("MC2_CONTRACT_REPO_ROOT", String, "", "unclassified", "", ""),
 // CPU gameplay-elevation term (no render path) buys nothing. Same placement
 // rationale as MC2_ASSET_FAILLOUD above, which is also a default-ON
 // killswitch registered here.
-L(Lead1, "MC2_CPU_PROJ_COST_SPLIT", Bool, false, "code", "", "", passthrough | verified),
 L(Presence, "MC2_CRASH_FAST_EXIT", Bool, false, "gameos", "", "Headless crash fast-exit: write the bundle, then terminate WITHOUT the modal dialog so an automated soak/harness process exits immediately on crash (the...", verified),
 G("MC2_DEBUG_OVERLAY_PREDICATE_MODE", Enum, "", "code", "", "", tokens("|Legacy|Modern") | verified),
 // history: docs/gate-history.md#MC2_DEBUG_STATE_DUMP
@@ -129,7 +126,6 @@ G("MC2_DIAG_TAGS", String, "", "gameos", "", "", passthrough | verified),
 L(Lead0, "MC2_DIAG_VERBOSE", Bool, false, "gameos", "", "QUIET-DEFAULT-BUILD-1: ONE umbrella gate for the engine's undifferentiated developer chatter.", passthrough | registry(Trace, "MC2_TRACE_DIAG_VERBOSE", -1, false) | verified),
 // history: docs/gate-history.md#MC2_DIRECT_FIRE_STRAIGHT
 L(Exact1, "MC2_DIRECT_FIRE_STRAIGHT", Bool, false, "code", "", "Direct-fire de-curve: PPC/autocannon/gauss bolts fly STRAIGHT instead of re-tracking the moving target every frame (the janky homing curve).", passthrough | registry(Feature, "MC2_DIRECT_FIRE_STRAIGHT", -1, false) | verified),
-L(Lead1, "MC2_DISABLE_GOSFX", Bool, false, "code", "", "", passthrough | verified),
 L(Lead1, "MC2_DPI_UNAWARE", Bool, false, "gameos", "", "", verified),
 L(Lead0Kill, "MC2_EDGE_FOG", Bool, true, "post", "", "", verified),
 P("MC2_EDGE_FOG_HEIGHT", Float, 0.0, "post", "", "", verified),  // default not derivable from the tree
@@ -143,7 +139,6 @@ L(Exact1, "MC2_EDITOR_GPU_TIMERS", Bool, false, "editor", "", "", verified),
 L(Exact1, "MC2_EDITOR_MODE", Bool, false, "editor", "", "", verified),
 L(Presence, "MC2_EDITOR_STATIC_PRIME_DIAG", Bool, false, "props", "", "MC2_EDITOR_STATIC_PRIME_DIAG=1 - compact aggregate DrawCmd census at finalize.", verified),
 L(Presence, "MC2_EDITOR_TRACE", Bool, false, "editor", "", "", verified),
-G("MC2_EDITOR_UI_DEFS", Bool, true, "editor", "", "Mission Editor shell overlay is data/defs-first by default.", verified),
 L(Exact1, "MC2_EDITOR_WATCHDOG", Bool, false, "editor", "", "", verified),
 G("MC2_EFFECT_ADMISSION_PREDICATE", Enum, "", "code", "", "", tokens("|legacy|modern") | verified),
 L(Lead0, "MC2_EQUIPMENT_ADD", Bool, false, "code", "", "", verified),

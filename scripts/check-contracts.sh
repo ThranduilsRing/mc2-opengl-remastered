@@ -1506,7 +1506,6 @@ run_nightly "asset_manifest_fixtures"    "py -3 scripts/check-asset-manifest-fix
 run_nightly "mod_packaging"             "py -3 -B -m pytest tests/mod_install/test_packaging.py tests/mc2mod -q -p no:cacheprovider"
 run_nightly "asset_pipeline_doc"         "sh scripts/check-asset-pipeline-doc.sh"
 run_nightly "claude_md_pointer"          "sh scripts/check-claude-md-pointer.sh"
-run_nightly "mlr_leaves_gated"           "sh scripts/check-mlr-leaves-gated.sh"
 run_nightly "object_mvp_currency"        "py -3 scripts/check-object-mvp-currency.py"
 run_nightly "toolchain_bom"              "py -3 scripts/check-toolchain-bom.py"
 # --allow-missing-artifacts is DELIBERATE and must stay explicit: this check

@@ -21,7 +21,6 @@ G("MC2_GATE_MODS_ROOT", String, "", "harness", "", "Harness-owned box wrapper me
 G("MC2_GATE_PROOFS", String, "", "harness", "", "Harness-owned box wrapper metadata; ignored by the engine.", passthrough),
 P("MC2_GLTF_AXIS", Int, 0, "props", "", "Coordinate transforms (spec ?6).", reread | verified),
 P("MC2_GLTF_YAW_DEG", Float, 0.0, "props", "", "", reread | verified),
-L(Presence, "MC2_GOM_RECON", Bool, false, "code", "", "GOM Recon: object type classification & mutation tracking (read-only).", verified),
 // GOM_UPDATE_COST v1: per-phase GameObjectManager update CPU cost trace.
 // history: docs/gate-history.md#MC2_GOM_UPDATE_COST_SPLIT
 // history: docs/gate-history.md#MC2_GPUBUF_LIGHT_GROWONCE
@@ -57,7 +56,6 @@ L(Lead0, "MC2_HUD_IMGUI_TABS", Bool, false, "code", "", "IN-MISSION-HUD-IMGUI-SC
 // history: docs/gate-history.md#MC2_HUD_READABILITY_V1
 L(Lead0, "MC2_HUD_READABILITY_V1", Bool, false, "unclassified", "", "IN-MISSION-HUD-IMGUI-SCOPE-1 slice A: data-first HUD readability.", registry(Feature, "MC2_FEATURE_HUD_READABILITY_V1", -1, false) | verified),
 P("MC2_HUD_SCALE", Float, 0.0, "gameos", "", "", verified),  // default not derivable from the tree
-L(Lead0, "MC2_HUD_SIM_SPEED", Bool, false, "code", "", "SIM-SPEED-BUTTON-1: double-gated sim-speed tab (MC2_HUD_SIM_SPEED; needs MC2_HUD_IMGUI_TABS like every registry consumer)."),  // default not derivable from the tree
 // history: docs/gate-history.md#MC2_HUD_TABS_TEST
 // history: docs/gate-history.md#MC2_HZB_BUILD
 G("MC2_HZB_BUILD", Bool, true, "post", "", "Render-only static-prop culling from same-frame Vulkan depth; exact ceil-ladder MIN footprints and per-object LOD. MC2_HZB_BUILD=0 keeps every instance.", passthrough | registry(Feature, "MC2_FEATURE_HZB_BUILD", 17, true) | verified),

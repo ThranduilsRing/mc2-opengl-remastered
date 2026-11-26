@@ -8,7 +8,6 @@
 // Include Files
 #ifndef MCLIB_H
 #include"mclib.h"
-#include "cpu_proj_cost_split.h"  // F3 CPU projection cost-baseline (hard_reset)
 #endif
 
 #ifndef MISSION_H

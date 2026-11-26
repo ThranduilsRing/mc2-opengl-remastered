@@ -65,8 +65,6 @@ bool IsTraceEnabled();         // MC2_TERRAIN_INDIRECT_TRACE — gates
 bool SolidWindowEnabled();        // MC2_TERRAIN_SOLID_NARROW — default-ON;
                                   // literal "0" => OFF = full-range HEAD path
                                   // (the safety escape hatch).  Approach A.
-bool IsSolidWindowParityEnabled();// MC2_TERRAIN_SOLID_WINDOW_PARITY — default
-                                  // OFF; "1" arms the catastrophic-axis probe.
 bool IsCostSplitEnabled();     // MC2_TERRAIN_COST_SPLIT — gates Stage 1
                                 // per-frame steady_clock accumulators in quad.cpp.
                                 // When unset, the RAII timer scopes are zero-cost

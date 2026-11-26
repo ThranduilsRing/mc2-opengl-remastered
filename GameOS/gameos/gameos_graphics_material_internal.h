@@ -59,7 +59,6 @@
 #include "gos_validate.h"  // validation entry points
 #include "gos_visual_capture.h"   // VISUAL-CAPTURE-CLEAN-1
 #include "gos_smoke.h"     // S9E: SmokeMode fixed deterministic render-shader clock
-#include "../../mclib/cpu_proj_cost_split.h"  // F3 CPU projection cost-baseline
 #include "../../mclib/camera_frustum_math.h"  // CAMERA-FRUSTUM-HARNESS-1 pure rect/frustum math
 #include "../../mclib/render_contract.h"      // [RENDER_PASS v1] noteRenderPass
 #include "../../mclib/mc2_audit.h"            // META-FIX INFRA-1 gated audit emitter

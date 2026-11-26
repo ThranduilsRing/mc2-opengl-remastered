@@ -397,20 +397,6 @@ void drawRenderPassesSection() {
     ImGui::Checkbox("Draw Mechs##rp", &g_drawMechs);
 
     ImGui::Separator();
-    ImGui::TextUnformatted("FX / Particles");
-
-    bool fxDisabled = mc2::gate::get<"MC2_DISABLE_GOSFX">();
-    if (fxDisabled) {
-        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "[off]  FX/Particles");
-        ImGui::SameLine();
-        ImGui::TextDisabled("MC2_DISABLE_GOSFX=1 — requires restart to re-enable");
-    } else {
-        ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "[ON]   FX/Particles");
-        ImGui::SameLine();
-        ImGui::TextDisabled("(set MC2_DISABLE_GOSFX=1 to disable)");
-    }
-
-    ImGui::Separator();
     ImGui::TextUnformatted("Static Props Debug Mode");
 
     static const char* kPropModes[] = {

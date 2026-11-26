@@ -680,8 +680,7 @@ static int run_terrain(int w, int h, TerrainIsland* supplied = nullptr,
     // VK-FLIP-FIELD-REPORT-1: atlas + per-frame shadow-map interop copies grouped in
     // one coarse zone (colormap/cement copy-once; static copy-once-per-generation since
     // VK-SHADOW-COPY-ONCE-1; dyn shadow copy-per-frame).
-    // VK-TERRAIN-STAGING-PERF-1: per-step sub-timers inside the copies zone, only
-    // sampled when MC2_VK_TERRAIN_COPY_STATS is set (same gate as the summary line).
+    // VK-TERRAIN-STAGING-PERF-1: per-step sub-timers inside the copies zone.
     {
     ZoneScopedN("VK-terrain-interop-copies");
     // COLORMAP-BASE: copy-once import of the GL colormap atlas (no-op once imported;

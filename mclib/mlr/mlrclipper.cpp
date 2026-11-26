@@ -4,7 +4,6 @@
 
 #include"mlrheaders.hpp"
 #include "../fx_trace/fx_trace.h"    // fx_trace v1: gated MLR-leaf invocation counter
-#include "mlr_gate.h"                // MC2_DISABLE_GOSFX env-gate (plan v6 §2)
 extern DWORD gShowBirdView, gEnableDetailTexture, gEnableMultiTexture, gEnableLightMaps;
 
 DrawShapeInformation::DrawShapeInformation()
@@ -350,7 +349,6 @@ void
 	Check_Object(dInfo->effect);
 	// fx_trace v1 (plan v6 §1 CRITICAL-2): pre-gate enqueue counter.
 	FX_TRACE_MLR_ENQUEUE("DrawEffect");
-	MC2_GOSFX_GATE_EARLY_RETURN();
 
 #ifdef LAB_ONLY
 	if(gShowBirdView)

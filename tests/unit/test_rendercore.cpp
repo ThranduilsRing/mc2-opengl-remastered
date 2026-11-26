@@ -349,16 +349,8 @@ TEST_CASE("RendererFeatureRegistry ViewUniforms is default-on with expected envV
 
 TEST_CASE("RendererFeatureRegistry always-on features have null envVar") {
     // ReverseZ has no env var kill-switch.
-    // (TerrainTessellation has the MC2_TERRAIN_TESS default-ON killswitch
-    // — asserted in the next case instead.)
     CHECK(kFeatureTable[static_cast<int>(RendererFeature::ReverseZ)].envVar           == nullptr);
-}
-
-TEST_CASE("RendererFeatureRegistry TerrainTessellation is a default-ON killswitch (ISSUE-34)") {
-    const EnvVarDesc& e = kFeatureTable[static_cast<int>(RendererFeature::TerrainTessellation)];
-    CHECK(e.defaultOn == true);
-    REQUIRE(e.envVar != nullptr);
-    CHECK(std::strcmp(e.envVar, mc2::gate::name<"MC2_TERRAIN_TESS">()) == 0);
+    CHECK(kFeatureTable[static_cast<int>(RendererFeature::TerrainTessellation)].envVar == nullptr);
 }
 
 TEST_CASE("RendererFeatureRegistry Retired entries have Retired kind") {

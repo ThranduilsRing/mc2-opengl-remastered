@@ -74,7 +74,6 @@ add_executable(tg_import_dump
     ${MC2_ROOT}/mclib/paths.cpp
     ${MC2_ROOT}/GameOS/gameos/sim_overlap.cpp
     ${MC2_ROOT}/mclib/timing.cpp
-    ${MC2_ROOT}/mclib/cpu_proj_cost_split.cpp
     ${MC2_ROOT}/mclib/projectz_trace.cpp
     ${MC2_ROOT}/mclib/object_admission_predicate.cpp
     # --- Stuff library (game-free math + containers) ---

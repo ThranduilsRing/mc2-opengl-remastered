@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 435
-registry_entry_count: 127
-verified_count: 406
+gate_count: 411
+registry_entry_count: 122
+verified_count: 398
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -15,14 +15,6 @@ flags:
     doc: "ABL crash-safety gates (ABL-OPCODE-BOUNDS-HARDEN) MC2_ABL_ARG_GUARD=1 - enables dispatch-bounds soft path + out-ptr null guards MC2_ABL_RUNTIME_SOFTFAIL=1 -..."
     smoke_passthrough: true
     verified: true
-  - name: MC2_ABL_COMPILE_FATAL
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: code
-    doc: "ASAN-3-ABL-COMPILE-FATAL-1: fail at preprocess when ABL syntax errors leave partial bytecode; set =0 only for legacy execute-anyway diagnostics."
-    smoke_passthrough: true
-    registry: {feature_id: MC2_ABL_COMPILE_FATAL, kind: Feature, order: -1, default_on: true}
   - name: MC2_ABL_COMPILE_FATAL_REPRO
     kind: String
     default: ""
@@ -290,12 +282,6 @@ flags:
     owner: gameos
     doc: "Fresh harness session GUID, echoed in the v1 hello."
     verified: true
-  - name: MC2_BUCKET_CENSUS
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: terrain
-    doc: ""
   - name: MC2_CALLED_SHOT_FIX
     kind: Bool
     default: true
@@ -484,14 +470,6 @@ flags:
     rule: Std
     owner: unclassified
     doc: ""
-  - name: MC2_CPU_PROJ_COST_SPLIT
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: code
-    doc: ""
-    smoke_passthrough: true
-    verified: true
   - name: MC2_CRASH_FAST_EXIT
     kind: Bool
     default: false
@@ -629,14 +607,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_DIRECT_FIRE_STRAIGHT, kind: Feature, order: -1, default_on: false}
-  - name: MC2_DISABLE_GOSFX
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: code
-    doc: ""
-    smoke_passthrough: true
-    verified: true
   - name: MC2_DPI_UNAWARE
     kind: Bool
     default: false
@@ -728,13 +698,6 @@ flags:
     rule: Presence
     owner: editor
     doc: ""
-    verified: true
-  - name: MC2_EDITOR_UI_DEFS
-    kind: Bool
-    default: true
-    rule: Std
-    owner: editor
-    doc: "Mission Editor shell overlay is data/defs-first by default."
     verified: true
   - name: MC2_EDITOR_WATCHDOG
     kind: Bool
@@ -948,13 +911,6 @@ flags:
     doc: ""
     reread: true
     verified: true
-  - name: MC2_GOM_RECON
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: code
-    doc: "GOM Recon: object type classification & mutation tracking (read-only)."
-    verified: true
   - name: MC2_GPU_BUDGET_MB
     kind: Int
     default: 0
@@ -1121,12 +1077,6 @@ flags:
     owner: gameos
     doc: ""
     verified: true
-  - name: MC2_HUD_SIM_SPEED
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: code
-    doc: "SIM-SPEED-BUTTON-1: double-gated sim-speed tab (MC2_HUD_SIM_SPEED; needs MC2_HUD_IMGUI_TABS like every registry consumer)."
   - name: MC2_HZB_BUILD
     kind: Bool
     default: true
@@ -1703,13 +1653,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_OBJECT_ID_BUFFER, kind: Feature, order: 2, default_on: true}
-  - name: MC2_OBJECT_POLY_OFFSET_FACTOR
-    kind: Float
-    default: -1
-    rule: Prefix
-    owner: props
-    doc: ""
-    smoke_passthrough: true
   - name: MC2_OBJECT_WALK_FACTS
     kind: Bool
     default: false
@@ -1804,12 +1747,6 @@ flags:
     doc: "Dev-only mission test cinematic skip; direct mission harness skips briefing."
     smoke_passthrough: true
     verified: true
-  - name: MC2_POSTPROCESS_COMPUTE_BLUR
-    kind: Bool
-    default: false
-    rule: Lead0P
-    owner: post
-    doc: ""
   - name: MC2_PRESENTATION_DISABLED
     kind: Bool
     default: false
@@ -2007,12 +1944,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_RENDER_WATER_FASTPATH_DEBUG
-    kind: Int
-    default: 0
-    rule: Prefix
-    owner: gameos
-    doc: ""
   - name: MC2_REPLAY_CONTENT
     kind: String
     default: ""
@@ -2048,13 +1979,6 @@ flags:
     doc: "[RES_DIAG v1] One-shot dump of the resolution split: scene FBO size (this object's width_/height_) vs the HUD canvas (Environment.screenWidth) vs the native..."
     smoke_passthrough: true
     verified: true
-  - name: MC2_RING_TRACE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: terrain
-    doc: "?? Probe 8: compare draw-time MVP fingerprint vs compute-time fingerprint."
-    smoke_passthrough: true
   - name: MC2_RNG_SEED
     kind: String
     default: ""
@@ -2208,8 +2132,7 @@ flags:
     default: true
     rule: Lead0Kill
     owner: code
-    retire_by: 2026-11-25
-    doc: "G7b: run the banked sim tick on a worker during snapshot drawing; 0 = serial loop. Retire after three green merge windows."
+    doc: "G7b: run the banked sim tick on a worker during snapshot drawing; 0 = serial loop (permanent serial harness mode: the determinism reference)."
     smoke_passthrough: true
     verified: true
   - name: MC2_SIM_OVERLAP_AUDIT
@@ -2396,13 +2319,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_STATIC_LIGHT_UPLOAD_SPLIT
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: code
-    doc: "STATICPROP-PERMANENT-INSTANCE-LIGHTS-1: upload the immutable static light prefix [0..S) once/dirty-only + the dynamic suffix [S..count) per frame, instead..."
-    registry: {feature_id: MC2_FEATURE_STATIC_LIGHT_UPLOAD_SPLIT, kind: Feature, order: -1, default_on: true}
   - name: MC2_STATIC_POP_SPLIT
     kind: Bool
     default: false
@@ -2499,15 +2415,6 @@ flags:
     owner: code
     doc: "TACTIC-WEIGHTS-A: load [Tactics] block from <missionName>_ai.fit into tacticWeights[]."
     verified: true
-  - name: MC2_TERRAIN_CLIFF_ROCK
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: terrain
-    retire_by: 2026-11-24
-    doc: "TERRAIN-CLIFF-ROCK: CC0 photoscan rock (albedo, normal, roughness, AO) on steep VK terrain faces, tinted to the mission palette; 0 = base look."
-    verified: true
-    registry: {feature_id: MC2_TERRAIN_CLIFF_ROCK, kind: Feature, order: -1, default_on: true}
   - name: MC2_TERRAIN_CLIFF_SHADOW_FLOOR
     kind: Bool
     default: false
@@ -2541,25 +2448,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_TERRAIN_CONTROLMAP_FILE, kind: Feature, order: -1, default_on: false}
-  - name: MC2_TERRAIN_DEBUG_MODE
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: gameos
-    doc: "TERRAIN-DEBUG-VIEWS-1: terrain fragment-shader debug-mode selector for the tessellated terrain path (gos_terrain.frag tessDebug.x)."
-    registry: {feature_id: MC2_DIAG_TERRAIN_DEBUG_MODE, kind: Trace, order: -1, default_on: false}
-  - name: MC2_TERRAIN_DETAIL_FADE_END
-    kind: Float
-    default: 3000
-    rule: Prefix
-    owner: gameos
-    doc: ""
-  - name: MC2_TERRAIN_DETAIL_FADE_START
-    kind: Float
-    default: 1000
-    rule: Prefix
-    owner: gameos
-    doc: ""
   - name: MC2_TERRAIN_INDIRECT
     kind: Bool
     default: true
@@ -2696,13 +2584,6 @@ flags:
     owner: terrain
     doc: "Snow brightness dampen: <1 darkens detected-snow fragments."
     verified: true
-  - name: MC2_TERRAIN_SOLID_WINDOW_PARITY
-    kind: Bool
-    default: false
-    rule: Exact1
-    owner: terrain
-    doc: ""
-    verified: true
   - name: MC2_TERRAIN_SPEC
     kind: Bool
     default: true
@@ -2712,14 +2593,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_TERRAIN_SPEC, kind: Feature, order: -1, default_on: true}
-  - name: MC2_TERRAIN_TESS
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: gameos
-    doc: "TCS/TES terrain tessellation (gameos_graphics.cpp)."
-    smoke_passthrough: true
-    registry: {feature_id: MC2_FEATURE_TERRAIN_TESSELLATION, kind: Feature, order: 3, default_on: true}
   - name: MC2_TERRAIN_VISUAL_DISPLACE
     kind: Bool
     default: true
@@ -2796,13 +2669,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_THIN_DEBUG
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: terrain
-    doc: ""
-    smoke_passthrough: true
   - name: MC2_TOOLCHAINS
     kind: String
     default: ""
@@ -3129,14 +2995,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_VK_MECH_FEED_NATIVE
-    kind: Bool
-    default: false
-    rule: Is01
-    owner: mech
-    doc: ""
-    smoke_passthrough: true
-    verified: true
   - name: MC2_VK_POST_SCREENFX
     kind: Bool
     default: true
@@ -3261,14 +3119,6 @@ flags:
     owner: vk
     doc: "Test hook (not a feature): =1 runs the one-shot ray-tracing infrastructure GPU self-test at device creation (GameOS/gameos/vk_rt_selftest.cpp)."
     verified: true
-  - name: MC2_VK_SHADOW_MATRIX_DIAG
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: vk
-    doc: "VK shadow producer/consumer evidence (default OFF = zero cost; GameOS/gameos/vulkan_shadow_island_live.cpp)."
-    smoke_passthrough: true
-    registry: {feature_id: MC2_TRACE_VK_SHADOW_MATRIX_DIAG, kind: Trace, order: -1, default_on: false}
   - name: MC2_VK_SHARED_GBUFFER
     kind: Bool
     default: true
@@ -3278,20 +3128,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_VK_SHARED_GBUFFER, kind: Feature, order: -1, default_on: true}
-  - name: MC2_VK_TERRAIN_COPY_STATS
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: vk
-    doc: ""
-    smoke_passthrough: true
-  - name: MC2_VPL_CULL
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: terrain
-    doc: "VPL retirement: the MC2_VPL_CULL / MC2_VPL_REDUCE getenv reads are KEPT solely to gate the one-shot event=retired lifecycle lines emitted just before the..."
-    verified: true
   - name: MC2_VSYNC
     kind: Bool
     default: false
@@ -3410,12 +3246,6 @@ flags:
     owner: gameos
     doc: ""
     verified: true
-  - name: MC2_WATER_UPLOAD_NARROW
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: terrain
-    doc: ""
   - name: MC2_WIDTH
     kind: Int
     default: 0
@@ -3451,6 +3281,7 @@ flags:
     registry: {feature_id: MC2_XFORM_PARITY_FATAL, kind: Trace, order: -1, default_on: false}
 feature_only_rows:   # registry entries with no environment variable
   - {feature_id: MC2_FEATURE_REVERSE_Z, kind: Feature, order: 4, default_on: true}
+  - {feature_id: MC2_FEATURE_TERRAIN_TESSELLATION, kind: Feature, order: 3, default_on: true}
   - {feature_id: MC2_FX_DEFS, kind: Feature, order: -1, default_on: true}
   - {feature_id: MC2_FEATURE_MATERIAL_KTX, kind: Feature, order: 11, default_on: true}
   - {feature_id: MC2_FEATURE_STATICPROP_BC7, kind: Retired, order: 18, default_on: false}

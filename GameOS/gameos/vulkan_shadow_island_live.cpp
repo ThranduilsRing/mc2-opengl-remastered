@@ -605,7 +605,7 @@ bool upload_geometry_once(ShadowIsland* s) {
 }
 
 // ===========================================================================
-// MC2_VK_SHADOW_MATRIX_DIAG (Trace gate, default OFF). Evidence-only: matrices as
+// Shadow matrix diagnostics. Evidence-only: matrices as
 // received by the island per map, GL/VK depth readbacks -> normalized gray PNG.
 // ===========================================================================
 } // namespace
@@ -1348,7 +1348,7 @@ extern "C" void* mc2_vk_shadow_island_get_mover_debug_view() {
 
 
 
-// MC2_VK_SHADOW_MATRIX_DIAG public entries.
+// Shadow matrix diagnostics: public entries.
 // Matrix qualifiers (all verified by grep: NO row_major/column_major anywhere in the shadow-related VK
 // shaders): shadow_prop.vert ShadowFrameUBO std140 default (column-major) mat4 lightSpaceMatrix fed RAW
 // (same as GL's glUniformMatrix4fv GL_FALSE); terrain_tier1.frag UBO dynamicLightSpaceMatrix /
