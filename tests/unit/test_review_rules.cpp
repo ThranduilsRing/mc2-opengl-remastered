@@ -64,6 +64,8 @@ TEST_CASE("ReviewRules/save load refreshes policy in both directions before BRN1
 }
 
 TEST_CASE("ReviewRules/Magic profile is restricted to Smarter ABL assets") {
+    CHECK(mc2::brainpolicy::magicCampaign(""));
+    CHECK_FALSE(mc2::brainpolicy::magicCampaign("MC2X-DEE"));
     using mc2::brainpolicy::magicAsset;
     for (const auto key : {"data/missions/corebrain.abx", "data/missions/warriors/patrol.abl"}) {
         CHECK(magicAsset(key, 0).empty());
