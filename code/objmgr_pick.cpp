@@ -701,15 +701,16 @@ GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
     const double terrainT = pickTerrainDepth(origin, direction);
     // PICK diag: why a mover is not a candidate under this cursor (rect_miss is expected for most units).
     const bool pickTrace = mc2_diag::tagEnabled("PICK");
-    const auto rejectEnemy = [&](GameObjectPtr o, std::string_view reason, double objectT = 0, double surfaceT = 0) {
+    const auto rejectEnemy = [&](GameObjectPtr o, std::string_view reason, double objectT = 0, double surfaceT = 0, bool forgiven = false) {
         if (!pickTrace || !o->isMover()) return;
         PickRect rect{};
         const auto rectField = gameplayPickRect(o, rect) ? std::format(
             ",\"rect\":[{},{},{},{}]", rect.left, rect.top, rect.right, rect.bottom) : std::string{};
         char payload[384];
-        mc2::fmt::to_buf(payload, "{{\"mouse\":[{},{}],\"reject\":\"{}\",\"part_id\":{},\"team\":{}{},\"object_t\":{:.2f},\"terrain_t\":{:.2f},\"blip\":{},\"gui\":{}}}",
+        mc2::fmt::to_buf(payload, "{{\"mouse\":[{},{}],\"reject\":\"{}\",\"part_id\":{},\"team\":{}{},\"object_t\":{:.2f},\"terrain_t\":{:.2f},\"blip\":{},\"gui\":{},\"quality\":{},\"model\":{},\"forgiven\":{},\"show_movers\":{}}}",
             mc2::fmt::as_i32(x), mc2::fmt::as_i32(y), reason, o->getPartId(), o->getTeamId(), rectField, objectT, surfaceT,
-            static_cast<Mover*>(o)->contactView.blip ? 1 : 0, o->isOnGUI() ? 1 : 0);
+            static_cast<Mover*>(o)->contactView.blip ? 1 : 0, o->isOnGUI() ? 1 : 0,
+            static_cast<Mover*>(o)->contactView.quality, static_cast<Mover*>(o)->contactView.model ? 1 : 0, forgiven ? 1 : 0, ShowMovers ? 1 : 0);
         mc2_diag::writeEvent("PICK", 1, 0, payload);
     };
     // Include non-targetable foreground objects and other commanders in the
@@ -771,7 +772,7 @@ GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
             beforeSurface = mc2::pickMoverBeforeSurface(depth, surfaceT, point, lower, upper);
         }
         if (!beforeSurface) {
-            rejectEnemy(obj, "terrain_occluded", depth, surfaceT);
+            rejectEnemy(obj, "terrain_occluded", depth, surfaceT, forgiven);
             if (mc2_diag::tagEnabled("CURSOR_TARGET")) {
                 char payload[256];
                 mc2::fmt::to_buf(payload,
@@ -788,7 +789,8 @@ GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
         if (!eligible) rejectEnemy(obj, "ineligible");
         stack.push_back({obj, depth, pickPriority(obj) + (coreHit ? 0 : 5), eligible, forgiven});
         if (pickTrace && obj->isMover()) {
-            const auto payload = std::format("{{\"mouse\":[{},{}],\"candidate\":{},\"eligible\":{},\"forgiven\":{},\"depth\":{:.17g}}}", x, y, obj->getPartId(), eligible ? 1 : 0, forgiven ? 1 : 0, depth);
+            const auto& contact = static_cast<Mover*>(obj)->contactView;
+            const auto payload = std::format("{{\"mouse\":[{},{}],\"candidate\":{},\"eligible\":{},\"forgiven\":{},\"depth\":{:.17g},\"quality\":{},\"model\":{},\"blip\":{},\"show_movers\":{}}}", x, y, obj->getPartId(), eligible ? 1 : 0, forgiven ? 1 : 0, depth, contact.quality, contact.model ? 1 : 0, contact.blip ? 1 : 0, ShowMovers ? 1 : 0);
             mc2_diag::writeEvent("PICK", 1, 0, payload.c_str());
         }
     }
