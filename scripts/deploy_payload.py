@@ -892,8 +892,11 @@ def example_mods_payload(src_root):
     items = []
     if not os.path.isdir(root):
         return items
-    for entry in sorted(os.listdir(root)):
-        mod_dir = os.path.join(root, entry)
+    mod_dirs = [(root, entry) for entry in sorted(os.listdir(root))]
+    mod_dirs += [(os.path.join(src_root, "mods"), entry) for entry in
+                 ("magic-ballistic-weapons", "magic-gamesys-tweaks")]
+    for source, entry in mod_dirs:
+        mod_dir = os.path.join(source, entry)
         if not os.path.isdir(mod_dir):
             continue
         if not os.path.isfile(os.path.join(mod_dir, "mod.json")):

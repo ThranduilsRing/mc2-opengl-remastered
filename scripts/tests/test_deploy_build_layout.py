@@ -119,6 +119,17 @@ def test_enumerate_payload_needs_only_game(tmp_path):
     assert not any("__pycache__" in r or r.endswith((".pyc", ".pyo")) for r in rel)
 
 
+def test_magic_gameplay_mods_ship_without_corebrain():
+    payload = {rel for _, rel, _ in dp.example_mods_payload(str(ROOT))}
+    assert {
+        "mods/magic-ballistic-weapons/mod.json",
+        "mods/magic-ballistic-weapons/data/objects/compbas.csv",
+        "mods/magic-gamesys-tweaks/mod.json",
+        "mods/magic-gamesys-tweaks/data/missions/gamesys.fit",
+    } <= payload
+    assert not any("corebrain" in rel.lower() for rel in payload)
+
+
 def test_deploy_no_example_mods_payload_and_manifest(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(dp, "declared_assets", lambda root: {})  # this layout fixture contains dummy payload bytes
     # Trigger paths: scripts/deploy_payload.py, examples/mods/.

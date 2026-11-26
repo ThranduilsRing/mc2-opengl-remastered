@@ -1465,6 +1465,12 @@ int	MechLabScreen::handleMessage( unsigned long msg, unsigned long who)
 	{
 		case MB_MSG_NEXT: // actuall accept
 			{
+				if (!LogisticsData::instance->settleWeaponSupply(pVariant, false)) {
+					LogisticsOneButtonDialog::instance()->setText("Weapon supply exhausted. Strip weapons from recovered mechs or wait until the next mission.");
+					LogisticsOneButtonDialog::instance()->begin();
+					bErrorDlg = true;
+					break;
+				}
 				// make sure we have the money...
 				float newCost = pVariant->getCost();
 				// figure out change
@@ -1880,6 +1886,12 @@ int MechLabScreen::addComponent( LogisticsComponent* pComponent, long& x, long& 
 {
 	if ( !pComponent )
 		return -1;
+	if (!LogisticsData::instance->canAddWeapon(pComponent)) {
+		LogisticsOneButtonDialog::instance()->setText("Weapon supply exhausted. Strip weapons from recovered mechs or wait until the next mission.");
+		LogisticsOneButtonDialog::instance()->begin();
+		bErrorDlg = true;
+		return ADD_COMPONENT_FAILED;
+	}
 
 	int retVal = -1;
 
@@ -2206,7 +2218,7 @@ void MechLabScreen::removeComponent( long i, long j )
 	LogisticsComponent* pComp = pVariant->getCompAtLocation(i, j, tmpX, tmpY ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 	if ( pComp )
 	{
-		if ( !pComp->isAvailable() )
+		if ( !pComp->isAvailable() && !LogisticsData::instance->rules().weaponSupply )
 		{
 			LogisticsOneButtonDialog::instance()->setText(IDS_MC_UNAVAILABLE_TECH, IDS_DIALOG_OK, IDS_DIALOG_OK);
 			LogisticsOneButtonDialog::instance()->begin();

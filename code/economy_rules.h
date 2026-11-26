@@ -10,10 +10,65 @@
 #include <algorithm>
 #include <climits>
 #include <cstdint>
+#include <map>
 
 #include "game_rules.h"
 
 namespace mc2::rules {
+
+inline long weaponSupplyCap(long mode) { return mode == 1 ? 2 : mode == 2 ? 1 : mode == 3 ? 3 : 0; }
+inline bool salvageVehicleEligible(bool all, bool vehicles, bool enemy, bool air, bool disabled, bool destroyed) {
+    return all && vehicles && enemy && !air && (disabled || destroyed);
+}
+
+struct WeaponSupply {
+    std::map<long, long> spare, bought;
+    bool allows(long cap, const std::map<long, long>& delta) const {
+        if (!cap) return true;
+        for (const auto& [id, count] : delta) {
+            const long s = spare.contains(id) ? spare.at(id) : 0;
+            const long b = bought.contains(id) ? bought.at(id) : 0;
+            if (count > 0 && count > s + cap - b) return false;
+        }
+        return true;
+    }
+    void settle(const std::map<long, long>& delta) {
+        for (const auto& [id, count] : delta) {
+            const long used = std::clamp(count, 0L, spare[id]);
+            spare[id] += count < 0 ? -count : -used;
+            bought[id] += std::max(0L, count - used);
+        }
+    }
+    template<class File> void save(File& file) const {
+        if (spare.empty() && bought.empty()) return;
+        file.writeBlock("WeaponSupply");
+        long row = 0;
+        auto entries = spare;
+        for (const auto& [id, count] : bought) entries.try_emplace(id, 0);
+        file.writeIdLong("Count", static_cast<long>(entries.size()));
+        for (const auto& [id, count] : entries) {
+            const auto key = std::to_string(row++);
+            file.writeIdLong("Id" + key, id);
+            file.writeIdLong("Spare" + key, count);
+            file.writeIdLong("Bought" + key, bought.contains(id) ? bought.at(id) : 0);
+        }
+    }
+    template<class File> void load(File& file) {
+        *this = {};
+        if (file.seekBlock("WeaponSupply") != 0) return;
+        long count = 0;
+        file.readIdLong("Count", count);
+        for (long row = 0; row < std::clamp(count, 0L, 4096L); ++row) {
+            const auto key = std::to_string(row);
+            long id = 0, s = 0, b = 0;
+            if (file.readIdLong("Id" + key, id) != 0) continue;
+            file.readIdLong("Spare" + key, s);
+            file.readIdLong("Bought" + key, b);
+            spare[id] = std::max(0L, s);
+            bought[id] = std::max(0L, b);
+        }
+    }
+};
 
 inline int payoutScaled(int rp, long pct) {
     if (pct == 100) return rp;

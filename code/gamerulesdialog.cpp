@@ -69,23 +69,24 @@ constexpr ModText builtins[] = {
 	{"@purchase-all", "PURCHASE ALL", "Buy any available mech or component."},
 	{"@infinite-money", "INFINITE MONEY", "Spend freely without running out of C-Bills."},
 	{"@salvage-all", "SALVAGE EVERYTHING", "Recover every salvageable enemy mech."},
+	{"@salvage-vehicles", "  VEHICLES", "Also recover wrecked enemy ground vehicles into the vehicle bay."},
 	{"@jumpjets-all", "JUMP JETS FOR ALL", "Fit jump jets to any mech."}
 };
-std::string modId(std::size_t i) { return i < 5 ? builtins[i].id : addons()[i - 5].id; }
+std::string modId(std::size_t i) { return i < 6 ? builtins[i].id : addons()[i - 6].id; }
 std::string modName(std::size_t i) {
-	if (i < 5) return builtins[i].name;
-	const auto& a = addons()[i - 5];
+	if (i < 6) return builtins[i].name;
+	const auto& a = addons()[i - 6];
 	if (a.id == "core_unlocks") return "RARE WEAPONS";
 	if (a.id == "sample_equipment") return "HOT MEDIUM LASER";
 	if (a.id == "sample_new_variant") return "ATLAS SAMPLER";
 	if (a.id == "sample_variant") return "ATLAS LASERBOAT";
-	if (a.id == "magic-ballistic-weapons") return "BALLISTICS";
-	if (a.id == "magic-gamesys-tweaks") return "SYSTEM TUNING";
+	if (a.id == "magic-ballistic-weapons") return "MAGIC BALLISTIC WEAPONS";
+	if (a.id == "magic-gamesys-tweaks") return "MAGIC GAMESYS TWEAKS";
 	return a.name.substr(0, a.name.find(" ("));
 }
 std::string modDescription(std::size_t i) {
-	if (i < 5) return builtins[i].description;
-	const auto& a = addons()[i - 5];
+	if (i < 6) return builtins[i].description;
+	const auto& a = addons()[i - 6];
 	if (a.id == "core_unlocks") return "Buy Clan Gauss Rifles and ER PPCs.";
 	if (a.id == "sample_equipment") return "Adds a harder-hitting medium laser.";
 	if (a.id == "sample_new_variant") return "Adds an Atlas with ER PPC and large laser.";
@@ -118,10 +119,10 @@ bool GameRulesDialog::init()
 	if (!d->modsPanel.tryInitDefsOnly("mcl_gamerules.fit")) return false;
 	d->modsPanel.owner = d.get();
 	d->setDefsElementVisible("game.mcl_gamerules.text.description", false);
-	if (addons().size() + 5 > kModRows) {
+	if (addons().size() + 6 > kModRows) {
 		d->modsScroll.init(0, 0, 16, 360);
 		d->modsScroll.setOrange();
-		d->modsScroll.SetScrollMax(static_cast<float>(addons().size() + 5 - kModRows));
+		d->modsScroll.SetScrollMax(static_cast<float>(addons().size() + 6 - kModRows));
 	}
 	s_instance = std::move( d );
 	return true;
@@ -189,9 +190,10 @@ int GameRulesDialog::ModsPanel::handleMessage(unsigned long, unsigned long who)
 {
 	if (who >= kRowBase && who < kRowBase + kModRows) {
 		const auto i = who - kRowBase + owner->modOffset;
-		if (!owner->editMods || i >= addons().size() + 5) return 0;
+		if (!owner->editMods || i >= addons().size() + 6) return 0;
+		if (modId(i) == "@salvage-vehicles" && !mc2::mods::selected(owner->working.mods, "@salvage-all")) return 0;
 		const bool on = mc2::mods::selected(owner->working.mods, modId(i));
-		if (i >= 5 && !on && !mc2::mods::conflict(addons()[i - 5], addons(), owner->working.mods).empty()) return 0;
+		if (i >= 6 && !on && !mc2::mods::conflict(addons()[i - 6], addons(), owner->working.mods).empty()) return 0;
 		mc2::mods::toggle(owner->working.mods, modId(i));
 		owner->highlightedMod = static_cast<int>(i);
 		owner->refreshMods();
@@ -206,18 +208,18 @@ void GameRulesDialog::refreshMods()
 	modsPanel.setDefsElementVisible("game.mcl_gamerules.button.preset", false);
 	for (std::size_t row = 0; row < kPageRows; ++row) {
 		const auto i = row + modOffset;
-		const bool used = row < kModRows && i < addons().size() + 5;
+		const bool used = row < kModRows && i < addons().size() + 6;
 		modsPanel.setDefsElementVisible(sliderKey(row), false);
 		modsPanel.setDefsElementVisible(valueKey(row), false);
 		modsPanel.setDefsElementVisible(rowKey("text", row), used);
 		modsPanel.setDefsElementVisible(rowKey("button", row), used);
 		if (!used) continue;
 		const bool on = mc2::mods::selected(working.mods, modId(i));
-		auto why = i < 5 ? std::string{} : mc2::mods::conflict(addons()[i - 5], addons(), working.mods);
+		auto why = i < 6 ? std::string{} : mc2::mods::conflict(addons()[i - 6], addons(), working.mods);
 		why = why.substr(0, why.find(": "));
 		for (std::size_t other = 0; other < addons().size(); ++other)
-			if (why == addons()[other].name) { why = modName(other + 5); break; }
-		const bool enabled = editMods && (on || why.empty());
+			if (why == addons()[other].name) { why = modName(other + 6); break; }
+		const bool enabled = editMods && (on || why.empty()) && (modId(i) != "@salvage-vehicles" || mc2::mods::selected(working.mods, "@salvage-all"));
 		modsPanel.setDefsElementText(rowKey("text", row), modName(i) + (why.empty() ? "" : " (conflicts with " + why + ")"));
 		modsPanel.setDefsElementTextColor(rowKey("text", row), enabled ? kActiveColor : kGreyColor);
 		modsPanel.setDefsElementText(rowKey("button", row), on ? "ON" : "OFF");
@@ -318,7 +320,7 @@ void GameRulesDialog::update()
 	userInput->setMouseCursor( mState_NORMAL );
 	LogisticsScreen::update();
 	modsPanel.update();
-	if (addons().size() + 5 > kModRows) {
+	if (addons().size() + 6 > kModRows) {
 		float x, y, w, h, sx, sy, ox, oy;
 		if (modsPanel.getDefsElementScreenRect(rowKey("button", 0), x, y, w, h)) {
 			aObject::getCanvasTransform(sx, sy, ox, oy);
@@ -330,7 +332,7 @@ void GameRulesDialog::update()
 		if (offset != modOffset) { modOffset = offset; refreshMods(); }
 	}
 	const auto mouse = ImGui::GetIO().MousePos;
-	for (std::size_t row = 0; row < kModRows && row + modOffset < addons().size() + 5; ++row) {
+	for (std::size_t row = 0; row < kModRows && row + modOffset < addons().size() + 6; ++row) {
 		float x, y, w, h;
 		if (modsPanel.getDefsElementScreenRect(rowKey("text", row), x, y, w, h) && mouse.x >= x && mouse.x <= x + 540 * h / 32 && mouse.y >= y && mouse.y <= y + h) {
 			highlightedMod = static_cast<int>(row) + modOffset;
@@ -377,7 +379,7 @@ void GameRulesDialog::render()
 	}
 	gos_SetHudScaleExempt( false );
 	modsPanel.render(0, 0);
-	if (addons().size() + 5 > kModRows) {
+	if (addons().size() + 6 > kModRows) {
 		aObject::beginGuiBridgeCanvas();
 		modsScroll.render();
 		aObject::endGuiBridge();

@@ -106,6 +106,9 @@ public:
 	std::expected<void, int> removeMechFromForceGroup( int slot );
 
 	bool				canAddMechToForceGroup( LogisticsMech* pMech );
+	bool canAddWeapon(LogisticsComponent* component);
+	bool hasRecoveredWeapon(LogisticsComponent* component);
+	bool settleWeaponSupply(LogisticsVariant* target, bool commit);
 
 
 	long				save( FitIniFile& file );

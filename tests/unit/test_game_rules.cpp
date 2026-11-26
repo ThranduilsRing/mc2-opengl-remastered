@@ -315,7 +315,7 @@ TEST_CASE("game rules: dialog page rows equal the descriptor table presets round
     for (std::size_t at = page.find(needle); at != std::string::npos; at = page.find(needle, at + 1)) ++buttons;
     CHECK(buttons == kRuleCount);
 
-    for (const GameRules& preset : {GameRules{}, battleTechPreset()}) {
+    for (const GameRules& preset : {GameRules{}, battleTechPreset(), newCampaignDefaults()}) {
         std::string text;
         for (const CfgEntry& e : cfgEntries(preset)) text += e.key + "=" + e.text + "\n";
         GameRules back;
@@ -420,6 +420,44 @@ TEST_CASE("game rules: campaign mods persist and override launcher choices") {
     CHECK(rulesToPublish(true, chosen).mods.empty());
 }
 
+// Owner, 11-26 (saves study P1-1): a NEW campaign starts with both Magic gameplay packs on and the AI rule on Stock. Only the
+// new-campaign paths read newCampaignDefaults(); GameRules{} stays the old-save and networked baseline.
+TEST_CASE("game rules: new campaigns default to the Magic packs and old saves keep theirs") {
+    const GameRules fresh = newCampaignDefaults();
+    CHECK(mc2::mods::split(fresh.mods) == std::vector<std::string>({"magic-ballistic-weapons", "magic-gamesys-tweaks"}));
+    CHECK(fresh.ai == 0);
+    GameRules stock = fresh;
+    stock.mods.clear();
+    CHECK(stock == GameRules{});   // every rule value is the stock default
+    CHECK(GameRules{}.mods.empty());
+    CHECK(rulesToPublish(true, fresh) == GameRules{});   // a networked game never inherits the packs
+    CHECK(rulesToPublish(false, fresh) == fresh);
+
+    LogisticsMissionInfo info;
+    info.setRules(fresh);
+    const std::string path = saveToFile(info, "game_rules_new_campaign");
+    CHECK(hasRulesBlock(path));   // a new campaign records its packs
+    LogisticsMissionInfo loaded;
+    loaded.setRules(GameRules{});
+    FitIniFile in;
+    REQUIRE(in.open(path.c_str()) == NO_ERR);
+    CHECK(loaded.load(in).has_value());
+    in.close();
+    CHECK(loaded.getRules() == fresh);
+    std::remove(path.c_str());
+
+    // A save from before the Mods key (other rules, no packs) reads back exactly as saved.
+    GameRules older;
+    older.heat = kHeatHarsh;
+    info.setRules(older);
+    const std::string oldPath = saveToFile(info, "game_rules_no_mods_key");
+    FitIniFile old;
+    REQUIRE(old.open(oldPath.c_str()) == NO_ERR);
+    CHECK(readFit(old) == older);
+    old.close();
+    std::remove(oldPath.c_str());
+}
+
 TEST_CASE("game rules: campaign mod conflicts and campaign-only ladder selection") {
     namespace fs = std::filesystem;
     const fs::path root = "game_rules_mod_fixture";
@@ -427,7 +465,8 @@ TEST_CASE("game rules: campaign mod conflicts and campaign-only ladder selection
     fs::create_directories(root / "second/data/objects");
     fs::create_directories(root / "visual/data/effects");
     fs::create_directories(root / "campaign/data/missions");
-    for (const auto& id : {"first", "second", "visual", "campaign"}) {
+    for (const auto& id : {"first", "second", "visual", "campaign", "sample_equipment", "sample_variant", "sample_new_variant", "mc2x-compat", "mco-compat", "mw5_mechs", "mw5-vehicles", "bt2018_mechs"}) {
+        fs::create_directories(root / id);
         std::ofstream manifest(root / id / "mod.json");
         manifest << "{\"id\":\"" << id << "\",\"type\":\"" << (std::string(id) == "campaign" ? "campaign" : "assets")
                  << "\",\"description\":\"Test description\"}";
@@ -435,6 +474,10 @@ TEST_CASE("game rules: campaign mod conflicts and campaign-only ladder selection
     std::ofstream(root / "first/data/objects/CompBas.csv") << "first";
     std::ofstream(root / "second/data/objects/compbas.csv") << "second";
     std::ofstream(root / "visual/data/effects/Fireball.json") << "visual";
+    for (const auto& id : {"sample_equipment", "sample_variant", "sample_new_variant", "mc2x-compat", "mco-compat", "mw5_mechs", "mw5-vehicles", "bt2018_mechs"}) {
+        fs::create_directories(root / id / "data/objects");
+        std::ofstream(root / id / "data/objects/compbas.csv") << "hidden";
+    }
     const auto addons = mc2::mods::catalogue(root);
     REQUIRE(addons.size() == 2);
     CHECK(addons[0].description == "Test description");
@@ -468,10 +511,9 @@ TEST_CASE("game rules: GameRules{} is the frozen legacy stock baseline (change a
 }
 
 TEST_CASE("game rules: new-campaign defaults, legacy add-on migration and the add-on exclusions") {
-    // newCampaignDefaults differs in AI and Mods: old saves, an absent key and networked games stay on stock.
+    // newCampaignDefaults differs in Mods only (AI stays Stock): old saves, an absent key and networked games stay on stock.
     auto stock = newCampaignDefaults();
-    CHECK(stock.ai == 1);
-    stock.ai = 0;
+    CHECK(stock.ai == 0);
     stock.mods.clear();
     CHECK(stock == GameRules{});
     CHECK(mc2::mods::selected(newCampaignDefaults().mods, "magic-ballistic-weapons"));
@@ -527,4 +569,24 @@ TEST_CASE("game rules: new-campaign defaults, legacy add-on migration and the ad
     // A compat layer the campaign mounted stays in the saved ModDeps with no add-on selected.
     CHECK(mc2::mods::selected(mc2::mods::dependencies("mc2x-compat", "", addons), "mc2x-compat"));
     fs::remove_all(root);
+}
+
+TEST_CASE("game rules: weapon supply and vehicle toggle persist with campaign inventory") {
+    LogisticsMissionInfo info;
+    GameRules rules;
+    rules.weaponSupply = 1;
+    rules.mods = "@salvage-all,@salvage-vehicles";
+    info.setRules(rules);
+    info.weaponSupply.settle({{7, 2}, {8, -3}});
+    const auto path = saveToFile(info, "game_rules_supply");
+    FitIniFile file;
+    REQUIRE(file.open(path.c_str()) == NO_ERR);
+    LogisticsMissionInfo restored;
+    REQUIRE(restored.load(file).has_value());
+    CHECK(restored.getRules() == rules);
+    CHECK(restored.weaponSupply.spare == info.weaponSupply.spare);
+    CHECK(restored.weaponSupply.bought == info.weaponSupply.bought);
+    CHECK_FALSE(restored.weaponSupply.allows(2, {{7, 1}}));
+    file.close();
+    std::remove(path.c_str());
 }

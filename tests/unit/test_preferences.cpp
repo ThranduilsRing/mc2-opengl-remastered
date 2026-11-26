@@ -237,6 +237,9 @@ TEST_CASE("Preferences/fresh options.cfg writes no GameRules key until one diffe
     } restore{originalDirectory, directory, originalRuntime, originalPrefs};
     fs::current_path(directory);
     CPrefs fresh; REQUIRE(fresh.load() == 0);   // no options.cfg: the create path
+    CHECK(mc2::mods::selected(fresh.gameRules.mods, "magic-ballistic-weapons"));   // new campaigns default to the Magic packs
+    CHECK(mc2::mods::selected(fresh.gameRules.mods, "magic-gamesys-tweaks"));
+    CHECK(fresh.gameRules.ai == 0);
     REQUIRE(fresh.save().has_value());
     CHECK(mc2::options::cfg::readTextFile("options.cfg").find("GameRules") == std::string::npos);
     fresh.gameRules.heat = mc2::rules::kHeatHarsh;
@@ -250,17 +253,22 @@ TEST_CASE("Preferences/fresh options.cfg writes no GameRules key until one diffe
     CHECK(reloaded.gameRules.heat == mc2::rules::kHeatMC2);
     fresh.gameRules.mods = "@purchase-all";
     REQUIRE(fresh.save().has_value());
+    fresh.gameRules.mods.clear();   // the player turned the packs off: stored, never re-defaulted
+    REQUIRE(fresh.save().has_value());
+    CPrefs off; REQUIRE(off.load() == 0);
+    CHECK(off.gameRules.mods.empty());
     mc2::gate::ScopedOverride<"MC2_LAUNCHED"> launcher("1");
     mc2::gate::ScopedOverride<"MC2_CHEAT_INFINITE_MONEY"> money("1");
     CPrefs preselected; REQUIRE(preselected.load() == 0);
     CHECK(mc2::mods::selected(preselected.gameRules.mods, "@infinite-money"));
     CHECK_FALSE(mc2::mods::selected(preselected.gameRules.mods, "@purchase-all"));
     fresh.gameRules.mods = "-";
-    fresh.gameRules.ai = 0; // Explicit Stock survives the new-campaign Smarter baseline.
+    fresh.gameRules.ai = 0; // Explicit Stock survives the new-campaign baseline.
     REQUIRE(fresh.save().has_value());
     CPrefs stockChoice; REQUIRE(stockChoice.load() == 0);
     CHECK(stockChoice.gameRules.ai == 0);
 
+    CHECK(mc2::mods::selected(preselected.gameRules.mods, "magic-gamesys-tweaks"));   // the preselection adds to the defaults
 }
 
 TEST_CASE("Preferences/explicit empty indexed names override the legacy fallback") {

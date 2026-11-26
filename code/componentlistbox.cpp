@@ -427,7 +427,7 @@ void ComponentIconListBox::setType( int newType, int otherNewType, int orThis, i
 
 	for (auto & masterComponentElem : masterComponentList)
 		{
-			if ( masterComponentElem->getComponent()->isAvailable() )
+			if ( masterComponentElem->getComponent()->isAvailable() || LogisticsData::instance->hasRecoveredWeapon(masterComponentElem->getComponent()) )
 			{
 				if ( masterComponentElem->getComponent()->getType() == type ||
 					masterComponentElem->getComponent()->getType() == otherNewType ||

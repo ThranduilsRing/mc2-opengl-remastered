@@ -34,6 +34,7 @@ struct GameRules {
     // Mods holds "-" (split() ignores it) for the player's explicit empty selection; empty means none was ever made, which is
     // also what a save block without Mods means (see migrateLegacyMods).
     bool purchaseVehicles     = false;
+    long weaponSupply         = 0;             // unlimited, limited 2 (initial choice), limited 1, limited 3
     long ai                   = 0;             // 0 = Stock, 1 = Smarter (Magic ABL 1.45)
     long dropLimitMode        = kDropTonnage;   // what caps a drop: tonnage (today), battle value, or nothing (tonnage still shown as info)
     bool dropWeightPurchase   = false;          // the player may buy extra drop weight
@@ -63,12 +64,11 @@ inline GameRules battleTechPreset() {
     return r;
 }
 
-// What a new campaign starts from (owner 11-26: the Magic gameplay packs on): the campaign-start dialog's first open, its Defaults
-// button and the options.cfg diff baseline. GameRules{} stays the legacy stock baseline that old saves, an absent key and networked
-// games read, so a player who explicitly picks Stock keeps Stock.
+// What a NEW campaign starts from and what the dialog's DEFAULTS button returns to (owner, 11-26): the stock rules with the two Magic
+// gameplay packs on. The AI rule stays Stock until the smarter-AI mission sweep is green. Only the new-campaign paths use it: GameRules{}
+// stays the old-save and networked baseline, so an old save without a Mods key plays exactly as before.
 inline GameRules newCampaignDefaults() {
     GameRules r;
-    r.ai = 1;
     r.mods = "magic-ballistic-weapons,magic-gamesys-tweaks";
     return r;
 }
@@ -97,6 +97,7 @@ inline constexpr std::string_view kAmmoLabels[]    = {"Off", "MC2 Default (On)",
 inline constexpr std::string_view kCalledLabels[]  = {"Off", "MC2 Default (Floors)", "Classic"};
 inline constexpr std::string_view kSalvageLabels[] = {"Generous", "MC2 Default", "Scarce"};
 inline constexpr std::string_view kAiLabels[] = {"Stock", "Smarter (Magic AI)"};
+inline constexpr std::string_view kSupplyLabels[] = {"MC2 Default (Unlimited)", "Limited (2)", "Limited (1)", "Limited (3)"};
 }  // namespace detail
 
 inline constexpr Rule kRules[] = {
@@ -111,6 +112,7 @@ inline constexpr Rule kRules[] = {
     detail::pctRule ("CBillMultiplier",    &GameRules::cbillMultiplier,  50, 200),
     detail::boolRule("PurchaseVehicles",   &GameRules::purchaseVehicles),
     detail::enumRule("AI",                 &GameRules::ai,               1,              detail::kAiLabels),
+    detail::enumRule("WeaponSupply",       &GameRules::weaponSupply,     3,              detail::kSupplyLabels),
 };
 
 inline constexpr std::size_t kRuleCount = sizeof(kRules) / sizeof(kRules[0]);

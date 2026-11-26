@@ -39,3 +39,37 @@ TEST_CASE("economy rules: salvage factor per mode") {
     CHECK(salvagePriceFactor(kSalvageScarce) > salvagePriceFactor(kSalvageMC2));
     CHECK(salvagePriceFactor(99) == .8f);
 }
+
+TEST_CASE("economy rules: limited supply consumes purchases and retains stripped weapons") {
+    WeaponSupply supply;
+    CHECK(weaponSupplyCap(0) == 0);
+    CHECK(weaponSupplyCap(1) == 2);
+    CHECK(weaponSupplyCap(2) == 1);
+    CHECK(weaponSupplyCap(3) == 3);
+    CHECK(supply.allows(0, {{7, 99}}));
+    CHECK(supply.allows(2, {{7, 2}}));
+    CHECK_FALSE(supply.allows(2, {{7, 3}}));
+    supply.settle({{7, 2}});
+    CHECK_FALSE(supply.allows(2, {{7, 1}}));
+    CHECK(supply.allows(2, {{8, 2}}));
+    supply.settle({{7, -3}}); // salvage or an existing loadout stripped in the lab
+    CHECK(supply.spare[7] == 3);
+    CHECK(supply.allows(2, {{7, 3}}));
+    supply.settle({{7, 3}});
+    CHECK(supply.spare[7] == 0);
+    CHECK(supply.bought[7] == 2);
+    CHECK(supply.allows(1, {{7, 0}}));
+    CHECK(supply.allows(1, {{7, -1}})); // lowering the cap must still allow stripping
+    supply.bought.clear();
+    CHECK(supply.allows(2, {{7, 2}}));
+}
+
+TEST_CASE("economy rules: vehicle salvage requires both toggles enemy ground and wreck") {
+    CHECK(salvageVehicleEligible(true, true, true, false, true, false));
+    CHECK(salvageVehicleEligible(true, true, true, false, false, true));
+    CHECK_FALSE(salvageVehicleEligible(false, true, true, false, true, true));
+    CHECK_FALSE(salvageVehicleEligible(true, false, true, false, true, true));
+    CHECK_FALSE(salvageVehicleEligible(true, true, false, false, true, true));
+    CHECK_FALSE(salvageVehicleEligible(true, true, true, true, true, true));
+    CHECK_FALSE(salvageVehicleEligible(true, true, true, false, false, false));
+}
