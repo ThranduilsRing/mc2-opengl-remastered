@@ -20,7 +20,7 @@ import uuid
 from contextlib import contextmanager
 from pathlib import Path
 
-CACHE_ROOT = Path("G:/mc2-captures/baseline-cache")
+CACHE_ROOT = Path("G:/mc2-captures/baseline-cache")  # drive-path: ok owner-requested shared PC capture cache
 MAX_BYTES = 20 * 1024**3
 MAX_AGE_S = 14 * 86400
 SHADER_DIRS = ("shaders", "shaders_vk")   # install-relative; every file under them is hashed by content
