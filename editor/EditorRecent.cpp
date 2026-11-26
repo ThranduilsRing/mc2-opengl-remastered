@@ -3,6 +3,7 @@
 //-------------------------------------------------------------------------------------------------
 #include "stdafx.h"
 #include "EditorRecent.h"
+#include "resource.h"
 #include "newsinglemission.h"
 
 #include <stdio.h>
