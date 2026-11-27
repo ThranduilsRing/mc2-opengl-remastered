@@ -52,15 +52,12 @@ void fillGpu(const RenderCore::MissionEnvironment& env, float sceneLightScale, E
         out.sunLive[c] = live.sun[c] / 255.0f;
         out.sunLiveDir[c] = live.sunDir[c];
         out.ambLive[c] = live.amb[c] / 255.0f;
-        out.sunBake[c] = bake.sun[c] / 255.0f;
-        out.sunBakeDir[c] = bake.sunDir[c];
-        out.ambBake[c] = bake.amb[c] / 255.0f;
         out.fog[c] = ((live.fogColor >> (16 - 8*c)) & 255u) / 255.0f;
     }
     out.fog[3] = live.fogStart;
-    out.cementSky[0] = out.edgeHazeSky[0] = 0.58f;
-    out.cementSky[1] = out.edgeHazeSky[1] = 0.65f;
-    out.cementSky[2] = out.edgeHazeSky[2] = 0.75f;
+    out.cementSky[0] = 0.58f;
+    out.cementSky[1] = 0.65f;
+    out.cementSky[2] = 0.75f;
     out.cementSky[3] = 0.18f;
     out.lightingParams[0] = static_cast<float>(live.mode);
     out.lightingParams[1] = live.mode == mc2::lighting::Mode::Fixed ? 0.0f : live.todWeight;
@@ -68,14 +65,6 @@ void fillGpu(const RenderCore::MissionEnvironment& env, float sceneLightScale, E
     out.nightState[0] = l.night ? 1.0f : 0.0f;
     out.nightState[1] = l.nightFactor;
     out.nightState[2] = env.mission.empty() ? 0.0f : mc2_mission_light::darkness(live.pitch);
-    out.outputParams[0] = env.output.exposureMultiplier;
-    out.outputParams[1] = env.output.exposureEV.value_or(0.0f);
-    out.shadowParams[0] = env.legacyTuning.contains("shadowSoftness")
-        ? env.legacyTuning.at("shadowSoftness") : 2.5f;
-    out.shadowParams[1] = 0.4f;
-    out.shadowParams[2] = mc2_mission_light::moverNightFade(out.nightState[2],
-        0.299f*live.sun[0] + 0.587f*live.sun[1] + 0.114f*live.sun[2],
-        0.299f*live.amb[0] + 0.587f*live.amb[1] + 0.114f*live.amb[2]);
 }
 
 std::array<float,3> skyRadianceScale(const RenderCore::MissionEnvironment& env) {

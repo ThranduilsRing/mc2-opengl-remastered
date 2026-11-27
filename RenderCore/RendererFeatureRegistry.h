@@ -558,10 +558,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "TERRAIN-CONTROLMAP-SAMPLE-1: override the control-map sidecar path (default data/missions/<stem>.beauty/control_map.png).",
     },
     {
-        "MC2_FEATURE_TERRAIN_LOD_CHUNK", "MC2_TERRAIN_LOD_CHUNK", EnvVarKind::Feature, true,
-        "LOD-chunk terrain renderer (mclib/terrain.cpp/terrain.h), the primary tessellation-free terrain path.",
-    },
-    {
         "MC2_TERRAIN_OVERLAY_V2", "MC2_TERRAIN_OVERLAY_V2", EnvVarKind::Feature, false,
         "TERRAIN-OVERLAY-V2-PARITY-1: composite an authored world-XY-bounded cement/pad/runway overlay sidecar (data/missions/<stem>.beauty/overlay_v2.png...",
     },
@@ -584,10 +580,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
     {
         "MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE", "MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE", EnvVarKind::Feature, true,
         "TERRAIN-VISUAL-HEIGHT-SAMPLE-1: when visual terrain displacement is on, fade object grounding across the displaced-vs-gameplay height delta so props/units...",
-    },
-    {
-        "MC2_FEATURE_TERRAIN_VISUAL_HEIGHT", "MC2_TERRAIN_VISUAL_HEIGHT", EnvVarKind::Feature, false,
-        "TERRAIN-VISUAL-HEIGHT: loads the 4x-res VISUAL heightfield bake into an SSBO for corner-pinned interior displacement (mclib/terrain.cpp).",
     },
     {
         "MC2_TRACE_TEST_SPAWN", "MC2_TEST_SPAWN", EnvVarKind::Trace, false,

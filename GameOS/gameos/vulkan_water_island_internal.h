@@ -2,7 +2,7 @@
 //
 // vulkan_water_island.cpp keeps the health / interop counters, the env gates, setFallback / vlog / load_spv, the buffer and descriptor
 // helpers and the health / enabled / destroy entry points; the rest is split by responsibility (see DOC in each piece).
-// Every piece, and this header, compiles to nothing without MC2_VULKAN_ISLAND.
+// Built with the Vulkan renderer.
 #ifndef VULKAN_WATER_ISLAND_INTERNAL_H
 #define VULKAN_WATER_ISLAND_INTERNAL_H
 
@@ -67,9 +67,6 @@ struct WaterIslandHealth {
     unsigned long usedVulkan  = 0;
     char  fallbackReason[256] = {0};
     unsigned long vkDraws     = 0;
-    int   interopActive  = 0;
-    int   vk2glSemActive = 0;
-    unsigned long usedInterop = 0;
     unsigned long thinRecords = 0;   // records fed this frame
     unsigned long recipeCount = 0;   // recipe rows uploaded once
     // GPU cull health: the last completed frame's visible quads against the CPU

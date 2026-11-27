@@ -12,8 +12,6 @@ P("MC2_TERRAIN_VISUAL_DISPLACE_FAR", Float, 1.0, "terrain", "", "", passthrough 
 // TERRAIN-VISUAL-HEIGHT-SAMPLE-1 companion fade.
 // history: docs/gate-history.md#MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE
 L(Lead0Kill, "MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE", Bool, true, "terrain", "", "TERRAIN-VISUAL-HEIGHT-SAMPLE-1: when visual terrain displacement is on, fade object grounding across the displaced-vs-gameplay height delta so props/units...", registry(Feature, "MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE", -1, true) | verified),
-// history: docs/gate-history.md#MC2_TERRAIN_VISUAL_HEIGHT
-L(Lead0, "MC2_TERRAIN_VISUAL_HEIGHT", Bool, false, "terrain", "", "TERRAIN-VISUAL-HEIGHT: loads the 4x-res VISUAL heightfield bake into an SSBO for corner-pinned interior displacement (mclib/terrain.cpp).", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_VISUAL_HEIGHT", -1, false) | verified),
 G("MC2_TERRAIN_VISUAL_HEIGHT_FILE", String, "", "terrain", "", "", passthrough | verified),
 G("MC2_TEST_CRASH_FRAME", Int, 0, "gameos", "", "Diagnostic: deliberately crash at this mission frame to prove bundle collection; zero disables injection.", passthrough | verified),
 G("MC2_TEST_FSR_FAIL_FRAME", Int, 0, "gameos", "", "Diagnostic: fail the FSR provider at this frame to prove the material samplers drop the FSR mip bias; zero disables.", passthrough | verified),

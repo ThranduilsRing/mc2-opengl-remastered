@@ -24,7 +24,6 @@ static const EnvGate kEnvGates[] = {
     { mc2::gate::name<"MC2_GPU_CULL_SUBSTRATE">(),     "GPU substrate (default-on)",                true,  false },
     { mc2::gate::name<"MC2_GPU_PARTICLES">(),          "GPU particle system",                       false, false },
     { mc2::gate::name<"MC2_MATERIAL_GPU">(),           "MaterialGpu lookup path",                   false, false },
-    { mc2::gate::name<"MC2_RENDER_WATER_FASTPATH">(),  "Fast water render path",                    false, false },
     { mc2::gate::name<"MC2_OBJECT_ID_BUFFER">(),       "Object-ID picking buffer",                  false, false },
     { mc2::gate::name<"MC2_HDRI_SKY">(),               "HDRI skybox",                               false, false },
     { mc2::gate::name<"MC2_RENDER_CONTRACT_ASSERT">(), "Render-contract GL state validation",        false, false },

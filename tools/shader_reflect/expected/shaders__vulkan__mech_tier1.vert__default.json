@@ -232,71 +232,29 @@
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "sunBake",
+          "name": "fog",
           "offset": 336,
           "type": "vec4"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "sunBakeDir",
+          "name": "cementSky",
           "offset": 352,
           "type": "vec4"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "ambBake",
+          "name": "lightingParams",
           "offset": 368,
           "type": "vec4"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "fog",
-          "offset": 384,
-          "type": "vec4"
-        },
-        {
-          "array_stride": null,
-          "matrix_stride": null,
-          "name": "cementSky",
-          "offset": 400,
-          "type": "vec4"
-        },
-        {
-          "array_stride": null,
-          "matrix_stride": null,
-          "name": "edgeHazeSky",
-          "offset": 416,
-          "type": "vec4"
-        },
-        {
-          "array_stride": null,
-          "matrix_stride": null,
-          "name": "lightingParams",
-          "offset": 432,
-          "type": "vec4"
-        },
-        {
-          "array_stride": null,
-          "matrix_stride": null,
           "name": "nightState",
-          "offset": 448,
-          "type": "vec4"
-        },
-        {
-          "array_stride": null,
-          "matrix_stride": null,
-          "name": "outputParams",
-          "offset": 464,
-          "type": "vec4"
-        },
-        {
-          "array_stride": null,
-          "matrix_stride": null,
-          "name": "shadowParams",
-          "offset": 480,
+          "offset": 384,
           "type": "vec4"
         }
       ],

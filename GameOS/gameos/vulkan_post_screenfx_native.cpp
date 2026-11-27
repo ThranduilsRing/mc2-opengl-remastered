@@ -38,7 +38,7 @@
 // submit signals the VK->GL sems, GL waits them; fence CPU-wait as the
 // slot-recycle guard.
 //
-// The whole TU compiles to nothing unless MC2_VULKAN_ISLAND is defined.
+// Built with the Vulkan renderer.
 
 #include "gos_postprocess.h"
 #include "vk_render_pass_timer.h"
@@ -118,7 +118,6 @@ struct PostScreenFxHealth {
     int  directChain   = 1;   // direct-chain engaged
     unsigned long attempted   = 0;  // frames the native path was entered
     unsigned long usedVulkan  = 0;  // frames at least one pass rendered via VK
-    unsigned long usedInterop = 0;  // frames that used GL<->VK semaphores
     unsigned long cloudFrames = 0;  // frames the cloud pass rendered via VK
     unsigned long shoreFrames = 0;  // frames the shoreline pass rendered via VK
     unsigned long shadowFrames = 0; // frames the static-only screen-shadow pass rendered via VK
@@ -1009,11 +1008,11 @@ void gosPostProcess::destroyVkPostScreenFxNative()
     if (g_fx.runtimeGate) {
         vlog("[HEALTH] runtime_gate=%d shadow_gate=%d cloud_gate=%d shore_gate=%d substrate_live=%d "
              "attempted=%lu used_vulkan=%lu shadow_frames=%lu cloud_frames=%lu shore_frames=%lu "
-             "direct_chain=%d used_interop=%lu gl_skipped=%lu fallback_reason=\"%s\" render_us_last=%.1f "
+             "direct_chain=%d gl_skipped=%lu fallback_reason=\"%s\" render_us_last=%.1f "
              "wait_us_last=%.1f wait_us_avg=%.1f wait_samples=%lu",
              g_fx.runtimeGate, g_fx.shadowGate, g_fx.cloudGate, g_fx.shoreGate, g_fx.substrateLive,
              g_fx.attempted, g_fx.usedVulkan, g_fx.shadowFrames, g_fx.cloudFrames, g_fx.shoreFrames,
-             g_fx.directChain, g_fx.usedInterop, g_fx.glSkipped, g_fx.fallbackReason, g_fx.renderUs,
+             g_fx.directChain, g_fx.glSkipped, g_fx.fallbackReason, g_fx.renderUs,
              g_fx.waitUsLast,
              g_fx.waitSamples ? g_fx.waitUsAccum / static_cast<double>(g_fx.waitSamples) : 0.0,
              g_fx.waitSamples);

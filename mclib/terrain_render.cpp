@@ -20,81 +20,6 @@ void Terrain::render (void)
 	// per-quad CPU work that stays attributed to drawPass at coarse level.
 	DWORD fogColor = eye->currentLighting().fogColor;
 
-	if (drawTerrainTiles)
-	{
-		ZoneScopedN("Terrain::render drawPass");
-		// Terrain LOD chunk Phase 4 kill switch: when MC2_TERRAIN_LOD_CHUNK=1 the
-		// chunk path owns terrain rendering; suppress the per-quad draw() loop
-		// entirely to avoid double-draw. Mine pass is NOT suppressed (Phase 7).
-		// drawPass-retirement Slice B (mirrors the proven minePass gate at
-		// the sibling loop below). The per-quad draw() loop is retired only
-		// when BOTH producers it bundles are GPU-covered:
-		//   - SOLID base terrain  -> GPU indirect path (IsFrameSolidArmed)
-		//   - cement/road decals  -> Slice-A static bake (IsFrameOverlayArmed)
-		// DRAWALPHA detail is unconditionally dead (pixel-suppressed since
-		// 521d83a; A2-confirmed via legacy_drawalpha_detail_quads counter).
-		// MC2_TERRAIN_INDIRECT_OVERLAY is DEFAULT-ON since the 60f2ef8
-		// Stage-6 flip (IsOverlayEnabled(): only literal "0" opts out).
-		// So on the stock/default path BOTH IsFrameSolidArmed() and
-		// IsFrameOverlayArmed() are true -> the conjunction is true ->
-		// the per-quad draw() loop below is SKIPPED (the else branch is
-		// the live default branch; the drawPass zone is ~empty). The
-		// conjunction is still load-bearing, but for the opposite reason
-		// the old comment claimed: it ensures the MC2_TERRAIN_INDIRECT_
-		// OVERLAY=0 revert (overlay disabled, the code-proof fallback)
-		// STILL runs draw() so decals fall back to the M2d per-quad emit
-		// and do not vanish = the 9964d5a-regression guard. Gating on
-		// IsFrameSolidArmed() alone would kill decals on the =0 revert.
-		if (!mc2TerrainLodChunkEnabled())
-		{
-			// Phase 7.5 diagnostic: confirm the old draw path is active (flag not set).
-			// Fires once so we know which path owns terrain on this launch.
-			static bool s_oldPathLoggedOnce = false;
-			if (!s_oldPathLoggedOnce) {
-				mc2::fmt::print_out("[TerrainLOD v1] OLD draw path active (flag not set)\n");
-				fflush(stdout);
-				s_oldPathLoggedOnce = true;
-			}
-
-			if (!(gos_terrain_indirect::IsFrameSolidArmed()
-			      && gos_terrain_indirect::IsFrameOverlayArmed()))
-			{
-				TerrainQuadPtr currentQuad = quadList;
-				for (long i = 0; i < numberQuads; i++)
-				{
-					// M2b loop-level pure-water hoist: skip the function call entirely for
-					// quads with no base terrain, no overlay, and no detail handle. ~28K
-					// quads/frame on water-heavy maps. Mirror of the in-draw() early-exit;
-					// the in-function check is the fallback if useOverlayTexture /
-					// useWaterInterestTexture globals get toggled at runtime.
-					if (currentQuad->terrainHandle == 0
-					    && currentQuad->overlayHandle == 0xffffffff
-					    && currentQuad->terrainDetailHandle == 0xffffffff)
-					{
-						currentQuad++;
-						continue;
-					}
-					currentQuad->draw();
-					currentQuad++;
-				}
-			}
-			else
-			{
-				// [SUBSYS] lifecycle line (env-gated, one-shot) per the
-				// debug-instrumentation rule. Mirrors the mine retirement
-				// trace. drawPass zone is now ~empty on armed frames -> the
-				// Tracy total-frame delta is the substitutive proof.
-				static bool s_drawPassRetiredLogged = false;
-				if (!s_drawPassRetiredLogged
-				    && gos_terrain_indirect::IsTraceEnabled())
-				{
-					s_drawPassRetiredLogged = true;
-					mc2::fmt::print_out("[TERRAIN_DRAWPASS v1] event=retired reason=solid+overlay_armed (SOLID->gpu_indirect, decals->static_bake, detail->dead)\n");
-					fflush(stdout);
-				}
-			}
-		}
-	}
 
 	// MC2_TERRAIN_MINE_AB — A/B diagnostic. Pure observation: proves the legacy
 	// per-quad mine enqueue (quad.cpp enqueueTerrainMineState, walked by the
@@ -192,8 +117,7 @@ void Terrain::render (void)
 	// Must precede the minePass drawMine loop (draw reads mineResult set here).
 	// Not gated on drawTerrainTiles — mine enqueue is a booking step that must
 	// fire regardless of whether the LOD mesh draw is active this frame.
-	if (mc2TerrainLodChunkEnabled()
-	    && !gos_terrain_indirect::IsFrameMineArmed()
+	if (!gos_terrain_indirect::IsFrameMineArmed()
 	    && quadList
 	    && numberQuads > 0)
 	{
@@ -289,7 +213,6 @@ void Terrain::flushDrawCommands (void)
 bool gos_terrain_indirect::WaterFastPathOwnsArmedDraw()
 {
 	static const bool s_fastPath =
-	    (mc2::gate::get<"MC2_RENDER_WATER_FASTPATH">()) ||
 	    gpu_driven::IsWaterEnabled();
 	// PERF-MISSION-INTRO-ARMED-RENDER-1: water fast path now arms independently
 	// of terrain solid. Water resources (WaterStream recipes, terrainTextures2)
@@ -472,10 +395,8 @@ void Terrain::renderWater (void)
 // hasn't drawn yet and overwrites our water.
 void Terrain::renderWaterFastPath (void)
 {
-	// MC2_RENDER_WATER_FASTPATH: legacy fast-path gate. MC2_GPU_DRIVEN_WATER
-	// also enables the fast-path entry (the MDI branch inside the bridge).
+	// GPU-driven water owns the fast-path entry when ready.
 	static const bool s_fastPath =
-	    (mc2::gate::get<"MC2_RENDER_WATER_FASTPATH">()) ||
 	    gpu_driven::IsWaterEnabled();
 	if (!s_fastPath) return;
 	if (!WaterStream::IsReady()) return;

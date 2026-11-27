@@ -14,7 +14,7 @@
 // interop == the GL path). Rebuilt on resize (destroyFBOs tears these down too).
 //
 // Two faces:
-//   1. GL-facing (this whole header without MC2_VULKAN_ISLAND-only volk): opaque
+//   1. GL-facing (this header without Vulkan types): opaque
 //      owner + create/destroy + GLuint out — usable from gos_postprocess.cpp
 //      (a pure-GL TU that must NOT see a Vulkan type).
 //   2. Island-facing (volk-gated section): accessors that hand the underlying

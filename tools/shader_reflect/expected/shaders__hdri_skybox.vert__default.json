@@ -1,9 +1,0 @@
-{
-  "defines": [],
-  "outputs": [],
-  "shader": "shaders/hdri_skybox.vert",
-  "ssbos": [],
-  "stage": "vert",
-  "ubos": [],
-  "variant": "default"
-}

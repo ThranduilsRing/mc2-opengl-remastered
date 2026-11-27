@@ -343,29 +343,6 @@ void drawTerrainTuningSection() {
     if (ImGui::SmallButton("Reset##tnfh")) ::gos_SetTerrainNormalsFromHeightStrength(1.0f);
     ImGui::TextDisabled("Debug Mode 10 = height-normal RGB");
 
-    // CLIFF SHADOW FLOOR: lifts shadow-side steep terrain faces off near-black.
-    {
-        bool cliffGateOn = mc2::gate::get<"MC2_TERRAIN_CLIFF_SHADOW_FLOOR">();
-        if (cliffGateOn)
-            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Cliff Shadow Floor: ON");
-        else
-            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
-                "Cliff Shadow Floor: OFF (set MC2_TERRAIN_CLIFF_SHADOW_FLOOR=<0..0.6>)");
-        float cliffFloor = ::gos_GetTerrainCliffShadowFloor();
-        if (ImGui::SliderFloat("Cliff Shadow Floor", &cliffFloor, 0.0f, 0.6f, "%.2f")) {
-            ::gos_SetTerrainCliffShadowFloor(cliffFloor);
-        }
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("Minimum shadow value on steep terrain cliff faces.\n"
-                              "0.0 = byte-identical (steep faces can go near-black).\n"
-                              "0.3 = lift shadow-side cliffs to 30%% min light.\n"
-                              "Only effective when MC2_TERRAIN_CLIFF_SHADOW_FLOOR is set.");
-        ImGui::SameLine();
-        if (ImGui::SmallButton("Reset##cliffsf")) ::gos_SetTerrainCliffShadowFloor(0.0f);
-        if (!cliffGateOn)
-            ImGui::TextDisabled("(slider has no effect until MC2_TERRAIN_CLIFF_SHADOW_FLOOR is set)");
-    }
-
     // ── Material color classifier ──────────────────────────────────────────────
     // Tune the HSV thresholds that map colormap pixels
     // to rock / grass / dirt. Saved to visual_tuning.json via "Set as Mission Defaults".

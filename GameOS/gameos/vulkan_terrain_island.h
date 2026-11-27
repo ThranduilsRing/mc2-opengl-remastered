@@ -10,7 +10,7 @@
 // LOD bands, edge-stitch, and visual-displace are DEFERRED. The GL LOD-chunk path
 // keeps drawing everything EXCEPT the LOD0 main patches when this gate is on.
 //
-// The whole feature is #ifdef MC2_VULKAN_ISLAND; these declarations are extern "C"
+// Vulkan renderer API; these declarations are extern "C"
 // so the caller (gos_terrain_lod_chunk.cpp / terrain.cpp) pulls in NO Vulkan headers.
 //
 // Gate MC2_VK_TERRAIN_TIER1 default-OFF (requires MC2_VK_SHARED_SCENE_DEPTH) ->
@@ -106,7 +106,6 @@ struct Mc2TerrainTier1Feed {
     int32_t                     shadowsEnabled;        // the engine's static shadow is on and its light matrix is built
     uint64_t                    staticShadowGeneration; // gos_GetStaticShadowGeneration() (bumps on rebuild only)
     float                       staticLightSpaceMatrix[16]; // pp->getLightSpaceMatrix()
-    float                       shadowSoftness;        // GL default 2.5
     // VK-TERRAIN-DYNSHADOW sub-slice: the DYNAMIC (building/mech) shadow map — the GL
     // depth texture pp->getDynamicShadowTexture() (legacy single-map, non-CSM path) the
     // island copies PER FRAME into a 2nd VK D32 depth-COMPARE image, plus its light-space
@@ -187,13 +186,8 @@ struct Mc2TerrainTier1Feed {
     int32_t                     lightPoolMoverMax;
     int32_t                     lightPoolCompress;
     float                       moverContactShadow;
-    float                       padGlow[3];             // premultiplied (GL u_padGlow)
-    float                       padGlowSpill;
     // VK-PARITY-SHADOW-1: shared producer mc2ShadowFadeKnobs() (gameos_graphics.cpp).
-    float                       shadowDistFadeWu;
-    float                       shadowDistFadeMax;
     float                       shadowMinSunSin;
-    int32_t                     shadowKnobFlags;   // b0 FADE_CONT b1 RAMP0 b2 ALT_SCALE b3 BANDFIX_V2
     // VK-PARITY-F3: GL default-ON legacy material tint (same producers as the GL
     // tint*/tintStrengthScale/snowBrightnessDampen uniforms).
     float                       tintRock[3];
@@ -292,7 +286,7 @@ int mc2_vk_scene_clear(int w, int h);
 void mc2_render_backend_terrain_region_health(
     int* vulkanAvailable, int* buildEnabled, const char** deviceName,
     unsigned long* attempted, unsigned long* usedVulkan, const char** fallbackReason,
-    unsigned long* vkDraws, int* interopActive, int* vk2glSemActive,
+    unsigned long* vkDraws,
     unsigned long* patchRecords, unsigned long* heightSnapshots,
     unsigned long* forbiddenGetTexImage, unsigned long* forbiddenReadPixels,
     double* stageUs, double* drawUs, double* totalUs);

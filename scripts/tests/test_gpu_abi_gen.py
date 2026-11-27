@@ -344,7 +344,7 @@ def test_ivec4_annotation_needs_int32_quad():
 
 
 @pytest.mark.parametrize("header,size,block", [
-    ("GpuColorFrameUBO.h", 192, "ColorFrameUBO"),  # sun/ambient and night state live in EnvironmentUBO
+    ("GpuColorFrameUBO.h", 160, "ColorFrameUBO"),  # sun/ambient and night state live in EnvironmentUBO
     ("GpuMechFrameUBO.h", 272, "MechFrameUBO"),  # no private environment tail
     ("GpuLegacyFrameUBO.h", 80, "LegacyFrameUBO"),
 ])
@@ -371,7 +371,7 @@ def test_environment_t2_size_and_tail_offset():
     with open(os.path.join(ROOT, entry[0]), encoding="utf-8") as f:
         info = g.parse_source(f.read(), "EnvironmentUBO")
     _, _, size = g.struct_offsets(info["fields"], "std140")
-    assert size == 496 and info["block"] == "uEnv"
+    assert size == 400 and info["block"] == "uEnv"
 
 
 def test_environment_slang_uses_generated_std140_lanes():
@@ -379,5 +379,4 @@ def test_environment_slang_uses_generated_std140_lanes():
     slang = files["shaders/vulkan/include/environment_ubo_vk.slang"]
     assert "[[vk::binding(26, 0)]] ConstantBuffer<EnvironmentUBO> uEnv;" in slang
     assert "float4  shDiffuse[9];  // off 0" in slang
-    assert "float4  nightState;  // off 448" in slang
-    assert "float4  shadowParams;  // off 480" in slang
+    assert "float4  nightState;  // off 384" in slang

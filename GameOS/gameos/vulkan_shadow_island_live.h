@@ -1,5 +1,5 @@
 // vulkan_shadow_island_live.h — VK-P8a SHADOW-INTEROP public API + caster-geometry
-// feed contract. The whole feature is #ifdef MC2_VULKAN_ISLAND; these declarations
+// feed contract. Vulkan renderer API; these declarations
 // are extern "C" so consumers (gos_postprocess.cpp, txmmgr.cpp, gameosmain.cpp,
 // debug_state_dump.cpp) pull in NO Vulkan headers.
 //
@@ -218,7 +218,6 @@ void mc2_render_backend_shadow_region_health(
     int* vulkanAvailable, int* buildEnabled, const char** deviceName,
     unsigned long* validationErrors, unsigned long* attempted, unsigned long* usedVulkan,
     const char** fallbackReason, unsigned long* vkDraws,
-    int* interopActive, int* vk2glSemActive, unsigned long* usedInterop,
     unsigned long* instRecords, unsigned long* typeRuns, unsigned long* geomVerts,
     unsigned long* forbiddenCopyImgToBuf, unsigned long* forbiddenGetTexImage,
     unsigned long* forbiddenReadPixels,

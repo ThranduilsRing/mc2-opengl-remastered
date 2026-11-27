@@ -4,7 +4,7 @@
 #pragma once
 
 static_assert(std::is_trivially_copyable<EnvironmentUBO>::value, "EnvironmentUBO must be trivially copyable");
-static_assert(sizeof(EnvironmentUBO) == 496, "EnvironmentUBO size must match std140 GLSL struct");
+static_assert(sizeof(EnvironmentUBO) == 400, "EnvironmentUBO size must match std140 GLSL struct");
 static_assert(offsetof(EnvironmentUBO, shDiffuse) == 0, "shDiffuse offset");
 static_assert(offsetof(EnvironmentUBO, hemiSky) == 144, "hemiSky offset");
 static_assert(offsetof(EnvironmentUBO, sceneLight) == 160, "sceneLight offset");
@@ -16,13 +16,7 @@ static_assert(offsetof(EnvironmentUBO, sunRelight) == 272, "sunRelight offset");
 static_assert(offsetof(EnvironmentUBO, sunLive) == 288, "sunLive offset");
 static_assert(offsetof(EnvironmentUBO, sunLiveDir) == 304, "sunLiveDir offset");
 static_assert(offsetof(EnvironmentUBO, ambLive) == 320, "ambLive offset");
-static_assert(offsetof(EnvironmentUBO, sunBake) == 336, "sunBake offset");
-static_assert(offsetof(EnvironmentUBO, sunBakeDir) == 352, "sunBakeDir offset");
-static_assert(offsetof(EnvironmentUBO, ambBake) == 368, "ambBake offset");
-static_assert(offsetof(EnvironmentUBO, fog) == 384, "fog offset");
-static_assert(offsetof(EnvironmentUBO, cementSky) == 400, "cementSky offset");
-static_assert(offsetof(EnvironmentUBO, edgeHazeSky) == 416, "edgeHazeSky offset");
-static_assert(offsetof(EnvironmentUBO, lightingParams) == 432, "lightingParams offset");
-static_assert(offsetof(EnvironmentUBO, nightState) == 448, "nightState offset");
-static_assert(offsetof(EnvironmentUBO, outputParams) == 464, "outputParams offset");
-static_assert(offsetof(EnvironmentUBO, shadowParams) == 480, "shadowParams offset");
+static_assert(offsetof(EnvironmentUBO, fog) == 336, "fog offset");
+static_assert(offsetof(EnvironmentUBO, cementSky) == 352, "cementSky offset");
+static_assert(offsetof(EnvironmentUBO, lightingParams) == 368, "lightingParams offset");
+static_assert(offsetof(EnvironmentUBO, nightState) == 384, "nightState offset");

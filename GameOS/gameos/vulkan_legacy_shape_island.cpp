@@ -8,7 +8,7 @@
 //     CPU-lit) is memcpy'd into the engine frame ring;
 //   * textures: copy-once import of the handle's decoded texels, keyed on the mc2::textures::ready() node;
 //   * no lights / no instancing: vertex colour is already CPU-lit.
-// The whole TU compiles to nothing unless MC2_VULKAN_ISLAND is defined.
+// Built with the Vulkan renderer.
 
 
 #if defined(_WIN32) && !defined(VK_USE_PLATFORM_WIN32_KHR)

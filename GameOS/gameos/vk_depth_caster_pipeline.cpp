@@ -1,4 +1,4 @@
-// vk_depth_caster_pipeline.cpp -- see the header. Compiles to nothing unless MC2_VULKAN_ISLAND is defined.
+// vk_depth_caster_pipeline.cpp -- see the header. Built with the Vulkan renderer.
 
 #include "vk_depth_caster_pipeline.h"
 #include "vk_dynamic_rendering.h"

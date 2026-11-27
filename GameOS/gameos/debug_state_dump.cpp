@@ -48,7 +48,7 @@ extern "C" unsigned long mc2_ui_pass_draw_tris();
 extern "C" unsigned long mc2_ui_pass_draw_text();
 
 // VK-POST-FOG-NATIVE-1 (rung 8.1): native fog pair health snapshot (defined in
-// GameOS/gameos/vulkan_post_fog_native.cpp, same #ifdef MC2_VULKAN_ISLAND).
+// GameOS/gameos/vulkan_post_fog_native.cpp, Vulkan renderer).
 extern "C" void mc2_vk_post_fog_native_health(
     int* runtimeGate, int* substrateLive,
     unsigned long* attempted, unsigned long* usedVulkan, unsigned long* glSkipped,
@@ -67,12 +67,11 @@ extern "C" void mc2_vk_post_hzb_native_health(
     unsigned long* copyDepthOps, unsigned long* readbackOps,
     const char** fallbackReason, double* renderUs);
 // VK-P9a WATER-INTEROP: water Vulkan island health snapshot (defined in
-// GameOS/gameos/vulkan_water_island.cpp, same #ifdef MC2_VULKAN_ISLAND).
+// GameOS/gameos/vulkan_water_island.cpp, Vulkan renderer).
 extern "C" void mc2_render_backend_water_region_health(
     int* vulkanAvailable, int* buildEnabled, const char** deviceName,
     unsigned long* validationErrors, unsigned long* attempted, unsigned long* usedVulkan,
     const char** fallbackReason, unsigned long* vkDraws,
-    int* interopActive, int* vk2glSemActive, unsigned long* usedInterop,
     unsigned long* thinRecords, unsigned long* recipeCount,
     unsigned long* forbiddenCopyBufToImg, unsigned long* forbiddenCopyImgToBuf,
     unsigned long* forbiddenGetTexImage, unsigned long* forbiddenTexSubImage,
@@ -80,11 +79,11 @@ extern "C" void mc2_render_backend_water_region_health(
     double* copyColorInUs, double* copyDepthInUs, double* drawUs, double* colorOutUs, double* totalUs);
 // VK-FLIP-TIMING-DUMP-1: shared-gbuffer trio (terrain/props/mech) health snapshots,
 // defined in vulkan_terrain_island.cpp / vulkan_color_prop_island.cpp / vulkan_mech_island.cpp
-// (same #ifdef MC2_VULKAN_ISLAND). Additive dump wiring only — accessors already existed.
+// (Vulkan renderer). Additive dump wiring only — accessors already existed.
 extern "C" void mc2_render_backend_terrain_region_health(
     int* vulkanAvailable, int* buildEnabled, const char** deviceName,
     unsigned long* attempted, unsigned long* usedVulkan, const char** fallbackReason,
-    unsigned long* vkDraws, int* interopActive, int* vk2glSemActive,
+    unsigned long* vkDraws,
     unsigned long* patchRecords, unsigned long* heightSnapshots,
     unsigned long* forbiddenGetTexImage, unsigned long* forbiddenReadPixels,
     double* stageUs, double* drawUs, double* totalUs);
@@ -92,7 +91,6 @@ extern "C" void mc2_render_backend_color_prop_region_health(
     int* vulkanAvailable, int* buildEnabled, const char** deviceName,
     unsigned long* validationErrors, unsigned long* attempted, unsigned long* usedVulkan,
     const char** fallbackReason, unsigned long* vkDraws,
-    int* interopActive, int* vk2glSemActive, unsigned long* usedInterop,
     unsigned long* instRecords, unsigned long* typeRuns, unsigned long* geomVerts,
     unsigned long* forbiddenCopyImgToBuf, unsigned long* forbiddenGetTexImage,
     unsigned long* forbiddenReadPixels,
@@ -100,7 +98,7 @@ extern "C" void mc2_render_backend_color_prop_region_health(
 extern "C" void mc2_render_backend_mech_region_health(
     int* vulkanAvailable, int* buildEnabled, const char** deviceName,
     unsigned long* attempted, unsigned long* usedVulkan, const char** fallbackReason,
-    unsigned long* vkDraws, int* interopActive, int* vk2glSemActive,
+    unsigned long* vkDraws,
     unsigned long* instRecords, unsigned long* boneRecords, unsigned long* runs,
     unsigned long* geomVerts,
     unsigned long* forbiddenGetTexImage, unsigned long* forbiddenReadPixels,
@@ -811,15 +809,15 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "  }\n";
     }
     // VK-P9a WATER-INTEROP: additive "vulkan_water_island" section (build64_island-only).
-    // Zeros when compiled but the water region isn't routed to Vulkan (gate off / GL path).
+    // Zeros when compiled but the water region isn't routed to Vulkan (region not submitted).
     {
-        int va = 0, be = 0, ia = 0, v2g = 0;
+        int va = 0, be = 0;
         const char* dev = ""; const char* fbr = "";
-        unsigned long ve = 0, att = 0, used = 0, vkDraws = 0, usedInterop = 0, thinN = 0, recN = 0;
+        unsigned long ve = 0, att = 0, used = 0, vkDraws = 0, thinN = 0, recN = 0;
         unsigned long fCbi = 0, fCib = 0, fGti = 0, fTsi = 0, diGti = 0, diCbi = 0;
         double cciUs = 0.0, cdiUs = 0.0, drUs = 0.0, coUs = 0.0, totUs = 0.0;
         mc2_render_backend_water_region_health(&va, &be, &dev, &ve, &att, &used, &fbr, &vkDraws,
-                                               &ia, &v2g, &usedInterop, &thinN, &recN,
+                                               &thinN, &recN,
                                                &fCbi, &fCib, &fGti, &fTsi, &diGti, &diCbi,
                                                &cciUs, &cdiUs, &drUs, &coUs, &totUs);
         s << "  ,\n";
@@ -832,9 +830,6 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "    \"water_used_vulkan\": " << used << ",\n";
         s << "    \"water_fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
         s << "    \"vk_draws\": " << vkDraws << ",\n";
-        s << "    \"interop_active\": " << ia << ",\n";
-        s << "    \"vk2gl_sem_active\": " << v2g << ",\n";
-        s << "    \"water_used_interop\": " << usedInterop << ",\n";
         s << "    \"thin_records\": " << thinN << ",\n";
         s << "    \"recipe_count\": " << recN << ",\n";
         s << "    \"forbidden_copy_buf_to_img\": " << fCbi << ",\n";
@@ -851,14 +846,14 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "  }\n";
     }
     // VK-FLIP-TIMING-DUMP-1: additive "vulkan_terrain_island" section (build64_island-only).
-    // Zeros when compiled but the terrain region isn't routed to Vulkan (gate off / GL path).
+    // Zeros when compiled but the terrain region isn't routed to Vulkan (region not submitted).
     {
-        int va = 0, be = 0, ia = 0, v2g = 0;
+        int va = 0, be = 0;
         const char* dev = ""; const char* fbr = "";
         unsigned long att = 0, used = 0, vkDraws = 0, patchN = 0, heightN = 0, fGti = 0, fRp = 0;
         double stUs = 0.0, drUs = 0.0, totUs = 0.0;
         mc2_render_backend_terrain_region_health(&va, &be, &dev, &att, &used, &fbr, &vkDraws,
-                                                  &ia, &v2g, &patchN, &heightN, &fGti, &fRp,
+                                                  &patchN, &heightN, &fGti, &fRp,
                                                   &stUs, &drUs, &totUs);
         s << "  ,\n";
         s << "  \"vulkan_terrain_island\": {\n";
@@ -869,8 +864,6 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "    \"used_vulkan\": " << used << ",\n";
         s << "    \"fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
         s << "    \"vk_draws\": " << vkDraws << ",\n";
-        s << "    \"interop_active\": " << ia << ",\n";
-        s << "    \"vk2gl_sem_active\": " << v2g << ",\n";
         s << "    \"patch_records\": " << patchN << ",\n";
         s << "    \"height_snapshots\": " << heightN << ",\n";
         s << "    \"forbidden_get_tex_image\": " << fGti << ",\n";
@@ -881,15 +874,15 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "  }\n";
     }
     // VK-FLIP-TIMING-DUMP-1: additive "vulkan_color_prop_island" section (build64_island-only).
-    // Zeros when compiled but the prop region isn't routed to Vulkan (gate off / GL path).
+    // Zeros when compiled but the prop region isn't routed to Vulkan (region not submitted).
     {
-        int va = 0, be = 0, ia = 0, v2g = 0;
+        int va = 0, be = 0;
         const char* dev = ""; const char* fbr = "";
-        unsigned long ve = 0, att = 0, used = 0, vkDraws = 0, usedInterop = 0;
+        unsigned long ve = 0, att = 0, used = 0, vkDraws = 0;
         unsigned long instN = 0, typeN = 0, geomN = 0, fCib = 0, fGti = 0, fRp = 0;
         double stUs = 0.0, drUs = 0.0, totUs = 0.0;
         mc2_render_backend_color_prop_region_health(&va, &be, &dev, &ve, &att, &used, &fbr, &vkDraws,
-                                                     &ia, &v2g, &usedInterop, &instN, &typeN, &geomN,
+                                                     &instN, &typeN, &geomN,
                                                      &fCib, &fGti, &fRp, &stUs, &drUs, &totUs);
         s << "  ,\n";
         s << "  \"vulkan_color_prop_island\": {\n";
@@ -901,9 +894,6 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "    \"used_vulkan\": " << used << ",\n";
         s << "    \"fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
         s << "    \"vk_draws\": " << vkDraws << ",\n";
-        s << "    \"interop_active\": " << ia << ",\n";
-        s << "    \"vk2gl_sem_active\": " << v2g << ",\n";
-        s << "    \"used_interop\": " << usedInterop << ",\n";
         s << "    \"inst_records\": " << instN << ",\n";
         s << "    \"type_runs\": " << typeN << ",\n";
         s << "    \"geom_verts\": " << geomN << ",\n";
@@ -916,15 +906,15 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "  }\n";
     }
     // VK-FLIP-TIMING-DUMP-1: additive "vulkan_mech_island" section (build64_island-only).
-    // Zeros when compiled but the mech region isn't routed to Vulkan (gate off / GL path).
+    // Zeros when compiled but the mech region isn't routed to Vulkan (region not submitted).
     {
-        int va = 0, be = 0, ia = 0, v2g = 0;
+        int va = 0, be = 0;
         const char* dev = ""; const char* fbr = "";
         unsigned long att = 0, used = 0, vkDraws = 0, instN = 0, boneN = 0, runsN = 0, geomN = 0;
         unsigned long fGti = 0, fRp = 0;
         double stUs = 0.0, drUs = 0.0, totUs = 0.0;
         mc2_render_backend_mech_region_health(&va, &be, &dev, &att, &used, &fbr, &vkDraws,
-                                               &ia, &v2g, &instN, &boneN, &runsN, &geomN,
+                                               &instN, &boneN, &runsN, &geomN,
                                                &fGti, &fRp, &stUs, &drUs, &totUs);
         s << "  ,\n";
         s << "  \"vulkan_mech_island\": {\n";
@@ -935,8 +925,6 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "    \"used_vulkan\": " << used << ",\n";
         s << "    \"fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
         s << "    \"vk_draws\": " << vkDraws << ",\n";
-        s << "    \"interop_active\": " << ia << ",\n";
-        s << "    \"vk2gl_sem_active\": " << v2g << ",\n";
         s << "    \"inst_records\": " << instN << ",\n";
         s << "    \"bone_records\": " << boneN << ",\n";
         s << "    \"runs\": " << runsN << ",\n";

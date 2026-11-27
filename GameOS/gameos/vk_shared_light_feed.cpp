@@ -1,4 +1,4 @@
-// vk_shared_light_feed.cpp -- VK-LIGHTFEED-DEDUP-1. See the header for the design. #ifdef MC2_VULKAN_ISLAND (whole TU).
+// vk_shared_light_feed.cpp -- VK-LIGHTFEED-DEDUP-1. See the header for the design. Built with the Vulkan renderer.
 
 
 #include <volk.h>

@@ -60,8 +60,6 @@ bool init_island(WaterIsland* s, int w, int h) {
     }
     g_waterInitReachedBuild = 1;
     s->useInterop = false;
-    g_health.interopActive = 0;
-    g_health.vk2glSemActive = 0;
     vlog("TIER-1 shared scene GBuffer seam ACTIVE - in-place water co-write "
          "(color0+normal+depth, no composite, direct-chain native, no interop).");
     // ---- Recipe SSBO (mission-static, copied once at first run). Sized to the

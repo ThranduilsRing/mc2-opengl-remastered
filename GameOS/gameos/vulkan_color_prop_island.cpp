@@ -7,7 +7,7 @@
 //   - Copies static-prop geometry once per map and stages visible instances per frame.
 //   - Optional material/light feeds extend parity without changing the public health ABI.
 //
-// The whole TU compiles to nothing unless MC2_VULKAN_ISLAND is defined.
+// Built with the Vulkan renderer.
 // =============================================================================
 
 
@@ -110,9 +110,6 @@ struct ColorPropIslandHealth {
     unsigned long usedVulkan  = 0;
     char  fallbackReason[256] = {0};
     unsigned long vkDraws     = 0;
-    int   interopActive  = 0;
-    int   vk2glSemActive = 0;
-    unsigned long usedInterop = 0;
     unsigned long instRecords = 0;   // color instances fed this frame
     unsigned long typeRuns    = 0;   // per-type instanced draws this frame
     unsigned long geomVerts   = 0;   // shared VBO verts copied once
@@ -1024,8 +1021,6 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         }
         g_propInitReachedBuild = 1;
         s->useInterop = false;
-        g_health.interopActive = 0;
-        g_health.vk2glSemActive = 0;
         vlog("TIER-1 shared-GBuffer co-write ACTIVE — in-place RGBA16F color(MRT0)+normal(MRT1) "
              "+ shared D32S8 depth (direct-chain native, no interop).");
     }
@@ -2469,7 +2464,6 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
         // exactly like the GL guard (byte-identical when the feature/env is off).
         if (haveLightFeed) {
             u.lightFloor = lightFeed.ambientColor[3];
-            std::copy_n(lightFeed.specDir, 4, u.specDir);
             u.iblShStrength = lightFeed.iblShStrength;   // the SH coefficients are the EnvironmentUBO's (binding 26)
         } else {
             u.iblShStrength = 0.0f;
@@ -2477,8 +2471,6 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
         u.lightingReady = s->lightingReady ? 1 : 0;
         // The eye's night state lights the hot-colour tags; without the feed the island stays on its daytime arm.
         u.hotTableReady = s->hotReady ? 1 : 0;   // the shader reads the table only when the real one is bound
-        u.pbrV1Strength = haveLightFeed ? lightFeed.pbrV1Strength : 0.0f;
-        u.pbrV1RoughnessOverride = haveLightFeed ? lightFeed.pbrV1RoughnessOverride : -1.0f;
         for (int k = 0; k < 4; ++k) u.cameraWorldPos[k] = haveLightFeed ? lightFeed.cameraWorldPos[k] : 0.0f;
         // Diagnostic selector in the unused eye-position component; xyz stays the lighting eye.
         u.cameraWorldPos[3] = static_cast<float>(static_cast<int>(mc2::gate::get<"MC2_PROP_DEBUG_VIEW">()));
@@ -2711,7 +2703,6 @@ extern "C" void mc2_render_backend_color_prop_region_health(
     int* vulkanAvailable, int* buildEnabled, const char** deviceName,
     unsigned long* validationErrors, unsigned long* attempted, unsigned long* usedVulkan,
     const char** fallbackReason, unsigned long* vkDraws,
-    int* interopActive, int* vk2glSemActive, unsigned long* usedInterop,
     unsigned long* instRecords, unsigned long* typeRuns, unsigned long* geomVerts,
     unsigned long* forbiddenCopyImgToBuf, unsigned long* forbiddenGetTexImage,
     unsigned long* forbiddenReadPixels,
@@ -2724,9 +2715,6 @@ extern "C" void mc2_render_backend_color_prop_region_health(
     if (usedVulkan)       *usedVulkan       = g_health.usedVulkan;
     if (fallbackReason)   *fallbackReason   = g_health.fallbackReason;
     if (vkDraws)          *vkDraws          = g_health.vkDraws;
-    if (interopActive)    *interopActive    = g_health.interopActive;
-    if (vk2glSemActive)   *vk2glSemActive   = g_health.vk2glSemActive;
-    if (usedInterop)      *usedInterop      = g_health.usedInterop;
     if (instRecords)      *instRecords      = g_health.instRecords;
     if (typeRuns)         *typeRuns         = g_health.typeRuns;
     if (geomVerts)        *geomVerts        = g_health.geomVerts;
@@ -2739,12 +2727,11 @@ extern "C" void mc2_render_backend_color_prop_region_health(
 }
 
 extern "C" void mc2_vk_color_prop_island_destroy() {
-    vlog("[VK_PROP_COLOR_TIER1] vulkan_available=%d used_vulkan=%lu used_interop=%lu interop_active=%d "
-         "vk2gl_sem=%d validation_errors=%lu inst_records=%lu type_runs=%lu geom_verts=%lu "
+    vlog("[VK_PROP_COLOR_TIER1] vulkan_available=%d used_vulkan=%lu "
+         "validation_errors=%lu inst_records=%lu type_runs=%lu geom_verts=%lu "
          "fallback_reason=\"%s\" vk_draws=%lu forbidden_copyImgToBuf=%lu forbidden_getTexImage=%lu "
          "forbidden_readPixels=%lu stage_inst_us=%.1f draw_us=%.1f total_us=%.1f",
-         g_health.vulkanAvailable, g_health.usedVulkan, g_health.usedInterop, g_health.interopActive,
-         g_health.vk2glSemActive, g_health.validationErrors, g_health.instRecords, g_health.typeRuns,
+         g_health.vulkanAvailable, g_health.usedVulkan, g_health.validationErrors, g_health.instRecords, g_health.typeRuns,
          g_health.geomVerts, g_health.fallbackReason, g_health.vkDraws,
          g_forbidden.vkCmdCopyImageToBuffer, g_forbidden.glGetTexImage, g_forbidden.glReadPixels,
          g_health.stageInstUs, g_health.drawUs, g_health.totalUs);

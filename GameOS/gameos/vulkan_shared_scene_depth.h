@@ -9,8 +9,7 @@
 //
 // VK-RUNG8-ITEM5: the former exportable/glInteropView half (GLuint out param,
 // vkOnlyNoGlView flag, HasGlView/GetGlView) is deleted. gos_postprocess.cpp (a
-// GL TU) still never sees a volk/Vulkan type. The whole TU compiles to nothing
-// unless MC2_VULKAN_ISLAND is defined.
+// GL TU) still never sees a volk/Vulkan type. Built with the Vulkan renderer.
 // =============================================================================
 
 #ifndef MC2_VULKAN_SHARED_SCENE_DEPTH_H
@@ -20,7 +19,7 @@
 
 // Opaque owner of the VK-only D32S8 image the islands share. The struct body lives
 // in the .cpp so no Vulkan header leaks into GL TUs. gos_postprocess holds a
-// pointer to one of these under #ifdef MC2_VULKAN_ISLAND.
+// pointer to one of these.
 struct Mc2SharedSceneDepth;
 
 // Build a VK-only (non-exportable) D32_SFLOAT_S8_UINT image via the SHARED engine

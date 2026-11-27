@@ -408,8 +408,6 @@ class gosRenderer {
         }
         void  setTerrainNormalsFromHeightStrength(float s) { terrain_nfh_strength_ = s; }
         float getTerrainNormalsFromHeightStrength() const  { return terrain_nfh_strength_; }
-        void  setTerrainCliffShadowFloor(float f) { terrain_cliff_shadow_floor_ = f; }
-        float getTerrainCliffShadowFloor() const  { return terrain_cliff_shadow_floor_; }
 
         // Terrain draw killswitch
         void setTerrainDrawEnabled(bool e) { terrain_draw_enabled_ = e; }
@@ -662,9 +660,6 @@ class gosRenderer {
         // 1.0 = full slope tilt, 0.0 = no slope contribution. Slider range 0..1.5.
         float terrain_nfh_strength_ = 1.0f;
         // CLIFF SHADOW FLOOR: lifts shadow-side steep terrain faces off near-black.
-        // Slider 0..0.6; default 0.0 = byte-identical (no-op). Effective only when
-        // env gate MC2_TERRAIN_CLIFF_SHADOW_FLOOR is set to a non-zero float.
-        float terrain_cliff_shadow_floor_ = 0.0f;
 
         // ── World-space overlay batches ────────────────────────────────────────
         // Both terrain overlays (cement perimeter) and decals (footprints)

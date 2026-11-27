@@ -1,9 +1,0 @@
-{
-  "defines": [],
-  "outputs": [],
-  "shader": "shaders/skybox.vert",
-  "ssbos": [],
-  "stage": "vert",
-  "ubos": [],
-  "variant": "default"
-}

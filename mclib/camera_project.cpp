@@ -361,7 +361,7 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, glm::v
 
 	//-----------------------------------------------------------
 	// Phase 7B: heightfield raycast picker — replaces the quadList AABB/
-	// screen-triangle scan when MC2_TERRAIN_LOD_CHUNK=1.
+	// screen-triangle scan with chunk rendering.
 	// The quadList may be empty or stale under the LOD chunk path, so we
 	// build a world-space ray from the screen pixel via worldToClipGL()^-1
 	// and fire it against the full-resolution PostcompVertex heightfield.
@@ -373,10 +373,10 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, glm::v
 	// so every click hit a near-constant cell -> move orders teleported across the
 	// map. The legacy forward-projection quadList picker below is correct
 	// (projectForSelectionPicking uses the same matrix the GPU renders with), so
-	// picking uses IT even when the chunk RENDER path is on (MC2_TERRAIN_LOD_CHUNK).
-	// Opt back into the raycast picker with MC2_TERRAIN_RAYCAST_PICK to debug it.
+	// picking uses IT even when the chunk RENDER path is on (chunk rendering).
+	// The raycast picker is retired; legacy screen-triangle picking remains active.
 	static const bool s_lodChunkPick = false;
-	// PARITY DIAGNOSTIC: when MC2_TERRAIN_PICK_PARITY is set we compute BOTH
+	// Retired parity diagnostic computed BOTH
 	// the heightfield raycast hit AND the legacy quadList result for the same
 	// screen coords, log the delta, and still return exactly what the active
 	// mode (raycast-if-flag-on-else-legacy) would have returned.

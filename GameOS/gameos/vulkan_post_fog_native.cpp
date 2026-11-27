@@ -29,7 +29,7 @@
 // GL<->VK handoff, fog renders in place and leaves both resources Vulkan-owned for later
 // post/composite work.
 //
-// The whole TU compiles to nothing unless MC2_VULKAN_ISLAND is defined.
+// Built with the Vulkan renderer.
 
 #include "gos_postprocess.h"
 #include "mission_environment_gpu.h"
@@ -100,7 +100,6 @@ struct PostFogNativeHealth {
     int  directChain   = 1;   // direct-chain engaged
     unsigned long attempted  = 0;  // frames the native path was entered
     unsigned long usedVulkan = 0;  // frames BOTH fogs actually rendered via VK
-    unsigned long usedInterop = 0; // frames that used GL<->VK semaphores
     unsigned long glSkipped  = 0;  // GL fog sites skipped (2 per used frame)
     char fallbackReason[64]  = {0};
     double renderUs = 0.0;         // record+submit+sem/fence wait, last frame
@@ -780,10 +779,10 @@ void gosPostProcess::destroyVkPostFogNative()
 {
     if (g_pf.runtimeGate) {
         vlog("[HEALTH] runtime_gate=%d substrate_live=%d attempted=%lu used_vulkan=%lu "
-             "direct_chain=%d used_interop=%lu gl_skipped=%lu fallback_reason=\"%s\" "
+             "direct_chain=%d gl_skipped=%lu fallback_reason=\"%s\" "
              "render_us_last=%.1f wait_us_last=%.1f wait_us_avg=%.1f wait_samples=%lu",
              g_pf.runtimeGate, g_pf.substrateLive, g_pf.attempted, g_pf.usedVulkan,
-             g_pf.directChain, g_pf.usedInterop, g_pf.glSkipped, g_pf.fallbackReason,
+             g_pf.directChain, g_pf.glSkipped, g_pf.fallbackReason,
              g_pf.renderUs, g_pf.waitUsLast,
              g_pf.waitSamples ? g_pf.waitUsAccum / static_cast<double>(g_pf.waitSamples) : 0.0,
              g_pf.waitSamples);

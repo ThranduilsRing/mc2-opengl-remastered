@@ -8,7 +8,7 @@
 // substrate. Only the NON-exportable core survives (dedicated raw allocation, image
 // view, view). Removing the Win32 external-memory machinery is
 // part of clearing the last MoltenVK/Metal-gate blocker. The whole TU compiles to
-// nothing unless MC2_VULKAN_ISLAND is defined (same discipline as the other island TUs).
+// the Vulkan renderer interface.
 
 #ifndef MC2_VK_IMAGE_RESOURCE_H
 #define MC2_VK_IMAGE_RESOURCE_H

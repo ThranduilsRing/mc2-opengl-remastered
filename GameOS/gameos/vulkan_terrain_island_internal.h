@@ -1,7 +1,7 @@
 // Shared surface of the vulkan_terrain_island.cpp translation units (vulkan_terrain_island.cpp, vulkan_terrain_island_{island,images,run,overlay}.cpp).
 //
 // vulkan_terrain_island.cpp keeps the health / interop counters, the env gates, setFallback / vlog / load_spv and the island state;
-// the rest is split by responsibility (see DOC in each piece). Every piece, and this header, compiles to nothing without MC2_VULKAN_ISLAND.
+// the rest is split by responsibility (see DOC in each piece). Built with the Vulkan renderer.
 #ifndef VULKAN_TERRAIN_ISLAND_INTERNAL_H
 #define VULKAN_TERRAIN_ISLAND_INTERNAL_H
 
@@ -61,8 +61,6 @@ struct TerrainIslandHealth {
     unsigned long usedVulkan  = 0;
     char  fallbackReason[256] = {0};
     unsigned long vkDraws     = 0;
-    int   interopActive  = 0;
-    int   vk2glSemActive = 0;
     unsigned long patchRecords    = 0;   // LOD0 patches co-written this frame
     unsigned long heightSnapshots = 0;   // height-SSBO snapshot copies (bumps on change)
     double stageUs = 0.0, drawUs = 0.0, totalUs = 0.0;

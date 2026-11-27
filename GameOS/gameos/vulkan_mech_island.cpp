@@ -16,7 +16,7 @@
 // Material and calc_light lighting are gated follow-ons (MC2_VK_MECH_MATERIAL / MC2_VK_MECH_LIGHTING). The feed (instances, bone palette,
 // shared VBO/IBO, per-run slot-0 texture) comes from gos_mech_batcher.cpp via the Mc2Mech*Feed accessors; no fenced GL buffer crosses.
 //
-// The whole TU compiles to nothing unless MC2_VULKAN_ISLAND is defined.
+// Built with the Vulkan renderer.
 // =============================================================================
 
 #if defined(_WIN32) && !defined(VK_USE_PLATFORM_WIN32_KHR)
@@ -92,8 +92,6 @@ struct MechIslandHealth {
     unsigned long usedVulkan  = 0;
     char  fallbackReason[256] = {0};
     unsigned long vkDraws     = 0;
-    int   interopActive  = 0;
-    int   vk2glSemActive = 0;
     unsigned long instRecords = 0;
     unsigned long boneRecords = 0;
     unsigned long runs        = 0;
@@ -376,8 +374,6 @@ bool init_island(MechIsland* s, int w, int h) {
     // VK-RUNG8 item-4/item-5: direct-chain-native only. The shared GBuffer is
     // VK-only and left Vulkan-owned by the terrain first-owner, so the mech island
     // issues no GL<->VK semaphore handoff and has no interop/vk2gl semaphore state.
-    g_health.interopActive = 0;
-    g_health.vk2glSemActive = 0;
     // Readiness gates (context + shared GBuffer) passed: any failure past this point is a
     // PERMANENT build failure -> the island declines for the session (item-2).
     g_mechInitReachedBuild = 1;
@@ -1404,7 +1400,7 @@ static int mech_preview_flush_impl(void* colorView, void* normalView, void* dept
 extern "C" void mc2_render_backend_mech_region_health(
     int* vulkanAvailable, int* buildEnabled, const char** deviceName,
     unsigned long* attempted, unsigned long* usedVulkan, const char** fallbackReason,
-    unsigned long* vkDraws, int* interopActive, int* vk2glSemActive,
+    unsigned long* vkDraws,
     unsigned long* instRecords, unsigned long* boneRecords, unsigned long* runs,
     unsigned long* geomVerts,
     unsigned long* forbiddenGetTexImage, unsigned long* forbiddenReadPixels,
@@ -1416,8 +1412,6 @@ extern "C" void mc2_render_backend_mech_region_health(
     if (usedVulkan)       *usedVulkan       = g_health.usedVulkan;
     if (fallbackReason)   *fallbackReason   = g_health.fallbackReason;
     if (vkDraws)          *vkDraws          = g_health.vkDraws;
-    if (interopActive)    *interopActive    = g_health.interopActive;
-    if (vk2glSemActive)   *vk2glSemActive   = g_health.vk2glSemActive;
     if (instRecords)      *instRecords      = g_health.instRecords;
     if (boneRecords)      *boneRecords      = g_health.boneRecords;
     if (runs)             *runs             = g_health.runs;
@@ -1430,12 +1424,11 @@ extern "C" void mc2_render_backend_mech_region_health(
 }
 
 extern "C" void mc2_vk_mech_island_destroy() {
-    vlog("[VK_MECH_TIER1] vulkan_available=%d used_vulkan=%lu interop_active=%d vk2gl_sem=%d "
+    vlog("[VK_MECH_TIER1] vulkan_available=%d used_vulkan=%lu "
          "inst_records=%lu bone_records=%lu runs=%lu geom_verts=%lu fallback_reason=\"%s\" "
          "vk_draws=%lu forbidden_getTexImage=%lu forbidden_readPixels=%lu "
          "stage_us=%.1f draw_us=%.1f total_us=%.1f",
-         g_health.vulkanAvailable, g_health.usedVulkan, g_health.interopActive, g_health.vk2glSemActive,
-         g_health.instRecords, g_health.boneRecords, g_health.runs, g_health.geomVerts,
+         g_health.vulkanAvailable, g_health.usedVulkan, g_health.instRecords, g_health.boneRecords, g_health.runs, g_health.geomVerts,
          g_health.fallbackReason, g_health.vkDraws, g_forbidden.glGetTexImage, g_forbidden.glReadPixels,
          g_health.stageUs, g_health.drawUs, g_health.totalUs);
     // VK-DRAW-PERF-1: GPU-timestamp segment breakdown (only when MC2_VK_GPU_TIMESTAMPS

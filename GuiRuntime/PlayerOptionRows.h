@@ -48,13 +48,6 @@ static const EnvVarDef k_envVars[] = {
     { mc2::gate::name<"MC2_WIDTH">(),                   "Window width (blank = options.cfg)",     false, "",    "Display"   },
     { mc2::gate::name<"MC2_HEIGHT">(),                  "Window height (blank = options.cfg)",    false, "",    "Display"   },
     // --- Terrain ---
-    // Reader mclib/terrain.cpp:147
-    // `off = (v && v[0] == '0' && v[1] == '\0'); return !off;` -- DEFAULT ON, and
-    // exactly "0" is the kill token. Sole reader: terrain.h:79 records that the old
-    // scattered getenv(mc2::gate::name<"MC2_TERRAIN_LOD_CHUNK">()) presence checks were consolidated
-    // behind mc2TerrainLodChunkEnabled() precisely so they could not drift, and a
-    // whole-tree census confirms no presence-test copy survives. offVal="0" safe.
-    { mc2::gate::name<"MC2_TERRAIN_LOD_CHUNK">(),       "Chunk terrain LOD renderer (ON)",       true,  "1",    "Terrain", "0" },
     // Reader mclib/terrtxm2.cpp:203 `!v || v[0] != '0'` -- DEFAULT ON, "0" kills
     // (leading-'0' test, so the exact token "0" this row emits disables it). Sole
     // reader. offVal="0" mandatory: unsetting alone left the atlas on its ON default.

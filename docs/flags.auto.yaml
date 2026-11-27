@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 411
-registry_entry_count: 122
-verified_count: 398
+gate_count: 407
+registry_entry_count: 120
+verified_count: 394
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -1936,14 +1936,6 @@ flags:
     range: {lo: 0.5, hi: 1, style: clamp}
     smoke_passthrough: true
     verified: true
-  - name: MC2_RENDER_WATER_FASTPATH
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: terrain
-    doc: ""
-    smoke_passthrough: true
-    verified: true
   - name: MC2_REPLAY_CONTENT
     kind: String
     default: ""
@@ -2415,13 +2407,6 @@ flags:
     owner: code
     doc: "TACTIC-WEIGHTS-A: load [Tactics] block from <missionName>_ai.fit into tacticWeights[]."
     verified: true
-  - name: MC2_TERRAIN_CLIFF_SHADOW_FLOOR
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: terrain
-    doc: ""
-    verified: true
   - name: MC2_TERRAIN_CONTROLMAP
     kind: Bool
     default: false
@@ -2472,14 +2457,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_TERRAIN_LOD_CHUNK
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: terrain
-    doc: "LOD-chunk terrain renderer (mclib/terrain.cpp/terrain.h), the primary tessellation-free terrain path."
-    verified: true
-    registry: {feature_id: MC2_FEATURE_TERRAIN_LOD_CHUNK, kind: Feature, order: -1, default_on: true}
   - name: MC2_TERRAIN_LOD_CHUNK_DIAG
     kind: Int
     default: 0
@@ -2619,15 +2596,6 @@ flags:
     doc: "TERRAIN-VISUAL-HEIGHT-SAMPLE-1: when visual terrain displacement is on, fade object grounding across the displaced-vs-gameplay height delta so props/units..."
     verified: true
     registry: {feature_id: MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE, kind: Feature, order: -1, default_on: true}
-  - name: MC2_TERRAIN_VISUAL_HEIGHT
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: terrain
-    doc: "TERRAIN-VISUAL-HEIGHT: loads the 4x-res VISUAL heightfield bake into an SSBO for corner-pinned interior displacement (mclib/terrain.cpp)."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_TERRAIN_VISUAL_HEIGHT, kind: Feature, order: -1, default_on: false}
   - name: MC2_TERRAIN_VISUAL_HEIGHT_FILE
     kind: String
     default: ""

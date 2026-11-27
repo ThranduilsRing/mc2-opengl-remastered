@@ -604,11 +604,10 @@ extern "C" void mc2_vk_overlay_reset() {
 }
 
 extern "C" void mc2_vk_terrain_island_destroy() {
-    vlog("[VK_TERRAIN_TIER1] vulkan_available=%d used_vulkan=%lu interop_active=%d vk2gl_sem=%d "
+    vlog("[VK_TERRAIN_TIER1] vulkan_available=%d used_vulkan=%lu "
          "patch_records=%lu height_snapshots=%lu fallback_reason=\"%s\" vk_draws=%lu "
          "forbidden_getTexImage=%lu forbidden_readPixels=%lu stage_us=%.1f draw_us=%.1f total_us=%.1f",
-         g_health.vulkanAvailable, g_health.usedVulkan, g_health.interopActive, g_health.vk2glSemActive,
-         g_health.patchRecords, g_health.heightSnapshots, g_health.fallbackReason, g_health.vkDraws,
+         g_health.vulkanAvailable, g_health.usedVulkan, g_health.patchRecords, g_health.heightSnapshots, g_health.fallbackReason, g_health.vkDraws,
          g_forbidden.glGetTexImage, g_forbidden.glReadPixels,
          g_health.stageUs, g_health.drawUs, g_health.totalUs);
     // VK-DRAW-PERF-1: GPU-timestamp segment breakdown (only when MC2_VK_GPU_TIMESTAMPS

@@ -37,8 +37,6 @@ void  gos_SetTerrainTintDirt(float r, float g, float b);
 void  gos_GetTerrainTintDirt(float* r, float* g, float* b);
 void  gos_SetTerrainNormalsFromHeightStrength(float s);
 float gos_GetTerrainNormalsFromHeightStrength();
-void  gos_SetTerrainCliffShadowFloor(float f);
-float gos_GetTerrainCliffShadowFloor();
 // MDI water FS accessors (defined in
 // gameos_graphics.cpp). Debug-mode selector + runtime material tunables
 // (defaults match the former gos_terrain_water_mdi.frag consts exactly).

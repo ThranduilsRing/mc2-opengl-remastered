@@ -402,8 +402,6 @@ bool init_island(ShadowIsland* s, int size) {
     s->useInterop = !directChain;      // false (item-4: no GL<->VK semaphore machinery)
     s->directChain = directChain;      // true
     g_health.directChain = 1;
-    g_health.interopActive = 0;        // item-4: no interop handoff
-    g_health.vk2glSemActive = 0;       // item-4: no vk2gl semaphore
     vlog("depth producer ACTIVE - VK-native %s shadow map (direct-chain).","D16 movers");
 
     // ---- Depth-attachment view of the shared image (the interop view's own
@@ -611,7 +609,7 @@ bool upload_geometry_once(ShadowIsland* s) {
 } // namespace
 
 // ===========================================================================
-// PUBLIC ENTRY POINTS (consumed under #ifdef MC2_VULKAN_ISLAND from
+// PUBLIC ENTRY POINTS (consumed from
 // gos_postprocess.cpp / txmmgr.cpp / debug_state_dump.cpp).
 // ===========================================================================
 
@@ -1362,7 +1360,6 @@ extern "C" void mc2_render_backend_shadow_region_health(
     int* vulkanAvailable, int* buildEnabled, const char** deviceName,
     unsigned long* validationErrors, unsigned long* attempted, unsigned long* usedVulkan,
     const char** fallbackReason, unsigned long* vkDraws,
-    int* interopActive, int* vk2glSemActive, unsigned long* usedInterop,
     unsigned long* instRecords, unsigned long* typeRuns, unsigned long* geomVerts,
     unsigned long* forbiddenCopyImgToBuf, unsigned long* forbiddenGetTexImage,
     unsigned long* forbiddenReadPixels,
@@ -1375,9 +1372,6 @@ extern "C" void mc2_render_backend_shadow_region_health(
     if (usedVulkan)       *usedVulkan       = g_health.usedVulkan;
     if (fallbackReason)   *fallbackReason   = g_health.fallbackReason;
     if (vkDraws)          *vkDraws          = g_health.vkDraws;
-    if (interopActive)    *interopActive    = g_health.interopActive;
-    if (vk2glSemActive)   *vk2glSemActive   = g_health.vk2glSemActive;
-    if (usedInterop)      *usedInterop      = g_health.usedInterop;
     if (instRecords)      *instRecords      = g_health.instRecords;
     if (typeRuns)         *typeRuns         = g_health.typeRuns;
     if (geomVerts)        *geomVerts        = g_health.geomVerts;
@@ -1403,12 +1397,11 @@ extern "C" void mc2_vk_shadow_island_invalidate_geometry() {
 
 // Teardown (called from gosPostProcess::destroy or renderer shutdown).
 extern "C" void mc2_vk_shadow_island_destroy() {
-    vlog("[VK_SHADOW_INTEROP] vulkan_available=%d used_vulkan=%lu used_interop=%lu interop_active=%d "
-         "vk2gl_sem=%d direct_chain=%d validation_errors=%lu inst_records=%lu type_runs=%lu geom_verts=%lu "
+    vlog("[VK_SHADOW_INTEROP] vulkan_available=%d used_vulkan=%lu "
+         "direct_chain=%d validation_errors=%lu inst_records=%lu type_runs=%lu geom_verts=%lu "
          "fallback_reason=\"%s\" vk_draws=%lu forbidden_copyImgToBuf=%lu forbidden_getTexImage=%lu "
          "forbidden_readPixels=%lu stage_inst_us=%.1f draw_us=%.1f total_us=%.1f",
-         g_health.vulkanAvailable, g_health.usedVulkan, g_health.usedInterop, g_health.interopActive,
-         g_health.vk2glSemActive, g_health.directChain, g_health.validationErrors, g_health.instRecords, g_health.typeRuns,
+         g_health.vulkanAvailable, g_health.usedVulkan, g_health.directChain, g_health.validationErrors, g_health.instRecords, g_health.typeRuns,
          g_health.geomVerts, g_health.fallbackReason, g_health.vkDraws,
          g_forbidden.vkCmdCopyImageToBuffer, g_forbidden.glGetTexImage, g_forbidden.glReadPixels,
          g_health.stageInstUs, g_health.drawUs, g_health.totalUs);
