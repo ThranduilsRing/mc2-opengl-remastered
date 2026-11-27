@@ -1,6 +1,7 @@
 // Camera: the camera transform: activation, orthogonal setup, line of sight, origin, GL matrices and projection constants.
 // Declared in the class headers; shared names in camera_internal.h.
 #include <algorithm>
+#include <cassert>
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "camera_internal.h"
 #include "camera_pick_hash.h"
@@ -399,6 +400,13 @@ bool CameraLineOfSight (glm::vec3 position, glm::vec3 targetPosition)
 //------------------------------------------------------------
 void Camera::setCameraOrigin (void)
 {
+	// A failed invariant below keeps the previous frame's view instead of crashing the game.
+	const glm::vec3 lastLookVector = lookVector;
+	const glm::vec3 lastPhysicalPos = physicalPos;
+	const glm::mat4 lastCameraOrigin = cameraOrigin;
+	const glm::mat4 lastWorldToCamera = worldToCameraMatrix;
+	const glm::mat4 lastWorldToClip = worldToClip;
+	const glm::mat4 lastClipToWorld = clipToWorld;
 	if (!usePerspective)
 	{
 		//--------------------
@@ -527,7 +535,20 @@ void Camera::setCameraOrigin (void)
 	for (int c = 0; c < 4; ++c)
 		for (int r = 0; r < 4; ++r)
 			validCamera = validCamera && std::isfinite(worldToClip[c][r]);
-	if (!validCamera) { mc2::fmt::print_err("Camera invariant failed: projection or forward axis\n"); std::abort(); }
+	if (!validCamera)
+	{
+		assert(false && "Camera invariant failed: projection or forward axis");
+		static unsigned invalidFrames = 0;
+		if (invalidFrames++ % 600u == 0u)
+			mc2::fmt::print_err("[CAMERA] invariant failed (projection or forward axis); keeping the last valid view (count {})\n", invalidFrames);
+		lookVector = lastLookVector;
+		physicalPos = lastPhysicalPos;
+		cameraOrigin = lastCameraOrigin;
+		worldToCameraMatrix = lastWorldToCamera;
+		worldToClip = lastWorldToClip;
+		clipToWorld = lastClipToWorld;
+		return;
+	}
 	cacheFrustumPlanes(); // Lights and CPU visibility consume this before terrain::geometry.
 	static bool reportedNearFocus = false;
 	const glm::vec3 focus(-position.x, cameraShiftZ, position.y);
