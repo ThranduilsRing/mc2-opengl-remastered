@@ -123,9 +123,12 @@ vec2 mv_fineGrad(ivec2 p) {
                   mv_fineH(p + ivec2(0, 1)) - mv_fineH(p - ivec2(0, 1))) / 64.0;
 }
 
+float mv_macroGradientB = 0.0;
 vec3 mv_smoothTerrainNormal(vec2 worldXY) {
     vec2 cell = vec2(worldXY.x + uT.halfMap, uT.halfMap - worldXY.y) / 128.0;
-    vec2 gradient = textureLod(u_macroGradient, (cell + 1.5) / float(uT.mapSide + 2), 0.0).rg;
+    vec4 macroGradient = textureLod(u_macroGradient, (cell + 1.5) / float(uT.mapSide + 2), 0.0);
+    vec2 gradient = macroGradient.rg;
+    mv_macroGradientB = macroGradient.b;
     // TERRAIN-HIRES-NEAR-1: with the 4x bake live, shade from the bake's own gradient
     // (central differences at 32 wu, bilinear between fine vertices), same convention.
     if (TS_visualMode != 0) {
@@ -177,6 +180,8 @@ float cliffReferenceLuma(vec2 worldXY) {
                           + textureLod(u_colormap, uv - vec2(0, o), 0.0).rgb);
     return dot(reference, vec3(0.299, 0.587, 0.114));
 }
+
+float mv_cliffRefLuma = 0.0;
 
 #include "include/terrain_cliff_material.glsl"   // MATV_CLIFF_*, mv_cliffMaterial, crApply
 
@@ -244,7 +249,7 @@ void main() {
     // Bounded shallow refraction of the seabed material, fading to zero at the waterline.
     // Displace texture reads only: terrain coverage, shadows and material classification stay fixed.
     vec2 seabedOffset = vec2(0.0);
-    if (uT.shorelineOn > 1 && kPlanarReflection == 0) {
+    if (TS_shorelineOn > 1 && kPlanarReflection == 0) {
         float depth = max(uT.shorelineWaterElev - v_worldPos.z, 0.0);
         float phase = dot(v_worldPos.xy, vec2(0.003, 0.002)) + uT.shorelineTime * 1.05;
         seabedOffset = vec2(sin(phase), cos(phase * 1.37)) * min(depth * 0.12, 4.0)
@@ -390,8 +395,12 @@ void main() {
     vec3 baseNormal = mv_smoothTerrainNormal(v_worldPos.xy);
     vec3 prelitBase = base;
     float delitShare = (1.0 - pureConcrete) * (1.0 - smoothstep(0.55, 0.85, abs(baseNormal.z)));
+    if (!TS_authoredMaterialsOnly && TS_colormapReady != 0 &&
+        (delitShare > 0.0 || (TS_lightingEnabled != 0 && TS_detailEnabled != 0 && pureConcrete < 1.0 &&
+                             (TS_concreteDetail & 2) != 0 && cliffRockWeight(abs(baseNormal.z)) > 0.01)))
+        mv_cliffRefLuma = cliffReferenceLuma(v_worldPos.xy);
     if (!TS_authoredMaterialsOnly && delitShare > 0.0 && TS_colormapReady != 0) {
-        float gain = cliffDelightGain(dot(base, vec3(0.299, 0.587, 0.114)), cliffReferenceLuma(v_worldPos.xy));
+        float gain = cliffDelightGain(dot(base, vec3(0.299, 0.587, 0.114)), mv_cliffRefLuma);
         base *= mix(1.0, gain, delitShare);
     }
     vec3 baseColor = base;
@@ -575,8 +584,7 @@ void main() {
         // share (the cliff split, zero in shadow) is exempt. Shape = the per-mission baked horizon AO (macro-gradient texture, .b);
         // material = the cooked source AO where the layer carries it (grass turf, normal-texel B), else a cavity proxy from the detail-normal tilt (the stock sets have no AO map).
         if (uT.groundAoShape > 0.0 || uT.groundAoMaterial > 0.0) {
-            vec2 aoCell = vec2(v_worldPos.x + uT.halfMap, uT.halfMap - v_worldPos.y) / 128.0;
-            float aoShape = textureLod(u_macroGradient, (aoCell + 1.5) / float(uT.mapSide + 2), 0.0).b;
+            float aoShape = mv_macroGradientB;
             float aoMat = 1.0 - 0.45 * clamp(length(mv_cavityNormal.xy * uT.detailStrength) * 1.2, 0.0, 1.0);
             aoMat = mix(aoMat, mix(aoMat, mv_srcAoSum / max(mv_srcAoW, 1e-4), clamp(mv_srcAoW, 0.0, 1.0)), uT.groundAoSource);
             float aoAll = clamp(mix(1.0, aoShape, uT.groundAoShape), 0.0, 1.0) * clamp(mix(1.0, aoMat, uT.groundAoMaterial), 0.0, 1.0);
@@ -602,7 +610,7 @@ void main() {
             // Close up (ref 6) a dark wet strip follows the swash, and a lacy white swash sheet runs up the sand.
             // Night (scene light below 1, day exactly 1): a gentle cool-grey sand strip, no wet strip, a dim swash.
             float beachNight = clamp((1.0 - uEnv.sceneLight.x) * 2.5, 0.0, 1.0);
-            if (uT.shorelineOn == 2 && horizDist < 110.0 && aboveWater > -40.0) {
+            if (TS_shorelineOn == 2 && horizDist < 110.0 && aboveWater > -40.0) {
                 float lumR = clamp(dot(lit, vec3(0.299, 0.587, 0.114)) / max(dot(baseColor, vec3(0.299, 0.587, 0.114)), 0.04), 0.0, 2.5);
                 float mask = smoothstep(0.93, 0.975, nzc) * (cementHit ? 0.0 : 1.0) * (1.0 - F3pc) * (1.0 - materialSnow);
                 float beach = (1.0 - smoothstep(35.0, 80.0, horizDist + fbm(v_worldPos.xy * 0.011, 2) * 30.0))
@@ -627,7 +635,7 @@ void main() {
                 float aboveFade = smoothstep(0.0, 1.5, horizDist);
                 slWet  *= aboveFade;
                 slFoam *= aboveFade;
-                bool reviewShore = uT.shorelineOn > 1;
+                bool reviewShore = TS_shorelineOn > 1;
                 if (reviewShore) {
                     float phase = uT.shorelineTime * 1.05 + dot(v_worldPos.xy, vec2(0.003, 0.002));
                     // The wet tail lags the swash so dark sand remains exposed on retreat.
