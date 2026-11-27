@@ -208,6 +208,19 @@ void Mission::updateMissionTest(bool report) {
     for (auto* condition : destination->m_conditionList) {
         if (condition->Status() == OS_SUCCESSFUL) continue;
         auto point = condition->GetObjectivePosition();
+        if (condition->Species() == DESTROY_ALL_ENEMY_UNITS
+            || condition->Species() == DESTROY_NUMBER_OF_ENEMY_UNITS) {
+            // These conditions have no marker or specific unit ID to navigate to.
+            for (long i = 0; i < ObjectManager->getNumMovers(); ++i) {
+                auto* enemy = ObjectManager->getMover(i);
+                if (!enemy || !enemy->getTeam() || Team::home->isFriendly(enemy->getTeam())
+                    || !enemy->getExists() || enemy->isDisabled() || enemy->isDestroyed()) continue;
+                objectiveTarget = enemy;
+                location = enemy->getPosition();
+                break;
+            }
+            break;
+        }
         // Unmarked unit objectives have no navigation marker (often 0,0).
         if (auto* specific = dynamic_cast<CSpecificUnitObjectiveCondition*>(condition)) {
             if (!objectiveTarget && (condition->Species() == DESTROY_SPECIFIC_ENEMY_UNIT
