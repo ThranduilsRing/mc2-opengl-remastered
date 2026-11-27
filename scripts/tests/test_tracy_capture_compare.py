@@ -479,6 +479,25 @@ def test_busy_lease_starts_no_children(harness):
     assert not h.logs
 
 
+@pytest.mark.parametrize("timeout,expected", [(None, 1200), ("600", 600)])
+def test_post_load_capture_honors_lease_timeout(harness, monkeypatch, timeout, expected):
+    h = harness
+    monkeypatch.setattr(Path, "write_text", lambda *a, **k: None)
+    monkeypatch.delenv(capture.host_lease.TIMEOUT_ENV, raising=False)
+    if timeout is not None:
+        monkeypatch.setenv(capture.host_lease.TIMEOUT_ENV, timeout)
+
+    def exclusive(label, **kwargs):
+        assert kwargs["timeout_s"] == expected
+        raise capture.host_lease.HostLeaseBusy("busy")
+
+    monkeypatch.setattr(capture.host_lease, "exclusive_window", exclusive)
+    with pytest.raises(capture.host_lease.HostLeaseBusy, match="busy"):
+        capture.capture_trace(h.install, "vk", "mc2_01", 15, h.out, post_load=True)
+    h.recorder_spawn.assert_not_called()
+    h.game_spawn.assert_not_called()
+
+
 def test_interruption_before_game_spawn_reaps_recorder(harness, monkeypatch):
     h = harness
     monkeypatch.setattr(capture.time, "sleep", Mock(side_effect=KeyboardInterrupt))

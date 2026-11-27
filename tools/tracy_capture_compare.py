@@ -457,7 +457,7 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
         # The recorder must share the game's host lease so another lane cannot feed it a trace.
         if not host_lease.holds():
             if post_load:
-                cleanup.enter_context(host_lease.exclusive_window(f"Tracy capture {mission}", timeout_s=1200))
+                cleanup.enter_context(host_lease.exclusive_window(f"Tracy capture {mission}", timeout_s=float(os.environ.get(host_lease.TIMEOUT_ENV) or 1200)))
             else:
                 host_lease.acquire(f"Tracy capture {arm} {mission}")
                 cleanup.callback(host_lease.release)
