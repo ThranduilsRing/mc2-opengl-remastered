@@ -107,7 +107,7 @@ def test_owner_affinity_requires_explicit_exclusive_batch(monkeypatch, opt_in, t
         assert capture.owner_capture_mode() is accepted
 
 
-@pytest.mark.parametrize("platform,cores,owner", [("nt", [0, 1], False), ("posix", [26, 27], False),
+@pytest.mark.parametrize("platform,cores,owner", [("nt", [0, 1, 2, 3], False), ("posix", [26, 27], False),
                                                 ("nt", list(range(16)), True)])
 def test_post_load_starts_recorder_after_pose_and_writes_row(harness, monkeypatch, platform, cores, owner):
     import psutil
@@ -162,10 +162,7 @@ def test_post_load_starts_recorder_after_pose_and_writes_row(harness, monkeypatc
     assert h.game_spawn.call_args.kwargs["engine_default_workers"] is owner
     assert ("MC2_FRAME_JOBS_WORKERS" in h.game_spawn.call_args.kwargs["env"]) is not owner
     assert row["affinity_mask"] == sum(1 << c for c in cores)
-    if platform == "nt" and not owner:
-        process.cpu_affinity.assert_any_call(cores)
-    else:
-        process.cpu_affinity.assert_called_once_with()
+    process.cpu_affinity.assert_called_once_with()
     recorder = h.recorder_spawn.call_args.args[0]
     assert recorder[recorder.index("-s") + 1] == "30"
 

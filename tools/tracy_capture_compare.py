@@ -528,14 +528,14 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
         if post_load:
             import psutil
             process = psutil.Process(gp.pid)
-            # PC masks apply only on Windows; Linux inherits slot.sh's game cores.
-            if os.name == "nt" and not owner_affinity:
-                device = host_lease.held_device()
-                slot = (host_lease.lane_devices().index(device) if device
-                        else host_lease.eligible_slots(env.get("MC2_VK_DEVICE"))[0])
-                mask = host_lease.affinity_mask(slot)
-                cpus = [c for c in process.cpu_affinity() if mask & (1 << c)]
-                process.cpu_affinity(cpus)
+            # nofocus already applies the held lease's mask, including an exclusive
+            # lease's extra cores. Narrowing to one slot here starves the present worker.
+            # Both slot masks belong to an exclusive post-load capture, even though
+            # only one GPU is selected. The chosen device does not limit CPU ownership.
+            # A game may also inherit slot.sh's affinity on Linux, or use the explicit
+            # owner capture mode above. Keep those launcher decisions intact as well.
+            # Record the actual mask so the trace states which CPUs the game received,
+            # rather than reconstructing a smaller mask from the selected GPU's slot.
             actual_cpus = process.cpu_affinity()
             row = {"status": "REJECTED", "mission": mission, "arm": capture_arm,
                    "seconds": seconds, "settle_s": POST_LOAD_SETTLE, "game_timeout_s": duration,
