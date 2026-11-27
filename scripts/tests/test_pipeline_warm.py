@@ -24,8 +24,6 @@ def test_pipeline_warm_process_env_status_and_freshness(tmp_path, monkeypatch, c
     calls, releases = [], []
     monkeypatch.setattr(warm.host_lease, "hold", lambda *a, **k: None)
     monkeypatch.setattr(warm.host_lease, "release_batch", lambda tag: releases.append(tag))
-    monkeypatch.setattr(warm.deploy_payload, "take_folder_lease", lambda *a: True)
-    monkeypatch.setattr(warm.deploy_payload, "release_folder_lease", lambda path: releases.append(path))
     cache = install / "cache/vulkan/current.bin"
     cache.parent.mkdir(parents=True)
 
@@ -39,6 +37,7 @@ def test_pipeline_warm_process_env_status_and_freshness(tmp_path, monkeypatch, c
         assert "last_campaign" not in env
         assert env["MC2_SMOKE_FIXED_TIMESTEP"] == "0"
         assert "--headless" not in command
+        assert "--no-lease" not in command
         root = Path(env["MC2_SMOKE_ARTIFACT_ROOT"])
         root.mkdir(parents=True)
         mission = command[command.index("--mission") + 1]
@@ -52,7 +51,7 @@ def test_pipeline_warm_process_env_status_and_freshness(tmp_path, monkeypatch, c
 
     monkeypatch.setattr(warm.subprocess, "run", smoke)
     warm.warm(install, ["mc2_01", "mc2_10"])
-    assert len(calls) == 2 and len(releases) == 2
+    assert len(calls) == 2 and len(releases) == 1
     assert "status_before=rejected creation_ms_first=12.500 cache_bytes=5" in capsys.readouterr().out
     os.utime(cache, ns=(exe.stat().st_mtime_ns,) * 2)
     with pytest.raises(RuntimeError, match="newer than mc2.exe"):

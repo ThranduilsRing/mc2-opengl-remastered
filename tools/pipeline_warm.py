@@ -13,6 +13,8 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+# deploy_payload imports console_child as a top-level module, so scripts/ must be importable too.
+sys.path.insert(0, str(ROOT / "scripts"))
 from scripts import console_child, deploy_payload
 from scripts.smoke_lib import host_lease, nofocus, render_options_pin
 
@@ -70,11 +72,9 @@ def warm(install: Path, missions: list[str]) -> None:
     require_idle(install)
     env = launcher_env(install, os.environ)
     tag = f"pipeline-warm-{os.getpid()}"
-    held = False
     host_lease.hold(tag, ttl_s=1800, timeout_s=600)
     try:
         env[host_lease.BATCH_ENV] = tag
-        held = deploy_payload.take_folder_lease(str(install), 0)
         require_idle(install)
         receipts = install / "pipeline-warm" / str(time.time_ns())
         first_status, first_ms = "", 0.0
@@ -84,8 +84,8 @@ def warm(install: Path, missions: list[str]) -> None:
             # --lite cannot select missions; this is its ordinary rendering runner path.
             command = ["-B", str(ROOT / "scripts/run_smoke.py"),
                        "--exe", str(install / "mc2.exe"), "--mission", mission,
-                       "--duration", "2", "--keep-logs", "--no-lease", "--wait-timeout", "600"]
-            # background-launch: allow Python smoke runner; nofocus env and host/folder leases are already held.
+                       "--duration", "2", "--keep-logs", "--wait-timeout", "600"]
+            # background-launch: allow Python smoke runner; nofocus env and the host lease batch are held, the runner takes the install folder lease itself (waits for it).
             result = subprocess.run([sys.executable, *command], cwd=ROOT, env=child_env, capture_output=True,
                                     text=True, timeout=780, **console_child.child_kwargs(redirected=True))
             artifact_root.mkdir(parents=True, exist_ok=True)
@@ -104,8 +104,6 @@ def warm(install: Path, missions: list[str]) -> None:
         print(f"[PIPELINE_WARM v1] install={install} status_before={first_status} "
               f"creation_ms_first={first_ms:.3f} cache_bytes={cache_bytes(install)}")
     finally:
-        if held:
-            deploy_payload.release_folder_lease(str(install))
         host_lease.release_batch(tag)
 
 
