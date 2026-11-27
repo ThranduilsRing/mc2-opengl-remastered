@@ -2,8 +2,8 @@
 #include "user_paths.h"
 #ifndef MC2_NET_RUNTIME_TESTS
 #include "../../mclib/file.h"
-#include "../../mclib/vfs.h"
 #endif
+#include "../../mclib/vfs.h"
 #include <thread>
 #include <algorithm>
 #include <chrono>
@@ -102,9 +102,7 @@ SimFiles readSimFiles() {
 }
 void clearMatchData() {
     matchDataMounted = false;
-#ifndef MC2_NET_RUNTIME_TESTS
     vfs::clearMatchData();
-#endif
 }
 void useMatchData(Session& transport, Identity& identity) {
 #ifndef MC2_NET_RUNTIME_TESTS
@@ -318,6 +316,7 @@ void pumpLobby() {
         lobby.offered = lobby.localReady = lobby.peerReady = lobby.started = false;
         lobbyTransport.reset();
         lobbyPending.clear();
+        clearMatchData();
         restoreUserDirectory();
     }
 }
@@ -560,6 +559,7 @@ struct RuntimeAdmission final : sim::OrderAdmissionValidator {
 };
 }
 void testLobbyPeerLoss() {
+    vfs::setMatchData({{"data/objects/compbas.csv", {42}}}, simDataPath);
     std::vector<save::Bytes> sent;
     auto transport = std::make_unique<RecordedSession>(sent);
     transport->fault = "MP peer disconnected";
@@ -572,6 +572,7 @@ void testLobbyPeerLoss() {
     CHECK_FALSE(lobby.localReady);
     CHECK_FALSE(lobby.peerReady);
     CHECK_FALSE(lobbyConnected());
+    CHECK(vfs::openRead("data/objects/compbas.csv").layer != "match-cache");
     closeLobby();
     lobbyBegan = {};
 }
