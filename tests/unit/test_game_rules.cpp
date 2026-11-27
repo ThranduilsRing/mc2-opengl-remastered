@@ -552,7 +552,14 @@ TEST_CASE("game rules: new-campaign defaults, legacy add-on migration and the ad
     std::remove(chosen.c_str());
     {   // A pre-11-23 campaign save: [General] records ModDeps "-" (none) but there is no [GameRules] Mods key -> the legacy selection.
         const std::string legacySave = "game_rules_moddeps_dash.fit";
-        std::ofstream(legacySave) << "[General]\nst ActiveMod = \"-\"\nst ModDeps = \"-\"\n";
+        {
+            FitIniFile out;
+            REQUIRE(out.create(legacySave.c_str()) == NO_ERR);
+            out.writeBlock("General");
+            out.writeIdString("ActiveMod", "-");
+            out.writeIdString("ModDeps", "-");
+            out.close();
+        }
         FitIniFile legacyIn;
         REQUIRE(legacyIn.open(legacySave.c_str()) == NO_ERR);
         CHECK(readFit(legacyIn, [] { return std::string("magic-ballistic-weapons"); }).mods == "magic-ballistic-weapons");
