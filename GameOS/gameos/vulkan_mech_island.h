@@ -18,7 +18,7 @@
 // exported by the GL batcher (gos_mech_batcher.cpp) via the Mc2Mech*Feed accessors
 // below; NO fenced GL buffer crosses (all copied host-visible).
 //
-// The whole TU compiles to nothing unless MC2_VULKAN_ISLAND is defined.
+// Built with the Vulkan renderer.
 
 #ifndef MC2_VULKAN_MECH_ISLAND_H
 #define MC2_VULKAN_MECH_ISLAND_H
@@ -180,7 +180,7 @@ int mc2_vk_mech_preview_drew_last(void);
 void mc2_render_backend_mech_region_health(
     int* vulkanAvailable, int* buildEnabled, const char** deviceName,
     unsigned long* attempted, unsigned long* usedVulkan, const char** fallbackReason,
-    unsigned long* vkDraws, int* interopActive, int* vk2glSemActive,
+    unsigned long* vkDraws,
     unsigned long* instRecords, unsigned long* boneRecords, unsigned long* runs,
     unsigned long* geomVerts,
     unsigned long* forbiddenGetTexImage, unsigned long* forbiddenReadPixels,

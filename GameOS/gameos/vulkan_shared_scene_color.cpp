@@ -15,7 +15,7 @@
 // (mc2VkSharedSceneDirectResourceEnabled); otherwise gos_postprocess declines the
 // whole shared scene to pure GL.
 //
-// Whole TU is inert unless MC2_VULKAN_ISLAND is defined (island discipline). It also
+// Built with the Vulkan renderer. It also
 // needs the shared engine context (MC2_VULKAN) — island TUs are compiled with BOTH.
 // =============================================================================
 

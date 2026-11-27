@@ -10,7 +10,7 @@
 // LOD bands, edge-stitch, and visual-displace are DEFERRED. The GL LOD-chunk path
 // keeps drawing everything EXCEPT the LOD0 main patches when this gate is on.
 //
-// The whole feature is #ifdef MC2_VULKAN_ISLAND; these declarations are extern "C"
+// Vulkan renderer API; these declarations are extern "C"
 // so the caller (gos_terrain_lod_chunk.cpp / terrain.cpp) pulls in NO Vulkan headers.
 //
 // Gate MC2_VK_TERRAIN_TIER1 default-OFF (requires MC2_VK_SHARED_SCENE_DEPTH) ->
@@ -292,7 +292,7 @@ int mc2_vk_scene_clear(int w, int h);
 void mc2_render_backend_terrain_region_health(
     int* vulkanAvailable, int* buildEnabled, const char** deviceName,
     unsigned long* attempted, unsigned long* usedVulkan, const char** fallbackReason,
-    unsigned long* vkDraws, int* interopActive, int* vk2glSemActive,
+    unsigned long* vkDraws,
     unsigned long* patchRecords, unsigned long* heightSnapshots,
     unsigned long* forbiddenGetTexImage, unsigned long* forbiddenReadPixels,
     double* stageUs, double* drawUs, double* totalUs);

@@ -30,7 +30,7 @@
 // SCOPE = LOD0 (lodStep==1) MAIN triangle draw ONLY. Skirts, coarser bands, stitch,
 // visual-displace are DEFERRED. The GL LOD-chunk path draws everything else.
 //
-// The whole TU compiles to nothing unless MC2_VULKAN_ISLAND is defined.
+// Built with the Vulkan renderer.
 // =============================================================================
 
 #include "vulkan_terrain_island_internal.h"

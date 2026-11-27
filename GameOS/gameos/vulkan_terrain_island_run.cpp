@@ -1026,7 +1026,7 @@ extern "C" int mc2_vk_scene_clear(int w, int h) {
 extern "C" void mc2_render_backend_terrain_region_health(
     int* vulkanAvailable, int* buildEnabled, const char** deviceName,
     unsigned long* attempted, unsigned long* usedVulkan, const char** fallbackReason,
-    unsigned long* vkDraws, int* interopActive, int* vk2glSemActive,
+    unsigned long* vkDraws,
     unsigned long* patchRecords, unsigned long* heightSnapshots,
     unsigned long* forbiddenGetTexImage, unsigned long* forbiddenReadPixels,
     double* stageUs, double* drawUs, double* totalUs) {
@@ -1037,8 +1037,6 @@ extern "C" void mc2_render_backend_terrain_region_health(
     if (usedVulkan)       *usedVulkan       = g_health.usedVulkan;
     if (fallbackReason)   *fallbackReason   = g_health.fallbackReason;
     if (vkDraws)          *vkDraws          = g_health.vkDraws;
-    if (interopActive)    *interopActive    = g_health.interopActive;
-    if (vk2glSemActive)   *vk2glSemActive   = g_health.vk2glSemActive;
     if (patchRecords)     *patchRecords     = g_health.patchRecords;
     if (heightSnapshots)  *heightSnapshots  = g_health.heightSnapshots;
     if (forbiddenGetTexImage) *forbiddenGetTexImage = g_forbidden.glGetTexImage;

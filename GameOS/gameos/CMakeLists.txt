@@ -6,8 +6,7 @@ set_source_files_properties(${CMAKE_SOURCE_DIR}/3rdparty/tracy/TracyClient.cpp
     PROPERTIES COMPILE_DEFINITIONS "TRACY_ONLY_LOCALHOST;TRACY_NO_BROADCAST")
 
 # G2: the root configure rejects MC2_VULKAN=OFF (Vulkan is the required renderer backend). Fail here
-# too so a standalone/partial configure cannot silently drop the Vulkan sources and the
-# MC2_VULKAN_ISLAND layout define. Unset (standalone tool trees) keeps the historical behaviour.
+# too so a standalone/partial configure cannot silently drop the Vulkan sources. Unset (standalone tool trees) keeps the historical behaviour.
 if(DEFINED MC2_VULKAN AND NOT MC2_VULKAN)
     message(FATAL_ERROR "gameos requires MC2_VULKAN=ON (Vulkan is the required renderer backend).")
 endif()
@@ -162,13 +161,7 @@ if(MC2_VULKAN)
         # No layout-affecting header members (extern "C" entry points only).
         list(APPEND SOURCES vulkan_water_island.cpp)
         list(APPEND SOURCES vulkan_water_island_images.cpp vulkan_water_island_init.cpp vulkan_water_island_run.cpp vulkan_water_reflect_bake.cpp)
-        # VK-POST-FOG-NATIVE-1 (rung 8.1, VK-RUNG8-LADDER-1): the fog pair (edge+oob)
-        # rendered NATIVELY on the shared engine VulkanContext — samples the SHARED
-        # scene depth, blends into the SHARED scene color0 in place (zero copies,
-        # zero CPU readbacks, no private device; supersedes the subgraph path when
-        # gated on). Gate MC2_VK_POST_FOG_NATIVE default-OFF -> GL fog chain
-        # byte-identical. Layout-affecting header members under MC2_VULKAN_ISLAND
-        # (same ODR discipline as the subgraph's).
+        # Native fog pair on the shared Vulkan scene depth/color attachments.
         list(APPEND SOURCES vulkan_post_fog_native.cpp)
         # VK-POST-SCREENFX-NATIVE-1 (rung 8.3): cloud-shadow + shoreline-foam
         # natively on the shared engine context -- samples the SHARED scene
@@ -240,7 +233,7 @@ if(MC2_VULKAN)
         # raw-allocated (dedicated) NON-exportable VkImage + double-buffered sync objects.
         # VK-RUNG8-ITEM1 deleted gl_interop_view.cpp (the GL-boundary import adapter) and
         # VK-RUNG8-ITEM2 deleted vk_image_resource's exportable half -- both caller-free
-        # after item 6 retired the static-shadow substrate. #ifdef MC2_VULKAN_ISLAND.
+        # after item 6 retired the static-shadow substrate.
         list(APPEND SOURCES vk_image_resource.cpp)
         # The first layout of the shared scene images (UNDEFINED at creation; every island declares an attachment layout from frame 1).
         list(APPEND SOURCES vk_first_layout.cpp)
@@ -263,29 +256,13 @@ if(MC2_VULKAN)
         # host-visible ring on the shared engine device) consumed by the mech +
         # color-prop islands instead of twin per-island ~3.5 MB copies of the
         # same CPU array every frame. Killswitch MC2_VK_LIGHTFEED_DEDUP=0
-        # restores the twin-copy paths. #ifdef MC2_VULKAN_ISLAND.
+        # restores the twin-copy paths.
         list(APPEND SOURCES vk_shared_light_feed.cpp)
-        # VK-TIER1 SHARED SCENE DEPTH (step 2): back sceneDepthTex_ with a VK-built
-        # exportable D32S8 image imported into GL as GL_DEPTH24_STENCIL8, at the
-        # single gos_postprocess scene-FBO depth alloc+attach site. GL-only slice
-        # (no VK depth consumer yet) using the interop primitives above. Gate
-        # MC2_VK_SHARED_SCENE_DEPTH default-OFF -> plain GL depth alloc (byte-
-        # identical). Layout-affecting header member (sharedSceneDepth_) added
-        # under #ifdef MC2_VULKAN_ISLAND, propagated by the root ODR-harden block.
+        # Shared Vulkan scene depth attachment.
         list(APPEND SOURCES vulkan_shared_scene_depth.cpp)
-        # VK-P11 TIER-1: shared scene COLOR/NORMAL substrate — sibling of the shared
-        # depth above. Backs sceneColorTex_ (MRT0) + sceneNormalTex_ (MRT1) with VK-
-        # built exportable RGBA16F images imported into GL, so the VK prop island co-
-        # writes props into the SAME GBuffer attachments in-place (Tier-1). Gate
-        # MC2_VK_PROP_COLOR_TIER1 default-OFF (requires MC2_VK_SHARED_SCENE_DEPTH) ->
-        # plain GL alloc (byte-identical). Layout-affecting header members
-        # (sharedSceneColor_/sharedSceneNormal_) under #ifdef MC2_VULKAN_ISLAND.
+        # Shared Vulkan scene color and normal attachments.
         list(APPEND SOURCES vulkan_shared_scene_color.cpp)
-        # VK-P13-SELECTOR-1 / T3: the whole-frame GL->VK present intercept. Borrows
-        # the T2 shared VulkanContext device (no second device); owns the hidden
-        # present window + surface + swapchain + the exportable interop image. Uses
-        # the interop primitives above, so it is gated on MC2_VULKAN_ISLAND (the TU
-        # #if requires BOTH MC2_VULKAN and MC2_VULKAN_ISLAND). No new link libs.
+        # Native Vulkan presentation on the shared engine device.
         list(APPEND SOURCES engine_present_vk.cpp engine_present_vk_imgui.cpp vulkan_spatial_aa.cpp vulkan_motion_vectors.cpp vk_upscalers.cpp)
         # FSR loads the Windows-only amd_fidelityfx_vk.dll through ffx-api (windows.h, __declspec); Linux has no provider.
         if(WIN32)
@@ -398,8 +375,6 @@ if(MC2_VULKAN)
     file(MAKE_DIRECTORY "${MC2_VK_SPV_OUT_DIR}")
 
     # VULKAN-EDGE-FOG-ISLAND-2a: bake edge_fog.{vert,frag} with the rest of the list.
-    # These are only USED when MC2_VULKAN_ISLAND=ON, but baking them under plain
-    # MC2_VULKAN is harmless (extra .spv outputs) and keeps the toolchain simple.
     # VULKAN-OOB-FOG-ISLAND-1: bake fog_oob.{vert,frag} alongside edge_fog.
     # VK-REGION-SSAO-1: bake ssao.{vert,frag} + ssao_apply.{vert,frag} (two
     # programs: occlusion pass1, multiplicative-apply pass2). Both verts are

@@ -1,4 +1,4 @@
-// vulkan_shadow_bake.cpp -- see the header. Compiles to nothing unless MC2_VULKAN_ISLAND is defined.
+// vulkan_shadow_bake.cpp -- see the header. Built with the Vulkan renderer.
 
 #include "vulkan_shadow_bake.h"
 #include "vulkan_shadow_bake_internal.h"

@@ -392,7 +392,7 @@ bool VulkanContext::init(bool wantPresent) {
 
     auto fail = [&](const std::string& reason) -> bool {
         health_.fallbackReason = reason;
-        ctxlog("engine context init FAILED: %s -- fail-soft to GL.", reason.c_str());
+        ctxlog("engine context init FAILED: %s -- Vulkan initialization failed; context unavailable.", reason.c_str());
         destroy();               // tear down partial state
         health_.fallbackReason = reason; // destroy() clears; restore for the caller
         return false;
@@ -1629,7 +1629,7 @@ bool engineVulkanContextValid(std::source_location site) {
 //     volkLoadDevice, Vulkan 1.2+ with the profile's features (no interop exts, no surface/swapchain). Native
 //     VK regions reuse this device.
 //   - init() is one-shot: after a failed attempt it returns false without retrying, so
-//     a repeated caller never thrashes. Fail-soft: returns false, caller falls back to GL.
+//     a repeated caller never thrashes. Returns false when the Vulkan context is unavailable.
 // VK-RUNG8-ITEM3: renamed from ensureEngineVulkanContext (no interop family).
 bool ensureEngineVulkanContext() {
     if (engineContext().valid()) return true;               // already born (=vulkan or prior lazy)

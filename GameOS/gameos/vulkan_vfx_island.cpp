@@ -16,8 +16,7 @@
 // gos texture handle from the texels the GL path uploads) times the per-particle
 // tint. Two blend pipelines (alpha + additive) mirror the GL particle bridge's
 // per-group blend. Native geometry also covers tube ribbons and effect meshes.
-// The whole TU compiles to nothing unless
-// MC2_VULKAN_ISLAND is defined (same discipline as the other island TUs).
+// Built with the Vulkan renderer.
 
 
 #if defined(_WIN32) && !defined(VK_USE_PLATFORM_WIN32_KHR)

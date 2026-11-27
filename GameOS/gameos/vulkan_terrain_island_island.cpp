@@ -483,8 +483,6 @@ bool init_island(TerrainIsland* s, int w, int h) {
         setFallback("shared_gbuffer_not_ready");
         return false;
     }
-    g_health.interopActive = 0;   // item-4: no GL<->VK semaphore handoff arm exists
-    g_health.vk2glSemActive = 0;
     // Readiness gates (context + shared GBuffer) passed: any failure past this point is
     // a PERMANENT build failure -> the island declines for the session (item-2).
     g_terrainInitReachedBuild = 1;

@@ -3,7 +3,7 @@
 // first region that renders REAL static-prop triangle geometry into an exportable
 // color image the terrain/mech color regions inherit).
 //
-// The whole feature is #ifdef MC2_VULKAN_ISLAND; these declarations are extern "C"
+// Vulkan renderer API; these declarations are extern "C"
 // so the caller (mclib/txmmgr.cpp at the GpuStaticPropBatcher::flush() site) pulls in
 // NO Vulkan headers.
 //
@@ -61,7 +61,6 @@ void mc2_render_backend_color_prop_region_health(
     int* vulkanAvailable, int* buildEnabled, const char** deviceName,
     unsigned long* validationErrors, unsigned long* attempted, unsigned long* usedVulkan,
     const char** fallbackReason, unsigned long* vkDraws,
-    int* interopActive, int* vk2glSemActive, unsigned long* usedInterop,
     unsigned long* instRecords, unsigned long* typeRuns, unsigned long* geomVerts,
     unsigned long* forbiddenCopyImgToBuf, unsigned long* forbiddenGetTexImage,
     unsigned long* forbiddenReadPixels,

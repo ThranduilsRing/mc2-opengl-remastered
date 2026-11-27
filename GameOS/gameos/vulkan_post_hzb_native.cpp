@@ -62,7 +62,6 @@ struct HzbNativeHealth {
     int directChain = 1;
     unsigned long attempted = 0;
     unsigned long usedVulkan = 0;
-    unsigned long usedInterop = 0;
     unsigned long levels = 0;
     unsigned long vkDraws = 0;
     unsigned long copyDepthOps = 0;
@@ -1028,11 +1027,10 @@ void gosPostProcess::destroyVkPostHzbNative()
 {
     if (g_health.runtimeGate) {
         vlog("[HEALTH] runtime_gate=%d substrate_live=%d attempted=%lu used_vulkan=%lu "
-             "direct_chain=%d used_interop=%lu levels=%lu vk_draws=%lu copy_depth_ops=%lu readback_ops=%lu "
+             "direct_chain=%d levels=%lu vk_draws=%lu copy_depth_ops=%lu readback_ops=%lu "
              "fallback_reason=\"%s\" render_us_last=%.1f wait_us_last=%.1f wait_us_avg=%.1f wait_samples=%lu",
              g_health.runtimeGate, g_health.substrateLive, g_health.attempted,
-             g_health.usedVulkan, g_health.directChain, g_health.usedInterop,
-             g_health.levels, g_health.vkDraws,
+             g_health.usedVulkan, g_health.directChain, g_health.levels, g_health.vkDraws,
              g_health.copyDepthOps, g_health.readbackOps, g_health.fallbackReason,
              g_health.renderUs, g_health.waitUsLast,
              g_health.waitSamples ? g_health.waitUsAccum / static_cast<double>(g_health.waitSamples) : 0.0,

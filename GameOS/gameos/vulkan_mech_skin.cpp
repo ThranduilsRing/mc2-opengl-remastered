@@ -1,4 +1,4 @@
-// vulkan_mech_skin.cpp -- see the header. Compiles to nothing unless MC2_VULKAN_ISLAND is defined.
+// vulkan_mech_skin.cpp -- see the header. Built with the Vulkan renderer.
 
 #if defined(_WIN32) && !defined(VK_USE_PLATFORM_WIN32_KHR)
 #define VK_USE_PLATFORM_WIN32_KHR

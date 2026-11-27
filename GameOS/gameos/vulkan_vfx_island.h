@@ -6,7 +6,7 @@
 // the GL path uploads) — the "weapon fire survives the VK umbrella" slice. The
 // same owner also renders native mesh/ribbon geometry and alpha-tested vegetation.
 //
-// Consumed under #ifdef MC2_VULKAN_ISLAND from gos_particle_bridge.cpp.
+// Consumed from gos_particle_bridge.cpp.
 
 #ifndef VULKAN_VFX_ISLAND_H
 #define VULKAN_VFX_ISLAND_H

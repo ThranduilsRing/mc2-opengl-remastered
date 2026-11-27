@@ -1,9 +1,0 @@
-{
-  "defines": [],
-  "outputs": [],
-  "shader": "shaders/postprocess.vert",
-  "ssbos": [],
-  "stage": "vert",
-  "ubos": [],
-  "variant": "default"
-}

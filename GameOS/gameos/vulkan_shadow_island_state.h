@@ -13,10 +13,7 @@ struct ShadowIslandHealth {
     unsigned long usedVulkan  = 0;
     char  fallbackReason[256] = {0};
     unsigned long vkDraws     = 0;
-    int   interopActive  = 0;
-    int   vk2glSemActive = 0;
     int   directChain    = 0;
-    unsigned long usedInterop = 0;
     unsigned long instRecords = 0;   // caster instances fed this frame
     unsigned long typeRuns    = 0;   // per-type instanced draws this frame
     unsigned long geomVerts   = 0;   // shared VBO verts copied once

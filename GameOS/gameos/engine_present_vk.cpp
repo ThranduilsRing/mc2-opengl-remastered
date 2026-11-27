@@ -189,10 +189,10 @@ bool chooseQueuesAndPresentMode(EnginePresentVk::Impl& s, std::string& reason) {
     // The shared device created ONLY the gfx queue family (one queue). If present
     // needs a DIFFERENT family, that queue was never created on the shared device
     // -> we cannot present from it. On the target hardware gfx==present, so this
-    // is a hard fail-soft (revert to GL) rather than silently wrong.
+    // is a present initialization failure.
     if (s.presentFamily != s.gfxFamily) {
         reason = "present family != gfx family; shared device has no present queue "
-                 "(fail-soft to GL; would need a present queue in T2 device create)";
+                 "(no present queue in engine device create)";
         return false;
     }
     // Same family: the render-finished binary semaphore orders the two queues without ownership transfers.

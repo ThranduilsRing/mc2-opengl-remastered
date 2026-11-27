@@ -202,7 +202,7 @@ public:
     // any not-ready condition returns false -> unchanged subgraph/island/GL chain.
     // destroyVkPostFogNative(): torn down from destroyFBOs() (resize; the shared
     // GBuffer it borrows is rebuilt) and destroy(). Defined in
-    // vulkan_post_fog_native.cpp (same #ifdef MC2_VULKAN_ISLAND discipline).
+    // vulkan_post_fog_native.cpp (Vulkan renderer).
     bool  runVkPostFogNative();
     void  destroyVkPostFogNative();
     struct VkPostFogNative;             // defined in vulkan_post_fog_native.cpp
@@ -224,7 +224,7 @@ public:
     // bodies; 0 -> the unchanged GL chain runs (fail-soft).
     // destroyVkPostScreenFxNative(): torn down from destroyFBOs() (resize; the
     // shared GBuffer it borrows is rebuilt) and destroy(). Defined in
-    // vulkan_post_screenfx_native.cpp (same #ifdef MC2_VULKAN_ISLAND discipline).
+    // vulkan_post_screenfx_native.cpp (Vulkan renderer).
     bool      vkPostScreenFxNativeEnabled();
     bool      runVkPostScreenShadowStaticNative();
     unsigned  runVkPostScreenFxNative();
