@@ -13,6 +13,7 @@
 #include "texture_probe_memo.h"
 #include "model_override_registry.h"
 #include "../RenderCore/SurfaceMaterial.h"
+#include "../RenderCore/PropLodState.h"
 #include "assimp_importer.h"
 #include "Gates/gate.h"
 #include <filesystem>
@@ -36,12 +37,14 @@ void GVAppearance::updateRenderShape()
 		renderLOD = -1;
 		return;
 	}
-	int lod = 0;
+	uint8_t lod = static_cast<uint8_t>(renderLOD < 0 ? 0 : renderLOD);
 	glm::vec3 translation;
 	mc2ToRender(translation, position);
 	const float eyeDistance = eye->usePerspective ? glm::length(translation - glm::vec3(eye->getCameraOrigin())) : 0.0f;
-	for (int i = 1; i < 3; ++i)
-		if (appearType->renderLods[i] && eyeDistance > appearType->renderLodDistance[i]) lod = i;
+	size_t lodCount = 1;
+	while (lodCount < 3 && appearType->renderLods[lodCount]) ++lodCount;
+	if (lod >= lodCount) lod = static_cast<uint8_t>(lodCount - 1);
+	propLodAdvance(lod, eyeDistance, std::span<const float>(appearType->renderLodDistance, lodCount), 0.08f);
 	const auto* override = ModelOverrideRegistry::instance().resolve("vehicle", appearType->name);
 	TG_TypeMultiShape* variantType = nullptr;
 	bool newVariant = false;

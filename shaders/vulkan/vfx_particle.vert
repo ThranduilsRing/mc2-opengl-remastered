@@ -150,12 +150,15 @@ void main() {
     // Beam heads and additive flares sit on the surface they hit and would fail the depth test there, so lift them
     // toward the camera. Smoke, dust and alpha sprites keep true depth. The lift never crosses the near plane.
     bool pulled = ((p.kind_flags & 1u) != 0u) || (g.blendMode == ADDITIVE_ONE_ONE);
+    float liftedDepth = 0.0;
     if (pulled) {
         vec3  toCamera = normalize(cross(U.camRight.xyz, U.camUp.xyz));
         float viewW    = (U.worldToClipGL * vec4(glCenter, 1.0)).w;
         float nearD    = U.worldToClipGL[3][2] / (U.worldToClipGL[2][2] - 1.0);
         float room     = clamp(viewW - max(nearD, 0.0) * 1.05 - 0.01, 0.0, 0.5 * max(viewW, 0.0));
-        glCenter      -= toCamera * min(4.0 * max(sX, sY), room);
+        vec4 lifted = U.worldToClipGL * vec4(glCenter - toCamera * min(4.0 * max(sX, sY), room), 1.0);
+        // Depth-only clearance: billboard corners retain authored projection.
+        liftedDepth = lifted.z / lifted.w;
     }
     vec3 worldPos    = glCenter
                      + U.camRight.xyz * corner.x
@@ -163,6 +166,7 @@ void main() {
 
     v_worldPos = worldPos;
     gl_Position = U.worldToClipGL * vec4(worldPos, 1.0);
+    if (pulled) gl_Position.z = liftedDepth * gl_Position.w;
 
     vec2 frameOffset = vec2(0.0);
     if (g.atlasColumns > 1u) {

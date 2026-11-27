@@ -87,6 +87,7 @@ layout(location = 0) in vec2 vUv;
 layout(location = 1) in vec3 vFrontNormalStuff;
 layout(location = 18) in vec3 vBackNormalStuff;
 layout(location = 19) in vec3 vBackArgb;
+flat layout(location = 20) in float vLodBlend;
 #define vNormalStuff ((kTwoSided == 0 || gl_FrontFacing) ? vFrontNormalStuff : vBackNormalStuff)
 #define vArgb ((kTwoSided == 0 || gl_FrontFacing) ? vFrontArgb : vBackArgb)
 flat layout(location = 2) in int  vLayer;
@@ -187,6 +188,12 @@ float treeVisibility(vec3 N) {
     return visibility;
 }
 void main() {
+    if (abs(vLodBlend) >= 2.0) {
+        vec2 key = floor(vWorldPos.xy * 4.0);
+        float rank = fract(52.9829189 * fract(dot(key, vec2(0.06711056, 0.00583715))));
+        float blend = abs(vLodBlend) - 2.0;
+        if (vLodBlend > 0.0 ? rank >= blend : rank < blend) discard;
+    }
     if (kPlanarReflection != 0 && vWorldPos.z < uT.shorelineWaterElev) discard;
     vec3 rgb;
     vec3 materialAlbedo = vec3(0);

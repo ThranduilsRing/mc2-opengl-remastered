@@ -493,7 +493,7 @@ void main() {
                 (kPlanarReflection == 0 || kReflectCutDetail == 0) && uT.detailStrength != 0.0)
                 dN = mv_authoredDetailNormal(v_worldPos.xy, detailUvDx, detailUvDy);
             if (!TS_authoredMaterialsOnly && (kPlanarReflection == 0 || kReflectCutDetail == 0) && TS_detailReady != 0 && uT.detailStrength != 0.0) {
-                if (mv_needDetail(baseN, lightDir, detailW, materialSnow, v_worldPos, normalLightFloor)) {
+                if (uT.groundAoMaterial > 0.0 || mv_needDetail(baseN, lightDir, detailW, materialSnow, v_worldPos, normalLightFloor)) {
                     // Under-forest ground: the tree-canopy density mask (splatted from tree placements at mission load), same atlas UV as
                     // the macro colour. Needs the 7th array layer.
                     mv_forestMix = (TS_colormapReady != 0 && textureSize(u_matNormalArray, 0).z > MAT_LAYER_FOREST)
@@ -577,7 +577,7 @@ void main() {
         if (uT.groundAoShape > 0.0 || uT.groundAoMaterial > 0.0) {
             vec2 aoCell = vec2(v_worldPos.x + uT.halfMap, uT.halfMap - v_worldPos.y) / 128.0;
             float aoShape = textureLod(u_macroGradient, (aoCell + 1.5) / float(uT.mapSide + 2), 0.0).b;
-            float aoMat = 1.0 - 0.45 * clamp(length(dbgDN.xy * uT.detailStrength) * 1.2, 0.0, 1.0);
+            float aoMat = 1.0 - 0.45 * clamp(length(mv_cavityNormal.xy * uT.detailStrength) * 1.2, 0.0, 1.0);
             aoMat = mix(aoMat, mix(aoMat, mv_srcAoSum / max(mv_srcAoW, 1e-4), clamp(mv_srcAoW, 0.0, 1.0)), uT.groundAoSource);
             float aoAll = clamp(mix(1.0, aoShape, uT.groundAoShape), 0.0, 1.0) * clamp(mix(1.0, aoMat, uT.groundAoMaterial), 0.0, 1.0);
             g_groundAoMul = mix(1.0, aoAll, 1.0 - cliffSun * shadow);
@@ -601,7 +601,7 @@ void main() {
             // the Beer-Lambert below turns it jade; gentle slopes only, so cliffs and quays keep their own colour.
             // Close up (ref 6) a dark wet strip follows the swash, and a lacy white swash sheet runs up the sand.
             // Night (scene light below 1, day exactly 1): a gentle cool-grey sand strip, no wet strip, a dim swash.
-            float beachFw = length(fwidth(v_worldPos.xy)), beachNight = clamp((1.0 - uEnv.sceneLight.x) * 2.5, 0.0, 1.0);
+            float beachNight = clamp((1.0 - uEnv.sceneLight.x) * 2.5, 0.0, 1.0);
             if (uT.shorelineOn == 2 && horizDist < 110.0 && aboveWater > -40.0) {
                 float lumR = clamp(dot(lit, vec3(0.299, 0.587, 0.114)) / max(dot(baseColor, vec3(0.299, 0.587, 0.114)), 0.04), 0.0, 2.5);
                 float mask = smoothstep(0.93, 0.975, nzc) * (cementHit ? 0.0 : 1.0) * (1.0 - F3pc) * (1.0 - materialSnow);
@@ -609,7 +609,7 @@ void main() {
                             * (1.0 - smoothstep(4.0, 40.0, -aboveWater)) * mask;
                 lit = mix(lit, mix(vec3(0.97, 0.92, 0.79), vec3(0.74, 0.77, 0.80), beachNight) * lumR, beach * mix(0.8, 0.4, beachNight));
                 mask *= 1.0 - beachNight;
-                float above = smoothstep(0.0, 0.3, aboveWater) * mask, near = 1.0 - smoothstep(1.5, 5.0, beachFw);
+                float above = smoothstep(0.0, 0.3, aboveWater) * mask, near = 1.0;
                 float run = mix(8.0, 24.0, near) + 7.0 * sin(uT.shorelineTime * 1.05 + dot(v_worldPos.xy, vec2(0.003, 0.002)) - 0.9);
                 float lace = fbm(v_worldPos.xy * 0.15 + uT.shorelineTime * vec2(0.12, 0.05), 2);
                 lit *= 1.0 - mix(0.15, 0.4, near) * above * (1.0 - smoothstep(run, run + 10.0, horizDist + fbm(v_worldPos.xy * 0.04, 2) * 5.0));
@@ -683,8 +683,9 @@ void main() {
         float wd = uT.shorelineWaterElev - v_worldPos.z;
         vec2 cp = v_worldPos.xy * 0.03;
         float caustic = pow(max(0.0, sin(cp.x * 7.0 + sin(cp.y * 4.0 + uT.shorelineTime) * 1.3)
-                                   * sin(cp.y * 6.0 + cos(cp.x * 4.0 - uT.shorelineTime) * 1.2)), 9.0)
-                      * (1.0 - smoothstep(0.6, 2.0, causticFw));
+                                   * sin(cp.y * 6.0 + cos(cp.x * 4.0 - uT.shorelineTime) * 1.2)), 9.0);
+        // Spatial quadrature of this sine-product power: mean 0.0335 (512x512, 4 phases).
+        caustic = mix(caustic, 0.0335, smoothstep(0.6, 2.0, causticFw));
         float reef = smoothstep(0.1, 0.4, fbm(v_worldPos.xy / 380.0 + 7.3, 3)) * smoothstep(3.0, 9.0, wd) * (1.0 - smoothstep(45.0, 90.0, wd));
         // Night: little light reaches the seabed and back; no caustics, a dim, mostly desaturated cool teal-green.
         float seaNight = clamp((1.0 - uEnv.sceneLight.x) * 2.5, 0.0, 1.0);

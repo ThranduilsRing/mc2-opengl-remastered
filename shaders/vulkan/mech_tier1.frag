@@ -130,10 +130,6 @@ void main() {
         rgb = tex_color.rgb * vLitColor;
         rgb += vHighlight.rgb * vHighlight.a;
         if (uFrame.miscI.y >= 2 && vLegacyVehicle == 0u) {
-            // Mild sky-tinted fresnel rim so silhouettes separate from terrain.
-            vec3 Vr = normalize(uFrame.cameraWorldPos.xyz - vWorldPos);
-            float rim = pow(1.0 - clamp(dot(Nshade, Vr), 0.0, 1.0), 3.0) * (0.5 + 0.5 * Nshade.z);   // z = up in the MC2 world frame
-            rgb += tex_color.rgb * uEnv.hemiSky.rgb * (0.35 * rim);
         }
         if ((vImportedMech & 2u) != 0u)
             rgb *= surface.ao;
