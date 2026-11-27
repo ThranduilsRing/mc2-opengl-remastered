@@ -221,10 +221,12 @@ void Mission::updateMissionTest(bool report) {
         // Unmarked unit objectives have no navigation marker (often 0,0).
         if (auto* specific = dynamic_cast<CSpecificUnitObjectiveCondition*>(condition)) {
             if (!objectiveTarget && (condition->Species() == DESTROY_SPECIFIC_ENEMY_UNIT
+                || condition->Species() == CAPTURE_OR_DESTROY_SPECIFIC_ENEMY_UNIT
+                || condition->Species() == DEAD_OR_FLED_SPECIFIC_ENEMY_UNIT
                 || condition->Species() == CAPTURE_UNIT)) {
                 objectiveTarget = ObjectManager->getByWatchID(specific->UnitWatchID());
                 captureObjective = condition->Species() == CAPTURE_UNIT;
-                if (objectiveTarget && (captureObjective || !destination->DisplayMarker()))
+                if (objectiveTarget)
                     location = objectiveTarget->getPosition();
             }
             continue;
@@ -237,7 +239,8 @@ void Mission::updateMissionTest(bool report) {
             || condition->Species() == MOVE_ALL_SURVIVING_UNITS_TO_AREA
             || condition->Species() == MOVE_ALL_UNITS_TO_AREA;
         captureObjective = condition->Species() == CAPTURE_STRUCTURE;
-        if (condition->Species() == DESTROY_SPECIFIC_STRUCTURE || captureObjective) {
+        if (condition->Species() == DESTROY_SPECIFIC_STRUCTURE
+            || condition->Species() == CAPTURE_OR_DESTROY_SPECIFIC_STRUCTURE || captureObjective) {
             for (long i = 0; i < ObjectManager->getNumBuildings(); ++i) {
                 auto* building = ObjectManager->getBuilding(i);
                 if (building && building->getExists() && !building->isDestroyed()
@@ -467,7 +470,7 @@ void Mission::updateMissionTest(bool report) {
         const long capture = captureObjective && objectiveTarget
             && intent.goal == mc2::player::Goal::Move && intent.posture == mc2::player::Posture::Advance
             && !mover->isRefit() && !mover->isRecover() && !mover->isGuardTower()
-            && !recovering && glm::distance(mover->getPosition(), location) < 400 ? objectiveTarget->getWatchID() : 0;
+            && !recovering ? objectiveTarget->getWatchID() : 0;
         const long result = applyPlayerIntent(*this, intent, capture);
         if (result) ++rejected;
         else ++issued;

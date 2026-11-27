@@ -179,6 +179,7 @@ struct MechBrainRuntime {
     float playerFightSince = -1, playerBypassUntil = 0, playerRecoverUntil = 0;
     float playerRegroupUntil = 0;
     unsigned playerRecoveries = 0;
+    glm::vec3 playerProgressPosition{};
     unsigned long playerHealthTarget = 0;
     float playerTargetHealth = 0;
     // BRAIN-FULL-1: the complete declarative Brain{} state (populated from parseMissionFitBrains,

@@ -1362,13 +1362,17 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         runtime->playerObjective = objective;
         runtime->playerBestDistance = distanceToGoal;
         runtime->playerProgressTime = now;
+        runtime->playerProgressPosition = position;
         runtime->playerFightSince = -1;
         runtime->playerRecoverUntil = runtime->playerBypassUntil = 0;
         runtime->playerRecoveries = 0;
     }
-    if (distanceToGoal < runtime->playerBestDistance - 40) {
+    // A native route can move away from the goal while detouring around terrain.
+    if (distanceToGoal < runtime->playerBestDistance - 40
+        || glm::distance(position, runtime->playerProgressPosition) > 40) {
         runtime->playerBestDistance = distanceToGoal;
         runtime->playerProgressTime = now;
+        runtime->playerProgressPosition = position;
     }
 
     float health = 0, maximum = 0, armor = 0, maxArmor = 0;
@@ -1587,7 +1591,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
     }
     if (now < runtime->playerRecoverUntil) {
         glm::vec3 scout = objective;
-        if (runtime->playerRecoveries > 2) {
+        if (runtime->playerRecoveries > 2 && !squad.extracting) {
             unsigned marker = 0;
             for (auto* candidate : Team::home->objectives) {
                 if (!candidate->DisplayMarker() || candidate->IsHiddenTrigger()
@@ -1620,9 +1624,8 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         auto* object = ObjectManager->getByWatchID(objectiveTarget);
         if (object && !object->isMover() && object->getExists() && !object->isDestroyed()) target = object;
     }
-    if (target && unit->distanceFrom(target->getPosition()) > sideFightRange && !unit->isGuardTower()) {
-        intent.location = target->getPosition();
-    } else if (target) {
+    // Native pursuit chooses a reachable firing position, including for blocked building cells.
+    if (target) {
         intent.goal = mc2::player::Goal::Attack;
         intent.targetWatchId = target->getWatchID();
         intent.posture = mc2::player::Posture::Engage;
