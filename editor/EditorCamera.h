@@ -400,10 +400,9 @@ public:
 
 	virtual long update (void)
 	{
-		float anglePercent = (projectionAngle - MIN_PERSPECTIVE) / (MAX_PERSPECTIVE - MIN_PERSPECTIVE);
-		float testMax = Camera::AltitudeMaximumLo + ((Camera::AltitudeMaximumHi - Camera::AltitudeMaximumLo) * anglePercent);
+		float testMax = altitudeMaxForAngle(projectionAngle);
 
-		float altitudePercent = (cameraAltitude - AltitudeMinimum) / (testMax - AltitudeMinimum);
+		float altitudePercent = std::clamp((cameraAltitude - AltitudeMinimum) / std::max(testMax - AltitudeMinimum, 1.0f), 0.0f, 1.0f);
 		Camera::NearPlaneDistance = MinNearPlane + ((MaxNearPlane - MinNearPlane) * altitudePercent);
 		Camera::FarPlaneDistance = MinFarPlane + ((MaxFarPlane - MinFarPlane) * altitudePercent);
 	

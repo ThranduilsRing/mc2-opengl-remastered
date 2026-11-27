@@ -896,6 +896,7 @@ void TerrainQuad::drawMine (void)
 					thePoint.z = land->getTerrainElevation(thePoint);
 					// [PROJECTZ:ScreenXYOracle id=mine_cell_corner3]
 					eye->projectForScreenXY(thePoint,pos3);
+					if (pos1.w<=1e-4f || pos2.w<=1e-4f || pos3.w<=1e-4f || pos4.w<=1e-4f) continue;
 
 					//------------------------------------
 					// Replace with New RIA code

@@ -1,3 +1,4 @@
+#include "hitch_stats.h"
 // VK water island: the HDRI environment and shore height / mask texture imports.
 // Declared in the class headers; shared names in vulkan_water_island_internal.h.
 #include "vulkan_water_island_internal.h"
@@ -16,6 +17,7 @@
 namespace vk_water_detail {
 
 bool prepare_shore_fft(WaterIsland* s, uint32_t par, VkBuffer ring) {
+    ZoneScopedN("VKIsl.Water.prepare_shore_fft"); MC2_HITCH_CAUSE("VKIsl.Water.prepare_shore_fft");
     if (!s->fftCompute) {
         if (!s->fftCompute.create(s->device, spv_dir()+"water_fft.comp.spv",
                 {{0,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},{1,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
@@ -57,6 +59,7 @@ void record_shore_fft(WaterIsland* s, VkCommandBuffer cb, uint32_t par, uint32_t
 }
 
 bool ensure_shore_surface(WaterIsland* s) {
+    ZoneScopedN("VKIsl.Water.ensure_shore_surface"); MC2_HITCH_CAUSE("VKIsl.Water.ensure_shore_surface");
     const auto* fields = gos_TerrainFieldStore();
     if (!fields || fields->visualSide() < 2) return true;
     const int side = fields->visualSide();
@@ -216,6 +219,7 @@ bool prepare_wave_packets(WaterIsland* s, uint32_t par) {
 }
 
 bool init_reflection(WaterIsland* s) {
+    ZoneScopedN("VKIsl.Water.init_reflection"); MC2_HITCH_CAUSE("VKIsl.Water.init_reflection");
     VkImageCreateInfo image{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
     image.imageType=VK_IMAGE_TYPE_2D; image.format=VK_FORMAT_R16G16B16A16_SFLOAT;
     // Full resolution only while the live planar reflection (High) renders into it; every other tier keeps a 1x1 sampler stand-in.

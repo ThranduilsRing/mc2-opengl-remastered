@@ -27,7 +27,7 @@ inline int objectMapSize() { return mc2shadow::shadowQuality().mapSide; }
 inline float maskTarget() { return mc2shadow::shadowQuality().maskTarget; }
 inline int maskCap() { return mc2shadow::shadowQuality().maskCap; }
 constexpr VkDeviceSize kSlice = 256;              // >= any device's minUniformBufferOffsetAlignment
-constexpr uint32_t kQueriesPerTile = 5;
+constexpr uint32_t kQueriesPerTile = 6;           // stage boundaries 0..4, plus clear completion at 5
 // Waiting this many frames for a late alpha-ON array, the bake goes ahead with those casters opaque (a solid canopy shadow) and says so.
 constexpr uint32_t kMaxAlphaWaitFrames = 600;
 

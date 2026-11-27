@@ -46,6 +46,9 @@
 #include<stuff/stuff.hpp>
 #include "math/mc2_math.h"
 #include<float.h>   // FLT_MAX for trueSignedRhw sentinel
+#include "camera_frustum_math.h"
+extern float FOVMin;
+extern float FOVMax;
 #include<cmath>     // isfinite for MC2_PROJECTZ_FINITE_CHECK invariant
 #include<cstdlib>
 
@@ -1023,6 +1026,9 @@ class Camera
 		// mode validates pre-flip. Default: Legacy (conservative).
 		// Env MC2_SCREENXY_PREDICATE_MODE=Modern + MC2_PROJECTZ_BYPASS_MODE=Compare
 		// logs pixel-delta events when bypass screen.xy disagrees >1px.
+		bool projectSegmentForScreen(const glm::vec3& a, const glm::vec3& b,
+			Stuff::Vector4D& outA, Stuff::Vector4D& outB);
+
 		inline bool projectForScreenXY (glm::vec3& point,
 		                                Stuff::Vector4D& screen) {
 			ProjectZBypassMode bypassMode = projectZBypassMode();
@@ -1690,9 +1696,25 @@ class Camera
 			forceMovieEnd = true;
 		}
 		
+		static float altitudeMaxForAngle(float angle)
+		{
+			return camera_frustum_math::altitudeMaxForAngle(angle, MIN_PERSPECTIVE, MAX_PERSPECTIVE, AltitudeMaximumLo, AltitudeMaximumHi);
+		}
+
+		bool sphereInViewCone(float cosine, float radius, float distance) const
+		{
+			return camera_frustum_math::sphereInCone(cosine, cosHalfFOV, radius, distance);
+		}
+
+		bool sphereInFrustum(const glm::vec3& center, float radius) const
+		{
+			const float p[3]={center.x,center.y,center.z};
+			return camera_frustum_math::sphereInFrustum(cachedFrustumPlanes_,p,radius);
+		}
+
 		void setFieldOfView (float fov)
 		{
-			camera_fov = fov;
+			camera_fov = std::clamp(fov, FOVMin, FOVMax);
 		}
 
 		float getFieldOfView (void)
@@ -1702,7 +1724,7 @@ class Camera
 		
 		void setFieldOfViewGoal (float fov, float time)
 		{
-			goalFOV = fov;
+			goalFOV = std::clamp(fov, FOVMin, FOVMax);
 			goalFOVTime = time;
 		}
 		
@@ -1752,9 +1774,10 @@ class Camera
 		
 			cameraAltitude = rot.z;
 			cameraAltitude = std::max(cameraAltitude, AltitudeMinimum);
+			cameraAltitudeDesired = cameraAltitude;
+			altitudeVelocity = 0.0f;
 					
-			float anglePercent = (projectionAngle - MIN_PERSPECTIVE) / (MAX_PERSPECTIVE - MIN_PERSPECTIVE);
-			float testMax = Camera::AltitudeMaximumLo + ((Camera::AltitudeMaximumHi - Camera::AltitudeMaximumLo) * anglePercent);
+			float testMax = altitudeMaxForAngle(projectionAngle);
 		
 			newScaleFactor = 1.0f - ((cameraAltitude - AltitudeMinimum) / testMax);
 		}

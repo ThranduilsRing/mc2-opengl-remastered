@@ -210,17 +210,22 @@ bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h) {
     {   // pipelines
         const char* vn[2] = {"terrain_overlay_tier1.vert.spv", "terrain_decal_tier1.vert.spv"};
         const char* fn[2] = {"terrain_overlay_tier1.frag.spv", "terrain_decal_tier1.frag.spv"};
+        const char* sunFn[2] = {"terrain_overlay_tier1_rt.frag.spv", "terrain_decal_tier1_rt.frag.spv"};
         for (int k = 0; k < 2; ++k) {
             o->vert[k] = load_spv(s->device, spv_dir() + vn[k]);
             o->frag[k] = load_spv(s->device, spv_dir() + fn[k]);
             if (!o->vert[k] || !o->frag[k]) return false;
+            if (s->sunSets[0].setLayout()) {
+                o->sunFrag[k] = load_spv(s->device, spv_dir() + sunFn[k]);
+                if (!o->sunFrag[k]) return false;
+            }
         }
-        VkDescriptorSetLayout sets[2] = { s->dsl.get(), o->texDsl.get() };
+        VkDescriptorSetLayout sets[3] = { s->dsl.get(), o->texDsl.get(), s->sunSets[0].setLayout() };
         VkPushConstantRange pcr{};
         pcr.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT; pcr.offset = 0; pcr.size = sizeof(OvlPC);
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        plci.setLayoutCount = 2; plci.pSetLayouts = sets;
+        plci.setLayoutCount = sets[2] ? 3u : 2u; plci.pSetLayouts = sets;
         plci.pushConstantRangeCount = 1; plci.pPushConstantRanges = &pcr;
         if (!mc2vk::create(o->playout, s->device, [&](auto* h) { return vkCreatePipelineLayout(s->device, &plci, nullptr, h); })) return false;
 
@@ -292,6 +297,10 @@ bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h) {
             gp.pNext = &prci;
             gp.layout = o->playout.get(); gp.renderPass = VK_NULL_HANDLE; gp.subpass = 0;
             if (!mc2vk::create(o->pipe[k], s->device, [&](auto* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) return false;
+            if (o->sunFrag[k]) {
+                stages[1].module = o->sunFrag[k].get();
+                if (!mc2vk::create(o->sunPipe[k], s->device, [&](auto* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) return false;
+            }
             mc2vk::nameObjectAt(s->device, o->pipe[k].get(), "terrain.overlayPipe", static_cast<int>(k));
         }
     }
@@ -499,6 +508,8 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     const uint32_t dynOffsets[4] = {static_cast<uint32_t>(uboSpan.offset), static_cast<uint32_t>(lpSpans[0].offset),
                                     static_cast<uint32_t>(lpSpans[1].offset), static_cast<uint32_t>(lpSpans[2].offset)};
     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, o->playout.get(), 0, 1, &s->set[par], 4, dynOffsets);
+    const bool useSun = s->sunSet && o->sunPipe[0] && o->sunPipe[1];
+    if (useSun) vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, o->playout.get(), 2, 1, &s->sunSet, 0, nullptr);
 
     int boundKind = -1, boundSource = -1; VkBuffer boundBuffer = VK_NULL_HANDLE; VkDescriptorSet boundTex = VK_NULL_HANDLE;
     unsigned long drawn[2] = {0, 0}, verts = 0;
@@ -530,7 +541,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
             boundSource = sourceKind;
         }
         const int isStat = (it.kind & 4u) ? 1 : 0;
-        if (kind != boundKind) { mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, o->pipe[kind].get()); boundKind = kind; }
+        if (kind != boundKind) { mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, useSun ? o->sunPipe[kind].get() : o->pipe[kind].get()); boundKind = kind; }
         VkBuffer vb = isStat ? o->statics[sourceKind].buffer.get() : vtxSpan.buffer;
         if (vb != boundBuffer) {
             VkDeviceSize vbOff = isStat ? 0 : vtxSpan.offset;

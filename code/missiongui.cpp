@@ -574,6 +574,7 @@ void MissionInterfaceManager::render (void)
 			Stuff::Vector4D screenPos;
 			// [PROJECTZ:ScreenXYOracle id=gui_drag_box_origin]
 			eye->projectForScreenXY( dragStart, screenPos );
+			if (screenPos.w > 1e-4f) {
 
 			vertices[0].x 		= screenPos.x;
 			vertices[0].y 		= screenPos.y;
@@ -629,6 +630,7 @@ void MissionInterfaceManager::render (void)
 			gos_DrawLines(&vertices[2],2);
 			gos_DrawLines(&vertices[3],2);
 			gos_SetRenderState( gos_State_IsHUD, 0 );
+			}
 		}
 
 		if ( userInput->getKeyDown( WAYPOINT_KEY ) || controlGui.getMines() )

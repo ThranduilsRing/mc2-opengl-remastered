@@ -112,10 +112,10 @@ def build_env(extra: dict, script: Path) -> dict:
         tags += ",FIRST60"
     env["MC2_DIAG_TAGS"] = tags
     env["MC2_INPUT_SCRIPT"] = str(script)
+    env.update(extra)
     # The scripts wait in frames, tuned at menu 90 / mission 165 FPS; missions are uncapped by default now.
     if "FrameRateLimit=" not in env.get("MC2_OPTIONS_OVERRIDE", ""):
         env["MC2_OPTIONS_OVERRIDE"] = ",".join(filter(None, (env.get("MC2_OPTIONS_OVERRIDE", ""), "FrameRateLimit=4")))
-    env.update(extra)
     return env
 
 

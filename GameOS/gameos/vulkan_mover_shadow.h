@@ -48,7 +48,7 @@ private:
     std::vector<uint32_t> boneOffsets_;
     mc2shadow::MoverShadowFrame frame_{};
     uint64_t heightVersion_ = ~0ull;
-    float ground_ = 0, extent_ = 0, mechRadius_ = 0;
+    float ground_ = 0, heightMax_ = 0, radiusBand_ = 0, extent_ = 0, mechRadius_ = 0;
     uint32_t mechGeneration_ = ~0u, actorCount_ = 0;
     // The engine frame ticket covers ALL receivers, unlike the producer's fence.
     FrameAlloc active_{};

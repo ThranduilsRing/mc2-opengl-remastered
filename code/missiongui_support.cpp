@@ -173,7 +173,7 @@ void updateMissionSupportPreloads()
 bool MissionInterfaceManager::requestPlayerSupport(int command, glm::vec3 position, MoverPtr salvage)
 {
     if (mc2::net::active()) return false;
-    if (!mc2::gate::get<"MC2_PLAY_MISSION">() || !mc2::brainpolicy::techBrain()
+    if (!mc2::gate::get<"MC2_PLAY_MISSION">()
         || MPlayer || !Commander::home || !Team::home || !LogisticsData::instance) return false;
     auto* logistics = LogisticsData::instance;
     const bool allowed = command == ControlGui::LARGE_AIRSTRIKE ? logistics->canHaveAirStrike()

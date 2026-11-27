@@ -22,7 +22,7 @@
 //   Header-only, no GL includes, no Vulkan includes, no game-side includes — mirrors
 //   vulkan_layout_chain.h discipline exactly.
 //
-// Canonical order: ScreenShadow -> CloudShadow -> Shoreline -> EdgeFog -> OobFog -> Composite.
+// Canonical order: ScreenShadow -> CloudShadow -> Shoreline -> ValleyFog -> EdgeFog -> OobFog -> Composite.
 
 #include <algorithm>
 #include <cstdint>
@@ -38,22 +38,24 @@ enum class PostprocessSubPassId : uint8_t {
     ScreenShadow = 0,   // runScreenShadow  — post-process shadow over terrain/objects/overlays
     CloudShadow,        // runCloudShadow   — procedural multiplicative cloud darkening
     Shoreline,          // runShoreline     — shoreline foam brighten on water-adjacent terrain
+    ValleyFog,          // runValleyFog     — low-lying fog banks filling the low ground (ground-fog-4), before the distance fogs
     EdgeFog,            // runEdgeFog       — map-boundary fog fade (fused w/ OobFog when subgraph on)
     OobFog,             // runFogOob        — out-of-bounds far-plane fog (executor island "FogOob")
     Composite,          // backbuffer bind + pillarbox composite output
 };
 
 struct FogPassSelection {
-    bool edge, oob;
+    bool valley, edge, oob;
     template<class Draw> unsigned record(Draw draw) const {
         unsigned count=0;
+        if (valley) { draw(PostprocessSubPassId::ValleyFog); ++count; }
         if (edge) { draw(PostprocessSubPassId::EdgeFog); ++count; }
         if (oob) { draw(PostprocessSubPassId::OobFog); ++count; }
         return count;
     }
 };
-constexpr FogPassSelection selectFogPasses(bool terrain, bool edge, bool oob, float halfExtent) {
-    return {terrain && edge && halfExtent>0.0f, terrain && oob};
+constexpr FogPassSelection selectFogPasses(bool terrain, bool edge, bool oob, float halfExtent, bool valley = false) {
+    return {terrain && valley, terrain && edge && halfExtent>0.0f, terrain && oob};
 }
 
 // Canonical execution order — the single source of truth for "canonical index".
@@ -61,6 +63,7 @@ static constexpr PostprocessSubPassId kPostprocessSubPassOrder[] = {
     PostprocessSubPassId::ScreenShadow,
     PostprocessSubPassId::CloudShadow,
     PostprocessSubPassId::Shoreline,
+    PostprocessSubPassId::ValleyFog,
     PostprocessSubPassId::EdgeFog,
     PostprocessSubPassId::OobFog,
     PostprocessSubPassId::Composite,
@@ -74,6 +77,7 @@ inline const char* postprocessSubPassName(PostprocessSubPassId id) {
         case PostprocessSubPassId::ScreenShadow: return "ScreenShadow";
         case PostprocessSubPassId::CloudShadow:  return "CloudShadow";
         case PostprocessSubPassId::Shoreline:    return "Shoreline";
+        case PostprocessSubPassId::ValleyFog:    return "ValleyFog";
         case PostprocessSubPassId::EdgeFog:      return "EdgeFog";
         case PostprocessSubPassId::OobFog:       return "OobFog";
         case PostprocessSubPassId::Composite:    return "Composite";
@@ -137,9 +141,9 @@ static_assert(vkSubgraphIsContiguous(kShippedPostprocessSubgraph,
               "experiment (scheduler/oracle + parity proof), not a subgraph expansion.");
 
 // Order-array well-formedness (pure constexpr data -> static_assert).
-static_assert(kPostprocessSubPassOrderCount == 6,
-              "kPostprocessSubPassOrder row count changed; re-confirm against endScene() "
-              "before adjusting (ScreenShadow..Composite).");
+static_assert(kPostprocessSubPassOrderCount == 7,
+               "kPostprocessSubPassOrder row count changed; re-confirm against endScene() "
+               "before adjusting (ScreenShadow..Composite).");
 
 // The canonical index of every enumerator must equal its position (enum value == order idx).
 constexpr bool postprocessSubPassOrderMatchesEnum() {

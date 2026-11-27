@@ -28,6 +28,10 @@ inline bool isCrossModKey(std::string_view key) { return key.find("::") != std::
 // A campaign save's General block records the mounted layers as ActiveMod / ModDeps ("-" = none, an empty quoted string reads back as absent).
 inline std::string saveModField(std::string_view value) { return value.empty() ? std::string("-") : std::string(value); }
 inline std::string loadModField(std::string_view value) { return value == "-" ? std::string() : std::string(value); }
+// The mod a save loads under: its recorded ActiveMod; a save from before the layer keys ran under the mounted mod, so only its packs can differ.
+inline std::string saveLoadMod(bool recorded, std::string_view modField, std::string_view activeMod) {
+    return recorded ? loadModField(modField) : std::string(activeMod);
+}
 std::string activeModId();                           // the mounted campaign mod ("" = stock)
 std::string activeModDeps();                           // the mounted add-on layers (MC2_MOD_DEPS)
 // Picking a key from otherModCampaigns() (or "::campaign" = stock with no mod layer): save the choice, relaunch the game into it.

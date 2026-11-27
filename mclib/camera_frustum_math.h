@@ -7,12 +7,55 @@
 // adapting its Stuff::Vector3D / __stdcall signatures at the call boundary, so
 // every existing call site is unchanged and behavior is byte-identical.
 //
-// Firewall: header-only, no includes, no globals.
+// Header-only geometry; no game state.
 
 #ifndef MC2_CAMERA_FRUSTUM_MATH_H
 #define MC2_CAMERA_FRUSTUM_MATH_H
+#include <algorithm>
+#include <cmath>
 
 namespace camera_frustum_math {
+
+inline float coneCosine(float horizontalRadians, float heightToWidth) {
+    const float t = std::tan(horizontalRadians * 0.5f);
+    return std::cos(std::atan(t * std::sqrt(1.0f + heightToWidth * heightToWidth)) + 0.001f);
+}
+
+inline bool sphereInCone(float cosine, float halfCosine, float radius, float distance) {
+    if (distance <= radius) return true;
+    const float half = std::acos(std::clamp(halfCosine, -1.0f, 1.0f));
+    const float angle = half + std::asin(std::clamp(radius / distance, 0.0f, 1.0f));
+    return angle >= 3.14159265f || cosine >= std::cos(angle);
+}
+
+inline float altitudeMaxForAngle(float angle, float minAngle, float maxAngle, float lo, float hi) {
+    const float t = maxAngle > minAngle ? (angle - minAngle) / (maxAngle - minAngle) : 0.0f;
+    return lo + (hi - lo) * t;
+}
+
+inline bool sphereInFrustum(const float planes[6][4], const float center[3], float radius) {
+    for (int p=0; p<6; ++p) {
+        const auto& n=planes[p];
+        const float length=std::sqrt(n[0]*n[0]+n[1]*n[1]+n[2]*n[2]);
+        if(n[0]*center[0]+n[1]*center[1]+n[2]*center[2]+n[3] < -radius*length) return false;
+    }
+    return true;
+}
+
+// Reverse-Z ZERO_TO_ONE near plane: w-z >= 0, before perspective division.
+template<class Clip> inline bool clipSegmentNear(Clip& a, Clip& b) {
+    for(int c=0;c<4;++c) if(!std::isfinite(a[c]) || !std::isfinite(b[c])) return false;
+    const float da=a[3]-a[2], db=b[3]-b[2];
+    if(da<0 && db<0) return false;
+    if((da<0)!=(db<0)) {
+        const float t=da/(da-db);
+        Clip hit=a;
+        for(int c=0;c<4;++c) hit[c]=a[c]+t*(b[c]-a[c]);
+        hit[2]=hit[3]; // Keep a rounded intersection exactly on the near plane.
+        if(da<0) a=hit; else b=hit;
+    }
+    return a[3]>1e-4f && b[3]>1e-4f;
+}
 
 // Replica of mclib/mathfunc.h sign2: -1 for negative, 0 otherwise (NOT +1).
 inline float sign2f(float f) { return (f < 0.0f) ? -1.0f : 0.0f; }
@@ -36,7 +79,7 @@ inline bool aabbInFrustum(const float planes[6][4],
 }
 
 // [LOW-CAMERA-TERRAIN-CULL-1 / FIX-2] Variant that skips one plane index
-// (e.g. the near plane, index 4 in the {left,right,bottom,top,near,far} order).
+// (e.g. the near plane, index 5 in the {left,right,bottom,top,far,near} order).
 // Used by the terrain LOD-chunk cull so near terrain is not dropped at a low /
 // grazing camera pitch (the near plane sits at NearPlaneDistance=-400, clipping
 // terrain blocks within ~400 units of the eye). All other planes are tested

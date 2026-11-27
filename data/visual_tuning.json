@@ -35,7 +35,13 @@
     },
     "mc2_03": {
       "shadowSoftness": 1.0,
-      "staticPropIblStrength": 0.55
+      "staticPropIblStrength": 0.55,
+      "valleyFogThickness": 220,
+      "valleyFogSigma": 0.05,
+      "valleyFogCoverage": 0.45,
+      "valleyFogColorR": 0.86,
+      "valleyFogColorG": 0.90,
+      "valleyFogColorB": 0.98
     },
     "mc2_10": {
       "shadowSoftness": 1.2,

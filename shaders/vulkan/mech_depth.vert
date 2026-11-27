@@ -27,7 +27,7 @@ void main() {
     vec4 worldStuff=boneT*vec4(a_position,1.0);
     vec3 worldMC2=mc2ToRender(worldStuff.xyz);
     vec4 clip=uFrame.worldToClipGL*vec4(worldMC2,1.0);
-    clip.z+=uFrame.objectDepthBias*clip.w;
+    clip.z+=uFrame.objectDepthBias*clip.z;
     gl_Position=clip;
     vUv=a_uv;
 }

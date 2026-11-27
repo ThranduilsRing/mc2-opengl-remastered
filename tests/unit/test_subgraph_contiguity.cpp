@@ -13,30 +13,32 @@ using namespace RenderCore::vulkan;
 TEST_SUITE("SubgraphContiguity") {
 
 TEST_CASE("native fog records each independently enabled pass in canonical order") {
-    for (int edge=0;edge<2;++edge) for (int oob=0;oob<2;++oob) {
-        const auto fog=selectFogPasses(true,edge!=0,oob!=0,100.0f);
-        int edgeDraws=0,oobDraws=0;
+    for (int edge=0;edge<2;++edge) for (int oob=0;oob<2;++oob) for (int valley=0;valley<2;++valley) {
+        const auto fog=selectFogPasses(true,edge!=0,oob!=0,100.0f,valley!=0);
+        int edgeDraws=0,oobDraws=0,valleyDraws=0;
         const auto count=fog.record([&](PostprocessSubPassId pass) {
-            if (pass==PostprocessSubPassId::EdgeFog) { ++edgeDraws; CHECK(oobDraws==0); }
+            if (pass==PostprocessSubPassId::ValleyFog) { ++valleyDraws; CHECK(edgeDraws==0); CHECK(oobDraws==0); }
+            else if (pass==PostprocessSubPassId::EdgeFog) { ++edgeDraws; CHECK(oobDraws==0); }
             else { CHECK(pass==PostprocessSubPassId::OobFog); ++oobDraws; }
         });
-        CHECK(edgeDraws==edge); CHECK(oobDraws==oob); CHECK(count==unsigned(edge+oob));
+        CHECK(edgeDraws==edge); CHECK(oobDraws==oob); CHECK(valleyDraws==valley); CHECK(count==unsigned(edge+oob+valley));
     }
     const auto noExtent=selectFogPasses(true,true,true,0.0f);
-    CHECK_FALSE(noExtent.edge); CHECK(noExtent.oob);
+    CHECK_FALSE(noExtent.edge); CHECK_FALSE(noExtent.valley); CHECK(noExtent.oob);
     CHECK(noExtent.record([](PostprocessSubPassId pass) { CHECK(pass==PostprocessSubPassId::OobFog); })==1);
-    const auto menu=selectFogPasses(false,true,true,100.0f);
+    const auto menu=selectFogPasses(false,true,true,100.0f,true);
     CHECK(menu.record([](PostprocessSubPassId) { FAIL("menu must not draw fog"); })==0);
 }
 
 TEST_CASE("canonical order matches endScene() and the enum") {
-    CHECK(kPostprocessSubPassOrderCount == 6);
+    CHECK(kPostprocessSubPassOrderCount == 7);
     CHECK(postprocessSubPassOrderMatchesEnum());
     CHECK(kPostprocessSubPassOrder[0] == PostprocessSubPassId::ScreenShadow);
     CHECK(kPostprocessSubPassOrder[1] == PostprocessSubPassId::CloudShadow);
-    CHECK(kPostprocessSubPassOrder[3] == PostprocessSubPassId::EdgeFog);
-    CHECK(kPostprocessSubPassOrder[4] == PostprocessSubPassId::OobFog);
-    CHECK(kPostprocessSubPassOrder[5] == PostprocessSubPassId::Composite);
+    CHECK(kPostprocessSubPassOrder[3] == PostprocessSubPassId::ValleyFog);
+    CHECK(kPostprocessSubPassOrder[4] == PostprocessSubPassId::EdgeFog);
+    CHECK(kPostprocessSubPassOrder[5] == PostprocessSubPassId::OobFog);
+    CHECK(kPostprocessSubPassOrder[6] == PostprocessSubPassId::Composite);
 }
 
 TEST_CASE("POSITIVE: shipped EdgeFog+OobFog fusion is contiguous") {
@@ -80,9 +82,16 @@ TEST_CASE("NEGATIVE: three passes skipping one (Shoreline..OobFog missing EdgeFo
     CHECK_FALSE(vkSubgraphIsContiguous(fused, 3));
 }
 
-TEST_CASE("POSITIVE: three fully-adjacent passes (Shoreline..OobFog) contiguous") {
+TEST_CASE("NEGATIVE: Shoreline..OobFog is NOT contiguous (ValleyFog intervenes)") {
     const PostprocessSubPassId fused[] = {
         PostprocessSubPassId::Shoreline, PostprocessSubPassId::EdgeFog,
+        PostprocessSubPassId::OobFog };
+    CHECK_FALSE(vkSubgraphIsContiguous(fused, 3));
+}
+
+TEST_CASE("POSITIVE: three fully-adjacent passes (ValleyFog..OobFog) contiguous") {
+    const PostprocessSubPassId fused[] = {
+        PostprocessSubPassId::ValleyFog, PostprocessSubPassId::EdgeFog,
         PostprocessSubPassId::OobFog };
     CHECK(vkSubgraphIsContiguous(fused, 3));
 }

@@ -150,8 +150,6 @@ float waterFineHeight(vec2 worldXY) {
 }
 
 layout(location = 0) in PREC vec4  Color;
-layout(location = 1) in PREC vec2  Texcoord;
-layout(location = 2) in PREC float FogValue;
 layout(location = 3) in PREC float WaterThickness;
 layout(location = 4) in PREC vec3  WorldPos;
 
@@ -386,8 +384,7 @@ float waveBreakNoise(vec2 q){
     return mix(mix(h.x, h.y, f.x), mix(h.z, h.w, f.x), f.y);
 }
 
-PREC vec2 waterWaveSlope(PREC vec2 p, float t, float footprint, float gain, out float unresolvedVar){
-    float packetSize = float(textureSize(u_wavePackets, 0).x);
+PREC vec2 waterWaveSlope(PREC vec2 p, float t, float footprint, float gain, float packetSize, out float unresolvedVar){
     PREC vec2 s = vec2(0.0);
     unresolvedVar = 0.0;
     const float brk = F.f9.w;
@@ -485,8 +482,8 @@ vec3 waterPoolLights(vec3 wp, vec3 N, vec3 V, float alpha2, out vec3 spec){
         pool += plCol * falloff;
     }
     pool += poolMover;
-    if (uT.lightPoolCompress != 0) return lpa_dither(vec3(1.0) - exp(-1.6 * pool));
-    return lpa_dither(min(pool, vec3(1.0)));
+    if (uT.lightPoolCompress != 0) return lpa_dither(vec3(1.0) - exp(-1.6 * pool), wp);
+    return lpa_dither(min(pool, vec3(1.0)), wp);
 }
 
 void main(void)
@@ -613,7 +610,8 @@ void main(void)
     float      footprint = (uT._lightPad1 != 0) ? 1e9 : max(length(shoreDx), length(shoreDy));
     float      waveVar = 0.0;
     PREC vec2  waveSlope = vec2(0.0);
-    if (debugMode != 3) waveSlope = waterWaveSlope(WorldPos.xy, time, footprint, RIPPLE_GAIN / 0.22, waveVar);
+    float packetSize = float(textureSize(u_wavePackets, 0).x);
+    if (debugMode != 3) waveSlope = waterWaveSlope(WorldPos.xy, time, footprint, RIPPLE_GAIN / 0.22, packetSize, waveVar);
     int shorelineLook = max(int(F.f3.w + 0.5) - 1, 0);
     float coastWeight = (1.0 - (shorelineLook == 1 ? smoothstep(170.0, 260.0, shoreDistance)   // coastal look: reaches the shelf break
                                                    : smoothstep(36.0, 100.0, shoreDistance)))
@@ -651,7 +649,7 @@ void main(void)
             vec2 lattice = layerP / (layer == 0 ? 310.0 : 95.0) + float(layer) * 13.7;
             vec2 f = fract(lattice);
             vec2 uv = (mod(floor(lattice), 32.0) + f * f * (3.0 - 2.0 * f) + 0.5)
-                    / float(textureSize(u_wavePackets, 0).x);
+                    / packetSize;
             float envelope = textureLod(u_wavePackets, vec3(uv, 2), 0)[2 + layer];
             s *= mix(1.0, mix(0.35, 1.65, envelope), offshore);
             float angle = 0.7 + 2.39996 * float(i) + offshore * float(layer) * 0.83;

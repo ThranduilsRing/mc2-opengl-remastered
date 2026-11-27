@@ -38,8 +38,7 @@ void mc2::render_view::drawHudWaypoints(const HudMover& row)
         // Preserve the legacy projection direction for the preview and queued segments.
         glm::vec3 start = row.waypointFirst && i == 0 ? previous : row.waypoints[i];
         glm::vec3 end = row.waypointFirst && i == 0 ? row.waypoints[i] : previous;
-        eye->projectForScreenXY(start, a);
-        eye->projectForScreenXY(end, b);
+        if (!eye->projectSegmentForScreen(start,end,a,b)) { previous=row.waypoints[i]; continue; }
         a.z = b.z = 0.1f; a.w = b.w = 0.9999f;
         LineElement line(a, b, 0xffff0000, nullptr, -1);
         line.draw();

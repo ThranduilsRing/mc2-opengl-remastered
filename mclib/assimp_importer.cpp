@@ -120,6 +120,7 @@ static std::string ContentFloatKey(float value) {
 #include "mech_import_scale.h"
 #include "mech_clip_state.h"   // P9: gesture -> clip state machine + stride matching
 #include "mech_grounding.h"
+#include "mw5_contact_passes.h"
 #include "foot_grounding.h"
 
 // BT2018-SKEL-ENGINE-1A — bind-pose bake trace (default OFF). MC2_MECH_SKEL_TRACE=1.
@@ -924,6 +925,7 @@ struct ImportedAnimEntry {
     std::vector<std::vector<aiVector3D>> boneSupport;
     float                      restLift = 0.0f;  // static ground lift from REST pose (steady torso)
     mc2ground::Rig              grounding;
+    std::map<std::string, mc2ground::PlantTrack> plants;
     // Per-frame state: GPU = one ActorAnimState per actor instance; CPU = one shared.
     std::map<const void*, ActorAnimState> actors;  // keyed by actor instance (mechShape*)
     ActorAnimState             cpuState;
@@ -1087,7 +1089,7 @@ void measureClipStrides(ImportedAnimEntry& e) {
     for (const char* clip : kClips) {
         // MW5 packs carry offline stance measurements in source glTF units/s.
         if (e.strideSpeed.contains(clip)) {
-            e.strideSpeed[clip] *= e.simScale;
+            e.strideSpeed[clip] *= e.scale;
             continue;
         }
         auto dur = clipDurationSec(e.scene, clip);
@@ -1104,8 +1106,8 @@ void measureClipStrides(ImportedAnimEntry& e) {
             }
         }
         const auto stride = mc2clip::measureStride(pos, *dur);
-        if (stride.speed() * e.simScale > 0.5f) {
-            e.strideSpeed[clip] = stride.speed() * e.simScale;
+        if (stride.speed() * e.scale > 0.5f) {
+            e.strideSpeed[clip] = stride.speed() * e.scale;
             mc2::fmt::print_err("[MECH_IMPORT] stride '{}' planted={:.4f} estimate={:.4f} local u/s selected={:.2f} u/s (cycle {:.2f}s)\n",
                 clip, stride.planted, stride.estimate, e.strideSpeed[clip], *dur);
         }
@@ -1357,6 +1359,21 @@ void RegisterImportedAnim(mc2::czstring path, TG_TypeMultiShape* out, const Skel
     // Y-up, axis case 2). Per-frame model delta D_i = (A1·S·C_i)·(A2·S·R_i)^-1 maps the
     // Y-up rest vertex to the Z-up animated MODEL pose (A1 = case `gpuAxis`). The batcher
     // then composes the live shapeToWorld_root for placement.
+    // Reuse package travel, but lock the final grounded feet rather than raw ankles.
+    if (scene->mRootNode->FindNode("mw5_forward"))
+        for (auto& [clip, curve] : e.distanceCurves) {
+            std::vector<std::vector<glm::mat4>> poses;
+            for (size_t f = 0; f < curve.distance.size(); ++f) {
+                std::vector<mc2skel::GpuBone> bones;
+                mc2skel::EvaluateClipGpuBones(*e.plan, clip,
+                    static_cast<float>(f) * curve.duration * 30 / static_cast<float>(curve.distance.size() - 1), bones);
+                std::vector<glm::mat4> pose;
+                for (const auto& bone : bones) pose.push_back(matrix(bone));
+                poses.push_back(std::move(pose));
+            }
+            e.plants[clip] = mc2ground::buildPlants(e.grounding, poses, curve.distance,
+                clip == "atlas_moveCoreWalkBwd", mc2ground::contactCurveAllowed(path, clip));
+        }
     if (mechImportGpuEnabled() && !bake.rest.empty()) {
         e.gpuMode = true;
         aiMatrix4x4 S; S.a1 = S.b2 = S.c3 = bake.scale; S.d4 = 1.0f;
@@ -1500,9 +1517,11 @@ static void rebakeImportedPresentation(ImportedAnimEntry& e, const std::vector<m
 namespace {
 void groundActorPose(const ImportedAnimEntry& e, const ActorAnimState& s,
                      std::vector<mc2skel::GpuBone>& globals, unsigned frameStamp,
-                     const mc2mechanim::VisualGround* ground = nullptr) {
+                     const mc2mechanim::VisualGround* ground = nullptr, bool allowLock = true) {
     if (mc2clip::groundingRole(e.groundingRoles, s.activeClip) == "feet") {
-        std::vector<glm::mat4> pose(globals.size());
+        ZoneScopedN("Mech.FootLockIK");
+        thread_local std::vector<glm::mat4> pose;
+        pose.resize(globals.size());
         for (size_t b = 0; b < globals.size(); ++b)
             for (int r = 0; r < 4; ++r)
                 for (int c = 0; c < 4; ++c) pose[b][c][r] = globals[b].m[r * 4 + c];
@@ -1515,7 +1534,27 @@ void groundActorPose(const ImportedAnimEntry& e, const ActorAnimState& s,
                 const aiVector3D model = e.AS1 * aiVector3D(ankle.x, ankle.y, ankle.z);
                 legLift[side] = ground->under(ground->ctx, &model.x) / e.scale;
             }
-        mc2ground::solve(e.grounding, pose, ground ? legLift : nullptr);
+        std::array<glm::vec3, 2> targets;
+        std::array<glm::quat, 2> rotations;
+        const auto plant = e.plants.find(s.activeClip);
+        const mc2ground::PlantTrack* track = nullptr;
+        if (plant != e.plants.end()) {
+            const auto& [clip, values] = *plant;
+            track = &values;
+        }
+        const bool locking = allowLock && s.locomotion && track && !track->feet.empty();
+        if (locking) {
+            targets = track->sample(s.clipTimeSec / s.durationSec);
+            rotations = track->sampleRotations(s.clipTimeSec / s.durationSec);
+            const float weight = s.previousClip.empty() ? 1.0f : std::clamp(s.fadeTimeSec /
+                mc2clip::fadeDuration(s.previousClip, s.activeClip), 0.0f, 1.0f);
+            for (int side = 0; side < 2; ++side) {
+                targets[side] = glm::mix(glm::vec3(pose[e.grounding.legs[side].foot][3]), targets[side], weight);
+                rotations[side] = glm::slerp(mc2ground::columnQuaternion(pose[e.grounding.legs[side].foot]), rotations[side], weight);
+            }
+        }
+        mc2ground::solve(e.grounding, pose, ground ? legLift : nullptr, locking ? &targets : nullptr,
+            locking ? &rotations : nullptr);
         if (s_mechSkelTrace && frameStamp % 6 == 0) {
             float soles[2] = {1e30f, 1e30f};
             for (int side = 0; side < 2; ++side)
@@ -1552,7 +1591,7 @@ float fallenPoseLift(const ImportedAnimEntry& e, const ActorAnimState& s,
 
 void mc2mechanim::CopyImportedActorPose(const void* source, const void* destination,
                                        const mc2::sim::ImportedAnimState& presentation, float torsoYawDeg,
-                                       VisualGround* ground) {
+                                       VisualGround* ground, bool solveFeet) {
     ZoneScopedN("Mech.ImportedPresentationPose");
     if (!source || !destination) return;
     if (ground) ground->fallenLift = 0.0f;
@@ -1566,7 +1605,7 @@ void mc2mechanim::CopyImportedActorPose(const void* source, const void* destinat
             auto twist = entry.torsoTwist;
             twist.degrees = torsoYawDeg;
             if (mc2skel::EvaluateActorClipGpuBones(*entry.plan, draw, draw.lastGlobals, &twist)) {
-                groundActorPose(entry, draw, draw.lastGlobals, draw.lastFrame, ground);
+                if (solveFeet) groundActorPose(entry, draw, draw.lastGlobals, draw.lastFrame, ground);
                 if (ground) ground->fallenLift = fallenPoseLift(entry, draw, draw.lastGlobals, *ground);
             }
             if (entry.gpuMode) buildGpuModelDelta(entry, draw, draw.lastGlobals);
@@ -1827,9 +1866,9 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
         // same pack scale as the skeleton. Both sides of a walk/run fade match it.
         const auto matchDistance = [&](std::string_view clip, float& time, float& rate) {
             const auto it = e.distanceCurves.find(std::string(clip));
-            if (it == e.distanceCurves.end() || e.simScale <= 0) return;
+            if (it == e.distanceCurves.end() || e.scale <= 0) return;
             const auto& [name, curve] = *it;
-            time = curve.advance(time, speed * dt / e.simScale);
+            time = curve.advanceWorld(time, speed * dt, e.scale);
             rate = 0;
         };
         if (s.locomotion) matchDistance(s.activeClip, s.clipTimeSec, s.playRate);
@@ -1905,7 +1944,7 @@ void mc2mechanim::TickImportedMechs(float dt, unsigned frameStamp, const MechMot
         thread_local std::vector<mc2skel::GpuBone> globals;
         globals.clear();
         if (sampleActorClip(e, s, dt, motion, globals, advanceClock)) {
-            groundActorPose(e, s, globals, frameStamp);
+            groundActorPose(e, s, globals, frameStamp, nullptr, motion.preview);
             s.lastGlobals.swap(globals);   // retain the previous buffer for the next sample
             mc2clip::publishPreviewPose(motion.preview, e.gpuMode,
                 [&] { buildGpuModelDelta(e, s, s.lastGlobals); },
@@ -2089,7 +2128,7 @@ long ImportGeometryFromFile(mc2::czstring path, TG_TypeMultiShape* out, bool aut
 		animateImport = mechImportAnimateEnabled() || mechImportGpuEnabled();
 
 		// Qualified import packages use chassis heights and the vertical bind extent.
-		// Preserve the legacy scale for simulation sockets and animation clocks.
+		// Preserve the legacy scale for simulation sockets; clocks follow visible stride.
 		if (bake.active) {
 			const float targetH = chassisHeight > 0.0f ? chassisHeight : mc2::gate::get<"MC2_MECH_SKEL_HEIGHT">();
 			float lo[3] = {1e30f, 1e30f, 1e30f}, hi[3] = {-1e30f, -1e30f, -1e30f};
