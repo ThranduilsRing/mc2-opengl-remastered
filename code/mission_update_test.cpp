@@ -198,7 +198,7 @@ void Mission::updateMissionTest(bool report) {
         test.finished = true;
         return;
     }
-    if (!destination || scenarioTime < test.nextOrder || !mc2::brainpolicy::techBrain()) return;
+    if (!destination || scenarioTime < test.nextOrder) return;
     test.nextOrder = scenarioTime + 2.0f;
     glm::vec3 location{destination->MarkerX(), destination->MarkerY(), 0.0f};
     GameObjectPtr objectiveTarget = nullptr;

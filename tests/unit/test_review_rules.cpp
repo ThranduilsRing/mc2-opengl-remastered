@@ -13,7 +13,7 @@ std::uint32_t g_generation = 1;
 const char* name(Policy p) { return p == Policy::Legacy ? "legacy" : "techbrain"; }
 static bool missionFitHasBrainBlock(std::string_view) { return false; }
 static bool overlayBrainFile(std::string_view) { return false; }
-bool profileInstalled(std::string_view) { return false; }
+bool profileInstalled(std::string_view) { return true; }
 #include "review_decide.inc"
 }
 namespace {
@@ -50,7 +50,7 @@ TEST_CASE("ReviewRules/save load refreshes policy in both directions before BRN1
     const auto oldRules = mc2::rules::current();
     const auto oldPolicy = mc2::brainpolicy::current();
     mc2::gate::ScopedOverride<"MC2_BRAIN_POLICY"> automatic("auto");
-    mc2::gate::ScopedOverride<"MC2_PLAY_MISSION"> noCommander("0");
+    mc2::gate::ScopedOverride<"MC2_PLAY_MISSION"> commander("1");
     LogisticsData data;
     LogisticsData::instance = &data;
     for (const long ai : {1L, 0L}) {
@@ -65,6 +65,8 @@ TEST_CASE("ReviewRules/save load refreshes policy in both directions before BRN1
 }
 
 TEST_CASE("ReviewRules/Magic profile is restricted to Smarter ABL assets") {
+    CHECK(mc2::brainpolicy::magicCampaign(""));
+    CHECK_FALSE(mc2::brainpolicy::magicCampaign("MC2X-DEE"));
     using mc2::brainpolicy::magicAsset;
     for (const auto key : {"data/missions/corebrain.abx", "data/missions/warriors/patrol.abl"}) {
         CHECK(magicAsset(key, 0).empty());

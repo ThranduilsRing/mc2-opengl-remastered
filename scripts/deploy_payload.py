@@ -921,7 +921,7 @@ def magic_brain_145(source):
     """FixABL's 1.45 call migration, preserving bytes outside the changed calls.
 
     The original VB6 binary's UTF-16 replacement table (0x427c..0x47d0)
-    redirects coreAttack/coreAttackTactic and drops obsolete state/range args.
+    redirects coreAttack/coreAttackTactic. The profile keeps stock state/range args.
     Parse arguments rather than matching its hard-coded variable spellings.
     """
     text = source.decode('latin1')
@@ -951,11 +951,7 @@ def magic_brain_145(source):
         if name in ('coreattack', 'coreattacktactic', 'magicattack'):
             replacement = 'magicAttack(' + args[0] + ')'
         else:
-            arity = {'coreguard': 2, 'corepatrol': 2, 'corepatroldelayed': 3,
-                     'coreescort': 1, 'corewait': 2}[name]
-            if len(args) <= arity:
-                continue
-            replacement = match.group(1) + '(' + ', '.join(args[:arity]) + ')'
+            continue
         edits.append((match.start(), pos + 1, replacement))
     for start, end, replacement in reversed(edits):
         text = text[:start] + replacement + text[end:]
@@ -983,8 +979,7 @@ def magic_brain_payload(src_root, target):
             continue
         source = decompress_entry(off, comp, real, is_lz, data)
         fixed = magic_brain_145(source)
-        if fixed == source:
-            continue
+        # Refresh unchanged warriors too: an earlier profile may have trimmed their stock arguments.
         dest = generated / key
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(fixed)

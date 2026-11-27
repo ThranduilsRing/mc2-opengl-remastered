@@ -174,7 +174,7 @@ long MechWarrior::runBrain (void) {
 
 	ZoneScopedN("GameLogic.AI.BrainRun");
 	// The player commander emits through submitPlayerOrder, never the self-order slot.
-	if (mc2::gate::get<"MC2_PLAY_MISSION">() && mc2::brainpolicy::techBrain()) {
+	if (mc2::gate::get<"MC2_PLAY_MISSION">()) {
 		auto* playerUnit = getVehicle();
         if (playerUnit && playerUnit->getTeam() == Team::home && Commander::home
             && playerUnit->getCommanderId() == Commander::home->getId()) {
@@ -843,7 +843,7 @@ long MechWarrior::mainDecisionTree (void) {
 				tacOrder[ORDERSTATE_ALARM].init();
 				newTacOrder = tacOrder[ORDERSTATE_PLAYER];
                 // The test commander owns this replacement; do not resume the superseded alarm.
-                if (mc2::gate::get<"MC2_PLAY_MISSION">() && mc2::brainpolicy::techBrain()
+                if (mc2::gate::get<"MC2_PLAY_MISSION">()
                     && getTeam() == Team::home && Commander::home && getVehicle()
                     && getVehicle()->getCommanderId() == Commander::home->getId())
                     orderState = ORDERSTATE_PLAYER;
