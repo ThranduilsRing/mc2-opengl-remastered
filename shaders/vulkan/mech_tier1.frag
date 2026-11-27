@@ -68,7 +68,6 @@ layout(location = 0) in vec2 vUv;
 layout(location = 1) in vec3 vNormalGL;
 layout(location = 2) in vec3 vLitColor;
 layout(location = 3) in vec4 vHighlight;
-layout(location = 4) in vec4 vFog;        // .rgb fog color, .a haze factor
 layout(location = 5) in vec3 vWorldPos;
 layout(location = 6) flat in vec3 vMechSunDirGL;
 layout(location = 7) flat in int  vMechSunFound;

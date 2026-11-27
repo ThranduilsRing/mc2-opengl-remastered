@@ -79,7 +79,9 @@ bool GetFalloff(float len, vec3 fd, out float falloff) {
 // One-sun rule (see include/one_sun_vk.glsl; the mech pass carries its own copy of the tail): live direction -> authored direction.
 mat3 oneSunRotation() { return mat3(uEnv.sunAuthFromLive[0].xyz, uEnv.sunAuthFromLive[1].xyz, uEnv.sunAuthFromLive[2].xyz); }
 //PORT-BEGIN:calc_light
-vec3 calc_light(int idx, vec3 normal, vec3 wpos, vec3 base_light, int sunAxisMc2Fix, bool legacyVehicle) {
+vec3 calc_light(int idx, vec3 normal, vec3 wpos, vec3 base_light, int sunAxisMc2Fix, bool legacyVehicle, out vec3 sunDirGL, out int sunFound) {
+    sunDirGL = vec3(0.0);
+    sunFound = 0;
     const int fillMode = legacyVehicle ? 0 : uFrame.miscI.y;   // MC2_MECH_FILL; ground vehicles keep the original look
     vec3 sunLc = vec3(0.0);
     // Keep only the count local: copying the matrix arrays creates private indexed storage.
@@ -91,6 +93,11 @@ vec3 calc_light(int idx, vec3 normal, vec3 wpos, vec3 base_light, int sunAxisMc2
     int n = min(ld.numLights.x, MAX_LIGHTS_IN_WORLD);
     for (int i = 0; i < n; ++i) {
         int lt = int(uLights.light[idx].light_dir[i].w);
+        if (sunFound == 0 && (lt == TG_LIGHT_INFINITE || lt == TG_LIGHT_INFINITEWITHFALLOFF)) {
+            vec3 sdStuff = uLights.light[idx].light_dir[i].xyz;
+            sunDirGL = mc2ToRender(sdStuff);
+            sunFound = 1;
+        }
 #ifndef MECH_PREVIEW
         // World local lights come from the shared fragment grid, never the
         // capped per-object vertex row. Studio previews keep their own rig.
@@ -148,7 +155,6 @@ layout(location = 0) out vec2 vUv;
 layout(location = 1) out vec3 vNormalGL;   // MC2/GL-world normal (swapped), for GBuffer1
 layout(location = 2) out vec3 vLitColor;   // per-vertex Lambert lit color (v_litColor.rgb)
 layout(location = 3) out vec4 vHighlight;  // inst.aRGBHighlight forwarded to FS
-layout(location = 4) out vec4 vFog;        // .rgb=g_scene fog color, .a=per-actor haze
 // VK-PARITY-MECH-1: the mech.vert MC2_USE_VIEW_UNIFORMS + MC2_IMPORTED_MECH_MATERIAL
 // varyings (both compiled into the GL default variant).
 layout(location = 5) out vec3 vWorldPos;            // worldMC2 (== GL v_worldPos)
@@ -235,11 +241,13 @@ void main() {
     const uint  kRenderFlagLightsOut = 0x2u;
     bool lightsOut = (inst.renderFlags & kRenderFlagLightsOut) != 0u;
     vec3 baseLight;
+    vMechSunDirGL = vec3(0.0);
+    vMechSunFound = 0;
     if (lightsOut) {
         baseLight = environmentAmbient;
     } else if (uFrame.lightingReady != 0) {
         vec3 base = legacyVehicle ? vec3(0.0) : environmentAmbient;
-        vec3 litRGB = calc_light(int(inst.lightDataIndex), worldNormal, worldMC2, base, (uFrame.sunAxisMc2Fix != 0 || mechFill) ? 1 : 0, legacyVehicle);
+        vec3 litRGB = calc_light(int(inst.lightDataIndex), worldNormal, worldMC2, base, (uFrame.sunAxisMc2Fix != 0 || mechFill) ? 1 : 0, legacyVehicle, vMechSunDirGL, vMechSunFound);
         baseLight = clamp(litRGB + inst.aRGBHighlight.rgb * inst.aRGBHighlight.a, 0.0, 1.0);
     } else {
         // LightsData not yet copied — mirror mech.vert's Slice-A passthrough (flat white).
@@ -250,7 +258,6 @@ void main() {
     vNormalGL = worldNormal;
     vLitColor = baseLight;
     vHighlight = inst.aRGBHighlight;
-    vFog      = vec4(uFrame.fogColorRGB.rgb, inst.fogRGB.a);
 
     // VK-PARITY-MECH-1: port of mech.vert's imported-mech marker + octahedral
     // tangent decode (MC2_IMPORTED_MECH_MATERIAL) and the specular sun finder
@@ -273,9 +280,7 @@ void main() {
         vTangentGL = (tLen > 1e-5) ? (tGL / tLen) : vec3(0.0);
     }
     vWorldPos     = worldMC2;
-    vMechSunDirGL = vec3(0.0);
-    vMechSunFound = 0;
-    if (uFrame.lightingReady != 0) {
+    if (lightsOut && uFrame.lightingReady != 0) {
         int specIndex = int(inst.lightDataIndex);
         int n_spec = min(uLights.light[specIndex].numLights.x, MAX_LIGHTS_IN_WORLD);
         for (int i = 0; i < n_spec; ++i) {
