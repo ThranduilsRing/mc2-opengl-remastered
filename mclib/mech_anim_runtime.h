@@ -98,9 +98,10 @@ struct VisualGround {
     float fallenLift = 0.0f;   // out: extra world lift so no low point of a fallen pose is under the surface
 };
 // ground: optional draw-side grounding (see VisualGround); nullptr keeps the shared flat floor.
+// Every mech is grounded every frame: nothing here may depend on camera, visibility or screen size.
 void CopyImportedActorPose(const void* source, const void* destination,
                            const mc2::sim::ImportedAnimState& presentation, float torsoYawDeg,
-                           VisualGround* ground = nullptr, bool solveFeet = true);
+                           VisualGround* ground = nullptr);
 
 // AO-1: imported mech's AO texture name (materials.ao.tga from the package), or nullptr
 // if not imported / no AO declared. Caller loads it + binds on texture unit 6.

@@ -2123,6 +2123,13 @@
    "count": 5
   },
   {
+   "tag": "CAMERA",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
    "tag": "CAMERA_PARK",
    "ver": 1,
    "stream": "stderr",
