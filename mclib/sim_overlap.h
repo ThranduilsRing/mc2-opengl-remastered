@@ -1,7 +1,7 @@
-// G7b K5: sim tick N+1 overlaps frame N's snapshot draw.
+// G7b K5: sim tick N+1 overlaps frame N's native command submission.
 //
-// Extract runs with the sim quiescent. Render consumes the extracted views and presentation-owned resources until
-// the wait after DrawScreen; probes and frame-counter changes then touch live state safely. Queues commit after present.
+// Extract and DrawScreen run with the sim quiescent while views still borrow mutable objects/effects.
+// Native commands are recorded before the worker starts; probes and frame-counter changes wait for it.
 #pragma once
 
 #include <atomic>
@@ -11,7 +11,7 @@
 
 namespace mc2::overlap {
 
-// The mission code installs these; the main loop kicks after extract and joins after present.
+// The mission code installs these; the main loop kicks after recording and joins after present.
 struct Hooks { void (*kick)(); void (*join)(); void (*extract)() = nullptr; };
 void installHooks(const Hooks& hooks);
 // Idempotent: routes SIGABRT and the CRT invalid-parameter handler into crashbundle_fatal. Called from crashbundle_init.
@@ -46,7 +46,7 @@ bool isOwner(Owner domain);
 void requireOwner(Owner domain, std::string_view site);
 void assertSimQuiescent(std::string_view site);     // render side: reads live sim objects, so no tick may be in flight
 inline void assertMainThread(std::string_view site) { assertOwner(Owner::Main, site); }  // sound/ABL/RNG entry points
-void beginFrameDraw(); // main thread: bank and kick after extraction, before DrawScreen (no-op if not eligible)
+void beginFrameDraw(); // main thread: bank and kick after native recording (no-op if not eligible)
 
 // MC2_SIM_OVERLAP_AUDIT>=2: "render owns" fence. From beginFrameDraw until waitWorker the frame thread draws the
 // snapshot only; a live GameObject read on Main inside that window is a violation even if the tick already finished.

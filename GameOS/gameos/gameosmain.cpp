@@ -1182,7 +1182,9 @@ int main(int argc, char** argv)
 
         {
             mc2::render_view::DrawFrameScope drawFrame(*snap.draws, &snap.frameArena);
-            mc2::overlap::beginFrameDraw();
+            // RenderView still borrows appearances and gosFX particle arrays.
+            // Record their native draw commands before the next tick can mutate them.
+            mc2::overlap::assertSimQuiescent("DrawScreen");
             ZoneScopedN("DrawScreen");
             mc2_hitch::HitchScope _hitchRender(mc2_hitch::HitchSpanKind::PhaseRender);
 
@@ -1191,15 +1193,18 @@ int main(int argc, char** argv)
 #endif
             draw_screen();
         }
-        // The frame's batched plain submits (scene, post) go to the queue now, not after the sim join and the worker's acquire.
-        if (mc2vk::engineVulkanContextValid()) mc2vk::getOrCreateEngineVulkanContext().kick();
         // Release copied containers and marker holders on Main before retiring
         // their CPU sequence and draining typed resource destruction.
         snap.draws.reset();
         RetireRenderSnapshot(packetSequence);
         RenderCore::framePackets().retire(packetSequence);
 
-        // Draw reads only the extracted snapshot. Wait before probes and frame counters touch live state;
+        // Only the recorded native commands are independent of mutable simulation state.
+        mc2::overlap::beginFrameDraw();
+        // Submit while the next tick runs; recording and holder release above stay quiescent.
+        if (mc2vk::engineVulkanContextValid()) mc2vk::getOrCreateEngineVulkanContext().kick();
+
+        // Wait before probes and frame counters touch live state;
         // the battle CPU timer includes any uncovered tick time rather than hiding it behind the frame cap.
         // Resource queues still commit after present, when this frame's GPU references have been submitted.
         {
