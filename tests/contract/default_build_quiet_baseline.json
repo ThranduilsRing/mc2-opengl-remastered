@@ -3,6 +3,7 @@
   "tags": {
     "ABL_FATAL": {"status": "keep", "reason": "Error-only, once per distinct fatal message: owner-required ABL source context before callback suppression; silent on healthy missions."},
     "ABL_FALLBACK": {"status": "keep", "reason": "Error-only, once per failed script instance: owner-required quarantine receipt proves a returning ABL fatal cannot silently spin an activation; silent on healthy missions."},
+    "CAMERA": {"status": "keep", "reason": "Error-only and rate-limited (first, then every 600th failure): a camera invariant failed and the last valid view is kept; never prints on a healthy run."},
     "HDR_OUTPUT v1": {"status": "keep", "reason": "Owner-required H2 once-per-present-chain display capability receipt; HDR smoke proof verifies actual SDR and the prospective HDR format without enabling HDR rendering."},
     "GAME_RULES": {"status": "keep", "reason": "Owner-requested game-rules receipt: one line per mission start/load with the published snapshot of every sim rule (calledShots, pilotSkillWeight, salvage, cbillMultiplier); run_smoke.py parses it and HARD FAILs a run under non-default rules unless --allow-nondefault-rules (docs/game-rules.md)."},
     "WATER_QUALITY": {"status": "keep", "reason": "Owner-requested water-quality-options-1 mission-load receipt of effective reflection/detail settings and the legacy material switch; one line per mission load."},
