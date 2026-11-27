@@ -17,7 +17,7 @@ void fields(save::Archive& a, std::uint32_t& tag, std::uint32_t& version, Identi
     std::vector<std::uint8_t> name(id.mission.begin(), id.mission.end());
     a.sequence(name, 128);
     if (a.reading()) id.mission.assign(name.begin(), name.end());
-    a(id.seed);
+    a(id.seed, id.syncData);
     a.sequence(id.components, 256, [](save::Archive& archive, Identity::Component& component) {
         std::vector<std::uint8_t> name(component.name.begin(), component.name.end());
         archive.sequence(name, 128);
@@ -32,11 +32,8 @@ std::string digestText(const save::Digest& digest) {
     for (const auto byte : digest) { result += hex[byte >> 4]; result += hex[byte & 15]; }
     return result;
 }
-save::Digest contentIdentity(const save::Digest& files, bool lowCost, bool remasteredBuildings) {
-    save::Archive manifest;
-    auto digest = files;
-    manifest(digest, lowCost, remasteredBuildings);
-    return save::sha256(manifest.bytes());
+save::Digest contentIdentity(const save::Digest& files, bool, bool) {
+    return files;
 }
 save::Bytes hello(const Identity& identity) {
     save::Archive a;
@@ -54,8 +51,9 @@ std::string checkHello(std::span<const std::uint8_t> packet, const Identity& loc
     fields(a, tag, version, remote);
     if (!a.finish() || tag != magic || remote.mission.empty()) return "malformed handshake";
     if (version != protocolVersion) return "protocol version mismatch";
-    if (remote.executable != local.executable) return "executable SHA-256 mismatch";
-    if (remote.content != local.content) {
+    if (remote.executable != local.executable) return "simulation code version mismatch; install a compatible simulation build";
+    if (remote.syncData != local.syncData) return "simulation data sync capability mismatch";
+    if (!local.syncData && remote.content != local.content) {
         std::string reason = "content SHA-256 mismatch";
         for (const auto& component : local.components) {
             const auto peer = std::ranges::find(remote.components, component.name, &Identity::Component::name);
@@ -75,6 +73,150 @@ std::string checkHello(std::span<const std::uint8_t> packet, const Identity& loc
 std::uint32_t delayForRtt(std::uint32_t rtt, std::uint32_t jitter) {
     const auto budget = static_cast<std::uint64_t>(rtt) + 2ull * jitter;
     return static_cast<std::uint32_t>(std::clamp<std::uint64_t>((budget * 30 + 999) / 1000 + 2, 3, 12));
+}
+bool simDataPath(std::string_view path) {
+    // Simulation inputs only. Storage, mod names/versions and all artwork are excluded;
+    // a sim-affecting mod is identified by its effective bytes rather than its label.
+    struct Row { std::string_view directory, extensions; };
+    static constexpr Row rows[] = {
+        {"data/missions/", "|fit|csv|abl|abi|abx|pak|"},
+        {"data/objects/", "|fit|csv|pak|"},
+        {"data/terrain/", "|fit|pak|"},
+        {"data/defs/rules/", "|fit|json|"},
+        {"data/defs/units/", "|fit|json|"},
+        {"data/defs/weapons/", "|fit|json|"},
+        {"data/defs/armor/", "|fit|json|"},
+        {"data/defs/equipment/", "|fit|csv|json|"},
+    };
+    if (path.find("..") != path.npos || path.find('\\') != path.npos || path.find(':') != path.npos) return false;
+    if (std::ranges::any_of(path, [](unsigned char c) { return c < 32 || (c >= 'A' && c <= 'Z'); })) return false;
+    const auto dot = path.rfind('.');
+    if (dot == path.npos) return false;
+    const auto extension = "|" + std::string(path.substr(dot + 1)) + "|";
+    for (const auto& row : rows)
+        if (path.starts_with(row.directory) && row.extensions.find(extension) != row.extensions.npos) return true;
+    return false;
+}
+save::Digest simCodeHash() {
+#ifdef _WIN32
+    constexpr std::string_view version = "mc2-lockstep-sim-1-windows";
+#else
+    constexpr std::string_view version = "mc2-lockstep-sim-1-linux";
+#endif
+    return save::sha256(std::span(reinterpret_cast<const std::uint8_t*>(version.data()), version.size()));
+}
+save::Digest simDataHash(const SimFiles& files) {
+    save::Archive a;
+    for (const auto& [name, bytes] : files) {
+        save::Bytes text(name.begin(), name.end());
+        auto digest = save::sha256(bytes);
+        a(text, digest);
+    }
+    if (!a.good()) throw std::runtime_error("simulation manifest exceeds limit");
+    return save::sha256(a.bytes());
+}
+namespace {
+constexpr std::uint32_t simEntry = 0x53494d01, simRequest = 0x53494d02,
+    simChunk = 0x53494d03, simAck = 0x53494d04, simFinish = 0x53494d05;
+constexpr std::uint32_t simChunkBytes = 60 * 1024;
+constexpr std::size_t simTotalBytes = 256 * 1024 * 1024;
+save::Bytes simControl(std::uint32_t kind) { save::Archive a; a(kind); return a.bytes(); }
+}
+SimTransfer::SimTransfer(bool host, SimFiles source) : files(std::move(source)), host_(host) {
+    for (const auto& [name, bytes] : files) {
+        total_ += bytes.size();
+        if (!simDataPath(name) || name.size() > 512 || bytes.size() > save::maxFileBytes || total_ > simTotalBytes)
+            throw std::runtime_error("invalid or oversized simulation data");
+    }
+    if (files.size() > 8192) throw std::runtime_error("simulation manifest exceeds file limit");
+    total_ = 0;
+}
+save::Bytes SimTransfer::begin() { return host_ ? next() : save::Bytes{}; }
+save::Bytes SimTransfer::next() {
+    const auto it = name_.empty() ? files.begin() : files.upper_bound(name_);
+    if (it == files.end()) {
+        phase_ = Phase::Finish;
+        save::Archive a;
+        auto kind = simFinish;
+        auto digest = simDataHash(files);
+        a(kind, digest);
+        return a.bytes();
+    }
+    name_ = it->first;
+    size_ = static_cast<std::uint32_t>(it->second.size()); offset_ = 0;
+    digest_ = save::sha256(it->second);
+    save::Bytes text(name_.begin(), name_.end());
+    save::Archive a;
+    auto kind = simEntry;
+    a(kind); a.sequence(text, 512); a(size_, digest_);
+    phase_ = Phase::Request;
+    return a.bytes();
+}
+save::Bytes SimTransfer::chunk() {
+    const auto& source = files.at(name_);
+    const auto count = (std::min)(simChunkBytes, size_ - offset_);
+    save::Bytes bytes(source.begin() + offset_, source.begin() + offset_ + count);
+    offset_ += count;
+    save::Archive a;
+    auto kind = simChunk;
+    a(kind); a.sequence(bytes, simChunkBytes);
+    phase_ = Phase::Ack;
+    return a.bytes();
+}
+save::Bytes SimTransfer::receive(std::span<const std::uint8_t> packet) {
+    if (!error.empty()) return {};
+    auto bad = [&]() -> save::Bytes { error = "invalid simulation data transfer"; return {}; };
+    if (ready || packet.size() > maxPacketBytes) return bad();
+    save::Archive a(packet);
+    std::uint32_t kind = 0;
+    a(kind);
+    if (host_) {
+        if (phase_ == Phase::Request && kind == simRequest) {
+            bool needed = false;
+            a(needed);
+            if (!a.finish()) return bad();
+            return needed ? chunk() : next();
+        }
+        if (phase_ == Phase::Ack && kind == simAck && a.finish())
+            return offset_ == size_ ? next() : chunk();
+        if (phase_ == Phase::Finish && kind == simAck && a.finish()) { ready = true; return {}; }
+        return bad();
+    }
+    if (phase_ == Phase::Entry && kind == simEntry) {
+        save::Bytes text;
+        a.sequence(text, 512); a(size_, digest_);
+        std::string name(text.begin(), text.end());
+        if (!a.finish() || !simDataPath(name) || (!name_.empty() && name <= name_) ||
+            size_ > save::maxFileBytes || total_ + size_ > simTotalBytes || accepted_.size() >= 8192) return bad();
+        name_ = std::move(name); total_ += size_;
+        const auto local = files.find(name_);
+        bool needed = local == files.end() || save::sha256(local->second) != digest_;
+        if (!needed) accepted_.emplace(name_, std::move(local->second));
+        else { incoming_.clear(); incoming_.reserve(size_); phase_ = Phase::Chunk; }
+        save::Archive reply;
+        kind = simRequest;
+        reply(kind, needed);
+        return reply.bytes();
+    }
+    if (phase_ == Phase::Chunk && kind == simChunk) {
+        save::Bytes bytes;
+        a.sequence(bytes, simChunkBytes);
+        if (!a.finish() || bytes.size() > size_ - incoming_.size() || (bytes.empty() && size_)) return bad();
+        incoming_.insert(incoming_.end(), bytes.begin(), bytes.end());
+        if (incoming_.size() == size_) {
+            if (save::sha256(incoming_) != digest_) { error = "simulation data SHA-256 mismatch"; return {}; }
+            accepted_.emplace(name_, std::move(incoming_)); phase_ = Phase::Entry;
+        }
+        return simControl(simAck);
+    }
+    if (phase_ == Phase::Entry && kind == simFinish) {
+        save::Digest digest{};
+        a(digest);
+        if (!a.finish() || digest != simDataHash(accepted_)) return bad();
+        files = std::move(accepted_); ready = true;
+        return simControl(simAck);
+    }
+    return bad();
 }
 save::Bytes LobbyState::offer() {
     if (!hosting) return {};
@@ -198,6 +340,8 @@ struct Session::Impl {
     ENetHost* host = nullptr;
     ENetPeer* peer = nullptr;
     Identity identity;
+    std::unique_ptr<SimTransfer> transfer;
+    bool transferStarted = false;
     std::string error;
     bool initialized = false;
     LinkSetup setup;
@@ -249,12 +393,13 @@ Session::Session(Timeouts timeouts) : impl_(std::make_unique<Impl>()) {
     impl_->timeouts = timeouts;
 }
 Session::~Session() = default;
-void Session::open(bool hosting, std::string_view endpoint, Identity identity) {
+void Session::open(bool hosting, std::string_view endpoint, Identity identity, SimFiles files) {
     if (impl_->host) throw std::runtime_error("MP session already open");
     (void)hello(identity); // Reject invalid local identities inside the startup error boundary.
     if (enet_initialize() != 0) throw std::runtime_error("ENet initialization failed");
     impl_->initialized = true;
     impl_->identity = std::move(identity);
+    if (impl_->identity.syncData) impl_->transfer = std::make_unique<SimTransfer>(hosting, std::move(files));
     impl_->setup.hosting = hosting;
     if (endpoint.empty()) endpoint = "127.0.0.1:23460";
     const auto colon = endpoint.find(':');
@@ -315,9 +460,22 @@ void Session::Impl::service() {
         } else if (event.type == ENET_EVENT_TYPE_RECEIVE) {
             const std::span<const std::uint8_t> packet(event.packet->data, event.packet->dataLength);
             if (s.setup.phase == LinkSetup::Phase::Identity) {
-                auto mismatch = checkHello(packet, s.identity);
-                if (!mismatch.empty()) s.fail(std::move(mismatch));
-                else s.control(s.setup.begin(enet_time_get()));
+                if (s.transferStarted) {
+                    const auto reply = s.transfer->receive(packet);
+                    if (!s.transfer->error.empty()) s.fail(s.transfer->error);
+                    else {
+                        if (!reply.empty()) s.transmit(reply);
+                        if (s.transfer->ready) s.control(s.setup.begin(enet_time_get()));
+                    }
+                } else {
+                    auto mismatch = checkHello(packet, s.identity);
+                    if (!mismatch.empty()) s.fail(std::move(mismatch));
+                    else if (s.transfer) {
+                        s.transferStarted = true;
+                        const auto first = s.transfer->begin();
+                        if (!first.empty()) s.transmit(first);
+                    } else s.control(s.setup.begin(enet_time_get()));
+                }
             } else if (s.setup.phase != LinkSetup::Phase::Ready) {
                 save::Archive a(packet);
                 LinkSetup::Control message;
@@ -376,6 +534,15 @@ void Session::send(std::span<const std::uint8_t> packet) {
     enet_host_flush(s.host);
 }
 bool Session::connected() const { std::lock_guard lock(impl_->mutex); return impl_->setup.phase == LinkSetup::Phase::Ready && impl_->loaded(); }
+bool Session::dataReady() const {
+    std::lock_guard lock(impl_->mutex);
+    return impl_->transfer && impl_->transfer->ready && impl_->error.empty();
+}
+SimFiles Session::matchFiles() const {
+    std::lock_guard lock(impl_->mutex);
+    if (!impl_->transfer || !impl_->transfer->ready) throw std::runtime_error("simulation data not ready");
+    return impl_->transfer->files;
+}
 Session::LoadSnapshot Session::loadSnapshot() const {
     std::lock_guard lock(impl_->mutex);
     return {impl_->setup.phase == LinkSetup::Phase::Ready, impl_->localLoaded,

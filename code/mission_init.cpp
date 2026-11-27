@@ -101,6 +101,9 @@ void Mission::initPrologue(MissionInitFrame& f) {
             mc2::net::stop("live multiplayer cannot use command replay");
         mc2::replay::begin(missionName, seed);
         mc2::net::beginMission(missionName, seed);
+        // Logistics may already have loaded the local component table. The mission
+        // must reload it from the verified match cache before any unit is spawned.
+        if (mc2::net::active()) MasterComponent::freeMasterList();
 	}
 
 	neverEndingStory = false;

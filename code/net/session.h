@@ -2,14 +2,41 @@
 #include "../save_archive.h"
 #include <memory>
 #include <optional>
+#include <map>
 
 namespace mc2::net {
-inline constexpr std::uint32_t protocolVersion = 5;
+inline constexpr std::uint32_t protocolVersion = 6;
 inline constexpr std::size_t maxPacketBytes = 256 * 1024;
+using SimFiles = std::map<std::string, save::Bytes>;
+bool simDataPath(std::string_view path);
+save::Digest simDataHash(const SimFiles& files);
+// Increment for incompatible simulation changes, independently of rendering builds.
+save::Digest simCodeHash();
+class SimTransfer {
+public:
+    explicit SimTransfer(bool host, SimFiles files);
+    save::Bytes begin();
+    save::Bytes receive(std::span<const std::uint8_t> packet);
+    bool ready = false;
+    std::string error;
+    SimFiles files;
+private:
+    bool host_;
+    enum class Phase { Entry, Request, Chunk, Ack, Finish } phase_ = Phase::Entry;
+    SimFiles accepted_;
+    std::string name_;
+    save::Bytes incoming_;
+    save::Digest digest_{};
+    std::uint32_t size_ = 0, offset_ = 0;
+    std::size_t total_ = 0;
+    save::Bytes next();
+    save::Bytes chunk();
+};
 struct Identity {
     save::Digest executable{}, content{};
     std::string mission;
     std::uint32_t seed = 0;
+    bool syncData = false;
     struct Component {
         std::string name;
         save::Digest digest{};
@@ -68,7 +95,9 @@ public:
     Session(const Session&) = delete;
     Session& operator=(const Session&) = delete;
     // An empty host endpoint binds loopback:23460. Only numeric IPv4 is accepted.
-    void open(bool host, std::string_view endpoint, Identity identity);
+    void open(bool host, std::string_view endpoint, Identity identity, SimFiles files = {});
+    bool dataReady() const;
+    SimFiles matchFiles() const;
     virtual std::vector<save::Bytes> pump();
     virtual void send(std::span<const std::uint8_t> packet);
     // Transport negotiated, and (in a mission) both LOADED markers sent and received.

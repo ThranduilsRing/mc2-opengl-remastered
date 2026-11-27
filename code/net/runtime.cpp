@@ -1,6 +1,10 @@
 #include "runtime.h"
 #include "user_paths.h"
-#include "Gates/render_options.h"
+#ifndef MC2_NET_RUNTIME_TESTS
+#include "../../mclib/file.h"
+#include "../../mclib/vfs.h"
+#endif
+#include <thread>
 #include <algorithm>
 #include <chrono>
 #include <deque>
@@ -36,6 +40,7 @@ Identity missionIdentity, lobbyIdentity;
 bool missionHandshakePending = false, fromLobby = false;
 MissionOrigin origin = MissionOrigin::None;
 bool missionRunning = false, coopOpen = false;
+bool matchDataMounted = false;
 std::vector<save::Bytes> lobbyPending;
 std::chrono::steady_clock::time_point lobbyBegan;
 std::unique_ptr<Lockstep> gate;
@@ -55,83 +60,62 @@ std::uint64_t forcedDesyncTick = 0;
 std::uint32_t delayMs = 0;
 struct DelayedPacket { std::chrono::steady_clock::time_point due; save::Bytes bytes; };
 std::deque<DelayedPacket> delayed;
+void clearMatchData();
 [[noreturn]] void fail(std::string_view reason) {
     std::fprintf(stderr, "Multiplayer stopped: %.*s\n", static_cast<int>(reason.size()), reason.data());
     if (trace) { trace << "STOP " << reason << '\n' << std::flush; }
     std::fflush(nullptr);
+    clearMatchData();
     restoreUserDirectory();
     status = 3;
     throw SessionStopped{};
 }
 save::Digest executableHash() {
+#ifdef MC2_NET_RUNTIME_TESTS
     std::ifstream file(executable, std::ios::binary);  // path-audit: loose-only (hash of the running exe)
     if (!file) fail("cannot hash MP executable");
-    save::Bytes bytes((std::istreambuf_iterator<char>(file)), {});
-    if (!file.eof() && file.fail()) fail("cannot read MP executable");
-    return save::sha256(bytes);
+#endif
+    return simCodeHash();
 }
-save::Digest contentHash(std::vector<Identity::Component>& components) {
-    // Inherited limitation: this disk-tree digest is not the mounted VFS identity.
-    // Content-addressed tree: paths, lengths and fixed 1 MiB chunk digests.
-    // Bound memory even for multi-gigabyte packed stock content.
-    std::vector<std::filesystem::path> files;
-    for (const auto& entry : std::filesystem::directory_iterator(".")) {
-        const auto ext = entry.path().extension().string();
-        const auto name = entry.path().filename().string();
-        if (entry.is_regular_file() && (ext == ".fst" || ext == ".pak" || name == "mods.cfg" || name == "mods_active.cfg"))
-            files.push_back(entry.path().lexically_normal());
+SimFiles readSimFiles() {
+#ifdef MC2_NET_RUNTIME_TESTS
+    return {{"data/missions/gamesys.fit", {}}};
+#else
+    SimFiles files;
+    std::size_t total = 0;
+    for (const auto& entry : vfs::enumerate("data", {}, true)) {
+        if (!simDataPath(entry.key)) continue;
+        File file;
+        if (file.open(entry.key.c_str()) != 0) fail("cannot open simulation data: " + entry.key);
+        const auto size = file.fileSize();
+        total += size;
+        if (size > save::maxFileBytes || total > 256 * 1024 * 1024 || files.size() >= 8192)
+            fail("simulation data exceeds transfer limit");
+        save::Bytes bytes(size);
+        if (size && file.read(bytes.data(), static_cast<long>(size)) != static_cast<long>(size))
+            fail("cannot read simulation data: " + entry.key);
+        files.emplace(entry.key, std::move(bytes));
     }
-    constexpr std::array extensions{".pak", ".fit", ".csv", ".abl", ".abx", ".abi", ".ini", ".json", ".cfg", ".ase", ".glb", ".gltf", ".tgl", ".agl"};
-    for (const auto& directory : {"data", "mods"}) {
-        if (!std::filesystem::exists(directory)) continue;
-        for (const auto& entry : std::filesystem::recursive_directory_iterator(directory))
-            if (entry.is_regular_file() && std::ranges::find(extensions, entry.path().extension().string()) != extensions.end())
-                files.push_back(entry.path().lexically_normal());
-    }
-    std::ranges::sort(files);
-    if (files.empty()) fail("MP content manifest is empty");
-    save::Archive manifest;
-    std::map<std::string, save::Archive> groups;
-    std::ofstream listing(userFile("content-digests.tsv"), std::ios::trunc);
-    if (!listing) fail("cannot write MP content diagnostics");
-    save::Bytes buffer(1024 * 1024);
-    for (const auto& path : files) {
-        auto name = path.generic_string();
-        auto length = static_cast<std::uint64_t>(std::filesystem::file_size(path));
-        std::vector<std::uint8_t> nameBytes(name.begin(), name.end());
-        manifest(nameBytes, length);
-        const auto slash = name.find('/');
-        const auto boundary = slash == std::string::npos ? slash : name.find('/', slash + 1);
-        auto& group = groups[name.substr(0, boundary)];
-        group(nameBytes, length);
-        save::Archive fileManifest;
-        fileManifest(length);
-        std::ifstream file(path, std::ios::binary);  // path-audit: loose-only (byte hash of on-disk content)
-        if (!file) fail("cannot hash MP content: " + name);
-        while (file) {
-            file.read(reinterpret_cast<char*>(buffer.data()), static_cast<std::streamsize>(buffer.size()));
-            if (file.gcount()) {
-                auto digest = save::sha256(std::span(buffer).first(static_cast<std::size_t>(file.gcount())));
-                manifest(digest);
-                group(digest);
-                fileManifest(digest);
-            }
-        }
-        if (!file.eof()) fail("cannot read MP content: " + name);
-        listing << name << '\t' << length << '\t' << digestText(save::sha256(fileManifest.bytes())) << '\n';
-    }
-    for (const auto& [name, group] : groups) {
-        if (!group.good()) fail("MP content component exceeds limit");
-        components.push_back({name, save::sha256(group.bytes())});
-    }
-    save::Archive options;
-    auto lowCost = mc2::options::lowCost();
-    auto buildings = mc2::options::current().remasteredBuildings;
-    options(lowCost, buildings);
-    components.push_back({"render-options", save::sha256(options.bytes())});
-    if (!manifest.good()) fail("MP content manifest exceeds limit");
-    return contentIdentity(save::sha256(manifest.bytes()), mc2::options::lowCost(),
-        mc2::options::current().remasteredBuildings);
+    if (files.empty()) fail("simulation manifest is empty");
+    return files;
+#endif
+}
+void clearMatchData() {
+    matchDataMounted = false;
+#ifndef MC2_NET_RUNTIME_TESTS
+    vfs::clearMatchData();
+#endif
+}
+void useMatchData(Session& transport, Identity& identity) {
+#ifndef MC2_NET_RUNTIME_TESTS
+    auto files = transport.matchFiles();
+    identity.content = simDataHash(files);
+    identity.components = {{"simulation-data", identity.content}};
+    vfs::setMatchData(std::move(files), simDataPath);
+    matchDataMounted = true;
+#else
+    (void)transport; (void)identity;
+#endif
 }
 void flushOutgoing() {
     const auto now = std::chrono::steady_clock::now();
@@ -252,6 +236,7 @@ void endMission() {
     case MissionOrigin::SinglePlayer: break;
     }
     session.reset();
+    clearMatchData();
     gate.reset();
     enabled = hosting = false;
     endpoint.clear();
@@ -274,6 +259,7 @@ void endMission() {
     origin = MissionOrigin::None;
 }
 void closeLobby() {
+    clearMatchData();
     lobbyTransport.reset();
     lobbyPending.clear();
     lobby = {};
@@ -303,10 +289,12 @@ void openLobby(bool host, std::string_view address, std::string_view mission) {
         if (enabled) throw std::runtime_error("MP mission already active");
         prepareLobbyDirectory();
         Identity identity{executableHash(), {}, "lobby", 0};
-        identity.content = contentHash(identity.components);
+        auto files = readSimFiles();
+        identity.content = simDataHash(files);
+        identity.syncData = true;
         lobbyIdentity = identity;
         lobbyTransport = std::make_unique<Session>();
-        lobbyTransport->open(host, address, std::move(identity));
+        lobbyTransport->open(host, address, std::move(identity), std::move(files));
         lobbyBegan = std::chrono::steady_clock::now();
     } catch (const std::exception& error) { lobby.error = error.what(); }
     catch (const SessionStopped&) { lobby.error = "MP content identity could not be read"; status = 0; }
@@ -317,6 +305,7 @@ void openLobby(bool host, std::string_view address, std::string_view mission) {
 }
 void pumpLobby() {
     if (!lobbyTransport || lobby.started) return;
+    if (!matchDataMounted && lobbyTransport->dataReady()) useMatchData(*lobbyTransport, lobbyIdentity);
     for (const auto& packet : lobbyTransport->pump()) {
         if (lobby.started) lobbyPending.push_back(packet);
         else lobby.receive(packet);
@@ -378,7 +367,12 @@ void beginMission(std::string_view mission, std::uint32_t seed) {
     Identity identity = fromLobby ? lobbyIdentity : Identity{executableHash(), {}, {}, 0};
     identity.mission = mission;
     identity.seed = seed;
-    if (!fromLobby) identity.content = contentHash(identity.components);
+    SimFiles files;
+    if (!fromLobby) {
+        files = readSimFiles();
+        identity.content = simDataHash(files);
+        identity.syncData = true;
+    }
     for (const auto& component : identity.components)
         trace << "CONTENT " << component.name << ' ' << digestText(component.digest) << '\n';
     trace << "IDENTITY executable=";
@@ -387,15 +381,26 @@ void beginMission(std::string_view mission, std::uint32_t seed) {
     for (const auto byte : identity.content) trace << std::hex << std::setw(2) << std::setfill('0') << static_cast<unsigned>(byte);
     trace << std::dec << " mission=" << mission << " seed=" << seed << '\n' << std::flush;
     if (fromLobby) {
+        identity.syncData = false; // Revalidate the installed match hash, not another transfer.
         missionIdentity = identity;
         missionHandshakePending = true;
         session->send(hello(identity));
         fromLobby = false;
     } else {
         session = std::make_unique<Session>();
-        try { session->open(hosting, endpoint, identity); }
+        try { session->open(hosting, endpoint, identity, std::move(files)); }
         catch (const std::exception& error) { fail(error.what()); }
         session->missionLoading(true);
+#ifndef MC2_NET_RUNTIME_TESTS
+        while (!session->dataReady()) {
+            if (!session->error().empty()) fail(session->error());
+            if (std::chrono::steady_clock::now() - began >= std::chrono::seconds(600))
+                fail("simulation data sync timeout (600 seconds)");
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        useMatchData(*session, identity);
+        trace << "SIM_DATA verified=" << digestText(identity.content) << '\n' << std::flush;
+#endif
     }
     std::fprintf(stderr, "Multiplayer: slot=%u mission=%s seed=%u awaiting peer\n", localSlot(), identity.mission.c_str(), seed);
 }

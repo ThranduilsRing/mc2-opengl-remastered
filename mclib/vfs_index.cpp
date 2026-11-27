@@ -59,6 +59,8 @@ struct Index {
 };
 Index g_index;
 std::mutex g_indexMutex;
+std::map<std::string, std::vector<uint8_t>> matchData;
+bool (*matchOwns)(std::string_view) = nullptr;
 
 // Content-digest memo: provider identity -> stat stamp + digest, persisted between runs.
 struct DigestStamp { uint64_t size = 0; int64_t mtime = 0; };
@@ -391,6 +393,13 @@ std::vector<Entry> candidates(std::string_view logicalKey)
 	std::lock_guard<std::mutex> lk(g_indexMutex);
 	if (!g_index.built) buildLocked();
 	const std::string k = key(logicalKey);
+	if (matchOwns && matchOwns(k)) {
+        if (matchData.find(k) != matchData.end()) {
+            Entry entry; entry.key = k; entry.provider = Provider::Mod; entry.mountName = "match-cache";
+            entry.name = k.substr(k.rfind('/') + 1); out.push_back(std::move(entry));
+        }
+        return out;
+    }
 	const auto it = g_index.entries.find(k);
 	if (it != g_index.entries.end()) {
 		const auto& [entryKey, entries] = *it;
@@ -474,6 +483,13 @@ uint64_t contentDigest(std::string_view path, bool verify)
 {
 	if (path.empty()) return 0;
 	const std::string k = key(path);
+    {
+        std::lock_guard<std::mutex> lk(g_indexMutex);
+        if (matchOwns && matchOwns(k)) {
+            const auto it = matchData.find(k);
+            return it == matchData.end() ? 0 : mc2::content::fastHash(it->second);
+        }
+    }
 	// Follow provider precedence with stat probes; memo hits must not open the source.
 	std::string physical;
 	bool fst = false;
@@ -596,6 +612,7 @@ std::optional<Entry> resolve(std::string_view logicalKey, bool (*readable)(const
 {
 	for (Entry& e : candidates(logicalKey)) {
 		bool ok = true;
+		if (e.mountName == "match-cache") return std::move(e);
 		if (readable) ok = readable(e);
 		else if (e.provider == Provider::Pak) ok = e.pak->find(e.key) != nullptr;
 		else if (e.provider != Provider::Fst) {
@@ -608,11 +625,30 @@ std::optional<Entry> resolve(std::string_view logicalKey, bool (*readable)(const
 	return std::nullopt;
 }
 
+void setMatchData(std::map<std::string, std::vector<uint8_t>> files, bool (*owns)(std::string_view)) {
+    std::lock_guard<std::mutex> lk(g_indexMutex);
+    matchData = std::move(files); matchOwns = owns;
+    g_generation.fetch_add(1, std::memory_order_relaxed);
+}
+void clearMatchData() {
+    std::lock_guard<std::mutex> lk(g_indexMutex);
+    matchOwns = nullptr; matchData.clear();
+    g_generation.fetch_add(1, std::memory_order_relaxed);
+}
 OpenedFile openRead(const char* path, const char* req, bool probeOnly)
 {
 	OpenedFile r;
 	if (!path || !path[0]) return r;
 	const std::string k = key(path);
+    {
+        std::lock_guard<std::mutex> lk(g_indexMutex);
+        if (matchOwns && matchOwns(k)) {
+            r.layer = r.owner = "match-cache";
+            const auto it = matchData.find(k);
+            if (it != matchData.end()) r.pakBytes = probeOnly ? std::vector<uint8_t>{} : it->second;
+            return r;
+        }
+    }
 	auto openPhysical = [&](const std::string& phys, const char* layer, const std::string& owner) {
 		const int h = phys.empty() ? -1 : _open(phys.c_str(), _O_RDONLY | _O_BINARY); // path-audit: loose-only; ladder opens the selected mod/loose physical file.
 		if (h == -1) return false;
@@ -722,7 +758,7 @@ bool guardWrite(std::string_view path)
 	return true;
 }
 
-std::vector<Entry> enumerate(std::string_view dirKey, std::string_view ext)
+std::vector<Entry> enumerate(std::string_view dirKey, std::string_view ext, bool recursive)
 {
 	std::lock_guard<std::mutex> lk(g_indexMutex);
 	if (!g_index.built) buildLocked();
@@ -733,10 +769,18 @@ std::vector<Entry> enumerate(std::string_view dirKey, std::string_view ext)
 	for (auto it = g_index.entries.lower_bound(dir); it != g_index.entries.end(); ++it) {
 		const auto& [k, entries] = *it;
 		if (k.compare(0, dir.size(), dir) != 0) break;
-		if (k.find('/', dir.size()) != std::string::npos) continue;   // direct children only
+		if (!recursive && k.find('/', dir.size()) != std::string::npos) continue;
 		if (!e.empty() && (k.size() < dir.size() + e.size() || k.compare(k.size() - e.size(), e.size(), e) != 0)) continue;
+		if (matchOwns && matchOwns(k)) continue;
 		out.push_back(entries.front());   // the winner; one entry per key
 	}
+    for (const auto& [k, bytes] : matchData) {
+        if (!k.starts_with(dir) || (!recursive && k.find('/', dir.size()) != std::string::npos) ||
+            (!e.empty() && !k.ends_with(e))) continue;
+        Entry entry; entry.key = k; entry.provider = Provider::Mod; entry.mountName = "match-cache";
+        entry.name = k.substr(k.rfind('/') + 1); out.push_back(std::move(entry));
+    }
+    std::ranges::sort(out, {}, &Entry::key);
 	return out;   // std::map order == sorted by key
 }
 
