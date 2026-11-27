@@ -625,21 +625,21 @@ long FitIniFile::readIdString (std::string_view varName, char *result, unsigned 
 		if ( pFirstEqual && !strstr( pFirstEqual+1, "\"" ) ) 
 		{
 			long curLen = static_cast<long>(strlen( equalSign ));
-			char tmpLine[2047];
+			char tmpLine[2048];
 			do
 			{
 				readLine(reinterpret_cast<MemoryPtr>(tmpLine),2047);
 				pFound = strstr( tmpLine, "\"" );
 
 				long addedLen = static_cast<long>(strlen( tmpLine ) + 1);
-				if ( curLen + addedLen < 2048 )
+				if (curLen + addedLen < static_cast<long>(sizeof(line) - (equalSign - line)))
 				{
 					strcat( equalSign, tmpLine );
 					strcat( equalSign, "\n" );
 					curLen += addedLen;
 				}
 				else
-					break;
+					return BUFFER_TOO_SMALL;
 
 			}while( !pFound && (logicalPosition < endOfBlock) );
 		}

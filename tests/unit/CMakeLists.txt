@@ -35,6 +35,11 @@ add_subdirectory(../../3rdparty/enet enet EXCLUDE_FROM_ALL)
 
 # Resolve the worktree root (this CMakeLists lives at <root>/tests/unit/).
 get_filename_component(MC2_WORKTREE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
+add_custom_target(mc2_unit_sim_identity
+    COMMAND ${CMAKE_COMMAND} -DOUT=${CMAKE_CURRENT_BINARY_DIR}/generated/build_fingerprint.h
+        -DSRC_DIR=${MC2_WORKTREE_ROOT} -P ${MC2_WORKTREE_ROOT}/cmake/GenerateBuildFingerprint.cmake
+    BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/generated/sim_code_identity.h)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/generated)
 
 set_source_files_properties(${MC2_WORKTREE_ROOT}/RenderCore/KtxBasis.cpp PROPERTIES COMPILE_DEFINITIONS NDEBUG)  # vendored basisu asserts do not compile under clang
 add_executable(mc2_tests
@@ -1071,6 +1076,7 @@ foreach(source IN LISTS mc2_unit_sources)
 endforeach()
 add_library(mc2_unit_stubs OBJECT ${mc2_unit_stub_sources})
 add_library(mc2_unit_support OBJECT ${mc2_unit_support_sources})
+add_dependencies(mc2_unit_support mc2_unit_sim_identity)
 foreach(target mc2_unit_stubs mc2_unit_support)
     target_link_libraries(${target} PRIVATE mc2_unit_config)
 endforeach()

@@ -12,6 +12,8 @@
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
 #include "mc2fmt.h"
+#include "file.h"
+#include "vfs.h"
 
 using nlohmann::json;
 
@@ -56,10 +58,12 @@ static std::vector<AnimOverrideRecord> animParseManifest(
         std::string_view manifestPath, std::string_view dir) {
     std::vector<AnimOverrideRecord> out;
 
-    std::ifstream in{std::string(manifestPath)};
-    if (!in.is_open()) return out;
+    File source;
+    if (source.open(std::string(manifestPath).c_str()) != NO_ERR) return out;
+    std::string bytes(source.fileSize(), '\0');
+    if (source.read(reinterpret_cast<MemoryPtr>(bytes.data()), static_cast<long>(bytes.size())) != static_cast<long>(bytes.size())) return out;
     json root;
-    try { in >> root; }
+    try { root = json::parse(bytes); }
     catch (const std::exception& e) {
         mc2::fmt::print_err("[ANIMOVERRIDE] parse error in {}: {}\n", manifestPath, mc2::fmt::safe(e.what()));
         return out;
@@ -153,6 +157,16 @@ const AnimOverrideRecord* AnimOverrideRegistry::resolve(
 }
 
 AnimOverrideRegistry& AnimOverrideRegistry::instance() {
+    if (mc2::vfs::matchDataActive()) {
+        static AnimOverrideRegistry match;
+        static uint64_t generation = 0;
+        const auto current = mc2::vfs::generation();
+        if (generation != current) {
+            match.loadFromFile("data/anim_overrides/anims.json", "data/anim_overrides");
+            generation = current;
+        }
+        return match;
+    }
     static AnimOverrideRegistry g;
     static std::once_flag once;
     std::call_once(once, []{

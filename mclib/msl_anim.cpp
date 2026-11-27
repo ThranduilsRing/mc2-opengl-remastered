@@ -4,6 +4,7 @@
 #include "mc2_czstring.h"
 #include "msl_internal.h"
 #include "mc2fmt.h"
+#include "vfs.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
 
@@ -248,31 +249,15 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (mc2::czstring fileName, 
 		//
 		shapeIdsSet = false;
 	
-		//------------------------------------------
-		// Check if exists 
-		if (!gos_FileExists(fileName))
-			return(-1);
-		
-		long aseFileSize = gos_FileSize(fileName);
-	
-		//---------------------------------------
-		// Create Buffer to read entire file into
-		BYTE *aseContents = static_cast<BYTE *>(malloc(aseFileSize+1));
-		gosASSERT(aseContents != nullptr);
-	
-		//---------------------------------------
-		// Open File and read it and close it
-		HGOSFILE aseFile;
-		gos_OpenFile(&aseFile,fileName,READONLY);
-	
-	#ifdef _DEBUG
-		long dataRead = 
-	#endif
-		gos_ReadFile(aseFile,aseContents,aseFileSize);
-		gosASSERT(dataRead == aseFileSize);
-	
-		gos_CloseFile(aseFile);
-	
+        File aseFile;
+        const long openResult = aseFile.open(fileName);
+        if (openResult != NO_ERR) return openResult;
+        const long aseFileSize = static_cast<long>(aseFile.fileSize());
+        BYTE* aseContents = static_cast<BYTE*>(malloc(aseFileSize + 1));
+        gosASSERT(aseContents != nullptr);
+        const long dataRead = aseFile.read(aseContents, aseFileSize);
+        aseFile.close();
+        if (dataRead != aseFileSize) { free(aseContents); return READ_PAST_EOF_ERR; }
 		aseContents[aseFileSize] = 0;
 	
 		//----------------------------------------
@@ -569,7 +554,7 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (mc2::czstring fileName, 
 		free(aseContents);
 		aseContents = nullptr;
 		
-		SaveBinaryCopy(binaryFileName);
+		if (!mc2::vfs::matchDataActive()) SaveBinaryCopy(binaryFileName);
 	}
 
 	return(0);

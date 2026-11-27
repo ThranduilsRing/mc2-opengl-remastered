@@ -157,14 +157,14 @@ TEST_CASE("net session handshake accepts only identical protocol/executable/cont
 }
 
 TEST_CASE("net session rejects changed heat profile content without data sync") {
-    CHECK(net::protocolVersion == 6);
+    CHECK(net::protocolVersion == 7);
     net::Identity local, remote;
     local.mission = "mc2_01";
     const save::Bytes heatFit{1, 20, 60, 0};
     auto modifiedHeatFit = heatFit; modifiedHeatFit[1] = 21;
-    local.content = net::contentIdentity(save::sha256(heatFit), false, true);
+    local.content = save::sha256(heatFit);
     remote = local;
-    remote.content = net::contentIdentity(save::sha256(modifiedHeatFit), false, true);
+    remote.content = save::sha256(modifiedHeatFit);
     CHECK(remote.content != local.content);
     CHECK(net::checkHello(net::hello(remote), local) == "content SHA-256 mismatch");
 }
@@ -324,19 +324,22 @@ TEST_CASE("net LOADED marker precedes immediate mission input") {
     }
 }
 
-TEST_CASE("net content identity excludes effective mounted art options") {
-    const save::Digest files{};
-    const auto high = net::contentIdentity(files, false, true);
-    CHECK(high == net::contentIdentity(files, false, true));
-    CHECK(high == net::contentIdentity(files, true, true));
-    CHECK(high == net::contentIdentity(files, false, false));
+TEST_CASE("net content identity changes with effective simulation bytes") {
+    const net::SimFiles files{{"data/objects/a.fit", {1}}};
+    auto changed = files;
+    changed.begin()->second[0] = 2;
+    CHECK(net::simDataHash(files) != net::simDataHash(changed));
 }
 
 TEST_CASE("net simulation manifest excludes cosmetics and rejects unsafe names") {
     for (const auto* path : {"data/missions/mc2_01.fit", "data/missions/warriors/a.abl",
-            "data/objects/compbas.csv", "data/defs/rules/heat.fit", "data/defs/units/core/a/chassisdef.fit"})
+            "data/objects/compbas.csv", "data/defs/rules/heat.fit", "data/defs/units/core/a/chassisdef.fit",
+            "data/defs/chassis/pack/a/chassisdef.fit", "data/tgl/madcat.ini", "data/tgl/madcat.tgl",
+            "data/tgl/madcat.agl", "data/tgl/madcat.ase", "data/tgl/madcat.glb", "data/tgl/madcat.fbx",
+            "data/tgl/madcat.bin", "data/tgl/madcat.package.json", "data/anim_overrides/anims.json"})
         CHECK(net::simDataPath(path));
-    for (const auto* path : {"data/textures/hd.fit", "data/tgl/tree.fit", "data/defs/ui/theme.json",
+    for (const auto* path : {"data/textures/hd.fit", "data/tgl/tree.fit", "data/tgl/madcat.tga",
+            "data/tgl/madcat.ktx2", "data/tgl/madcat.png", "data/defs/ui/theme.json",
             "mods.cfg", "options.cfg", "data/objects/../../x.csv", "data/objects/C:x.csv",
             "data/objects/x.csv\n", "Data/objects/a.csv"}) CHECK_FALSE(net::simDataPath(path));
     CHECK(net::simCodeHash() != save::Digest{});
@@ -345,9 +348,12 @@ TEST_CASE("net simulation manifest excludes cosmetics and rejects unsafe names")
 TEST_CASE("net simulation transfer syncs changed missing and empty data and hides local extras") {
     const net::SimFiles source{{"data/objects/compbas.csv", save::Bytes(150000, 7)},
         {"data/missions/empty.abl", {}}, {"data/missions/mc2_01.fit", {1, 2}},
-        {"data/defs/rules/heat.fit", {3}}};
+        {"data/defs/rules/heat.fit", {3}}, {"data/tgl/madcat.ini", {4}},
+        {"data/tgl/madcat.glb", {5}}, {"data/tgl/madcat.package.json", {6}},
+        {"data/tgl/madcat.agl", {7}}};
     net::SimFiles installed{{"data/objects/compbas.csv", {9}},
-        {"data/missions/mc2_01.fit", {1, 2}}, {"data/missions/local.abl", {99}}};
+        {"data/missions/mc2_01.fit", {1, 2}}, {"data/missions/local.abl", {99}},
+        {"data/tgl/madcat.glb", {55}}, {"data/tgl/client-only.glb", {99}}};
     net::SimTransfer host(true, source), client(false, installed);
     auto packet = host.begin();
     unsigned exchanges = 0;
@@ -378,9 +384,60 @@ TEST_CASE("net simulation transfer rejects corrupt chunks and malformed packets"
     CHECK_THROWS(net::SimTransfer(true, {{"data/objects/../escape.csv", {}}}));
 }
 
+TEST_CASE("net simulation finish preserves the content digest and rejects tampering") {
+    const net::SimFiles files{{"data/objects/test.fit", {1, 2, 3}}};
+    net::SimTransfer host(true, files), client(false, files);
+    auto finish = host.receive(client.receive(host.begin()));
+    save::Archive archive(finish);
+    std::uint32_t kind = 0;
+    save::Digest digest{};
+    archive(kind, digest);
+    REQUIRE(archive.finish());
+    CHECK(kind == 0x53494d05);
+    CHECK(digest == net::simDataHash(files));
+    finish.back() ^= 1;
+    CHECK(client.receive(finish).empty());
+    CHECK_FALSE(client.error.empty());
+}
+
+TEST_CASE("net simulation identical manifests exchange have need in bounded batches") {
+    net::SimFiles files;
+    for (unsigned i = 0; i < 300; ++i) files.emplace("data/objects/" + std::to_string(i) + ".fit", save::Bytes{1});
+    net::SimTransfer host(true, files), client(false, files);
+    auto packet = host.begin();
+    unsigned exchanges = 0;
+    while (!host.ready && exchanges < 10) {
+        ++exchanges;
+        REQUIRE(packet.size() <= net::maxPacketBytes);
+        auto reply = client.receive(packet);
+        REQUIRE(client.error.empty());
+        packet = host.receive(reply);
+        REQUIRE(host.error.empty());
+    }
+    CHECK(host.ready); CHECK(client.ready);
+    CHECK(exchanges == 4); // three batches and the final digest, rather than 301 round trips
+    CHECK(client.files == files);
+}
+
 TEST_CASE("net simulation match cache takes precedence and is released") {
     struct Cleanup { ~Cleanup() { vfs::clearMatchData(); } } cleanup;
-    vfs::setMatchData({{"data/objects/compbas.csv", {42}}}, net::simDataPath);
+    vfs::setMatchData({{"data/objects/compbas.csv", {42}},
+        {"data/defs/chassis/host/a/chassisdef.fit", {43}},
+        {"data/tgl/madcat.glb", {44}}, {"data/tgl/madcat.agl", {45}},
+        {"data/tgl/madcat.package.json", {46}}}, net::simDataPath);
+    CHECK(vfs::matchDataActive());
+    for (const auto* path : {"data/tgl/madcat.glb", "data/tgl/madcat.agl", "data/tgl/madcat.package.json"}) {
+        File appearance;
+        REQUIRE(appearance.open(path) == 0);
+        unsigned char value = 0;
+        REQUIRE(appearance.read(&value, 1) == 1);
+        CHECK(value >= 44); CHECK(value <= 46);
+    }
+    CHECK_FALSE(fileExists("data/tgl/client-only.glb"));
+    const auto chassis = vfs::enumerate("data/defs/chassis", ".fit", true);
+    REQUIRE(chassis.size() == 1);
+    CHECK(chassis.front().key == "data/defs/chassis/host/a/chassisdef.fit");
+    CHECK(chassis.front().mountName == "match-cache");
     const auto weapon = vfs::openRead("DATA\\OBJECTS\\COMPBAS.CSV");
     REQUIRE(weapon.pakBytes);
     CHECK(*weapon.pakBytes == save::Bytes{42});
@@ -401,6 +458,7 @@ TEST_CASE("net simulation match cache takes precedence and is released") {
     REQUIRE(listing.size() == 1);
     CHECK(listing.front().key == "data/objects/compbas.csv");
     vfs::clearMatchData();
+    CHECK_FALSE(vfs::matchDataActive());
     CHECK(vfs::openRead("data/objects/compbas.csv").layer != "match-cache");
 }
 

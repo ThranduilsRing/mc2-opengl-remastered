@@ -710,7 +710,7 @@ add_custom_target(build_fingerprint
     COMMAND ${CMAKE_COMMAND}
         -DOUT=${MC2_BUILD_FINGERPRINT_H} -DCPP_OUT=${MC2_BUILD_FINGERPRINT_CPP} -DSRC_DIR=${CMAKE_SOURCE_DIR}
         -P "${CMAKE_SOURCE_DIR}/cmake/GenerateBuildFingerprint.cmake"
-    BYPRODUCTS "${MC2_BUILD_FINGERPRINT_H}" "${MC2_BUILD_FINGERPRINT_CPP}"
+    BYPRODUCTS "${MC2_BUILD_FINGERPRINT_H}" "${MC2_BUILD_FINGERPRINT_CPP}" "${CMAKE_BINARY_DIR}/generated/sim_code_identity.h"
     COMMENT "Refreshing build fingerprint (one translation unit)"
     VERBATIM)
 

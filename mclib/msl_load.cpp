@@ -5,6 +5,7 @@
 #include "msl_internal.h"
 #include "mc2fmt.h"
 #include "content_ir.h"
+#include "vfs.h"
 #include "../GameOS/gameos/load_scope.h"
 #include <filesystem>
 
@@ -157,6 +158,7 @@ long TG_TypeMultiShape::LoadBinaryCopy(mc2::czstring fileName)
 static bool preferStockBinary(mc2::czstring ase, mc2::czstring binary, bool forceASE)
 {
     if (forceASE || !fileExists(binary)) return false;
+    if (mc2::vfs::matchDataActive()) return !fileExists(ase);
     if (!fileExists(ase, FILE_ON_DISK)) return true;
     // Format preference must never let a base ASE shadow a higher-priority mod TGL.
     return LookupModPriority(binary) < LookupModPriority(ase);
@@ -401,15 +403,11 @@ long TG_TypeMultiShape::LoadFromFile(mc2::czstring baseName)
 			{
 				FullPathFileName probePath;
 				probePath.init(tglPath, baseName, importExt);
-				const bool exists = fileExists(probePath, FILE_ON_DISK);
+				const bool exists = fileExists(probePath);
 				if (exists)
 				{
-					// P2 BOUNDARY ADAPTER (bt2018 lane; thin, to be replaced by the content-pipeline
-					// resource provider): Assimp and the <stem>.package.json sidecar open files with
-					// raw OS calls that do not see the mod VFS. Hand them the mounted mod's real path
-					// when a mod serves this key; base-data paths pass through unchanged.
-					const char* modPath = LookupModAbsolutePath(static_cast<const char*>(probePath));
-					long r = ImportGeometryFromFile(modPath ? modPath : static_cast<const char*>(probePath), this);
+                    // Keep the logical key: Assimp and package sidecars read through File/VFS.
+					long r = ImportGeometryFromFile(static_cast<const char*>(probePath), this);
 					if (r == 0)
 						return NO_ERR;
 					// META-FIX design B PART 0: probed file EXISTED but the
@@ -519,36 +517,15 @@ long TG_TypeMultiShape::DecodeStockASE (std::string_view sourcePath, bool forceM
 	}
 	else
 	{
-		//------------------------------------------
-		// Check if exists
-		if (!gos_FileExists(fileName))
-		{
-			// META-FIX design B PART 0: no ASE and no fresh .tgl — optional
-			// slots (arms/shadow/damage) hit this on healthy stock installs,
-			// so nothing is logged (required slots log via tgl_load_guard).
-			return(-1);
-		}
-
-		long aseFileSize = gos_FileSize(fileName);
-	
-		//---------------------------------------
-		// Create Buffer to read entire file into
-		BYTE *aseContents = static_cast<BYTE *>(malloc(aseFileSize+1));
-		gosASSERT(aseContents != nullptr);
-	
-		//---------------------------------------
-		// Open File and read it and close it
-		HGOSFILE aseFile;
-		gos_OpenFile(&aseFile,fileName,READONLY);
-	
-#ifdef _DEBUG
-		long dataRead = 
-#endif
-		gos_ReadFile(aseFile,aseContents,aseFileSize);
-		gosASSERT(dataRead == aseFileSize);
-	
-		gos_CloseFile(aseFile);
-	
+        File aseFile;
+        const long openResult = aseFile.open(fileName);
+        if (openResult != NO_ERR) return openResult;
+        const long aseFileSize = static_cast<long>(aseFile.fileSize());
+        BYTE* aseContents = static_cast<BYTE*>(malloc(aseFileSize + 1));
+        gosASSERT(aseContents != nullptr);
+        const long dataRead = aseFile.read(aseContents, aseFileSize);
+        aseFile.close();
+        if (dataRead != aseFileSize) { free(aseContents); return READ_PAST_EOF_ERR; }
 		aseContents[aseFileSize] = 0;
 	
 		//----------------------------------------

@@ -637,6 +637,10 @@ void clearMatchData() {
     matchOwns = nullptr; matchData.clear();
     g_generation.fetch_add(1, std::memory_order_relaxed);
 }
+bool matchDataActive() {
+    std::lock_guard<std::mutex> lk(g_indexMutex);
+    return matchOwns != nullptr;
+}
 OpenedFile openRead(const char* path, const char* req, bool probeOnly)
 {
 	OpenedFile r;

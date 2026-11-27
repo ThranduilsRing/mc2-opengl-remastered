@@ -88,7 +88,7 @@ bool ABLFile::eof (void) {
 
 long ABLFile::read (unsigned char* buffer, long length) {
 
-	if (!file || length < 0 || !remainingCB || length > remainingCB(file)) {
+	if (!file || !readCB || (!buffer && length) || length < 0 || !remainingCB || length > remainingCB(file)) {
 		MC2_LOG(Sim, Error, "[ABL_FILE_READ_BAD] invalid or truncated read of {} bytes from {}", length, fileName);
 		return 0;
 	}

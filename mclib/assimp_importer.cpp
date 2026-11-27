@@ -43,6 +43,7 @@
 #include <unordered_map>
 #include <array>
 #include <cstring>
+#include "vfs.h"
 #include <cmath>
 #include <limits>
 #include <cstdio>
@@ -943,6 +944,7 @@ static bool importedMechPackageMounted() {
 }
 
 bool mechImportAnimateEnabled() {
+    if (mc2::vfs::matchDataActive()) return true;
     // Opt-in, default OFF (static FORCE_CLIP bake stays the safe path) unless a package asks.
     static const bool v = mc2::gate::get<"MC2_MECH_IMPORT_ANIMATE">() ||
         (importedMechPackageMounted() && mc2::gate::state<"MC2_MECH_IMPORT_ANIMATE">() != mc2::gate::Tri::Off);
@@ -951,6 +953,7 @@ bool mechImportAnimateEnabled() {
 
 // 1B-GPU: route the imported mech through the GPU skinned-mech path (default OFF unless a package asks).
 bool mechImportGpuEnabled() {
+    if (mc2::vfs::matchDataActive()) return true;
     static const bool v = mc2::gate::get<"MC2_MECH_IMPORT_GPU">() ||
         (importedMechPackageMounted() && mc2::gate::state<"MC2_MECH_IMPORT_GPU">() != mc2::gate::Tri::Off);
     return v;
@@ -1120,11 +1123,10 @@ bool PackageDeclaresAtlasStack(mc2::czstring glbPath, float& chassisHeight) {
     std::string p(glbPath);
     const size_t dot = p.rfind(".glb");
     const std::string side = (dot != std::string::npos ? p.substr(0, dot) : p) + ".package.json";
-    FILE* f = fopen(side.c_str(), "rb"); // path-audit: loose-only (sidecar beside the loose GLB Assimp reads)
-    if (!f) return false;
-    std::string buf; char tmp[4096]; size_t n;
-    while ((n = fread(tmp, 1, sizeof(tmp), f)) > 0) buf.append(tmp, n);
-    fclose(f);
+    File source;
+    if (source.open(side.c_str()) != NO_ERR) return false;
+    std::string buf(source.fileSize(), '\0');
+    if (source.read(reinterpret_cast<MemoryPtr>(buf.data()), static_cast<long>(buf.size())) != static_cast<long>(buf.size())) return false;
     const size_t key = buf.find("\"chassisId\"");
     const size_t colon = key == std::string::npos ? key : buf.find(':', key);
     const size_t first = colon == std::string::npos ? colon : buf.find('"', colon + 1);
@@ -1149,15 +1151,10 @@ void LoadMechPackage(mc2::czstring glbPath, std::map<std::string, std::string>& 
     std::string p(glbPath);
     size_t dot = p.rfind(".glb");
     std::string side = (dot != std::string::npos ? p.substr(0, dot) : p) + ".package.json";
-    FILE* f = fopen(side.c_str(), "rb");
-    if (!f) {
-        mc2::fmt::print_err("[MECH_IMPORT] no node manifest '{}' (firepoints -> legacy/origin)\n", side.c_str());
-        return;
-    }
-    std::string buf;
-    char tmp[4096]; size_t n;
-    while ((n = fread(tmp, 1, sizeof(tmp), f)) > 0) buf.append(tmp, n);
-    fclose(f);
+    File source;
+    if (source.open(side.c_str()) != NO_ERR) return;
+    std::string buf(source.fileSize(), '\0');
+    if (source.read(reinterpret_cast<MemoryPtr>(buf.data()), static_cast<long>(buf.size())) != static_cast<long>(buf.size())) return;
     if (showcaseOut) {
         const size_t clips = buf.find("\"clips\"");
         const size_t start = clips == std::string::npos ? clips : buf.find('{', clips);
@@ -2093,7 +2090,7 @@ long ImportGeometryFromFile(mc2::czstring path, TG_TypeMultiShape* out, bool aut
 		// instead — a STATIC posed import (no per-frame runtime yet). Same joint-
 		// global path (mc2skel::EvaluateClipGpuBones) the harness oracle uses, so
 		// mech_bone_parity --clip/--frame proves they match. Unknown clip -> rest.
-		const bool hasForceClip = mc2::gate::isSet<"MC2_MECH_IMPORT_FORCE_CLIP">();
+		const bool hasForceClip = !mc2::vfs::matchDataActive() && mc2::gate::isSet<"MC2_MECH_IMPORT_FORCE_CLIP">();
 		const std::string forceClipStr = hasForceClip ? mc2::gate::str<"MC2_MECH_IMPORT_FORCE_CLIP">() : std::string();
 		const char* fc = hasForceClip ? forceClipStr.c_str() : nullptr;
 		if (mechImportGpuEnabled()) {
@@ -2130,7 +2127,8 @@ long ImportGeometryFromFile(mc2::czstring path, TG_TypeMultiShape* out, bool aut
 		// Qualified import packages use chassis heights and the vertical bind extent.
 		// Preserve the legacy scale for simulation sockets; clocks follow visible stride.
 		if (bake.active) {
-			const float targetH = chassisHeight > 0.0f ? chassisHeight : mc2::gate::get<"MC2_MECH_SKEL_HEIGHT">();
+			const float simHeight = mc2::vfs::matchDataActive() ? 50.0f : mc2::gate::get<"MC2_MECH_SKEL_HEIGHT">();
+			const float targetH = chassisHeight > 0.0f ? chassisHeight : simHeight;
 			float lo[3] = {1e30f, 1e30f, 1e30f}, hi[3] = {-1e30f, -1e30f, -1e30f};
 			for (unsigned m = 0; m < scene->mNumMeshes; ++m) {
 				const aiMesh* me = scene->mMeshes[m];
@@ -2148,7 +2146,7 @@ long ImportGeometryFromFile(mc2::czstring path, TG_TypeMultiShape* out, bool aut
 			}
 			float ext = 0.0f;
 			for (int k = 0; k < 3; ++k) ext = (hi[k] - lo[k] > ext) ? (hi[k] - lo[k]) : ext;
-			if (ext > 1e-6f) bake.simScale = mc2::gate::get<"MC2_MECH_SKEL_HEIGHT">() / ext;
+			if (ext > 1e-6f) bake.simScale = simHeight / ext;
 			if (chassisHeight > 0.0f) ext = hi[1] - lo[1]; // glTF Y-up, not weapon span
 			if (ext > 1e-6f) bake.scale = targetH / ext;
 			MECH_SKEL_TRACE("file='%s' SKINNED: bones=%zu bindExtent=%.4f scale=%.2f -> targetH=%.1f",

@@ -3,14 +3,16 @@
 #include <memory>
 #include <optional>
 #include <map>
+#include <deque>
 
 namespace mc2::net {
-inline constexpr std::uint32_t protocolVersion = 6;
+inline constexpr std::uint32_t protocolVersion = 7;
 inline constexpr std::size_t maxPacketBytes = 256 * 1024;
 using SimFiles = std::map<std::string, save::Bytes>;
 bool simDataPath(std::string_view path);
+inline constexpr std::size_t maxSimDataBytes = 2ull * 1024 * 1024 * 1024;
 save::Digest simDataHash(const SimFiles& files);
-// Increment for incompatible simulation changes, independently of rendering builds.
+// Build-generated identity of the legacy simulation's source trees.
 save::Digest simCodeHash();
 class SimTransfer {
 public:
@@ -24,6 +26,12 @@ private:
     bool host_;
     enum class Phase { Entry, Request, Chunk, Ack, Finish } phase_ = Phase::Entry;
     SimFiles accepted_;
+    std::map<std::string, save::Digest> installedDigests_;
+    save::Archive manifest_;
+    struct Entry { std::string name; std::uint32_t size = 0; save::Digest digest{}; };
+    std::vector<Entry> batch_;
+    std::deque<Entry> needed_;
+    std::string batchEnd_;
     std::string name_;
     save::Bytes incoming_;
     save::Digest digest_{};
@@ -31,6 +39,8 @@ private:
     std::size_t total_ = 0;
     save::Bytes next();
     save::Bytes chunk();
+    void prepareChunk();
+    static void entryFields(save::Archive& archive, Entry& entry);
 };
 struct Identity {
     save::Digest executable{}, content{};
@@ -47,7 +57,6 @@ struct Identity {
 };
 save::Bytes hello(const Identity& identity);
 std::string digestText(const save::Digest& digest);
-save::Digest contentIdentity(const save::Digest& files, bool lowCost, bool remasteredBuildings);
 // Returns the specific incompatible field, or empty on an exact match.
 std::string checkHello(std::span<const std::uint8_t> packet, const Identity& local);
 

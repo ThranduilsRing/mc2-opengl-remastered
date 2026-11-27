@@ -48,7 +48,7 @@ long FitIniFile::readIdFloatArray (std::string_view varName, float *result, unsi
 	fSearch += 2;												//Move pointer to first number in brackets.
 	long numDigits = bSearch - fSearch;
 
-	if (numDigits > 9)
+	if (numDigits <= 0 || numDigits > 9)
 		return(TOO_MANY_ELEMENTS);
 
 	strncpy(elementString,fSearch,numDigits);
@@ -144,7 +144,7 @@ long FitIniFile::readIdIntArray (std::string_view varName, int *result, unsigned
 	fSearch += 2;												//Move pointer to first number in brackets.
 	long numDigits = bSearch - fSearch;
 
-	if (numDigits > 9)
+	if (numDigits <= 0 || numDigits > 9)
 		return(TOO_MANY_ELEMENTS);
 
 	strncpy(elementString,fSearch,numDigits);
@@ -239,7 +239,7 @@ long FitIniFile::readIdLongArray (std::string_view varName, long *result, unsign
 	fSearch += 2;												//Move pointer to first number in brackets.
 	long numDigits = bSearch - fSearch;
 
-	if (numDigits > 9)
+	if (numDigits <= 0 || numDigits > 9)
 		return(TOO_MANY_ELEMENTS);
 
 	strncpy(elementString,fSearch,numDigits);
@@ -334,7 +334,7 @@ long FitIniFile::readIdULongArray (std::string_view varName, unsigned long *resu
 	fSearch += 3;												//Move pointer to first number in brackets.
 	long numDigits = bSearch - fSearch;
 
-	if (numDigits > 9)
+	if (numDigits <= 0 || numDigits > 9)
 		return(TOO_MANY_ELEMENTS);
 
 	strncpy(elementString,fSearch,numDigits);
@@ -429,7 +429,7 @@ long FitIniFile::readIdShortArray (std::string_view varName, short *result, unsi
 	fSearch += 2;												//Move pointer to first number in brackets.
 	long numDigits = bSearch - fSearch;
 
-	if (numDigits > 9)
+	if (numDigits <= 0 || numDigits > 9)
 		return(TOO_MANY_ELEMENTS);
 
 	strncpy(elementString,fSearch,numDigits);
@@ -524,7 +524,7 @@ long FitIniFile::readIdUShortArray (std::string_view varName, unsigned short *re
 	fSearch += 3;												//Move pointer to first number in brackets.
 	long numDigits = bSearch - fSearch;
 
-	if (numDigits > 9)
+	if (numDigits <= 0 || numDigits > 9)
 		return(TOO_MANY_ELEMENTS);
 
 	strncpy(elementString,fSearch,numDigits);
@@ -619,7 +619,7 @@ long FitIniFile::readIdCharArray (std::string_view varName, char *result, unsign
 	fSearch += 2;												//Move pointer to first number in brackets.
 	long numDigits = bSearch - fSearch;
 
-	if (numDigits > 9)
+	if (numDigits <= 0 || numDigits > 9)
 		return(TOO_MANY_ELEMENTS);
 
 	strncpy(elementString,fSearch,numDigits);
@@ -714,7 +714,7 @@ long FitIniFile::readIdUCharArray (std::string_view varName, unsigned char *resu
 	fSearch += 3;												//Move pointer to first number in brackets.
 	long numDigits = bSearch - fSearch;
 
-	if (numDigits > 9)
+	if (numDigits <= 0 || numDigits > 9)
 		return(TOO_MANY_ELEMENTS);
 
 	strncpy(elementString,fSearch,numDigits);
@@ -809,7 +809,7 @@ unsigned long FitIniFile::getIdFloatArrayElements (std::string_view varName)
 	fSearch += 2;												//Move pointer to first number in brackets.
 	long numDigits = bSearch - fSearch;
 
-	if (numDigits > 9)
+	if (numDigits <= 0 || numDigits > 9)
 		return(TOO_MANY_ELEMENTS);
 
 	strncpy(elementString,fSearch,numDigits);
@@ -864,7 +864,7 @@ unsigned long FitIniFile::getIdLongArrayElements (std::string_view varName)
 	fSearch += 2;												//Move pointer to first number in brackets.
 	long numDigits = bSearch - fSearch;
 
-	if (numDigits > 9)
+	if (numDigits <= 0 || numDigits > 9)
 		return(TOO_MANY_ELEMENTS);
 
 	strncpy(elementString,fSearch,numDigits);
@@ -919,7 +919,7 @@ unsigned long FitIniFile::getIdULongArrayElements (std::string_view varName)
 	fSearch += 3;												//Move pointer to first number in brackets.
 	long numDigits = bSearch - fSearch;
 
-	if (numDigits > 9)
+	if (numDigits <= 0 || numDigits > 9)
 		return(TOO_MANY_ELEMENTS);
 
 	strncpy(elementString,fSearch,numDigits);
@@ -974,7 +974,7 @@ unsigned long FitIniFile::getIdShortArrayElements (std::string_view varName)
 	fSearch += 2;												//Move pointer to first number in brackets.
 	long numDigits = bSearch - fSearch;
 
-	if (numDigits > 9)
+	if (numDigits <= 0 || numDigits > 9)
 		return(TOO_MANY_ELEMENTS);
 
 	strncpy(elementString,fSearch,numDigits);
@@ -1029,7 +1029,7 @@ unsigned long FitIniFile::getIdUShortArrayElements (std::string_view varName)
 	fSearch += 3;												//Move pointer to first number in brackets.
 	long numDigits = bSearch - fSearch;
 
-	if (numDigits > 9)
+	if (numDigits <= 0 || numDigits > 9)
 		return(TOO_MANY_ELEMENTS);
 
 	strncpy(elementString,fSearch,numDigits);
@@ -1084,7 +1084,7 @@ unsigned long FitIniFile::getIdCharArrayElements (std::string_view varName)
 	fSearch += 2;												//Move pointer to first number in brackets.
 	long numDigits = bSearch - fSearch;
 
-	if (numDigits > 9)
+	if (numDigits <= 0 || numDigits > 9)
 		return(TOO_MANY_ELEMENTS);
 
 	strncpy(elementString,fSearch,numDigits);
@@ -1139,7 +1139,7 @@ unsigned long FitIniFile::getIdUCharArrayElements (std::string_view varName)
 	fSearch += 3;												//Move pointer to first number in brackets.
 	long numDigits = bSearch - fSearch;
 
-	if (numDigits > 9)
+	if (numDigits <= 0 || numDigits > 9)
 		return(TOO_MANY_ELEMENTS);
 
 	strncpy(elementString,fSearch,numDigits);

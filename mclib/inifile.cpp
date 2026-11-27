@@ -193,8 +193,8 @@ long FitIniFile::afterOpen (void)
 				m_fileBlocks[currentBlockNum].blockId[count-1] = line[count];
 				count++;
 			}
-			if (count >= 49)
-				STOP(("BlockId To large in Fit File %s",m_fileName.c_str()));
+			if (line[count] != ']')
+				return SYNTAX_ERROR;
 
 			if (line[count] == '\n' || line[count] == '\0')
 			{

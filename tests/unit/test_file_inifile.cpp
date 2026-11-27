@@ -445,13 +445,9 @@ std::string fitWithBlock (const std::string &id)
 
 TEST_CASE("FitIniFile block ids: the block-id copy is bounded for every header length")
 {
-	// blockId is char[50]. The engine only LOGS the 'BlockId To large' STOP and carries on; the shim does the
-	// same here. What must hold for any length: no write past the node, and the next block still seeks.
-	struct Case { size_t len; bool seekable_by_full_name; bool stops; };
+	struct Case { size_t len; bool accepted; };
 	const Case cases[] = {
-		{47, true, false},    // longest accepted without a STOP
-		{49, true, true},     // fills blockId[0..48] + NUL (the old code stored it whole); STOP logged
-		{300, false, true},   // mod-sized hostile name: used to overwrite ~250 bytes of heap; kept as its first 49
+		{47, true}, {49, true}, {300, false},
 	};
 
 	for (const Case &c : cases)
@@ -464,10 +460,10 @@ TEST_CASE("FitIniFile block ids: the block-id copy is bounded for every header l
 		std::string text = fitWithBlock(id);
 
 		FitIniFile fit;
-		REQUIRE(fit.open(text.data(), (int)text.size()) == NO_ERR);
-
-		CHECK((g_mc2TestStopCount >= 1) == c.stops);          // the guard fired exactly for the over-long names
-		CHECK((fit.seekBlock(id.c_str()) == NO_ERR) == c.seekable_by_full_name);
+		CHECK((fit.open(text.data(), (int)text.size()) == NO_ERR) == c.accepted);
+		CHECK(g_mc2TestStopCount == 0);
+		if (!c.accepted) { g_mc2TestStopFatal = true; continue; }
+		CHECK(fit.seekBlock(id.c_str()) == NO_ERR);
 
 		long l = 0;
 		REQUIRE(fit.seekBlock("Second") == NO_ERR);          // the block after the long one is intact
@@ -502,4 +498,65 @@ TEST_CASE("PacketFile rejects a negative packet index instead of reading seekTab
 		in.close();
 	}
 	remove(path.c_str());
+}
+
+TEST_CASE("MPJoin/FIT hostile strings arrays truncation and garbage stay bounded") {
+    const std::string corpus[] = {
+        "garbage", "FITini\n[", "FITini\n[" + std::string(300, 'x') + "]\nFITend\n",
+        "FITini\n[B]\nl[999999999] Values = 1\nl End = 0\nFITend\n",
+        "FITini\n[B]\n] Values = l[1\nl End = 0\nFITend\n",
+        "FITini\n[B]\nst Name = \"" + std::string(2000, 'x') + "\n" + std::string(2000, 'y') + "\"\nl End = 0\nFITend\n"
+    };
+    for (const auto& text : corpus) {
+        for (const auto size : {std::size_t{1}, text.size() / 2, text.size()}) {
+            FitIniFile fit;
+            if (fit.open(text.data(), static_cast<int>(size)) != NO_ERR || fit.seekBlock("B") != NO_ERR) continue;
+            struct { char text[16]{}; unsigned guard = 0x12345678; } name;
+            fit.readIdString("Name", name.text, sizeof(name.text));
+            CHECK(name.guard == 0x12345678);
+            struct { long values[2]{}; unsigned guard = 0x12345678; } array;
+            CHECK(fit.readIdLongArray("Values", array.values, 2) != NO_ERR);
+            CHECK(array.guard == 0x12345678);
+        }
+    }
+}
+
+TEST_CASE("MPJoin/match RAM reads cannot escape the supplied image") {
+    const char bytes[] = {1, 2, 3};
+    File ram;
+    REQUIRE(ram.open(bytes, 3) == NO_ERR);
+    unsigned char out[8]{};
+    CHECK(ram.read(out, -1) == 0);
+    CHECK(ram.read(100, out, 4) == 0);
+    CHECK(ram.read(out, 8) == 3);
+    CHECK(ram.readByte() == 0);
+    CHECK(ram.readInt() == 0);
+    CHECK(ram.getLogicalPosition() == 3);
+    ram.seek(2);
+    CHECK(ram.readInt() == 0);
+    CHECK(ram.getLogicalPosition() == 3);
+}
+
+TEST_CASE("MPJoin/packet corpus rejects truncated tables offsets and oversized unpacked counts") {
+    const std::vector<std::vector<unsigned>> corpus = {
+        {PACKET_FILE_VERSION, 0xfffffffcu, 0},
+        {PACKET_FILE_VERSION, 13, 12, 0},
+        {PACKET_FILE_VERSION, 16, 16, 12, 0},
+        {PACKET_FILE_VERSION, 12, 0x4000000c, 0x7fffffffu},
+        {PACKET_FILE_VERSION, 12, 0x2000000c, 0x7fffffffu},
+        {PACKET_FILE_VERSION, 12, 0x4000000c, 0xffffffffu},
+        {PACKET_FILE_VERSION, 12, 0x4000000c},
+        {0x12345678, 0x87654321, 0x12345678}
+    };
+    for (const auto& words : corpus) {
+        std::vector<char> bytes;
+        for (auto word : words) for (unsigned shift = 0; shift < 32; shift += 8) bytes.push_back(static_cast<char>(word >> shift));
+        for (std::size_t n = 1; n <= bytes.size(); ++n) {
+            File ram;
+            REQUIRE(ram.open(bytes.data(), static_cast<int>(n)) == NO_ERR);
+            PacketFile packet;
+            const auto result = packet.open(&ram, static_cast<unsigned long>(n));
+            if (result == NO_ERR) CHECK(packet.seekPacket(0) != NO_ERR);
+        }
+    }
 }

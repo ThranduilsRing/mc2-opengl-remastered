@@ -10,6 +10,7 @@
 #include "file.h"
 #include "qualified_id.h"
 #include "mc2fmt.h"
+#include "vfs.h"
 
 #include <algorithm>
 #include <cctype>
@@ -20,13 +21,7 @@
 namespace {
 
 std::vector<mc2pkg::PackageChassis> g_chassis;
-bool g_built = false;
-
-void collectChassisDef(mc2::czstring absPath, void* user) {
-    const auto base = std::filesystem::path(absPath).filename().string();
-    if (_stricmp(base.c_str(), "chassisdef.fit") == 0)
-        static_cast<std::vector<std::string>*>(user)->push_back(absPath);
-}
+uint64_t g_generation = 0;
 
 std::string readStr(FitIniFile& f, std::string_view key) {
     char buf[256] = {0};
@@ -74,6 +69,9 @@ std::optional<mc2pkg::PackageChassis> parse(std::string_view path) {
     if (f.readIdBoolean("Purchasable", purch) == NO_ERR) out.purchasable = purch;
     const long regionCount = readLong(f, "RegionCount", 0);
     const long hardpointCount = readLong(f, "HardpointCount", 0);
+    if (regionCount < 0 || regionCount > 36 || hardpointCount < 0 || hardpointCount > 256) {
+        finding(path, "invalid region or hardpoint count"); return std::nullopt;
+    }
     if (out.chassisId.empty() || !mc2id::isModAuthorable(out.chassisId)) { finding(path, "ChassisId must be a non-core qualified id"); return std::nullopt; }
     if (out.stem.empty()) { finding(path, "no Stem"); return std::nullopt; }
     if (out.payload <= 0.0f) { finding(path, "no Payload"); return std::nullopt; }
@@ -86,7 +84,7 @@ std::optional<mc2pkg::PackageChassis> parse(std::string_view path) {
         r.location = readStr(f, "Location");
         r.x = readLong(f, "X", -1); r.y = readLong(f, "Y", -1);
         r.w = readLong(f, "W", 0);  r.h = readLong(f, "H", 0);
-        if (r.location.empty() || r.x < 0 || r.y < 0 || r.w < 1 || r.h < 1 || r.x + r.w > 6 || r.y + r.h > 6) {
+        if (r.location.empty() || r.x < 0 || r.y < 0 || r.w < 1 || r.h < 1 || r.w > 6 || r.h > 6 || r.x > 6 - r.w || r.y > 6 - r.h) {
             finding(path, "region outside the 6x6 mech-lab grid");
             return std::nullopt;
         }
@@ -116,26 +114,23 @@ std::optional<mc2pkg::PackageChassis> parse(std::string_view path) {
 } // namespace
 
 void packageChassisEnsureRegistry(long firstFreeTypeNum, long limitExclusive) {
-    if (g_built) return;
-    g_built = true;
-    if (!ModCapabilityMounted("package_chassis")) return;
-
-    std::vector<std::string> paths;
-    EnumerateModFitFiles("data/defs/chassis/", collectChassisDef, &paths);
+    if (g_generation == mc2::vfs::generation()) return;
+    const auto entries = mc2::vfs::enumerate("data/defs/chassis/", ".fit", true);
+    g_generation = mc2::vfs::generation();
     std::vector<mc2pkg::PackageChassis> found;
-    for (const std::string& p : paths) {
+    for (const auto& entry : entries) {
+        if (!entry.key.ends_with("/chassisdef.fit")) continue;
+        const std::string& p = entry.key;
         // Only a package that declares the capability may register chassis.
-        std::string key = std::filesystem::path(p).generic_string();
-        for (char& ch : key) ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
-        const size_t at = key.find("data/defs/chassis/");
-        if (at == std::string::npos || !ModOwnerHasCapability(key.c_str() + at, "package_chassis")) {
+        // The host manifest already selected capability-authorized definitions.
+        if (entry.mountName != "match-cache" && !ModOwnerHasCapability(p.c_str(), "package_chassis")) {
             finding(p, "owning mod does not declare the package_chassis capability");
             continue;
         }
         auto parsed = parse(p);
         if (!parsed) continue;
         auto& c = *parsed;
-        if (auto owner = LookupModOwner(key.c_str() + at)) c.modId = owner;
+        if (auto owner = LookupModOwner(p.c_str())) c.modId = owner;
         bool duplicate = false;
         for (const auto& existing : found)
             if (existing.chassisId == c.chassisId || _stricmp(existing.stem.c_str(), c.stem.c_str()) == 0) duplicate = true;
