@@ -9,7 +9,9 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+sys.path.insert(0, str(ROOT / "tools"))
 from smoke_lib.paths import INSTALL_ROOT
+from sim_determinism import headless_exit_ok
 
 DEFAULT_INSTALL = (INSTALL_ROOT + '/claude-player-brain-l1')
 
@@ -59,8 +61,7 @@ def run_mission(mission, install, seconds, batch=False, invulnerable=False, sim_
         if log.exists():
             text += "\n" + log.read_text(encoding="utf-8", errors="replace")
     verdict, rows = parse_report(text)
-    clean = result.returncode == 0 or (result.returncode == 1
-            and "[SMOKE v1] event=tick_budget" in text and "Crash Report" not in text)
+    clean = result.returncode == 0 or headless_exit_ok(result.returncode, text)
     verdict = verdict or "[MISSION_VERDICT v1] verdict=ERROR reason=no_engine_verdict"
     if not clean:
         verdict = re.sub(r"verdict=\w+", "verdict=ERROR", verdict) + " reason=harness_failed"

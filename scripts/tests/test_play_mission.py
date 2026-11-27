@@ -1,6 +1,7 @@
 """The report keeps the latest state and requires an explicit engine verdict."""
 import importlib.util
 from pathlib import Path
+import pytest
 
 spec = importlib.util.spec_from_file_location("play_mission", Path(__file__).resolve().parents[2] / "tools/play_mission.py")
 driver = importlib.util.module_from_spec(spec)
@@ -34,7 +35,9 @@ def test_driver_uses_headless_harness_and_requested_budget(monkeypatch, capsys):
         assert kwargs["env"]["MC2_RNG_SEED"] == "42"
         return type("Result", (), {"returncode": 1, "stdout":
             "[MISSION_VERDICT v1] verdict=PASS passed=2 failed=0 pending=0 time=45.00\n"
-            "[SMOKE v1] event=tick_budget ticks=1860"})()
+            "[SMOKE v1] event=tick_budget ticks=1860\n"
+            "[SMOKE v1] event=summary result=pass\n"
+            "| mc2_01 | FAIL | heartbeat_freeze_play |\n"})()
     monkeypatch.setattr(driver.subprocess, "run", run)
     assert driver.main(["--mission", "mc2_01", "--minutes", "1"]) == 0
     assert "verdict=PASS" in capsys.readouterr().out
@@ -58,6 +61,21 @@ def test_harness_failure_overrides_engine_pass(monkeypatch, capsys):
     text = capsys.readouterr().out
     assert "verdict=ERROR" in text
     assert "passed=0 failed=1 total=1" in text
+
+
+@pytest.mark.parametrize("failure", [
+    "| mc2_01 | FAIL | sim_overlap_violation |\n",
+    "[RULES] HARD FAIL: unexpected policy\n",
+])
+def test_tick_budget_does_not_hide_real_guard_failures(monkeypatch, capsys, failure):
+    text = ("[MISSION_VERDICT v1] verdict=PASS passed=1\n"
+            "[SMOKE v1] event=tick_budget ticks=1860\n"
+            "[SMOKE v1] event=summary result=pass\n"
+            "| mc2_01 | FAIL | heartbeat_freeze_play |\n" + failure)
+    monkeypatch.setattr(driver.subprocess, "run", lambda *a, **k: type("Result", (), {
+        "returncode": 1, "stdout": text})())
+    assert driver.main(["--batch", "mc2_01"]) == 1
+    assert "reason=harness_failed" in capsys.readouterr().out
 
 
 def test_goto_and_mod_flags_set_env_and_allow_any_mission(monkeypatch):
