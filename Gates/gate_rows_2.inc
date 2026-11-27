@@ -94,7 +94,6 @@ L(Exact1, "MC2_RENDER_PASS_TIME", Bool, false, "gameos", "", "", passthrough | v
 P("MC2_RENDER_PASS_TIME_EVERY", Int, 0, "gameos", "", "", passthrough | verified),
 L(Presence, "MC2_RENDER_PATH", Bool, false, "props", "", "G5 RENDER-PATH OBSERVABILITY (descriptive; env-gated; ZERO behavior change): one line per registered static-prop type recording which render path it takes.", verified),
 P("MC2_RENDER_SCALE", Float, 1.0, "post", "", "Scene resolution relative to output; spatial cubic upscale, native HUD. Restart to apply.", clampRange(0.5, 1.0) | passthrough | verified),
-L(Presence, "MC2_RENDER_WATER_FASTPATH", Bool, false, "terrain", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_RESOLVE_TRACE_FILE
 G("MC2_REPLAY_CONTENT", String, "", "code", "", "Mission/mod content digest supplied and checked by tools/command_replay.py.", passthrough | registry(Trace, "MC2_REPLAY_CONTENT", -1, false) | verified),
 G("MC2_RESOLVE_TRACE_FILE", String, "", "code", "", "META-FIX design E tier 3 (mclib/file.cpp): output path for the MC2_LOG_FILE_RESOLVE=2 JSONL resolve trace, opened for append at InitModSearchPaths (relative...", passthrough | registry(Trace, "MC2_TRACE_RESOLVE_TRACE_FILE", -1, false) | verified),

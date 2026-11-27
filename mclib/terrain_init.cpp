@@ -848,7 +848,7 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 	s_visualHeightSynth = false;
 	gos_TerrainLodChunk_ClearVisualHeight();   // a rejected or missing bake must not draw the previous mission's relief
 	// TERRAIN-VISUAL-HEIGHT-SAMPLE-1 Stage 1 (loader, log-only). Gate
-	// MC2_TERRAIN_VISUAL_HEIGHT default-OFF -> no load, no SSBO
+	// MC2_TERRAIN_VISUAL_DISPLACE controls heightfield loading
 	// (byte-identical). Loads the 4x VISUAL heightfield bake into SSBO
 	// binding 26 for future corner-pinned interior displacement (Stage 2).
 	// Path: MC2_TERRAIN_VISUAL_HEIGHT_FILE override, else
@@ -856,8 +856,7 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 	// consumes binding 26 yet, so this is render-invariant.
 	{
 		// displace implies load
-		static const bool s_visualHeightGate = mc2::gate::get<"MC2_TERRAIN_VISUAL_HEIGHT">() ||
-		                                       mc2::gate::get<"MC2_TERRAIN_VISUAL_DISPLACE">();
+		static const bool s_visualHeightGate = mc2::gate::get<"MC2_TERRAIN_VISUAL_DISPLACE">();
 		const int mapSide = static_cast<int>(realVerticesMapSide);
 		if (s_visualHeightGate && mapSide > 1)
 		{

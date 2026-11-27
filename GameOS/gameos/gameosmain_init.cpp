@@ -41,7 +41,7 @@ void initInstrBanner() {
     {
         const bool destr   = mc2::gate::get<"MC2_DESTROY_TRACE">();
         const bool smoke   = mc2::gate::get<"MC2_SMOKE_MODE">();
-        const bool waterFp = mc2::gate::get<"MC2_RENDER_WATER_FASTPATH">();
+        const bool waterFp = mc2::gate::get<"MC2_GPU_DRIVEN_WATER">();
         const bool waterPc = false;
         const bool vpFast  = false;
         const bool vpPar   = false;

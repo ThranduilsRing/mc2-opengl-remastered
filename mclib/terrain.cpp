@@ -64,17 +64,10 @@ std::unique_ptr<char[]> Terrain::colorMapNameOwner;
 // non-LEGACY profile.
 int							g_terrainMaterialProfile = static_cast<int>(TERRAIN_MAT_PROFILE_LEGACY);
 
-// Terrain LOD chunk renderer gate — DEFAULT ON (cutover 2026-06-09). Opt out with
-// MC2_TERRAIN_LOD_CHUNK=0. Cached once. Single source of truth (see terrain.h).
+// Terrain rendering always uses LOD chunks; retained for the editor probe.
 bool mc2TerrainLodChunkEnabled()
 {
-	static const bool s_on = []() {
-		const bool off = !mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK">();
-		if (off)
-			mc2::fmt::print_out("[8Z_VESTIGIAL] MC2_TERRAIN_LOD_CHUNK=0 opt-out is increasingly vestigial: slimReduce deleted (8z-A3), ACTIVE_AB/SOLID_AB retired (8z-A1). The chunk-OFF path retains makeLists but has no production renderer.\n");
-		return !off;   // default ON; "0" = off
-	}();
-	return s_on;
+	return true;
 }
 
 long		   				Terrain::numObjBlocks = 0;

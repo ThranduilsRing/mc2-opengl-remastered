@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 411;
+inline constexpr std::size_t kGateCount = 408;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -256,7 +256,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_RENDER_PASS_TIME_EVERY", Kind::Int, Rule::Prefix, {}},
     {"MC2_RENDER_PATH", Kind::Bool, Rule::Presence, {}},
     {"MC2_RENDER_SCALE", Kind::Float, Rule::Prefix, {}},
-    {"MC2_RENDER_WATER_FASTPATH", Kind::Bool, Rule::Presence, {}},
     {"MC2_REPLAY_CONTENT", Kind::String, Rule::Std, {}},
     {"MC2_RESOLVE_TRACE_FILE", Kind::String, Rule::Std, {}},
     {"MC2_RES_ASSERT", Kind::String, Rule::Std, {}},
@@ -323,7 +322,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_TERRAIN_INDIRECT", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_TERRAIN_INDIRECT_MINE", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_TERRAIN_LIGHTING_GPU", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_TERRAIN_LOD_CHUNK", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_TERRAIN_LOD_CHUNK_DIAG", Kind::Int, Rule::Prefix, {}},
     {"MC2_TERRAIN_LOD_CHUNK_FORCE_LOD", Kind::Int, Rule::Prefix, {}},
     {"MC2_TERRAIN_MATERIAL_LIB_FILE", Kind::String, Rule::Std, {}},
@@ -341,7 +339,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_TERRAIN_VISUAL_DISPLACE", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_TERRAIN_VISUAL_DISPLACE_FAR", Kind::Float, Rule::Prefix, {}},
     {"MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_TERRAIN_VISUAL_HEIGHT", Kind::Bool, Rule::Lead0, {}},
     {"MC2_TERRAIN_VISUAL_HEIGHT_FILE", Kind::String, Rule::Std, {}},
     {"MC2_TEST_CRASH_FRAME", Kind::Int, Rule::Std, {}},
     {"MC2_TEST_FSR_FAIL_FRAME", Kind::Int, Rule::Std, {}},

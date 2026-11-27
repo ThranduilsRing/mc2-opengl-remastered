@@ -202,11 +202,6 @@ long Terrain::update (void)
 	// per-quad draw() loop; that loop is suppressed under the same env gate.
 	// 8z-A1: MC2_TERRAIN_ACTIVE_AB / MC2_TERRAIN_SOLID_AB retired (8a/8b/8c shipped,
 	// FN=0 validated); retirement-warn reader removed by GATE-RETIRE-1.
-	if (!mc2TerrainLodChunkEnabled())
-	{
-		ZoneScopedN("Terrain::update makeLists");
-		Terrain::mapData->makeLists(vertexList,numberVertices,quadList,numberQuads);
-	}
 
 	// -------------------------------------------------------------------------
 	// Terrain LOD chunk Phase 4 — two-level AABB frustum cull.

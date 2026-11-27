@@ -1719,7 +1719,7 @@ def main():
         # allowlist rows that copy os.environ values into env_extra are no-ops.
         #
         # The cost of the wrong diagnosis was real: the guard hard-stopped
-        # legitimate A/B runs (an OFF arm setting MC2_TERRAIN_LOD_CHUNK=0 is
+        # legitimate A/B runs (an OFF arm setting MC2_GPU_DRIVEN_WATER=0 is
         # exactly the thing you want to be able to do) while explaining itself
         # with a mechanism that does not exist.
         #

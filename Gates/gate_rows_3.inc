@@ -137,8 +137,6 @@ L(Lead0Kill, "MC2_TERRAIN_LIGHTING_GPU", Bool, true, "terrain", "", "", passthro
 // NIGHT-LIGHT-POOLS-1: the LOD-chunk terrain consumes the per-frame terrain
 // light pool (gos_terrain_lighting PackAndDispatch light SSBO) per-fragment,
 // restoring stock-style night up-lighting on ground + cement pads.
-// history: docs/gate-history.md#MC2_TERRAIN_LOD_CHUNK
-L(Lead0Kill, "MC2_TERRAIN_LOD_CHUNK", Bool, true, "terrain", "", "LOD-chunk terrain renderer (mclib/terrain.cpp/terrain.h), the primary tessellation-free terrain path.", registry(Feature, "MC2_FEATURE_TERRAIN_LOD_CHUNK", -1, true) | verified),
 P("MC2_TERRAIN_LOD_CHUNK_DIAG", Int, 0, "terrain", "", "", passthrough | verified),
 P("MC2_TERRAIN_LOD_CHUNK_FORCE_LOD", Int, -1, "terrain", "", "", verified),
 G("MC2_TERRAIN_MATERIAL_LIB_FILE", String, "", "terrain", "", "", passthrough | verified),  // default not derivable from the tree
