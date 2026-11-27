@@ -291,7 +291,7 @@ TEST_CASE("frame pacing/options persist and caps resolve") {
     using namespace mc2::options;
     RenderOptions defaults;
     CHECK(defaults.frameRateLimit == 0);
-    CHECK(defaults.vsync == 0);
+    CHECK(defaults.vsync == 2);
     for (int selection = 0; selection <= 6; ++selection) {
         for (int vsync = 0; vsync <= 2; ++vsync) {
             std::string text = "[MechCommander2]\n";

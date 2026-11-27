@@ -22,6 +22,7 @@ struct DDSURFACEDESC2 {
 #include "prewarm.h"
 #include"logisticsdialog.h"
 #include"gamerulesdialog.h"
+#include "../mclib/campaign_mod_catalogue.h"
 #include"abutton.h"
 #include"optionsscreenwrapper.h"
 #include "../resource.h"
@@ -333,7 +334,10 @@ static bool saveNeedsOtherMod( FitIniFile& file, mc2::czstring saveFile )
 	char mod[256] = {}, deps[1024] = {};
 	const bool recorded = file.seekBlock( "General" ) == NO_ERR && file.readIdString( "ActiveMod", mod, sizeof(mod) - 1 ) == NO_ERR &&
 		file.readIdString( "ModDeps", deps, sizeof(deps) - 1 ) == NO_ERR;
-	return PlayerFrontEnd::relaunchForSave( recorded, PlayerFrontEnd::loadModField( mod ), PlayerFrontEnd::loadModField( deps ), saveFile );
+	// An older save names its packs only through the legacy rules migration (no Mods key): load it under the layers those rules need.
+	const auto rules = mc2::rules::readFit( file, mc2::rules::legacyCampaignMods );
+	const std::string layers = mc2::mods::dependencies( PlayerFrontEnd::loadModField( deps ), rules.mods, mc2::mods::catalogue( "mods" ) );
+	return PlayerFrontEnd::relaunchForSave( recorded, PlayerFrontEnd::loadModField( mod ), layers, saveFile );
 }
 
 // A campaign that cannot start or load: tell the player with the existing one-button dialog (the host-left dialog slot) instead of silently doing nothing.

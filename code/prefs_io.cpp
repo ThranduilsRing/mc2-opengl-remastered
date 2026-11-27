@@ -25,6 +25,8 @@ std::string mc2::rules::launcherModDefaults() {
 }
 // Before add-on selection, every installed catalogue add-on auto-mounted. Preserve those layers plus the launcher toggles.
 std::string mc2::rules::legacyCampaignMods() {
+    // Without the saved-settings file (harness runs) the layers are fixed by the environment: naming other packs would only disagree with them.
+    if (!mc2::gate::get<"MC2_LAUNCHER_ENV_JSON">()) return {};
     std::string ids = launcherModDefaults();
     for (const auto& addon : installedAddons())
         if (!mc2::mods::selected(ids, addon.id)) mc2::mods::toggle(ids, addon.id);
