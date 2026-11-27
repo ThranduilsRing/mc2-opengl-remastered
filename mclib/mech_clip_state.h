@@ -56,6 +56,9 @@ struct DistanceCurve {
         const size_t j = std::min(static_cast<size_t>(hi - distance.begin()), distance.size() - 1);
         return (j - 1 + (d - distance[j - 1]) / (distance[j] - distance[j - 1])) * duration / (distance.size() - 1);
     }
+    float advanceWorld(float clipSec, float moved, float modelScale) const {
+        return modelScale > 0 ? advance(clipSec, moved / modelScale) : clipSec;
+    }
 };
 
 // Samples are unscaled Y-up joint globals at 30 Hz, before the GPU axis conversion.
