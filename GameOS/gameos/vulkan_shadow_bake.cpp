@@ -9,6 +9,7 @@
 #include "../../RenderCore/gpu_abi/GpuStaticPropInstance.h"
 #include "gos_postprocess.h"
 #include "mc2fmt.h"
+#include "diagnostic_trace.h"
 #include "Gates/gate.h"
 #include "gameos.hpp"   // gos_GetUserDataDirectory
 #include "shadow_mask_asset.h"
@@ -254,6 +255,7 @@ void ShadowBake::invalidate() {
     geomHashValid_ = false;
     maskTexels_ = 0; maskMips_ = 0;
     maskInitialized_ = objectInitialized_ = false;
+    objectDirtyRect_.reset(); objectFullDirty_ = false; terrainRows_.clear();
     maskReady_ = objectReady_ = false;
     recorded_ = submitted_ = recordedMask_ = false;
     releaseIncremental();
@@ -533,7 +535,7 @@ void ShadowBake::retire(uint64_t epoch) {
     // Recorded into an earlier frame that never submitted: the products stay as they were. Within the recording frame it is still pending.
     if (!submitted_) {
         if (epoch != recordedEpoch_) {
-            if (!recordedMask_) objectDirty_ = true;
+            if (!recordedMask_) { objectDirty_ = true; objectFullDirty_ = true; }
             recorded_ = false;
         }
         return;
@@ -541,6 +543,8 @@ void ShadowBake::retire(uint64_t epoch) {
     if (epoch < submittedEpoch_ + kMaxFramesInFlight || epoch % kMaxFramesInFlight != submittedEpoch_ % kMaxFramesInFlight) return;
     recorded_ = false;
     submitted_ = false;
+    objectDirtyRect_.reset();
+    objectFullDirty_ = false;
     if (coldPending_) return;
     if (queries_ && queryCount_ > 0) {
         // A mask bake wrote every query; an object-map-only rebuild wrote its last two.
@@ -552,7 +556,10 @@ void ShadowBake::retire(uint64_t epoch) {
                                   sizeof(uint64_t), VK_QUERY_RESULT_64_BIT) == VK_SUCCESS) {
             const double ms = timestampPeriodNs_ * 1e-6;
             auto span = [&](uint32_t a, uint32_t b) { return static_cast<double>(ts[b] - ts[a]) * ms; };
-            const double object = span(tail + 2, tail + 3);
+            const double object = span(tail + 2, tail + 5);
+            if (mc2_diag::tagRequested("SHADOW_BAKE_SPLIT"))
+            mc2::fmt::print_err("[SHADOW_BAKE_SPLIT] object gpu_ms clear={:.3f} terrain={:.3f} casters={:.3f} partial={}\n",
+                                span(tail + 2, tail + 3), span(tail + 3, tail + 4), span(tail + 4, tail + 5), objectPartial_);
             if (recordedMask_ && warm_) {
                 mc2::fmt::print_err("[SHADOW_BAKE] warm load: gpu_ms upload={:.2f} object_map={:.2f} cpu_ms={:.2f} (disk read {:.2f})\n",
                                     span(0, 1), object, cpuMs_, warmReadMs_);
@@ -794,6 +801,34 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     const mc2shadow::Rect full{-halfMap_,halfMap_-span,-halfMap_+span,halfMap_};
     const auto objectWindow=mc2shadow::casterWindow(basis_,full,terrainMin_,terrainTop_,casterTop_,tanT,objectMapSize());
     mc2shadow::windowMatrix(basis_,objectWindow,recordedObjectMatrix_.data());
+    const char* fallback = !objectInitialized_ ? "uninitialized" : recordedMask_ ? "mask" :
+        objectHeightVersion_ != store->heightVersion() ? "heights" : liveStale_ ? "live_stale" :
+        objectFullDirty_ ? "full_dirty" : !objectDirtyRect_ ? "no_region" :
+        recordedObjectMatrix_ != objectMatrix_ ? "projection" : "none";
+    objectPartial_ = std::strcmp(fallback, "none") == 0;
+    objectScissor_ = {{0, 0}, {static_cast<uint32_t>(objectMapSize()), static_cast<uint32_t>(objectMapSize())}};
+    if (objectPartial_) {
+        auto r = *objectDirtyRect_;
+        const float t = objectWindow.texelWorld;
+        r = {r.x0 - t, r.y0 - t, r.x1 + t, r.y1 + t};
+        const int x0 = std::clamp(static_cast<int>(std::floor((r.x0 - objectWindow.lx0) / t)), 0, objectMapSize() - 1);
+        const int y0 = std::clamp(static_cast<int>(std::floor((r.y0 - objectWindow.ly0) / t)), 0, objectMapSize() - 1);
+        const int x1 = std::clamp(static_cast<int>(std::ceil((r.x1 - objectWindow.lx0) / t)), x0 + 1, objectMapSize());
+        const int y1 = std::clamp(static_cast<int>(std::ceil((r.y1 - objectWindow.ly0) / t)), y0 + 1, objectMapSize());
+        objectScissor_ = {{x0, y0}, {static_cast<uint32_t>(x1 - x0), static_cast<uint32_t>(y1 - y0)}};
+        // Cull against the rounded raster rectangle, retaining the existing order within each type.
+        const mc2shadow::Rect clip{objectWindow.lx0 + x0 * t, objectWindow.ly0 + y0 * t, objectWindow.lx0 + x1 * t, objectWindow.ly0 + y1 * t};
+        objectDirtyRect_ = clip;
+        std::erase_if(objInst, [&](const auto& leaf) {
+            mc2shadow::Vec3 lo, hi;
+            instanceBox(leaf.modelMatrix, typeBounds_[leaf.typeID].mn, typeBounds_[leaf.typeID].mx, lo, hi);
+            const auto box = mc2shadow::lightBox(basis_, lo, hi);
+            return !clip.overlaps({box.lx0, box.ly0, box.lx1, box.ly1});
+        });
+        objTypes.clear();
+        for (const auto& leaf : objInst) objTypes.push_back(leaf.typeID);
+        objectRuns_.clear(); appendRuns(objectRuns_, objTypes, 0);
+    }
     // Uploads.
     if (recordedMask_ && !(warm ? ensureEncoder() : ensureTransients())) return false;
     const uint32_t tileCount = static_cast<uint32_t>(tiles_.size());
@@ -869,7 +904,7 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     queryCount_ = 0;
     if (timed_) {
         ZoneScopedN("ShadowBake.Queries");
-        queryCount_ = tileCount * kQueriesPerTile + 4;
+        queryCount_ = tileCount * kQueriesPerTile + 6;
         VkQueryPoolCreateInfo qci{VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO};
         qci.queryType = VK_QUERY_TYPE_TIMESTAMP;
         qci.queryCount = queryCount_;
@@ -912,18 +947,18 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     // Only a pass that records the mask consulted the cache; an object-map-only update has no cache read and must not overwrite the load's answer with "miss".
     if (recordedMask_) mc2_hitch2::stats().bakeCache.store(warm ? "hit" : "miss");
     if (recordedMask_ && warm) {
-        mc2::fmt::print_err("[SHADOW_BAKE] warm: mask {}^2 BC4 from the cook cache (key {:016x}, read {:.2f} ms), object map re-recorded, cpu_ms={:.2f}\n",
-                            layout_.texels, mc2::fmt::as_u64(contentKey_), warmReadMs, cpuMs_);
+        mc2::fmt::print_err("[SHADOW_BAKE] warm: mask {}^2 BC4 from the cook cache (key {:016x}, read {:.2f} ms), object map re-recorded, cpu_ms={:.2f}, fallback {}\n",
+                            layout_.texels, mc2::fmt::as_u64(contentKey_), warmReadMs, cpuMs_, fallback);
     } else if (recordedMask_) {
         mc2::fmt::print_err("[SHADOW_BAKE] recorded mask={}^2 texel_wu={:.3f} tiles={} casters={} binned_instances={} sun=({:.3f},{:.3f},{:.3f}) theta_deg={:.2f} "
-                            "fade=({:.0f},{:.0f},{:.3f}) water={:.1f} heights={}^2@{:.0f}wu cpu_ms={:.2f}\n",
+                            "fade=({:.0f},{:.0f},{:.3f}) water={:.1f} heights={}^2@{:.0f}wu cpu_ms={:.2f}, fallback {}\n",
                             layout_.texels, layout_.texelWorld, tileCount, mc2::fmt::as_size(leaves_.size()), binnedInstances_, sun_.x, sun_.y, sun_.z,
                             mc2shadow::kSunAngularRadiusDeg, mc2shadow::kFadeStartWorld, mc2shadow::kFadeEndWorld, fadeMax_, waterZ_, heightSide_,
-                            heightSpacing_, cpuMs_);
+                            heightSpacing_, cpuMs_, fallback);
     } else {
-        mc2::fmt::print_err("[SHADOW_BAKE] object map re-recorded: generation={} casters={} timings(ms): total {:.3f}, height {:.3f}, resolve {:.3f}, bin {:.3f}, record {:.3f}\n",
+        mc2::fmt::print_err("[SHADOW_BAKE] object map re-recorded: generation={} casters={} timings(ms): total {:.3f}, height {:.3f}, resolve {:.3f}, bin {:.3f}, record {:.3f}, fallback {}\n",
                             mc2::fmt::as_u64(recordedObjectGeneration_), mc2::fmt::as_size(objInst.size()), cpuMs_, heightMs, resolveMs, cpuStage_[2],
-                            std::chrono::duration<double, std::milli>(clk::now() - tRecord).count());
+                            std::chrono::duration<double, std::milli>(clk::now() - tRecord).count(), fallback);
     }
     return true;
 }
@@ -944,11 +979,27 @@ void ShadowBake::planRegion(mc2shadow::Rect r, int originX, int originY, int reg
         }
     tw.window = mc2shadow::casterWindow(basis_, r, hMin, hMax, casterTop, tanT, mc2shadow::shadowQuality().windowSide);
     tw.casterTop = hMax;
+    const auto needed = mc2shadow::neededWindowRect(tw.window, ((std::max)(casterTop, hMax) - hMin) / (std::max)(basis_.toward.z, 0.05f), tanT, layout_.texelWorld);
+    tw.window.needed = needed;
     // Scratch reused across regions (one planner thread): no per-region allocation once warm.
     thread_local std::vector<uint32_t> picked, types;
     picked.clear(); types.clear();
+    const float ray = ((std::max)(casterTop, hMax) - hMin) / (std::max)(basis_.toward.z, 0.05f);
+    const float pad = (2.0f * mc2shadow::penumbraWorld(ray, tanT) + 4.0f + tw.window.texelWorld) / (std::max)(basis_.toward.z, 0.05f);
+    const mc2shadow::Rect receivers{r.x0 - pad, r.y0 - pad, r.x1 + pad, r.y1 + pad};
     for (size_t c = 0; c < cv.boxes->size(); ++c)
-        if (mc2shadow::casterInWindow((*cv.boxes)[c], tw.window)) { picked.push_back((*cv.live)[c]); tw.casterTop = (std::max)(tw.casterTop, (*cv.tops)[c]); }
+        if (mc2shadow::casterInWindow((*cv.boxes)[c], tw.window)) {
+            tw.casterTop = (std::max)(tw.casterTop, (*cv.tops)[c]);
+            const auto& box = (*cv.boxes)[c];
+            if (!needed.overlaps({box.lx0, box.ly0, box.lx1, box.ly1})) continue;
+            const auto& leaf = (*cv.leaves)[(*cv.live)[c]];
+            mc2shadow::Vec3 lo, hi;
+            instanceBox(leaf.modelMatrix, typeBounds_[leaf.typeID].mn, typeBounds_[leaf.typeID].mx, lo, hi);
+            // A projected AABB also includes empty corners; reject casters whose
+            // actual world-space sun sweep cannot reach these receivers.
+            if (hi.z >= hMin && receivers.overlaps(mc2shadow::shadowFootprint(lo, hi, sun_, hMin, 0.0f)))
+                picked.push_back((*cv.live)[c]);
+        }
     const auto& leaves = *cv.leaves;
     std::sort(picked.begin(), picked.end(), [&leaves](uint32_t a, uint32_t b) { return leaves[a].typeID < leaves[b].typeID; });
     for (uint32_t i : picked) types.push_back(leaves[i].typeID);
@@ -977,7 +1028,8 @@ void ShadowBake::planRegion(mc2shadow::Rect r, int originX, int originY, int reg
 void ShadowBake::recordRegion(VkCommandBuffer cb, const ShadowBakeInputs& in, const RegionJob& job, const TileWork& tw, std::span<const InstRun> runs,
                               VkDescriptorSet computeSet, VkDescriptorSet windowSet, uint32_t paramOff, uint32_t casterOff, uint32_t passBase,
                               uint32_t sliceBase, int queryBase) {
-    auto stamp = [&](int k) { if (queryBase >= 0) vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queries_.get(), static_cast<uint32_t>(queryBase + k)); };
+    auto stamp = [&](int k) { if (queryBase >= 0) vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+        computeSet == computeSet_ ? queries_.get() : incQueries_.get(), static_cast<uint32_t>(queryBase + k)); };
     const uint32_t groups = (static_cast<uint32_t>(job.regionTexels) + 7) / 8;
     const VkDeviceSize zero = 0;
     stamp(0);
@@ -995,11 +1047,22 @@ void ShadowBake::recordRegion(VkCommandBuffer cb, const ShadowBakeInputs& in, co
                                         VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, 0,
                                         VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
                                         VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
-    mc2vk::dynrender::beginDepthOnly(dctx, cb, windowView_.get(), kWindowFmt, windowSide, windowSide, VK_ATTACHMENT_LOAD_OP_CLEAR);
+    const auto& w = tw.window;
+    const int x0 = std::clamp(static_cast<int>(std::floor((w.needed.x0 - w.lx0) / w.texelWorld)), 0, static_cast<int>(windowSide) - 1);
+    const int y0 = std::clamp(static_cast<int>(std::floor((w.needed.y0 - w.ly0) / w.texelWorld)), 0, static_cast<int>(windowSide) - 1);
+    const int x1 = std::clamp(static_cast<int>(std::ceil((w.needed.x1 - w.lx0) / w.texelWorld)), x0 + 1, static_cast<int>(windowSide));
+    const int y1 = std::clamp(static_cast<int>(std::ceil((w.needed.y1 - w.ly0) / w.texelWorld)), y0 + 1, static_cast<int>(windowSide));
+    const VkRect2D sc{{x0, y0}, {static_cast<uint32_t>(x1 - x0), static_cast<uint32_t>(y1 - y0)}};
+    mc2vk::dynrender::Pass pass;
+    pass.area = sc;
+    VkClearValue clear{}; clear.depthStencil = {1.0f, 0};
+    pass.setDepth(mc2vk::dynrender::attachment(windowView_.get(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                  VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, &clear), kWindowFmt);
+    mc2vk::dynrender::begin(dctx, cb, pass);
+    stamp(5);
     if (!runs.empty()) {
         const float side = static_cast<float>(mc2shadow::shadowQuality().windowSide);
         const VkViewport vp{0.0f, 0.0f, side, side, 0.0f, 1.0f};
-        const VkRect2D sc{{0, 0}, {static_cast<uint32_t>(mc2shadow::shadowQuality().windowSide), static_cast<uint32_t>(mc2shadow::shadowQuality().windowSide)}};
         vkCmdSetViewport(cb, 0, 1, &vp);
         vkCmdSetScissor(cb, 0, 1, &sc);
         vkCmdSetDepthBias(cb, 0.0f, 0.0f, 0.0f);
@@ -1067,23 +1130,41 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     // The island asks once per pass, several times a frame: one batch per frame (a second would rewrite descriptor sets this frame already bound).
     if (incRecordedEpoch_ == epoch) return false;
     retireIncremental(epoch);
+    const uint32_t par = static_cast<uint32_t>(epoch % kMaxFramesInFlight);
+    constexpr uint32_t queryStride = 2 + kQueriesPerTile * kSubTilesPerFrame;
+    if (timed_ && incQueryUsed_[par]) {
+        uint64_t ts[queryStride] = {};
+        const uint32_t count = 2 + incQueryRegions_[par] * kQueriesPerTile;
+        if (vkGetQueryPoolResults(device_, incQueries_.get(), par * queryStride, count, count * sizeof(uint64_t), ts, sizeof(uint64_t), VK_QUERY_RESULT_64_BIT) == VK_SUCCESS) {
+            const double scale = timestampPeriodNs_ * 1e-6;
+            const double ms = static_cast<double>(ts[1] - ts[0]) * scale;
+            incMaxGpuMs_ = (std::max)(incMaxGpuMs_, ms); incSumGpuMs_ += ms; ++incTimed_;
+            for (uint32_t i = 0; i < incQueryRegions_[par]; ++i)
+                for (uint32_t s = 0; s < 5; ++s) {
+                    const uint32_t base = 2 + i * kQueriesPerTile;
+                    incStageMs_[s] += static_cast<double>(ts[base + (s == 4 ? 5 : s + 1)] - ts[base + (s == 4 ? 0 : s)]) * scale;
+                }
+        }
+        incQueryUsed_[par] = false;
+    }
     mc2shadow::StaticCasterSet& set = mc2shadow::staticCasterSet();
     mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore();
-    // MC2_SHADOW_DIAG: one pass of every sub-tile through the dirty path, so the comparison below covers the whole map.
-    if (diagOn() && !diagSwept_) {
-        diagSwept_ = true;
-        const int n = layout_.texels / mc2shadow::kSubTileTexels;
-        std::vector<mc2shadow::SubTile> all;
-        for (int y = 0; y < n; ++y)
-            for (int x = 0; x < n; ++x) all.push_back({x, y});
-        dirty_.add(all);
-        eventsSinceDrain_ = true;
-    }
     if (set.hasEvents()) {
         for (const auto& ev : set.takeEvents()) {
             objectDirty_ = true;
             applyLiveEvent(ev.before, ev.after);
             for (const auto* side : {&ev.before, &ev.after}) {
+                for (const auto& leaf : *side) {
+                    if (leaf.typeID >= typeBounds_.size() || !typeBounds_[leaf.typeID].valid) continue;
+                    mc2shadow::Vec3 lo, hi;
+                    instanceBox(leaf.modelMatrix, typeBounds_[leaf.typeID].mn, typeBounds_[leaf.typeID].mx, lo, hi);
+                    const auto b = mc2shadow::lightBox(basis_, lo, hi);
+                    if (!objectDirtyRect_) objectDirtyRect_ = mc2shadow::Rect{b.lx0, b.ly0, b.lx1, b.ly1};
+                    else {
+                        auto& r = *objectDirtyRect_;
+                        r = {(std::min)(r.x0, b.lx0), (std::min)(r.y0, b.ly0), (std::max)(r.x1, b.lx1), (std::max)(r.y1, b.ly1)};
+                    }
+                }
                 if (const auto r = leavesFootprint(*side)) {
                     const size_t added = dirty_.add(mc2shadow::subTilesForRect(layout_, grownForDirty(*r), 0));
                     if (eventsLogged_ < 8) {
@@ -1115,6 +1196,10 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
         }
     }
     const auto logDirtyStats = [&] {
+        const double n = incTimed_ ? incTimed_ : 1;
+        if (mc2_diag::tagRequested("SHADOW_BAKE_SPLIT"))
+        mc2::fmt::print_err("[SHADOW_BAKE_SPLIT] dirty gpu_ms clear={:.3f} casters={:.3f} pcss={:.3f} march={:.3f} resolve={:.3f} batches={}\n",
+                            incStageMs_[4] / n, (incStageMs_[0] - incStageMs_[4]) / n, incStageMs_[1] / n, incStageMs_[2] / n, incStageMs_[3] / n, incTimed_);
         const uint64_t frames = epoch - statsEpoch_ + 1;
         mc2::fmt::print_err("[SHADOW_BAKE] dirty queue drained: drained={} sub_tiles={} batches={} batch_gpu_ms mean={:.3f} max={:.3f} (budget {} sub-tiles a frame) object_map_records={} dirty_batches={} local_tile_rebakes={} frames={} records_per_1000={:.2f} batches_per_1000={:.2f} local_tiles_per_1000={:.2f}\n",
                             dirty_.empty() && !objectDirty_, incSubTiles_, incBatches_, incTimed_ ? incSumGpuMs_ / incTimed_ : 0.0, incMaxGpuMs_, kSubTilesPerFrame,
@@ -1142,6 +1227,7 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
             if (!statsDue) logDirtyStats();
             incSubTiles_ = incBatches_ = incTimed_ = 0;
             incMaxGpuMs_ = incSumGpuMs_ = 0.0;
+            for (auto& s : incStageMs_) s = 0.0;
             if (eventsSinceDrain_ && diagOn()) diagRequest_ = true;
             eventsSinceDrain_ = false;
         }
@@ -1162,19 +1248,6 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     }
     if (liveStale_) { ZoneScopedN("ShadowBake.Dirty.RebuildLive"); rebuildLive(); }
     if (!ensureTransients() || !ensureIncremental()) return false;
-    const uint32_t par = static_cast<uint32_t>(epoch % kMaxFramesInFlight);
-    // This parity's last batch retired when the island waited its fence: its timestamps are final and its buffers and sets free to rewrite.
-    if (timed_ && incQueryUsed_[par]) {
-        uint64_t ts[2] = {0, 0};
-        if (vkGetQueryPoolResults(device_, incQueries_.get(), par * 2, 2, sizeof(ts), ts, sizeof(uint64_t), VK_QUERY_RESULT_64_BIT) == VK_SUCCESS)
-        {
-            const double ms = static_cast<double>(ts[1] - ts[0]) * timestampPeriodNs_ * 1e-6;
-            incMaxGpuMs_ = (std::max)(incMaxGpuMs_, ms);
-            incSumGpuMs_ += ms;
-            ++incTimed_;
-        }
-        incQueryUsed_[par] = false;
-    }
     mc2shadow::DirtyBatch pendingBatch(dirty_, kSubTilesPerFrame);
     const auto& batch = pendingBatch.tiles;
     const float tanT = std::tan(mc2shadow::kSunAngularRadiusDeg * 0.01745329252f);
@@ -1214,7 +1287,7 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     pendingBatch.commit();
 
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Shadow.BakeDirty");
-    if (timed_) vkCmdResetQueryPool(cb, incQueries_.get(), par * 2, 2);
+    if (timed_) vkCmdResetQueryPool(cb, incQueries_.get(), par * queryStride, queryStride);
     // The mask and the top image are rewritten in place: their earlier readers (the terrain, water and overlay passes) finish first.
     VkImageMemoryBarrier pre[6];
     pre[0] = imageBarrier(maskImage_.get(), VK_IMAGE_ASPECT_COLOR_BIT, 0, maskMips_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -1227,20 +1300,21 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                          VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 6, pre);
     // Stamped once everything before the batch has finished, so the span is the batch's own GPU time.
-    if (timed_) vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, incQueries_.get(), par * 2);
+    if (timed_) vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, incQueries_.get(), par * queryStride);
     ZoneNamedN(zDirtyRec, "ShadowBake.Dirty.Record", true);
     for (size_t i = 0; i < batch.size(); ++i) {
         RegionJob job{mc2shadow::kSubTileTexels, mc2shadow::kSubTileTexels + 2 * mc2shadow::kTileApron, batch[i].x * mc2shadow::kSubTileTexels,
                       batch[i].y * mc2shadow::kSubTileTexels};
         const uint32_t off = static_cast<uint32_t>(parBase + i * kSlice);
         recordRegion(cb, in, job, works[i], std::span<const InstRun>(runs.data() + works[i].firstRun, works[i].runCount), incComputeSet_[par],
-                     incWindowSet_[par], off, off, 0, kSliceSubTile, -1);
+                     incWindowSet_[par], off, off, 0, kSliceSubTile, timed_ ? static_cast<int>(par * queryStride + 2 + i * kQueriesPerTile) : -1);
     }
     recordTopLevels(cb);
     recordMaskToRead(cb, false);
-    if (timed_) vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, incQueries_.get(), par * 2 + 1);
+    if (timed_) vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, incQueries_.get(), par * queryStride + 1);
     gpuScope.end();
     incQueryUsed_[par] = true;
+    incQueryRegions_[par] = static_cast<uint32_t>(batch.size());
     incActive_ = true;
     lastIncEpoch_ = epoch;
     incRecordedEpoch_ = epoch;
@@ -1276,7 +1350,7 @@ bool ShadowBake::ensureIncremental() {
     if (!incQueries_) {
         VkQueryPoolCreateInfo qci{VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO};
         qci.queryType = VK_QUERY_TYPE_TIMESTAMP;
-        qci.queryCount = 2 * kMaxFramesInFlight;
+        qci.queryCount = (2 + kQueriesPerTile * kSubTilesPerFrame) * kMaxFramesInFlight;
         if (!create(incQueries_, device_, [&](auto* h) { return vkCreateQueryPool(device_, &qci, nullptr, h); })) { blog("dirty query pool failed."); return false; }
     }
     for (auto& gen : incHeightsGen_) gen = 0;
@@ -1378,13 +1452,13 @@ void ShadowBake::applyLiveEvent(const std::vector<GpuStaticPropInstance>& before
             found = true;
             break;
         }
-        if (!found) { liveStale_ = true; ++liveRebuilds_; return; }
+        if (!found) { liveStale_ = true; objectFullDirty_ = true; ++liveRebuilds_; return; }
     }
     for (const GpuStaticPropInstance& leaf : after) appendLive(leaf);
 }
 
 bool ShadowBake::diagOn() {
-    static const bool s_on = false;
+    static const bool s_on = mc2_diag::tagRequested("SHADOW_BAKE_COMPARE");
     return s_on;
 }
 
@@ -1464,7 +1538,7 @@ bool ShadowBake::recordObjectMap(VkCommandBuffer cb, const ShadowBakeInputs& in,
     ZoneScopedN("ShadowBake.ObjectMap");
     const mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore();
     if (!store) return false;
-    if (terrainIndexCount_ == 0 || objectHeightVersion_ != store->heightVersion()) {
+    if (terrainIndexCount_ == 0 || objectHeightVersion_ != store->heightVersion() || recordedObjectMatrix_ != objectMatrix_) {
         const bool visual = terrainVisualDisplaceGateOn() && !store->visualHeight().empty() && store->visualSide() == (store->mapSide() - 1) * 4 + 1;
         const int side = visual ? store->visualSide() : store->mapSide();
         const auto height = mc2shadow::maskHeightGrid(visual ? store->visualHeight() : store->height(), side, side - 1,
@@ -1494,20 +1568,37 @@ bool ShadowBake::recordObjectMap(VkCommandBuffer cb, const ShadowBakeInputs& in,
             return false;
         }
         terrainIndexCount_ = static_cast<uint32_t>(indices.size());
+        terrainRows_.clear();
+        for (int y = 0; y < side - 1; ++y) {
+            mc2shadow::Vec3 lo{1e30f, 1e30f, 1e30f}, hi{-1e30f, -1e30f, -1e30f};
+            for (int row = y; row <= y + 1; ++row) for (int x = 0; x < side; ++x) {
+                const size_t v = static_cast<size_t>(x + row * side) * 3;
+                lo.x = (std::min)(lo.x, positions[v]); hi.x = (std::max)(hi.x, positions[v]);
+                lo.y = (std::min)(lo.y, positions[v + 1]); hi.y = (std::max)(hi.y, positions[v + 1]);
+                lo.z = (std::min)(lo.z, positions[v + 2]); hi.z = (std::max)(hi.z, positions[v + 2]);
+            }
+            terrainRows_.push_back(mc2shadow::lightBox(basis_, lo, hi));
+        }
         objectHeightVersion_ = store->heightVersion();
     }
     if (queryCount_) vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queries_.get(), queryBase);
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Shadow.BakeObjectMap");
     // Dynamic rendering pass over the object map (same layout moves and dependencies as the window map above).
     mc2vk::VulkanContext& dctx = mc2vk::getOrCreateEngineVulkanContext();
-    mc2vk::dynrender::depthImageBarrier(dctx, cb, objectImage_.get(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                        VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, 0,
+    mc2vk::dynrender::depthImageBarrier(dctx, cb, objectImage_.get(), objectPartial_ ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                        VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, objectPartial_ ? VK_ACCESS_2_SHADER_READ_BIT : 0,
                                         VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
                                         VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
     mc2vk::dynrender::beginDepthOnly(dctx, cb, objectView_.get(), kObjectFmt, static_cast<uint32_t>(objectMapSize()),
-                                     static_cast<uint32_t>(objectMapSize()), VK_ATTACHMENT_LOAD_OP_CLEAR);
+                                     static_cast<uint32_t>(objectMapSize()), objectPartial_ ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR);
+    if (objectPartial_) {
+        VkClearAttachment clear{}; clear.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT; clear.clearValue.depthStencil = {1.0f, 0};
+        const VkClearRect rect{objectScissor_, 0, 1};
+        vkCmdClearAttachments(cb, 1, &clear, 1, &rect);
+    }
+    if (queryCount_) vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queries_.get(), queryBase + 1);
     const VkViewport vp{0.0f, 0.0f, static_cast<float>(objectMapSize()), static_cast<float>(objectMapSize()), 0.0f, 1.0f};
-    const VkRect2D sc{{0, 0}, {static_cast<uint32_t>(objectMapSize()), static_cast<uint32_t>(objectMapSize())}};
+    const VkRect2D sc = objectScissor_;
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &sc);
     const uint32_t objOff = static_cast<uint32_t>(tiles_.size()) * static_cast<uint32_t>(kSlice);
@@ -1518,7 +1609,15 @@ bool ShadowBake::recordObjectMap(VkCommandBuffer cb, const ShadowBakeInputs& in,
     const VkBuffer tv = terrainVbo_.get();
     vkCmdBindVertexBuffers(cb, 0, 1, &tv, &zero);
     vkCmdBindIndexBuffer(cb, terrainIbo_.get(), 0, VK_INDEX_TYPE_UINT32);
-    mc2::battlebench::add(mc2::battlebench::DrawShadow), vkCmdDrawIndexed(cb, terrainIndexCount_, 1, 0, 0, 0);
+    if (objectPartial_ && !terrainRows_.empty()) {
+        const uint32_t rowIndices = terrainIndexCount_ / static_cast<uint32_t>(terrainRows_.size());
+        for (uint32_t y = 0; y < terrainRows_.size(); ++y) {
+            const auto& b = terrainRows_[y];
+            if (objectDirtyRect_->overlaps({b.lx0, b.ly0, b.lx1, b.ly1}))
+                mc2::battlebench::add(mc2::battlebench::DrawShadow), vkCmdDrawIndexed(cb, rowIndices, 1, y * rowIndices, 0, 0);
+        }
+    } else mc2::battlebench::add(mc2::battlebench::DrawShadow), vkCmdDrawIndexed(cb, terrainIndexCount_, 1, 0, 0, 0);
+    if (queryCount_) vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queries_.get(), queryBase + 2);
     if (!objectRuns_.empty()) {
         vkCmdSetDepthBias(cb, 2.0f, 0.0f, 1.0f);
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, objectOpaque_.get());
@@ -1532,7 +1631,7 @@ bool ShadowBake::recordObjectMap(VkCommandBuffer cb, const ShadowBakeInputs& in,
                                         VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
                                         VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
     gpuScope.end();
-    if (queryCount_) vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queries_.get(), queryBase + 1);
+    if (queryCount_) vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queries_.get(), queryBase + 3);
     objectInitialized_ = true;
     ++objectMapRecords_;
     mc2_hitch2::noteBake(coldPending_ ? std::string_view{} : warm_ && recordedMask_ ? "warm" : "object", 0, 1);
