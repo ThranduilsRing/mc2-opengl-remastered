@@ -88,7 +88,7 @@ bool simDataPath(std::string_view path) {
         {"data/defs/armor/", "|fit|json|"},
         {"data/defs/equipment/", "|fit|csv|json|"},
     };
-    if (path.find("..") != path.npos || path.find('\\') != path.npos || path.find(':') != path.npos) return false;
+    if (path.find("..") != path.npos || path.find_first_of("\\:") != path.npos) return false;
     if (std::ranges::any_of(path, [](unsigned char c) { return c < 32 || (c >= 'A' && c <= 'Z'); })) return false;
     const auto dot = path.rfind('.');
     if (dot == path.npos) return false;
@@ -142,9 +142,10 @@ save::Bytes SimTransfer::next() {
         a(kind, digest);
         return a.bytes();
     }
-    name_ = it->first;
-    size_ = static_cast<std::uint32_t>(it->second.size()); offset_ = 0;
-    digest_ = save::sha256(it->second);
+    const auto& [name, bytes] = *it;
+    name_ = name;
+    size_ = static_cast<std::uint32_t>(bytes.size()); offset_ = 0;
+    digest_ = save::sha256(bytes);
     save::Bytes text(name_.begin(), name_.end());
     save::Archive a;
     auto kind = simEntry;
@@ -190,9 +191,13 @@ save::Bytes SimTransfer::receive(std::span<const std::uint8_t> packet) {
             size_ > save::maxFileBytes || total_ + size_ > simTotalBytes || accepted_.size() >= 8192) return bad();
         name_ = std::move(name); total_ += size_;
         const auto local = files.find(name_);
-        bool needed = local == files.end() || save::sha256(local->second) != digest_;
-        if (!needed) accepted_.emplace(name_, std::move(local->second));
-        else { incoming_.clear(); incoming_.reserve(size_); phase_ = Phase::Chunk; }
+        bool needed = true;
+        if (local != files.end()) {
+            auto& [localName, bytes] = *local;
+            needed = save::sha256(bytes) != digest_;
+            if (!needed) accepted_.emplace(localName, std::move(bytes));
+        }
+        if (needed) { incoming_.clear(); incoming_.reserve(size_); phase_ = Phase::Chunk; }
         save::Archive reply;
         kind = simRequest;
         reply(kind, needed);

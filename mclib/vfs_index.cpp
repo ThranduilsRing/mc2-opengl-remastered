@@ -487,7 +487,9 @@ uint64_t contentDigest(std::string_view path, bool verify)
         std::lock_guard<std::mutex> lk(g_indexMutex);
         if (matchOwns && matchOwns(k)) {
             const auto it = matchData.find(k);
-            return it == matchData.end() ? 0 : mc2::content::fastHash(it->second);
+            if (it == matchData.end()) return 0;
+            const auto& [name, bytes] = *it;
+            return mc2::content::fastHash(bytes);
         }
     }
 	// Follow provider precedence with stat probes; memo hits must not open the source.
@@ -645,7 +647,10 @@ OpenedFile openRead(const char* path, const char* req, bool probeOnly)
         if (matchOwns && matchOwns(k)) {
             r.layer = r.owner = "match-cache";
             const auto it = matchData.find(k);
-            if (it != matchData.end()) r.pakBytes = probeOnly ? std::vector<uint8_t>{} : it->second;
+            if (it != matchData.end()) {
+                const auto& [name, bytes] = *it;
+                r.pakBytes = probeOnly ? std::vector<uint8_t>{} : bytes;
+            }
             return r;
         }
     }
