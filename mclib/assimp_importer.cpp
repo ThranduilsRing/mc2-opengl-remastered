@@ -1591,7 +1591,7 @@ float fallenPoseLift(const ImportedAnimEntry& e, const ActorAnimState& s,
 
 void mc2mechanim::CopyImportedActorPose(const void* source, const void* destination,
                                        const mc2::sim::ImportedAnimState& presentation, float torsoYawDeg,
-                                       VisualGround* ground, bool solveFeet) {
+                                       VisualGround* ground) {
     ZoneScopedN("Mech.ImportedPresentationPose");
     if (!source || !destination) return;
     if (ground) ground->fallenLift = 0.0f;
@@ -1605,7 +1605,7 @@ void mc2mechanim::CopyImportedActorPose(const void* source, const void* destinat
             auto twist = entry.torsoTwist;
             twist.degrees = torsoYawDeg;
             if (mc2skel::EvaluateActorClipGpuBones(*entry.plan, draw, draw.lastGlobals, &twist)) {
-                if (solveFeet) groundActorPose(entry, draw, draw.lastGlobals, draw.lastFrame, ground);
+                groundActorPose(entry, draw, draw.lastGlobals, draw.lastFrame, ground);
                 if (ground) ground->fallenLift = fallenPoseLift(entry, draw, draw.lastGlobals, *ground);
             }
             if (entry.gpuMode) buildGpuModelDelta(entry, draw, draw.lastGlobals);

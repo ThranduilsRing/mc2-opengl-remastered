@@ -181,9 +181,6 @@ void Mech3DAppearance::updateGeometry (void)
     const bool footGrounding = baseRootNodeHeight != -99999.9f && !TerrainRuntime::groundHeightView().heights.empty();
     const bool imported = mc2mechanim::ImportedGpuTypeInfo(mechShape->GetMultiType(), nullptr, nullptr) > 0;
     mc2mechanim::VisualGround ground;
-    const bool solveFeet = (s_gpuCullLifecycle
-        ? gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_)) : inView) &&
-        lowerRight.y - upperLeft.y >= 32.0f;
     if (!simulationOwned()) tickImportedAnimation(true, true);
     else {
 	// Draw side only (the sim-side tick keeps the flat floor). Placing the pose first maps model points to the world;
@@ -203,9 +200,9 @@ void Mech3DAppearance::updateGeometry (void)
 		mechShape->TransformMultiShape_HierarchyOnly(&origin, &yaw);
 		ground.under = &surfaceUnder;
 		ground.ctx = &frame;
-		mc2mechanim::CopyImportedActorPose(simulationShape_.get(), mechShape, unitAnim().imported, unitAnim().torsoRotation, &ground, solveFeet);
+		mc2mechanim::CopyImportedActorPose(simulationShape_.get(), mechShape, unitAnim().imported, unitAnim().torsoRotation, &ground);
 	}
-	else mc2mechanim::CopyImportedActorPose(simulationShape_.get(), mechShape, unitAnim().imported, unitAnim().torsoRotation, nullptr, solveFeet);
+	else mc2mechanim::CopyImportedActorPose(simulationShape_.get(), mechShape, unitAnim().imported, unitAnim().torsoRotation, nullptr);
     }
 	ZoneScopedN("GameLogic.Mech3D.UpdateGeometry");
 

@@ -906,3 +906,18 @@ TEST_CASE("foot grounding: worldPoint uses the row-vector shapeToWorld layout") 
     CHECK(w.y == doctest::Approx(2));
     CHECK(w.z == doctest::Approx(-4));
 }
+
+// Trigger: draw-side imported pose in mclib/mech3d_geometry.cpp. Terrain grounding must not depend on the camera.
+TEST_CASE("imported grounding: draw-side pose never depends on visibility or screen size") {
+    std::ifstream in(std::string(MC2_REPO_ROOT) + "/mclib/mech3d_geometry.cpp", std::ios::binary);
+    REQUIRE(in.good());
+    const std::string text((std::istreambuf_iterator<char>(in)), {});
+    const auto begin = text.find("void Mech3DAppearance::updateGeometry");
+    REQUIRE(begin != std::string::npos);
+    const auto end = text.find("ZoneScopedN(\"GameLogic.Mech3D.UpdateGeometry\")", begin);
+    REQUIRE(end != std::string::npos);
+    const std::string body = text.substr(begin, end - begin);
+    CHECK(body.find("CopyImportedActorPose") != std::string::npos);
+    for (const char* camera : {"readback_isActorVisibleLagged", "inView", "lowerRight", "upperLeft", "solveFeet"})
+        CHECK_MESSAGE(body.find(camera) == std::string::npos, "grounding input: ", camera);
+}
