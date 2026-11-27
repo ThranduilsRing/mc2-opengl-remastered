@@ -90,3 +90,16 @@ def test_skips_foreign_pid_that_cannot_be_opened(monkeypatch, capsys):
     host_lease._refresh_game_affinity()          # must not raise
     assert calls == []
     assert "skipped pid 4242" in capsys.readouterr().err
+
+
+def test_skips_own_engine_that_exits_before_pinning(monkeypatch):
+    ours = {"pid": os.getpid(), "affinity_mask": 0x3,
+            "engines": [{"pid": 4242, "created": 999}]}
+    _pin_setup(monkeypatch, ours, {4242: 0x1001})
+
+    def exited(handle, pid, mask):
+        monkeypatch.setattr(host_lease.child_registry, "pid_alive", lambda pid: False)
+        raise PermissionError(5, "process has exited")
+
+    monkeypatch.setattr(host_lease, "_set_affinity", exited)
+    host_lease._refresh_game_affinity()
