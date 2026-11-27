@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 #include <string>
+#include <array>
 #include "../../RenderCore/KtxLoader.h"
 
 // Options snapshot on Main; private decode on the single prewarm worker.
@@ -17,6 +18,9 @@ struct HdriDecodeInput {
     std::vector<unsigned char> exr;
     int cap = 1024;
     bool lowCost = false;
+    std::array<float,3> sunDirection{0,0,1};
+    std::array<float,3> sunColour{1,1,1};
+    int skyNumber = 1;
 };
 HdriDecodeInput snapshotHdriSource(mc2::czstring path);
 bool decodeHdriSnapshot(HdriDecodeInput input, float* sunAz, bool* sunValid, struct HdriCpuImage* image);
@@ -31,6 +35,8 @@ struct HdriCpuImage {
     std::vector<std::vector<uint8_t>> levels;   // RGBA16F: w*h*8 bytes per level; BC6H: the compressed mip 0 only
     std::vector<std::pair<int, int>> dims;       // width, height per level
     uint64_t generation = 0;                     // set by the owner, bumps on every (re)load; 0 = empty
+    bool cubemap = false;
+    std::array<std::array<float,3>,9> sh{};
 };
 
 // The CPU copy of the current sky HDRI (owned by the post-process object); null when there is none (no HDRI, or the

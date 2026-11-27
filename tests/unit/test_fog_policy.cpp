@@ -4,6 +4,37 @@
 #include <initializer_list>
 #include <limits>
 
+TEST_CASE("fog_policy/sky rays stay untouched by outside-map fog") {
+    for (float sky : {0.0f, 0.001f, 0.2f, 1.0f})
+        CHECK(mc2FogGroundHorizon(sky) == 0);
+    CHECK(mc2FogGroundHorizon(-0.01f) == doctest::Approx(0.5));
+    CHECK(mc2FogGroundHorizon(-0.02f) == 1);
+    CHECK(mc2FogGroundHorizon(-1.0f) == 1);
+}
+
+TEST_CASE("fog_policy/cloud sea never covers the playable map") {
+    for (float half : {3200.0f, 6400.0f, 9600.0f})
+        for (float m : {0.0f, 0.5f * half, half - 1500.0f, half - 1000.0f})
+            CHECK(mc2CloudSeaGuard(m, half) == 0);
+    CHECK(mc2CloudSeaGuard(6400.0f - 700.0f, 6400.0f) == 1);
+    CHECK(mc2CloudSeaGuard(20000.0f, 6400.0f) == 1);
+}
+
+TEST_CASE("fog_policy/cloud sea replaces past-edge surfaces outright, never a cross-fade under water") {
+    for (float half : {3200.0f, 6400.0f, 9600.0f})
+        for (float wob : {-1000.0f, 0.0f, 1000.0f})
+            for (float aa : {0.0f, 40.0f, 5000.0f}) {
+                CHECK(mc2CloudSeaReplace(half - 1000.0f, wob, half, aa) == 0); // playable map untouched
+                CHECK(mc2CloudSeaReplace(half + 100.0f, wob, half, aa) == 1);  // past the edge: fully replaced
+                int partial = 0; // samples with a water/deck mix: the step stays within 2 * 80 units
+                for (float m = half - 1000.0f; m < half + 100.0f; m += 10.0f) {
+                    const float r = mc2CloudSeaReplace(m, wob, half, aa);
+                    partial += (r > 0.0f && r < 1.0f) ? 1 : 0;
+                }
+                CHECK(partial <= 16);
+            }
+}
+
 TEST_CASE("fog_policy/source distances scale once without changing clipping") {
     const float sourceStart = 50000, maxClip = 50000;
     for (int load = 0; load < 20; ++load) {

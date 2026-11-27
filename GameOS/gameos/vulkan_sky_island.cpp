@@ -159,7 +159,7 @@ bool ensure_hdri(Island* s, uint64_t generation) {
     }
     if (!haveReal) {
         fmt = VK_FORMAT_R16G16B16A16_SFLOAT; w = 1; h = 1; mips = 1;
-        levels.assign(1, std::vector<unsigned char>(8, 0));
+        levels.assign(1, std::vector<unsigned char>(6 * 8, 0));
         dims.assign(1, {1, 1});
     }
 
@@ -169,8 +169,9 @@ bool ensure_hdri(Island* s, uint64_t generation) {
         VkImageCreateInfo ii{};
         ii.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         ii.imageType = VK_IMAGE_TYPE_2D; ii.format = fmt;
+        ii.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
         ii.extent = {static_cast<uint32_t>(w), static_cast<uint32_t>(h), 1};
-        ii.mipLevels = mips; ii.arrayLayers = 1;
+        ii.mipLevels = mips; ii.arrayLayers = 6;
         ii.samples = VK_SAMPLE_COUNT_1_BIT; ii.tiling = VK_IMAGE_TILING_OPTIMAL;
         ii.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
         ii.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -178,14 +179,14 @@ bool ensure_hdri(Island* s, uint64_t generation) {
         if (!s->hdriImg.create(s->allocator, s->device, ii, aci, "sky.hdri")) return false;
         VkImageViewCreateInfo vi{};
         vi.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        vi.image = s->hdriImg.get(); vi.viewType = VK_IMAGE_VIEW_TYPE_2D; vi.format = fmt;
-        vi.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, mips, 0, 1};
+        vi.image = s->hdriImg.get(); vi.viewType = VK_IMAGE_VIEW_TYPE_CUBE; vi.format = fmt;
+        vi.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, mips, 0, 6};
         return mc2vk::create(s->hdriView, s->device, [&](VkImageView* h) { return vkCreateImageView(s->device, &vi, nullptr, h); });
     };
     auto degradeToDummy = [&]() {
         s->hdriView.reset(); s->hdriImg.reset();
         haveReal = false; fmt = VK_FORMAT_R16G16B16A16_SFLOAT; w = 1; h = 1; mips = 1;
-        levels.assign(1, std::vector<unsigned char>(8, 0));
+        levels.assign(1, std::vector<unsigned char>(6 * 8, 0));
         dims.assign(1, {1, 1});
     };
     std::vector<VkDeviceSize> offs;
@@ -215,14 +216,14 @@ bool ensure_hdri(Island* s, uint64_t generation) {
     }
     const bool ok = submit_once(s, [&](VkCommandBuffer cb) {
         const auto& bctx = mc2vk::getOrCreateEngineVulkanContext();
-        const VkImageSubresourceRange hdriRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, mips, 0, 1};
+        const VkImageSubresourceRange hdriRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, mips, 0, 6};
         mc2vk::sync::cmdImageBarrier(bctx, cb, s->hdriImg.get(), hdriRange,
             VK_IMAGE_LAYOUT_UNDEFINED, VK_PIPELINE_STAGE_2_NONE, 0,
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
         for (uint32_t i = 0; i < mips; ++i) {
             VkBufferImageCopy c{};
             c.bufferOffset = offs[i];
-            c.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, i, 0, 1};
+            c.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, i, 0, 6};
             const auto& [dimW, dimH] = dims[i];
             c.imageExtent = {static_cast<uint32_t>(dimW), static_cast<uint32_t>(dimH), 1};
             vkCmdCopyBufferToImage(cb, staging.get(), s->hdriImg.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &c);
@@ -351,6 +352,15 @@ bool init_island(Island* s, int w, int h) {
 } // namespace
 
 extern "C" int mc2_vk_sky_island_enabled(void) { return g_sessionDeclined ? 0 : 1; }
+
+extern "C" int mc2_vk_sky_sample_info(VkDescriptorImageInfo* info) {
+    auto& slot = mc2vk::getOrCreateEngineVulkanContext().islandSlot(mc2vk::IslandSlot::Sky);
+    if (!slot || !info) return 0;
+    const auto* sky = static_cast<const Island*>(slot.get());
+    if (!sky->hdriView || !sky->samp) return 0;
+    *info = {sky->samp.get(), sky->hdriView.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+    return sky->hdriReal ? 1 : 0;
+}
 
 extern "C" void mc2_vk_sky_submit(const float* invProj16, const float* invViewRot9, float skyYaw, uint64_t hdriGeneration) {
     if (!invProj16 || !invViewRot9) return;

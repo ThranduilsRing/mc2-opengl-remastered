@@ -17,10 +17,52 @@
 
 #include "RenderCore/IblHdriRegistry.h"
 #include "RenderCore/IblShRegistry.h"
+#include "RenderCore/ProceduralSky.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
 
 namespace fs = std::filesystem;
+
+TEST_CASE("procedural_sky/cubemap mips and solid-angle SH preserve a uniform probe") {
+    const auto cube = RenderCore::bakeSkyCubemap([](RenderCore::SkyRgb) { return RenderCore::SkyRgb{1,2,3}; });
+    REQUIRE(cube.levels.size() == 8);
+    for (int mip=0;mip<8;++mip) {
+        const int size = 128>>mip;
+        CHECK(cube.levels[mip].size() == static_cast<size_t>(6*size*size*4));
+        for (int face=0;face<6;++face) for (int c=0;c<4;++c)
+            CHECK(cube.levels[mip][static_cast<size_t>(face*size*size*4+c)] == (c==3 ? 1.0f : float(c+1)));
+    }
+    for (int c=0;c<3;++c) {
+        CHECK(cube.sh[0][c] == doctest::Approx(3.54491f*(c+1)).epsilon(.0003));
+        for (int b=1;b<9;++b) CHECK(cube.sh[b][c] == doctest::Approx(0).epsilon(.0003));
+    }
+}
+
+TEST_CASE("procedural_sky/rows remain finite and dark missions cannot get daylight photos") {
+    const auto sun = RenderCore::skyMissionSun(1,0,1);
+    for (int sky=1;sky<=21;++sky) for (int face=0;face<6;++face) {
+        const auto ray = RenderCore::skyCubeDirection(face,.25f,-.75f);
+        const auto rgb = RenderCore::sampleProceduralSky(sky,ray,sun,{1,1,1});
+        for (float c : rgb) { CHECK(std::isfinite(c)); CHECK(c >= 0); }
+    }
+    for (int sky : {3,5,8,14,20,21})
+        CHECK(RenderCore::skyAtmosphere(sky).daylight < .03f);
+    CHECK(&RenderCore::skyAtmosphere(0) == &RenderCore::skyAtmosphere(1));
+}
+TEST_CASE("procedural_sky/sun azimuth and cube axes share the native camera frame") {
+    const auto sun = RenderCore::skyMissionSun(1,2,3);
+    CHECK(std::atan2(sun[2],sun[0]) == doctest::Approx(std::atan2(2.0f,-1.0f)));
+    CHECK(RenderCore::skyCubeDirection(0,0,0)[0] == 1);
+    CHECK(RenderCore::skyCubeDirection(1,0,0)[0] == -1);
+    CHECK(RenderCore::skyCubeDirection(2,0,0)[1] == 1);
+    CHECK(RenderCore::skyCubeDirection(3,0,0)[1] == -1);
+    CHECK(RenderCore::skyCubeDirection(4,0,0)[2] == 1);
+    CHECK(RenderCore::skyCubeDirection(5,0,0)[2] == -1);
+    const auto row = RenderCore::sampleProceduralSky(1,sun,sun,{1,1,1});
+    const auto away = RenderCore::sampleProceduralSky(1,{-sun[0],sun[1],-sun[2]},sun,{1,1,1});
+    CHECK(row[0] > away[0]);
+}
+
 namespace {
 namespace rc = RenderCore;
 

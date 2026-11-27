@@ -176,6 +176,9 @@ public:
     float atmoFalloff_   = 8e-4f;      // height falloff per wu
     float atmoSunScatter_ = 0.35f;     // sun in-scatter strength (High only)
     float atmoAnisotropy_ = 0.55f;     // Henyey-Greenstein g
+    float cloudSeaAltitude_ = 0.0f; // deck base in world units relative to water
+    float cloudSeaThickness_ = 1400.0f; // crown height above the base
+    float cloudSeaBillow_ = 0.0f;      // 0 rolling bank, 1 cumulus
 
     // Native scene image owners, rebuilt together on resize. Their registry
     // entries are the only images the islands and explicit readbacks consume.

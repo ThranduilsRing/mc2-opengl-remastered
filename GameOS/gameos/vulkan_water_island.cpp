@@ -138,8 +138,9 @@ void write_descriptors(WaterIsland* s, int only) {
         // image exists — it may not yet at init time (write of a NULL view is invalid).
         VkDescriptorImageInfo hdriInfo{};
         VkWriteDescriptorSet w4{};
-        if (s->hdriTexture && s->hdriSampler) {
-            hdriInfo = { s->hdriSampler.get(), s->hdriTexture.view(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+        mc2_vk_sky_sample_info(&hdriInfo);
+        if (hdriInfo.imageView && s->hdriSampler) {
+            hdriInfo.sampler = s->hdriSampler.get();
             w4.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w4.dstSet = s->set[i];
             w4.dstBinding = 2; w4.descriptorCount = 1;
             w4.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w4.pImageInfo = &hdriInfo;
