@@ -765,7 +765,21 @@ def foreign_engines() -> List[Tuple[int, str]]:
     """Engines running on the host as (pid, image). Empty under a private lease file: a test never looks at the real host."""
     if redirected():
         return []
-    return child_registry.engine_processes()
+    engines = child_registry.engine_processes()
+    try:
+        import psutil
+    except ImportError:
+        return engines
+    blocking = []
+    for pid, image in engines:
+        try:
+            # These simulation-only runs open no GPU device and intentionally take no slot.
+            if image.lower() in ("mc2.exe", "mc2") and "--headless" in psutil.Process(pid).cmdline():
+                continue
+        except (psutil.Error, OSError):
+            pass  # An unreadable process still blocks; never infer that it is headless.
+        blocking.append((pid, image))
+    return blocking
 
 
 def _holder_tag(rec: Optional[dict]) -> str:

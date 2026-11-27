@@ -63,7 +63,7 @@ void decide(std::string_view missionFitPath, std::string_view missionDir, std::s
 		why = "forced-legacy";
 	} else if (mc2::gate::is<"MC2_BRAIN_POLICY", "techbrain">()) {
 		p = Policy::TechBrain; why = "forced-techbrain";
-	} else if (mc2::rules::current().ai == 1) {
+	} else if (mc2::rules::current().ai == 1 && magicCampaign(mc2::gate::str<"MC2_ACTIVE_MOD">())) {
 		why = profileInstalled("mods") ? "player-smarter-magic-1.45" : "player-smarter-magic-1.45 magic-profile-missing,stock-brain";
 		const std::string base = std::string(missionDir).append(missionName);
 		if (missionFitHasBrainBlock(missionFitPath))                    { p = Policy::TechBrain; why = "mission.fit Brain{}"; }
@@ -75,6 +75,11 @@ void decide(std::string_view missionFitPath, std::string_view missionDir, std::s
 	}
 	g_policy = p;
 	++g_generation;
+	std::string unavailable;
+	if (mc2::rules::current().ai == 1 && !magicCampaign(mc2::gate::str<"MC2_ACTIVE_MOD">())) {
+		unavailable = std::string("smarter-unavailable mod=").append(mc2::gate::str<"MC2_ACTIVE_MOD">());
+		why = unavailable.c_str();
+	}
 	mc2::fmt::print_err("[BRAIN_POLICY] mission={} policy={} reason={}\n",
 		mc2::fmt::safe(std::string(missionName).c_str()), mc2::fmt::safe(name(p)), mc2::fmt::safe(why));
 }

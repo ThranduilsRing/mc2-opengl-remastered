@@ -7,6 +7,7 @@
 #define DF_L1 4.0
 float mv_detailTexelGM = 0.0;
 // GROUND-AO-1: cooked source AO of the grass turf (its normal-texel B channel), weighted by the tap weights; _W = 0 where no layer carries one.
+vec3 mv_cavityNormal = vec3(0.0); // Unfaded slopes, used only by the material AO proxy.
 float mv_srcAoSum = 0.0, mv_srcAoW = 0.0;
 float mv_forestMix = 0.0;   // 0..1 tree-canopy density at this pixel (forest-floor share of grass+dirt; set in main())
 float mv_detailFade(float texelsPerPixel) {
@@ -65,33 +66,37 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz, vec2
     float atsDirt  = mix(0.0, 3.0, clamp((MATV_TILING.z - 1.0) / 3.0, 0.0, 1.0));
     float atsConc  = mix(0.0, 3.0, clamp((MATV_TILING.w - 1.0) / 3.0, 0.0, 1.0));
 
+    bool needAo = uT.groundAoMaterial > 0.0;
     vec3 dN = vec3(0.0);
     // rock: boost/3 (GL parity — rock detail was too dense/strong). GL :392-397.
-    if (w.x > 0.01 && fwRock != 0.0 && dfRock > 0.0) {
+    if (w.x > 0.01 && (fwRock != 0.0 || needAo) && (dfRock > 0.0 || needAo)) {
         vec4 s = (atsRock > 0.01 && fwRock > 0.4)
                ? mv_sampleAntiTileArr(MAT_LAYER_ROCK, uvRock, atsRock, uvDx * (MATV_TILING.x / 3.0), uvDy * (MATV_TILING.x / 3.0), fwRock)
                : textureGrad(u_matNormalArray, vec3(uvRock, float(MAT_LAYER_ROCK)), uvDx * (MATV_TILING.x / 3.0), uvDy * (MATV_TILING.x / 3.0));
         dN += w.x * (MATV_NORMAL_BOOST.x / 3.0) * fwRock * dfRock * mv_detailDecode(s.rgb);
+        mv_cavityNormal += w.x * (MATV_NORMAL_BOOST.x / 3.0) * mv_detailDecode(s.rgb);
     }
     // Forest floor (under trees): mv_forestMix is the tree-canopy density mask; it takes that share of the grass, dirt and flat-rock weights
     // (same tiling and boost bound as the turf it replaces).
-    if (wForest > 0.01 && fwGrass != 0.0 && dfGrass > 0.0) {
+    if (wForest > 0.01 && (fwGrass != 0.0 || needAo) && (dfGrass > 0.0 || needAo)) {
         vec4 sf = (atsGrass > 0.01 && fwGrass > 0.4)
                 ? mv_sampleAntiTileArr(MAT_LAYER_FOREST, uvGrass * 0.8, atsGrass, uvDx * MATV_TILING.y * 0.8, uvDy * MATV_TILING.y * 0.8, fwGrass)
                 : textureGrad(u_matNormalArray, vec3(uvGrass * 0.8, float(MAT_LAYER_FOREST)), uvDx * MATV_TILING.y * 0.8, uvDy * MATV_TILING.y * 0.8);
         dN += wForest * MATV_NORMAL_BOOST.y * 1.2 * fwGrass * dfGrass * mv_detailDecode(sf.rgb);
+        mv_cavityNormal += wForest * MATV_NORMAL_BOOST.y * 1.2 * mv_detailDecode(sf.rgb);
     }
-    if (w.y > 0.01 && fwGrass != 0.0) {
-        if (dfGrass > 0.0) {
+    if (w.y > 0.01 && (fwGrass != 0.0 || needAo)) {
+        if (dfGrass > 0.0 || needAo) {
             vec4 s = (atsGrass > 0.01 && fwGrass > 0.4)
                    ? mv_sampleAntiTileArr(MAT_LAYER_GRASS, uvGrass, atsGrass, uvDx * MATV_TILING.y, uvDy * MATV_TILING.y, fwGrass)
                    : textureGrad(u_matNormalArray, vec3(uvGrass, float(MAT_LAYER_GRASS)), uvDx * MATV_TILING.y, uvDy * MATV_TILING.y);
             dN += w.y * MATV_NORMAL_BOOST.y * fwGrass * dfGrass * mv_detailDecode(s.rgb);
-            mv_srcAoSum += w.y * fwGrass * dfGrass * s.b; mv_srcAoW += w.y * fwGrass * dfGrass;
+            mv_cavityNormal += w.y * MATV_NORMAL_BOOST.y * mv_detailDecode(s.rgb);
+            mv_srcAoSum += w.y * s.b; mv_srcAoW += w.y;
         }
         // GRASS-GROUND-NORMAL: a second, larger-scale tap of the turf (0.29x, rotated ~37 deg) so the
         // tuft/dirt-gap clumps vary over ~1300 wu and the 384 wu tile does not repeat. Its own fade.
-        if (dfGrassMac > 0.0) {
+        if (dfGrassMac > 0.0 || needAo) {
             const mat2 kGrassMacroRot = mat2(0.8, 0.6, -0.6, 0.8) * 0.29;
             vec2 gmDx = kGrassMacroRot * (uvDx * MATV_TILING.y), gmDy = kGrassMacroRot * (uvDy * MATV_TILING.y);
             float fwGrassMacro = clamp(1.0 - (length(uvWidth * MATV_TILING.y * 0.29) - 0.5) * 2.0, 0.0, 1.0);
@@ -99,6 +104,7 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz, vec2
             vec2 gm = mv_detailDecode(hexTileGrad(u_matNormalArray, float(MAT_LAYER_GRASS), kGrassMacroRot * uvGrass, gmDx, gmDy, 1.0, true, vec4(0.5)).rgb).xy;
             // Rotate the sampled slope back into terrain space.
             dN.xy += w.y * MATV_NORMAL_BOOST.y * 0.6 * fwGrassMacro * dfGrassMac * (transpose(mat2(0.8, 0.6, -0.6, 0.8)) * gm);
+            mv_cavityNormal.xy += w.y * MATV_NORMAL_BOOST.y * 0.6 * (transpose(mat2(0.8, 0.6, -0.6, 0.8)) * gm);
         }
     }
     // GROUND-DETAIL-FINE-1 (owner 11-23, base terrain too coarse): one 4.3x finer, rotated tap of the turf and of the dirt, so
@@ -111,44 +117,52 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz, vec2
         const mat2 kFineBack = transpose(kFineUnit);
         float dfGrassFine = mv_detailFade(mv_detailTexelGM * MATV_TILING.y * kFine);
         float dfDirtFine  = mv_detailFade(mv_detailTexelGM * MATV_TILING.z * kFine);
-        if (w.y > 0.01 && dfGrassFine > 0.0) {
+        if (w.y > 0.01 && (dfGrassFine > 0.0 || needAo)) {
             float fwFine = clamp(1.0 - (length(uvWidth * MATV_TILING.y * kFine) - 0.5) * 2.0, 0.0, 1.0);
             vec2 g = mv_detailDecode(hexTileGrad(u_matNormalArray, float(MAT_LAYER_GRASS), kFineRot * uvGrass,
                                  kFineRot * (uvDx * MATV_TILING.y), kFineRot * (uvDy * MATV_TILING.y), 1.0, true, vec4(0.5)).rgb).xy;
             dN.xy += w.y * MATV_NORMAL_BOOST.y * 0.8 * fwFine * dfGrassFine * (kFineBack * g);
+            mv_cavityNormal.xy += w.y * MATV_NORMAL_BOOST.y * 0.8 * (kFineBack * g);
         }
-        if (w.z > 0.01 && dfDirtFine > 0.0) {
+        if (w.z > 0.01 && (dfDirtFine > 0.0 || needAo)) {
             float fwFine = clamp(1.0 - (length(uvWidth * MATV_TILING.z * kFine) - 0.5) * 2.0, 0.0, 1.0);
             vec2 g = mv_detailDecode(hexTileGrad(u_matNormalArray, float(MAT_LAYER_DIRT), kFineRot * uvDirt,
                                  kFineRot * (uvDx * MATV_TILING.z), kFineRot * (uvDy * MATV_TILING.z), 1.0, true, vec4(0.5)).rgb).xy;
             dN.xy += w.z * MATV_NORMAL_BOOST.z * 0.8 * fwFine * dfDirtFine * (kFineBack * g);
+            mv_cavityNormal.xy += w.z * MATV_NORMAL_BOOST.z * 0.8 * (kFineBack * g);
         }
     }
     // TERRAIN-NORMAL-UNIFORM: a large-scale rotated tap of the sand (0.31x, ~53 deg) so its own lattice never repeats at mid zoom,
     // the way the turf has its macro tap. Own texel-footprint and fwidth fades.
     float dfDirtMac = mv_detailFade(mv_detailTexelGM * MATV_TILING.z * 0.31);
-    if (w.z > 0.01 && dfDirtMac > 0.0) {
+    if (w.z > 0.01 && (dfDirtMac > 0.0 || needAo)) {
         const mat2 kDirtMacroUnit = mat2(0.6, 0.8, -0.8, 0.6);
         const mat2 kDirtMacroRot = kDirtMacroUnit * 0.31;
         float fwDirtMacro = clamp(1.0 - (length(uvWidth * MATV_TILING.z * 0.31) - 0.5) * 2.0, 0.0, 1.0);
         vec2 dm = mv_detailDecode(hexTileGrad(u_matNormalArray, float(MAT_LAYER_DIRT), kDirtMacroRot * uvDirt,
                                   kDirtMacroRot * (uvDx * MATV_TILING.z), kDirtMacroRot * (uvDy * MATV_TILING.z), 1.0, true, vec4(0.5)).rgb).xy;
         dN.xy += w.z * MATV_NORMAL_BOOST.z * 0.6 * fwDirtMacro * dfDirtMac * (transpose(kDirtMacroUnit) * dm);
+        mv_cavityNormal.xy += w.z * MATV_NORMAL_BOOST.z * 0.6 * (transpose(kDirtMacroUnit) * dm);
     }
-    if (w.z > 0.01 && fwDirt != 0.0 && dfDirt > 0.0) {
+    if (w.z > 0.01 && (fwDirt != 0.0 || needAo) && (dfDirt > 0.0 || needAo)) {
         vec4 s = (atsDirt > 0.01 && fwDirt > 0.4)
                ? mv_sampleAntiTileArr(MAT_LAYER_DIRT, uvDirt, atsDirt, uvDx * MATV_TILING.z, uvDy * MATV_TILING.z, fwDirt)
                : textureGrad(u_matNormalArray, vec3(uvDirt, float(MAT_LAYER_DIRT)), uvDx * MATV_TILING.z, uvDy * MATV_TILING.z);
         dN += w.z * MATV_NORMAL_BOOST.z * fwDirt * dfDirt * mv_detailDecode(s.rgb);
+        mv_cavityNormal += w.z * MATV_NORMAL_BOOST.z * mv_detailDecode(s.rgb);
     }
-    if (w.w > 0.01 && fwConcrete != 0.0 && dfConcrete > 0.0) {
+    if (w.w > 0.01 && (fwConcrete != 0.0 || needAo) && (dfConcrete > 0.0 || needAo)) {
         vec4 s = (atsConc > 0.01 && fwConcrete > 0.4)
                ? mv_sampleAntiTileArr(MAT_LAYER_CONCRETE, uvConcrete, atsConc, uvDx * MATV_TILING.w, uvDy * MATV_TILING.w, fwConcrete)
                : textureGrad(u_matNormalArray, vec3(uvConcrete, float(MAT_LAYER_CONCRETE)), uvDx * MATV_TILING.w, uvDy * MATV_TILING.w);
         dN += w.w * MATV_NORMAL_BOOST.w * fwConcrete * dfConcrete * mv_detailDecode(s.rgb);
+        mv_cavityNormal += w.w * MATV_NORMAL_BOOST.w * mv_detailDecode(s.rgb);
     }
-    if (snowWeight > 0.01 && fwSnow != 0.0 && dfSnow > 0.0) {
+    if (snowWeight > 0.01 && (fwSnow != 0.0 || needAo) && (dfSnow > 0.0 || needAo)) {
         dN += snowWeight * 0.9 * uT.normalFlatStrength * fwSnow * dfSnow *
+              mv_detailDecode(textureGrad(u_matNormalArray, vec3(uvSnow, float(MAT_LAYER_SNOW)),
+                           uvDx * MATV_TILING_SNOW, uvDy * MATV_TILING_SNOW).rgb);
+        mv_cavityNormal += snowWeight * 0.9 * uT.normalFlatStrength *
               mv_detailDecode(textureGrad(u_matNormalArray, vec3(uvSnow, float(MAT_LAYER_SNOW)),
                            uvDx * MATV_TILING_SNOW, uvDy * MATV_TILING_SNOW).rgb);
     }

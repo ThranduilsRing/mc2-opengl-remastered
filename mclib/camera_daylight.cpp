@@ -223,10 +223,7 @@ void Camera::updateLights()
 			// On screen matters not.
 			if (light->lightType == TG_LIGHT_TERRAIN)
 			{
-				Stuff::Vector4D dummy;
-				// [PROJECTZ:LightingShadow id=light_terrain_active_test]
-				PROJECTZ_SITE("light_terrain_active_test", "LightingShadow");
-				light->active = projectForLightingShadow(light->position,dummy);
+				light->active = sphereInFrustum(light->position,light->farDistance);
 				if (light->active)
 				{
 					if (terrainLightCalc)
@@ -251,37 +248,8 @@ void Camera::updateLights()
 			// For now, simple position check.  Make complicated later!
 			if (light->lightType >= TG_LIGHT_POINT && light->lightType < TG_LIGHT_TERRAIN)
 			{
-				Stuff::Vector4D dummy;
-				// [PROJECTZ:LightingShadow id=light_spot_point_active_test]
-				PROJECTZ_SITE("light_spot_point_active_test", "LightingShadow");
-				// LIGHT-CULL-RADIUS-1 (batch-6 item 5/9): the legacy test was
-				// position-only ("simple position check. Make complicated
-				// later!") AND unconditionally overwrote the owner's intent.
-				// Two field bugs fell out of that: (1) a mover leaving the
-				// frame kills its pool instantly even though the light VOLUME
-				// still reaches on-screen terrain (headlight popping); (2) at
-				// oblique angles whole building clusters go dark when the
-				// source props' light positions project off-screen while their
-				// pools are plainly in view (mc2_10 airbase 204753 vs 204907).
-				// Fix: admit when ANY extreme of the light volume (position
-				// +/- farDistance on the ground axes) projects on-screen, and
-				// compose with the owner's FoW/status intent (ownerEnabled,
-				// written by mech3d/gvactor/bdactor) instead of racing it.
-				bool lightOnScreen = projectForLightingShadow(light->position,dummy);
+				const bool lightOnScreen = sphereInFrustum(light->position,light->farDistance);
 				{
-					const float lightR = light->farDistance;
-					if (!lightOnScreen && lightR > 0.0f)
-					{
-						for (int lo = 0; lo < 4 && !lightOnScreen; ++lo)
-						{
-							glm::vec3 probe = light->position;
-							if      (lo == 0) probe.x += lightR;
-							else if (lo == 1) probe.x -= lightR;
-							else if (lo == 2) probe.y += lightR;
-							else              probe.y -= lightR;
-							lightOnScreen = projectForLightingShadow(probe,dummy);
-						}
-					}
 					bool ownerOk = (light->ownerEnabled != 0);
 					// Building-owned slots are night-only by authored
 					// semantic (bdactor writer pred includes isNight) but

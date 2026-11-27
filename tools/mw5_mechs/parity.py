@@ -148,6 +148,8 @@ def distance_curves(asset):
             continue
         feet, duration = foot_tracks(asset, name)
         axis = max((0, 2), key=lambda c: sum(max(p[c] for p in foot) - min(p[c] for p in foot) for foot in feet))
+        if any(n.get('name') == 'mw5_forward' for n in asset.doc.get('nodes', [])):
+            axis = 2  # Declared +Z forward; lateral limp sway is not ground travel.
         bounds = [(min(p[axis] for p in foot), max(p[axis] for p in foot)) for foot in feet]
         direction = 1 if name.endswith('Bwd') else -1
         distances = [0.0]
@@ -181,6 +183,8 @@ def stride_speeds(asset):
         feet, duration = foot_tracks(asset, a['name'])
         ranges = [[max(p[c] for p in foot) - min(p[c] for p in foot) for c in (0, 2)] for foot in feet]
         axis = 0 if sum(r[0] for r in ranges) > sum(r[1] for r in ranges) else 2
+        if any(n.get('name') == 'mw5_forward' for n in asset.doc.get('nodes', [])):
+            axis = 2
         direction = 1 if a['name'].endswith('Bwd') else -1
         velocities = []
         for foot in feet:

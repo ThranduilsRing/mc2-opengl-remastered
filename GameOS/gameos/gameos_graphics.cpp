@@ -30,6 +30,8 @@ void gosRendererPrepareHudTextures() {
         if (!texture) continue;
         gosTextureInfo info;
         texture->getTextureInfo(&info);
+        // Mission-admitted alpha sprites also use the HUD/VFX tail's RGBA mirror.
+        if ((info.format_ == gos_Texture_Alpha || info.format_ == gos_Texture_Detect) && texture->getBlocks()) texture->ensureRgbaMirror();
         const std::string_view asset(texture->sourceName());
         if (asset != "generated/hud/icon-registry" && asset != "generated/hud/frame-atlas" &&
             asset.find("a_compass.tga") == std::string_view::npos) continue;

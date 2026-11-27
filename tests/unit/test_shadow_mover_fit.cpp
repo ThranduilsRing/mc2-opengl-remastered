@@ -2,6 +2,7 @@
 #include "gameos/shadow_mover_fit.h"
 #include "gameos/shadow_mover_feed.h"
 #include "gameos/vulkan_shadow_island_live_algo.h"
+#include "gameos/local_light_shadow.h"
 #include <memory>
 #include <vector>
 
@@ -120,6 +121,74 @@ TEST_CASE("mover coverage: packed intervals include receivers behind every caste
         CHECK(float(lo) <= pc.z*255);
     }
     CHECK(sizeof(frame) <= 16384); // Vulkan's minimum maxUniformBufferRange
+}
+
+TEST_CASE("mover fit: footprint zoom bands keep world texel phase across yaw and pan") {
+    const auto basis=lightBasis(normalized({1,1,1}));
+    const std::array bounds{MoverSphere{{-5000,-5000,0},200},MoverSphere{{5000,5000,800},200}};
+    const Vec3 point=toLight(basis,{123,456,0});
+    float band=0, previous=0;
+    for (int altitude=300;altitude<=3000;altitude+=10) {
+        const float a=static_cast<float>(altitude);
+        const float rows[16]{1/a,0,0,0, 0,1/a,0,0, 0,0,0,0.5f, 0,0,0,1};
+        auto region=moverGroundFootprint(rows,0,5000);
+        CHECK(region.radius == doctest::Approx(std::sqrt(2.0f)*a));
+        const float required=region.radius;
+        region.radius=moverRadiusBand(required,band);
+        const auto reference=fitMoverWindow(bounds,basis,0,4096,region);
+        if (previous && previous!=band) {
+            CHECK(required>previous);
+            CHECK(band==2*previous);
+        }
+        previous=band;
+        // A 90-degree yaw and pan use the same world lattice within this band.
+        const float yawRows[16]{0,1/a,0,0.01f, -1/a,0,0,0.02f, 0,0,0,0.5f, 0,0,0,1};
+        auto rotated=moverGroundFootprint(yawRows,0,5000,{0.02f*a,-0.01f*a,0});
+        rotated.radius=moverRadiusBand(rotated.radius,band);
+        const auto window=fitMoverWindow(bounds,basis,0,4096,rotated);
+        REQUIRE(window.texelWorld==reference.texelWorld);
+        for (int axis=0;axis<2;++axis) {
+            const float p=axis?point.y:point.x;
+            const float u=(p-(axis?reference.ly0:reference.lx0))/reference.texelWorld;
+            const float v=(p-(axis?window.ly0:window.lx0))/window.texelWorld;
+            CHECK(u-std::floor(u)==doctest::Approx(v-std::floor(v)).epsilon(0.002));
+        }
+        CHECK(window.dMin==reference.dMin); CHECK(window.dMax==reference.dMax);
+    }
+    for (int radius=3000;radius>=300;radius-=10) {
+        const float old=band;
+        moverRadiusBand(static_cast<float>(radius),band);
+        if (band!=old) {
+            CHECK(radius<old*0.5f*0.85f);
+            CHECK(moverRadiusBand(static_cast<float>(radius)*1.05f,band)==band);
+        }
+    }
+}
+
+TEST_CASE("mover fit: map clamps a ground footprint crossing the horizon") {
+    const float rows[16]{0.01f,0,0,0, 0,0,0,0.5f, 0,0,0,0.5f, 0,0.01f,0,1};
+    const auto region=moverGroundFootprint(rows,0,1000);
+    CHECK(std::isfinite(region.radius));
+    CHECK(region.center.y==0);
+    CHECK(region.radius>500);
+    CHECK(region.radius<=1500);
+}
+
+TEST_CASE("selectTiles: five percent camera move retains membership until challenged") {
+    struct Light { float position[3]; uint32_t lightType; float _pad1; float farDistance; };
+    std::array<Light,9> lights{};
+    for (auto& tile : mc2localshadow::g_tiles) tile={};
+    for (int i=0;i<9;++i) lights[i]={{i==8?-102.0f:10.0f+static_cast<float>(i)*12.0f,0,0},0x80000001u,0,512};
+    mc2localshadow::selectTiles(std::span<Light>(lights),0,0,true);
+    std::array<uint32_t,9> membership{};
+    for (int i=0;i<9;++i) membership[i]=lights[i].lightType&0xf0u;
+    mc2localshadow::selectTiles(std::span<Light>(lights),-5,0,true);
+    for (int i=0;i<9;++i) CHECK((lights[i].lightType&0xf0u)==membership[i]);
+    // A substantial challenger still replaces the farthest incumbent.
+    for (auto& light : lights) light.lightType&=~0xf0u;
+    mc2localshadow::selectTiles(std::span<Light>(lights),-40,0,true);
+    CHECK((lights[8].lightType&0xf0u)!=0);
+    mc2localshadow::selectTiles(std::span<Light>(lights),0,0,false);
 }
 
 TEST_CASE("mover coverage: the blocker-search reach grows a caster's footprint past its sphere") {

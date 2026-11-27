@@ -85,6 +85,8 @@ struct State {
     Row             rows[kMaxNames];
     uint32_t        rowCount = 0;
     double          spanSumMs = 0.0, sumSumMs = 0.0, spanEma = 0.0;
+    double          maxFrameMs = 0.0, maxScopeMs = 0.0;
+    const char*     maxScope = "none";
     uint32_t        windowFrames = 0, windowDropped = 0, windowOverflow = 0;
 #ifdef TRACY_ENABLE
     TracyVkCtx      tracy = nullptr;
@@ -192,12 +194,14 @@ void flushWindow(uint64_t frame) {
         if (!tris.empty()) output += std::format("[VK_GPU_TRIS v1] pose={} frame={} n={} |{}\n", (g.poseName.empty() ? "-" : g.poseName.c_str()), frame, g.windowFrames, tris);
     }
     // pose= goes after the frozen keys: tools/box_gpu_passes.py matches "[VK_GPU_PASSES v1] frame=".
-    mc2::fmt::print_err("[VK_GPU_PASSES v1] frame={} n={} span_ms={:.3f} sum_ms={:.3f} unattributed_ms={:.3f} scopes={} dropped={} overflow={} pose={} |{}",
+    mc2::fmt::print_err("[VK_GPU_PASSES v1] frame={} n={} span_ms={:.3f} sum_ms={:.3f} unattributed_ms={:.3f} scopes={} dropped={} overflow={} pose={} max_frame_ms={:.3f} max_scope={}:{:.3f} |{}",
         frame, g.windowFrames, g.spanSumMs / n, g.sumSumMs / n, (g.spanSumMs - g.sumSumMs) / n,
-        g.rowCount, g.windowDropped, g.windowOverflow, (g.poseName.empty() ? "-" : g.poseName.c_str()), output);
+        g.rowCount, g.windowDropped, g.windowOverflow, (g.poseName.empty() ? "-" : g.poseName.c_str()), g.maxFrameMs, g.maxScope, g.maxScopeMs, output);
     for (uint32_t i = 0; i < g.statRowCount; ++i) { g.statRows[i].sum[0] = g.statRows[i].sum[1] = g.statRows[i].sum[2] = 0; g.statRows[i].frames = 0; }
     for (uint32_t i = 0; i < g.rowCount; ++i) { g.rows[i].sumMs = 0; g.rows[i].calls = 0; g.rows[i].frames = 0; }
     g.spanSumMs = g.sumSumMs = 0;
+    g.maxFrameMs = g.maxScopeMs = 0;
+    g.maxScope = "none";
     g.windowFrames = g.windowDropped = g.windowOverflow = 0;
 }
 
@@ -305,7 +309,15 @@ void readSlot(uint32_t slot, uint32_t& used) {
         const double spanMs = static_cast<double>(maxEnd - minBegin) * g.nsPerTick / 1.0e6;
         g.spanEma = g.spanEma > 0.0 ? g.spanEma + (spanMs - g.spanEma) * 0.05 : spanMs;
     }
-    g.spanSumMs += static_cast<double>(maxEnd - minBegin) * g.nsPerTick / 1.0e6;
+    const double frameMs = static_cast<double>(maxEnd - minBegin) * g.nsPerTick / 1.0e6;
+    const bool longest = frameMs > g.maxFrameMs;
+    g.maxFrameMs = std::max(g.maxFrameMs, frameMs);
+    if (longest) {
+        const auto* largest = std::max_element(perName, perName + nNames);
+        g.maxScopeMs = *largest;
+        g.maxScope = nameOf[largest - perName];
+    }
+    g.spanSumMs += frameMs;
     g.sumSumMs += sumMs;
     ++g.windowFrames;
 }
@@ -329,6 +341,8 @@ void rearmWaterReflectionCost() { reflectRes.store(0, std::memory_order_relaxed)
 // Per-pose proof windows (gos_visual_capture.cpp declares these itself): poseBegin drops the pending window and the next few reads (frames of the
 // previous pose); poseEnd logs the window under the pose name.
 void poseBegin() {
+    g.maxFrameMs = g.maxScopeMs = 0;
+    g.maxScope = "none";
     if (!g.timers) return;
     for (uint32_t i = 0; i < g.rowCount; ++i) { g.rows[i].sumMs = 0; g.rows[i].calls = 0; g.rows[i].frames = 0; }
     for (uint32_t i = 0; i < g.statRowCount; ++i) { g.statRows[i].sum[0] = g.statRows[i].sum[1] = g.statRows[i].sum[2] = 0; g.statRows[i].frames = 0; }

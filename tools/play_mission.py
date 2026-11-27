@@ -28,7 +28,7 @@ def parse_report(text):
     return verdict, rows
 
 
-def run_mission(mission, install, seconds, batch=False, invulnerable=False, sim_speed=1, goto=None, mod=None):
+def run_mission(mission, install, seconds, batch=False, invulnerable=False, sim_speed=1, goto=None, mod=None, ai=None):
     env = dict(os.environ, MC2_PLAY_MISSION="1",
                MC2_PLAY_MISSION_SKIP_CINEMATICS="1", MC2_PLAY_MISSION_SECONDS=str(seconds),
                MC2_RNG_SEED="42", MC2_SMOKE_SEED="42", MC2_DETERMINISTIC_RNG="1",
@@ -49,11 +49,23 @@ def run_mission(mission, install, seconds, batch=False, invulnerable=False, sim_
            "--duration", str(seconds + 30), "--keep-logs", "--wait-timeout", "1200"]
     if mod:
         cmd.append("--allow-any-mission")
+    options = Path(install) / "options.cfg"
+    original = options.read_bytes() if ai is not None else None
+    if ai is not None:
+        env.pop("MC2_BRAIN_POLICY", None)
+        cmd.append("--allow-nondefault-rules")
+        text = re.sub(r"(?im)^\s*l\s+GameRulesAI\s*=.*$", "", original.decode("latin1"))
+        text = text.replace("[MechCommander2]", "[MechCommander2]\r\nl GameRulesAI = " + str(int(ai == "smarter")), 1)
+        options.write_bytes(text.encode("latin1"))
     sys.path.insert(0, str(ROOT / "scripts"))
     import console_child
-    result = subprocess.run(cmd, cwd=ROOT, env=env, stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT, text=True, errors="replace",
-                            **console_child.child_kwargs(redirected=True))
+    try:
+        result = subprocess.run(cmd, cwd=ROOT, env=env, stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT, text=True, errors="replace",
+                                **console_child.child_kwargs(redirected=True))
+    finally:
+        if original is not None:
+            options.write_bytes(original)
     text = result.stdout
     artifacts = re.findall(r"^\[runner\] artifacts: (.+)$", text, re.MULTILINE)
     if artifacts:
@@ -62,11 +74,18 @@ def run_mission(mission, install, seconds, batch=False, invulnerable=False, sim_
             text += "\n" + log.read_text(encoding="utf-8", errors="replace")
     verdict, rows = parse_report(text)
     clean = result.returncode == 0 or headless_exit_ok(result.returncode, text)
+    clean = clean and not re.search(r"\[ABL_(?:FALLBACK|FATAL)\]", text)
+    if ai is not None:
+        expected = "player-smarter-magic-1.45" if ai == "smarter" else "player-stock"
+        policies = re.findall(r"^\[BRAIN_POLICY\].*", text, re.MULTILINE)
+        clean = clean and any(re.search(r"policy=legacy reason=" + re.escape(expected) + r"$", line) for line in policies)
+        for line in policies:
+            print(line, flush=True)
     verdict = verdict or "[MISSION_VERDICT v1] verdict=ERROR reason=no_engine_verdict"
     if not clean:
         verdict = re.sub(r"verdict=\w+", "verdict=ERROR", verdict) + " reason=harness_failed"
     print(f"{verdict} mission={mission}", flush=True)
-    if not batch:
+    if not batch or ai is not None:
         print("id  text_key  state    primary hidden")
         for ident, row in sorted(rows.items()):
             print(f"{ident:<3} {row['text_key']:<9} {row['state']:<8} {row['primary']:<7} {row['hidden']}")
@@ -74,7 +93,9 @@ def run_mission(mission, install, seconds, batch=False, invulnerable=False, sim_
             print("log:", Path(path.strip()) / (mission + ".log"))
     if not clean or "reason=no_engine_verdict" in verdict:
         print("\n".join(result.stdout.splitlines()[-8:]), file=sys.stderr)
-    return "verdict=PASS " in verdict and clean
+    primary = [r for r in rows.values() if r.get("primary") == "true"]
+    return ("verdict=PASS " in verdict and clean
+            and (ai is None or bool(primary) and all(r["state"] == "PASS" for r in primary)))
 
 
 def main(argv=None):
@@ -83,6 +104,7 @@ def main(argv=None):
     missions.add_argument("--mission")
     missions.add_argument("--batch", nargs="+", help="mission names, space or comma separated; duplicates repeat runs")
     ap.add_argument("--install", default=DEFAULT_INSTALL)
+    ap.add_argument("--ai", choices=("smarter", "stock"), help="select and verify warrior AI, restoring options.cfg after each run")
     ap.add_argument("--minutes", type=float, default=5)
     # headless already runs uncapped; sim-speed only helps windowed runs
     ap.add_argument("--sim-speed", type=int, choices=(1, 2, 3, 4), default=1, help="fixed 1/30 s sim steps per drawn frame (1 = old behaviour)")
@@ -96,7 +118,7 @@ def main(argv=None):
     if not names:
         ap.error("--batch must contain at least one mission")
     seconds = max(1, round(args.minutes * 60))
-    passed = sum(run_mission(name, args.install, seconds, bool(args.batch), **({"invulnerable": True} if args.invulnerable else {}), **({"sim_speed": args.sim_speed} if args.sim_speed != 1 else {}), **({"goto": args.goto} if args.goto else {}), **({"mod": args.mod} if args.mod else {})) for name in names)
+    passed = sum(run_mission(name, args.install, seconds, bool(args.batch), **({"ai": args.ai} if args.ai else {}), **({"invulnerable": True} if args.invulnerable else {}), **({"sim_speed": args.sim_speed} if args.sim_speed != 1 else {}), **({"goto": args.goto} if args.goto else {}), **({"mod": args.mod} if args.mod else {})) for name in names)
     if args.batch:
         print(f"[MISSION_BATCH v1] passed={passed} failed={len(names) - passed} total={len(names)}", flush=True)
     return 0 if passed == len(names) else 1

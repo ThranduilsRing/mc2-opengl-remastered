@@ -523,6 +523,12 @@ TEST_CASE("game rules: new-campaign defaults, legacy add-on migration and the ad
     LogisticsMissionInfo info;
     const auto plain = saveToFile(info, "game_rules_plain");
     CHECK_FALSE(hasRulesBlock(plain));
+    {   // ...so reading it back is an old save: the legacy selection is restored.
+        FitIniFile legacyIn;
+        REQUIRE(legacyIn.open(plain.c_str()) == NO_ERR);
+        CHECK(readFit(legacyIn, [] { return std::string("magic-ballistic-weapons"); }).mods == "magic-ballistic-weapons");
+        legacyIn.close();
+    }
     std::remove(plain.c_str());
     // An old save (no block) ran with the launcher toggles and its add-on layers: restored once, then saved as a selection.
     GameRules old;
@@ -544,6 +550,22 @@ TEST_CASE("game rules: new-campaign defaults, legacy add-on migration and the ad
     CHECK(readFit(in, [] { return std::string("magic-ballistic-weapons"); }).mods == "-");
     in.close();
     std::remove(chosen.c_str());
+    {   // A pre-11-23 campaign save: [General] records ModDeps "-" (none) but there is no [GameRules] Mods key -> the legacy selection.
+        const std::string legacySave = "game_rules_moddeps_dash.fit";
+        {
+            FitIniFile out;
+            REQUIRE(out.create(legacySave.c_str()) == NO_ERR);
+            out.writeBlock("General");
+            out.writeIdString("ActiveMod", "-");
+            out.writeIdString("ModDeps", "-");
+            out.close();
+        }
+        FitIniFile legacyIn;
+        REQUIRE(legacyIn.open(legacySave.c_str()) == NO_ERR);
+        CHECK(readFit(legacyIn, [] { return std::string("magic-ballistic-weapons"); }).mods == "magic-ballistic-weapons");
+        legacyIn.close();
+        std::remove(legacySave.c_str());
+    }
     // Nothing to restore (a stock or harness install) leaves the save as it was.
     GameRules bare;
     migrateLegacyMods(bare, "");

@@ -84,8 +84,49 @@ inline bool propShadowReachesMover(MoverSphere prop, MoverSphere mover, Vec3 sun
     return d.x * d.x + d.y * d.y + d.z * d.z <= reach * reach;
 }
 
-// XY covers a rotation-invariant view region, never the set of visible casters.
-// Caster bounds affect depth only; changing visibility cannot change texel density.
+// Clip the ground/map rectangle to the camera, including horizon-crossing views.
+// This also clamps far-row ground rays to the map rather than to camera altitude.
+inline MoverSphere moverGroundFootprint(const float rows[16], float ground, float halfMap, Vec3 focus = {}) {
+    std::vector<Vec3> polygon{{-halfMap,-halfMap,ground},{halfMap,-halfMap,ground},
+                              {halfMap,halfMap,ground},{-halfMap,halfMap,ground}};
+    const auto view = makeViewPlanes(rows);
+    for (const auto& plane : view.plane) {
+        std::vector<Vec3> clipped;
+        if (polygon.empty()) break;
+        Vec3 a = polygon.back();
+        const auto distance = [&](Vec3 p) { return plane[0]*p.x+plane[1]*p.y+plane[2]*p.z+plane[3]; };
+        float da = distance(a);
+        for (const auto b : polygon) {
+            const float db = distance(b);
+            if ((da >= 0) != (db >= 0)) {
+                const float t = da / (da-db);
+                clipped.push_back({a.x+t*(b.x-a.x),a.y+t*(b.y-a.y),ground});
+            }
+            if (db >= 0) clipped.push_back(b);
+            a=b; da=db;
+        }
+        polygon=std::move(clipped);
+    }
+    // A circle about the focus rotates with the frustum; an XY bounding-box
+    // midpoint changes both the centre and the radius when yaw changes.
+    MoverSphere region{{focus.x,focus.y,ground},4};
+    for (const auto p : polygon) {
+        const Vec3 d{p.x-region.center.x,p.y-region.center.y,0};
+        region.radius=(std::max)(region.radius,std::sqrt(dot(d,d)));
+    }
+    return region;
+}
+
+inline float moverRadiusBand(float radius, float& band) {
+    radius=(std::max)(radius,4.0f);
+    if (band == 0) band=std::exp2(std::ceil(std::log2(radius)));
+    while (radius > band) band*=2.0f;
+    while (band > 4.0f && radius < band*0.5f*0.85f) band*=0.5f;
+    return band;
+}
+
+// XY uses a banded ground footprint; depth bounds must cover the entire map,
+// independently of which casters are visible.
 inline Window fitMoverWindow(std::span<const MoverSphere> spheres, const LightBasis& basis,
                              float ground, int mapSide, MoverSphere region) {
     Window w{};

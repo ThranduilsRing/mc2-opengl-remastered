@@ -98,6 +98,7 @@ std::atomic<bool> g_summaryEmitted{false};
 std::vector<double> g_frameMs;          // ring buffer, size = cap
 size_t              g_frameIdx = 0;
 size_t              g_frameCount = 0;   // monotonic
+size_t              g_over10 = 0, g_over16 = 0;
 size_t              g_frameMsCap = 8192;
 bool                g_firstFrameSeen = false;
 double              g_simSeconds = 0.0;
@@ -282,6 +283,7 @@ void samplePerf(double frameMs) {
                        fc = hs.wait[0].count.load() + hs.wait[1].count.load(), fn = hs.wait[0].ns.load() + hs.wait[1].ns.load(), sb = hs.stagedBytes.load(),
                        sl = hs.wait[mc2_hitch2::kSlot].ns.load(), aq = hs.acquireNs.load(), cw = hs.compositeWaitNs.load();
         auto& sc = mc2_hitch2::scopes();
+        const auto cause = mc2_hitch2::takeCause();
         if (g_missionReadyT) {
             ++s_frame;
             if (mc2_diag::tagRequested("HITCH")) startOtherMc2Sampler();
@@ -300,12 +302,12 @@ void samplePerf(double frameMs) {
                     std::string scopes;
                     for (int i = 0; i < top; ++i) scopes += std::string(sc.slots[idx[i]].name) + "=" + std::to_string(sc.slots[idx[i]].ms).substr(0, 5) + (i + 1 < top ? "," : "");
                     if (mc2_diag::tagRequested("HITCH"))
-                    mc2::fmt::print_err("[HITCH v2] frame={} ms={:.1f} median={:.1f} waitidle_n={} waitidle_ms={:.2f} fence_n={} fence_ms={:.2f} staged_kb={} pipelines={} upload_kb={} objmap_records={} dirty_batches={} bake_state={} bake_cache={} sim_join_ms={:.2f} slot_ms={:.2f} acquire_ms={:.2f} composite_wait_ms={:.2f} gpu_span4_ms={:.2f} gpu_busy4_ms={:.2f} other_mc2={} scopes={}\n",
+                    mc2::fmt::print_err("[HITCH v2] frame={} ms={:.1f} median={:.1f} waitidle_n={} waitidle_ms={:.2f} fence_n={} fence_ms={:.2f} staged_kb={} pipelines={} upload_kb={} objmap_records={} dirty_batches={} bake_state={} bake_cache={} sim_join_ms={:.2f} slot_ms={:.2f} acquire_ms={:.2f} composite_wait_ms={:.2f} gpu_span4_ms={:.2f} gpu_busy4_ms={:.2f} other_mc2={} scopes={} cause={}:{:.3f}\n",
                         mc2::fmt::as_u64(s_frame), frameMs, med, mc2::fmt::as_u64(wic - s_wic), (win - s_win) / 1e6,
                         mc2::fmt::as_u64(fc - s_fc), (fn - s_fn) / 1e6, mc2::fmt::as_u64((sb - s_sb) / 1024), mc2::fmt::as_u64(pc - s_pc), mc2::fmt::as_u64((ub - s_ub) / 1024),
                         mc2::fmt::as_u64(om - s_om), mc2::fmt::as_u64(db - s_db), mc2::fmt::safe(hs.bakeState.load()), mc2::fmt::safe(hs.bakeCache.load()), (sj - s_sj) / 1e6,
                         (sl - s_sl) / 1e6, (aq - s_aq) / 1e6, (cw - s_cw) / 1e6, gspan, gbusy, mc2::fmt::as_i32(hs.otherMc2.load()),
-                        mc2::fmt::safe(scopes.c_str()));
+                        mc2::fmt::safe(scopes.c_str()), cause.name, cause.ms);
                 }
             }
             if (s_all.size() < 20000) s_all.push_back(static_cast<float>(frameMs));
@@ -330,6 +332,8 @@ void samplePerf(double frameMs) {
     g_frameMs[g_frameIdx] = frameMs;
     g_frameIdx = (g_frameIdx + 1) % g_frameMsCap;
     g_frameCount++;
+    if (frameMs > 10.0) ++g_over10;
+    if (frameMs > 16.7) ++g_over16;
 }
 
 void emitCleanSummary() {
@@ -365,8 +369,8 @@ void emitCleanSummary() {
     double avgFps = (avgMs > 0.0) ? 1000.0 / avgMs : 0.0;
     double p1LowFps = (pct(99.0) > 0.0) ? 1000.0 / pct(99.0) : 0.0;
 
-    mc2::fmt::print_out("[PERF v1] avg_fps={:.1f} p50_ms={:.2f} p99_ms={:.2f} p1low_fps={:.1f} peak_ms={:.2f} samples={:d}\n",
-        avgFps, p50, p99, p1LowFps, peak, mc2::fmt::as_size(samples.size()));
+    mc2::fmt::print_out("[PERF v1] avg_fps={:.1f} p50_ms={:.2f} p99_ms={:.2f} p1low_fps={:.1f} peak_ms={:.2f} samples={:d} over10={} over16={}\n",
+        avgFps, p50, p99, p1LowFps, peak, mc2::fmt::as_size(samples.size()), g_over10, g_over16);
 
     double actualMs = elapsedMsSince(g_missionReadyT ? g_missionReadyT : g_startupT0);
     // Fault counters OMITTED intentionally — the runner is the authoritative

@@ -7,6 +7,7 @@
 #include "terrain_runtime.h"
 #include "../RenderCore/TemporalInputs.h"
 #include <format>
+#include "mc2fmt.h"
 namespace {
 // XFORM-CONVENTION-HARNESS-1: the two canonical clip-space convention
 // matrices used to live here as anonymous-namespace free functions. They were
@@ -508,6 +509,9 @@ void Camera::setCameraOrigin (void)
 		cameraFrame.rotate(rotationVector);
 	}
 
+	// View space looks down -Z (NearPlaneDistance is negative).
+	lookVector = glm::normalize(mc2::math::localBackwardInWorld(cameraOrigin));
+
 	//------------------------------------------------------------
 	// DO Exactly what MLR does to create its Internal Matrices.
 	glm::mat4 cameraToWorldMatrix(cameraOrigin);
@@ -518,6 +522,19 @@ void Camera::setCameraOrigin (void)
 	
 	if (usePerspective)
 		clipToWorld = glm::inverse(worldToClip);
+	bool validCamera = std::fabs(NearPlaneDistance) < FarPlaneDistance &&
+		glm::length(lookVector - mc2::math::localBackwardInWorld(cameraOrigin)) < 0.001f;
+	for (int c = 0; c < 4; ++c)
+		for (int r = 0; r < 4; ++r)
+			validCamera = validCamera && std::isfinite(worldToClip[c][r]);
+	if (!validCamera) { mc2::fmt::print_err("Camera invariant failed: projection or forward axis\n"); std::abort(); }
+	cacheFrustumPlanes(); // Lights and CPU visibility consume this before terrain::geometry.
+	static bool reportedNearFocus = false;
+	const glm::vec3 focus(-position.x, cameraShiftZ, position.y);
+	if (!reportedNearFocus && usePerspective && glm::length(physicalPos - focus) <= std::fabs(NearPlaneDistance)) {
+		mc2::fmt::print_err("Camera focus is inside the near plane\n");
+		reportedNearFocus = true;
+	}
 }
 
 //---------------------------------------------------------------------------
@@ -591,18 +608,14 @@ void Camera::calculateProjectionConstants (void)
 	screenCenter.y = screenResolution.y / 2.0;
 	screenCenter.z = screenResolution.z = 0.0f;
 	
+	setOrthogonal(); // Establish the actual drawable/preview projection first.
 	if (usePerspective)
 	{
-		float oneOverResMag = glm::length(screenResolution);
-		if (oneOverResMag > Stuff::SMALL)
-			oneOverResMag = 1.0f / oneOverResMag;
-
-		verticalSphereClipConstant = tan(screenResolution.y * oneOverResMag * camera_fov * 0.7071f * DEGREES_TO_RADS);
-		horizontalSphereClipConstant = tan(screenResolution.x * oneOverResMag * camera_fov * 0.7071f * DEGREES_TO_RADS);
-		
+		horizontalSphereClipConstant = 0.5f / std::fabs(cameraToClip[LEFT_AXIS][LEFT_AXIS]);
+		verticalSphereClipConstant = 0.5f / std::fabs(cameraToClip[UP_AXIS][UP_AXIS]);
+		cosHalfFOV = camera_frustum_math::coneCosine(camera_fov * DEGREES_TO_RADS,
+			verticalSphereClipConstant / horizontalSphereClipConstant);
 	}
-
-	setOrthogonal();		//Setup the camera Clip matrix.
 
 	setCameraOrigin();
 

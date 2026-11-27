@@ -6,12 +6,21 @@
 // Texcoord.x < -0.5, vertex-fog mix against the renderer fog colour. Pipeline: SRC_ALPHA /
 // ONE_MINUS_SRC_ALPHA on MRT0, depth test GEQUAL / no depth write, MRT1 REPLACED with
 // shadowHandled flat-up (0.5,0.5,1,1) (GL: SRC_ALPHA = 1 of that value => replace).
-#version 450
+#version 460
+#ifdef MC2_RT_SUN_SHADOWS
+#extension GL_EXT_ray_query : require
+#endif
 #extension GL_GOOGLE_include_directive : require
 #ifndef PREC
 #define PREC highp
 #endif
 #include "include/terrain_frame_vk.glsl"
+#ifdef MC2_RT_SUN_SHADOWS
+#ifndef MC2_RT_SUN_SET
+#define MC2_RT_SUN_SET 2   // set 1 binding 0 is this pass's tex1
+#endif
+#include "include/rt_sun_shadow.glsl"
+#endif
 
 layout(location = 0) in vec3  WorldPos;
 layout(location = 1) in vec2  Texcoord;
@@ -43,8 +52,12 @@ void main() {
     if (!skipInlineShadow) {
         const vec3 shadowN = vec3(0.0, 0.0, 1.0);
         vec3 lightDir3 = uEnv.sunDirLive.xyz;
-        c.rgb *= min(uT.enableShadows!=0?terrainStaticShadow(WorldPos):1.0,
-                     terrainDynamicShadow(WorldPos,shadowN));
+        float staticS=uT.enableShadows!=0?terrainStaticShadow(WorldPos):1.0;
+#ifdef MC2_RT_SUN_SHADOWS
+        if (uT.enableShadows!=0 && WorldPos.z>=uT.shorelineWaterElev)
+            staticS=min(staticS,mix(sunShadowFloor(0.4),1.0,rtPropSunVisibility(WorldPos,shadowN,moverFrame.sun.xyz)));
+#endif
+        c.rgb *= min(staticS,terrainDynamicShadow(WorldPos,shadowN));
     }
     c.rgb *= uEnv.sceneLight.x * uEnv.sceneLight.yzw;   // LOCAL-LIGHTS-4: same night scale as the ground under it
 

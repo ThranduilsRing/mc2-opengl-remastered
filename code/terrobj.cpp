@@ -1113,7 +1113,7 @@ void TerrainObject::renderShadows (void)
 		return;			//No shadows on fallen trees.
 		
 	const bool readbackVisible = gpu_cull::readback_isEnabled()
-		? gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(getHandle()))
+		? (gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(getHandle())) || eye->sphereInFrustum(getPosition(),appearance->getRadius()))
 		: appearance->canBeSeen();
 	if (readbackVisible)
 	{

@@ -69,6 +69,12 @@ public:
     int mapSide() const { return mapSide_; }
     uint64_t heightVersion() const { return heightVersion_; }
 
+    // Valley-fog floor: the regional low ground under each vertex (the height field's minimum over a 8-cell radius, then a
+    // 4-cell box blur), mapSide^2 floats in the height field's layout. The valley-fog layer fills from here up to
+    // floor + thickness, so basins fill and ridges stand clear. Rebuilt on first read after every height write.
+    const std::vector<float>& fogFloor() const { if (fogFloorVersion_ != heightVersion_) bakeFogFloor(); return fogFloor_; }
+    float fogFloorMax() const { fogFloor(); return fogFloorMax_; }
+
     const std::vector<uint32_t>& cementWords() const { return cement_; }
     uint64_t cementVersion() const { return cementVersion_; }
 
@@ -125,8 +131,13 @@ public:
     uint64_t surfaceVersion() const { return surfaceVersion_; }
 
 private:
+    void bakeFogFloor() const;
+
     std::vector<float> height_;
     std::vector<HeightPatch> patches_;
+    mutable std::vector<float> fogFloor_;
+    mutable float fogFloorMax_ = 0.0f;
+    mutable uint64_t fogFloorVersion_ = 0;
     int mapSide_ = 0;
     uint64_t heightVersion_ = 0;
     std::vector<uint32_t> cement_;

@@ -116,9 +116,10 @@ TESS_SYMMETRY_FILES = ["shaders/vulkan/terrain_tier1.vert",
 BIAS_APPLICATION_PINS = [
     ("shaders/vulkan/terrain_tier1.vert", r"clip\.z \+= 2\.0 \* TERRAIN_DEPTH_FUDGE \* clip\.w"),
     ("shaders/vulkan/terrain_tier1_skirt.vert", r"clip\.z \+= 2\.0 \* TERRAIN_DEPTH_FUDGE \* clip\.w"),
-    ("shaders/vulkan/mech_tier1.vert", r"clip\.z \+= uFrame\.objectDepthBias \* clip\.w"),
-    ("shaders/vulkan/color_prop_tier1.vert", r"clip\.z \+= uFrame\.objectDepthBias \* clip\.w"),
-    ("shaders/vulkan/include/terrain_overlay_vs.glsl", r"clip4\.z \+= OVERLAY_DEPTH_BIAS \* clip4\.w"),
+    # Layer biases are relative (distance-proportional): still applied to the clip z before the divide.
+    ("shaders/vulkan/mech_tier1.vert", r"clip\.z \+= uFrame\.objectDepthBias \* clip\.z"),
+    ("shaders/vulkan/color_prop_tier1.vert", r"clip\.z \+= uFrame\.objectDepthBias \* clip\.z"),
+    ("shaders/vulkan/include/terrain_overlay_vs.glsl", r"clip4\.z \+= OVERLAY_DEPTH_BIAS_REL \* clip4\.z"),
 ]
 
 # ---------------------------------------------------------------------------
@@ -155,6 +156,7 @@ ISLANDS = {
     "shaders/vulkan/motion_vectors.frag": "Native Vulkan velocity prerequisite; no GL consumer or sibling. Default-path parity is checked by the merge gate day/night captures.",
     "shaders/vulkan/edge_fog.frag": "Native Vulkan fog; the GL twin was retired in s63.",
     "shaders/vulkan/fog_oob.frag": "Native Vulkan fog; the GL twin was retired in s63.",
+    "shaders/vulkan/valley_fog.frag": "Native Vulkan valley fog banks (ground-fog-4), drawn before edge_fog.frag in the fog pass; no GL twin, GL is being deleted.",
     "shaders/vulkan/edge_fog.vert":   "VK fullscreen-triangle VS for edge_fog; GL pass has no dedicated .vert sibling",
     "shaders/vulkan/fog_oob.vert":    "VK fullscreen-triangle VS for fog_oob; GL pass has no dedicated .vert sibling",
     "shaders/vulkan/impact_decal.vert": "Native Vulkan weapon impact box decals (docs/impact-damage-design.md); no GL twin, GL is being deleted.",
@@ -479,7 +481,7 @@ def rule1_color(ctx: Ctx) -> list[str]:
 _LOCAL_CONST_RE = re.compile(
     r"const\s+float\s+(\w*_DEPTH_(?:FUDGE|BIAS)\w*)\s*=\s*([0-9.eE+\-]+)")
 _HGLSL_CONST_RE = re.compile(
-    r"const\s+float\s+(\w+)\s*=\s*([0-9.eE+\-]+)\s*;")
+    r"(?:MC2_DEPTH_CONST|const)\s+float\s+(\w+)\s*=\s*([0-9.eE+\-]+)\s*;")
 _CPP_CONST_RE = re.compile(
     r"constexpr\s+float\s+(\w+)\s*=\s*([0-9.eE+\-]+)f?\s*;")
 _POST_DIVIDE_RE = re.compile(
@@ -499,7 +501,11 @@ def _parse_const_map(text: str, pattern: re.Pattern) -> dict[str, float]:
 def rule2_depth(ctx: Ctx) -> list[str]:
     problems = []
     hglsl_map = _parse_const_map(ctx.read(HGLSL_HEADER), _HGLSL_CONST_RE)
-    cpp_map = _parse_const_map(ctx.read(CPP_HEADER), _CPP_CONST_RE)
+    cpp_text = ctx.read(CPP_HEADER)
+    cpp_map = _parse_const_map(cpp_text, _CPP_CONST_RE)
+    # The C++ header includes the hglsl directly (MC2_DEPTH_CONST = constexpr): lockstep by construction.
+    if '#include "../shaders/include/terrain_depth_bias.hglsl"' in cpp_text:
+        cpp_map = {**hglsl_map, **cpp_map}
     if not hglsl_map or not cpp_map:
         return ["RULE2: could not parse constant maps from %s / %s"
                 % (HGLSL_HEADER, CPP_HEADER)]

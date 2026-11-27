@@ -7,6 +7,8 @@
 #include "doctest.h"
 #include "mech_clip_state.h"
 #include "mech_grounding.h"
+#include "mw5_contact_passes.h"
+#include <chrono>
 #include "foot_grounding.h"
 #include "mech_model_delta.h"
 #include "unit_anim_state.h"
@@ -20,6 +22,11 @@
 #include <filesystem>
 #include <map>
 #include "mc2fmt.h"
+#include "mech_import_scale.h"
+#include <nlohmann/json.hpp>
+#include <fstream>
+#include <regex>
+#include <sstream>
 
 namespace imported_scale_test {
 struct ActorAnimState {
@@ -345,6 +352,25 @@ TEST_CASE("imported grounding: soles contact, reverse knees and torso motion sur
         }
         CHECK(pose[leg.calf][3].z < 0); // retain the source bend plane
     }
+    std::array<glm::vec3, 2> targets{glm::vec3(pose[2][3]), glm::vec3(pose[5][3])};
+    targets[0] += glm::vec3(.05f, .15f, .05f);
+    auto locked = original;
+    mc2ground::solve(rig, locked, nullptr, &targets);
+    CHECK(glm::length(glm::vec3(locked[2][3]) - targets[0]) < 1e-5f);
+    auto repeated = original;
+    mc2ground::solve(rig, repeated, nullptr, &targets);
+    CHECK(repeated == locked); // no dependency on an earlier frame's solve
+    const std::array<glm::quat, 2> rotations{mc2ground::columnQuaternion(locked[2]),
+                                           mc2ground::columnQuaternion(locked[5])};
+    const float lift[2] = {.1f, 0};
+    repeated = original;
+    mc2ground::solve(rig, repeated, lift, &targets, &rotations);
+    CHECK(glm::length(glm::vec3(repeated[2][3]) - targets[0] - glm::vec3(0, .1f, 0)) < 1e-5f);
+    targets[0].x += 100;
+    mc2ground::solve(rig, repeated, nullptr, &targets);
+    const float reach = glm::length(glm::vec3(original[1][3] - original[0][3])) +
+                        glm::length(glm::vec3(original[2][3] - original[1][3]));
+    CHECK(glm::length(glm::vec3(repeated[2][3] - repeated[0][3])) <= reach);
 }
 
 TEST_CASE("imported grounding: a toe-down swing foot keeps its sole height and knee side") {
@@ -599,6 +625,185 @@ TEST_CASE("clip state: fades use longer prone transitions and advance outgoing c
     CHECK(advanceClipTime(0.5f, 0.1f, 2, 1, Mode::Loop) == doctest::Approx(0.7f));
     CHECK(advanceClipTime(0.9f, 0.1f, 2, 1, Mode::Loop) == doctest::Approx(0.1f));
     CHECK(advanceClipTime(0.9f, 0.1f, 2, 1, Mode::Once) == 1);
+}
+
+TEST_CASE("clip state: world distance follows rendered chassis scale") {
+    DistanceCurve curve{1, {0, 1, 2, 3, 4}};
+    for (float scale : {0.5f, 2.0f, 4.0f}) {
+        CHECK(curve.advanceWorld(0, scale, scale) == doctest::Approx(0.25f));
+        CHECK(curve.advanceWorld(0.75f, scale * 2, scale) == doctest::Approx(0.25f));
+        CHECK(curve.advanceWorld(0.25f, 0, scale) == doctest::Approx(0.25f));
+    }
+}
+
+TEST_CASE("clip state: MW5 contact allowlist keeps only measured passing pairs") {
+    unsigned count = 0;
+    for (const auto& row : mc2ground::contactPasses)
+        for (unsigned i = 0; i < 5; ++i) count += (row.gaits >> i) & 1u;
+    CHECK(std::size(mc2ground::contactPasses) == 48);
+    CHECK(count == 198);
+    CHECK(mc2ground::contactCurveAllowed("tgl/mw5_kitfox.glb", "atlas_moveCoreRunFwd"));
+    CHECK_FALSE(mc2ground::contactCurveAllowed("tgl/mw5_kitfox.glb", "atlas_moveCoreWalkLimpFwdRight"));
+    CHECK_FALSE(mc2ground::contactCurveAllowed("tgl/mw5_atlas.glb", "atlas_moveCoreRunFwd"));
+    CHECK_FALSE(mc2ground::contactCurveAllowed("tgl/mw5_archer.glb", "atlas_moveCoreRunFwd"));
+    CHECK_FALSE(mc2ground::contactCurveAllowed("tgl/unknown.glb", "atlas_moveCoreWalkFwd"));
+}
+
+TEST_CASE("clip state: MW5 grounded stance drift at installed gesture speeds") {
+    const char* root = std::getenv("MW5_TEST_TGL");
+    if (!root) { WARN("set MW5_TEST_TGL to private installed pack"); return; }
+    int chassis = 0;
+    std::vector<std::filesystem::directory_entry> assets;
+    for (const auto& asset : std::filesystem::directory_iterator(root))
+        if (asset.path().extension() == ".glb") assets.push_back(asset);
+    std::stable_sort(assets.begin(), assets.end(), [](const auto& a, const auto& b) {
+        return a.path().stem() == "mw5_kitfox" && b.path().stem() != "mw5_kitfox";
+    });
+    for (const auto& asset : assets) {
+        auto package = asset.path(); package.replace_extension(".package.json");
+        std::ifstream input(package); nlohmann::json pkg; input >> pkg;
+        const float height = mc2mechscale::targetHeight(pkg.at("chassisId").get<std::string>());
+        REQUIRE(height > 0);
+        Assimp::Importer importer;
+        const auto* scene = importer.ReadFile(asset.path().string(), 0);
+        REQUIRE(scene != nullptr);
+        float low = 1e30f, high = -1e30f;
+        for (unsigned m = 0; m < scene->mNumMeshes; ++m)
+            for (unsigned v = 0; v < scene->mMeshes[m]->mNumVertices; ++v) {
+                const float y = scene->mMeshes[m]->mVertices[v].y;
+                low = std::min(low, y); high = std::max(high, y);
+            }
+        const float scale = height / (high - low);
+        auto ini = asset.path(); ini.replace_extension(".ini");
+        std::ifstream iniInput(ini);
+        const std::string text((std::istreambuf_iterator<char>(iniInput)), {});
+        std::vector<std::string> names;
+        std::vector<int> parents;
+        const auto visit = [&](const auto& self, const aiNode* node, int parent) -> void {
+            const int index = static_cast<int>(names.size());
+            names.push_back(node->mName.C_Str()); parents.push_back(parent);
+            for (unsigned i = 0; i < node->mNumChildren; ++i) self(self, node->mChildren[i], index);
+        };
+        visit(visit, scene->mRootNode, -1);
+        const auto plan = mc2skel::BuildPlan(scene, names);
+        const auto matrix = [](const mc2skel::GpuBone& b) {
+            glm::mat4 m;
+            for (int r = 0; r < 4; ++r) for (int c = 0; c < 4; ++c) m[c][r] = b.m[r * 4 + c];
+            return m;
+        };
+        std::vector<mc2skel::GpuBone> rest;
+        mc2skel::EvaluateRestGpuBones(scene, names, rest);
+        mc2ground::Rig rig; rig.floor = 1e30f;
+        for (int side = 0; side < 2; ++side) {
+            auto& leg = rig.legs[side];
+            const std::string prefix = side ? "j_R" : "j_L";
+            auto index = [&](const std::string& name) { return static_cast<int>(std::find(names.begin(), names.end(), name) - names.begin()); };
+            leg.thigh = index(prefix + "Thigh"); leg.calf = index(prefix + "Calf"); leg.foot = index(prefix + "Foot");
+            REQUIRE(leg.foot < names.size());
+            leg.restFoot = matrix(rest[leg.foot]);
+            for (int b = 0; b < static_cast<int>(names.size()); ++b) {
+                int parent = b;
+                while (parent >= 0 && parent != leg.foot) parent = parents[parent];
+                if (parent == leg.foot && b != leg.foot) leg.children.push_back(b);
+            }
+            for (unsigned m = 0; m < scene->mNumMeshes; ++m) {
+                const auto* mesh = scene->mMeshes[m];
+                if (!mesh->mNumBones) continue;
+                const int b = index(mesh->mBones[0]->mName.C_Str());
+                if (b != leg.foot && std::find(leg.children.begin(), leg.children.end(), b) == leg.children.end()) continue;
+                for (unsigned v = 0; v < mesh->mNumVertices; ++v) {
+                    const auto p = mesh->mBones[0]->mOffsetMatrix * mesh->mVertices[v];
+                    leg.sole.push_back({b, {p.x, p.y, p.z}});
+                    rig.floor = std::min(rig.floor, (matrix(rest[b]) * glm::vec4(p.x, p.y, p.z, 1)).y);
+                }
+            }
+            REQUIRE_FALSE(leg.sole.empty());
+        }
+        for (int gesture : {kGestureWalk, kGestureRun, kGestureReverse, kGestureLimpLeft, kGestureLimpRight}) {
+            INFO(asset.path().stem().string(), " gesture=", gesture);
+            std::smatch match;
+            REQUIRE(std::regex_search(text, match, std::regex("\\[Gestures" + std::to_string(gesture) + "\\][\\s\\S]*?EndVel=([0-9.]+)")));
+            const float speed = std::stof(match[1]);
+            Phase phase;
+            const auto choice = select(gesture, speed, 0, 0, false, false, "", phase);
+            REQUIRE(choice.locomotion);
+            std::istringstream encoded(pkg.at("distanceCurves").at(choice.clip).get<std::string>());
+            DistanceCurve curve; encoded >> curve.duration;
+            float d; while (encoded >> d) curve.distance.push_back(d);
+            REQUIRE(curve.valid());
+            std::vector<std::vector<glm::mat4>> poses;
+            const auto samplePose = [&](float time) {
+                std::vector<mc2skel::GpuBone> bones;
+                mc2skel::EvaluateClipGpuBones(*plan, choice.clip, time * 30, bones);
+                std::vector<glm::mat4> pose;
+                for (const auto& bone : bones) pose.push_back(matrix(bone));
+                return pose;
+            };
+            for (size_t f = 0; f < curve.distance.size(); ++f)
+                poses.push_back(samplePose(float(f) * curve.duration / float(curve.distance.size() - 1)));
+            const auto packageDistance = curve.distance;
+            const bool refine = mc2ground::contactCurveAllowed(asset.path().string(), choice.clip);
+            const auto plants = mc2ground::buildPlants(rig, poses, curve.distance, gesture == kGestureReverse, refine);
+            if (!refine) CHECK(curve.distance == packageDistance);
+            REQUIRE_FALSE(plants.feet.empty());
+            float time = 0, world = 0, peak = 0, maxVelocity = 0, reachError = 0;
+            double solveSeconds = 0;
+            std::array<double, 600> solveSamples{};
+            float drift[2] = {}, previousWorld[2][2] = {};
+            int previousContact[2] = {-1, -1}, contactFrames = 0;
+            int previousFrame = 0;
+            const float dt = 1.0f / 60, moved = speed * dt;
+            for (int f = 0; f < 600; ++f) {
+                auto pose = samplePose(time);
+                const auto targets = plants.sample(time / curve.duration);
+                const auto rotations = plants.sampleRotations(time / curve.duration);
+                const auto started = std::chrono::steady_clock::now();
+                mc2ground::solve(rig, pose, nullptr, &targets, &rotations);
+                solveSamples[f] = std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
+                solveSeconds += solveSamples[f];
+                const int frame = std::min(int(time / curve.duration * plants.feet.size()), int(plants.feet.size()) - 1);
+                for (int k = 0; k < 2; ++k) {
+                    const auto ankle = glm::vec3(pose[rig.legs[k].foot][3]);
+                    const float x = ankle.x * scale, z = ankle.z * scale + world;
+                    const bool contact = plants.contact[frame][k] && plants.contact[(frame + 1) % plants.feet.size()][k];
+                    if (contact) {
+                        const glm::vec2 error(ankle.x - targets[k].x, ankle.z - targets[k].z);
+                        reachError = std::max(reachError, glm::length(error) * scale / mc2mechscale::worldUnitsPerMetre);
+                    }
+                    // A distance plateau can skip a complete swing in one tick.
+                    // Those samples belong to different stances, even if both land.
+                    bool sameStance = contact && previousContact[k] == 1;
+                    for (int b = previousFrame; b != frame; b = (b + 1) % int(plants.feet.size()))
+                        sameStance &= plants.contact[b][k];
+                    if (sameStance) {
+                        const float dx = x - previousWorld[k][0], dz = z - previousWorld[k][1];
+                        const float step = std::sqrt(dx * dx + dz * dz) / mc2mechscale::worldUnitsPerMetre;
+                        drift[k] += step; peak = std::max(peak, drift[k]);
+                        maxVelocity = std::max(maxVelocity, step / dt); ++contactFrames;
+                    } else drift[k] = 0;
+                    previousWorld[k][0] = x; previousWorld[k][1] = z; previousContact[k] = contact ? 1 : 0;
+                }
+                previousFrame = frame;
+                time = curve.advanceWorld(time, moved, scale);
+                world += gesture == kGestureReverse ? -moved : moved;
+            }
+            std::printf("MW5_CONTACT %s %s stance_cm=%.3f peak_cm_s=%.3f contact_frames=%d speed=%.3f reach_cm=%.3f\n",
+                asset.path().stem().string().c_str(), choice.clip, peak * 100, maxVelocity * 100, contactFrames, speed, reachError * 100);
+            const char* reason = !contactFrames ? "NO_MEASURABLE_CONTACT" : peak < .02f ? "PASS" :
+                reachError > .0001f ? "REACH_CLAMP_RESIDUAL" : "PHASE_INTERPOLATION_DRIFT";
+            // Keep the mean receipt, but use the median for the cost assertion:
+            // compiler/merge-gate preemption is not time spent in this solver.
+            std::sort(solveSamples.begin(), solveSamples.end());
+            const double median20 = (solveSamples[299] + solveSamples[300]) * .5 * 1000 * 20;
+            std::printf("MW5_LOCK %s %s solve20_ms=%.4f median20_ms=%.4f reason=%s\n",
+                asset.path().stem().string().c_str(), choice.clip, solveSeconds * 1000 * 20 / 600, median20, reason);
+            CHECK(contactFrames > 0);
+            CHECK(peak < .02f);
+            CHECK(median20 < .05);
+        }
+        ++chassis;
+    }
+    CHECK(chassis >= 48);
 }
 
 TEST_CASE("clip state: BT2018 planted stride bone oracle") {

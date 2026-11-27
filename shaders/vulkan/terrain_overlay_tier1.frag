@@ -10,7 +10,10 @@
 // Shares the terrain island's set 0 (UBO slot 0 + cement/pool/shadow bindings) via
 // include/terrain_frame_vk.glsl so the lighting inputs are the terrain's own.
 // NOT ported: the surfaceDebugMode / pathTint debug viz.
-#version 450
+#version 460
+#ifdef MC2_RT_SUN_SHADOWS
+#extension GL_EXT_ray_query : require
+#endif
 #extension GL_GOOGLE_include_directive : require
 #ifndef PREC
 #define PREC highp
@@ -18,6 +21,12 @@
 #include "../include/axis.hglsl"   // mc2ToRender: cameraPosMC2 is in Stuff space
 #include "../include/edge_haze.hglsl"
 #include "include/terrain_frame_vk.glsl"
+#ifdef MC2_RT_SUN_SHADOWS
+#ifndef MC2_RT_SUN_SET
+#define MC2_RT_SUN_SET 2   // set 1 binding 0 is this pass's tex1
+#endif
+#include "include/rt_sun_shadow.glsl"
+#endif
 #include "include/concrete_detail_vk.glsl"
 
 layout(location = 0) in vec3  WorldPos;
@@ -89,8 +98,12 @@ void main() {
 
     vec3 lightDir3 = normalize(uEnv.sunDirLive.xyz);
     const vec3 shadowN = vec3(0.0, 0.0, 1.0);                  // flat-up, matches GL overlay
-    float shadow=min(uT.enableShadows!=0?terrainStaticShadow(WorldPos):1.0,
-                     terrainDynamicShadow(WorldPos,shadowN));
+    float staticS=uT.enableShadows!=0?terrainStaticShadow(WorldPos):1.0;
+#ifdef MC2_RT_SUN_SHADOWS
+    if (uT.enableShadows!=0 && WorldPos.z>=uT.shorelineWaterElev)
+        staticS=min(staticS,mix(sunShadowFloor(0.4),1.0,rtPropSunVisibility(WorldPos,shadowN,moverFrame.sun.xyz)));
+#endif
+    float shadow=min(staticS,terrainDynamicShadow(WorldPos,shadowN));
     // CONCRETE-ROAD-PBR-DETAIL: MC2's own overlay colour stays; asphalt (roads, runway) or concrete (adopted cement tiles) detail
     // adds occlusion, relative sun shading and a roughness sheen.
     vec3 cdSpec = vec3(0.0);

@@ -12,6 +12,7 @@
     "color_prop_tier1": {"stages": ["shaders/vulkan/color_prop_tier1.frag", "shaders/vulkan/color_prop_tier1.vert"], "includes": []},
     "edge_fog": {"stages": ["shaders/vulkan/edge_fog.frag", "shaders/vulkan/edge_fog.vert"], "includes": []},
     "fog_oob": {"stages": ["shaders/vulkan/fog_oob.frag", "shaders/vulkan/fog_oob.vert"], "includes": []},
+    "valley_fog": {"stages": ["shaders/vulkan/valley_fog.frag", "shaders/vulkan/edge_fog.vert"], "includes": []},
     "hdri_sky": {"stages": ["shaders/vulkan/hdri_sky.frag", "shaders/vulkan/hdri_sky.vert"], "includes": []},
     "hud_color": {"stages": ["shaders/vulkan/hud_color.frag", "shaders/vulkan/hud_color.vert"], "includes": []},
     "hud_tex": {"stages": ["shaders/vulkan/hud_tex.frag", "shaders/vulkan/hud_tex.vert"], "includes": []},

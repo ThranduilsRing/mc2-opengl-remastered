@@ -268,6 +268,45 @@ void WeaponBolt::drawPacket (const mc2::render_view::FxPacket& view, const mc2::
 			lq4Vertices[1].v		= 0.0f;
 			lq4Vertices[1].argb		= edgeMode + rvType->midEdgeRGB;
 
+            const glm::vec3 worlds[5]={laserPosition,laserVertices[0],laserVertices[3],laserVertices[2],laserVertices[1]};
+            std::array<glm::vec4,5> clips;
+            bool needsClip=false;
+            for(int i=0;i<5;++i) {
+                glm::vec3 render; mc2ToRender(render,worlds[i]);
+                Stuff::Vector4D p; p.MultiplyPoint(render,eye->getWorldToClip());
+                clips[i]=mc2::beam::cameraClip({p.x,p.y,p.z,p.w},eye->getUsePerspective());
+                needsClip |= clips[i].w-clips[i].z<0 || clips[i].w<=1e-4f;
+            }
+            if(needsClip) {
+                gos_SetRenderState(gos_State_Texture,0);
+                gos_SetRenderState(gos_State_AlphaMode,gos_Alpha_OneZero);
+                const auto draw=[&](const gos_VERTEX* vertices,int a,int b,int c) {
+                    std::array<mc2::beam::Vertex,3> triangle;
+                    const int indices[3]={a,b,c};
+                    for(int i=0;i<3;++i) {
+                        const auto color=vertices[i].argb;
+                        triangle[i]={clips[indices[i]],{vertices[i].u,vertices[i].v},
+                            {static_cast<float>((color>>24)&255),static_cast<float>((color>>16)&255),static_cast<float>((color>>8)&255),static_cast<float>(color&255)}};
+                    }
+                    const auto polygon=mc2::beam::clipTriangle(triangle);
+                    for(int j=1;j+1<polygon.count;++j) {
+                        gos_VERTEX out[3]={vertices[0],vertices[1],vertices[2]};
+                        const int fan[3]={0,j,j+1};
+                        for(int i=0;i<3;++i) {
+                            const auto& p=polygon.vertices[fan[i]];
+                            const auto xy=mc2::beam::screenPosition(p.clip,eye->getUsePerspective(),
+                                {eye->viewMulX,eye->viewMulY},{eye->viewAddX,eye->viewAddY});
+                            out[i].x=xy.x; out[i].y=xy.y; out[i].rhw=1.0f/p.clip.w;
+                            out[i].u=p.uv.x; out[i].v=p.uv.y;
+                            out[i].argb=(static_cast<DWORD>(p.argb.x)<<24)|(static_cast<DWORD>(p.argb.y)<<16)|(static_cast<DWORD>(p.argb.z)<<8)|static_cast<DWORD>(p.argb.w);
+                        }
+                        gos_DrawTriangles(out,3);
+                    }
+                };
+                draw(lq1Vertices,0,1,2); draw(lq2Vertices,0,4,2);
+                draw(lq3Vertices,2,1,3); draw(lq4Vertices,2,4,3);
+            } else {
+
 			if (vfxTrace) {
 				const bool culled =
 					(lq1Vertices[0].x > eye->viewMulX) || (lq1Vertices[0].y > eye->viewMulY) ||
@@ -416,6 +455,7 @@ void WeaponBolt::drawPacket (const mc2::render_view::FxPacket& view, const mc2::
 					mc2::renderSubmissions().addVertices(0xffffffff,lq4Vertices,MC2_DRAWALPHA);
 				}
 			}
+            }
 		}
 		else if (!hitTarget && rvType->isBeam)
 		{

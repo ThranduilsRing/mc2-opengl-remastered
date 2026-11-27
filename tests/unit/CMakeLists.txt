@@ -107,6 +107,7 @@ add_executable(mc2_tests
     test_screen_pick.cpp
     test_camera_start_pick.cpp
     test_camera_elevation.cpp
+    test_camera_sweep.cpp
     test_spawn_tree_clear.cpp
     test_quality_presets.cpp
     test_campaign_menu.cpp
@@ -1080,6 +1081,11 @@ target_link_libraries(mc2_unit_archive PUBLIC mc2_unit_config)
 set_property(TARGET mc2_tests PROPERTY SOURCES "${mc2_unit_cases}")
 target_link_libraries(mc2_tests PRIVATE mc2_unit_stubs mc2_unit_support)
 
+mc2_height_slice(camera_script_set mclib/camera.h "void setRotation (glm::vec3 rot)" "// Quickload:")
+mc2_height_slice(camera_script_goal mclib/camera_update.cpp "void Camera::updateGoalRotation (void)" "void Camera::updateGoalPosition (")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_script_set.inc" CONTENT "${camera_script_set}")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_script_goal.inc" CONTENT "${camera_script_goal}")
+set_source_files_properties(test_camera_sweep.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 set(MC2_UNIT_ONLY_SOURCES "" CACHE STRING "Unit test sources for mc2_tests_selected")
 if(MC2_UNIT_ONLY_SOURCES)
     foreach(source IN LISTS MC2_UNIT_ONLY_SOURCES)

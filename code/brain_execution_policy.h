@@ -22,6 +22,9 @@
 
 namespace mc2::brainpolicy {
 
+// Mod campaigns need their complete authored library, including stock-named dependencies.
+inline bool magicCampaign(std::string_view activeMod) { return activeMod.empty(); }
+
 // The stock files the Magic profile replaces: its corebrain library and the warrior scripts it carries.
 inline bool profileKey(std::string_view key) {
 	return key == "data/missions/corebrain.abx" ||

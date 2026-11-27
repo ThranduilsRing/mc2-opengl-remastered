@@ -186,6 +186,28 @@ TEST_CASE("shadow bake: the tile window holds every receiver and every caster th
     }
 }
 
+TEST_CASE("shadow bake: needed rect covers every PCSS read") {
+    const float tanT = std::tan(kSunAngularRadiusDeg * 0.01745329252f);
+    for (float alt : {15.0f, 35.0f, 70.0f}) for (float top : {20.0f, 160.0f, 1200.0f}) for (float maskTexel : {1.5f, 16.0f}) {
+        const auto b = lightBasis(sunAt(alt, 123.0f));
+        const Rect region{-200, -100, 200, 100};
+        const auto w = casterWindow(b, region, 0, 20, top, tanT);
+        const float ray = top / b.toward.z;
+        const auto r = neededWindowRect(w, ray, tanT, maskTexel);
+        for (int c = 0; c < 8; ++c) {
+            const auto q = toLight(b, {(c & 1) ? region.x1 : region.x0, (c & 2) ? region.y1 : region.y0, (c & 4) ? 20.0f : 0.0f});
+            float radius = (std::max)(ray * tanT, 1.5f * w.texelWorld);
+            for (int d = 0; d <= 200; ++d) {
+                const float distance = ray * d / 200.0f;
+                radius = (std::max)(radius, distance * tanT * (1 + 2 * (1 - std::clamp(distance / 200, 0.0f, 1.0f))));
+            }
+            radius = (std::max)(radius, 0.75f * maskTexel) + w.texelWorld;
+            CHECK(r.x0 <= q.x - radius); CHECK(r.x1 >= q.x + radius);
+            CHECK(r.y0 <= q.y - radius); CHECK(r.y1 >= q.y + radius);
+        }
+    }
+}
+
 TEST_CASE("shadow bake: neighbouring tiles share the window texel grid") {
     const MaskLayout m = maskLayout(101, 101 * 64.0f, 1.5f, 12288);
     const LightBasis b = lightBasis(sunAt(30.0f, 40.0f));

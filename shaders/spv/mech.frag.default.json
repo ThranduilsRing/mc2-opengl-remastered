@@ -6,33 +6,33 @@
   "specializationParams": [],
   "artifact": "mech.frag.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "738b47f9f568712595f00de6a6bb6a5589f75d5d8867834c14f3c57f85e6bbb4",
-  "spirv_sha256": "7b8452de1d15531a509a8fab15ccba8776831ff62a90249cc24ee38aba6b8a68",
+  "source_sha256": "9bde92d52e9f27a96c765dc2e4cdfce732381231f77e872c35ccaa8d7e3ffc87",
+  "spirv_sha256": "d9b146880f737f2bdcb5a97bdd5e0c5a55a374a3c11cb4081b77ca94da2ec1fd",
   "bindings": {
     "ubos": [
       {
-        "type": "_818",
+        "type": "_822",
         "name": "TerrainFrameUBO",
         "block_size": 896,
         "set": 1,
         "binding": 0
       },
       {
-        "type": "_1214",
+        "type": "_1220",
         "name": "MechFrameUBO",
         "block_size": 272,
         "set": 0,
         "binding": 0
       },
       {
-        "type": "_1553",
+        "type": "_1643",
         "name": "EnvironmentUBO",
         "block_size": 496,
         "set": 0,
         "binding": 26
       },
       {
-        "type": "_1814",
+        "type": "_1790",
         "name": "MoverShadowFrame",
         "block_size": 14544,
         "set": 0,
@@ -41,7 +41,7 @@
     ],
     "ssbos": [
       {
-        "type": "_707",
+        "type": "_711",
         "name": "TerrainLightPoolVK",
         "readonly": true,
         "block_size": 0,
@@ -49,7 +49,7 @@
         "binding": 11
       },
       {
-        "type": "_874",
+        "type": "_878",
         "name": "TerrainLightGridHeaderVK",
         "readonly": true,
         "block_size": 0,
@@ -57,7 +57,7 @@
         "binding": 12
       },
       {
-        "type": "_913",
+        "type": "_917",
         "name": "TerrainLightGridIndicesVK",
         "readonly": true,
         "block_size": 0,
@@ -65,7 +65,7 @@
         "binding": 13
       },
       {
-        "type": "_1822",
+        "type": "_1798",
         "name": "TerrainCementBuf",
         "readonly": true,
         "block_size": 0,
@@ -127,7 +127,7 @@
     "images": []
   },
   "types": {
-    "_135": {
+    "_137": {
       "name": "SurfaceMaterial",
       "members": [
         {
@@ -164,7 +164,7 @@
         }
       ]
     },
-    "_705": {
+    "_709": {
       "name": "PoolLight",
       "members": [
         {
@@ -209,12 +209,12 @@
         }
       ]
     },
-    "_707": {
+    "_711": {
       "name": "TerrainLightPoolVK",
       "members": [
         {
           "name": "poolLights",
-          "type": "_705",
+          "type": "_709",
           "array": [
             0
           ],
@@ -226,7 +226,7 @@
         }
       ]
     },
-    "_818": {
+    "_822": {
       "name": "TerrainFrameUBO",
       "members": [
         {
@@ -872,7 +872,7 @@
         }
       ]
     },
-    "_874": {
+    "_878": {
       "name": "TerrainLightGridHeaderVK",
       "members": [
         {
@@ -889,7 +889,7 @@
         }
       ]
     },
-    "_913": {
+    "_917": {
       "name": "TerrainLightGridIndicesVK",
       "members": [
         {
@@ -906,7 +906,7 @@
         }
       ]
     },
-    "_1160": {
+    "_1166": {
       "name": "MechRunPC",
       "members": [
         {
@@ -936,7 +936,7 @@
         }
       ]
     },
-    "_1214": {
+    "_1220": {
       "name": "MechFrameUBO",
       "members": [
         {
@@ -1013,7 +1013,7 @@
         }
       ]
     },
-    "_1553": {
+    "_1643": {
       "name": "EnvironmentUBO",
       "members": [
         {
@@ -1137,7 +1137,7 @@
         }
       ]
     },
-    "_1814": {
+    "_1790": {
       "name": "MoverShadowFrame",
       "members": [
         {
@@ -1185,7 +1185,7 @@
         }
       ]
     },
-    "_1822": {
+    "_1798": {
       "name": "TerrainCementBuf",
       "members": [
         {
@@ -1238,12 +1238,12 @@
         "location": 10
       },
       {
-        "name": "vWorldPos",
-        "location": 5
-      },
-      {
         "name": "vMechSunFound",
         "location": 7
+      },
+      {
+        "name": "vWorldPos",
+        "location": 5
       },
       {
         "name": "vMechSunDirGL",
@@ -1256,10 +1256,6 @@
       {
         "name": "vCurClip",
         "location": 12
-      },
-      {
-        "name": "vFog",
-        "location": 4
       }
     ],
     "outputs": [

@@ -1,3 +1,4 @@
+#include "hitch_stats.h"
 // Same-frame Vulkan depth pyramid and render-only static-prop occlusion.
 #include "gos_postprocess.h"
 #include "vulkan_shadow_island_live.h"
@@ -786,6 +787,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
     auto& ctx = mc2vk::getOrCreateEngineVulkanContext();
     const uint32_t slot = ctx.frameContext().slot;
     if (!s->inited || s->width != width_ || s->height != height_ || s->mipCount != hzbMipCount_) {
+        ZoneScopedN("HZB.Prepare.BuildState"); MC2_HITCH_CAUSE("HZB.Prepare.BuildState");
         if (s->inited) destroy_state(s);
         if (!build_state(s, width_, height_, hzbMipCount_)) {
             vlog("init FAILED (reason=%s) -- disabling for this process, culling keeps every prop.",
@@ -796,7 +798,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
         }
     }
 
-    if (!cache_prop_bounds(s, generation) || !build_prop_cull(*s, feed.count)) {
+    if (![&] { ZoneScopedN("HZB.Prepare.CullResources"); MC2_HITCH_CAUSE("HZB.Prepare.CullResources"); return cache_prop_bounds(s, generation) && build_prop_cull(*s, feed.count); }()) {
         setFallback("cull_resources_failed"); s->disabled = true; return false;
     }
     // The [CULL] counter is the newest run's: read it only once that submit has completed (polled), else skip this sample.

@@ -138,6 +138,7 @@ struct State {
     std::chrono::steady_clock::time_point previousFrame;
     char driver[512]{}, ledger[2048]{};
     char packages[4096]{};
+    char deviceFault[4096]{};   // VK_EXT_device_fault report lines (newline-separated), read once in deviceLost
     // Interlocked publication means the crash handler can skip a slot being written.
     struct Crumb { volatile LONG writing=0; char text[384]{}; };
     std::array<Crumb,256> crumbs; volatile LONG cursor=0;
@@ -432,6 +433,10 @@ void crashSnapshot(std::string_view folder) {
     for(size_t i=0;i<s.gpuCrumbs.size();++i) if(!s.gpuCrumbs[i].writing && s.gpuCrumbs[i].text[0]) {
         write(s.gpuCrumbs[i].text);
         if(s.markerMap) { char gpu[64]{}; std::snprintf(gpu,sizeof(gpu),"gpu_completed_sequence=%u",s.markerMap[i]); write(gpu); }
+    }
+    for(auto* p=s.deviceFault;*p;) {   // the VK_EXT_device_fault report of a lost device, after the pass slots
+        const auto* e=std::strchr(p,'\n'); const size_t n=e?static_cast<size_t>(e-p):std::strlen(p);
+        write(std::string_view(p,n)); p+=e?n+1:n;
     }
     CloseHandle(f);
     if(folder=="debug_state") return; // The device-loss snapshot already lives beside the latest state.
@@ -757,10 +762,46 @@ void prewarm(int width,int height) {
     s.prewarmCreations=s.creations; s.firstFrames.clear(); s.measureFrames=true; s.firstFrameStarted=false;
     if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_PIPELINE_PREWARM v1] ready=%d families=9 pipelines=%llu ms=%.3f size=%dx%d\n",ready,s.creations-before,std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(),width,height);
 }
+// VK_EXT_device_fault: reads the description, faulting addresses and vendor information into the state that
+// crashSnapshot copies into every bundle. Only the thread that first latched the loss reads; the device lives until the bundles are written.
+static void takeDeviceFault() {
+    auto& s=state();
+    const VulkanContext& ctx=getOrCreateEngineVulkanContext();
+    if(!ctx.deviceFaultEnabled()) return;
+    size_t used=0;
+    auto put=[&](auto fmt, auto... args) {
+        if(used+1>=sizeof(s.deviceFault)) return;
+        const int n=std::snprintf(s.deviceFault+used,sizeof(s.deviceFault)-used,fmt,args...);
+        if(n>0) used+=std::min<size_t>(static_cast<size_t>(n),sizeof(s.deviceFault)-used-1);
+    };
+    {
+        VkDeviceFaultCountsEXT counts{VK_STRUCTURE_TYPE_DEVICE_FAULT_COUNTS_EXT};
+        const VkResult first=vkGetDeviceFaultInfoEXT(ctx.device(),&counts,nullptr);
+        if(first<0) { put("device_fault: no report (vkGetDeviceFaultInfoEXT=%d)\n",static_cast<int>(first)); return; }
+        std::vector<VkDeviceFaultAddressInfoEXT> infos(counts.addressInfoCount);
+        std::vector<VkDeviceFaultVendorInfoEXT> vendors(counts.vendorInfoCount);
+        VkDeviceFaultInfoEXT info{VK_STRUCTURE_TYPE_DEVICE_FAULT_INFO_EXT};
+        info.pAddressInfos=infos.empty()?nullptr:infos.data();
+        info.pVendorInfos=vendors.empty()?nullptr:vendors.data();
+        const VkResult r=vkGetDeviceFaultInfoEXT(ctx.device(),&counts,&info);
+        if(r<0) { put("device_fault: read failed (vkGetDeviceFaultInfoEXT=%d)\n",static_cast<int>(r)); return; }
+        info.description[sizeof(info.description)-1]=0;
+        put("device_fault: result=%d description=%s\n",static_cast<int>(r),info.description);
+        for(const VkDeviceFaultAddressInfoEXT& a:infos)
+            put("device_fault reported_address=0x%016llx type=0x%x address_precision=0x%llx\n",static_cast<unsigned long long>(a.reportedAddress),
+                static_cast<unsigned>(a.addressType),static_cast<unsigned long long>(a.addressPrecision));
+        for(VkDeviceFaultVendorInfoEXT& v:vendors) {
+            v.description[sizeof(v.description)-1]=0;
+            put("device_fault vendor_info: description=%s code=0x%016llx data=0x%016llx\n",v.description,
+                static_cast<unsigned long long>(v.vendorFaultCode),static_cast<unsigned long long>(v.vendorFaultData));
+        }
+    }
+}
 void deviceLost() {
     auto& s=state();
     if(s.lossReported.exchange(true)) return;
     breadcrumb("device_lost","graphics_queue");
+    takeDeviceFault();
     if(s.checkpoints && vkGetQueueCheckpointDataNV) {
         std::array<VkCheckpointDataNV,64> checkpoints{};
         for(auto& checkpoint:checkpoints) checkpoint.sType=VK_STRUCTURE_TYPE_CHECKPOINT_DATA_NV;
