@@ -766,7 +766,7 @@ void MainMenu::update()
 			}
 			else if ( dlg->getStatus() == LogisticsScreen::YES )
 			{
-				const mc2::rules::GameRules chosen = dlg->rules();
+				mc2::rules::GameRules chosen = dlg->rules();
 				prefs.gameRules = chosen;	// remembered as the next new campaign's starting point
 				(void)prefs.save();
 				if ( !PlayerFrontEnd::prepareCampaignRules( chosen, rulesCampaign ) ) return;

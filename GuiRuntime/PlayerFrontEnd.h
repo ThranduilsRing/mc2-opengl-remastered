@@ -11,7 +11,7 @@ extern bool (*saveRenderOptions)(const mc2::options::RenderOptions&);
 // The game writes the Options Cheats rows and Faster weapons into the campaign rules: `ids` lists the @ toggles that are on.
 extern void (*applyRuleToggles)(std::string_view ids);
 void loadSettings();
-bool prepareCampaignRules(const mc2::rules::GameRules& rules, std::string_view fit);
+bool prepareCampaignRules(mc2::rules::GameRules& rules, std::string_view fit);
 void drawMainMenu(bool showCredits);
 void drawOptions();
 void requestCampaignStart(std::string fit);

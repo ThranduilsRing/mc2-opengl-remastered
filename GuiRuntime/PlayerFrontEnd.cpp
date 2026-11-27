@@ -479,11 +479,12 @@ bool relaunchForCampaign(std::string_view key) {
     return commitRelaunch(mod, base, texture, dependencies(), "start_campaign", fit);
 }
 
-bool prepareCampaignRules(const mc2::rules::GameRules& rules, std::string_view fit) {
+bool prepareCampaignRules(mc2::rules::GameRules& rules, std::string_view fit) {
     const auto deps = mc2::mods::dependencies(activeModDeps(), rules.mods, mc2::mods::catalogue("mods"));
     if (deps == activeModDeps()) return true;
-    // Without the saved-settings file (harness runs) the child cannot mount other layers and would relaunch forever: start on the mounted ones.
-    if (!mc2::gate::get<"MC2_LAUNCHER_ENV_JSON">()) return true;
+    // Without the saved-settings file (harness runs) the child cannot mount other layers and would relaunch forever: start on the mounted
+    // ones, with no pack selection so the campaign's saves name the layers it really runs under.
+    if (!mc2::gate::get<"MC2_LAUNCHER_ENV_JSON">()) { rules.mods.clear(); return true; }
     commitRelaunch(activeModId(), {}, {}, deps, "start_campaign", fit);
     return false; // also refuse starting with stale layers when saving/relaunching failed
 }
