@@ -31,18 +31,10 @@ TEST_CASE("EnvironmentGpu/shared night output and shadow inputs reset between mi
     CHECK(out.nightState[1] == 1);
     CHECK(out.nightState[2] == 1);
     CHECK(out.sceneLight[0] == 0.55f);
-    CHECK(out.outputParams[0] == 2);
-    CHECK(out.outputParams[1] == 1);
-    CHECK(out.shadowParams[0] == 3);
-    CHECK(out.shadowParams[1] == 0.4f);
-    CHECK(out.shadowParams[2] == doctest::Approx(0.25f));
     mc2::environment::fillGpu({}, 1, out, live);
     CHECK(out.nightState[0] == 0);
     CHECK(out.nightState[2] == 0);
     CHECK(out.sceneLight[0] == 1);
-    CHECK(out.outputParams[0] == 1);
-    CHECK(out.shadowParams[0] == 2.5f);
-    CHECK(out.shadowParams[2] == 0);
 }
 
 namespace {
@@ -219,7 +211,7 @@ TEST_CASE("EnvironmentGpu/one sun: every field is finite for any live pitch (a N
 
 TEST_CASE("EnvironmentGpu/one sun: layout, and every field exactly identity/1 with no keys, at night, with no mission and for an old save") {
     using namespace mc2::authored_sun;
-    static_assert(sizeof(EnvironmentUBO) == 496);
+    static_assert(sizeof(EnvironmentUBO) == 400);
     static_assert(offsetof(EnvironmentUBO, sunDirLive) == 176 && offsetof(EnvironmentUBO, sunAuthFromLive) == 192 && offsetof(EnvironmentUBO, pitchUndo) == 240 &&
                   offsetof(EnvironmentUBO, ambRelight) == 256 && offsetof(EnvironmentUBO, sunRelight) == 272);
     const std::array<unsigned char,3> sun{255, 255, 225}, amb{71, 71, 78};
@@ -278,11 +270,10 @@ TEST_CASE("EnvironmentGpu/T2 Fixed tail matches literal golden lanes") {
     EnvironmentUBO out;
     mc2::environment::fillGpu({}, 1.0f, out, input, input);
     // Fixed binary32 literals, independent of fillGpu's conversion arithmetic.
-    const std::array<float,40> expected = {
-        1,0x1.010102p-1f,0x1.010102p-2f,0, 0.25f,-0.5f,0.75f,0, 0x1.010102p-3f,0x1.010102p-2f,0x1.010102p-1f,0,
+    const std::array<float,24> expected = {
         1,0x1.010102p-1f,0x1.010102p-2f,0, 0.25f,-0.5f,0.75f,0, 0x1.010102p-3f,0x1.010102p-2f,0x1.010102p-1f,0,
         0x1.010102p-4f,0x1.010102p-3f,0x1.818182p-3f,-1,
-        0.58f,0.65f,0.75f,0.18f, 0.58f,0.65f,0.75f,0,
+        0.58f,0.65f,0.75f,0.18f,
         0,0,-2,0,
     };
     CHECK(std::memcmp(out.sunLive, expected.data(), sizeof(expected)) == 0);
@@ -294,8 +285,8 @@ TEST_CASE("EnvironmentGpu/T2 live state and bake reference stay independent; Fix
     live.sun[0] = 129; bake.sun[0] = 253; live.sunDir[1] = -0.75f; bake.sunDir[1] = 0.25f;
     EnvironmentUBO out;
     mc2::environment::fillGpu({}, 1, out, live, bake);
-    CHECK(out.sunLive[0] == 129/255.0f); CHECK(out.sunBake[0] == 253/255.0f);
-    CHECK(out.sunLiveDir[1] == -0.75f); CHECK(out.sunBakeDir[1] == 0.25f);
+    CHECK(out.sunLive[0] == 129/255.0f);
+    CHECK(out.sunLiveDir[1] == -0.75f);
     CHECK(out.lightingParams[0] == 1); CHECK(out.lightingParams[1] == 0.6f);
     live.mode = mc2::lighting::Mode::Fixed;
     mc2::environment::fillGpu({}, 1, out, live, bake);

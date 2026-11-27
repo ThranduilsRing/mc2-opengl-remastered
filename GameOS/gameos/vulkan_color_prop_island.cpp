@@ -2461,7 +2461,6 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
         // exactly like the GL guard (byte-identical when the feature/env is off).
         if (haveLightFeed) {
             u.lightFloor = lightFeed.ambientColor[3];
-            std::copy_n(lightFeed.specDir, 4, u.specDir);
             u.iblShStrength = lightFeed.iblShStrength;   // the SH coefficients are the EnvironmentUBO's (binding 26)
         } else {
             u.iblShStrength = 0.0f;
@@ -2469,8 +2468,6 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
         u.lightingReady = s->lightingReady ? 1 : 0;
         // The eye's night state lights the hot-colour tags; without the feed the island stays on its daytime arm.
         u.hotTableReady = s->hotReady ? 1 : 0;   // the shader reads the table only when the real one is bound
-        u.pbrV1Strength = haveLightFeed ? lightFeed.pbrV1Strength : 0.0f;
-        u.pbrV1RoughnessOverride = haveLightFeed ? lightFeed.pbrV1RoughnessOverride : -1.0f;
         for (int k = 0; k < 4; ++k) u.cameraWorldPos[k] = haveLightFeed ? lightFeed.cameraWorldPos[k] : 0.0f;
         // Diagnostic selector in the unused eye-position component; xyz stays the lighting eye.
         u.cameraWorldPos[3] = static_cast<float>(static_cast<int>(mc2::gate::get<"MC2_PROP_DEBUG_VIEW">()));

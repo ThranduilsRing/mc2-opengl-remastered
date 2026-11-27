@@ -361,8 +361,6 @@ extern "C" int mc2_terrain_tier1_get_load_feed(Mc2TerrainTier1Feed* out)
         gos_TerrainLightPoolKnobs(&out->lightPoolSoft, &out->lightPoolMoverDim,
                                   &out->lightPoolMoverScale, &out->lightPoolMoverMax,
                                   &out->lightPoolCompress, &out->moverContactShadow);
-        gos_TerrainPadGlowRGB(out->padGlow);
-        out->padGlowSpill = gos_TerrainPadGlowSpillWu();
 
     }
 

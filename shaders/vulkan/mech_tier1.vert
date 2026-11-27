@@ -76,8 +76,8 @@ bool GetFalloff(float len, vec3 fd, out float falloff) {
 // mech.vert calls calc_light with MC2_STATIC_PROP_LIGHTING defined -> the
 // numLights==0 early-return preserves base_light (not vec3(1)). Match that.
 #define MC2_ENVIRONMENT_AMBIENT
-// One-sun rule (see include/one_sun_vk.glsl; the mech pass carries its own copy of the tail): live direction -> authored direction.
-mat3 oneSunRotation() { return mat3(uEnv.sunAuthFromLive[0].xyz, uEnv.sunAuthFromLive[1].xyz, uEnv.sunAuthFromLive[2].xyz); }
+// Shared one-sun rotation: live direction -> authored direction.
+#include "include/one_sun_vk.glsl"
 //PORT-BEGIN:calc_light
 vec3 calc_light(int idx, vec3 normal, vec3 wpos, vec3 base_light, int sunAxisMc2Fix, bool legacyVehicle, out vec3 sunDirGL, out int sunFound) {
     sunDirGL = vec3(0.0);
@@ -109,7 +109,7 @@ vec3 calc_light(int idx, vec3 normal, vec3 wpos, vec3 base_light, int sunAxisMc2
         } else if (lt == TG_LIGHT_INFINITE) {
             // One-sun rule (shaders/vulkan/include/one_sun_vk.glsl): shade against the authored sun direction and undo the live pitch in the row colour.
             // The rotation lives in the MC2 world frame; the row direction is a Stuff vector, so go through the exact swizzles and back.
-            vec3 sd = oneSunRotation() * mc2ToRender(uLights.light[idx].light_dir[i].xyz);
+            vec3 sd = oneSunAuthFromLive() * mc2ToRender(uLights.light[idx].light_dir[i].xyz);
             if (sunAxisMc2Fix == 0) sd = renderToMc2(sd);
             float ndlRaw = dot(normal, -sd);
             float ndl = (fillMode >= 2) ? clamp((ndlRaw + 0.25) / 1.25, 0.0, 1.0) : clamp(ndlRaw, 0.0, 1.0);

@@ -492,12 +492,6 @@ void gos_SetTerrainNormalsFromHeightStrength(float s) {
 float gos_GetTerrainNormalsFromHeightStrength() {
     return g_gos_renderer ? g_gos_renderer->getTerrainNormalsFromHeightStrength() : 1.0f;
 }
-void gos_SetTerrainCliffShadowFloor(float f) {
-    if (g_gos_renderer) g_gos_renderer->setTerrainCliffShadowFloor(f);
-}
-float gos_GetTerrainCliffShadowFloor() {
-    return g_gos_renderer ? g_gos_renderer->getTerrainCliffShadowFloor() : 0.0f;
-}
 
 void gos_SetTerrainDrawEnabled(bool e) {
     if (g_gos_renderer) g_gos_renderer->setTerrainDrawEnabled(e);

@@ -4,7 +4,7 @@
 #pragma once
 
 static_assert(std::is_trivially_copyable<ColorFrameUBO>::value, "ColorFrameUBO must be trivially copyable");
-static_assert(sizeof(ColorFrameUBO) == 192, "ColorFrameUBO size must match std140 GLSL struct");
+static_assert(sizeof(ColorFrameUBO) == 160, "ColorFrameUBO size must match std140 GLSL struct");
 static_assert(offsetof(ColorFrameUBO, worldToClipGL) == 0, "worldToClipGL offset");
 static_assert(offsetof(ColorFrameUBO, objectDepthBias) == 64, "objectDepthBias offset");
 static_assert(offsetof(ColorFrameUBO, instBase) == 68, "instBase offset");
@@ -14,12 +14,7 @@ static_assert(offsetof(ColorFrameUBO, sway) == 80, "sway offset");
 static_assert(offsetof(ColorFrameUBO, iblShStrength) == 96, "iblShStrength offset");
 static_assert(offsetof(ColorFrameUBO, lightingReady) == 100, "lightingReady offset");
 static_assert(offsetof(ColorFrameUBO, lightFloor) == 104, "lightFloor offset");
-static_assert(offsetof(ColorFrameUBO, _padLighting0) == 108, "_padLighting0 offset");
-static_assert(offsetof(ColorFrameUBO, _padLighting1) == 112, "_padLighting1 offset");
-static_assert(offsetof(ColorFrameUBO, hotTableReady) == 116, "hotTableReady offset");
-static_assert(offsetof(ColorFrameUBO, pbrV1Strength) == 120, "pbrV1Strength offset");
-static_assert(offsetof(ColorFrameUBO, pbrV1RoughnessOverride) == 124, "pbrV1RoughnessOverride offset");
-static_assert(offsetof(ColorFrameUBO, cameraWorldPos) == 128, "cameraWorldPos offset");
-static_assert(offsetof(ColorFrameUBO, poolF) == 144, "poolF offset");
-static_assert(offsetof(ColorFrameUBO, poolI) == 160, "poolI offset");
-static_assert(offsetof(ColorFrameUBO, specDir) == 176, "specDir offset");
+static_assert(offsetof(ColorFrameUBO, hotTableReady) == 108, "hotTableReady offset");
+static_assert(offsetof(ColorFrameUBO, cameraWorldPos) == 112, "cameraWorldPos offset");
+static_assert(offsetof(ColorFrameUBO, poolF) == 128, "poolF offset");
+static_assert(offsetof(ColorFrameUBO, poolI) == 144, "poolI offset");

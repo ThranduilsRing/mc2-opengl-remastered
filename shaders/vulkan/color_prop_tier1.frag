@@ -6,24 +6,8 @@
 // wins the depth test. No blend (opaque, colorWriteMask 0xF, a=1) — a winning prop
 // fragment fully replaces the terrain GBuffer pixel exactly as the GL prop pass does.
 //
-//   location=0 lit color  -> sceneColorTex_  (MRT0, RGBA16F).
-//     * MC2_VK_PROP_MATERIAL OFF (or albedo not ready / vLayer<0): flat teal
-//       fail-soft teal placeholder, never crashes/holes.
-//     * ON: samples the REAL alpha-OFF albedo GL_TEXTURE_2D_ARRAY (VK copy-once
-//       import of s_texArrayOff) at float(vLayer) and multiplies it by the
-//       VERTEX-BAKED lit color vArgb (the ACTUAL GL default prop model — NOT PBR):
-//         oColor = albedo * vArgb   (mirrors static_prop.frag:346
-//                                    FragColor = tex_color * vec4(v_argb.rgb, a)).
-//       a=1 (opaque, in-place — NOT premult).
-//       ★PARITY: vArgb reproduces the SHAPE of the GL default term
-//       (base_light seed from the per-vertex a_aRGBLight + ambient + terrain-sun*NdotL,
-//       see color_prop_tier1.vert). The per-type magic-color SSBO and the ObjectLights
-//       UBO (ambient + per-actor sun color) are NOT fed to the island, so the ambient
-//       and sun color are stand-in constants — this is the correct MODEL with an
-//       approximate light, NOT byte-parity. computePBR is intentionally NOT used here
-//       (props are vertex-baked; the GL GGX block is gated OFF by default). Remaining
-//       diff after the screen shadow pass = the ambient/sun-color feed gap + dynamic
-//       screen-space shadow.
+//   location=0 lit color -> shared scene color (MRT0, RGBA16F).
+//     Albedo multiplies the authored vertex light and shared mission environment.
 //   location=1 GBuffer1    -> sceneNormalTex_ (MRT1, RGBA16F). BIT-ADJACENT to the GL
 //                            producer static_prop.frag:657-661, which selects between
 //                            TWO classes off the packet alpha-test bit:
@@ -95,11 +79,9 @@ layout(location = 3) in vec3 vFrontArgb; // VERTEX-BAKED lit color
 flat layout(location = 4) in int  vLayerOn;  // alpha-ON albedo array layer (-1 = none)
 flat layout(location = 5) in vec2 vUvScale;  // FENCE-UVSCALE-1: this packet's uvScaleX/Y
 layout(location = 6) in vec3 vWorldPos;
-flat layout(location = 7) in vec3 vSunDirStuff;
 flat layout(location = 8) in vec3 vSunColor;
 flat layout(location = 9) in vec4 vHighlight;   // objective / selection highlight (static_prop.frag: c.rgb += rgb * a)
 layout(location = 10) in vec3 vMaterialSeed;
-flat layout(location = 11) in vec3 vMaterialAmbient;
 flat layout(location = 12) in vec3 vMaterialSun;
 flat layout(location = 13) in uint vMaterialFlags;
 layout(location = 14) in vec4 vTree;

@@ -81,13 +81,11 @@ flat layout(location = 4) out int  vLayerOn;  // alpha-ON albedo array layer (-1
 flat layout(location = 5) out vec2 vUvScale;  // FENCE-UVSCALE-1: this packet's uvScaleX/Y
 // StaticPropPbr uses the frame sun (Stuff frame, colour zero = none).
 layout(location = 6) out vec3 vWorldPos;
-flat layout(location = 7) out vec3 vSunDirStuff;
 flat layout(location = 8) out vec3 vSunColor;
 // Per-instance objective / selection highlight (static_prop.vert step 6 + static_prop.frag): added to the vertex light and,
 // alpha-weighted, to the fragment colour; zero when the game highlights nothing.
 flat layout(location = 9) out vec4 vHighlight;
 layout(location = 10) out vec3 vMaterialSeed;
-flat layout(location = 11) out vec3 vMaterialAmbient;
 flat layout(location = 12) out vec3 vMaterialSun;
 flat layout(location = 13) out uint vMaterialFlags;
 layout(location = 14) out vec4 vTree; // ambient AO, tree material active, forest sky/sun visibility
@@ -171,7 +169,6 @@ void main() {
     clip.z += uFrame.objectDepthBias * clip.z;
     gl_Position = clip;
     vWorldPos = world_mc2;
-    vSunDirStuff = vec3(0.0);
     vSunColor = vec3(0.0);
     vUv = a_uv;
     // NORMAL: forward in STUFF-SPACE (un-swapped). BIT-EXACT mirror of
@@ -261,7 +258,6 @@ void main() {
     vHighlight = inst.aRGBHighlight;
     vLodBlend = inst.fogRGB.w;
     vMaterialSeed = seed;
-    vMaterialAmbient = vec3(0);
     vMaterialSun = vec3(0);
     vMaterialFlags = inst.flags;
     vTeam = floatBitsToUint(inst.fogRGB.xyz);
@@ -295,11 +291,8 @@ void main() {
     bool sunFound = (uFrame.lightingReady != 0) && !sunOff;
     // The live pitch is in propI (terrain light at the live sun) and in ndl above; pitchUndo (encoded, like the seed's x R) puts it back at the authored elevation.
     vec3 sunColorFed = sunFound ? contractC / 255.0 * uEnv.pitchUndo.rgb : vec3(0.0);
-    vec3 sunDirFed   = sunFound ? uFrame.specDir.xyz : vec3(0.0);
     vec3 sunTerm = (uFrame.lightingReady != 0) ? sunColorFed : kSunColor;
-    vMaterialAmbient = vec3(0.0);   // R2: ObjectLights ambient is not summed; the environment SH is the one ambient
     vMaterialSun = sunTerm;
-    vSunDirStuff = sunDirFed;
     vSunColor = sunFound ? sunColorFed : vec3(0.0);
 
     // Every tree uses the same fragment lighting, independent of imported

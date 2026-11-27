@@ -106,7 +106,6 @@ struct Mc2TerrainTier1Feed {
     int32_t                     shadowsEnabled;        // the engine's static shadow is on and its light matrix is built
     uint64_t                    staticShadowGeneration; // gos_GetStaticShadowGeneration() (bumps on rebuild only)
     float                       staticLightSpaceMatrix[16]; // pp->getLightSpaceMatrix()
-    float                       shadowSoftness;        // GL default 2.5
     // VK-TERRAIN-DYNSHADOW sub-slice: the DYNAMIC (building/mech) shadow map — the GL
     // depth texture pp->getDynamicShadowTexture() (legacy single-map, non-CSM path) the
     // island copies PER FRAME into a 2nd VK D32 depth-COMPARE image, plus its light-space
@@ -187,13 +186,8 @@ struct Mc2TerrainTier1Feed {
     int32_t                     lightPoolMoverMax;
     int32_t                     lightPoolCompress;
     float                       moverContactShadow;
-    float                       padGlow[3];             // premultiplied (GL u_padGlow)
-    float                       padGlowSpill;
     // VK-PARITY-SHADOW-1: shared producer mc2ShadowFadeKnobs() (gameos_graphics.cpp).
-    float                       shadowDistFadeWu;
-    float                       shadowDistFadeMax;
     float                       shadowMinSunSin;
-    int32_t                     shadowKnobFlags;   // b0 FADE_CONT b1 RAMP0 b2 ALT_SCALE b3 BANDFIX_V2
     // VK-PARITY-F3: GL default-ON legacy material tint (same producers as the GL
     // tint*/tintStrengthScale/snowBrightnessDampen uniforms).
     float                       tintRock[3];

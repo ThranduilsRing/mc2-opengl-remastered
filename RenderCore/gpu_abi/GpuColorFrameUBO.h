@@ -33,16 +33,11 @@ struct ColorFrameUBO {
     float   iblShStrength;      // 0.0 = feature off
     int32_t lightingReady;      // 1 = LightsData SSBO copied this frame -> ambientTerm real
     float   lightFloor;         // material minimum encoded light byte
-    float   _padLighting0;
-    float   _padLighting1;
     int32_t hotTableReady;      // 1 = the per-type hot-colour table is the real one (else the one-entry placeholder)
-    float   pbrV1Strength;      // StaticPropPbr option: strength of the Schlick-Fresnel sun specular (0 = off)
-    float   pbrV1RoughnessOverride;  // StaticPropPbr roughness override (the tuning slider): >= 0 replaces the literal roughness, < 0 keeps it
     float   cameraWorldPos[4];  // @vec4 GL world eye position (ViewUniforms.cameraWorldPos); .w pad
     // Night light pools on props: the knobs of the GL static_prop.frag pool term (GetObjectLightPoolParams).
     float   poolF[4];           // @vec4 moverDim, moverScale, objScale, -
     int32_t poolI[4];           // @ivec4 numPoolLights (0 = term off), soft, moverMax, compress
-    float   specDir[4];         // @vec4 Dspec: worldLights[0] localForwardInWorld (Stuff frame), as the row carried it
 };
 
 #include "GpuColorFrameUBO.layout.gen.h"

@@ -80,7 +80,6 @@ extern void  gos_GetTerrainMatHeight(float*, float*, float*, float*);  // POM-PE
 
 extern bool  gos_TerrainMaterialLibEnabled();
 
-extern float gos_GetTerrainCliffShadowFloor();  // CLIFF SHADOW FLOOR
 
 extern float gos_GetTerrainNormalsFromHeightStrength();
 

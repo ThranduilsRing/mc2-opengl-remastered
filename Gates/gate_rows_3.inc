@@ -111,7 +111,6 @@ G("MC2_STATIC_UPDATE_TRACE", Bool, false, "terrain", "", "", verified),
 // history: docs/gate-history.md#MC2_TACTICAL_ARC_OVERLAY
 L(Lead0, "MC2_TACTICAL_ARC_OVERLAY", Bool, false, "code", "", "TACTICAL-ARC-OVERLAY-MVP-1: world-space range ring + facing line on each SELECTED mover, drawn in-scene by the debug renderer just before its flush...", registry(Trace, "MC2_FEATURE_TACTICAL_ARC_OVERLAY", -1, false) | verified),
 L(AtoiNZ, "MC2_TACTIC_WEIGHTS", Bool, false, "code", "", "TACTIC-WEIGHTS-A: load [Tactics] block from <missionName>_ai.fit into tacticWeights[].", verified),
-L(Lead0, "MC2_TERRAIN_CLIFF_SHADOW_FLOOR", Bool, false, "terrain", "", "", verified),
 // TERRAIN-CLIFF-MATERIAL-TRIPLANAR-1: world-axis triplanar ROCK NORMAL + relief
 // on steep terrain cells (terrain_lod_chunk.frag useTriplanarCliff branch,
 // gos_terrain_lod_chunk.cpp kTglcCliffTriplanar upload). Samples the merged

@@ -224,7 +224,6 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     u.lightingEnabled = feed.lightingEnabled ? 1 : 0;
     u.reserved220 = g_terrainAuthoredMaterialsOnly ? (g_terrainAuthoredDetailNormal ? 2.0f : 1.0f) : 0.0f;
     u.enableShadows   = (feed.lightingEnabled && feed.shadowsEnabled && s->shadowReady) ? 1 : 0;
-    u.shadowSoftness  = feed.shadowSoftness;
     // VK-TERRAIN-DETAIL: normal perturbation. detailReady is only 1 once the GL
     // matNormalArray actually imported (else the FS uses the macro-slope-only
     // normal — still a big win over flat-up, and never a hole).
@@ -282,7 +281,6 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     u.quadCountX        = patch.quadCountX;
     u.quadCountY        = patch.quadCountY;
     // VK-PARITY-TERRAIN-1: values pulled from the shared GL-side producers.
-    u.ambientFloor      = feed.ambientFloor;
     u.ambientDayGate    = feed.ambientDayGate;
     {
         // The flat light only tints cement (pads, roads, runways). Keep its brightness but take out 60% of
@@ -313,15 +311,8 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     u.lightPoolMoverMax   = feed.lightPoolMoverMax;
     u.lightPoolCompress   = feed.lightPoolCompress;
     u.moverContactShadow  = feed.moverContactShadow;
-    u.padGlowR            = feed.padGlow[0];
-    u.padGlowG            = feed.padGlow[1];
-    u.padGlowB            = feed.padGlow[2];
-    u.padGlowSpill        = feed.padGlowSpill;
     // VK-PARITY-SHADOW-1: same knob values GL injects as MC2_SHADOW_* defines.
-    u.shadowDistFadeWu    = feed.shadowDistFadeWu;
-    u.shadowDistFadeMax   = feed.shadowDistFadeMax;
     u.shadowMinSunSin     = feed.shadowMinSunSin;
-    u.shadowKnobFlags     = feed.shadowKnobFlags;
     // VK-PARITY-F3: legacy material tint (GL default-ON) from the shared producers.
     std::memcpy(u.tintRock,     feed.tintRock,     sizeof(u.tintRock));
     std::memcpy(u.tintGrass,    feed.tintGrass,    sizeof(u.tintGrass));
