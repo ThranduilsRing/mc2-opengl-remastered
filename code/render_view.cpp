@@ -1,3 +1,4 @@
+#include "../GameOS/gameos/hitch_stats.h"
 // G7b K3: the render extract hook and the GameObject defaults (storage: render_view_store.cpp).
 #include "render_view.h"
 #include "gameobj.h"
@@ -19,6 +20,7 @@ extern unsigned long scenarioResult;
 void extractRenderFrame(float tickAlpha)
 {
 	ZoneScopedN("ExtractRenderList");
+	{ ZoneScopedN("ExtractRenderList.Clock");
 	auto& clk = mc2::render_view::stagingClock();
 	clk.turn = static_cast<int32_t>(turn);
 	clk.scenarioTime = scenarioTime;
@@ -27,14 +29,15 @@ void extractRenderFrame(float tickAlpha)
 	clk.missionResult = static_cast<uint32_t>(scenarioResult);
 	clk.missionActive = mission && mission->isActive();
 	clk.alpha = tickAlpha;
+	}
 	auto& lists = mc2::render_view::stagingList();
 	lists.clear();
 	if (eye && eye->active && turn > 1) {
-		if (ObjectManager) ObjectManager->extractRenderList(lists);
-		mc2::beam_lights::appendFrameLights();
-		impact_presentation::extract();
+		if (ObjectManager) { ZoneScopedN("ExtractRenderList.Objects"); MC2_HITCH_CAUSE("ExtractRenderList.Objects"); ObjectManager->extractRenderList(lists); }
+		{ ZoneScopedN("ExtractRenderList.Lights"); mc2::beam_lights::appendFrameLights(); }
+		{ ZoneScopedN("ExtractRenderList.Impacts"); impact_presentation::extract(); }
 	}
-	if (auto* ui = MissionInterfaceManager::instance()) ui->extractHudSnapshot();
+	if (auto* ui = MissionInterfaceManager::instance()) { ZoneScopedN("ExtractRenderList.Hud"); MC2_HITCH_CAUSE("ExtractRenderList.Hud"); ui->extractHudSnapshot(); }
 	TracyPlot("RenderList.terrain", static_cast<int64_t>(lists.terrain.size()));
 	TracyPlot("RenderList.movers", static_cast<int64_t>(lists.movers.size()));
 	TracyPlot("RenderList.other", static_cast<int64_t>(lists.other.size()));

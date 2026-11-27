@@ -142,7 +142,7 @@ void GpuStaticPropBatcher::onMapUnload() {
     s_materialGpuSidecarValid = false;
     s_sortedPacketOrder.clear(); s_alphaOffCmdCount = s_alphaOnCmdCount = 0;
     s_bucketsByType.clear(); s_persistentStaticStore.clear();
-    s_lodGroups.clear(); s_lodMembers.clear(); s_lodState.clear();
+    s_lodGroups.clear(); s_lodTargetUses.clear(); s_lodMembers.clear(); s_lodState.clear();
     s_persistentLodSlots.clear();
     s_lodEvaluated.clear();
     s_persistentStaticGen = s_staticBaseBuiltGen = 0xFFFFFFFFFFFFFFFFull;
@@ -521,6 +521,7 @@ void GpuStaticPropBatcher::registerLodGroup(std::span<TG_TypeMultiShape* const> 
         }
         if (g.count > 1) {
             s_lodGroups.emplace(base[n], g);
+            for (int k = 0; k < g.count; ++k) ++s_lodTargetUses[g.target[k]];
             for (int k = 0; k < g.count; ++k) s_lodMembers[g.target[k]] = PropLodMember{g.target[g.count - 1], static_cast<uint8_t>(k)};
             mc2::fmt::print_err("[{}] group base={} lods={} d1={} d2={} d3={} d4={} box_y={}..{}\n", tag, mc2::fmt::as_u32(base[n]), mc2::fmt::as_i32(g.count),
                 (g.dist[1]), (g.dist[2]), (g.dist[3]), (g.dist[4]), shapes[0]->minBox.y, shapes[0]->maxBox.y);
