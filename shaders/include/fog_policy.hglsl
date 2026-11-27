@@ -79,14 +79,11 @@ MC2_FOG_INLINE float mc2CloudSeaGuard(float surfaceMaxAbs, float halfExtent) {
     return mc2FogSmooth(mc2FogRamp(surfaceMaxAbs, halfExtent - 1000.0f, halfExtent - 700.0f));
 }
 
-// Cloud-sea replacement of a scene surface past the map edge. The deck lies below the water level, so it is
-// seen only where it replaces a surface outright; a wide cross-fade would show the deck through and under the
-// water. The step is at most 2 * 80 world units wide (antialiasing only); wobble bends the contour by at most 250.
+// Dissolve the border water before its mesh ends. The caller supplies a rounded
+// boundary distance; terrain still occludes the deck at its actual depth.
 MC2_FOG_INLINE float mc2CloudSeaReplace(float surfaceMaxAbs, float wobble, float halfExtent, float aa) {
-    float a = aa > 80.0f ? 80.0f : (aa > 1.0f ? aa : 1.0f);
     float w = wobble > 250.0f ? 250.0f : (wobble < -250.0f ? -250.0f : wobble);
-    float edge = halfExtent - 450.0f;
-    return mc2FogSmooth(mc2FogRamp(surfaceMaxAbs + w, edge - a, edge + a)) * mc2CloudSeaGuard(surfaceMaxAbs, halfExtent);
+    return mc2FogSmooth(mc2FogRamp(surfaceMaxAbs + w, halfExtent - 1000.0f, halfExtent - 100.0f)) * mc2CloudSeaGuard(surfaceMaxAbs, halfExtent);
 }
 
 #undef MC2_FOG_INLINE

@@ -75,9 +75,15 @@ float gCeil;    // highest crown top (just under the water level)
 float gR;       // crown relief: tops sit at the ceiling, gaps gR below it
 
 // The ceiling steps down toward the map edge so the land drops away into the clouds instead of ending on a wall.
+float boundaryRadius(vec2 xy)
+{
+    vec2 q = abs(xy) - u_cloudMotion.y * 0.65;
+    return length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0) + u_cloudMotion.y * 0.65;
+}
+
 float ceilAt(vec2 xy)
 {
-    float m = max(abs(xy.x), abs(xy.y));
+    float m = boundaryRadius(xy);
     return gCeil - 380.0 * (1.0 - smoothstep(u_cloudMotion.y - 400.0, u_cloudMotion.y + 5000.0, m));
 }
 
@@ -107,7 +113,7 @@ vec3 skyAt(vec3 rd, float elev)
 float cloudMask(vec3 p, float t)
 {
     float wobble = (deckShape(p.xy * 0.4, 4.0) - 0.35) * 1400.0;
-    float edge = smoothstep(u_cloudMotion.y - 300.0, u_cloudMotion.y + 2200.0, max(abs(p.x), abs(p.y)) + wobble);
+    float edge = smoothstep(u_cloudMotion.y - 1000.0, u_cloudMotion.y + 300.0, boundaryRadius(p.xy) + wobble);
     return edge;
 }
 
@@ -127,18 +133,6 @@ vec4 cloudLayer(vec3 origin, vec3 rd, float sceneDistance)
     float t0 = max((top - origin.z) / rd.z, 0.0);
     float t1 = min((bottom - origin.z) / rd.z, t0 + 120000.0);
     t1 = min(t1, tMax);
-    // Crowns that matter lie beyond the map edge: start where the ray leaves the map box.
-    {
-        float R = u_cloudMotion.y - 600.0;
-        vec2 tp = vec2(1.0e9);
-        for (int a = 0; a < 2; ++a) {
-            float o = origin[a], d = rd[a];
-            if (abs(o) >= R) tp[a] = 0.0;
-            else if (d > 1e-5) tp[a] = (R - o) / d;
-            else if (d < -1e-5) tp[a] = (-R - o) / d;
-        }
-        t0 = max(t0, min(tp.x, tp.y));
-    }
     if (max(cloudMask(origin + rd * t0, t0), cloudMask(origin + rd * t1, t1)) < 0.003) return vec4(0.0);
 
     // Empty stretches of the deck dissolve into the sky, never into out-of-map water.
@@ -238,14 +232,12 @@ void main()
         vec4 surface = invViewProj * vec4(ndc, max(rawDepth, 1e-7), 1.0);
         vec3 surf = surface.xyz / surface.w;
         float distance = rawDepth > 0.0 ? length(surf - origin) : 100000.0;
-        // Beyond the map edge the cloud sea replaces whatever ground or water the engine draws there. A surface is
-        // either replaced outright (antialiased step) or it occludes the deck at its true depth: the deck lies below
-        // the water level, so any blend of the two shows cloud through and under the water.
-        float surfM = max(abs(surf.x), abs(surf.y));
+        // Round and dissolve the border water before its rectangular mesh ends.
+        // Authored terrain remains a depth occluder, including corner islands.
+        float surfM = boundaryRadius(surf.xy);
         float wob = (textureLod(cloudTex, surf.xy * (1.0 / 9000.0), 5.0).r - 0.35) * 500.0;
         float outside = rawDepth > 0.0 ? mc2CloudSeaReplace(surfM, wob, u_cloudMotion.y, 8.0 + distance * 0.0015) : step(0.0, -cloudDir.z - 1e-3);
-        // Keep the entire authored water surface in front of the below-water deck.
-        if (rawDepth > 0.0 && surfM < u_cloudMotion.y && abs(surf.z - u_cloudSea.x) < 2.0) outside = 0.0;
+        if (rawDepth > 0.0 && surf.z > u_cloudSea.x + 2.0) outside = 0.0;
         if (outside > 0.0) distance = 100000.0;
         gOutside = outside > 0.0 ? 1.0 : 0.0;
         outFog = cloudLayer(origin, cloudDir, distance);

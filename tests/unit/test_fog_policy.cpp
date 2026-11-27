@@ -20,18 +20,19 @@ TEST_CASE("fog_policy/cloud sea never covers the playable map") {
     CHECK(mc2CloudSeaGuard(20000.0f, 6400.0f) == 1);
 }
 
-TEST_CASE("fog_policy/cloud sea replaces past-edge surfaces outright, never a cross-fade under water") {
+TEST_CASE("fog_policy/cloud sea dissolves border water continuously before the mesh ends") {
     for (float half : {3200.0f, 6400.0f, 9600.0f})
         for (float wob : {-1000.0f, 0.0f, 1000.0f})
             for (float aa : {0.0f, 40.0f, 5000.0f}) {
                 CHECK(mc2CloudSeaReplace(half - 1000.0f, wob, half, aa) == 0); // playable map untouched
-                CHECK(mc2CloudSeaReplace(half + 100.0f, wob, half, aa) == 1);  // past the edge: fully replaced
-                int partial = 0; // samples with a water/deck mix: the step stays within 2 * 80 units
-                for (float m = half - 1000.0f; m < half + 100.0f; m += 10.0f) {
+                CHECK(mc2CloudSeaReplace(half + 200.0f, wob, half, aa) == 1);
+                float previous = 0;
+                for (float m = half - 1000.0f; m < half + 200.0f; m += 10.0f) {
                     const float r = mc2CloudSeaReplace(m, wob, half, aa);
-                    partial += (r > 0.0f && r < 1.0f) ? 1 : 0;
+                    CHECK(r >= previous);
+                    CHECK(r - previous < 0.06f);
+                    previous = r;
                 }
-                CHECK(partial <= 16);
             }
 }
 
