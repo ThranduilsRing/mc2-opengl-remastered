@@ -273,7 +273,7 @@ void samplePerf(double frameMs) {
             }
         }
     }
-    // Per-hitch frame record (diag tag HITCH): a frame over twice the running median (and over 12 ms) names its worst scopes and the counter deltas since the last frame.
+    // Match the whole-mission over10 counter: every frame over 10 ms names its worst scopes and counter deltas.
     {
         auto& hs = mc2_hitch2::stats();
         static std::vector<float> s_all;
@@ -287,28 +287,25 @@ void samplePerf(double frameMs) {
         if (g_missionReadyT) {
             ++s_frame;
             if (mc2_diag::tagRequested("HITCH")) startOtherMc2Sampler();
-            // Frames 0-29 have no stable median yet: they are recorded at an absolute 25 ms, so the first post-ready (bake upload) frames get a line.
-            if (frameMs >= 12.0 && mc2_diag::tagRequested("HITCH")) {
+            if (frameMs > 10.0 && mc2_diag::tagRequested("HITCH")) {
                 std::vector<float> tmp(s_all);
                 double med = 0.0;
                 if (!tmp.empty()) { std::nth_element(tmp.begin(), tmp.begin() + tmp.size() / 2, tmp.end()); med = tmp[tmp.size() / 2]; }
-                if (s_all.size() >= 30 ? frameMs > 2.0 * med : frameMs >= 25.0) {
-                    double gspan = -1.0, gbusy = -1.0;
-                    mc2_hitch2::gpuMax4(gspan, gbusy);
-                    int idx[mc2_hitch2::ScopeTable::kMax];
-                    for (int i = 0; i < sc.n; ++i) idx[i] = i;
-                    const int top = sc.n < 5 ? sc.n : 5;
-                    std::partial_sort(idx, idx + top, idx + sc.n, [&](int a, int b) { return sc.slots[a].ms > sc.slots[b].ms; });
-                    std::string scopes;
-                    for (int i = 0; i < top; ++i) scopes += std::string(sc.slots[idx[i]].name) + "=" + std::to_string(sc.slots[idx[i]].ms).substr(0, 5) + (i + 1 < top ? "," : "");
-                    if (mc2_diag::tagRequested("HITCH"))
-                    mc2::fmt::print_err("[HITCH v2] frame={} ms={:.1f} median={:.1f} waitidle_n={} waitidle_ms={:.2f} fence_n={} fence_ms={:.2f} staged_kb={} pipelines={} upload_kb={} objmap_records={} dirty_batches={} bake_state={} bake_cache={} sim_join_ms={:.2f} slot_ms={:.2f} acquire_ms={:.2f} composite_wait_ms={:.2f} gpu_span4_ms={:.2f} gpu_busy4_ms={:.2f} other_mc2={} scopes={} cause={}:{:.3f}\n",
-                        mc2::fmt::as_u64(s_frame), frameMs, med, mc2::fmt::as_u64(wic - s_wic), (win - s_win) / 1e6,
-                        mc2::fmt::as_u64(fc - s_fc), (fn - s_fn) / 1e6, mc2::fmt::as_u64((sb - s_sb) / 1024), mc2::fmt::as_u64(pc - s_pc), mc2::fmt::as_u64((ub - s_ub) / 1024),
-                        mc2::fmt::as_u64(om - s_om), mc2::fmt::as_u64(db - s_db), mc2::fmt::safe(hs.bakeState.load()), mc2::fmt::safe(hs.bakeCache.load()), (sj - s_sj) / 1e6,
-                        (sl - s_sl) / 1e6, (aq - s_aq) / 1e6, (cw - s_cw) / 1e6, gspan, gbusy, mc2::fmt::as_i32(hs.otherMc2.load()),
-                        mc2::fmt::safe(scopes.c_str()), cause.name, cause.ms);
-                }
+                double gspan = -1.0, gbusy = -1.0;
+                mc2_hitch2::gpuMax4(gspan, gbusy);
+                int idx[mc2_hitch2::ScopeTable::kMax];
+                for (int i = 0; i < sc.n; ++i) idx[i] = i;
+                const int top = sc.n < 5 ? sc.n : 5;
+                std::partial_sort(idx, idx + top, idx + sc.n, [&](int a, int b) { return sc.slots[a].ms > sc.slots[b].ms; });
+                std::string scopes;
+                for (int i = 0; i < top; ++i) scopes += std::string(sc.slots[idx[i]].name) + "=" + std::to_string(sc.slots[idx[i]].ms).substr(0, 5) + (i + 1 < top ? "," : "");
+                if (mc2_diag::tagRequested("HITCH"))
+                mc2::fmt::print_err("[HITCH v2] frame={} ms={:.1f} median={:.1f} waitidle_n={} waitidle_ms={:.2f} fence_n={} fence_ms={:.2f} staged_kb={} pipelines={} upload_kb={} objmap_records={} dirty_batches={} bake_state={} bake_cache={} sim_join_ms={:.2f} slot_ms={:.2f} acquire_ms={:.2f} composite_wait_ms={:.2f} gpu_span4_ms={:.2f} gpu_busy4_ms={:.2f} other_mc2={} scopes={} cause={}:{:.3f}\n",
+                    mc2::fmt::as_u64(s_frame), frameMs, med, mc2::fmt::as_u64(wic - s_wic), (win - s_win) / 1e6,
+                    mc2::fmt::as_u64(fc - s_fc), (fn - s_fn) / 1e6, mc2::fmt::as_u64((sb - s_sb) / 1024), mc2::fmt::as_u64(pc - s_pc), mc2::fmt::as_u64((ub - s_ub) / 1024),
+                    mc2::fmt::as_u64(om - s_om), mc2::fmt::as_u64(db - s_db), mc2::fmt::safe(hs.bakeState.load()), mc2::fmt::safe(hs.bakeCache.load()), (sj - s_sj) / 1e6,
+                    (sl - s_sl) / 1e6, (aq - s_aq) / 1e6, (cw - s_cw) / 1e6, gspan, gbusy, mc2::fmt::as_i32(hs.otherMc2.load()),
+                    mc2::fmt::safe(scopes.c_str()), cause.name, cause.ms);
             }
             if (s_all.size() < 20000) s_all.push_back(static_cast<float>(frameMs));
         }
