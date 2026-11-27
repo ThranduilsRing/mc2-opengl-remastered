@@ -169,7 +169,6 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
         const float rowY = std::sqrt(m[1] * m[1] + m[5] * m[5] + m[9] * m[9]);
         const float vpScale = mainView.viewport[3] > 0 ? 2160.0f / static_cast<float>(mainView.viewport[3]) : 1.0f;
         float maxTreeD = 0.0f;
-        bool staticBlend = false;
         auto route = [&](const GpuStaticPropInstance* b, const GpuStaticPropInstance* e, const PropLodGroup& g,
                          const size_t* slots, const auto& outputs, uint8_t* snapshots = nullptr, bool staticOnly = false) {
             for (; b != e; ++b) {
@@ -190,8 +189,10 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
                     lod = 0;
                     while (lod + 1 < g.count && d >= g.dist[lod + 1]) ++lod;
                 }
-                staticBlend |= blendTier >= 0;
-                if (snapshots) { *snapshots++ = lod; continue; }
+                if (snapshots) {
+                    *snapshots++ = blendTier >= 0 ? uint8_t{255} : lod;
+                    if (blendTier < 0) continue;
+                }
                 GpuStaticPropInstance inst = *b;
                 if (blendTier >= 0) {
                     // fogRGB.w is unused by Vulkan props. Values outside [0,1] encode
@@ -227,17 +228,12 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
                 else {
                     static std::vector<uint8_t> snapshots;
                     snapshots.resize(stVec.size());
-                    staticBlend = false;
                     route(stVec.data(), stVec.data() + stVec.size(), g, slots.indices.data(), outputs, snapshots.data(), true);
-                    if (staticBlend) {
-                        route(stVec.data(), stVec.data() + stVec.size(), g, slots.indices.data(), outputs, nullptr, true);
-                    } else {
-                        auto& cache = s_lodCache[src];
-                        cache.refresh(std::span<const GpuStaticPropInstance>(stVec), rebound,
-                            [&](size_t i) { return snapshots[i]; },
-                            [&](GpuStaticPropInstance inst, uint8_t tier) { inst.typeID = g.target[tier]; return inst; });
-                        for (int tier = 0; tier < g.count; ++tier) persistentTiers[g.target[tier]] = &cache.tiers[tier];
-                    }
+                    auto& cache = s_lodCache[src];
+                    cache.refresh(std::span<const GpuStaticPropInstance>(stVec), rebound,
+                        [&](size_t i) { return snapshots[i]; },
+                        [&](GpuStaticPropInstance inst, uint8_t tier) { inst.typeID = g.target[tier]; return inst; });
+                    for (int tier = 0; tier < g.count; ++tier) persistentTiers[g.target[tier]] = &cache.tiers[tier];
                 }
             }
             if (auto bt = s_bucketsByType.find(src); bt != s_bucketsByType.end()) {

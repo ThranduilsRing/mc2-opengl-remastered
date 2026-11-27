@@ -74,6 +74,21 @@ TEST_CASE("prop_lod_tier_cache/rebound_and_empty") {
     for (const auto& tier : f.cache.tiers) CHECK(tier.empty());
     CHECK_FALSE(f.frame());
 }
+TEST_CASE("prop_lod_tier_cache/blend_band_keeps_other_instances_cached") {
+    TierFixture f;
+    f.store.push_back({0,33});
+    f.snapshots={0,255,1}; // one band instance emits two draws outside the cache
+    CHECK(f.frame(true));
+    REQUIRE(f.cache.tiers[0].size()==1);
+    REQUIRE(f.cache.tiers[1].size()==1);
+    CHECK(f.cache.tiers[0][0].payload==11);
+    CHECK(f.cache.tiers[1][0].payload==33);
+    CHECK(f.cache.tiers[0].size()+f.cache.tiers[1].size()+2==4);
+    CHECK_FALSE(f.frame());
+    f.snapshots[1]=1; // leaving the band restores exactly one cached draw
+    CHECK(f.frame());
+    CHECK(f.cache.tiers[1].size()==2);
+}
 TEST_CASE("prop_lod_tier_cache/shared_target_dynamic_order") {
     TierFixture a, b;
     b.store[0].payload = 33; b.store[1].payload = 44;
