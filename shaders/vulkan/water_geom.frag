@@ -181,7 +181,7 @@ layout(set = 0, binding = 1, std140) uniform WaterFsParams {
 // gos_hdri texture — BC6H mip0 sidecar in the field config, RGBA16F+mips
 // fallback). Sampled only when u_waterHdriLod >= 0 (island patches it to -1
 // when the import is unavailable -> SH-L2 fallback, matching GL semantics).
-layout(set = 0, binding = 2) uniform sampler2D u_hdri;
+layout(set = 0, binding = 2) uniform samplerCube u_hdri;
 
 // VK-PARITY-WATER-SHORE-1: copy-once imports of the GL shore textures (same CPU
 // data the GL water FS samples): R32F hi-res visual height, RGBA8 shoreline mask.
@@ -294,12 +294,9 @@ const vec3 kWaterSkySh[9] = vec3[9](
 //PORT-BEGIN:waterEvalHdri
 PREC vec3 waterEvalHdri(PREC vec3 rdir) {
     float s = sin(u_skyYaw), c = cos(u_skyYaw);
-    PREC vec3 d = vec3(rdir.x * c - rdir.y * s,
-                       rdir.x * s + rdir.y * c,
-                       rdir.z);
-    PREC vec2 uv = vec2(atan(d.y, d.x) / (2.0 * 3.14159265) + 0.5,
-                        1.0 - (asin(clamp(d.z, -1.0, 1.0)) / 3.14159265 + 0.5));
-    PREC vec3 raw = textureLod(u_hdri, uv, u_waterHdriLod).rgb;
+    PREC vec3 d = vec3(-rdir.x, rdir.z, rdir.y);
+    d = vec3(d.x * c - d.z * s, d.y, d.x * s + d.z * c);
+    PREC vec3 raw = textureLod(u_hdri, d, u_waterHdriLod).rgb;
     // Reinhard per-channel: physical HDR values [0, inf) -> [0, 1).
     // Keeps blue > red for clear sky (hue preserved), prevents sun/bright-cloud
     // from collapsing to featureless white in the reflection mix.

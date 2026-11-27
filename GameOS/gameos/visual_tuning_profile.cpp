@@ -75,6 +75,7 @@ std::map<std::string, float> engineDefaults() {
         {"vfxLitStrength",0.7f}, {"mechSpecularStrength",0.05f},
         {"cloudStrength",0.30f}, {"cloudCoverage",0.20f}, {"cloudSoftness",0.12f}, {"cloudWaterScale",0.5f},
         {"atmoDensity",1.0f}, {"atmoHeightFalloff",8e-4f}, {"atmoSunScatter",0.35f}, {"atmoAnisotropy",0.55f},
+        {"cloudSeaAltitude",0}, {"cloudSeaThickness",1400}, {"cloudSeaBillow",0},
         {"valleyFogThickness",0}, {"valleyFogSigma",0.05f}, {"valleyFogCoverage",0.45f},
         {"valleyFogColorR",0.86f}, {"valleyFogColorG",0.9f}, {"valleyFogColorB",0.98f},
         {"terrainNormalFlatPeriod",768}, {"terrainNormalFlatStrength",1},
@@ -107,6 +108,9 @@ bool validValue(std::string_view key, double value) {
     else if (key == "atmoHeightFalloff") hi = 0.01f;
     else if (key == "atmoAnisotropy") hi = 0.95f;
     else if (key == "atmoSunScatter") hi = 4;
+    else if (key == "cloudSeaAltitude") { lo = -2000; hi = 8000; }
+    else if (key == "cloudSeaThickness") { lo = 100; hi = 4000; }
+    else if (key == "cloudSeaBillow") hi = 1;
     else if (key == "valleyFogThickness") hi = 2000;
     else if (key == "valleyFogSigma") hi = 1;
     else if (key == "valleyFogCoverage") hi = 2;
@@ -364,6 +368,13 @@ static void applyKey(mc2::czstring key, float val, int& count) {
         count++;
     } else if (strcmp(key, "cloudWaterScale") == 0) {
         mc2SetCloudWaterScale(val);
+        count++;
+    } else if (strncmp(key, "cloudSea", 8) == 0) {
+        if (gosPostProcess* pp = getGosPostProcess()) {
+            if (strcmp(key, "cloudSeaAltitude") == 0) pp->cloudSeaAltitude_ = val;
+            else if (strcmp(key, "cloudSeaThickness") == 0) pp->cloudSeaThickness_ = std::max(val, 1.0f);
+            else if (strcmp(key, "cloudSeaBillow") == 0) pp->cloudSeaBillow_ = std::clamp(val, 0.0f, 1.0f);
+        }
         count++;
     } else if (strncmp(key, "atmo", 4) == 0) {
         if (gosPostProcess* pp = getGosPostProcess()) {

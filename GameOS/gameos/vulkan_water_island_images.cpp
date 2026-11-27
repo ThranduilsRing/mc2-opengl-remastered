@@ -322,11 +322,14 @@ bool init_reflection(WaterIsland* s) {
 // Fail-soft: bind a 1x1 black dummy and patch the FS UBO's u_waterHdriLod to -1 (SH-L2 fallback), as GL does when
 // !isHdriReady().
 bool ensure_hdri(WaterIsland* s, uint64_t hdriGeneration) {
+    VkDescriptorImageInfo shared{};
+    const bool haveReal = mc2_vk_sky_sample_info(&shared) != 0;
+    if (!shared.imageView) return false;
     // Keyed on the CPU copy's load generation: a reloaded HDRI can come back under the same GL name.
     const uint64_t generation = hdriGeneration;
-    if (s->hdriAttempted && s->hdriGeneration == generation) {
-        s->hdriRealImported=s->hdriSourceReal && mc2vk::getOrCreateEngineVulkanContext().textures().ready(s->hdriTexture.get());
-        return static_cast<bool>(s->hdriTexture);
+    if (s->hdriAttempted && s->hdriGeneration == generation && s->sharedSkyView == shared.imageView) {
+        s->hdriRealImported = haveReal;
+        return true;
     }
     s->hdriAttempted = true;
     s->hdriGeneration = generation;
@@ -352,42 +355,21 @@ bool ensure_hdri(WaterIsland* s, uint64_t hdriGeneration) {
         }
     }
 
-    VkFormat fmt = VK_FORMAT_R16G16B16A16_SFLOAT;
-    int w = 1, h = 1;
-    uint32_t mips = 1;
-    std::vector<std::vector<unsigned char>> levels;   // per-mip raw bytes
-    std::vector<std::pair<int,int>> levelDims;
-    bool haveReal = false;
-    if (generation != 0) {
-        uint64_t gotGeneration = 0;
-        const char* reason = "";
-        haveReal = mc2vk::hdriFromCpu(s->phys, fmt, levels, levelDims, gotGeneration, reason);
-        if (haveReal) { std::tie(w, h) = levelDims[0]; mips = static_cast<uint32_t>(levels.size()); }
-        else vlog("hdri: not imported (%s) -- SH-L2 fallback.", reason);
+    // Keep a 2D zero only as the stand-in for unrelated 2D mask bindings.
+    // Sky reflection borrows the sky island's cube, with no second upload.
+    auto& ctx = mc2vk::getOrCreateEngineVulkanContext();
+    if (!s->hdriTexture) {
+        const uint64_t zero = 0;
+        s->hdriTexture = ctx.textures().acquirePixels(1,1,VK_FORMAT_R16G16B16A16_SFLOAT,&zero,8,false);
+        if (!s->hdriTexture) return false;
     }
-    if (!haveReal) {
-        // 1x1 black RGBA16F dummy (keeps the statically-used binding valid;
-        // shader never reads it because the island patches u_waterHdriLod to -1).
-        fmt = VK_FORMAT_R16G16B16A16_SFLOAT;
-        w = 1; h = 1; mips = 1;
-        levels.assign(1, std::vector<unsigned char>(8, 0));
-        levelDims.assign(1, {1, 1});
-    }
-
-    RenderCore::KtxImage image; image.width=w; image.height=h; image.vkFormat=static_cast<uint32_t>(fmt); image.mipCount=static_cast<int>(mips);
-    image.isCompressed=fmt==VK_FORMAT_BC6H_UFLOAT_BLOCK || fmt==VK_FORMAT_BC6H_SFLOAT_BLOCK;
-    image.blockSizeBytes=image.isCompressed ? 16u : 0u;
-    for (auto& level : levels) { image.mipByteOffsets.push_back(image.pixels.size()); image.pixels.insert(image.pixels.end(),level.begin(),level.end()); }
-    RenderCore::TextureKey key; key.source=RenderCore::makeTextureSourceId("hdri-cpu","water",RenderCore::textureContentHash(image.pixels.data(),image.pixels.size()));
-    key.format=static_cast<uint32_t>(fmt); key.hints=gosHint_MipmapFilter0;
-    auto texture=mc2vk::getOrCreateEngineVulkanContext().textures().acquire(key,std::make_shared<const RenderCore::KtxImage>(std::move(image)),{static_cast<uint32_t>(w),static_cast<uint32_t>(h),static_cast<uint32_t>(w),static_cast<uint32_t>(h)});
-    if (!texture) return false;
-    s->hdriTexture=std::move(texture); s->hdriSourceReal=haveReal;
-    s->hdriRealImported=false;
-    // Real art is published after the service upload ticket; descriptors follow the retired slot.
+    ctx.waitIdle("water_sky_descriptors");
+    s->sharedSkyView = shared.imageView;
+    s->hdriSourceReal = haveReal;
+    s->hdriRealImported = haveReal;
     write_descriptors(s);   // binding 2 now valid
-    vlog("hdri %s import: %dx%d fmt=%d mips=%u source_version=%llu (copy-once, zero per-frame cost).",
-         haveReal ? "REAL" : "DUMMY", w, h, static_cast<int>(fmt), mips, static_cast<unsigned long long>(hdriGeneration));
+    vlog("sky cubemap shared: real=%d source_version=%llu (zero duplicate sky bytes).",
+         haveReal ? 1 : 0, static_cast<unsigned long long>(hdriGeneration));
     return true;
 }
 

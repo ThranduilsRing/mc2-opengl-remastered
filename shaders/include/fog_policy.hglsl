@@ -68,6 +68,24 @@ MC2_FOG_INLINE float mc2FogRangeViewFactor(float rayVerticalSin) {
     return 1.0f - mc2FogSmooth(mc2FogRamp(slope, 0.35f, 0.85f));
 }
 
+// OOB has no depth surface. Fade only groundward rays, leaving the sky intact.
+MC2_FOG_INLINE float mc2FogGroundHorizon(float elevationSin) {
+    return mc2FogSmooth(mc2FogRamp(-elevationSin, 0.0f, 0.02f));
+}
+
+// Cloud-sea guard rail: the out-of-bounds deck never covers the playable map. A scene surface whose
+// max(|x|,|y|) lies inside halfExtent - 1000 (the map minus its border ring) gets zero cloud alpha.
+MC2_FOG_INLINE float mc2CloudSeaGuard(float surfaceMaxAbs, float halfExtent) {
+    return mc2FogSmooth(mc2FogRamp(surfaceMaxAbs, halfExtent - 1000.0f, halfExtent - 700.0f));
+}
+
+// Dissolve the border water before its mesh ends. The caller supplies a rounded
+// boundary distance; terrain still occludes the deck at its actual depth.
+MC2_FOG_INLINE float mc2CloudSeaReplace(float surfaceMaxAbs, float wobble, float halfExtent, float aa) {
+    float w = wobble > 250.0f ? 250.0f : (wobble < -250.0f ? -250.0f : wobble);
+    return mc2FogSmooth(mc2FogRamp(surfaceMaxAbs + w, halfExtent - 1000.0f, halfExtent - 350.0f)) * mc2CloudSeaGuard(surfaceMaxAbs, halfExtent);
+}
+
 #undef MC2_FOG_INLINE
 #endif
 

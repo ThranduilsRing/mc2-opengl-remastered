@@ -1,5 +1,8 @@
 #include "mc2_czstring.h"
 #include "gos_hdri.h"
+#include "gameos.hpp"
+#include "visual_tuning_profile.h"
+#include "../../RenderCore/ProceduralSky.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 
 #include <cstdio>
@@ -214,6 +217,9 @@ HdriDecodeInput snapshotHdriSource(mc2::czstring path)
     input.path = path;
     input.cap = mc2::options::current().baseQuality == 0 ? 512 : 1024;
     input.lowCost = mc2::options::lowCost();
+    gos_GetTerrainLightDir(&input.sunDirection[0], &input.sunDirection[1], &input.sunDirection[2]);
+    input.sunColour = visualTuning_environment().lighting.directionalColor;
+    input.skyNumber = gos_GetSkyNumber();
     return input;
 }
 
@@ -246,15 +252,15 @@ bool decodeHdriSource(mc2::czstring path, float* sunAz, bool* sunValid, HdriCpuI
     return ready;
 }
 
-bool decodeHdriSnapshot(HdriDecodeInput input, float* outSunAzGL, bool* outSunValid, HdriCpuImage* outCpu)
+static std::optional<HdriCpuImage> decodeEquirectSnapshot(HdriDecodeInput input, float* outSunAzGL, bool* outSunValid)
 {
     mc2::overlap::assertOwner(mc2::overlap::Owner::Prewarm, "HDRI.decodeSnapshot");
     ZoneScopedN("HDRI.decodePrivate");
     const char* path = input.path.c_str();
     if (outSunValid) *outSunValid = false;
-    if (!outCpu) return false;
-    *outCpu = {};
-    if (!path || !*path) return false;
+    HdriCpuImage image;
+    auto* outCpu = &image;
+    if (!path || !*path) return std::nullopt;
     auto scanSun = [&](const float* pixels, int w, int h) {
         if (!outSunAzGL) return;
         if (const auto az = scanHdriSunAzGL(pixels, w, h)) {
@@ -313,7 +319,7 @@ bool decodeHdriSnapshot(HdriDecodeInput input, float* outSunAzGL, bool* outSunVa
                 if (pixels) free(pixels);
                 if (error) FreeEXRErrorMessage(error);
             }
-            return true;
+            return image;
         }
     }
     float* pixels = nullptr; int w = 0, h = 0; const char* error = nullptr;
@@ -323,11 +329,75 @@ bool decodeHdriSnapshot(HdriDecodeInput input, float* outSunAzGL, bool* outSunVa
         w > static_cast<int>(RenderCore::kKtxMaxEdge) || h > static_cast<int>(RenderCore::kKtxMaxEdge)) {
         if (pixels) free(pixels);
         if (error) FreeEXRErrorMessage(error);
-        return false;
+        return std::nullopt;
     }
     scanSun(pixels, w, h);
     buildRgba16fChain(*outCpu, pixels, w, h);
     free(pixels);
     if (error) FreeEXRErrorMessage(error);
-    return !outCpu->levels.empty();
+    return image;
+}
+
+bool decodeHdriSnapshot(HdriDecodeInput input, float* outSunAzGL, bool* outSunValid, HdriCpuImage* outCpu)
+{
+    if (!outCpu) return false;
+    const auto sun = input.sunDirection;
+    const auto light = input.sunColour;
+    const int skyNumber = input.skyNumber;
+    float az = 0.0f; bool sunValid = false;
+    auto decoded = decodeEquirectSnapshot(std::move(input), &az, &sunValid);
+    const bool photo = decoded.has_value();
+    if (photo) *outCpu = std::move(*decoded);
+    const auto [width,height] = photo ? outCpu->dims[0] : std::pair<int,int>{1,1};
+    const float yaw = sunValid ? az-std::atan2(sun[1],-sun[0]) : 0.0f;
+    const float cs = std::cos(yaw), sn = std::sin(yaw);
+    auto texel = [&](int x, int y) -> RenderCore::SkyRgb {
+        x = (x%width+width)%width; y = std::clamp(y,0,height-1);
+        RenderCore::SkyRgb rgb{};
+        if (outCpu->format == HdriCpuImage::Format::Rgba16f) {
+            for (int c=0;c<3;++c) {
+                uint16_t half = 0;
+                std::memcpy(&half,outCpu->levels[0].data()+(static_cast<size_t>(y)*width+x)*8+c*2,2);
+                const int exp = (half>>10)&31, fraction = half&1023;
+                const float value = exp ? std::ldexp(1.0f+fraction/1024.0f,exp-15) : std::ldexp(static_cast<float>(fraction),-24);
+                rgb[c] = (half&0x8000) ? -value : value;
+            }
+        } else {
+            float block[48];
+            const size_t offset = (static_cast<size_t>(y/4)*((width+3)/4)+x/4)*16;
+            bcdec_bc6h_float(outCpu->levels[0].data()+offset,block,12,outCpu->format == HdriCpuImage::Format::Bc6hSfloat);
+            for (int c=0;c<3;++c) rgb[c] = block[((y%4)*4+x%4)*3+c];
+        }
+        for (float& c : rgb) c = std::clamp(c,0.0f,65504.0f);
+        return rgb;
+    };
+    auto cube = RenderCore::bakeSkyCubemap([&](RenderCore::SkyRgb d) {
+        if (!photo) return RenderCore::sampleProceduralSky(skyNumber, d,
+            RenderCore::skyMissionSun(sun[0],sun[1],sun[2]), light);
+        const float dx = d[0]*cs-d[2]*sn, dz = d[0]*sn+d[2]*cs;
+        const float u = (std::atan2(dz,dx)/6.28318530718f+.5f)*width-.5f;
+        const float v = std::acos(std::clamp(d[1],-1.0f,1.0f))/3.14159265359f*height-.5f;
+        const int x = static_cast<int>(std::floor(u)), y = static_cast<int>(std::floor(v));
+        const float fx = u-x, fy = v-y;
+        const auto a = texel(x,y), b = texel(x+1,y), c = texel(x,y+1), e = texel(x+1,y+1);
+        RenderCore::SkyRgb rgb{};
+        for (int k=0;k<3;++k) rgb[k] = (a[k]*(1-fx)+b[k]*fx)*(1-fy)+(c[k]*(1-fx)+e[k]*fx)*fy;
+        return rgb;
+    });
+    outCpu->levels.clear(); outCpu->dims.clear();
+    outCpu->format = HdriCpuImage::Format::Rgba16f;
+    outCpu->cubemap = true; outCpu->sh = cube.sh;
+    int size = 128;
+    for (const auto& level : cube.levels) {
+        auto& bytes = outCpu->levels.emplace_back(level.size()*2);
+        for (size_t i=0;i<level.size();++i) {
+            const uint16_t half = floatToHalf(level[i]);
+            std::memcpy(bytes.data()+i*2,&half,2);
+        }
+        outCpu->dims.emplace_back(size,size); size = std::max(1,size/2);
+    }
+    // The cube and its SH are already in mission coordinates.
+    if (outSunAzGL) *outSunAzGL = 0.0f;
+    if (outSunValid) *outSunValid = false;
+    return true;
 }

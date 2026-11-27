@@ -34,8 +34,10 @@
 #include "gos_postprocess.h"
 #include "mission_environment_gpu.h"
 #include "visual_tuning_profile.h"
+#include "../../mclib/camera.h"
 #include "vk_render_pass_timer.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
+#include <thread>
 #include <tracy/Tracy.hpp>
 #include "Gates/gate.h"
 #include "Gates/render_options.h"
@@ -63,6 +65,8 @@
 #include "vk_vegetation_ground.h"
 #include "terrain_field_store.h"
 #include "vulkan_post_chain.h"
+#include "vulkan_sky_island.h"
+#include <limits>
 
 // Fixed-timestep clock so the animated OOB FBM time matches the GL path under smoke.
 #include "gos_smoke.h"
@@ -134,8 +138,13 @@ struct FogOobParams {
     int   u_horizonClampEnabled;   // off 84 (VK-PARITY-F3: FOG-HORIZON-CLAMP-1)
     float u_horizonFadeStartSin;   // off 88
     float u_horizonFadeEndSin;     // off 92
+    float u_cloudSea[4];           // off 96 altitude, thickness, billow, quality
+    float u_cloudSun[4];           // off 112 toward sun, sky radiance blue scale
+    float u_cloudMotion[4];        // off 128 seconds, map half extent, sky radiance red/green scales
+    float u_cloudLight[4];         // off 144 shared live sun colour
+    float u_cloudAmbient[4];       // off 160 shared live ambient colour
 };
-static_assert(sizeof(FogOobParams) == 96, "FogOobParams std140 offsets drifted");
+static_assert(sizeof(FogOobParams) == 176, "FogOobParams std140 offsets drifted");
 
 // std140 POD of shaders/vulkan/valley_fog.frag ValleyFogParams; offsets are offline-checked by check_ubo_layout.py postfog_valley.
 struct ValleyFogParams {
@@ -184,6 +193,17 @@ struct gosPostProcess::VkPostFogNative {
     // OWNED objects, declared in creation order: the destructor releases them in reverse (the owner idles the GPU first, see destroy_state).
     mc2vk::OwnedImageView  depthSampleView; // depth-aspect view over sDepthRes->image
     mc2vk::OwnedSampler    depthSampler;    // NEAREST/CLAMP (matches GL fog sampling)
+    mc2vk::OwnedImage      cloudImg;        // cloud-sea crown heights (tiling R16, mipped), baked once
+    mc2vk::OwnedImageView  cloudView;
+    mc2vk::OwnedSampler    cloudSampler;    // LINEAR/REPEAT
+    mc2vk::OwnedBuffer     cloudUpload;
+    bool                   cloudUploaded = false;
+    mc2vk::OwnedImage cloudResult;
+    mc2vk::OwnedImageView cloudResultView;
+    mc2vk::OwnedSampler cloudResultSampler;
+    mc2vk::OwnedRenderPass cloudPass;
+    mc2vk::OwnedFramebuffer cloudFb;
+    uint32_t cloudWidth = 0, cloudHeight = 0;
     mc2vk::OwnedRenderPass rpass;
     mc2vk::OwnedFramebuffer fb;
     mc2vk::OwnedDescriptorSetLayout dsl;
@@ -193,6 +213,7 @@ struct gosPostProcess::VkPostFogNative {
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline   edgePipe;
     mc2vk::OwnedPipeline   oobPipe;
+    mc2vk::OwnedPipeline cloudPipe, cloudResolvePipe;
     mc2vk::OwnedShaderModule valleyFrag;
     mc2vk::OwnedPipeline   valleyPipe;
     mc2veg::GroundLighting groundLighting;   // set 1 of the valley fog: the terrain's frame UBO and live environment
@@ -204,6 +225,83 @@ struct gosPostProcess::VkPostFogNative {
 };
 
 namespace {
+
+// ---- Cloud-sea crown heights: the deck's billow noise baked once into a tiling R16 texture (all mips), so the
+// shader's ray march costs one fetch per step instead of a dozen hashes.
+constexpr int kCloudTex = 1024;      // texels per side
+constexpr int kCloudPeriod = 8;      // tile = 8 noise cells (x2600 world units)
+constexpr int kCloudMips = 11;
+
+float cloudHash(float x, float y) {
+    auto fr = [](float v) { return v - std::floor(v); };
+    float a = fr(x * 0.1031f), b = fr(y * 0.1031f), c = a;
+    const float d = a * (b + 33.33f) + b * (c + 33.33f) + c * (a + 33.33f);
+    a += d; b += d; c += d;
+    return fr((a + b) * c);
+}
+// Value noise on a lattice that wraps every `per` cells.
+float cloudNoise(float x, float y, int per) {
+    const float fx0 = std::floor(x), fy0 = std::floor(y);
+    float fx = x - fx0, fy = y - fy0;
+    fx = fx * fx * (3.0f - 2.0f * fx); fy = fy * fy * (3.0f - 2.0f * fy);
+    auto wrap = [per](float v) { int i = static_cast<int>(v) % per; return static_cast<float>(i < 0 ? i + per : i); };
+    const float x0 = wrap(fx0), x1 = wrap(fx0 + 1.0f), y0 = wrap(fy0), y1 = wrap(fy0 + 1.0f);
+    const float a = cloudHash(x0, y0) + (cloudHash(x1, y0) - cloudHash(x0, y0)) * fx;
+    const float b = cloudHash(x0, y1) + (cloudHash(x1, y1) - cloudHash(x0, y1)) * fx;
+    return a + (b - a) * fy;
+}
+float cloudBillow(float x, float y, int per) { return std::fabs(2.0f * cloudNoise(x, y, per) - 1.0f); }
+float cloudSmooth(float e0, float e1, float v) { const float t = std::clamp((v - e0) / (e1 - e0), 0.0f, 1.0f); return t * t * (3.0f - 2.0f * t); }
+
+// All mip levels, level 0 first (tightly packed), crown height 0..1.2 mapped to 16 bits.
+std::vector<uint16_t> bakeCloudHeights() {
+    const int P = kCloudPeriod;
+    std::vector<uint16_t> all;
+    std::vector<uint16_t> level(static_cast<size_t>(kCloudTex) * kCloudTex);
+    auto bakeRows = [&](int rowBegin, int rowStep) {
+    for (int y = rowBegin; y < kCloudTex; y += rowStep) {
+        for (int x = 0; x < kCloudTex; ++x) {
+            const float qx = (static_cast<float>(x) + 0.5f) * P / kCloudTex, qy = (static_cast<float>(y) + 0.5f) * P / kCloudTex;
+            const float wx = 0.45f * cloudNoise(qx * 0.75f + 3.0f, qy * 0.75f + 3.0f, 6) - 0.22f;
+            const float wy = 0.45f * cloudNoise(qx * 0.75f + 9.0f, qy * 0.75f + 9.0f, 6) - 0.22f;
+            const float ux = qx + wx, uy = qy + wy;
+            float h = 0.55f * cloudBillow(ux, uy, P);
+            h += 0.30f * cloudBillow(ux * 2.0f + 7.0f, uy * 2.0f + 7.0f, P * 2);
+            h += 0.17f * cloudBillow(ux * 5.0f + 13.0f, uy * 5.0f + 13.0f, P * 5);
+            h += 0.07f * cloudBillow(ux * 11.0f + 29.0f, uy * 11.0f + 29.0f, P * 11);
+            h += 0.030f * cloudBillow(ux * 23.0f + 5.0f, uy * 23.0f + 5.0f, P * 23);
+            h += 0.014f * cloudBillow(ux * 47.0f + 17.0f, uy * 47.0f + 17.0f, P * 47);
+            const float cover = cloudNoise(ux * 0.25f + 21.0f, uy * 0.25f + 21.0f, P / 4);
+            const float gaps = 0.3f + 0.7f * cloudSmooth(0.12f, 0.38f, cover);
+            const float v = std::clamp(h * (0.85f + 1.1f * cover) * gaps, 0.0f, 1.2f) / 1.2f;
+            level[static_cast<size_t>(y) * kCloudTex + x] = static_cast<uint16_t>(v * 65535.0f + 0.5f);
+        }
+    }
+    };
+    {
+        const int workers = static_cast<int>(std::clamp(std::thread::hardware_concurrency(), 1u, 16u));
+        std::vector<std::thread> pool;
+        for (int w = 1; w < workers; ++w) pool.emplace_back(bakeRows, w, workers);
+        bakeRows(0, workers);
+        for (auto& t : pool) t.join();
+    }
+    all.insert(all.end(), level.begin(), level.end());
+    int n = kCloudTex;
+    for (int m = 1; m < kCloudMips; ++m) {
+        const int h = n / 2;
+        std::vector<uint16_t> next(static_cast<size_t>(h) * h);
+        for (int y = 0; y < h; ++y)
+            for (int x = 0; x < h; ++x) {
+                const uint32_t sum = level[static_cast<size_t>(2 * y) * n + 2 * x] + level[static_cast<size_t>(2 * y) * n + 2 * x + 1] +
+                                     level[static_cast<size_t>(2 * y + 1) * n + 2 * x] + level[static_cast<size_t>(2 * y + 1) * n + 2 * x + 1];
+                next[static_cast<size_t>(y) * h + x] = static_cast<uint16_t>(sum / 4);
+            }
+        all.insert(all.end(), next.begin(), next.end());
+        level.swap(next);
+        n = h;
+    }
+    return all;
+}
 
 bool make_buffer(gosPostProcess::VkPostFogNative* s, VkDeviceSize size,
                  VkBufferUsageFlags usage, mc2vk::OwnedBuffer& out,
@@ -295,6 +393,32 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         }
     }
 
+    {
+        if (!s->cloudImg.createSampled2D(s->allocator, s->device, VK_FORMAT_R16_UNORM, kCloudTex, kCloudTex, kCloudMips, 0, "postfog.cloudHeights")) {
+            vlog("cloud height image create failed."); return false;
+        }
+        VkImageViewCreateInfo vci{};
+        vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        vci.image = s->cloudImg.get(); vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = VK_FORMAT_R16_UNORM;
+        vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, kCloudMips, 0, 1};
+        if (!mc2vk::create(s->cloudView, s->device, [&](VkImageView* h) { r = vkCreateImageView(s->device, &vci, nullptr, h); return r; })) {
+            vlog("cloud height view create failed (%d).", static_cast<int>(r)); return false;
+        }
+        VkSamplerCreateInfo sci{};
+        sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;
+        sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        sci.maxLod = static_cast<float>(kCloudMips);
+        if (!mc2vk::create(s->cloudSampler, s->device, [&](VkSampler* h) { r = vkCreateSampler(s->device, &sci, nullptr, h); return r; })) {
+            vlog("cloud sampler create failed (%d).", static_cast<int>(r)); return false;
+        }
+        const std::vector<uint16_t> heights = bakeCloudHeights();
+        if (!s->cloudUpload.createFilled(s->allocator, s->device, heights.data(), heights.size() * sizeof(uint16_t), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "postfog.cloudUpload")) {
+            vlog("cloud height upload buffer failed."); return false;
+        }
+    }
+
     for (auto& frame : s->frames) {
         if (!make_buffer(s, sizeof(EdgeFogParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, frame.edgeUbo, "postfog.edgeUbo")) return false;
         if (!make_buffer(s, sizeof(FogOobParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, frame.oobUbo, "postfog.oobUbo")) return false;
@@ -349,12 +473,38 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         if (!mc2vk::create(s->fb, s->device, [&](VkFramebuffer* h) { r = vkCreateFramebuffer(s->device, &fci, nullptr, h); return r; })) {
             vlog("vkCreateFramebuffer failed (%d).", static_cast<int>(r)); return false;
         }
+        // Every-frame cloud shading at 720p for 4K; full-resolution depth gates the resolve.
+        const uint32_t divisor = std::max(1, (h + 719) / 720);
+        s->cloudWidth = (w + divisor - 1) / divisor;
+        s->cloudHeight = (h + divisor - 1) / divisor;
+        if (!s->cloudResult.createSampled2D(s->allocator, s->device, att.format, s->cloudWidth, s->cloudHeight, 1,
+                VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, "postfog.cloudResult")) return false;
+        VkImageViewCreateInfo vi{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+        vi.image = s->cloudResult.get(); vi.viewType = VK_IMAGE_VIEW_TYPE_2D; vi.format = att.format;
+        vi.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+        if (!mc2vk::create(s->cloudResultView, s->device, [&](VkImageView* v) { return vkCreateImageView(s->device, &vi, nullptr, v); })) return false;
+        VkSamplerCreateInfo sci{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+        sci.magFilter = sci.minFilter = VK_FILTER_LINEAR;
+        sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        if (!mc2vk::create(s->cloudResultSampler, s->device, [&](VkSampler* v) { return vkCreateSampler(s->device, &sci, nullptr, v); })) return false;
+        att.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        att.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        att.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        deps[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        deps[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        deps[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        deps[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        if (!mc2vk::create(s->cloudPass, s->device, [&](VkRenderPass* v) { return vkCreateRenderPass(s->device, &rpci, nullptr, v); })) return false;
+        const VkImageView cloudAttachment = s->cloudResultView.get();
+        fci.renderPass = s->cloudPass.get(); fci.pAttachments = &cloudAttachment;
+        fci.width = s->cloudWidth; fci.height = s->cloudHeight;
+        if (!mc2vk::create(s->cloudFb, s->device, [&](VkFramebuffer* v) { return vkCreateFramebuffer(s->device, &fci, nullptr, v); })) return false;
     }
 
     // Descriptor layout / pool / 3 sets (subgraph interface: 0=sampler, 1=UBO, frag). VALLEY-FOG (ground-fog-4) adds
     // 2 = the fog-floor SSBO and 3 = the terrain static-shadow mask copy; the edge/oob shaders read neither.
     {
-        VkDescriptorSetLayoutBinding binds[4]{};
+        VkDescriptorSetLayoutBinding binds[6]{};
         binds[0].binding = 0; binds[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         binds[0].descriptorCount = 1; binds[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         binds[1].binding = 1; binds[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -363,12 +513,14 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         binds[3] = {3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr};
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 4; lci.pBindings = binds;
+        binds[4] = binds[0]; binds[4].binding = 4;
+        binds[5] = binds[0]; binds[5].binding = 5;
+        lci.bindingCount = 6; lci.pBindings = binds;
         if (!mc2vk::create(s->dsl, s->device, [&](VkDescriptorSetLayout* h) { r = vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); return r; })) {
             vlog("vkCreateDescriptorSetLayout failed (%d).", static_cast<int>(r)); return false;
         }
         VkDescriptorPoolSize sizes[3]{};
-        sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[0].descriptorCount = 6 * mc2vk::kMaxFramesInFlight;
+        sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[0].descriptorCount = 12 * mc2vk::kMaxFramesInFlight;
         sizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;         sizes[1].descriptorCount = 3 * mc2vk::kMaxFramesInFlight;
         sizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;         sizes[2].descriptorCount = 3 * mc2vk::kMaxFramesInFlight;
         VkDescriptorPoolCreateInfo pci{};
@@ -396,6 +548,20 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         VkDescriptorBufferInfo oobUboInfo { frame.oobUbo.get(), 0, VK_WHOLE_SIZE };
         VkDescriptorBufferInfo valleyUboInfo { frame.valleyUbo.get(), 0, VK_WHOLE_SIZE };
         VkWriteDescriptorSet writes[6]{};
+        VkDescriptorImageInfo cloudInfo{ s->cloudSampler.get(), s->cloudView.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+        VkWriteDescriptorSet cloudWrites[2]{};
+        for (int i = 4; i < 6; ++i) {
+            cloudWrites[i - 4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            cloudWrites[i - 4].dstSet = i == 4 ? frame.edgeSet : frame.oobSet; cloudWrites[i - 4].dstBinding = 3; cloudWrites[i - 4].descriptorCount = 1;
+            cloudWrites[i - 4].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            cloudWrites[i - 4].pImageInfo = &cloudInfo;
+        }
+        vkUpdateDescriptorSets(s->device, 2, cloudWrites, 0, nullptr);
+        VkDescriptorImageInfo resultInfo{s->cloudResultSampler.get(), s->cloudResultView.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+        VkWriteDescriptorSet resultWrite{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+        resultWrite.dstSet = frame.oobSet; resultWrite.dstBinding = 5; resultWrite.descriptorCount = 1;
+        resultWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; resultWrite.pImageInfo = &resultInfo;
+        vkUpdateDescriptorSets(s->device, 1, &resultWrite, 0, nullptr);
         writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         writes[0].dstSet = frame.edgeSet; writes[0].dstBinding = 0; writes[0].descriptorCount = 1;
         writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -475,12 +641,18 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
         cb.attachmentCount = 1; cb.pAttachments = &cba;
 
-        auto make_pipeline = [&](VkShaderModule vmod, VkShaderModule fmod, mc2vk::OwnedPipeline& out, std::string_view name) -> bool {
+        VkDynamicState dynamicStates[] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+        VkPipelineDynamicStateCreateInfo dynamic{VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};
+        dynamic.dynamicStateCount = 2; dynamic.pDynamicStates = dynamicStates;
+        auto make_pipeline = [&](VkShaderModule vmod, VkShaderModule fmod, mc2vk::OwnedPipeline& out, std::string_view name, VkBool32 resolve = VK_FALSE) -> bool {
             VkPipelineShaderStageCreateInfo stages[2]{};
             stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
             stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = vmod; stages[0].pName = "main";
             stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
             stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = fmod; stages[1].pName = "main";
+            VkSpecializationMapEntry entry{0, 0, sizeof(resolve)};
+            VkSpecializationInfo specialization{1, &entry, sizeof(resolve), &resolve};
+            if (fmod == s->oobFrag.get()) stages[1].pSpecializationInfo = &specialization;
             VkGraphicsPipelineCreateInfo gp{};
             gp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
             gp.stageCount = 2; gp.pStages = stages;
@@ -490,8 +662,9 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
             gp.pRasterizationState = &rs;
             gp.pMultisampleState = &ms;
             gp.pColorBlendState = &cb;
+            gp.pDynamicState = &dynamic;
             gp.layout = s->playout.get();
-            gp.renderPass = s->rpass.get();
+            gp.renderPass = cba.blendEnable ? s->rpass.get() : s->cloudPass.get();
             gp.subpass = 0;
             if (!mc2vk::create(out, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
                 vlog("vkCreateGraphicsPipelines failed."); return false;
@@ -502,6 +675,9 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         if (!make_pipeline(s->edgeVert.get(), s->edgeFrag.get(), s->edgePipe, "postfog.edgePipe")) return false;
         if (!make_pipeline(s->oobVert.get(), s->oobFrag.get(), s->oobPipe, "postfog.oobPipe")) return false;
         if (!make_pipeline(s->edgeVert.get(), s->valleyFrag.get(), s->valleyPipe, "postfog.valleyPipe")) return false;
+        if (!make_pipeline(s->oobVert.get(), s->oobFrag.get(), s->cloudResolvePipe, "postfog.cloudResolvePipe", VK_TRUE)) return false;
+        cba.blendEnable = VK_FALSE;
+        if (!make_pipeline(s->oobVert.get(), s->oobFrag.get(), s->cloudPipe, "postfog.cloudPipe")) return false;
     }
 
     {
@@ -678,7 +854,28 @@ bool gosPostProcess::runVkPostFogNative()
     using clk = std::chrono::steady_clock;
     const clk::time_point t0 = clk::now();
 
-    // ---- UBOs (values IDENTICAL to the GL runEdgeFog()/runFogOob() uploads). ----
+    // These descriptor sets belong to the retired frame slot. Borrow the sky
+    // image rather than allocating another copy for horizon colour.
+    VkDescriptorImageInfo horizon{};
+    const bool haveHorizon = mc2_vk_sky_sample_info(&horizon) != 0;
+    if (!horizon.imageView) return false;
+    const float horizonYaw = haveHorizon ? skyYaw_ : std::numeric_limits<float>::quiet_NaN();
+    VkWriteDescriptorSet horizonWrites[2]{};
+    for (int i = 0; i < 2; ++i) {
+        auto& write = horizonWrites[i];
+        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.dstSet = i == 0 ? frame.edgeSet : frame.oobSet;
+        write.dstBinding = 4; write.descriptorCount = 1;
+        write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        write.pImageInfo = &horizon;
+    }
+    vkUpdateDescriptorSets(s->device, 2, horizonWrites, 0, nullptr);
+
+    // ---- UBOs ----
+    EnvironmentUBO environment;
+    mc2::environment::fillGpu(visualTuning_environment(), mc2SceneLightScale(), environment,
+        eye ? eye->currentLighting() : mc2::lighting::LightingState{},
+        eye ? eye->bakeReferenceLighting() : mc2::lighting::LightingState{});
     const float animTime = SmokeMode::fixedTimestepEnabled()
                                ? static_cast<float>(SmokeMode::fixedClockSeconds())
                                : static_cast<float>(SDL_GetTicks()) / 1000.0f;
@@ -700,7 +897,21 @@ bool gosPostProcess::runVkPostFogNative()
         p.u_horizonClampEnabled = fogHorizonClampEnabled_ ? 1 : 0;
         p.u_horizonFadeStartSin = fogHorizonFadeStartSin_;
         p.u_horizonFadeEndSin   = fogHorizonFadeEndSin_;
-        p.u_time = animTime;
+        p.u_time = horizonYaw;
+        p.u_cloudSea[0] = waterElevation_ + cloudSeaAltitude_;
+        p.u_cloudSea[1] = cloudSeaThickness_;
+        p.u_cloudSea[2] = cloudSeaBillow_;
+        p.u_cloudSea[3] = static_cast<float>(mc2::options::current().cloudSeaQuality);
+        std::memcpy(p.u_cloudSun, environment.sunDirLive, 3 * sizeof(float));
+        const auto skyRadiance = mc2::environment::skyRadianceScale(visualTuning_environment());
+        p.u_cloudSun[3] = skyRadiance[2];
+        std::memcpy(p.u_cloudLight, environment.sunLive, sizeof(p.u_cloudLight));
+        std::memcpy(p.u_cloudAmbient, environment.ambLive, sizeof(p.u_cloudAmbient));
+        p.u_cloudMotion[0] = static_cast<float>(SmokeMode::fixedTimestepEnabled()
+            ? SmokeMode::fixedClockSeconds() : SDL_GetTicks64() * 0.001);
+        p.u_cloudMotion[1] = mapHalfExtent_;
+        p.u_cloudMotion[2] = skyRadiance[0];
+        p.u_cloudMotion[3] = skyRadiance[1];
         if (void* m = frame.oobUbo.map()) {
             std::memcpy(m, &p, sizeof(p));
             frame.oobUbo.unmap();
@@ -747,9 +958,49 @@ bool gosPostProcess::runVkPostFogNative()
     if (!cb) { setFallback("record_failed"); s->disabled = true; return false; }
     mc2vk::postchain::addTicket(&frame.ticket);
 
+    if (!s->cloudUploaded) {
+        VkImageMemoryBarrier b{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+        b.image = s->cloudImg.get(); b.srcQueueFamilyIndex = b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        b.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, kCloudMips, 0, 1};
+        b.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; b.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; b.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &b);
+        VkBufferImageCopy copies[kCloudMips]{};
+        VkDeviceSize offset = 0; uint32_t n = kCloudTex;
+        for (int m = 0; m < kCloudMips; ++m, n /= 2) {
+            copies[m].bufferOffset = offset; copies[m].imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, static_cast<uint32_t>(m), 0, 1};
+            copies[m].imageExtent = {n, n, 1};
+            offset += static_cast<VkDeviceSize>(n) * n * sizeof(uint16_t);
+        }
+        vkCmdCopyBufferToImage(cb, s->cloudUpload.get(), s->cloudImg.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, kCloudMips, copies);
+        b.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; b.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        b.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; b.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &b);
+        s->cloudUploaded = true;
+    }
+
     // Fog blends over the shadowed scene inside the chain's render pass; depth is already in the sampleable layout (read once for the chain).
-    mc2vk::postchain::beginPass(s->rpass.get(), s->fb.get(), static_cast<uint32_t>(s->width), static_cast<uint32_t>(s->height));
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Post.Fog");
+    const bool cloudDeck = fog.oob && mc2::options::current().cloudSeaQuality != 0;
+    auto viewport = [&](uint32_t w, uint32_t h) {
+        VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
+        VkRect2D sc{{0, 0}, {w, h}};
+        vkCmdSetViewport(cb, 0, 1, &vp); vkCmdSetScissor(cb, 0, 1, &sc);
+    };
+    if (cloudDeck) {
+        auto& chain = mc2vk::postchain::chain();
+        if (chain.rpOpen) { vkCmdEndRenderPass(cb); chain.rpOpen = false; }
+        VkRenderPassBeginInfo begin{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+        begin.renderPass = s->cloudPass.get(); begin.framebuffer = s->cloudFb.get();
+        begin.renderArea = {{0, 0}, {s->cloudWidth, s->cloudHeight}};
+        vkCmdBeginRenderPass(cb, &begin, VK_SUBPASS_CONTENTS_INLINE);
+        viewport(s->cloudWidth, s->cloudHeight);
+        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->cloudPipe.get());
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &frame.oobSet, 0, nullptr);
+        vkCmdDraw(cb, 3, 1, 0, 0);
+        vkCmdEndRenderPass(cb);
+    }
+    mc2vk::postchain::beginPass(s->rpass.get(), s->fb.get(), static_cast<uint32_t>(s->width), static_cast<uint32_t>(s->height));
+    viewport(s->width, s->height);
     const auto fogDraws = fog.record([&](RenderCore::vulkan::PostprocessSubPassId pass) {
         if (pass==RenderCore::vulkan::PostprocessSubPassId::ValleyFog) {
             MC2_VK_GPU_SCOPE(valleyScope, cb, "VKIsl.Post.ValleyFog");
@@ -761,7 +1012,7 @@ bool gosPostProcess::runVkPostFogNative()
             return;
         }
         const bool edge=pass==RenderCore::vulkan::PostprocessSubPassId::EdgeFog;
-        const auto pipeline=edge ? s->edgePipe.get() : s->oobPipe.get();
+        const auto pipeline=edge ? s->edgePipe.get() : cloudDeck ? s->cloudResolvePipe.get() : s->oobPipe.get();
         const auto descriptor=edge ? frame.edgeSet : frame.oobSet;
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &descriptor, 0, nullptr);

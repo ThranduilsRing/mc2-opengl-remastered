@@ -176,6 +176,9 @@ public:
     float atmoFalloff_   = 8e-4f;      // height falloff per wu
     float atmoSunScatter_ = 0.35f;     // sun in-scatter strength (High only)
     float atmoAnisotropy_ = 0.55f;     // Henyey-Greenstein g
+    float cloudSeaAltitude_ = 0.0f; // deck base in world units relative to water
+    float cloudSeaThickness_ = 1400.0f; // crown height above the base
+    float cloudSeaBillow_ = 0.0f;      // 0 rolling bank, 1 cumulus
 
     // Valley fog (ground-fog-4): low-lying banks whose top is the regional low ground + thickness, one pass before the edge
     // fog. Per-mission via visual_tuning valleyFog* keys (thickness 0 = none); the player's ValleyFog option picks Off / Low / High.

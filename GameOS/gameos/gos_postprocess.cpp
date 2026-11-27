@@ -51,7 +51,10 @@ void gosPostProcess::setSkyNumber(int skyNumber)
 
     const RenderCore::IblHdriSet& hdriSet =
         RenderCore::lookupHdriForSkyNumber(skyNumber);
-    const char* newPath = hdriSet.exrPath;
+    // Optional mod photo: data/hdr/skyNN.exr (or its cooked .ktx2 sidecar).
+    // Without that source the decoder bakes the mission's procedural row.
+    char newPath[64];
+    std::snprintf(newPath, sizeof(newPath), "data/hdr/sky%02d.exr", skyNumber);
 
     // Skip reload if the path hasn't changed (same mission reloaded, etc.).
     if (std::strncmp(hdriCurrentPath_, newPath, sizeof(hdriCurrentPath_)) == 0)
@@ -111,7 +114,7 @@ const HdriCpuImage* gos_GetHdriCpuImage()
 void gosPostProcess::ensureDefaultSky()
 {
     if (!hdriEnabled_ || hdriCurrentPath_[0] || skyNumber_ >= 1) return;
-    const char* path = "data/hdr/DaySkyHDRI063B_4K.exr";
+    const char* path = "data/hdr/sky01.exr";
     // Remember the attempt too: a missing menu sky must not retry every frame.
     std::strncpy(hdriCurrentPath_, path, sizeof(hdriCurrentPath_) - 1);
     loadHdri(path, &hdriBakedSunAz_, &hdriBakedSunValid_);

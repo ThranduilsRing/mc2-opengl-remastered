@@ -4,6 +4,39 @@
 #include <initializer_list>
 #include <limits>
 
+TEST_CASE("fog_policy/sky rays stay untouched by outside-map fog") {
+    for (float sky : {0.0f, 0.001f, 0.2f, 1.0f})
+        CHECK(mc2FogGroundHorizon(sky) == 0);
+    CHECK(mc2FogGroundHorizon(-0.01f) == doctest::Approx(0.5));
+    CHECK(mc2FogGroundHorizon(-0.02f) == 1);
+    CHECK(mc2FogGroundHorizon(-1.0f) == 1);
+}
+
+TEST_CASE("fog_policy/cloud sea never covers the playable map") {
+    for (float half : {3200.0f, 6400.0f, 9600.0f})
+        for (float m : {0.0f, 0.5f * half, half - 1500.0f, half - 1000.0f})
+            CHECK(mc2CloudSeaGuard(m, half) == 0);
+    CHECK(mc2CloudSeaGuard(6400.0f - 700.0f, 6400.0f) == 1);
+    CHECK(mc2CloudSeaGuard(20000.0f, 6400.0f) == 1);
+}
+
+TEST_CASE("fog_policy/cloud sea dissolves border water continuously before the mesh ends") {
+    for (float half : {3200.0f, 6400.0f, 9600.0f})
+        for (float wob : {-1000.0f, 0.0f, 1000.0f})
+            for (float aa : {0.0f, 40.0f, 5000.0f}) {
+                CHECK(mc2CloudSeaReplace(half - 1000.0f, wob, half, aa) == 0); // playable map untouched
+                CHECK(mc2CloudSeaReplace(half, wob, half, aa) == 1); // fully replaced before the rectangular mesh ends
+                CHECK(mc2CloudSeaReplace(half + 200.0f, wob, half, aa) == 1);
+                float previous = 0;
+                for (float m = half - 1000.0f; m < half + 200.0f; m += 10.0f) {
+                    const float r = mc2CloudSeaReplace(m, wob, half, aa);
+                    CHECK(r >= previous);
+                    CHECK(r - previous < 0.06f);
+                    previous = r;
+                }
+            }
+}
+
 TEST_CASE("fog_policy/source distances scale once without changing clipping") {
     const float sourceStart = 50000, maxClip = 50000;
     for (int load = 0; load < 20; ++load) {

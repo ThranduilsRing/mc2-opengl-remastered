@@ -1196,6 +1196,8 @@ long GameCamera::activate (void)
 	// The sky is the HDRI pass (GameAdapters::Sky); there is no skybox actor any more.
 	// HDRI-SKY-NUMBER-1: swap the HDRI equirect sky to the mood-appropriate
 	// asset for this mission's sky number (IblHdriRegistry mapping).
+	const auto skyLighting = currentLighting();
+	gos_SetTerrainLightDir(skyLighting.sunDir[0], skyLighting.sunDir[1], skyLighting.sunDir[2]);
 	GameAdapters::Sky::setSkyNumber(static_cast<int>(mission->theSkyNumber));
 
 	// DEBUG-STATE-ASSETS: record sky number for per-mission asset block in JSON dump.

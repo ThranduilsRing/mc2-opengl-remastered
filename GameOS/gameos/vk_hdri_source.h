@@ -29,11 +29,12 @@ inline bool hdriFromCpu(VkPhysicalDevice phys, VkFormat& fmt, std::vector<std::v
     if (img->levels.size() != img->dims.size()) { reason = "level / size count mismatch"; return false; }
     const auto& [w0, h0] = img->dims[0];
     if (w0 <= 0 || h0 <= 0 || w0 > 16384 || h0 > 16384) { reason = "bad base size"; return false; }
+    if (!img->cubemap) { reason = "sky must be baked to a cubemap"; return false; }
     if (img->format == HdriCpuImage::Format::Rgba16f) {
         for (size_t i = 0; i < img->levels.size(); ++i) {
             const int lw = (w0 >> i) > 0 ? (w0 >> i) : 1, lh = (h0 >> i) > 0 ? (h0 >> i) : 1;
             const auto& [dw, dh] = img->dims[i];
-            if (dw != lw || dh != lh || img->levels[i].size() != static_cast<size_t>(lw) * lh * 8) {
+            if (dw != lw || dh != lh || img->levels[i].size() != static_cast<size_t>(lw) * lh * 8 * 6) {
                 reason = "RGBA16F level does not match the mip chain"; return false;
             }
         }

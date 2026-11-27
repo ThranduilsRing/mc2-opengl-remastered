@@ -243,6 +243,8 @@ TEST_CASE("rt frame rebuild barrier: upload and compute inputs plus the previous
     CHECK((b.srcStage & up.srcStage) == up.srcStage);
     CHECK((b.srcStage & kStageAsBuild) != 0);
     CHECK((b.srcAccess & kAccessAsWrite) != 0);
+    CHECK((b.srcStage & kStageFragmentShader) != 0);
+    CHECK((b.srcAccess & kAccessAsRead) != 0);
     CHECK(b.dstStage == up.dstStage);
     CHECK(b.dstAccess == up.dstAccess);
 }

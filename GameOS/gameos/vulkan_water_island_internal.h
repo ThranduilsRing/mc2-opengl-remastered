@@ -21,6 +21,7 @@
 #include "vk_texture_residency.h"
 #include "vk_island_util.h"
 #include "vk_hdri_source.h"
+#include "vulkan_sky_island.h"
 #include "vk_native_producers.h"   // STEP 3.4P: native compute producers
 #include "vulkan_context.h"
 #include "vk_vegetation_ground.h"
@@ -241,6 +242,7 @@ struct WaterIsland : mc2vk::IslandState {
     VkImageView maskView = VK_NULL_HANDLE;
     bool hdriSourceReal=false,shHSourceReal=false,shMSourceReal=false;
     mc2vk::ResidentTextureRef hdriTexture;
+    VkImageView sharedSkyView = VK_NULL_HANDLE;
     mc2vk::OwnedSampler   hdriSampler;
     float                 sampBias = 0.0f;   // mip bias hdriSampler was built with
     mc2vk::ResidentTextureRef shHTexture;
