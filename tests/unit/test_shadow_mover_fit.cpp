@@ -123,7 +123,7 @@ TEST_CASE("mover coverage: packed intervals include receivers behind every caste
     CHECK(sizeof(frame) <= 16384); // Vulkan's minimum maxUniformBufferRange
 }
 
-TEST_CASE("mover fit: footprint zoom bands keep world texel phase across yaw and pan") {
+TEST_CASE("mover fit: continuous zoom keeps world texel phase across yaw and pan") {
     const auto basis=lightBasis(normalized({1,1,1}));
     const std::array bounds{MoverSphere{{-5000,-5000,0},200},MoverSphere{{5000,5000,800},200}};
     const Vec3 point=toLight(basis,{123,456,0});
@@ -136,32 +136,45 @@ TEST_CASE("mover fit: footprint zoom bands keep world texel phase across yaw and
         const float required=region.radius;
         region.radius=moverRadiusBand(required,band);
         const auto reference=fitMoverWindow(bounds,basis,0,4096,region);
-        if (previous && previous!=band) {
-            CHECK(required>previous);
-            CHECK(band==2*previous);
-        }
+        CHECK(band==required);
+        if (previous) CHECK(band / previous < 1.04f);
         previous=band;
         // A 90-degree yaw and pan use the same world lattice within this band.
         const float yawRows[16]{0,1/a,0,0.01f, -1/a,0,0,0.02f, 0,0,0,0.5f, 0,0,0,1};
         auto rotated=moverGroundFootprint(yawRows,0,5000,{0.02f*a,-0.01f*a,0});
         rotated.radius=moverRadiusBand(rotated.radius,band);
         const auto window=fitMoverWindow(bounds,basis,0,4096,rotated);
-        REQUIRE(window.texelWorld==reference.texelWorld);
+        REQUIRE(window.texelWorld==doctest::Approx(reference.texelWorld).epsilon(0.00001));
         for (int axis=0;axis<2;++axis) {
             const float p=axis?point.y:point.x;
             const float u=(p-(axis?reference.ly0:reference.lx0))/reference.texelWorld;
             const float v=(p-(axis?window.ly0:window.lx0))/window.texelWorld;
-            CHECK(u-std::floor(u)==doctest::Approx(v-std::floor(v)).epsilon(0.002));
+            CHECK(std::abs((u-v)-std::round(u-v))<0.002f);
         }
         CHECK(window.dMin==reference.dMin); CHECK(window.dMax==reference.dMax);
     }
     for (int radius=3000;radius>=300;radius-=10) {
-        const float old=band;
         moverRadiusBand(static_cast<float>(radius),band);
-        if (band!=old) {
-            CHECK(radius<old*0.5f*0.85f);
-            CHECK(moverRadiusBand(static_cast<float>(radius)*1.05f,band)==band);
-        }
+        CHECK(band==static_cast<float>(radius));
+    }
+}
+
+TEST_CASE("mover fit: whole map coordinates retain local caster depth precision") {
+    const auto basis=lightBasis(normalized({1,1,1}));
+    for (float offset : {0.0f, 16384.0f, -16384.0f}) {
+        const std::array casters{MoverSphere{{offset,offset,80},24}};
+        const auto window=fitMoverWindow(casters,basis,0,4096,{{offset,offset,0},400});
+        CHECK(window.dMax-window.dMin < 256.0f);
+        float matrix[16]; windowMatrix(basis,window,matrix);
+        const auto top=applyMatrix(matrix,casters[0].center);
+        const auto ground=applyMatrix(matrix,shadowEnd(casters[0],basis.toward,0));
+        CHECK(top.z > 0.0f); CHECK(top.z < 1.0f);
+        CHECK(ground.z > 0.0f); CHECK(ground.z < 1.0f);
+    }
+    float band=0;
+    for (float boundary : {512.0f,1024.0f,2048.0f,4096.0f,8192.0f,16384.0f}) {
+        const float before=moverRadiusBand(boundary-0.01f,band);
+        CHECK(moverRadiusBand(boundary+0.01f,band)/before < 1.001f);
     }
 }
 

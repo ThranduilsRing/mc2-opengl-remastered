@@ -215,13 +215,7 @@ bool MoverShadowState::prepare(uint64_t epoch, int mapSide, const float cameraRo
         const auto focus = eye ? eye->getPosition() : glm::vec3(0.0f);
         auto region=moverGroundFootprint(cameraRows,ground_,halfMap,{focus.x,focus.y,focus.z});
         region.radius=moverRadiusBand(region.radius,radiusBand_);
-        // A map-sized caster bound is conservative for every mission object;
-        // never refit depth to the current visible/animated caster set.
-        const float casterRadius=halfMap;
-        std::array<MoverSphere,8> depthBounds;
-        for (int c=0;c<8;++c) depthBounds[c]={{(c&1)?halfMap:-halfMap,
-            (c&2)?halfMap:-halfMap,(c&4)?heightMax_+casterRadius:ground_},casterRadius};
-        const Window window=fitMoverWindow(depthBounds,basis,ground_,mapSide,region);
+        const Window window=fitMoverWindow(spheres_,basis,ground_,mapSide,region);
         extent_=window.texelWorld*mapSide;
         windowMatrix(basis,window,frame_.matrix);
         frame_.params[0]=window.texelWorld; frame_.params[1]=1.0f/(window.dMax-window.dMin);
