@@ -538,6 +538,26 @@ TEST_CASE("FileFamilyContract/ABL truncation and oversized reads never reach the
 	CHECK(logged.find("[ABL_FILE_OPEN_BAD]") != std::string::npos);
 }
 
+TEST_CASE("MPJoin/ABL garbage truncation and oversized requests stay inside the image") {
+    AblRamCallbacks callbacks;
+    AblReadLog log;
+    for (int size = 1; size <= 64; ++size) {
+        std::string bytes(size, '\xff');
+        bytes[size / 2] = '\0';
+        File ram;
+        REQUIRE(ram.open(bytes.data(), size) == NO_ERR);
+        ABLFile file;
+        file.set(&ram);
+        struct { unsigned char bytes[8]{}; unsigned guard = 0x12345678; } out;
+        file.readInt();
+        file.readString(out.bytes, sizeof(out.bytes));
+        CHECK(file.read(out.bytes, LONG_MAX) == 0);
+        CHECK(file.read(nullptr, 1) == 0);
+        CHECK(out.guard == 0x12345678);
+        CHECK(ram.getLogicalPosition() <= ram.getLength());
+    }
+}
+
 // FC9..FC11 -- V1 resolver conformance corpus (tests/fixtures/vfs_resolution.json).
 //
 // One specification drives three harnesses: this engine ladder, the editor

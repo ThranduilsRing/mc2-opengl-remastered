@@ -21,6 +21,33 @@ if(NOT OUT OR NOT SRC_DIR)
     message(FATAL_ERROR "GenerateBuildFingerprint.cmake requires -DOUT=... -DSRC_DIR=...")
 endif()
 
+# The legacy simulation still crosses the mc2_sim link boundary (movers,
+# appearance poses, terrain and ABL). Hash its enclosing source trees rather
+# than trusting a manually bumped version or only the small mc2_sim target.
+file(GLOB_RECURSE _sim_inputs RELATIVE "${SRC_DIR}"
+    "${SRC_DIR}/code/*.cpp" "${SRC_DIR}/code/*.h" "${SRC_DIR}/code/*.hpp"
+    "${SRC_DIR}/code/*.inl" "${SRC_DIR}/code/*.inc"
+    "${SRC_DIR}/mclib/*.cpp" "${SRC_DIR}/mclib/*.h" "${SRC_DIR}/mclib/*.hpp"
+    "${SRC_DIR}/mclib/*.inl" "${SRC_DIR}/mclib/*.inc"
+    "${SRC_DIR}/GameOS/include/*.h" "${SRC_DIR}/GameOS/include/*.hpp"
+    "${SRC_DIR}/3rdparty/detmath/*")
+list(SORT _sim_inputs)
+set(_sim_manifest "${CMAKE_HOST_SYSTEM_NAME}\n")
+foreach(_input IN LISTS _sim_inputs)
+    file(SHA256 "${SRC_DIR}/${_input}" _digest)
+    string(APPEND _sim_manifest "${_input}:${_digest}\n")
+endforeach()
+string(SHA256 _sim_hash "${_sim_manifest}")
+get_filename_component(_generated_dir "${OUT}" DIRECTORY)
+set(_sim_header "#pragma once\n#define MC2_SIM_CODE_HASH \"${_sim_hash}\"\n")
+set(_sim_out "${_generated_dir}/sim_code_identity.h")
+if(EXISTS "${_sim_out}")
+    file(READ "${_sim_out}" _old_sim_header)
+endif()
+if(NOT _old_sim_header STREQUAL _sim_header)
+    file(WRITE "${_sim_out}" "${_sim_header}")
+endif()
+
 # MC2_FINGERPRINT_FREEZE=1 (set by tools/tidy/run_tidy_safe.py while it proves object identity): keep the existing header. A mechanical
 # rewrite dirties the tree, which would change the dirty flag and build time compiled into every TU that embeds them and read as a false
 # object difference.

@@ -319,6 +319,8 @@ def test_generated_identity_commit_dirty_and_noop(tmp_path):
         return cpp.read_text()
 
     clean = generate()
+    sim = out.with_name("sim_code_identity.h")
+    original_sim = sim.read_text()
     sha = _identity_run("git", "rev-parse", "HEAD", cwd=src)[:12]
     assert f'const char MC2_BUILD_GIT_SHA[] = "{sha}";' in clean
     assert "const int MC2_BUILD_GIT_DIRTY = 0;" in clean
@@ -333,10 +335,17 @@ def test_generated_identity_commit_dirty_and_noop(tmp_path):
     assert times == (out.stat().st_mtime_ns, cpp.stat().st_mtime_ns)
     _identity_run(*commit, "--allow-empty", "-m", "identity only", cwd=src)
     changed = generate()
+    assert sim.read_text() == original_sim  # Git metadata is not simulation code.
     assert changed != clean
     assert _identity_run("git", "rev-parse", "HEAD", cwd=src)[:12] in changed
     marker.write_text("// changed\n")
     dirty = generate()
+    assert sim.read_text() != original_sim
+    changed_sim = sim.read_text()
+    header = src / "code/sim.h"
+    header.write_text("// simulation dependency\n")
+    generate()
+    assert sim.read_text() != changed_sim
     assert "const int MC2_BUILD_GIT_DIRTY = 1;" in dirty
     assert "#if 1" in dirty
     assert "|1|" in dirty

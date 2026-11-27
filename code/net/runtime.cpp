@@ -2,6 +2,7 @@
 #include "user_paths.h"
 #ifndef MC2_NET_RUNTIME_TESTS
 #include "../../mclib/file.h"
+#include "../../GameOS/gameos/gos_render.h"
 #endif
 #include "../../mclib/vfs.h"
 #include <thread>
@@ -42,6 +43,10 @@ MissionOrigin origin = MissionOrigin::None;
 bool missionRunning = false, coopOpen = false;
 bool matchDataMounted = false;
 std::vector<save::Bytes> lobbyPending;
+std::vector<vfs::Entry> lobbyEntries;
+SimFiles lobbyFiles;
+std::size_t lobbyReadIndex = 0, lobbyReadBytes = 0;
+bool lobbyReading = false;
 std::chrono::steady_clock::time_point lobbyBegan;
 std::unique_ptr<Lockstep> gate;
 std::vector<sim::ObjectRef> roster;
@@ -77,28 +82,43 @@ save::Digest executableHash() {
 #endif
     return simCodeHash();
 }
-SimFiles readSimFiles() {
+std::vector<vfs::Entry> simEntries() {
 #ifdef MC2_NET_RUNTIME_TESTS
-    return {{"data/missions/gamesys.fit", {}}};
+    vfs::Entry entry; entry.key = "data/missions/gamesys.fit";
+    return {entry};
 #else
+    auto entries = vfs::enumerate("data", {}, true);
+    std::erase_if(entries, [](const auto& entry) {
+        return !simDataPath(entry.key) || (entry.key.starts_with("data/defs/chassis/") &&
+            !ModOwnerHasCapability(entry.key.c_str(), "package_chassis"));
+    });
+    return entries;
+#endif
+}
+void readSimFile(const vfs::Entry& entry, SimFiles& files, std::size_t& total) {
+#ifdef MC2_NET_RUNTIME_TESTS
+    (void)total;
+    files.emplace(entry.key, save::Bytes{});
+#else
+    graphics::pump_loading_events();
+    File file;
+    if (file.open(entry.key.c_str()) != 0) fail("cannot open simulation data: " + entry.key);
+    const auto size = file.fileSize();
+    total += size;
+    if (size > save::maxFileBytes || total > 256 * 1024 * 1024 || files.size() >= 8192)
+        fail("simulation data exceeds transfer limit");
+    save::Bytes bytes(size);
+    if (size && file.read(bytes.data(), static_cast<long>(size)) != static_cast<long>(size))
+        fail("cannot read simulation data: " + entry.key);
+    files.emplace(entry.key, std::move(bytes));
+#endif
+}
+SimFiles readSimFiles() {
     SimFiles files;
     std::size_t total = 0;
-    for (const auto& entry : vfs::enumerate("data", {}, true)) {
-        if (!simDataPath(entry.key)) continue;
-        File file;
-        if (file.open(entry.key.c_str()) != 0) fail("cannot open simulation data: " + entry.key);
-        const auto size = file.fileSize();
-        total += size;
-        if (size > save::maxFileBytes || total > 256 * 1024 * 1024 || files.size() >= 8192)
-            fail("simulation data exceeds transfer limit");
-        save::Bytes bytes(size);
-        if (size && file.read(bytes.data(), static_cast<long>(size)) != static_cast<long>(size))
-            fail("cannot read simulation data: " + entry.key);
-        files.emplace(entry.key, std::move(bytes));
-    }
+    for (const auto& entry : simEntries()) readSimFile(entry, files, total);
     if (files.empty()) fail("simulation manifest is empty");
     return files;
-#endif
 }
 void clearMatchData() {
     matchDataMounted = false;
@@ -257,6 +277,9 @@ void endMission() {
     origin = MissionOrigin::None;
 }
 void closeLobby() {
+    lobbyReading = false;
+    lobbyEntries.clear(); lobbyFiles.clear();
+    lobbyReadIndex = lobbyReadBytes = 0;
     clearMatchData();
     lobbyTransport.reset();
     lobbyPending.clear();
@@ -286,13 +309,12 @@ void openLobby(bool host, std::string_view address, std::string_view mission) {
     try {
         if (enabled) throw std::runtime_error("MP mission already active");
         prepareLobbyDirectory();
-        Identity identity{executableHash(), {}, "lobby", 0};
-        auto files = readSimFiles();
-        identity.content = simDataHash(files);
-        identity.syncData = true;
-        lobbyIdentity = identity;
-        lobbyTransport = std::make_unique<Session>();
-        lobbyTransport->open(host, address, std::move(identity), std::move(files));
+        lobbyIdentity = Identity{executableHash(), {}, "lobby", 0};
+        lobbyIdentity.syncData = true;
+        lobbyEntries = simEntries();
+        if (lobbyEntries.empty()) fail("simulation manifest is empty");
+        endpoint = address;
+        lobbyReading = true;
         lobbyBegan = std::chrono::steady_clock::now();
     } catch (const std::exception& error) { lobby.error = error.what(); }
     catch (const SessionStopped&) { lobby.error = "MP content identity could not be read"; status = 0; }
@@ -302,6 +324,25 @@ void openLobby(bool host, std::string_view address, std::string_view mission) {
     }
 }
 void pumpLobby() {
+    if (lobbyReading) {
+        try {
+            // Keep cold content IO out of the button handler and yield between batches.
+            const auto end = (std::min)(lobbyReadIndex + 8, lobbyEntries.size());
+            while (lobbyReadIndex < end) readSimFile(lobbyEntries[lobbyReadIndex++], lobbyFiles, lobbyReadBytes);
+            if (lobbyReadIndex == lobbyEntries.size()) {
+                lobbyIdentity.content = simDataHash(lobbyFiles);
+                lobbyTransport = std::make_unique<Session>();
+                lobbyTransport->open(lobby.hosting, endpoint, lobbyIdentity, std::move(lobbyFiles));
+                lobbyReading = false;
+                lobbyEntries.clear();
+            }
+        } catch (const std::exception& error) { lobby.error = error.what(); }
+        catch (const SessionStopped&) { lobby.error = "MP content identity could not be read"; status = 0; }
+        if (!lobby.error.empty()) {
+            lobbyReading = false; lobbyEntries.clear(); lobbyFiles.clear();
+            lobbyTransport.reset(); restoreUserDirectory();
+        }
+    }
     if (!lobbyTransport || lobby.started) return;
     if (!matchDataMounted && lobbyTransport->dataReady()) useMatchData(*lobbyTransport, lobbyIdentity);
     for (const auto& packet : lobbyTransport->pump()) {
@@ -392,6 +433,7 @@ void beginMission(std::string_view mission, std::uint32_t seed) {
         session->missionLoading(true);
 #ifndef MC2_NET_RUNTIME_TESTS
         while (!session->dataReady()) {
+            graphics::pump_loading_events();
             if (!session->error().empty()) fail(session->error());
             if (std::chrono::steady_clock::now() - began >= std::chrono::seconds(600))
                 fail("simulation data sync timeout (600 seconds)");
@@ -615,6 +657,26 @@ void testUserDirectoryLifecycle() {
     SUBCASE("cancel and repeated cleanup and re-entry") {
         redirect(); closeLobby(); restored(); closeLobby(); restored();
         redirect(); closeLobby(); restored();
+    }
+    SUBCASE("lobby file IO is deferred and pending loads cancel or fail cleanly") {
+        executable = root / "fixture.exe";
+        std::ofstream(executable) << "fixture";
+        openLobby(true, "invalid", "mc2_01");
+        CHECK(lobby.error.empty());
+        CHECK(lobbyReading);
+        CHECK(lobbyReadIndex == 0);
+        CHECK(lobbyFiles.empty());
+        CHECK_FALSE(lobbyTransport);
+        closeLobby();
+        CHECK_FALSE(lobbyReading);
+        CHECK(lobbyEntries.empty());
+        restored();
+        openLobby(true, "invalid", "mc2_01");
+        pumpLobby();
+        CHECK_FALSE(lobby.error.empty());
+        CHECK_FALSE(lobbyReading);
+        CHECK_FALSE(lobbyTransport);
+        restored();
     }
     SUBCASE("replacement and both open catches") {
         redirect(); openLobby(true, "", "mc2_01");

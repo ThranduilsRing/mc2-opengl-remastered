@@ -132,7 +132,7 @@ int PacketFile::checkSumFile (void)
 	MemoryPtr fileMap = static_cast<MemoryPtr>(malloc(fileSize()));
 	read(fileMap,fileSize());
 
-	int sum = 0;
+	unsigned int sum = 0;
 	MemoryPtr curFileByte = fileMap;
 	for (unsigned int i=4;i<fileSize();i++,curFileByte++)
 	{
@@ -143,12 +143,13 @@ int PacketFile::checkSumFile (void)
 
 	seek (currentPosition);
 
-	return sum;
+	return static_cast<int>(sum);
 }
 
 //---------------------------------------------------------------------------
 long PacketFile::afterOpen (void)
 {
+    if (fileMode == READ && getLength() < 12) return PACKET_OUT_OF_RANGE;
 	if (!numPackets && getLength() >= 12)
 	{
 		int firstPacketOffset;
@@ -173,7 +174,8 @@ long PacketFile::afterOpen (void)
 
 		// The count comes from the file and sizes the seek table: it must describe a table that fits in the file (a mod packet file with a bad
 		// header used to overrun the table or fail an assert).
-		if (numPackets < 0 || 8LL + 4LL * numPackets > static_cast<long long>(getLength()))
+		if (firstPacketOffset < 8 || firstPacketOffset % 4 || numPackets < 0 ||
+            8LL + 4LL * numPackets > static_cast<long long>(getLength()))
 		{
 			// One line per process: a mod with many bad packet files must not flood the log, and a malformed file never stops the game.
 			MC2_LOG_ONCE(Io, Error, "[PACKET_HEADER_BAD] file={} packets={} bytes={} (the header claims more packets than the file holds; rejected)",
@@ -191,7 +193,15 @@ long PacketFile::afterOpen (void)
 		{
 			m_seekTable.resize(numPackets);
 			seek(sizeof(int)*2); //File Version & File Length
-			read(MemoryPtr(m_seekTable.data()),(numPackets*sizeof(int)));
+			if (read(MemoryPtr(m_seekTable.data()),(numPackets*sizeof(int))) != numPackets * sizeof(int))
+                return PACKET_OUT_OF_RANGE;
+
+            int previous = 8 + 4 * numPackets;
+            for (const auto entry : m_seekTable) {
+                const int offset = GetPacketOffset(entry);
+                if (offset < previous || static_cast<unsigned long>(offset) > getLength()) { numPackets = 0; m_seekTable.clear(); return PACKET_OUT_OF_RANGE; }
+                previous = offset;
+            }
 		}
 	}
 	
@@ -296,7 +306,8 @@ int PacketFile::readPacket (int packet, unsigned char *buffer)
 {
 	unsigned int result = 0;
 
-	if ((packet==-1) || (packet == currentPacket) || (seekPacket(packet) == NO_ERR))
+    if (packet == -1) packet = currentPacket;
+	if (seekPacket(packet) == NO_ERR)
 	{
 		if ((getStorageType() == STORAGE_TYPE_RAW) || (getStorageType() == STORAGE_TYPE_FWF))
 		{
@@ -389,7 +400,8 @@ int PacketFile::readPackedPacket (int packet, unsigned char *buffer)
 {
 	int result = 0;
 
-	if ((packet==-1) || (packet == currentPacket) || (seekPacket(packet) == NO_ERR))
+    if (packet == -1) packet = currentPacket;
+	if (seekPacket(packet) == NO_ERR)
 	{
 		if ((getStorageType() == STORAGE_TYPE_RAW) || (getStorageType() == STORAGE_TYPE_FWF))
 		{
@@ -441,13 +453,16 @@ int PacketFile::seekPacket (int packet)
 	
 	offset = readPacketOffset(packet, &packetType);
 
-	currentPacket = packet++;
+    const int selectedPacket = packet++;
+    currentPacket = -1;
+    packetUnpackedSize = 0;
 
 	if (packet == numPackets)
 		next = getLength();
 	else
 		next = readPacketOffset(packet);
 
+    if (offset < 8 + 4 * numPackets || next < offset || static_cast<unsigned long>(next) > getLength()) return PACKET_OUT_OF_RANGE;
 	packetSize = next-offset;
 
 	packetBase = offset;  // seek to beginning of packet
@@ -457,12 +472,16 @@ int PacketFile::seekPacket (int packet)
 	{
 		case STORAGE_TYPE_LZD:
 			// the first DWORD of a compressed packet is the unpacked length
+			if (packetSize < 4) return PACKET_OUT_OF_RANGE;
 			packetUnpackedSize = static_cast<unsigned int>(readInt());
+			if (packetUnpackedSize < 0 || packetUnpackedSize > 64 * 1024 * 1024) { packetUnpackedSize = 0; return PACKET_OUT_OF_RANGE; }
 			break;
 
 		case STORAGE_TYPE_ZLIB:
 			// the first DWORD of a compressed packet is the unpacked length
+			if (packetSize < 4) return PACKET_OUT_OF_RANGE;
 			packetUnpackedSize = static_cast<unsigned int>(readInt());
+			if (packetUnpackedSize < 0 || packetUnpackedSize > 64 * 1024 * 1024) { packetUnpackedSize = 0; return PACKET_OUT_OF_RANGE; }
 			break;
 
 		case STORAGE_TYPE_RAW:
@@ -477,8 +496,10 @@ int PacketFile::seekPacket (int packet)
 			return(BAD_PACKET_VERSION);
 	}
 
-	if (offset > 0)
+	if (offset > 0) {
+        currentPacket = selectedPacket;
 		return(NO_ERR);
+    }
 		
 	return (PACKET_OUT_OF_RANGE);
 }

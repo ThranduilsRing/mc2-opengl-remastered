@@ -157,14 +157,14 @@ TEST_CASE("net session handshake accepts only identical protocol/executable/cont
 }
 
 TEST_CASE("net session rejects changed heat profile content without data sync") {
-    CHECK(net::protocolVersion == 6);
+    CHECK(net::protocolVersion == 7);
     net::Identity local, remote;
     local.mission = "mc2_01";
     const save::Bytes heatFit{1, 20, 60, 0};
     auto modifiedHeatFit = heatFit; modifiedHeatFit[1] = 21;
-    local.content = net::contentIdentity(save::sha256(heatFit), false, true);
+    local.content = save::sha256(heatFit);
     remote = local;
-    remote.content = net::contentIdentity(save::sha256(modifiedHeatFit), false, true);
+    remote.content = save::sha256(modifiedHeatFit);
     CHECK(remote.content != local.content);
     CHECK(net::checkHello(net::hello(remote), local) == "content SHA-256 mismatch");
 }
@@ -324,17 +324,17 @@ TEST_CASE("net LOADED marker precedes immediate mission input") {
     }
 }
 
-TEST_CASE("net content identity excludes effective mounted art options") {
-    const save::Digest files{};
-    const auto high = net::contentIdentity(files, false, true);
-    CHECK(high == net::contentIdentity(files, false, true));
-    CHECK(high == net::contentIdentity(files, true, true));
-    CHECK(high == net::contentIdentity(files, false, false));
+TEST_CASE("net content identity changes with effective simulation bytes") {
+    const net::SimFiles files{{"data/objects/a.fit", {1}}};
+    auto changed = files;
+    changed.begin()->second[0] = 2;
+    CHECK(net::simDataHash(files) != net::simDataHash(changed));
 }
 
 TEST_CASE("net simulation manifest excludes cosmetics and rejects unsafe names") {
     for (const auto* path : {"data/missions/mc2_01.fit", "data/missions/warriors/a.abl",
-            "data/objects/compbas.csv", "data/defs/rules/heat.fit", "data/defs/units/core/a/chassisdef.fit"})
+            "data/objects/compbas.csv", "data/defs/rules/heat.fit", "data/defs/units/core/a/chassisdef.fit",
+            "data/defs/chassis/pack/a/chassisdef.fit"})
         CHECK(net::simDataPath(path));
     for (const auto* path : {"data/textures/hd.fit", "data/tgl/tree.fit", "data/defs/ui/theme.json",
             "mods.cfg", "options.cfg", "data/objects/../../x.csv", "data/objects/C:x.csv",
@@ -378,9 +378,33 @@ TEST_CASE("net simulation transfer rejects corrupt chunks and malformed packets"
     CHECK_THROWS(net::SimTransfer(true, {{"data/objects/../escape.csv", {}}}));
 }
 
+TEST_CASE("net simulation identical manifests exchange have need in bounded batches") {
+    net::SimFiles files;
+    for (unsigned i = 0; i < 300; ++i) files.emplace("data/objects/" + std::to_string(i) + ".fit", save::Bytes{1});
+    net::SimTransfer host(true, files), client(false, files);
+    auto packet = host.begin();
+    unsigned exchanges = 0;
+    while (!host.ready && exchanges < 10) {
+        ++exchanges;
+        REQUIRE(packet.size() <= net::maxPacketBytes);
+        auto reply = client.receive(packet);
+        REQUIRE(client.error.empty());
+        packet = host.receive(reply);
+        REQUIRE(host.error.empty());
+    }
+    CHECK(host.ready); CHECK(client.ready);
+    CHECK(exchanges == 4); // three batches and the final digest, rather than 301 round trips
+    CHECK(client.files == files);
+}
+
 TEST_CASE("net simulation match cache takes precedence and is released") {
     struct Cleanup { ~Cleanup() { vfs::clearMatchData(); } } cleanup;
-    vfs::setMatchData({{"data/objects/compbas.csv", {42}}}, net::simDataPath);
+    vfs::setMatchData({{"data/objects/compbas.csv", {42}},
+        {"data/defs/chassis/host/a/chassisdef.fit", {43}}}, net::simDataPath);
+    const auto chassis = vfs::enumerate("data/defs/chassis", ".fit", true);
+    REQUIRE(chassis.size() == 1);
+    CHECK(chassis.front().key == "data/defs/chassis/host/a/chassisdef.fit");
+    CHECK(chassis.front().mountName == "match-cache");
     const auto weapon = vfs::openRead("DATA\\OBJECTS\\COMPBAS.CSV");
     REQUIRE(weapon.pakBytes);
     CHECK(*weapon.pakBytes == save::Bytes{42});

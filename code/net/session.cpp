@@ -1,4 +1,5 @@
 #include "session.h"
+#include "sim_code_identity.h"
 #include <enet/enet.h>
 #include <charconv>
 #include <stdexcept>
@@ -31,9 +32,6 @@ std::string digestText(const save::Digest& digest) {
     std::string result;
     for (const auto byte : digest) { result += hex[byte >> 4]; result += hex[byte & 15]; }
     return result;
-}
-save::Digest contentIdentity(const save::Digest& files, bool, bool) {
-    return files;
 }
 save::Bytes hello(const Identity& identity) {
     save::Archive a;
@@ -84,6 +82,7 @@ bool simDataPath(std::string_view path) {
         {"data/terrain/", "|fit|pak|"},
         {"data/defs/rules/", "|fit|json|"},
         {"data/defs/units/", "|fit|json|"},
+        {"data/defs/chassis/", "|fit|"},
         {"data/defs/weapons/", "|fit|json|"},
         {"data/defs/armor/", "|fit|json|"},
         {"data/defs/equipment/", "|fit|csv|json|"},
@@ -98,11 +97,7 @@ bool simDataPath(std::string_view path) {
     return false;
 }
 save::Digest simCodeHash() {
-#ifdef _WIN32
-    constexpr std::string_view version = "mc2-lockstep-sim-1-windows";
-#else
-    constexpr std::string_view version = "mc2-lockstep-sim-1-linux";
-#endif
+    constexpr std::string_view version = MC2_SIM_CODE_HASH;
     return save::sha256(std::span(reinterpret_cast<const std::uint8_t*>(version.data()), version.size()));
 }
 save::Digest simDataHash(const SimFiles& files) {
@@ -132,8 +127,20 @@ SimTransfer::SimTransfer(bool host, SimFiles source) : files(std::move(source)),
     total_ = 0;
 }
 save::Bytes SimTransfer::begin() { return host_ ? next() : save::Bytes{}; }
+void SimTransfer::entryFields(save::Archive& a, Entry& entry) {
+    save::Bytes text(entry.name.begin(), entry.name.end());
+    a.sequence(text, 512); a(entry.size, entry.digest);
+    if (a.reading()) entry.name.assign(text.begin(), text.end());
+}
+void SimTransfer::prepareChunk() {
+    const auto& entry = needed_.front();
+    name_ = entry.name; size_ = entry.size; digest_ = entry.digest; offset_ = 0;
+    incoming_.clear();
+    if (!host_) incoming_.reserve(size_);
+}
 save::Bytes SimTransfer::next() {
-    const auto it = name_.empty() ? files.begin() : files.upper_bound(name_);
+    if (!needed_.empty()) { prepareChunk(); return chunk(); }
+    auto it = batchEnd_.empty() ? files.begin() : files.upper_bound(batchEnd_);
     if (it == files.end()) {
         phase_ = Phase::Finish;
         save::Archive a;
@@ -142,14 +149,15 @@ save::Bytes SimTransfer::next() {
         a(kind, digest);
         return a.bytes();
     }
-    const auto& [name, bytes] = *it;
-    name_ = name;
-    size_ = static_cast<std::uint32_t>(bytes.size()); offset_ = 0;
-    digest_ = save::sha256(bytes);
-    save::Bytes text(name_.begin(), name_.end());
+    batch_.clear();
+    for (; it != files.end() && batch_.size() < 128; ++it) {
+        const auto& [name, bytes] = *it;
+        batch_.push_back({name, static_cast<std::uint32_t>(bytes.size()), save::sha256(bytes)});
+        batchEnd_ = name;
+    }
     save::Archive a;
     auto kind = simEntry;
-    a(kind); a.sequence(text, 512); a(size_, digest_);
+    a(kind); a.sequence(batch_, 128, entryFields);
     phase_ = Phase::Request;
     return a.bytes();
 }
@@ -173,34 +181,45 @@ save::Bytes SimTransfer::receive(std::span<const std::uint8_t> packet) {
     a(kind);
     if (host_) {
         if (phase_ == Phase::Request && kind == simRequest) {
-            bool needed = false;
-            a(needed);
-            if (!a.finish()) return bad();
-            return needed ? chunk() : next();
+            save::Bytes needed;
+            a.sequence(needed, 128);
+            if (!a.finish() || needed.size() != batch_.size()) return bad();
+            for (std::size_t i = 0; i < needed.size(); ++i) {
+                if (needed[i] > 1) return bad();
+                if (needed[i]) needed_.push_back(batch_[i]);
+            }
+            return next();
         }
-        if (phase_ == Phase::Ack && kind == simAck && a.finish())
-            return offset_ == size_ ? next() : chunk();
+        if (phase_ == Phase::Ack && kind == simAck && a.finish()) {
+            if (offset_ != size_) return chunk();
+            needed_.pop_front();
+            return next();
+        }
         if (phase_ == Phase::Finish && kind == simAck && a.finish()) { ready = true; return {}; }
         return bad();
     }
     if (phase_ == Phase::Entry && kind == simEntry) {
-        save::Bytes text;
-        a.sequence(text, 512); a(size_, digest_);
-        std::string name(text.begin(), text.end());
-        if (!a.finish() || !simDataPath(name) || (!name_.empty() && name <= name_) ||
-            size_ > save::maxFileBytes || total_ + size_ > simTotalBytes || accepted_.size() >= 8192) return bad();
-        name_ = std::move(name); total_ += size_;
-        const auto local = files.find(name_);
-        bool needed = true;
-        if (local != files.end()) {
-            auto& [localName, bytes] = *local;
-            needed = save::sha256(bytes) != digest_;
-            if (!needed) accepted_.emplace(localName, std::move(bytes));
+        a.sequence(batch_, 128, entryFields);
+        if (!a.finish() || batch_.empty() || accepted_.size() + batch_.size() > 8192) return bad();
+        save::Bytes needed;
+        for (const auto& entry : batch_) {
+            if (!simDataPath(entry.name) || (!batchEnd_.empty() && entry.name <= batchEnd_) ||
+                entry.size > save::maxFileBytes || total_ + entry.size > simTotalBytes) return bad();
+            batchEnd_ = entry.name; total_ += entry.size;
+            const auto local = files.find(entry.name);
+            bool missing = true;
+            if (local != files.end()) {
+                auto& [name, bytes] = *local;
+                missing = bytes.size() != entry.size || save::sha256(bytes) != entry.digest;
+                if (!missing) accepted_.emplace(name, std::move(bytes));
+            }
+            needed.push_back(missing ? 1 : 0);
+            if (missing) needed_.push_back(entry);
         }
-        if (needed) { incoming_.clear(); incoming_.reserve(size_); phase_ = Phase::Chunk; }
+        if (!needed_.empty()) { prepareChunk(); phase_ = Phase::Chunk; }
         save::Archive reply;
         kind = simRequest;
-        reply(kind, needed);
+        reply(kind); reply.sequence(needed, 128);
         return reply.bytes();
     }
     if (phase_ == Phase::Chunk && kind == simChunk) {
@@ -210,7 +229,10 @@ save::Bytes SimTransfer::receive(std::span<const std::uint8_t> packet) {
         incoming_.insert(incoming_.end(), bytes.begin(), bytes.end());
         if (incoming_.size() == size_) {
             if (save::sha256(incoming_) != digest_) { error = "simulation data SHA-256 mismatch"; return {}; }
-            accepted_.emplace(name_, std::move(incoming_)); phase_ = Phase::Entry;
+            accepted_.emplace(name_, std::move(incoming_));
+            needed_.pop_front();
+            if (needed_.empty()) phase_ = Phase::Entry;
+            else prepareChunk();
         }
         return simControl(simAck);
     }

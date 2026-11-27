@@ -840,6 +840,8 @@ long File::read (unsigned long pos, MemoryPtr buffer, long length)
 
 	if (inRAM && fileImage)
 	{
+		if (!buffer || length < 0 || pos >= getLength()) return 0;
+		length = static_cast<long>(std::min<unsigned long>(length, getLength() - pos));
 		const char *readAddress = (reinterpret_cast<const char *>(fileImage))+pos;
 		memcpy(reinterpret_cast<char *>(buffer),readAddress,length);
 		return(length);
@@ -879,9 +881,7 @@ unsigned char File::readByte (void)
 
 	if (inRAM && fileImage)
 	{
-		const char *readAddress = reinterpret_cast<const char*>(fileImage)+logicalPosition;
-		memcpy(reinterpret_cast<char *>(&value),readAddress,sizeof(value));
-		logicalPosition += sizeof(value);
+		if (read(reinterpret_cast<MemoryPtr>(&value), sizeof(value)) != sizeof(value)) value = 0;
 	}
 	else if (fastFile)
 	{
@@ -915,9 +915,7 @@ short File::readWord (void)
 
 	if (inRAM && fileImage)
 	{
-		const char *readAddress = reinterpret_cast<const char*>(fileImage)+logicalPosition;
-		memcpy(reinterpret_cast<char *>((&value)),readAddress,sizeof(value));
-		logicalPosition += sizeof(value);
+		if (read(reinterpret_cast<MemoryPtr>(&value), sizeof(value)) != sizeof(value)) value = 0;
 	}
 	else if (fastFile)
 	{
@@ -957,9 +955,7 @@ int File::readInt(void)
 
 	if (inRAM && fileImage)	
 	{
-		const char *readAddress = reinterpret_cast<const char*>(fileImage)+logicalPosition;
-		memcpy(reinterpret_cast<char *>((&value)),readAddress,sizeof(value));
-		logicalPosition += sizeof(value);
+		if (read(reinterpret_cast<MemoryPtr>(&value), sizeof(value)) != sizeof(value)) value = 0;
 	}
 	else if (fastFile)
 	{
@@ -999,9 +995,7 @@ float File::readFloat( void )
 
 	if (inRAM && fileImage)	
 	{
-		const char *readAddress = reinterpret_cast<const char*>(fileImage)+logicalPosition;
-		memcpy(reinterpret_cast<char *>((&value)),readAddress,sizeof(value));
-		logicalPosition += sizeof(value);
+		if (read(reinterpret_cast<MemoryPtr>(&value), sizeof(value)) != sizeof(value)) value = 0;
 	}
 	else if (fastFile)
 	{
@@ -1065,6 +1059,8 @@ long File::read (MemoryPtr buffer, long length)
 	
 	if (inRAM && fileImage)
 	{
+		if (!buffer || length < 0 || logicalPosition >= getLength()) return 0;
+		length = static_cast<long>(std::min<unsigned long>(length, getLength() - logicalPosition));
 		const char *readAddress = reinterpret_cast<const char *>(fileImage)+logicalPosition;
 		memcpy(reinterpret_cast<char *>(buffer),readAddress,length);
 		logicalPosition += length;
