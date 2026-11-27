@@ -452,6 +452,7 @@ std::vector<CampaignMenuEntry> otherModCampaigns() {
 // Record the content choice in launcher_env.json (the game's own saved-settings file) and relaunch; the child mounts it before the menu.
 static bool commitRelaunch(std::string_view mod, std::string_view modBase, std::string_view modTexture, std::string_view deps,
                            std::string_view pendingKey, std::string_view pendingValue) {
+    if (!mc2::gate::get<"MC2_LAUNCHER_ENV_JSON">()) return false; // the child would never read the choice and would relaunch again
     settings["last_campaign"] = std::string(mod);
     settings["last_base"] = std::string(modBase);
     settings["tex_pack_mod"] = std::string(modTexture);
@@ -481,6 +482,8 @@ bool relaunchForCampaign(std::string_view key) {
 bool prepareCampaignRules(const mc2::rules::GameRules& rules, std::string_view fit) {
     const auto deps = mc2::mods::dependencies(activeModDeps(), rules.mods, mc2::mods::catalogue("mods"));
     if (deps == activeModDeps()) return true;
+    // Without the saved-settings file (harness runs) the child cannot mount other layers and would relaunch forever: start on the mounted ones.
+    if (!mc2::gate::get<"MC2_LAUNCHER_ENV_JSON">()) return true;
     commitRelaunch(activeModId(), {}, {}, deps, "start_campaign", fit);
     return false; // also refuse starting with stale layers when saving/relaunching failed
 }
