@@ -337,6 +337,8 @@ static bool saveNeedsOtherMod( FitIniFile& file, mc2::czstring saveFile )
 	// An older save names its packs only through the legacy rules migration (no Mods key): load it under the layers those rules need.
 	const auto rules = mc2::rules::readFit( file, mc2::rules::legacyCampaignMods );
 	const std::string layers = mc2::mods::dependencies( PlayerFrontEnd::loadModField( deps ), rules.mods, mc2::mods::catalogue( "mods" ) );
+	// A save from before the layer keys (no ActiveMod/ModDeps) ran under the current mod: only its packs can differ.
+	if ( !recorded ) return PlayerFrontEnd::relaunchForSave( true, PlayerFrontEnd::activeModId(), layers, saveFile );
 	return PlayerFrontEnd::relaunchForSave( recorded, PlayerFrontEnd::loadModField( mod ), layers, saveFile );
 }
 
