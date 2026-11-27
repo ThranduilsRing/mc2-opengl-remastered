@@ -66,7 +66,7 @@ float deckShape(vec2 xy, float lod)
 }
 
 // Mip level matching the pixel footprint at ray distance t (world units per texel at level 0 is ~20.3).
-float lodAt(float t) { return clamp(log2(max(t * 0.0007 / 20.3, 1.0)), 0.0, 7.0); }
+float lodAt(float t) { return clamp(log2(max(t * 0.0007 / 20.3, 1.0)) + 2.0 * smoothstep(12000.0, 80000.0, t), 0.0, 7.0); }
 
 float gDetail;  // 1: add the fine billow sample
 float gJit;     // per-pixel step jitter in 0..1 (interleaved gradient noise)
@@ -92,8 +92,9 @@ float deckTop(vec2 xy, float lod)
     float sh = deckShape(xy, lod);
     if (gDetail > 0.0) {
         float fine = textureLod(cloudTex, xy * (4.7 / 20800.0) + vec2(0.31, 0.73), lod + 2.2).r;
-        sh += (fine - 0.28) * 0.13 * min(sh * 3.0, 1.0);
-        sh += (textureLod(cloudTex, xy * (13.0 / 20800.0) + vec2(0.57, 0.19), lod + 3.7).r - 0.28) * 0.05 * min(sh * 3.0, 1.0);
+        float detail = 1.0 - smoothstep(1.0, 4.0, lod);
+        sh += (fine - 0.28) * 0.13 * min(sh * 3.0, 1.0) * detail;
+        sh += (textureLod(cloudTex, xy * (13.0 / 20800.0) + vec2(0.57, 0.19), lod + 3.7).r - 0.28) * 0.05 * min(sh * 3.0, 1.0) * detail;
     }
     sh = clamp(sh, 0.0, 1.0);
     return ceilAt(xy) - gR * (1.0 - sh);
@@ -195,8 +196,9 @@ vec4 cloudLayer(vec3 origin, vec3 rd, float sceneDistance)
     float ndl = dot(n, sun);
     vec3 sunCol = u_cloudLight.rgb;
     vec3 skyFill = u_cloudAmbient.rgb;
-    float ao = mix(0.62, 1.0, smoothstep(0.0, 0.9, height01));
-    vec3 col = skyFill * ao * (0.78 + 0.22 * clamp(n.z, 0.0, 1.0));
+    float ao = mix(0.43, 1.0, smoothstep(0.0, 0.9, height01));
+    vec3 creviceTint = mix(vec3(0.72, 0.84, 1.10), vec3(1.0), height01);
+    vec3 col = skyFill * creviceTint * ao * (0.78 + 0.22 * clamp(n.z, 0.0, 1.0));
     // Wrap diffuse: light bends around a cloud's flank instead of ending on a terminator line.
     float wrap = clamp((ndl + 0.7) / 1.7, 0.0, 1.0);
     col += sunCol * wrap * wrap * mix(0.55, 1.0, shadow) * (0.55 + 0.45 * height01);
@@ -207,7 +209,7 @@ vec4 cloudLayer(vec3 origin, vec3 rd, float sceneDistance)
     col = col / (1.0 + 0.9 * max(col - 0.72, vec3(0.0))); // roll off sun glare instead of clipping to flat white
 
     // Aerial perspective hands the far deck to the sky horizon colour.
-    float fogK = 1.0 - exp(-th / 50000.0);
+    float fogK = 1.0 - exp(-th / 36000.0);
     col = mix(col, horizon, fogK * fogK);
 
     float path = max(min(tMax, t1) - th, 0.0);

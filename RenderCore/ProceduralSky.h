@@ -107,6 +107,14 @@ inline SkyRgb sampleProceduralSky(int number, SkyRgb ray, SkyRgb sun, SkyRgb lig
     const float rayleigh = .0596831f * (1.0f + mu*mu);
     const float mie = .0336f / std::pow(std::max(.01f,1.5776f-1.52f*mu),1.5f);
     const float daylight = row.daylight * std::clamp((sun[1]+.12f)/.24f,0.0f,1.0f);
+    // A high, stretched cirrus sheet, baked with the atmosphere (no frame cost).
+    const float plane = 1.0f / std::max(ray[1], .08f);
+    const float x = ray[0]*plane, z = ray[2]*plane;
+    const float streak = std::sin(z*24.0f + 2.0f*std::sin(x*1.7f) + .7f*std::sin(z*9.0f+x*3.0f));
+    const float veil = std::clamp((streak-.45f)*1.8f,0.0f,1.0f)
+        * std::clamp((std::sin(x*.9f+z*.7f)-.1f)*1.4f,0.0f,1.0f)
+        * std::clamp((ray[1]-.04f)*5.0f,0.0f,1.0f) * .16f;
+    const float haze = std::exp(-std::abs(ray[1])*22.0f);
     const SkyRgb beta{.055f,.13f,.32f};
     SkyRgb colour{};
     for (int c=0;c<3;++c) {
@@ -117,6 +125,9 @@ inline SkyRgb sampleProceduralSky(int number, SkyRgb ray, SkyRgb sun, SkyRgb lig
         const float disc = mu > .9998f && ray[1] > 0.0f ? 8.0f : 0.0f;
         colour[c] = row.night[c]*(.4f+.6f*elevation)
             + daylight*std::max(.05f,light[c])*sunlight*(18.0f*scatter+.6f*aerosol+disc);
+        const float mist = daylight*(.55f+.12f*c)*std::max(.25f,light[c]);
+        colour[c] = colour[c]*(1.0f-.65f*haze) + mist*.65f*haze;
+        colour[c] = colour[c]*(1.0f-veil) + daylight*(.85f+.04f*c)*veil;
         if (ray[1] < 0.0f) colour[c] *= std::max(.04f,1.0f+ray[1]);
     }
     return colour;
