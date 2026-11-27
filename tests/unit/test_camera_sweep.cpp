@@ -108,7 +108,7 @@ TEST_CASE("camera sweep: shadow footprint circle covers tilted views at every ya
             float band=0; region.radius=moverRadiusBand(region.radius,band);
             const auto window=fitMoverWindow(bounds,basis,0,4096,region);
             if(!expected) expected=window.texelWorld;
-            CHECK(window.texelWorld==expected);
+            CHECK(window.texelWorld==doctest::Approx(expected).epsilon(0.00001)); // continuous zoom: equal up to float rounding across yaw
             const auto inverse=glm::inverse(glm::dmat4(matrix));
             for(float x : {-1.0f,1.0f}) for(float y : {-1.0f,1.0f}) {
                 auto h=glm::dvec4(x,y,1,1)*inverse;
