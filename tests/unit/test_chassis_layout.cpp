@@ -354,8 +354,16 @@ struct LogisticsVariant;
 struct LogisticsData {
     static LogisticsData* instance;
     std::vector<LogisticsComponent> components;
-    LogisticsVariant* modifiedVariant = nullptr;
+    // Production holds a unique_ptr; the sliced accept code only needs get(), ->, and a truth test.
+    struct VariantRef {
+        LogisticsVariant* p = nullptr;
+        VariantRef& operator=(LogisticsVariant* v) { p = v; return *this; }
+        LogisticsVariant* get() const { return p; }
+        LogisticsVariant* operator->() const { return p; }
+        explicit operator bool() const { return p != nullptr; }
+    } modifiedVariant;
     void* currentlyModifiedMech = nullptr;
+    bool settleWeaponSupply(LogisticsVariant*, bool) { return true; }   // the campaign supply rule has its own seam test
     std::expected<void, int> acceptMechModifications(const char* name);
     std::optional<std::reference_wrapper<LogisticsComponent>> getComponent(int id) {
         for (auto& c : components) if (c.id == id) return c;
