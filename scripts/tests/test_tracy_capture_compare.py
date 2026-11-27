@@ -107,7 +107,7 @@ def test_owner_affinity_requires_explicit_exclusive_batch(monkeypatch, opt_in, t
         assert capture.owner_capture_mode() is accepted
 
 
-@pytest.mark.parametrize("platform,cores,owner", [("nt", [0, 1], False), ("posix", [26, 27], False),
+@pytest.mark.parametrize("platform,cores,owner", [("nt", [0, 1, 2, 3], False), ("posix", [26, 27], False),
                                                 ("nt", list(range(16)), True)])
 def test_post_load_starts_recorder_after_pose_and_writes_row(harness, monkeypatch, platform, cores, owner):
     import psutil
@@ -162,10 +162,7 @@ def test_post_load_starts_recorder_after_pose_and_writes_row(harness, monkeypatc
     assert h.game_spawn.call_args.kwargs["engine_default_workers"] is owner
     assert ("MC2_FRAME_JOBS_WORKERS" in h.game_spawn.call_args.kwargs["env"]) is not owner
     assert row["affinity_mask"] == sum(1 << c for c in cores)
-    if platform == "nt" and not owner:
-        process.cpu_affinity.assert_any_call(cores)
-    else:
-        process.cpu_affinity.assert_called_once_with()
+    process.cpu_affinity.assert_called_once_with()
     recorder = h.recorder_spawn.call_args.args[0]
     assert recorder[recorder.index("-s") + 1] == "30"
 
@@ -477,6 +474,25 @@ def test_busy_lease_starts_no_children(harness):
     h.game_spawn.assert_not_called()
     h.release.assert_not_called()
     assert not h.logs
+
+
+@pytest.mark.parametrize("timeout,expected", [(None, 1200), ("600", 600)])
+def test_post_load_capture_honors_lease_timeout(harness, monkeypatch, timeout, expected):
+    h = harness
+    monkeypatch.setattr(Path, "write_text", lambda *a, **k: None)
+    monkeypatch.delenv(capture.host_lease.TIMEOUT_ENV, raising=False)
+    if timeout is not None:
+        monkeypatch.setenv(capture.host_lease.TIMEOUT_ENV, timeout)
+
+    def exclusive(label, **kwargs):
+        assert kwargs["timeout_s"] == expected
+        raise capture.host_lease.HostLeaseBusy("busy")
+
+    monkeypatch.setattr(capture.host_lease, "exclusive_window", exclusive)
+    with pytest.raises(capture.host_lease.HostLeaseBusy, match="busy"):
+        capture.capture_trace(h.install, "vk", "mc2_01", 15, h.out, post_load=True)
+    h.recorder_spawn.assert_not_called()
+    h.game_spawn.assert_not_called()
 
 
 def test_interruption_before_game_spawn_reaps_recorder(harness, monkeypatch):

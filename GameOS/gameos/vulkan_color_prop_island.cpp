@@ -1717,6 +1717,9 @@ extern "C" int mc2_vk_color_prop_island_prewarm(int w,int h) {
     }
     auto* s = static_cast<ColorPropIsland*>(slot.get());
     if (!prepare_mission_resources(s)) return 0;
+    // Build the initial RT scene behind the load barrier, after geometry and
+    // material routing are resident, rather than blocking the first prop frame.
+    mc2vk::rt::scene::updateProps(s->vbo.deviceAddress());
     if (auto* post = getGosPostProcess()) post->prewarmVkHzb(s->mapGeneration);
     return 1;
 }
