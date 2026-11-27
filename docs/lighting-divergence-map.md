@@ -4,6 +4,11 @@
 > Calls through `sunShadowFloor(...)` are shared helper policy, outside this
 > deliberately narrow numeric-floor pattern. Historical GL rows below are archival.
 
+> INTENTIONAL (ground-fog-4, 2026-11-26): `shaders/vulkan/valley_fog.frag` lights a fog
+> bank's top with `(0.45 + 0.55 * NdotL)`. Fog scatters light instead of receiving a
+> shadow, so the roll-off from the sun-facing top normal is the whole of its shading; the
+> one inline floor pinned in `inline_light_floor`.
+
 <!-- doc-status: current | reviewed:2026-10-11 -->
 # Lighting divergence map (ARCH-CONVERGE-S2)
 

@@ -253,7 +253,7 @@ def scan(verbose_sink=None):
 # ---------------------------------------------------------------------------
 BASELINE = {'ambient_floor_scalar': [('shaders/vulkan/water_geom.frag', 'SKY_AMBIENT', 'uEnv.cementSky.w')],
  'ambient_fill_vec3': [],
- 'inline_light_floor': [],
+ 'inline_light_floor': [('0.45+0.55', 'add:ndl', 'shaders/vulkan/valley_fog.frag')],   # INTENTIONAL: docs/lighting-divergence-map.md
  'light_type_dispatch': (('shaders/vulkan/mech_tier1.vert',
                           ('AMBIENT',
                            'INFINITE',

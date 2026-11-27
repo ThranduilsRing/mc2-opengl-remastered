@@ -493,6 +493,7 @@ GAME_DATA_PAYLOAD = [
     "data/terrain_materials.json",
     "data/missions/mc2_13.biome.fit",
     "data/visual_tuning.json",
+    "data/missions/mc2_03.beauty/tree_decorations.json",
     # ImGui UI fonts (GuiRuntime resolves exe/data/fonts/ui first); without them every defs UI text falls back
     # to the ImGui bitmap default font (blocky, low-res at 4K).
     "data/fonts/ui/Roboto-Medium.ttf",

@@ -411,3 +411,36 @@ TEST_CASE("cement layers: arguments that do not describe the atlas give no layer
     CHECK(mc2terrain::cementAtlasToLayers(atlas.data(), 8, 2, 5).empty());   // more layers than grid cells
     CHECK(mc2terrain::cementAtlasToLayers(atlas.data(), 8, 2, 0).empty());
 }
+
+TEST_CASE("fog floor: the regional low ground under each vertex, rebuilt after a height patch") {
+    // A V valley down the middle column of a 33 x 33 map (128 wu cells): floor 0 at x = 16, walls rising 40 wu a cell.
+    constexpr int side = 33, mid = 16;
+    std::vector<float> h(static_cast<size_t>(side) * side);
+    for (int y = 0; y < side; ++y)
+        for (int x = 0; x < side; ++x) h[static_cast<size_t>(y) * side + x] = 40.0f * float(std::abs(x - mid));
+    mc2terrain::TerrainFieldStore store;
+    CHECK(store.fogFloor().empty());   // no height field yet
+    REQUIRE(store.setHeight(h.data(), side));
+    const auto floorAt = [&](int x, int y) { return store.fogFloor()[static_cast<size_t>(y) * side + x]; };
+
+    // Inside the 1024 wu minimum radius the floor is the valley minimum (the blur of a flat zero band stays zero).
+    for (int x = mid - 6; x <= mid + 6; ++x) CHECK(floorAt(x, mid) == doctest::Approx(0.0f));
+    // The ridge wall rises above floor + 220 wu (the fog thickness), so the fog top stays below it.
+    CHECK(h[static_cast<size_t>(mid) * side + 32] - floorAt(32, mid) >= 220.0f);
+    CHECK(floorAt(32, mid) > 0.0f);
+    CHECK(store.fogFloorMax() == doctest::Approx(floorAt(32, 0)));   // every row is the same valley
+
+    // A crater at the valley floor lowers the floor within the 8-cell radius and no further.
+    const float rows[1] = {-100.0f};
+    const auto version = store.heightVersion();
+    REQUIRE(store.patchHeight(rows, mid, mid, 0, 0, side));
+    CHECK(store.heightVersion() != version);
+    CHECK(floorAt(mid, mid) == doctest::Approx(-100.0f));
+    CHECK(floorAt(mid + 9, mid) == doctest::Approx(8.0f));   // x = 25: mean of -100, -100, 40, 80, 120 (x = 16 is 9 cells away)
+
+    // A flat map is its own floor.
+    std::vector<float> flat(static_cast<size_t>(side) * side, 100.0f);
+    REQUIRE(store.setHeight(flat.data(), side));
+    CHECK(floorAt(0, 0) == doctest::Approx(100.0f));
+    CHECK(store.fogFloorMax() == doctest::Approx(100.0f));
+}
