@@ -285,7 +285,7 @@ static bool isInView(const glm::vec3 &position)
 				Distance = glm::normalize(Distance);
 				
 				float cosine = glm::dot(Distance, eye->getLookVector());
- 				if (cosine > eye->cosHalfFOV)
+				if (eye->sphereInViewCone(cosine, 0.0f, 1.0f))
 					inView = true;
 				else
 					inView = false;
