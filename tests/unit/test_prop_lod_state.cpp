@@ -45,7 +45,7 @@ uint64_t s_persistentStaticGen = 0, s_staticBaseBuiltGen = 0;
 // Non-LOD resources touched by onMapUnload; no graphics service is invoked.
 std::vector<int> s_coalescePinnedNodes, s_packetTexArrayLayer, s_packetUvScaleX, s_packetUvScaleY,
     s_typeInstanceCountPrevFrame, s_packetMaterialIdx, s_materialGpuTable, s_materialInventory,
-    s_sortedPacketOrder, s_bucketsByType, s_lodGroups, s_lodMembers, s_lodEvaluated,
+    s_sortedPacketOrder, s_bucketsByType, s_lodGroups, s_lodTargetUses, s_lodMembers, s_lodEvaluated,
     s_staticBaseInstanceForType;
 bool s_materialGpuSidecarValid = false;
 int s_alphaOffCmdCount = 0, s_alphaOnCmdCount = 0;

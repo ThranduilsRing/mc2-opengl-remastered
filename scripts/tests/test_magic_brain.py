@@ -96,6 +96,8 @@ def test_abl_failure_fails_smoke(marker):
 def test_payload_refreshes_previously_trimmed_warriors(tmp_path, monkeypatch):
     import deploy_payload
     import tools.mc2x_import.fst as fst
+    monkeypatch.setattr(deploy_payload.subprocess, 'run', lambda *a, **kw:
+                        type('GitFiles', (), {'stdout': b''})())
     stock = b'corePatrol(s, p, attack);'
     monkeypatch.setattr(fst, 'fst_entries', lambda _: [
         (0, len(stock), len(stock), 'data/missions/warriors/convoy.abl', False, stock)])
