@@ -180,6 +180,7 @@ void TreeAppearance::invalidateStaticRegistration()
 // The pivot sits at the trunk base, so on a slope the downhill root flare floats unless the tree sinks to the lowest ground under it.
 static float treeRootRadius(TG_TypeMultiShape* ms)
 {
+	if (!ms) return 0.0f;
 	static std::unordered_map<TG_TypeMultiShape*, float> cache;
 	if (const auto cached = cache.find(ms); cached != cache.end()) { const auto& [key, radius] = *cached; return radius; }
 	float lo = 1e30f, hi = -1e30f, r = 0.0f;
