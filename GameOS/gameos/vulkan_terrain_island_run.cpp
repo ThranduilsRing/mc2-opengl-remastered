@@ -946,11 +946,15 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) { return run_terrain(w, h
 namespace mc2::waterplanar {
 struct PlanarTerrain : TerrainIsland { TerrainView view; };
 bool prewarmTerrain(std::unique_ptr<mc2vk::IslandState>& state, int w, int h) {
-    if (state) return true;
-    auto fresh = std::make_unique<PlanarTerrain>();
-    fresh->planar = true;
-    if (!init_island(fresh.get(), w, h)) return false;
-    state = std::move(fresh);
+    if (!state) {
+        auto fresh = std::make_unique<PlanarTerrain>();
+        fresh->planar = true;
+        if (!init_island(fresh.get(), w, h)) return false;
+        state = std::move(fresh);
+    }
+    Mc2TerrainTier1Feed feed{};
+    if (!mc2_terrain_tier1_get_load_feed(&feed)) return false;
+    if (!snapshot_height(static_cast<PlanarTerrain*>(state.get()), feed)) return false;
     return true;
 }
 bool prepareTerrain(std::unique_ptr<mc2vk::IslandState>& state, Target& target, mc2vk::VulkanContext::RecordFn& record) {

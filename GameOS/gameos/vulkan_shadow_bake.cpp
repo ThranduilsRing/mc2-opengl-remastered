@@ -1151,7 +1151,7 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore();
     if (set.hasEvents()) {
         for (const auto& ev : set.takeEvents()) {
-            objectDirty_ = true;
+            if (!ev.moverDemotion) objectDirty_ = true;
             applyLiveEvent(ev.before, ev.after);
             for (const auto* side : {&ev.before, &ev.after}) {
                 for (const auto& leaf : *side) {

@@ -1,5 +1,6 @@
 // static_caster_set.cpp -- see the header.
 #include "static_caster_set.h"
+#include "diagnostic_trace.h"
 #include <array>
 
 #include "../../RenderCore/gpu_abi/GpuStaticPropInstance.h"
@@ -176,7 +177,7 @@ void StaticCasterSet::ownerRegistered(const void* owner, int32_t newRecipe) {
     if (sameLeaves(ev.before, ev.after)) return;   // a re-registration of the same leaves: nothing to rebake
     // An appearance swap (different typeIDs/leaf count: damage, destroyed, rubble) is not motion; only moves of the same shape count toward demotion.
     if (!ev.before.empty() && !sameLeafTypes(ev.before, ev.after)) churn_.erase(owner);
-    else if (!ev.before.empty() && ++churn_[owner] >= kDemoteAfterChanges) {
+    else if (!ev.before.empty() && (settled_ || ++churn_[owner] >= kDemoteAfterChanges)) {
         // A moving owner must not be a static caster: it would emit a removed/added pair, and dirty its footprint, every frame. The entry stays in
         // place as a tombstone (load ranges keep their indices); the owner continues as a mover and its old static leaves are removed once.
         StaticCasterEntry mover = e;
@@ -184,7 +185,11 @@ void StaticCasterSet::ownerRegistered(const void* owner, int32_t newRecipe) {
         if (static_cast<size_t>(newRecipe) < recipeMask_.size()) recipeMask_[static_cast<size_t>(newRecipe)] = 0;
         byOwner_[owner] = {static_cast<uint32_t>(movers_.size()), true};
         movers_.push_back(mover);
+        if (mc2_diag::tagRequested("HITCH"))
+        mc2::fmt::print_err("[STATIC_CASTER_MOVE] handle={} kind={} object_class={} recipe={}\n",
+                            mover.gameHandle, static_cast<unsigned>(mover.kind), mover.objectClass, newRecipe);
         ev.after.clear();
+        ev.moverDemotion = true;
         ++deltaVersion_;
         events_.push_back(std::move(ev));
         return;
