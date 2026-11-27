@@ -167,8 +167,8 @@ constexpr Barrier barrierBetween(Phase from, Phase to) {
 // (it would be a Tlas -> Blas / Consumer -> Blas edge, which it rejects as a reversed edge).
 constexpr Barrier frameRebuildBarrier() {
     Barrier b = barrierBetween(Phase::Upload, Phase::Blas);
-    b.srcStage |= kStageAsBuild;
-    b.srcAccess |= kAccessAsWrite;
+    b.srcStage |= kStageAsBuild | kStageFragmentShader;
+    b.srcAccess |= kAccessAsWrite | kAccessAsRead;
     return b;
 }
 

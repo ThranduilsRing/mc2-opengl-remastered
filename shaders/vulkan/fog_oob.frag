@@ -25,6 +25,8 @@ layout(location = 0) out vec4 outFog;
 layout(set = 0, binding = 0) uniform sampler2D depthTex;
 layout(set = 0, binding = 4) uniform samplerCube skyTex;
 layout(set = 0, binding = 3) uniform sampler2D cloudTex;
+layout(set = 0, binding = 5) uniform sampler2D cloudResult;
+layout(constant_id = 0) const bool resolveCloud = false;
 
 // std140. Offsets (bytes) match the CPU-side POD in vulkan_oob_fog_island.cpp:
 //   invViewProj  @  0  (mat4, 64B)
@@ -231,6 +233,13 @@ void main()
         // Match Camera's pick ray: reverse-Z zero can have w=0 (infinity).
         vec4 mid = invViewProj * vec4(ndc, 0.5, 1.0);
         vec3 cloudDir = normalize(mid.xyz / mid.w - origin);
+        if (!resolveCloud) {
+            // The deck is below all playable terrain. Resolve visibility using
+            // full-resolution depth, rather than baking silhouettes into 720p.
+            gOutside = step(0.0, -cloudDir.z - 1e-3);
+            outFog = cloudLayer(origin, cloudDir, 100000.0);
+            return;
+        }
         vec4 surface = invViewProj * vec4(ndc, max(rawDepth, 1e-7), 1.0);
         vec3 surf = surface.xyz / surface.w;
         float distance = rawDepth > 0.0 ? length(surf - origin) : 100000.0;
@@ -240,10 +249,8 @@ void main()
         float wob = (textureLod(cloudTex, surf.xy * (1.0 / 9000.0), 5.0).r - 0.35) * 500.0;
         float outside = rawDepth > 0.0 ? mc2CloudSeaReplace(surfM, wob, u_cloudMotion.y, 8.0 + distance * 0.0015) : step(0.0, -cloudDir.z - 1e-3);
         if (rawDepth > 0.0 && surf.z > u_cloudSea.x + 2.0) outside = 0.0;
-        if (outside > 0.0) distance = 100000.0;
-        gOutside = outside > 0.0 ? 1.0 : 0.0;
-        outFog = cloudLayer(origin, cloudDir, distance);
-        if (rawDepth > 0.0 && outside > 0.0) outFog.a *= outside;
+        outFog = texture(cloudResult, TexCoord);
+        outFog.a *= outside;
         return;
     }
     if (rawDepth > 0.0) { outFog = vec4(0.0); return; }
