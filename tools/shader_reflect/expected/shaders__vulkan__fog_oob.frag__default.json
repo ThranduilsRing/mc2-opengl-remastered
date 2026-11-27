@@ -62,6 +62,41 @@
           "name": "u_horizonFadeEndSin",
           "offset": 92,
           "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "u_cloudSea",
+          "offset": 96,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "u_cloudSun",
+          "offset": 112,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "u_cloudMotion",
+          "offset": 128,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "u_cloudLight",
+          "offset": 144,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "u_cloudAmbient",
+          "offset": 160,
+          "type": "vec4"
         }
       ],
       "name": "FogOobParams"

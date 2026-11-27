@@ -6,14 +6,14 @@
   "specializationParams": [],
   "artifact": "mech.vert.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "71ca4a823493b0317c7d550390f24a654c348e23f57b9ec4ddcd9e1de0d46f63",
-  "spirv_sha256": "9432866b0f1c186c2dfabe4227fd2453129eda14ae01e5cfc0ac5a9a0e9a7f6a",
+  "source_sha256": "c6a5ef5ed6542bf0872413ea8f4cfd0ce10528699fe39ed8b4433c611b068ced",
+  "spirv_sha256": "df24d2b036a36dd420c80ff8bae036d37d909257bd1038b891c45cbe7747e60a",
   "bindings": {
     "ubos": [
       {
         "type": "_109",
         "name": "EnvironmentUBO",
-        "block_size": 496,
+        "block_size": 400,
         "set": 0,
         "binding": 26
       },
@@ -128,54 +128,24 @@
           "offset": 320
         },
         {
-          "name": "sunBake",
+          "name": "fog",
           "type": "vec4",
           "offset": 336
         },
         {
-          "name": "sunBakeDir",
+          "name": "cementSky",
           "type": "vec4",
           "offset": 352
         },
         {
-          "name": "ambBake",
+          "name": "lightingParams",
           "type": "vec4",
           "offset": 368
         },
         {
-          "name": "fog",
-          "type": "vec4",
-          "offset": 384
-        },
-        {
-          "name": "cementSky",
-          "type": "vec4",
-          "offset": 400
-        },
-        {
-          "name": "edgeHazeSky",
-          "type": "vec4",
-          "offset": 416
-        },
-        {
-          "name": "lightingParams",
-          "type": "vec4",
-          "offset": 432
-        },
-        {
           "name": "nightState",
           "type": "vec4",
-          "offset": 448
-        },
-        {
-          "name": "outputParams",
-          "type": "vec4",
-          "offset": 464
-        },
-        {
-          "name": "shadowParams",
-          "type": "vec4",
-          "offset": 480
+          "offset": 384
         }
       ]
     },

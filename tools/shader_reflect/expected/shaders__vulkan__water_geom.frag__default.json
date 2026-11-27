@@ -61,7 +61,7 @@
           "matrix_stride": null,
           "name": "poolLights",
           "offset": 0,
-          "type": "_4301"
+          "type": "_4296"
         }
       ],
       "name": "TerrainLightPoolVK"

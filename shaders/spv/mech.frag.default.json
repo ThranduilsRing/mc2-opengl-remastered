@@ -6,33 +6,33 @@
   "specializationParams": [],
   "artifact": "mech.frag.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "9bde92d52e9f27a96c765dc2e4cdfce732381231f77e872c35ccaa8d7e3ffc87",
-  "spirv_sha256": "d9b146880f737f2bdcb5a97bdd5e0c5a55a374a3c11cb4081b77ca94da2ec1fd",
+  "source_sha256": "3657497448e0071dc53a058afc7a10bfb6d9bbbb8e6d17e0fde48fdc49e40ccb",
+  "spirv_sha256": "75101941f0cee4e5977424fb467274dfc2da44eb99088bab83918e086ddc9871",
   "bindings": {
     "ubos": [
       {
-        "type": "_822",
+        "type": "_821",
         "name": "TerrainFrameUBO",
-        "block_size": 896,
+        "block_size": 560,
         "set": 1,
         "binding": 0
       },
       {
-        "type": "_1220",
+        "type": "_1219",
         "name": "MechFrameUBO",
         "block_size": 272,
         "set": 0,
         "binding": 0
       },
       {
-        "type": "_1643",
+        "type": "_1642",
         "name": "EnvironmentUBO",
-        "block_size": 496,
+        "block_size": 400,
         "set": 0,
         "binding": 26
       },
       {
-        "type": "_1790",
+        "type": "_1789",
         "name": "MoverShadowFrame",
         "block_size": 14544,
         "set": 0,
@@ -49,7 +49,7 @@
         "binding": 11
       },
       {
-        "type": "_878",
+        "type": "_877",
         "name": "TerrainLightGridHeaderVK",
         "readonly": true,
         "block_size": 0,
@@ -57,7 +57,7 @@
         "binding": 12
       },
       {
-        "type": "_917",
+        "type": "_916",
         "name": "TerrainLightGridIndicesVK",
         "readonly": true,
         "block_size": 0,
@@ -65,7 +65,7 @@
         "binding": 13
       },
       {
-        "type": "_1798",
+        "type": "_1797",
         "name": "TerrainCementBuf",
         "readonly": true,
         "block_size": 0,
@@ -226,7 +226,7 @@
         }
       ]
     },
-    "_822": {
+    "_821": {
       "name": "TerrainFrameUBO",
       "members": [
         {
@@ -332,547 +332,443 @@
           "offset": 196
         },
         {
-          "name": "shadowSoftness",
+          "name": "reserved220",
           "type": "float",
           "offset": 200
         },
         {
-          "name": "reserved220",
-          "type": "float",
-          "offset": 204
-        },
-        {
           "name": "detailEnabled",
           "type": "int",
-          "offset": 208
+          "offset": 204
         },
         {
           "name": "detailReady",
           "type": "int",
-          "offset": 212
+          "offset": 208
         },
         {
           "name": "nfhStrength",
           "type": "float",
-          "offset": 216
+          "offset": 212
         },
         {
           "name": "detailTiling",
           "type": "float",
-          "offset": 220
+          "offset": 216
         },
         {
           "name": "detailStrength",
           "type": "float",
-          "offset": 224
-        },
-        {
-          "name": "enableDynShadows",
-          "type": "int",
-          "offset": 228
-        },
-        {
-          "name": "_dynPad0",
-          "type": "int",
-          "offset": 232
-        },
-        {
-          "name": "_dynPad1",
-          "type": "int",
-          "offset": 236
-        },
-        {
-          "name": "dynamicLightSpaceMatrix",
-          "type": "mat4",
-          "offset": 240,
-          "matrix_stride": 16
+          "offset": 220
         },
         {
           "name": "cameraPosMC2",
           "type": "vec4",
-          "offset": 304
+          "offset": 224
         },
         {
           "name": "lodFadeEnabled",
           "type": "int",
-          "offset": 320
+          "offset": 240
         },
         {
           "name": "skirtDepth",
           "type": "float",
-          "offset": 324
+          "offset": 244
         },
         {
           "name": "_csmPad0",
           "type": "int",
-          "offset": 328
+          "offset": 248
         },
         {
           "name": "_csmPad1",
           "type": "int",
-          "offset": 332
-        },
-        {
-          "name": "csmEnabled",
-          "type": "int",
-          "offset": 336
-        },
-        {
-          "name": "csmCount",
-          "type": "int",
-          "offset": 340
-        },
-        {
-          "name": "csmDepthSpan",
-          "type": "float",
-          "offset": 344
+          "offset": 252
         },
         {
           "name": "csmDebugMode",
           "type": "int",
-          "offset": 348
-        },
-        {
-          "name": "csmCascadeMatrices",
-          "type": "mat4",
-          "array": [
-            3
-          ],
-          "array_size_is_literal": [
-            true
-          ],
-          "offset": 352,
-          "array_stride": 64,
-          "matrix_stride": 16
-        },
-        {
-          "name": "csmCascadeTexelWorld",
-          "type": "vec4",
-          "offset": 544
-        },
-        {
-          "name": "csmFullMapTexelWorld",
-          "type": "float",
-          "offset": 560
+          "offset": 256
         },
         {
           "name": "visualSide",
           "type": "int",
-          "offset": 564
+          "offset": 260
         },
         {
           "name": "visualDisplaceFar",
           "type": "float",
-          "offset": 568
+          "offset": 264
         },
         {
           "name": "visualMode",
           "type": "int",
-          "offset": 572
+          "offset": 268
         },
         {
           "name": "edgeStitch",
           "type": "int",
-          "offset": 576
+          "offset": 272
         },
         {
           "name": "quadCountX",
           "type": "int",
-          "offset": 580
+          "offset": 276
         },
         {
           "name": "quadCountY",
           "type": "int",
-          "offset": 584
-        },
-        {
-          "name": "ambientFloor",
-          "type": "float",
-          "offset": 588
+          "offset": 280
         },
         {
           "name": "ambientDayGate",
           "type": "float",
-          "offset": 592
+          "offset": 284
         },
         {
           "name": "missionFlatR",
           "type": "float",
-          "offset": 596
+          "offset": 288
         },
         {
           "name": "missionFlatG",
           "type": "float",
-          "offset": 600
+          "offset": 292
         },
         {
           "name": "missionFlatB",
           "type": "float",
-          "offset": 604
+          "offset": 296
         },
         {
           "name": "numPoolLights",
           "type": "int",
-          "offset": 608
+          "offset": 300
         },
         {
           "name": "lightGridDim",
           "type": "int",
-          "offset": 612
+          "offset": 304
         },
         {
           "name": "lightGridMinX",
           "type": "float",
-          "offset": 616
+          "offset": 308
         },
         {
           "name": "lightGridMinY",
           "type": "float",
-          "offset": 620
+          "offset": 312
         },
         {
           "name": "lightGridInvCellX",
           "type": "float",
-          "offset": 624
+          "offset": 316
         },
         {
           "name": "lightGridInvCellY",
           "type": "float",
-          "offset": 628
+          "offset": 320
         },
         {
           "name": "lightPoolSoft",
           "type": "int",
-          "offset": 632
+          "offset": 324
         },
         {
           "name": "lightPoolMoverDim",
           "type": "float",
-          "offset": 636
+          "offset": 328
         },
         {
           "name": "lightPoolMoverScale",
           "type": "float",
-          "offset": 640
+          "offset": 332
         },
         {
           "name": "lightPoolMoverMax",
           "type": "int",
-          "offset": 644
+          "offset": 336
         },
         {
           "name": "lightPoolCompress",
           "type": "int",
-          "offset": 648
+          "offset": 340
         },
         {
           "name": "moverContactShadow",
           "type": "float",
-          "offset": 652
-        },
-        {
-          "name": "padGlowR",
-          "type": "float",
-          "offset": 656
-        },
-        {
-          "name": "padGlowG",
-          "type": "float",
-          "offset": 660
-        },
-        {
-          "name": "padGlowB",
-          "type": "float",
-          "offset": 664
-        },
-        {
-          "name": "padGlowSpill",
-          "type": "float",
-          "offset": 668
-        },
-        {
-          "name": "shadowDistFadeWu",
-          "type": "float",
-          "offset": 672
-        },
-        {
-          "name": "shadowDistFadeMax",
-          "type": "float",
-          "offset": 676
+          "offset": 344
         },
         {
           "name": "shadowMinSunSin",
           "type": "float",
-          "offset": 680
-        },
-        {
-          "name": "shadowKnobFlags",
-          "type": "int",
-          "offset": 684
+          "offset": 348
         },
         {
           "name": "tintRockR",
           "type": "float",
-          "offset": 688
+          "offset": 352
         },
         {
           "name": "tintRockG",
           "type": "float",
-          "offset": 692
+          "offset": 356
         },
         {
           "name": "tintRockB",
           "type": "float",
-          "offset": 696
+          "offset": 360
         },
         {
           "name": "tintGrassR",
           "type": "float",
-          "offset": 700
+          "offset": 364
         },
         {
           "name": "tintGrassG",
           "type": "float",
-          "offset": 704
+          "offset": 368
         },
         {
           "name": "tintGrassB",
           "type": "float",
-          "offset": 708
+          "offset": 372
         },
         {
           "name": "tintDirtR",
           "type": "float",
-          "offset": 712
+          "offset": 376
         },
         {
           "name": "tintDirtG",
           "type": "float",
-          "offset": 716
+          "offset": 380
         },
         {
           "name": "tintDirtB",
           "type": "float",
-          "offset": 720
+          "offset": 384
         },
         {
           "name": "tintConcreteR",
           "type": "float",
-          "offset": 724
+          "offset": 388
         },
         {
           "name": "tintConcreteG",
           "type": "float",
-          "offset": 728
+          "offset": 392
         },
         {
           "name": "tintConcreteB",
           "type": "float",
-          "offset": 732
+          "offset": 396
         },
         {
           "name": "tintSnowR",
           "type": "float",
-          "offset": 736
+          "offset": 400
         },
         {
           "name": "tintSnowG",
           "type": "float",
-          "offset": 740
+          "offset": 404
         },
         {
           "name": "tintSnowB",
           "type": "float",
-          "offset": 744
+          "offset": 408
         },
         {
           "name": "tintStrengthScale",
           "type": "float",
-          "offset": 748
+          "offset": 412
         },
         {
           "name": "snowBrightnessDampen",
           "type": "float",
-          "offset": 752
+          "offset": 416
         },
         {
           "name": "edgeFeatherStrength",
           "type": "float",
-          "offset": 756
+          "offset": 420
         },
         {
           "name": "vegetationEnabled",
           "type": "int",
-          "offset": 760
+          "offset": 424
         },
         {
           "name": "shorelineOn",
           "type": "int",
-          "offset": 764
+          "offset": 428
         },
         {
           "name": "shorelineHasMask",
           "type": "int",
-          "offset": 768
+          "offset": 432
         },
         {
           "name": "shorelineWaterElev",
           "type": "float",
-          "offset": 772
+          "offset": 436
         },
         {
           "name": "shorelineTime",
           "type": "float",
-          "offset": 776
+          "offset": 440
         },
         {
           "name": "shorelineStrength",
           "type": "float",
-          "offset": 780
+          "offset": 444
         },
         {
           "name": "shorelineFoamStrength",
           "type": "float",
-          "offset": 784
+          "offset": 448
         },
         {
           "name": "shorelineWetRun",
           "type": "float",
-          "offset": 788
+          "offset": 452
         },
         {
           "name": "shorelineFoamRun",
           "type": "float",
-          "offset": 792
+          "offset": 456
         },
         {
           "name": "shorelineEdgeJitter",
           "type": "float",
-          "offset": 796
+          "offset": 460
         },
         {
           "name": "shorelineBoundsX",
           "type": "float",
-          "offset": 800
+          "offset": 464
         },
         {
           "name": "shorelineBoundsY",
           "type": "float",
-          "offset": 804
+          "offset": 468
         },
         {
           "name": "shorelineBoundsW",
           "type": "float",
-          "offset": 808
+          "offset": 472
         },
         {
           "name": "shorelineBoundsH",
           "type": "float",
-          "offset": 812
+          "offset": 476
         },
         {
           "name": "shoreFieldOn",
           "type": "int",
-          "offset": 816
+          "offset": 480
         },
         {
           "name": "shoreFieldIsSdf",
           "type": "int",
-          "offset": 820
+          "offset": 484
         },
         {
           "name": "shoreFieldBoundsX",
           "type": "float",
-          "offset": 824
+          "offset": 488
         },
         {
           "name": "shoreFieldBoundsY",
           "type": "float",
-          "offset": 828
+          "offset": 492
         },
         {
           "name": "shoreFieldBoundsW",
           "type": "float",
-          "offset": 832
+          "offset": 496
         },
         {
           "name": "shoreFieldBoundsH",
           "type": "float",
-          "offset": 836
+          "offset": 500
         },
         {
           "name": "concreteDetail",
           "type": "int",
-          "offset": 840
+          "offset": 504
         },
         {
           "name": "concreteDetailStrength",
           "type": "float",
-          "offset": 844
+          "offset": 508
         },
         {
           "name": "groundMottleOn",
           "type": "int",
-          "offset": 848
+          "offset": 512
         },
         {
           "name": "normalFlatPeriod",
           "type": "float",
-          "offset": 852
+          "offset": 516
         },
         {
           "name": "normalFlatStrength",
           "type": "float",
-          "offset": 856
+          "offset": 520
         },
         {
           "name": "normalSlopePeriod",
           "type": "float",
-          "offset": 860
+          "offset": 524
         },
         {
           "name": "normalSlopeStrength",
           "type": "float",
-          "offset": 864
+          "offset": 528
         },
         {
           "name": "normalCliffPeriod",
           "type": "float",
-          "offset": 868
+          "offset": 532
         },
         {
           "name": "normalCliffStrength",
           "type": "float",
-          "offset": 872
+          "offset": 536
         },
         {
           "name": "normalCementPeriod",
           "type": "float",
-          "offset": 876
+          "offset": 540
         },
         {
           "name": "normalCementStrength",
           "type": "float",
-          "offset": 880
+          "offset": 544
         },
         {
           "name": "groundAoShape",
           "type": "float",
-          "offset": 884
+          "offset": 548
         },
         {
           "name": "groundAoMaterial",
           "type": "float",
-          "offset": 888
+          "offset": 552
         },
         {
           "name": "groundAoSource",
           "type": "float",
-          "offset": 892
+          "offset": 556
         }
       ]
     },
-    "_878": {
+    "_877": {
       "name": "TerrainLightGridHeaderVK",
       "members": [
         {
@@ -889,7 +785,7 @@
         }
       ]
     },
-    "_917": {
+    "_916": {
       "name": "TerrainLightGridIndicesVK",
       "members": [
         {
@@ -906,7 +802,7 @@
         }
       ]
     },
-    "_1166": {
+    "_1165": {
       "name": "MechRunPC",
       "members": [
         {
@@ -936,7 +832,7 @@
         }
       ]
     },
-    "_1220": {
+    "_1219": {
       "name": "MechFrameUBO",
       "members": [
         {
@@ -1013,7 +909,7 @@
         }
       ]
     },
-    "_1643": {
+    "_1642": {
       "name": "EnvironmentUBO",
       "members": [
         {
@@ -1086,58 +982,28 @@
           "offset": 320
         },
         {
-          "name": "sunBake",
+          "name": "fog",
           "type": "vec4",
           "offset": 336
         },
         {
-          "name": "sunBakeDir",
+          "name": "cementSky",
           "type": "vec4",
           "offset": 352
         },
         {
-          "name": "ambBake",
+          "name": "lightingParams",
           "type": "vec4",
           "offset": 368
         },
         {
-          "name": "fog",
-          "type": "vec4",
-          "offset": 384
-        },
-        {
-          "name": "cementSky",
-          "type": "vec4",
-          "offset": 400
-        },
-        {
-          "name": "edgeHazeSky",
-          "type": "vec4",
-          "offset": 416
-        },
-        {
-          "name": "lightingParams",
-          "type": "vec4",
-          "offset": 432
-        },
-        {
           "name": "nightState",
           "type": "vec4",
-          "offset": 448
-        },
-        {
-          "name": "outputParams",
-          "type": "vec4",
-          "offset": 464
-        },
-        {
-          "name": "shadowParams",
-          "type": "vec4",
-          "offset": 480
+          "offset": 384
         }
       ]
     },
-    "_1790": {
+    "_1789": {
       "name": "MoverShadowFrame",
       "members": [
         {
@@ -1185,7 +1051,7 @@
         }
       ]
     },
-    "_1798": {
+    "_1797": {
       "name": "TerrainCementBuf",
       "members": [
         {

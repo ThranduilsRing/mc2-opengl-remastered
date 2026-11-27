@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 330,
+    "glsl_blocks_with_binding": 333,
     "native_pairs": 4,
     "fails": 0,
     "warns": 1
@@ -98,7 +98,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/fog_oob.frag",
-        "line": 23,
+        "line": 25,
         "role": "depthTex",
         "std": null,
         "type": "sampler2D",
@@ -111,7 +111,7 @@
         "line": 11,
         "role": "u_hdri",
         "std": null,
-        "type": "sampler2D",
+        "type": "samplerCube",
         "source": "shaders/vulkan/hdri_sky.frag",
         "branch": {}
       },
@@ -401,7 +401,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_decal_tier1.frag",
-        "line": 10,
+        "line": 9,
         "role": "TerrainFrameUBO",
         "std": "std140",
         "type": "uniform",
@@ -424,7 +424,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_overlay_tier1.frag",
-        "line": 10,
+        "line": 9,
         "role": "TerrainFrameUBO",
         "std": "std140",
         "type": "uniform",
@@ -447,7 +447,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 10,
+        "line": 9,
         "role": "TerrainFrameUBO",
         "std": "std140",
         "type": "uniform",
@@ -460,7 +460,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.vert",
-        "line": 10,
+        "line": 9,
         "role": "TerrainFrameUBO",
         "std": "std140",
         "type": "uniform",
@@ -472,7 +472,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1_skirt.vert",
-        "line": 10,
+        "line": 9,
         "role": "TerrainFrameUBO",
         "std": "std140",
         "type": "uniform",
@@ -616,7 +616,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/edge_fog.frag",
-        "line": 79,
+        "line": 97,
         "role": "EdgeFogParams",
         "std": "std140",
         "type": "uniform",
@@ -628,7 +628,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/fog_oob.frag",
-        "line": 35,
+        "line": 41,
         "role": "FogOobParams",
         "std": "std140",
         "type": "uniform",
@@ -1175,7 +1175,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 160,
+        "line": 142,
         "role": "uTreeObjectMap",
         "std": null,
         "type": "sampler2DShadow",
@@ -1261,7 +1261,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 151,
+        "line": 149,
         "role": "Compact",
         "std": "std430",
         "type": "buffer",
@@ -1705,7 +1705,7 @@
         "line": 184,
         "role": "u_hdri",
         "std": null,
-        "type": "sampler2D",
+        "type": "samplerCube",
         "source": "shaders/vulkan/water_geom.frag",
         "branch": {}
       },
@@ -2065,7 +2065,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/vfx_particle.frag",
-        "line": 79,
+        "line": 97,
         "role": "EdgeFogParams",
         "std": "std140",
         "type": "uniform",
@@ -2079,11 +2079,21 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 81,
+        "line": 65,
         "role": "uAlbedo",
         "std": null,
         "type": "sampler2DArray",
         "source": "shaders/vulkan/color_prop_tier1.frag",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/fog_oob.frag",
+        "line": 27,
+        "role": "cloudTex",
+        "std": null,
+        "type": "sampler2D",
+        "source": "shaders/vulkan/fog_oob.frag",
         "branch": {}
       },
       {
@@ -2255,6 +2265,16 @@
     "set0:binding4": [
       {
         "side": "glsl",
+        "file": "shaders/vulkan/fog_oob.frag",
+        "line": 26,
+        "role": "skyTex",
+        "std": null,
+        "type": "samplerCube",
+        "source": "shaders/vulkan/fog_oob.frag",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
         "file": "shaders/vulkan/impact_decal.frag",
         "line": 5,
         "role": "ImpactFrame",
@@ -2382,6 +2402,16 @@
       },
       {
         "side": "glsl",
+        "file": "shaders/vulkan/fog_oob.frag",
+        "line": 28,
+        "role": "cloudResult",
+        "std": null,
+        "type": "sampler2D",
+        "source": "shaders/vulkan/fog_oob.frag",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
         "file": "shaders/vulkan/impact_decal.frag",
         "line": 4,
         "role": "Decals",
@@ -2484,7 +2514,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 84,
+        "line": 68,
         "role": "uAlbedoOn",
         "std": null,
         "type": "sampler2DArray",
@@ -2585,7 +2615,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 108,
+        "line": 106,
         "role": "TypeHotColors",
         "std": "std430",
         "type": "buffer",
@@ -2848,7 +2878,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 10,
+        "line": 9,
         "role": "TerrainFrameUBO",
         "std": "std140",
         "type": "uniform",
@@ -2861,7 +2891,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/mech_tier1.frag",
-        "line": 10,
+        "line": 9,
         "role": "TerrainFrameUBO",
         "std": "std140",
         "type": "uniform",
@@ -2929,7 +2959,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/valley_fog.frag",
-        "line": 10,
+        "line": 9,
         "role": "TerrainFrameUBO",
         "std": "std140",
         "type": "uniform",
@@ -2976,7 +3006,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 10,
+        "line": 9,
         "role": "TerrainFrameUBO",
         "std": "std140",
         "type": "uniform",
@@ -3581,7 +3611,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/vfx_particle.frag",
-        "line": 10,
+        "line": 9,
         "role": "TerrainFrameUBO",
         "std": "std140",
         "type": "uniform",
@@ -3594,7 +3624,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/vfx_vegetation.frag",
-        "line": 10,
+        "line": 9,
         "role": "TerrainFrameUBO",
         "std": "std140",
         "type": "uniform",

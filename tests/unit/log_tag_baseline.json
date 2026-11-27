@@ -6161,7 +6161,7 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 7
+   "count": 6
   },
   {
    "tag": "MECH_IMPORT",
@@ -10884,16 +10884,6 @@
     "lift",
     "yaw",
     "pitch"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TERRAIN_DRAWPASS",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "event",
-    "reason"
    ],
    "count": 1
   },
