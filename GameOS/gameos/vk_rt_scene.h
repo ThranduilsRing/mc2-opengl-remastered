@@ -12,10 +12,10 @@
 // the raster alpha-tests (vegetation, fences) is a NON-OPAQUE geometry that a ray query must alpha-test (MATERIALS below), every other geometry is OPAQUE. Terrain traces the terrain_tier1.vert surface: the 4x visual-bake grid (hiresNearHeight's interior path) when the bake is loaded, else the
 // coarse 128-unit grid, split per quad by the shared terrain_diagonal.h rule (as the raster patches), cut into the kTerrainTileCoarse world tiles (one BLAS each). The per-patch visualMode 0 (GL keeps
 // a few patches undisplaced) is not mirrored: the traced surface is displaced everywhere the bake exists. TLAS space is MC2 world (x, y, z up).
-// BUILD FLAGS: every static BLAS is PREFER_FAST_TRACE | ALLOW_COMPACTION (no ALLOW_UPDATE) and is compacted when that saves >= 10%; the TLAS is rebuilt
-// (never refit) when membership changes.
+// BUILD FLAGS: every static BLAS is PREFER_FAST_TRACE (no ALLOW_UPDATE, no ALLOW_COMPACTION: compaction saved KBs and the mid-mission compact copies
+// were the 11-26 device-lost window on the RX 7900 XTX); the TLAS is rebuilt (never refit) when membership changes.
 // LIFETIME: map-load and terrain builds use blocking one-shots. Prop membership and new types publish on the graphics frame queue, including mover-less
-// frames; compaction queries are read without waiting on later frames. Replacements use new owners; the replaced TLAS,
+// frames. Replacements use new owners; the replaced TLAS,
 // then the replaced BLASes, retire through VulkanContext::retire. A failed build keeps the last valid snapshot (never a partial membership) and stops
 // retrying until the inputs change. Without RT capability and a registered consumer, nothing is collected, uploaded or built.
 // MATERIALS (part 3, docs/rt-scene-contract.md): one MaterialRow per BLAS geometry in one storage buffer published with the TLAS. A hit's row is

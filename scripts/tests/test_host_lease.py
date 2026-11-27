@@ -361,6 +361,25 @@ def test_private_lease_never_scans_the_host(lease, monkeypatch):
     assert host_lease.status()["engines"] == []
 
 
+def test_headless_simulations_do_not_block_gpu_lease(monkeypatch):
+    psutil = pytest.importorskip("psutil")
+    monkeypatch.setattr(host_lease, "redirected", lambda: False)
+    engines = [(1, "mc2.exe"), (2, "mc2.exe"), (3, "mc2.exe"), (4, "EditRel.exe"), (5, "mc2.exe")]
+    monkeypatch.setattr(host_lease.child_registry, "engine_processes", lambda: engines)
+
+    class Process:
+        def __init__(self, pid):
+            self.pid = pid
+
+        def cmdline(self):
+            if self.pid == 3:
+                raise psutil.AccessDenied(self.pid)
+            return ["mc2.exe", "--headless" if self.pid in (1, 4) else "--headless-other" if self.pid == 5 else "--mission"]
+
+    monkeypatch.setattr(psutil, "Process", Process)
+    assert host_lease.foreign_engines() == engines[1:]
+
+
 # ------------------------------------------------------------- two lanes, two worktree copies, one lease file
 
 _LANE_SCRIPT = """
