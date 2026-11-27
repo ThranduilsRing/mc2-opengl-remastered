@@ -98,6 +98,7 @@ std::atomic<bool> g_summaryEmitted{false};
 std::vector<double> g_frameMs;          // ring buffer, size = cap
 size_t              g_frameIdx = 0;
 size_t              g_frameCount = 0;   // monotonic
+size_t              g_framesOver10Ms = 0; // whole mission, including samples evicted from the ring
 size_t              g_frameMsCap = 8192;
 bool                g_firstFrameSeen = false;
 double              g_simSeconds = 0.0;
@@ -330,6 +331,7 @@ void samplePerf(double frameMs) {
     g_frameMs[g_frameIdx] = frameMs;
     g_frameIdx = (g_frameIdx + 1) % g_frameMsCap;
     g_frameCount++;
+    if (frameMs > 10.0) ++g_framesOver10Ms;
 }
 
 void emitCleanSummary() {
@@ -367,6 +369,8 @@ void emitCleanSummary() {
 
     mc2::fmt::print_out("[PERF v1] avg_fps={:.1f} p50_ms={:.2f} p99_ms={:.2f} p1low_fps={:.1f} peak_ms={:.2f} samples={:d}\n",
         avgFps, p50, p99, p1LowFps, peak, mc2::fmt::as_size(samples.size()));
+    mc2::fmt::print_out("Frames over 10 ms: {:d} / {:d}\n",
+        mc2::fmt::as_size(g_framesOver10Ms), mc2::fmt::as_size(g_frameCount));
 
     double actualMs = elapsedMsSince(g_missionReadyT ? g_missionReadyT : g_startupT0);
     // Fault counters OMITTED intentionally — the runner is the authoritative
