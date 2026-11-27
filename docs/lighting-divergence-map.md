@@ -9,6 +9,11 @@
 > shadow, so the roll-off from the sun-facing top normal is the whole of its shading; the
 > one inline floor pinned in `inline_light_floor`.
 
+> INTENTIONAL (cloud-sea-10, 2026-11-27): `shaders/vulkan/fog_oob.frag` shades the out-of-bounds
+> cloud deck with `mix(0.55, 1.0, shadow)` on the sun term. A cloud deck self-shadows from its own
+> height field and receives no ground, mover or prop shadow map, so the 0.55 floor is the cloud's own
+> crevice darkening; pinned in `inline_light_floor`.
+
 <!-- doc-status: current | reviewed:2026-10-11 -->
 # Lighting divergence map (ARCH-CONVERGE-S2)
 

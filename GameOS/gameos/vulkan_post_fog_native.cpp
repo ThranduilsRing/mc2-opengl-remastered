@@ -183,7 +183,9 @@ struct gosPostProcess::VkPostFogNative {
 
     // Match the engine frame ring so fog does not serialize next-frame setup.
     struct Frame {
-        VkDescriptorSet edgeSet = VK_NULL_HANDLE, oobSet = VK_NULL_HANDLE, valleySet = VK_NULL_HANDLE;
+        // cloudSet is oobSet with binding 5 pointed at the noise view: the cloud pass renders into cloudResult, so that
+        // image cannot also be a sampled descriptor in the set bound while it is the color attachment.
+        VkDescriptorSet edgeSet = VK_NULL_HANDLE, oobSet = VK_NULL_HANDLE, valleySet = VK_NULL_HANDLE, cloudSet = VK_NULL_HANDLE;
         VkCommandBuffer cbuf = VK_NULL_HANDLE;
         mc2vk::OwnedCommandPool cpool;   // per-frame-slot pool: vkResetCommandPool instead of per-cb reset
         mc2vk::OwnedBuffer edgeUbo, oobUbo, valleyUbo;
@@ -520,25 +522,25 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
             vlog("vkCreateDescriptorSetLayout failed (%d).", static_cast<int>(r)); return false;
         }
         VkDescriptorPoolSize sizes[3]{};
-        sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[0].descriptorCount = 12 * mc2vk::kMaxFramesInFlight;
-        sizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;         sizes[1].descriptorCount = 3 * mc2vk::kMaxFramesInFlight;
-        sizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;         sizes[2].descriptorCount = 3 * mc2vk::kMaxFramesInFlight;
+        sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[0].descriptorCount = 16 * mc2vk::kMaxFramesInFlight;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;         sizes[1].descriptorCount = 4 * mc2vk::kMaxFramesInFlight;
+        sizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;         sizes[2].descriptorCount = 4 * mc2vk::kMaxFramesInFlight;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pci.maxSets = 3 * mc2vk::kMaxFramesInFlight; pci.poolSizeCount = 3; pci.pPoolSizes = sizes;
+        pci.maxSets = 4 * mc2vk::kMaxFramesInFlight; pci.poolSizeCount = 3; pci.pPoolSizes = sizes;
         if (!mc2vk::create(s->pool, s->device, [&](VkDescriptorPool* h) { r = vkCreateDescriptorPool(s->device, &pci, nullptr, h); return r; })) {
             vlog("vkCreateDescriptorPool failed (%d).", static_cast<int>(r)); return false;
         }
     }
     for (auto& frame : s->frames) {
-        VkDescriptorSetLayout layouts[3] = { s->dsl.get(), s->dsl.get(), s->dsl.get() };
-        VkDescriptorSet setsOut[3] = { VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE };
+        VkDescriptorSetLayout layouts[4] = { s->dsl.get(), s->dsl.get(), s->dsl.get(), s->dsl.get() };
+        VkDescriptorSet setsOut[4] = { VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE };
         VkDescriptorSetAllocateInfo dsai{};
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = 3; dsai.pSetLayouts = layouts;
+        dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = 4; dsai.pSetLayouts = layouts;
         r = MC2_VK_ALLOC_SETS(s->device, &dsai, setsOut);
         if (r != VK_SUCCESS) { vlog("vkAllocateDescriptorSets failed (%d).", static_cast<int>(r)); return false; }
-        frame.edgeSet = setsOut[0]; frame.oobSet = setsOut[1]; frame.valleySet = setsOut[2];
+        frame.edgeSet = setsOut[0]; frame.oobSet = setsOut[1]; frame.valleySet = setsOut[2]; frame.cloudSet = setsOut[3];
 
         VkDescriptorImageInfo imgInfo{};
         imgInfo.sampler = s->depthSampler.get();
@@ -562,6 +564,17 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         resultWrite.dstSet = frame.oobSet; resultWrite.dstBinding = 5; resultWrite.descriptorCount = 1;
         resultWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; resultWrite.pImageInfo = &resultInfo;
         vkUpdateDescriptorSets(s->device, 1, &resultWrite, 0, nullptr);
+        VkWriteDescriptorSet cloudSetWrites[4]{};
+        for (auto& w : cloudSetWrites) {
+            w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w.dstSet = frame.cloudSet; w.descriptorCount = 1;
+            w.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w.pImageInfo = &cloudInfo;
+        }
+        cloudSetWrites[0].dstBinding = 0; cloudSetWrites[0].pImageInfo = &imgInfo;
+        cloudSetWrites[1].dstBinding = 1; cloudSetWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        cloudSetWrites[1].pImageInfo = nullptr; cloudSetWrites[1].pBufferInfo = &oobUboInfo;
+        cloudSetWrites[2].dstBinding = 3;
+        cloudSetWrites[3].dstBinding = 5;
+        vkUpdateDescriptorSets(s->device, 4, cloudSetWrites, 0, nullptr);
         writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         writes[0].dstSet = frame.edgeSet; writes[0].dstBinding = 0; writes[0].descriptorCount = 1;
         writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -860,16 +873,16 @@ bool gosPostProcess::runVkPostFogNative()
     const bool haveHorizon = mc2_vk_sky_sample_info(&horizon) != 0;
     if (!horizon.imageView) return false;
     const float horizonYaw = haveHorizon ? skyYaw_ : std::numeric_limits<float>::quiet_NaN();
-    VkWriteDescriptorSet horizonWrites[2]{};
-    for (int i = 0; i < 2; ++i) {
+    VkWriteDescriptorSet horizonWrites[3]{};
+    for (int i = 0; i < 3; ++i) {
         auto& write = horizonWrites[i];
         write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        write.dstSet = i == 0 ? frame.edgeSet : frame.oobSet;
+        write.dstSet = i == 0 ? frame.edgeSet : i == 1 ? frame.oobSet : frame.cloudSet;
         write.dstBinding = 4; write.descriptorCount = 1;
         write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         write.pImageInfo = &horizon;
     }
-    vkUpdateDescriptorSets(s->device, 2, horizonWrites, 0, nullptr);
+    vkUpdateDescriptorSets(s->device, 3, horizonWrites, 0, nullptr);
 
     // ---- UBOs ----
     EnvironmentUBO environment;
@@ -959,6 +972,8 @@ bool gosPostProcess::runVkPostFogNative()
     mc2vk::postchain::addTicket(&frame.ticket);
 
     if (!s->cloudUploaded) {
+        // Transfers and layout barriers are illegal inside the chain's render pass; beginPass reopens it below.
+        if (mc2vk::postchain::chain().rpOpen) { vkCmdEndRenderPass(cb); mc2vk::postchain::chain().rpOpen = false; }
         VkImageMemoryBarrier b{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
         b.image = s->cloudImg.get(); b.srcQueueFamilyIndex = b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         b.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, kCloudMips, 0, 1};
@@ -995,7 +1010,7 @@ bool gosPostProcess::runVkPostFogNative()
         vkCmdBeginRenderPass(cb, &begin, VK_SUBPASS_CONTENTS_INLINE);
         viewport(s->cloudWidth, s->cloudHeight);
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->cloudPipe.get());
-        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &frame.oobSet, 0, nullptr);
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &frame.cloudSet, 0, nullptr);
         vkCmdDraw(cb, 3, 1, 0, 0);
         vkCmdEndRenderPass(cb);
     }

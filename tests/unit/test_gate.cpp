@@ -2092,53 +2092,53 @@ TEST_CASE("owned handle: the owners are move-only") {
 }
 
 TEST_CASE("scoped gate override: sets the process environment, clears the cache, and restores the previous value") {
-    EnvVar guard("MC2_TERRAIN_LOD_CHUNK");   // returns the variable to its starting state whatever happens below
+    EnvVar guard("MC2_CAMERA_ASPECT_NATIVE");   // returns the variable to its starting state whatever happens below
     guard.set(nullptr);
-    gate::invalidate("MC2_TERRAIN_LOD_CHUNK");
-    REQUIRE(gate::get<"MC2_TERRAIN_LOD_CHUNK">());            // default on
+    gate::invalidate("MC2_CAMERA_ASPECT_NATIVE");
+    REQUIRE(gate::get<"MC2_CAMERA_ASPECT_NATIVE">());            // default on
     {
-        gate::ScopedOverride<"MC2_TERRAIN_LOD_CHUNK"> off("0");
-        CHECK_FALSE(gate::get<"MC2_TERRAIN_LOD_CHUNK">());    // the cached "on" was dropped
-        const char* env = std::getenv("MC2_TERRAIN_LOD_CHUNK");   // what a child process would inherit
+        gate::ScopedOverride<"MC2_CAMERA_ASPECT_NATIVE"> off("0");
+        CHECK_FALSE(gate::get<"MC2_CAMERA_ASPECT_NATIVE">());    // the cached "on" was dropped
+        const char* env = std::getenv("MC2_CAMERA_ASPECT_NATIVE");   // what a child process would inherit
         REQUIRE(env != nullptr);
         CHECK(std::string(env) == "0");
         {
-            gate::ScopedOverride<"MC2_TERRAIN_LOD_CHUNK"> on("1");   // nested: restores the outer value
-            CHECK(gate::get<"MC2_TERRAIN_LOD_CHUNK">());
+            gate::ScopedOverride<"MC2_CAMERA_ASPECT_NATIVE"> on("1");   // nested: restores the outer value
+            CHECK(gate::get<"MC2_CAMERA_ASPECT_NATIVE">());
         }
-        CHECK_FALSE(gate::get<"MC2_TERRAIN_LOD_CHUNK">());
-        CHECK(std::string(std::getenv("MC2_TERRAIN_LOD_CHUNK")) == "0");
+        CHECK_FALSE(gate::get<"MC2_CAMERA_ASPECT_NATIVE">());
+        CHECK(std::string(std::getenv("MC2_CAMERA_ASPECT_NATIVE")) == "0");
     }
-    CHECK(gate::get<"MC2_TERRAIN_LOD_CHUNK">());              // default again
-    CHECK(std::getenv("MC2_TERRAIN_LOD_CHUNK") == nullptr);   // it was unset before, so it is unset again
+    CHECK(gate::get<"MC2_CAMERA_ASPECT_NATIVE">());              // default again
+    CHECK(std::getenv("MC2_CAMERA_ASPECT_NATIVE") == nullptr);   // it was unset before, so it is unset again
 }
 
 TEST_CASE("scoped gate override: an exception leaving the scope still restores the previous value") {
-    EnvVar guard("MC2_TERRAIN_LOD_CHUNK");
+    EnvVar guard("MC2_CAMERA_ASPECT_NATIVE");
     guard.set("0");
-    gate::invalidate("MC2_TERRAIN_LOD_CHUNK");
+    gate::invalidate("MC2_CAMERA_ASPECT_NATIVE");
     try {
-        gate::ScopedOverride<"MC2_TERRAIN_LOD_CHUNK"> on("1");
-        REQUIRE(gate::get<"MC2_TERRAIN_LOD_CHUNK">());
+        gate::ScopedOverride<"MC2_CAMERA_ASPECT_NATIVE"> on("1");
+        REQUIRE(gate::get<"MC2_CAMERA_ASPECT_NATIVE">());
         throw std::runtime_error("leave the scope");
     } catch (const std::runtime_error&) {
     }
-    CHECK_FALSE(gate::get<"MC2_TERRAIN_LOD_CHUNK">());
-    CHECK(std::string(std::getenv("MC2_TERRAIN_LOD_CHUNK")) == "0");
+    CHECK_FALSE(gate::get<"MC2_CAMERA_ASPECT_NATIVE">());
+    CHECK(std::string(std::getenv("MC2_CAMERA_ASPECT_NATIVE")) == "0");
 }
 
 TEST_CASE("scoped gate override: a nullptr value clears a variable that was set, and the old value comes back") {
-    EnvVar guard("MC2_TERRAIN_LOD_CHUNK");
+    EnvVar guard("MC2_CAMERA_ASPECT_NATIVE");
     guard.set("0");
-    gate::invalidate("MC2_TERRAIN_LOD_CHUNK");
-    REQUIRE_FALSE(gate::get<"MC2_TERRAIN_LOD_CHUNK">());
+    gate::invalidate("MC2_CAMERA_ASPECT_NATIVE");
+    REQUIRE_FALSE(gate::get<"MC2_CAMERA_ASPECT_NATIVE">());
     {
-        gate::ScopedOverride<"MC2_TERRAIN_LOD_CHUNK"> cleared(nullptr);
-        CHECK(gate::get<"MC2_TERRAIN_LOD_CHUNK">());
-        CHECK(std::getenv("MC2_TERRAIN_LOD_CHUNK") == nullptr);
+        gate::ScopedOverride<"MC2_CAMERA_ASPECT_NATIVE"> cleared(nullptr);
+        CHECK(gate::get<"MC2_CAMERA_ASPECT_NATIVE">());
+        CHECK(std::getenv("MC2_CAMERA_ASPECT_NATIVE") == nullptr);
     }
-    CHECK_FALSE(gate::get<"MC2_TERRAIN_LOD_CHUNK">());
-    CHECK(std::string(std::getenv("MC2_TERRAIN_LOD_CHUNK")) == "0");
+    CHECK_FALSE(gate::get<"MC2_CAMERA_ASPECT_NATIVE">());
+    CHECK(std::string(std::getenv("MC2_CAMERA_ASPECT_NATIVE")) == "0");
     static_assert(!std::is_copy_constructible_v<gate::ScopedEnv>);
 }
 
