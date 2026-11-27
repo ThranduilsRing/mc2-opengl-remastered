@@ -49,7 +49,8 @@ inline void solve(const Rig& rig, std::vector<glm::mat4>& pose, const float* leg
                   const std::array<glm::vec3, 2>* planted = nullptr,
                   const std::array<glm::quat, 2>* footRotations = nullptr) {
     if (rig.legs[0].sole.empty() || rig.legs[1].sole.empty()) return;
-    const auto original = pose;
+    // Legs have disjoint descendants; read each bone before replacing it.
+    const auto& original = pose;
     // Swing height is measured at the authored sole, not the ankle: a toe-down
     // (pushed-off) foot has a high ankle but a low toe, and lifting the ankle by
     // its own height and then the sole again folded the rear leg to hip height.
@@ -61,20 +62,21 @@ inline void solve(const Rig& rig, std::vector<glm::mat4>& pose, const float* leg
     const float lowSole = std::min(authoredSole[0], authoredSole[1]);
     for (int side = 0; side < 2; ++side) {
         const Leg& leg = rig.legs[side];
-        const glm::mat4& foot = original[leg.foot];
+        const glm::mat4 foot = original[leg.foot];
         const glm::vec3 hip(original[leg.thigh][3]), knee(original[leg.calf][3]), ankle(foot[3]);
         const float upper = glm::length(knee - hip), lower = glm::length(ankle - knee);
         if (upper < 1e-6f || lower < 1e-6f) continue;
         const float swing = std::max(0.0f, authoredSole[side] - lowSole);
         // Preserve heading and the rig's foot axes; ground contact removes only tilt.
-        const glm::mat4 delta = foot * glm::inverse(leg.restFoot);
-        const float yaw = std::atan2(delta[2].x, delta[2].z);
-        const glm::quat level = glm::angleAxis(yaw, glm::vec3(0, 1, 0)) *
-                                columnQuaternion(leg.restFoot);
-        const float band = std::max(1e-5f, (upper + lower) * 0.1f);
-        const float blend = std::clamp(swing / band, 0.0f, 1.0f);
-        const glm::quat rot = footRotations ? (*footRotations)[side] :
-            glm::slerp(level, columnQuaternion(foot), blend);
+        glm::quat rot;
+        if (footRotations) rot = (*footRotations)[side];
+        else {
+            const glm::mat4 delta = foot * glm::inverse(leg.restFoot);
+            const float yaw = std::atan2(delta[2].x, delta[2].z);
+            const glm::quat level = glm::angleAxis(yaw, glm::vec3(0, 1, 0)) * columnQuaternion(leg.restFoot);
+            const float band = std::max(1e-5f, (upper + lower) * 0.1f);
+            rot = glm::slerp(level, columnQuaternion(foot), std::clamp(swing / band, 0.0f, 1.0f));
+        }
         glm::mat4 placed = columnRotation(rot);
         const glm::mat4 invFoot = glm::inverse(foot);
         float soleY = 1e30f;
@@ -182,14 +184,17 @@ inline PlantTrack buildPlants(const Rig& rig, const std::vector<std::vector<glm:
                 direction * (poses[next][leg.foot][3].z - poses[f][leg.foot][3].z) < 0;
         }
         bool stance = false;
+        float stanceTravel = 0;
         for (int f = 0; f < n; ++f)
-            stance |= track.contact[f][side] && track.contact[(f + 1) % n][side];
-        // Some native runs move the ankle forward even at touchdown. Fall back
-        // to a low sole with low vertical velocity, independently for each foot.
-        if (!stance)
+            if (track.contact[f][side] && track.contact[(f + 1) % n][side]) {
+                stance |= track.contact[(f + 2) % n][side];
+                stanceTravel += distance[f + 1] - distance[f];
+            }
+        // Some runs move the ankle forward at touchdown, or compress the low
+        // interval into a distance plateau. Widen touchdown per foot in that case.
+        if (!stance || stanceTravel < distance.back() * .05f)
             for (int f = 0; f < n; ++f)
-                track.contact[f][side] = height[f][side] <= floor + band &&
-                    std::abs(height[(f + 1) % n][side] - height[(f + n - 1) % n][side]) <= band;
+                track.contact[f][side] = height[f][side] <= floor + std::max(band, (ceiling - floor) * .35f);
         // A motionless foot has no distinct stance boundary to anchor a cycle.
         bool swing = false;
         for (int f = 0; f < n; ++f) swing |= !track.contact[f][side];
@@ -211,18 +216,27 @@ inline PlantTrack buildPlants(const Rig& rig, const std::vector<std::vector<glm:
     const auto originalRotations = track.rotations;
     for (int side = 0; side < 2; ++side) {
         std::vector<glm::vec3> correction(3 * n);
-        for (int f = 0; f < 3 * n;) {
+        int boundary = 0;
+        while (boundary < n && track.contact[boundary][side]) ++boundary;
+        for (int f = boundary; f < boundary + n;) {
             if (!track.contact[f % n][side]) { ++f; continue; }
-            const int start = f;
-            while (f < 3 * n && track.contact[f % n][side]) ++f;
-            const int anchor = (start + f - 1) / 2;
+            int start = f;
+            while (f < boundary + n && track.contact[f % n][side]) ++f;
+            int end = f;
             const auto travel = [&](int frame) { return distance[frame % n] + (frame / n) * distance.back(); };
-            auto fixed = original[anchor % n][side];
-            fixed.z += direction * travel(anchor);
+            glm::vec3 fixed;
+            int anchor = start;
             // Choose a world-space anchor inside every stance frame's reachable
-            // disc. A midpoint ankle alone can exceed reach elsewhere in a limp.
-            for (int pass = 0; pass < 32; ++pass)
-                for (int k = start; k < f; ++k) {
+            // disc. Release at toe-off if the discs have no common intersection.
+            for (; end > start; --end) {
+                anchor = (start + end - 1) / 2;
+                fixed = original[anchor % n][side];
+                fixed.z += direction * travel(anchor);
+                bool reachable = true;
+                float worst = 0;
+                int worstFrame = start;
+                for (int pass = 0; pass <= 32; ++pass)
+                for (int k = start; k < end; ++k) {
                     const auto& pose = poses[k % n];
                     const auto& leg = rig.legs[side];
                     glm::vec3 hip(pose[leg.thigh][3]);
@@ -233,15 +247,31 @@ inline PlantTrack buildPlants(const Rig& rig, const std::vector<std::vector<glm:
                     hip.z += direction * travel(k);
                     glm::vec3 delta(fixed.x - hip.x, 0, fixed.z - hip.z);
                     const float length = glm::length(delta);
+                    if (pass == 32) {
+                        reachable &= std::abs(dy) <= reach && length <= radius + 1e-5f;
+                        const float excess = std::max(std::abs(dy) - reach, length - radius);
+                        worstFrame = excess > worst ? k : worstFrame;
+                        worst = std::max(worst, excess);
+                        continue;
+                    }
                     if (length > radius && length > 1e-6f) {
                         delta *= radius / length;
                         fixed.x = hip.x + delta.x; fixed.z = hip.z + delta.z;
                     }
                 }
-            for (int k = start; k < f; ++k) {
+                if (reachable) break;
+                if (worstFrame < (start + end) / 2) {
+                    track.contact[start++ % n][side] = false;
+                    ++end; // the loop removes the chosen leading frame instead
+                    continue;
+                }
+                track.contact[(end - 1) % n][side] = false;
+            }
+            for (int k = start; k < end; ++k) {
                 auto target = fixed;
                 target.z -= direction * travel(k);
-                correction[k] = target - original[k % n][side];
+                for (int cycle = 0; cycle < 3; ++cycle)
+                    correction[k % n + cycle * n] = target - original[k % n][side];
                 track.rotations[k % n][side] = originalRotations[anchor % n][side];
             }
         }

@@ -1517,10 +1517,11 @@ static void rebakeImportedPresentation(ImportedAnimEntry& e, const std::vector<m
 namespace {
 void groundActorPose(const ImportedAnimEntry& e, const ActorAnimState& s,
                      std::vector<mc2skel::GpuBone>& globals, unsigned frameStamp,
-                     const mc2mechanim::VisualGround* ground = nullptr) {
+                     const mc2mechanim::VisualGround* ground = nullptr, bool allowLock = true) {
     if (mc2clip::groundingRole(e.groundingRoles, s.activeClip) == "feet") {
         ZoneScopedN("Mech.FootLockIK");
-        std::vector<glm::mat4> pose(globals.size());
+        thread_local std::vector<glm::mat4> pose;
+        pose.resize(globals.size());
         for (size_t b = 0; b < globals.size(); ++b)
             for (int r = 0; r < 4; ++r)
                 for (int c = 0; c < 4; ++c) pose[b][c][r] = globals[b].m[r * 4 + c];
@@ -1541,7 +1542,7 @@ void groundActorPose(const ImportedAnimEntry& e, const ActorAnimState& s,
             const auto& [clip, values] = *plant;
             track = &values;
         }
-        const bool locking = s.locomotion && track && !track->feet.empty();
+        const bool locking = allowLock && s.locomotion && track && !track->feet.empty();
         if (locking) {
             targets = track->sample(s.clipTimeSec / s.durationSec);
             rotations = track->sampleRotations(s.clipTimeSec / s.durationSec);
@@ -1590,7 +1591,7 @@ float fallenPoseLift(const ImportedAnimEntry& e, const ActorAnimState& s,
 
 void mc2mechanim::CopyImportedActorPose(const void* source, const void* destination,
                                        const mc2::sim::ImportedAnimState& presentation, float torsoYawDeg,
-                                       VisualGround* ground) {
+                                       VisualGround* ground, bool solveFeet) {
     ZoneScopedN("Mech.ImportedPresentationPose");
     if (!source || !destination) return;
     if (ground) ground->fallenLift = 0.0f;
@@ -1604,7 +1605,7 @@ void mc2mechanim::CopyImportedActorPose(const void* source, const void* destinat
             auto twist = entry.torsoTwist;
             twist.degrees = torsoYawDeg;
             if (mc2skel::EvaluateActorClipGpuBones(*entry.plan, draw, draw.lastGlobals, &twist)) {
-                groundActorPose(entry, draw, draw.lastGlobals, draw.lastFrame, ground);
+                if (solveFeet) groundActorPose(entry, draw, draw.lastGlobals, draw.lastFrame, ground);
                 if (ground) ground->fallenLift = fallenPoseLift(entry, draw, draw.lastGlobals, *ground);
             }
             if (entry.gpuMode) buildGpuModelDelta(entry, draw, draw.lastGlobals);
@@ -1943,7 +1944,7 @@ void mc2mechanim::TickImportedMechs(float dt, unsigned frameStamp, const MechMot
         thread_local std::vector<mc2skel::GpuBone> globals;
         globals.clear();
         if (sampleActorClip(e, s, dt, motion, globals, advanceClock)) {
-            groundActorPose(e, s, globals, frameStamp);
+            groundActorPose(e, s, globals, frameStamp, nullptr, motion.preview);
             s.lastGlobals.swap(globals);   // retain the previous buffer for the next sample
             mc2clip::publishPreviewPose(motion.preview, e.gpuMode,
                 [&] { buildGpuModelDelta(e, s, s.lastGlobals); },

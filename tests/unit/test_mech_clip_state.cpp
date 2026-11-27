@@ -748,8 +748,10 @@ TEST_CASE("clip state: MW5 grounded stance drift at installed gesture speeds") {
             REQUIRE_FALSE(plants.feet.empty());
             float time = 0, world = 0, peak = 0, maxVelocity = 0, reachError = 0;
             double solveSeconds = 0;
+            std::array<double, 600> solveSamples{};
             float drift[2] = {}, previousWorld[2][2] = {};
             int previousContact[2] = {-1, -1}, contactFrames = 0;
+            int previousFrame = 0;
             const float dt = 1.0f / 60, moved = speed * dt;
             for (int f = 0; f < 600; ++f) {
                 auto pose = samplePose(time);
@@ -757,7 +759,8 @@ TEST_CASE("clip state: MW5 grounded stance drift at installed gesture speeds") {
                 const auto rotations = plants.sampleRotations(time / curve.duration);
                 const auto started = std::chrono::steady_clock::now();
                 mc2ground::solve(rig, pose, nullptr, &targets, &rotations);
-                solveSeconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
+                solveSamples[f] = std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
+                solveSeconds += solveSamples[f];
                 const int frame = std::min(int(time / curve.duration * plants.feet.size()), int(plants.feet.size()) - 1);
                 for (int k = 0; k < 2; ++k) {
                     const auto ankle = glm::vec3(pose[rig.legs[k].foot][3]);
@@ -767,7 +770,12 @@ TEST_CASE("clip state: MW5 grounded stance drift at installed gesture speeds") {
                         const glm::vec2 error(ankle.x - targets[k].x, ankle.z - targets[k].z);
                         reachError = std::max(reachError, glm::length(error) * scale / mc2mechscale::worldUnitsPerMetre);
                     }
-                    if (contact && previousContact[k] == 1) {
+                    // A distance plateau can skip a complete swing in one tick.
+                    // Those samples belong to different stances, even if both land.
+                    bool sameStance = contact && previousContact[k] == 1;
+                    for (int b = previousFrame; b != frame; b = (b + 1) % int(plants.feet.size()))
+                        sameStance &= plants.contact[b][k];
+                    if (sameStance) {
                         const float dx = x - previousWorld[k][0], dz = z - previousWorld[k][1];
                         const float step = std::sqrt(dx * dx + dz * dz) / mc2mechscale::worldUnitsPerMetre;
                         drift[k] += step; peak = std::max(peak, drift[k]);
@@ -775,6 +783,7 @@ TEST_CASE("clip state: MW5 grounded stance drift at installed gesture speeds") {
                     } else drift[k] = 0;
                     previousWorld[k][0] = x; previousWorld[k][1] = z; previousContact[k] = contact ? 1 : 0;
                 }
+                previousFrame = frame;
                 time = curve.advanceWorld(time, moved, scale);
                 world += gesture == kGestureReverse ? -moved : moved;
             }
@@ -782,10 +791,15 @@ TEST_CASE("clip state: MW5 grounded stance drift at installed gesture speeds") {
                 asset.path().stem().string().c_str(), choice.clip, peak * 100, maxVelocity * 100, contactFrames, speed, reachError * 100);
             const char* reason = !contactFrames ? "NO_MEASURABLE_CONTACT" : peak < .02f ? "PASS" :
                 reachError > .0001f ? "REACH_CLAMP_RESIDUAL" : "PHASE_INTERPOLATION_DRIFT";
-            std::printf("MW5_LOCK %s %s solve20_ms=%.4f reason=%s\n",
-                asset.path().stem().string().c_str(), choice.clip, solveSeconds * 1000 * 20 / 600, reason);
+            // Keep the mean receipt, but use the median for the cost assertion:
+            // compiler/merge-gate preemption is not time spent in this solver.
+            std::sort(solveSamples.begin(), solveSamples.end());
+            const double median20 = (solveSamples[299] + solveSamples[300]) * .5 * 1000 * 20;
+            std::printf("MW5_LOCK %s %s solve20_ms=%.4f median20_ms=%.4f reason=%s\n",
+                asset.path().stem().string().c_str(), choice.clip, solveSeconds * 1000 * 20 / 600, median20, reason);
             CHECK(contactFrames > 0);
             CHECK(peak < .02f);
+            CHECK(median20 < .05);
         }
         ++chassis;
     }
