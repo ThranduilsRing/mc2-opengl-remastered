@@ -45,6 +45,7 @@ class AppearanceType
 	
 		unsigned long 		numUsers;			//Number of users using this appearanceType.
 		unsigned long		appearanceNum;		//What kind am I.
+		unsigned long long matchDataGeneration = 0;
 
 		char 				*name;				//Appearance Base FileName.  A view of nameStore.
 		std::string			nameStore;			//Owns the name text; a type is never copied or moved, so the view stays valid.

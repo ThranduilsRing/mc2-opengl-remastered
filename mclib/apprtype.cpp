@@ -29,6 +29,7 @@
 #endif
 
 #include "mc2_czstring.h"
+#include "vfs.h"
 #include"cident.h"
 #include"inifile.h"
 #include"paths.h"
@@ -277,10 +278,12 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, mc2:
 
 	//-----------------------------------------------------------
 	// Scan the registry (load order) for this appearance.
+	const auto matchGeneration = mc2::vfs::matchDataActive() ? mc2::vfs::generation() : 0;
 	for (auto& known : types)
 	{
 		// Same name in another class is a different type (a mod mech named "infantry" must not get the GV "infantry" and be cast to Mech3DAppearanceType).
-		if (known && static_cast<long>(known->appearanceNum >> 24) == appearanceClass && S_stricmp(known->name,appearFile) == 0)
+		if (known && known->matchDataGeneration == matchGeneration &&
+			static_cast<long>(known->appearanceNum >> 24) == appearanceClass && S_stricmp(known->name,appearFile) == 0)
 		{
 			appearanceType = known.get();
 			break;
@@ -309,6 +312,7 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, mc2:
 
 		appearanceType = fresh.get();
 		appearanceType->appearanceNum = apprNum;
+		appearanceType->matchDataGeneration = matchGeneration;
 		appearanceType->init(appearFile);
 
 		//----------------------------------------

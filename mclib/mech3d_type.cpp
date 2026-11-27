@@ -7,6 +7,7 @@
 #include "../RenderCore/axis_convert.h"
 #include "content_error.h"
 #include "texture_assets.h"
+#include "vfs.h"
 #include <format>
 #include <vector>
 #include "arm_node_remap.h"
@@ -106,9 +107,10 @@ void Mech3DAppearanceType::init (mc2::czstring fileName)
 	// Validated imported-mech packages ship by default. Loose legacy overrides
 	// require explicit opt-in: base data includes a broken Z-up Flea GLB.
 	static const bool s_assimpMechImport = mc2::gate::get<"MC2_ASSIMP_MECH_IMPORT">();
-	const bool importAllowed = s_assimpMechImport &&
+	const bool matchData = mc2::vfs::matchDataActive();
+	const bool importAllowed = matchData || (s_assimpMechImport &&
 		(mc2::gate::state<"MC2_ASSIMP_MECH_IMPORT">() == mc2::gate::Tri::On ||
-		 ModOwnerHasCapability(static_cast<const char*>(mechIniName), "imported_mechs"));
+		 ModOwnerHasCapability(static_cast<const char*>(mechIniName), "imported_mechs")));
 	// Gesture clips (.agl/.ase) come from the INI's own name unless [Import] AnimHost= names a
 	// host whose gesture timing the imported model borrows until it owns clip timing (P9).
 	char animBase[256] = "";
@@ -121,7 +123,13 @@ void Mech3DAppearanceType::init (mc2::czstring fileName)
 		// for the right format itself. "madcat.glb" -> "madcat".
 		char* dot = strrchr(importSourceBase, '.');
 		if (dot) *dot = '\0';
-		if (mechFile.readIdString("AnimHost", animBase, 255) != NO_ERR)
+		if (matchData) {
+			FullPathFileName glb, fbx;
+			glb.init(tglPath, importSourceBase, ".glb");
+			fbx.init(tglPath, importSourceBase, ".fbx");
+			if (!fileExists(glb) && !fileExists(fbx)) importSourceBase[0] = '\0';
+		}
+		if (!importSourceBase[0] || mechFile.readIdString("AnimHost", animBase, 255) != NO_ERR)
 			animBase[0] = '\0';
 	}
 	const char* gestureClipBase = animBase[0] ? animBase : fileName;

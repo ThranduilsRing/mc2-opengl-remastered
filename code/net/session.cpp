@@ -73,7 +73,8 @@ std::uint32_t delayForRtt(std::uint32_t rtt, std::uint32_t jitter) {
     return static_cast<std::uint32_t>(std::clamp<std::uint64_t>((budget * 30 + 999) / 1000 + 2, 3, 12));
 }
 bool simDataPath(std::string_view path) {
-    // Simulation inputs only. Storage, mod names/versions and all artwork are excluded;
+    // Geometry and clips supply simulation sockets and clocks. Sync their sources;
+    // textures remain cosmetic (embedded textures travel with an imported model).
     // a sim-affecting mod is identified by its effective bytes rather than its label.
     struct Row { std::string_view directory, extensions; };
     static constexpr Row rows[] = {
@@ -86,6 +87,8 @@ bool simDataPath(std::string_view path) {
         {"data/defs/weapons/", "|fit|json|"},
         {"data/defs/armor/", "|fit|json|"},
         {"data/defs/equipment/", "|fit|csv|json|"},
+        {"data/tgl/", "|ini|tgl|agl|ase|glb|fbx|bin|json|"},
+        {"data/anim_overrides/", "|json|ase|agl|"},
     };
     if (path.find("..") != path.npos || path.find_first_of("\\:") != path.npos) return false;
     if (std::ranges::any_of(path, [](unsigned char c) { return c < 32 || (c >= 'A' && c <= 'Z'); })) return false;
@@ -114,7 +117,7 @@ namespace {
 constexpr std::uint32_t simEntry = 0x53494d01, simRequest = 0x53494d02,
     simChunk = 0x53494d03, simAck = 0x53494d04, simFinish = 0x53494d05;
 constexpr std::uint32_t simChunkBytes = 60 * 1024;
-constexpr std::size_t simTotalBytes = 256 * 1024 * 1024;
+constexpr std::size_t simTotalBytes = maxSimDataBytes;
 save::Bytes simControl(std::uint32_t kind) { save::Archive a; a(kind); return a.bytes(); }
 }
 SimTransfer::SimTransfer(bool host, SimFiles source) : files(std::move(source)), host_(host) {

@@ -88,6 +88,7 @@ std::vector<Entry> enumerate(std::string_view dirKey, std::string_view ext = {},
 // In-memory match cache. A missing owned key is absent, even if installed locally.
 void setMatchData(std::map<std::string, std::vector<uint8_t>> files, bool (*owns)(std::string_view));
 void clearMatchData();
+bool matchDataActive();
 
 // Alias key of the base-game campaign.fit while a mod's campaign.fit shadows it (absent otherwise); the campaign list shows it first.
 inline constexpr std::string_view kStockCampaignKey = "data/campaign/stock_campaign.fit";

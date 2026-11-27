@@ -2,10 +2,14 @@
 #include "user_paths.h"
 #ifndef MC2_NET_RUNTIME_TESTS
 #include "../../mclib/file.h"
+#include "../../mclib/inifile.h"
 #include "../../GameOS/gameos/gos_render.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"
 #endif
 #include "../../mclib/vfs.h"
 #include <thread>
+#include <set>
 #include <algorithm>
 #include <chrono>
 #include <deque>
@@ -88,7 +92,26 @@ std::vector<vfs::Entry> simEntries() {
     return {entry};
 #else
     auto entries = vfs::enumerate("data", {}, true);
-    std::erase_if(entries, [](const auto& entry) {
+    std::set<std::string> imports;
+    if (gate::get<"MC2_ASSIMP_MECH_IMPORT">()) {
+        for (const auto& entry : entries) {
+            if (!entry.key.starts_with("data/tgl/") || !entry.key.ends_with(".ini")) continue;
+            if (gate::state<"MC2_ASSIMP_MECH_IMPORT">() != gate::Tri::On &&
+                !ModOwnerHasCapability(entry.key.c_str(), "imported_mechs")) continue;
+            FitIniFile definition;
+            if (definition.open(entry.key.c_str()) != 0) fail("cannot read appearance definition: " + entry.key);
+            char source[256] = {};
+            if (definition.seekBlock("Import") != 0 || definition.readIdString("Source", source, 255) != 0 || !source[0]) continue;
+            std::string base = vfs::join("data/tgl", source);
+            const auto dot = base.rfind('.');
+            if (dot != base.npos) base.resize(dot);
+            imports.insert(base + ".glb");
+            imports.insert(base + ".fbx");
+        }
+    }
+    std::erase_if(entries, [&imports](const auto& entry) {
+        if (entry.key.starts_with("data/tgl/") && (entry.key.ends_with(".glb") || entry.key.ends_with(".fbx")))
+            return !imports.contains(entry.key);
         return !simDataPath(entry.key) || (entry.key.starts_with("data/defs/chassis/") &&
             !ModOwnerHasCapability(entry.key.c_str(), "package_chassis"));
     });
@@ -105,7 +128,7 @@ void readSimFile(const vfs::Entry& entry, SimFiles& files, std::size_t& total) {
     if (file.open(entry.key.c_str()) != 0) fail("cannot open simulation data: " + entry.key);
     const auto size = file.fileSize();
     total += size;
-    if (size > save::maxFileBytes || total > 256 * 1024 * 1024 || files.size() >= 8192)
+    if (size > save::maxFileBytes || total > maxSimDataBytes || files.size() >= 8192)
         fail("simulation data exceeds transfer limit");
     save::Bytes bytes(size);
     if (size && file.read(bytes.data(), static_cast<long>(size)) != static_cast<long>(size))

@@ -10,6 +10,7 @@ inline constexpr std::uint32_t protocolVersion = 7;
 inline constexpr std::size_t maxPacketBytes = 256 * 1024;
 using SimFiles = std::map<std::string, save::Bytes>;
 bool simDataPath(std::string_view path);
+inline constexpr std::size_t maxSimDataBytes = 2ull * 1024 * 1024 * 1024;
 save::Digest simDataHash(const SimFiles& files);
 // Build-generated identity of the legacy simulation's source trees.
 save::Digest simCodeHash();
