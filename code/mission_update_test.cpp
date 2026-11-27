@@ -45,12 +45,9 @@ long applyPlayerIntent(Mission& mission, const mc2::player::UnitIntent& intent, 
     } else {
         order.moveParams.wayPath.numPoints = 1;
         order.moveParams.wayPath.curPoint = 0;
-        const auto position = object->getPosition();
-        const auto direction = intent.location - position;
-        const float distance = glm::length(direction);
-        const auto requested = distance > 800 ? position + direction * (800.0f / distance) : intent.location;
         glm::vec3 location;
-        if (MoverGroup::calcMoveGoals(requested, 1, &location) != 1) return 1;
+        // Give native routing the destination, including detours around blocked terrain.
+        if (MoverGroup::calcMoveGoals(intent.location, 1, &location) != 1) return 1;
         order.moveParams.wayPath.points[0] = location.x;
         order.moveParams.wayPath.points[1] = location.y;
         order.moveParams.wayPath.points[2] = location.z;

@@ -197,8 +197,15 @@ bool MissionInterfaceManager::requestPlayerSupport(int command, glm::vec3 positi
     }
     position.z = land->getTerrainElevation(position);
     logistics->decrementResourcePoints(cost);
-    if (strike) IfaceCallStrike(ARTILLERY_LARGE, &position, nullptr);
-    else beginVtol(vehicle, Commander::home->getId(), &position, salvage);
+    const auto salvageWID = salvage ? salvage->getWatchID() : 0;
+    auto deliver = [this, strike, vehicle, position, salvageWID]() mutable {
+        auto* target = ObjectManager->getByWatchID(salvageWID);
+        if (strike) IfaceCallStrike(ARTILLERY_LARGE, &position, nullptr);
+        else beginVtol(vehicle, Commander::home->getId(), &position,
+            target && target->isMover() ? static_cast<Mover*>(target) : nullptr);
+    };
+    // Support creation touches camera/FX state; Main delivers after joining the tick.
+    if (!mc2::tick::defer(mc2::tick::Queue::MoverUi, deliver)) deliver();
     mc2::fmt::print_err("[PLAYER_SUPPORT v1] time={:.2f} command={} target={} cost={} rp={} x={:.1f} y={:.1f}\n",
         scenarioTime, command, salvage ? salvage->getWatchID() : 0, cost,
         logistics->getResourcePoints(), position.x, position.y);

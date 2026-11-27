@@ -1628,13 +1628,6 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         intent.posture = mc2::player::Posture::Engage;
         intent.longRange = unit->isGuardTower() || (maxArmor > 0 && armor < maxArmor * 0.65f);
     }
-    // After a failed long route, keep issuing reachable local legs instead of
-    // returning to the same full-map request after each recovery window.
-    if (intent.goal == mc2::player::Goal::Move && (runtime->playerRecoveries > 0 || distanceToGoal > 5000)) {
-        const auto route = intent.location - position;
-        const float distance = glm::length(route);
-        if (distance > 1200) intent.location = position + route * (1200.0f / distance);
-    }
     if (intent.goal == mc2::player::Goal::Move) intent.location = retainWaypoint(intent.location);
     runtime->engageTargetWID = intent.targetWatchId;
     return intent;
