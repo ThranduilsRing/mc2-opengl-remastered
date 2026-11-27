@@ -306,11 +306,6 @@ std::string legacyCampaignMods();
 template <class File, class Legacy>
 GameRules readFit(File& file, Legacy&& legacy) {
     GameRules g = readFit(file);
-    if (!g.mods.empty()) return g;
-    // A save that records its layers as explicitly none ([General] ModDeps "-") ran with no add-ons: migrating it would mount every
-    // installed pack on load and change the next save. Older builds without that key keep the legacy migration.
-    char deps[4096] = {};
-    if (file.seekBlock("General") == 0 && file.readIdString("ModDeps", deps, sizeof(deps) - 1) == 0 && std::string_view(deps) == "-") return g;
     migrateLegacyMods(g, legacy());
     return g;
 }

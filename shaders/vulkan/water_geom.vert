@@ -88,8 +88,6 @@ float shoreBed(vec2 p) {
 
 // Output varyings -> water_geom.frag (base-layer subset of gos_terrain_water_mdi.frag).
 layout(location = 0) out vec4  Color;
-layout(location = 1) out vec2  Texcoord;
-layout(location = 2) out float FogValue;
 layout(location = 3) out float WaterThickness;
 layout(location = 4) out vec3  WorldPos;
 
@@ -179,8 +177,6 @@ void main() {
     if (pzValid == 0u || (divisions == 1u && subTriangle != 0u)) {
         gl_Position    = vec4(0.0, 0.0, -2.0, 1.0);
         Color          = vec4(0.0);
-        Texcoord       = vec2(0.0);
-        FogValue       = 0.0;
         WaterThickness = 0.0;
         WorldPos       = vec3(0.0);
         return;
@@ -286,10 +282,8 @@ void main() {
     }
 
     // BASE layer (detailMode==0): alpha owned by FS shore term; opaque sentinel.
-    FogValue = fog;
 
     Color    = vec4(light.rgb,1.0).bgra;
-    Texcoord = vec2(u, v);
 
     vec4 clip = U.worldToClipGL * vec4(worldPos, 1.0);
     // Test the water surface at its physical depth. A tile-dependent lift

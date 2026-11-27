@@ -23,7 +23,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/run_editor_smoke.py` | 1222 | `nofocus.spawn` | offscreen |
 | `scripts/run_editor_smoke.py` | 1748 | `nofocus.spawn` | offscreen |
 | `scripts/run_mp_loopback_proof.py` | 139 | `nofocus.spawn` | offscreen |
-| `scripts/run_player_path.py` | 150 | `nofocus.spawn` | offscreen |
+| `scripts/run_player_path.py` | 153 | `nofocus.spawn` | offscreen |
 | `scripts/run_smoke.py` | 421 | `nofocus.spawn` | offscreen |
 | `scripts/run_smoke_asan.py` | 203 | `nofocus.spawn` | offscreen |
 | `scripts/run_tool_capture.py` | 108 | `nofocus.spawn` | offscreen |
@@ -54,6 +54,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/tests/test_shadow_bake_init.py` | 343 | `nofocus.run` | offscreen |
 | `scripts/tests/test_shadow_bake_init.py` | 391 | `nofocus.run` | offscreen |
 | `scripts/tests/test_shadow_bake_init.py` | 483 | `nofocus.run` | offscreen |
+| `scripts/tests/test_vk_device_fault.py` | 77 | `nofocus.run` | offscreen |
 | `tests/smoke/object_visual_diff.py` | 123 | `nofocus.run` | offscreen |
 | `tests/smoke/scene_resize.py` | 37 | `nofocus.spawn` | offscreen |
 | `tools/campaign_save_roundtrip.py` | 192 | `nofocus.spawn` | offscreen |
@@ -75,7 +76,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `tools/tracy_capture_compare.py` | 816 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
 | `tools/window_cycle.py` | 117 | `nofocus.spawn` | offscreen |
 
-Total engine launch sites: 65
+Total engine launch sites: 66
 
 ## Shell launchers (RULE 9)
 

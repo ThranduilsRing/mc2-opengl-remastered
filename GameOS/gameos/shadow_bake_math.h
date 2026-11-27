@@ -139,6 +139,7 @@ inline Rect shadowFootprint(Vec3 boxMin, Vec3 boxMax, Vec3 towardSun, float grou
 // search a caster topping out at `casterTopZ` asks for, on a grid of `texelWorld` (snapped, so neighbouring tiles sample the same texels). d range: from
 // below the lowest receiver to above the highest caster.
 struct Window {
+    Rect needed;
     float lx0 = 0.0f, ly0 = 0.0f, lx1 = 0.0f, ly1 = 0.0f;
     float dMin = 0.0f, dMax = 1.0f;
     int texels = 0;
@@ -159,6 +160,7 @@ inline Window casterWindow(const LightBasis& b, Rect region, float hMin, float h
     const float maxRay = (top - hMin) / sinAlt;
     const float margin = 2.0f * penumbraWorld(maxRay, tanTheta) + 4.0f;
     lx0 -= margin; ly0 -= margin; lx1 += margin; ly1 += margin;
+    w.needed = {lx0, ly0, lx1, ly1};
     const float extent = (std::max)(lx1 - lx0, ly1 - ly0);
     w.texelWorld = (std::max)(kWindowTexelWorld, extent / static_cast<float>(maxTexels - 2));
     // Snap the origin to the texel grid so the overlapping aprons of two tiles see identical texels.
@@ -172,6 +174,15 @@ inline Window casterWindow(const LightBasis& b, Rect region, float hMin, float h
     w.dMin = d0 - 2.0f;
     w.dMax = (std::max)(d1 + maxRay, w.dMin + 1.0f) + 2.0f;
     return w;
+}
+
+// Bounds for every gather/bilinear tap in shadow_bake_pcss, without changing the raster grid.
+inline Rect neededWindowRect(const Window& w, float maxRay, float tanTheta, float maskTexel) {
+    const float shortRay = (std::min)(maxRay, 150.0f);
+    const float filter = (std::max)({maxRay * tanTheta, shortRay * (3.0f - shortRay / 100.0f) * tanTheta, 0.75f * maskTexel});
+    const float search = (std::max)(maxRay * tanTheta, 1.5f * w.texelWorld);
+    const float extra = (std::max)(0.0f, (std::max)(filter, search) - (2.0f * maxRay * tanTheta + 4.0f)) + w.texelWorld;
+    return {w.needed.x0 - extra, w.needed.y0 - extra, w.needed.x1 + extra, w.needed.y1 + extra};
 }
 
 // World -> window clip, column-major (out[c * 4 + r]), as a GLSL mat4 multiplies a column vector: x, y in [-1, 1] over the window, z in [0, 1] with 0 at

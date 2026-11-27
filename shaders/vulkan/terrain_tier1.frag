@@ -123,9 +123,12 @@ vec2 mv_fineGrad(ivec2 p) {
                   mv_fineH(p + ivec2(0, 1)) - mv_fineH(p - ivec2(0, 1))) / 64.0;
 }
 
+float mv_macroGradientB = 0.0;
 vec3 mv_smoothTerrainNormal(vec2 worldXY) {
     vec2 cell = vec2(worldXY.x + uT.halfMap, uT.halfMap - worldXY.y) / 128.0;
-    vec2 gradient = textureLod(u_macroGradient, (cell + 1.5) / float(uT.mapSide + 2), 0.0).rg;
+    vec4 macroGradient = textureLod(u_macroGradient, (cell + 1.5) / float(uT.mapSide + 2), 0.0);
+    vec2 gradient = macroGradient.rg;
+    mv_macroGradientB = macroGradient.b;
     // TERRAIN-HIRES-NEAR-1: with the 4x bake live, shade from the bake's own gradient
     // (central differences at 32 wu, bilinear between fine vertices), same convention.
     if (TS_visualMode != 0) {
@@ -177,6 +180,8 @@ float cliffReferenceLuma(vec2 worldXY) {
                           + textureLod(u_colormap, uv - vec2(0, o), 0.0).rgb);
     return dot(reference, vec3(0.299, 0.587, 0.114));
 }
+
+float mv_cliffRefLuma = 0.0;
 
 #include "include/terrain_cliff_material.glsl"   // MATV_CLIFF_*, mv_cliffMaterial, crApply
 
@@ -244,7 +249,7 @@ void main() {
     // Bounded shallow refraction of the seabed material, fading to zero at the waterline.
     // Displace texture reads only: terrain coverage, shadows and material classification stay fixed.
     vec2 seabedOffset = vec2(0.0);
-    if (uT.shorelineOn > 1 && kPlanarReflection == 0) {
+    if (TS_shorelineOn > 1 && kPlanarReflection == 0) {
         float depth = max(uT.shorelineWaterElev - v_worldPos.z, 0.0);
         float phase = dot(v_worldPos.xy, vec2(0.003, 0.002)) + uT.shorelineTime * 1.05;
         seabedOffset = vec2(sin(phase), cos(phase * 1.37)) * min(depth * 0.12, 4.0)
@@ -390,8 +395,12 @@ void main() {
     vec3 baseNormal = mv_smoothTerrainNormal(v_worldPos.xy);
     vec3 prelitBase = base;
     float delitShare = (1.0 - pureConcrete) * (1.0 - smoothstep(0.55, 0.85, abs(baseNormal.z)));
+    if (!TS_authoredMaterialsOnly && TS_colormapReady != 0 &&
+        (delitShare > 0.0 || (TS_lightingEnabled != 0 && TS_detailEnabled != 0 && pureConcrete < 1.0 &&
+                             (TS_concreteDetail & 2) != 0 && cliffRockWeight(abs(baseNormal.z)) > 0.01)))
+        mv_cliffRefLuma = cliffReferenceLuma(v_worldPos.xy);
     if (!TS_authoredMaterialsOnly && delitShare > 0.0 && TS_colormapReady != 0) {
-        float gain = cliffDelightGain(dot(base, vec3(0.299, 0.587, 0.114)), cliffReferenceLuma(v_worldPos.xy));
+        float gain = cliffDelightGain(dot(base, vec3(0.299, 0.587, 0.114)), mv_cliffRefLuma);
         base *= mix(1.0, gain, delitShare);
     }
     vec3 baseColor = base;
@@ -493,7 +502,7 @@ void main() {
                 (kPlanarReflection == 0 || kReflectCutDetail == 0) && uT.detailStrength != 0.0)
                 dN = mv_authoredDetailNormal(v_worldPos.xy, detailUvDx, detailUvDy);
             if (!TS_authoredMaterialsOnly && (kPlanarReflection == 0 || kReflectCutDetail == 0) && TS_detailReady != 0 && uT.detailStrength != 0.0) {
-                if (mv_needDetail(baseN, lightDir, detailW, materialSnow, v_worldPos, normalLightFloor)) {
+                if (uT.groundAoMaterial > 0.0 || mv_needDetail(baseN, lightDir, detailW, materialSnow, v_worldPos, normalLightFloor)) {
                     // Under-forest ground: the tree-canopy density mask (splatted from tree placements at mission load), same atlas UV as
                     // the macro colour. Needs the 7th array layer.
                     mv_forestMix = (TS_colormapReady != 0 && textureSize(u_matNormalArray, 0).z > MAT_LAYER_FOREST)
@@ -544,7 +553,7 @@ void main() {
         vec3 shadowN=baseNormal;
         float staticS=TS_enableShadows!=0?terrainStaticShadow(v_worldPos):1.0;
 #ifdef MC2_RT_SUN_SHADOWS
-        if (TS_enableShadows!=0 && v_worldPos.z>=uT.shorelineWaterElev && distance(v_worldPos,mc2ToRender(uT.cameraPosMC2.xyz))<1536.0)
+        if (TS_enableShadows!=0 && v_worldPos.z>=uT.shorelineWaterElev)
             staticS=min(staticS,mix(sunShadowFloor(0.4),1.0,rtPropSunVisibility(v_worldPos,shadowN,moverFrame.sun.xyz)));
 #endif
         float dynS=kPlanarReflection != 0 && kReflectCutMovers != 0 ? 1.0 : terrainDynamicShadow(v_worldPos,shadowN);
@@ -575,9 +584,8 @@ void main() {
         // share (the cliff split, zero in shadow) is exempt. Shape = the per-mission baked horizon AO (macro-gradient texture, .b);
         // material = the cooked source AO where the layer carries it (grass turf, normal-texel B), else a cavity proxy from the detail-normal tilt (the stock sets have no AO map).
         if (uT.groundAoShape > 0.0 || uT.groundAoMaterial > 0.0) {
-            vec2 aoCell = vec2(v_worldPos.x + uT.halfMap, uT.halfMap - v_worldPos.y) / 128.0;
-            float aoShape = textureLod(u_macroGradient, (aoCell + 1.5) / float(uT.mapSide + 2), 0.0).b;
-            float aoMat = 1.0 - 0.45 * clamp(length(dbgDN.xy * uT.detailStrength) * 1.2, 0.0, 1.0);
+            float aoShape = mv_macroGradientB;
+            float aoMat = 1.0 - 0.45 * clamp(length(mv_cavityNormal.xy * uT.detailStrength) * 1.2, 0.0, 1.0);
             aoMat = mix(aoMat, mix(aoMat, mv_srcAoSum / max(mv_srcAoW, 1e-4), clamp(mv_srcAoW, 0.0, 1.0)), uT.groundAoSource);
             float aoAll = clamp(mix(1.0, aoShape, uT.groundAoShape), 0.0, 1.0) * clamp(mix(1.0, aoMat, uT.groundAoMaterial), 0.0, 1.0);
             g_groundAoMul = mix(1.0, aoAll, 1.0 - cliffSun * shadow);
@@ -601,15 +609,15 @@ void main() {
             // the Beer-Lambert below turns it jade; gentle slopes only, so cliffs and quays keep their own colour.
             // Close up (ref 6) a dark wet strip follows the swash, and a lacy white swash sheet runs up the sand.
             // Night (scene light below 1, day exactly 1): a gentle cool-grey sand strip, no wet strip, a dim swash.
-            float beachFw = length(fwidth(v_worldPos.xy)), beachNight = clamp((1.0 - uEnv.sceneLight.x) * 2.5, 0.0, 1.0);
-            if (uT.shorelineOn == 2 && horizDist < 110.0 && aboveWater > -40.0) {
+            float beachNight = clamp((1.0 - uEnv.sceneLight.x) * 2.5, 0.0, 1.0);
+            if (TS_shorelineOn == 2 && horizDist < 110.0 && aboveWater > -40.0) {
                 float lumR = clamp(dot(lit, vec3(0.299, 0.587, 0.114)) / max(dot(baseColor, vec3(0.299, 0.587, 0.114)), 0.04), 0.0, 2.5);
                 float mask = smoothstep(0.93, 0.975, nzc) * (cementHit ? 0.0 : 1.0) * (1.0 - F3pc) * (1.0 - materialSnow);
                 float beach = (1.0 - smoothstep(35.0, 80.0, horizDist + fbm(v_worldPos.xy * 0.011, 2) * 30.0))
                             * (1.0 - smoothstep(4.0, 40.0, -aboveWater)) * mask;
                 lit = mix(lit, mix(vec3(0.97, 0.92, 0.79), vec3(0.74, 0.77, 0.80), beachNight) * lumR, beach * mix(0.8, 0.4, beachNight));
                 mask *= 1.0 - beachNight;
-                float above = smoothstep(0.0, 0.3, aboveWater) * mask, near = 1.0 - smoothstep(1.5, 5.0, beachFw);
+                float above = smoothstep(0.0, 0.3, aboveWater) * mask, near = 1.0;
                 float run = mix(8.0, 24.0, near) + 7.0 * sin(uT.shorelineTime * 1.05 + dot(v_worldPos.xy, vec2(0.003, 0.002)) - 0.9);
                 float lace = fbm(v_worldPos.xy * 0.15 + uT.shorelineTime * vec2(0.12, 0.05), 2);
                 lit *= 1.0 - mix(0.15, 0.4, near) * above * (1.0 - smoothstep(run, run + 10.0, horizDist + fbm(v_worldPos.xy * 0.04, 2) * 5.0));
@@ -627,7 +635,7 @@ void main() {
                 float aboveFade = smoothstep(0.0, 1.5, horizDist);
                 slWet  *= aboveFade;
                 slFoam *= aboveFade;
-                bool reviewShore = uT.shorelineOn > 1;
+                bool reviewShore = TS_shorelineOn > 1;
                 if (reviewShore) {
                     float phase = uT.shorelineTime * 1.05 + dot(v_worldPos.xy, vec2(0.003, 0.002));
                     // The wet tail lags the swash so dark sand remains exposed on retreat.
@@ -683,8 +691,9 @@ void main() {
         float wd = uT.shorelineWaterElev - v_worldPos.z;
         vec2 cp = v_worldPos.xy * 0.03;
         float caustic = pow(max(0.0, sin(cp.x * 7.0 + sin(cp.y * 4.0 + uT.shorelineTime) * 1.3)
-                                   * sin(cp.y * 6.0 + cos(cp.x * 4.0 - uT.shorelineTime) * 1.2)), 9.0)
-                      * (1.0 - smoothstep(0.6, 2.0, causticFw));
+                                   * sin(cp.y * 6.0 + cos(cp.x * 4.0 - uT.shorelineTime) * 1.2)), 9.0);
+        // Spatial quadrature of this sine-product power: mean 0.0335 (512x512, 4 phases).
+        caustic = mix(caustic, 0.0335, smoothstep(0.6, 2.0, causticFw));
         float reef = smoothstep(0.1, 0.4, fbm(v_worldPos.xy / 380.0 + 7.3, 3)) * smoothstep(3.0, 9.0, wd) * (1.0 - smoothstep(45.0, 90.0, wd));
         // Night: little light reaches the seabed and back; no caustics, a dim, mostly desaturated cool teal-green.
         float seaNight = clamp((1.0 - uEnv.sceneLight.x) * 2.5, 0.0, 1.0);

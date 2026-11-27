@@ -13,6 +13,11 @@ def test_pass_line_passes():
     assert ok, msgs
 
 
+def test_publish_without_compaction_counters_passes():
+    ok, msgs = c.check("[VK_RT_SCENE v1] publish why=props blas_bytes=220000 built_bytes=220000\n" + PASS)
+    assert ok, msgs
+
+
 def test_fail_result_fails():
     ok, msgs = c.check(PASS.replace("result=PASS", "result=FAIL"))
     assert not ok

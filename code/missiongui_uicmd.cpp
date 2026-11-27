@@ -478,8 +478,10 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 		else {
 			glm::vec3 pos = obj->getPosition();
 			eye->projectForScreenXY(pos, sp);
+			if (sp.w <= 1e-4f) { result="blocked"; note="object behind camera"; } else {
 			gos_TestSetRawMouse(sp.x * Environment.drawableWidth / Environment.screenWidth, sp.y * Environment.drawableHeight / Environment.screenHeight);	// sp is logical; the raw mouse is in window points
 			result = "ok";
+			}
 			char sb[64]; // 800x600 script space, for scripted clicks
 			std::snprintf(sb, sizeof sb, "screen=(%.0f,%.0f) w=%.3f", sp.x * 800.0f / Environment.screenWidth, sp.y * 600.0f / Environment.screenHeight, sp.w);
 			note = sb;

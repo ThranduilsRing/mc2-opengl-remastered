@@ -76,6 +76,8 @@ std::map<std::string, float> engineDefaults() {
         {"cloudStrength",0.30f}, {"cloudCoverage",0.20f}, {"cloudSoftness",0.12f}, {"cloudWaterScale",0.5f},
         {"atmoDensity",1.0f}, {"atmoHeightFalloff",8e-4f}, {"atmoSunScatter",0.35f}, {"atmoAnisotropy",0.55f},
         {"cloudSeaAltitude",0}, {"cloudSeaThickness",1400}, {"cloudSeaBillow",0},
+        {"valleyFogThickness",0}, {"valleyFogSigma",0.05f}, {"valleyFogCoverage",0.45f},
+        {"valleyFogColorR",0.86f}, {"valleyFogColorG",0.9f}, {"valleyFogColorB",0.98f},
         {"terrainNormalFlatPeriod",768}, {"terrainNormalFlatStrength",1},
         {"terrainNormalSlopePeriod",320}, {"terrainNormalSlopeStrength",1},
         {"terrainNormalCliffPeriod",320}, {"terrainNormalCliffStrength",1},
@@ -109,6 +111,10 @@ bool validValue(std::string_view key, double value) {
     else if (key == "cloudSeaAltitude") { lo = -2000; hi = 8000; }
     else if (key == "cloudSeaThickness") { lo = 100; hi = 4000; }
     else if (key == "cloudSeaBillow") hi = 1;
+    else if (key == "valleyFogThickness") hi = 2000;
+    else if (key == "valleyFogSigma") hi = 1;
+    else if (key == "valleyFogCoverage") hi = 2;
+    else if (key.starts_with("valleyFogColor")) hi = 1.2f;
     else if (key == "terrainGroundAoShape" || key == "terrainGroundAoMaterial") hi = 4;
     else if (key == "terrainGroundAoSource") hi = 1;
     else if (key.find("terrainNormal") == 0) {
@@ -376,6 +382,16 @@ static void applyKey(mc2::czstring key, float val, int& count) {
             else if (strcmp(key, "atmoHeightFalloff") == 0) pp->atmoFalloff_ = val;
             else if (strcmp(key, "atmoSunScatter") == 0) pp->atmoSunScatter_ = val;
             else if (strcmp(key, "atmoAnisotropy") == 0) pp->atmoAnisotropy_ = val;
+        }
+        count++;
+    } else if (strncmp(key, "valleyFog", 9) == 0) {
+        if (gosPostProcess* pp = getGosPostProcess()) {
+            if (strcmp(key, "valleyFogThickness") == 0) pp->valleyFogThickness_ = val;
+            else if (strcmp(key, "valleyFogSigma") == 0) pp->valleyFogSigma_ = val;
+            else if (strcmp(key, "valleyFogCoverage") == 0) pp->valleyFogCoverage_ = val;
+            else if (strcmp(key, "valleyFogColorR") == 0) pp->valleyFogColor_[0] = val;
+            else if (strcmp(key, "valleyFogColorG") == 0) pp->valleyFogColor_[1] = val;
+            else if (strcmp(key, "valleyFogColorB") == 0) pp->valleyFogColor_[2] = val;
         }
         count++;
     // TERRAIN-CLASSIFY-TUNING-1: per-mission RGB classifier thresholds.

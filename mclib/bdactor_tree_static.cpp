@@ -1,6 +1,9 @@
 // BldgAppearance / TreeAppearance: TreeAppearance static registry: touch*, registerStatic, prewarm.
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include <atomic>
+#include <fstream>
+#include <nlohmann/json.hpp>
+#include <string>
 extern uint32_t mc2LightSlotBakedHighWater();
 #include "bdactor_internal.h"
 #include "../GameOS/gameos/load_scope.h"
@@ -337,6 +340,35 @@ void TreeAppearance::registerStatic() {
 
 		int32_t regIdx = -1;
 		if (!lodMiss && !batch.empty()) {
+			// Mission overlay: extra render instances beside stock trees, never GameObjects or LOS/pathing cells.
+			static std::string decorationMission;
+			static float decorationOffset = 0.0f;
+			const std::string missionName = Terrain::terrainName ? Terrain::terrainName : "";
+			if (decorationMission != missionName) {
+				decorationMission = missionName;
+				decorationOffset = 0.0f;
+				std::ifstream input("data/missions/" + missionName + ".beauty/tree_decorations.json");
+				if (input) {
+					const auto doc = nlohmann::json::parse(input, nullptr, false);
+					if (doc.is_object() && doc.contains("offsetWu") && doc["offsetWu"].is_number())
+						decorationOffset = std::clamp(doc["offsetWu"].get<float>(), 0.0f, 128.0f);
+				}
+			}
+			if (decorationOffset > 0.0f && land && !damaged) {
+				const glm::vec3 extra = position + glm::vec3(decorationOffset, decorationOffset * 0.67f, 0.0f);
+				const float z = TerrainRuntime::sampleVisibleGroundHeight(extra);
+				if (z > Terrain::waterElevation && std::abs(z - xlatPosition.y) < 64.0f) {
+					const size_t stockCount = batch.size();
+					batch.reserve(stockCount * 2);
+					for (size_t i = 0; i < stockCount; ++i) {
+						auto copy = batch[i];
+						copy.modelMatrix[3] -= decorationOffset;
+						copy.modelMatrix[7] += z - xlatPosition.y;
+						copy.modelMatrix[11] += decorationOffset * 0.67f;
+						batch.push_back(copy);
+					}
+				}
+			}
 			// TREE-OVERRIDE-LOD-MVP forced-LOD FIX (2026-06-03): pass treeShape
 			// (the ALWAYS-LIVE LOD0 per-instance shape) as the recipe `multi`, NOT
 			// the throwaway lodShape — lodShape is deleted before the next frame, so

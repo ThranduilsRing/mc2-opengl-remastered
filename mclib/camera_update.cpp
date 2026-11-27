@@ -88,6 +88,8 @@ void Camera::updateGoalRotation (void)
 {
 	if (goalRotTime > 0.0)
 	{
+		if (goalRotation.z > 0.0f)
+			cameraAltitudeDesired += (goalRotation.z - cameraAltitudeDesired) * std::min(frameLength / goalRotTime, 1.0f);
 		float goalProjectionAngle = goalRotation.x - projectionAngle;
 		goalProjectionAngle /= goalRotTime;
 		goalProjectionAngle *= frameLength;

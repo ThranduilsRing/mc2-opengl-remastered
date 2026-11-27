@@ -132,6 +132,7 @@ void Appearance::drawSelectBox (DWORD color)
 		
 		// [PROJECTZ:ScreenXYOracle id=appear_select_box_lr]
 		eye->projectForScreenXY(appearType->typeLowerRight,br);
+		if (ul.w <= 1e-4f || br.w <= 1e-4f) return;
 		br.z = HUD_DEPTH;
 	}
 	else

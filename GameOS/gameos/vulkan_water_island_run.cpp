@@ -1,3 +1,4 @@
+#include "hitch_stats.h"
 // VK water island: mc2_vk_water_island_run: the per-frame feed staging, draw and fence handling.
 // Declared in the class headers; shared names in vulkan_water_island_internal.h.
 #include "vulkan_water_island_internal.h"
@@ -126,6 +127,7 @@ extern float g_waterWaveBreakup; // visual_tuning_profile.cpp
 
 namespace {
 bool prepareNative(WaterIsland* s, mc2vk::VulkanContext& ctx) {
+    ZoneNamedN(prepareNativeZone, "VKIsl.Water.prepareNative", true); MC2_HITCH_CAUSE("VKIsl.Water.prepareNative");
     if (s->native && s->native->ready()) return true;
     if (s->nativeFailed) return false;
     const auto capacity = WaterStream::GetNativeCapacity();
@@ -177,6 +179,7 @@ extern "C" int mc2_vk_water_island_prewarm(int w,int h) {
     }
     auto* s=parkedIsland();
     if (![&] { MC2_LOAD_SCOPE("water.hdriShore"); return ensure_hdri(s, mc2vk::hdriCpuGeneration()) && ensure_shore(s); }()) return 0;
+    if (!ensure_shore_surface(s)) return 0;
     if(!s->native) s->native=std::make_unique<mc2vk::NativeProducers>();
     if (![&] { MC2_LOAD_SCOPE("water.pipelines"); return s->native->prewarmPipelines(ctx); }()) return 0;
     if (![&] { MC2_LOAD_SCOPE("water.native"); return prepareNative(s, ctx); }()) return 0;

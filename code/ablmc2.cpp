@@ -10,6 +10,7 @@
 #include <climits>
 #include "game_rules.h"
 #include "brain_execution_policy.h"
+#include "Gates/gate_cold.h"
 #include "../mclib/vfs.h"
 
 
@@ -49,7 +50,8 @@ long ablFileOpenCB (void** file, mc2::czstring fName) {
 	// campaign's own corebrain.abx or warrior file keeps its mod's version, and an install without the profile keeps the stock brain.
 	if (mc2::brainpolicy::profileKey(name)) {
 		const auto winner = mc2::vfs::lookup(name);
-		const bool stock = !winner || winner->provider != mc2::vfs::Provider::Mod;
+		const bool stock = mc2::brainpolicy::magicCampaign(mc2::gate::str<"MC2_ACTIVE_MOD">()) &&
+			(!winner || winner->provider != mc2::vfs::Provider::Mod);
 		const auto profile = mc2::brainpolicy::magicAsset(name, mc2::rules::current().ai, [](std::string_view path) {
 			return mc2::brainpolicy::profileInstalled() && fileExists(std::string(path).c_str()); });
 		ABLi_noteProfileSource(name.c_str(), stock && !profile.empty());

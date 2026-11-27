@@ -254,6 +254,11 @@ order magicAttack (integer targetID) : integer;
 
 	code
 
+		if ((objectStatus(-1) == OBJ_STATUS_SHUTDOWN) or
+		    (objectStatus(-1) == OBJ_STATUS_SHUTTING_DOWN)) then
+			corePower(true);
+		endif;
+
 //		if (targetID <> 0) AND (getenemycount(-1) > 0) then 
 //			targetID = 0;
 //		endif;
@@ -845,7 +850,7 @@ endorder;
 
 //----------------------------------------------------------------------------------------
 
-order corePatrol (@PatrolState pState, @PatrolPath pPath) : integer;//, integer contactState) : integer;
+order corePatrol (@PatrolState pState, @PatrolPath pPath, integer contactState) : integer;
 
 	// pState[0] = patrol type
 	// pState[1] = num patrol points
@@ -870,17 +875,18 @@ order corePatrol (@PatrolState pState, @PatrolPath pPath) : integer;//, integer 
 		integer		closestPoint;
 		real		shortestDist;
 		real		dist;
+		char[25]	debugS;
 		integer		curParams;
 
 	code
 
 		curParams = 0;
 		if (CoreRun) then
-			curParams = TACORDER_PARAM_RUN;
+			curParams = curParams + TACORDER_PARAM_RUN;
 			CoreRun = false;
 		endif;
 		if (CoreJump) then
-			curParams = TACORDER_PARAM_JUMP;
+			curParams = curParams + TACORDER_PARAM_JUMP;
 			CoreJump = false;
 		endif;
 
@@ -916,27 +922,44 @@ order corePatrol (@PatrolState pState, @PatrolPath pPath) : integer;//, integer 
 
 		//---------------------------
 		// First, scan for targets...
-//******************************************************NEW
-		if (pState[6] == -1) then
-			pState[6] = CONTACT_CRITERIA_VISUAL_OR_SENSOR + CONTACT_CRITERIA_ENEMY + CONTACT_CRITERIA_NOT_DISABLED;
+		pState[7] = 0;
+		if (contactState <> -1) then
+			pState[7] = newScan(0, pState[6]);
 		endif;
-		pState[7] = newScan(0, pState[6]);
 		if (pState[7] > 0) then
-			coreRun = True;
-                  magicAttack(0);
-			return(0);
-
-//			if (distanceToObject(pState[7], -1) < 250) then
-//				coreRun = True;
-//				coreMoveToObject(pState[7], TACORDER_PARAM_RUN);
-//			else
-//                  	magicAttack(0);
-//			endif;
-//			return(0);
+			pState[8] = 0; // ultimately, store contact type here, if needed...
+			//-------------------------------------------------------
+			// If contacts should be ignored, set contactState to -1.
+			if (contactState > 0) then
+				//---------------------------------------------------------------
+				// If a state to go into upon contact is given, set our new state
+				// and force an end to this update. Be sure to reset the step and
+				// cycle counters, first...
+				//pState[4] = -1;
+				//pState[5] = -1;
+				setPilotState(contactState);
+				return(0);
+			else
+				if (contactState == 0) then
+					//-------------------------------
+					// Drop thru to the next order...
+					pState[4] = -1;
+					pState[5] = -1;
+					return(1);
+				endif;
+			endif;
 		endif;
-//******************************************************
 		
 		if (pState[1] > 0) then
+			debugS = "cs=";
+			concat(debugS, curStep);
+			concat(debugS, ", d=");
+			concat(debugS, curDirection);
+			concat(debugS, ", cyc=");
+			concat(debugS, curCycle);
+			concat(debugS, "/");
+			concat(debugS, numCycles);
+			setDebugString(-1, 4, debugS);
 
 			goal[0] = pPath[curStep, 0];
 			goal[1] = pPath[curStep, 1];
@@ -983,26 +1006,41 @@ endorder;
 
 //---------------------------------------------------------------------------------------
 
-order corePatrolDelayed (@PatrolState pState, @PatrolPath pPath, real startTime) : integer;//, integer contactState) : integer;
+order corePatrolDelayed (@PatrolState pState, @PatrolPath pPath, real startTime, integer contactState) : integer;
 
 	code
 
 		if (getTime > startTime) then
-			return(corePatrol(pState, pPath));//, contactState));
+			return(corePatrol(pState, pPath, contactState));
 		else
 			//--------------------
 			// Scan for targets...
-//******************************************************NEW
-		if (pState[6] == -1) then
-			pState[6] = CONTACT_CRITERIA_VISUAL_OR_SENSOR + CONTACT_CRITERIA_ENEMY + CONTACT_CRITERIA_NOT_DISABLED;
+			pState[7] = 0;
+		if (contactState <> -1) then
+			pState[7] = newScan(0, pState[6]);
 		endif;
-		pState[7] = newScan(0, pState[6]);
-		if (pState[7] > 0) then
-			coreRun = True;
-                  magicAttack(0); //, TACORDER_PARAM_PURSUE);
-			return(0);
-		endif;
-//******************************************************
+			if (pState[7] > 0) then
+				pState[8] = 0; // ultimately, put contact type here...
+				//-------------------------------------------------------
+				// If contacts should be ignored, set contactState to -1.
+				if (contactState > 0) then
+					//---------------------------------------------------------------
+					// If a state to go into upon contact is given, set our new state
+					// and force an end to this update...
+					//pState[4] = -1;
+					//pState[5] = -1;
+					setPilotState(contactState);
+					return(0);
+				else
+					if (contactState == 0) then
+						//-------------------------------
+						// Drop thru to the next order...
+						//pState[4] = -1;
+						//pState[5] = -1;
+						return(1);
+					endif;
+				endif;
+			endif;
 		endif;
 		return(0);
 
@@ -1010,11 +1048,11 @@ endorder;
 
 //----------------------------------------------------------------------------------------
 
-order coreWait (real waitTime, integer scanCriteria) : integer;//, integer contactState) : integer;
+order coreWait (real waitTime, integer scanCriteria, integer contactState) : integer;
 
 	var
 
-		integer		result;
+		integer		scanResult;
 
 	code
 
@@ -1026,17 +1064,31 @@ order coreWait (real waitTime, integer scanCriteria) : integer;//, integer conta
 		else
 			//--------------------
 			// Scan for targets...
-//***********************************************NEW
 			if (scanCriteria == -1) then
 				scanCriteria = CONTACT_CRITERIA_VISUAL_OR_SENSOR + CONTACT_CRITERIA_ENEMY + CONTACT_CRITERIA_NOT_DISABLED;
 			endif;
-			result = newScan(0, scanCriteria);
-			if (result > 0) then
-				coreRun = True;
-                        magicAttack(0); 
+			scanResult = 0;
+		if (contactState <> -1) then
+			scanResult = newScan(0, scanCriteria);
+		endif;
+			if (scanResult > 0) then
+				//-------------------------------------------------------
+				// If contacts should be ignored, set contactState to -1.
+				if (contactState > 0) then
+					//---------------------------------------------------------------
+					// If a state to go into upon contact is given, set our new state
+					// and force an end to this update...
+					setPilotState(contactState);
+					return(0);
+				else
+					if (contactState == 0) then
+						//-------------------------------
+						// Drop thru to the next order...
+						return(1);
+					endif;
+				endif;
 				return(0);
 			endif;
-//***************************************************
 		endif;
 		return(0);
 
@@ -1044,7 +1096,7 @@ endorder;
 
 //----------------------------------------------------------------------------------------
 
-order coreGuard (WorldPosition guardPoint, integer scanCriteria) : integer;//, integer contactState) : integer;
+order coreGuard (WorldPosition guardPoint, integer scanCriteria, integer contactState) : integer;
 
 	var
 
@@ -1055,54 +1107,67 @@ order coreGuard (WorldPosition guardPoint, integer scanCriteria) : integer;//, i
 
 		curParams = 0;
 		if (CoreRun) then
-			curParams = TACORDER_PARAM_RUN;
+			curParams = curParams + TACORDER_PARAM_RUN;
 			CoreRun = false;
 		endif;
 		if (CoreJump) then
-			curParams = TACORDER_PARAM_JUMP;
+			curParams = curParams + TACORDER_PARAM_JUMP;
 			CoreJump = false;
 		endif;
 
 		//---------------------------
 		// First, scan for targets...
-//***********************************************NEW
-			if (scanCriteria == -1) then
-				scanCriteria = CONTACT_CRITERIA_VISUAL_OR_SENSOR + CONTACT_CRITERIA_ENEMY + CONTACT_CRITERIA_NOT_DISABLED;
-			endif;
+		if (scanCriteria == -1) then
+			scanCriteria = CONTACT_CRITERIA_VISUAL_OR_SENSOR + CONTACT_CRITERIA_ENEMY + CONTACT_CRITERIA_NOT_DISABLED;
+		endif;
+		result = 0;
+		if (contactState <> -1) then
 			result = newScan(0, scanCriteria);
-			if (result > 0) then
-				coreRun = True;
-                        magicAttack(0); 
+		endif;
+		if (result > 0) then
+			//-------------------------------------------------------
+			// If contacts should be ignored, set contactState to -1.
+			if (contactState > 0) then
+				//---------------------------------------------------------------
+				// If a state to go into upon contact is given, set our new state
+				// and force an end to this update...
+				setPilotState(contactState);
 				return(0);
+			else
+				if (contactState == 0) then
+					//-------------------------------
+					// Drop thru to the next order...
+					return(1);
+				endif;
 			endif;
-//***************************************************
+		endif;
 		coreMoveTo(guardPoint, curParams);
 		return(0);
 
 endorder;
 
 //----------------------------------------------------------------------------------------
-order coreEscort (integer guardObjectID) : integer;//, real range, real angle, integer scanCriteria) : integer;
+order coreEscort (integer guardObjectID, real range, real angle, integer scanCriteria) : integer;
 
 	var
 
 		WorldPosition	guardObjectPos;
 		WorldPosition	escortPos;
-		integer		guardObjectStatus;
+		integer			guardObjectStatus;
 		real			distanceToGuardObject;
-		integer		result;
-		integer		curParams;
-		integer		scanCriteria;
+		integer			result;
+		char[50]		debugS;
+		integer			curParams;
 
 	code
-		scanCriteria = CONTACT_CRITERIA_VISUAL_OR_SENSOR + CONTACT_CRITERIA_ENEMY + CONTACT_CRITERIA_NOT_DISABLED;
+
 		curParams = 0;
 		if (CoreRun) then
-			curParams = TACORDER_PARAM_RUN;
+			curParams = curParams + TACORDER_PARAM_RUN;
 			CoreRun = false;
 		endif;
 		if (CoreJump) then
-			curParams = TACORDER_PARAM_JUMP;
+			curParams = curParams + TACORDER_PARAM_JUMP;
 			CoreJump = false;
 		endif;
 
@@ -1114,23 +1179,33 @@ order coreEscort (integer guardObjectID) : integer;//, real range, real angle, i
 		endif;
 
 		distanceToGuardObject = distanceToObject(guardObjectID, -1);
-if (distanceToGuardObject > 120) then	
-//if (distanceToGuardObject > 3*range) then
-//		getRelativePositionToObject(guardObjectID, angle, range, 2, escortPos);
-//		coreMoveTo(escortPos, curParams);
-		coreMoveToObject(guardObjectID, TACORDER_PARAM_RUN);
-else
+
 		//---------------------------
 		// First, scan for targets...
-
+		if (scanCriteria == -1) then
+			scanCriteria = CONTACT_CRITERIA_VISUAL_OR_SENSOR + CONTACT_CRITERIA_ENEMY + CONTACT_CRITERIA_NOT_DISABLED;
+		endif;
 		result = newScan(0, scanCriteria);
 		if (result > 0) then
-			coreRun = True;
+			debugS = "coreEscort: @";
+			concat(debugS, result);
+			setDebugString(-1, 4, debugS);
 			magicAttack(0);
 			return(0);
 		endif;
-		coreMoveToObject(guardObjectID, TACORDER_PARAM_RUN);
-endif;
+
+		getRelativePositionToObject(guardObjectID, angle, range, 2, escortPos);
+		debugS = "coreEscort: ";
+		concat(debugS, guardObjectID);
+		concat(debugS, " (");
+		concat(debugS, escortPos[0]);
+		concat(debugS, ",");
+		concat(debugS, escortPos[1]);
+		concat(debugS, ",");
+		concat(debugS, escortPos[2]);
+		concat(debugS, ")");
+		setDebugString(-1, 4, debugS);
+		coreMoveTo(escortPos, curParams);
 		return(0);
 
 endorder;
@@ -1268,7 +1343,7 @@ order patrol (@PatrolState pState, @PatrolPath pPath) : integer;
 
 	code
 
-		return(corePatrol(pState, pPath));//, 0));
+		return(corePatrol(pState, pPath, 0));
 
 endorder;
 
@@ -1278,7 +1353,7 @@ order patrolDelayed (@PatrolState pState, @PatrolPath pPath, real startTime) : i
 
 	code
 
-		return(corePatrolDelayed(pState, pPath, startTime));//, 0));
+		return(corePatrolDelayed(pState, pPath, startTime, 0));
 
 endorder;
 

@@ -809,7 +809,7 @@ void BattleMech::renderView (const mc2::render_view::RenderView& view)
 
 			// C3: route canBeSeen() to GPU-lagged visibility; 1-frame HUD lag: accepted.
 			const bool mechInView = s_gpuCullLifecycle
-				? gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(getHandle()))
+				? (gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(getHandle())) || eye->sphereInFrustum(getPosition(),appearance->getRadius()))
 				: appearance->canBeSeen();
 			if ( mechInView )
 				drawSensorTextHelp (appearance->getScreenPos().x, appearance->getScreenPos().y+20.0f, view.nameId,SD_RED,false);
@@ -826,7 +826,7 @@ void BattleMech::renderView (const mc2::render_view::RenderView& view)
 			appearance->render();
 			// C3: route canBeSeen() to GPU-lagged visibility; 1-frame fire-icon lag: accepted.
 			const bool mechInViewFire = s_gpuCullLifecycle
-				? gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(getHandle()))
+				? (gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(getHandle())) || eye->sphereInFrustum(getPosition(),appearance->getRadius()))
 				: appearance->canBeSeen();
 			if ( view.has(mc2::render_view::FireIcon) && mechInViewFire )
 				appearance->drawIcon( holdFireIconHandle, 5, 5, view.barColor | 0xff000000 );
@@ -855,10 +855,7 @@ void BattleMech::renderView (const mc2::render_view::RenderView& view)
 					startPos.z = TerrainRuntime::groundElevation(startPos);
 					endPos.z = TerrainRuntime::groundElevation(endPos);
 					
-					// [PROJECTZ:ScreenXYOracle id=mech_path_step_start]
-					eye->projectForScreenXY(startPos,lineStart);
-					// [PROJECTZ:ScreenXYOracle id=mech_path_step_end]
-					eye->projectForScreenXY(endPos,lineEnd);
+					if (!eye->projectSegmentForScreen(startPos,endPos,lineStart,lineEnd)) continue;
 
 					lineStart.z = lineEnd.z = HUD_DEPTH;
 

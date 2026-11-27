@@ -23,7 +23,7 @@ layout(location = 0) in  vec2 TexCoord;
 layout(location = 0) out vec4 outFog;
 
 layout(set = 0, binding = 0) uniform sampler2D depthTex;
-layout(set = 0, binding = 2) uniform samplerCube skyTex;
+layout(set = 0, binding = 4) uniform samplerCube skyTex;
 layout(set = 0, binding = 3) uniform sampler2D cloudTex;
 
 // std140. Offsets (bytes) match the CPU-side POD in vulkan_oob_fog_island.cpp:

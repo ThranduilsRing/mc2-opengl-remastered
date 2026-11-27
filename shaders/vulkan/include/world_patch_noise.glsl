@@ -69,13 +69,17 @@ vec2 worldPatchField(vec2 worldXY, float footprintWU) {
     // Contrast shape: connected straw patches and connected green; the finer octaves rag the edges.
     float dry = smoothstep(0.48, 0.57, n);
     // Fine in-patch speckle: dry spots in the green, a few green flecks in the straw (ref 3 grain at gameplay scale).
-    // Sub-pixel: speckFade is 0 and the speckle term is multiplied by it, so skip the value-noise eval (identical result).
+    // 512x512 spatial samples over 128x128 value-noise cells: threshold means
+    // 0.20043 (dry) and 0.20630 (green). Keep their asymmetric contribution.
     float speckFade = wpnFade(footprintWU, WPN_SPECK_WU);
+    float speckMean = 0.60 * 0.20043 * (1.0 - dry) - 0.35 * 0.20630 * dry;
+    float speckTerm = speckMean;
     if (speckFade > 0.0) {
         float speck = wpn_value(mat2(0.60, -0.80, 0.80, 0.60) * worldXY / WPN_SPECK_WU + vec2(-7.7, 29.3));
-        dry = clamp(dry + speckFade * (0.60 * smoothstep(0.60, 0.80, speck) * (1.0 - dry)
-                        - 0.35 * (1.0 - smoothstep(0.20, 0.40, speck)) * dry), 0.0, 1.0);
+        speckTerm = 0.60 * smoothstep(0.60, 0.80, speck) * (1.0 - dry)
+                  - 0.35 * (1.0 - smoothstep(0.20, 0.40, speck)) * dry;
     }
+    dry = clamp(dry + mix(speckMean, speckTerm, speckFade), 0.0, 1.0);
     float hue = wpn_value(R * worldXY / (WPN_BASE_WU * 0.55) + vec2(41.0, -23.0));
     return vec2(dry, hue);
 }

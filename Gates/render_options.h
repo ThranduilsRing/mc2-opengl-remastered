@@ -23,7 +23,7 @@ enum class ShorelineLook { Current, FoamFirst, RealWaves };
 // Defaults here ARE the shipped defaults: a missing key, a missing file, and a tool that never loads options.cfg all behave alike.
 struct RenderOptions {
     int frameRateLimit = 0; // 0 Off, 1..5: 60/120/144/165/240, 6 Match display
-    int vsync = 0; // 0 Off, 1 On (FIFO), 2 Fast (MAILBOX)
+    int vsync = 2; // 0 Off (tears), 1 On (FIFO), 2 Fast (MAILBOX, uncapped without tearing: the default)
     int cameraView = 2; // 0 Stock, 1 Closer, 2 Wide
     bool remasteredBuildings = false; // bundled building art (default OFF = Classic, owner 2026-11-13); Classic leaves campaign/mod assets intact
     bool stockOverlayConcrete = false; // concrete look: false = new detail layers + terrain-matched overlay cement (default), true = stock overlay splotches
@@ -78,6 +78,8 @@ struct RenderOptions {
     // Analytic atmosphere (distance extinction + height fog, HG sun in-scatter): 0 Off, 1 Low (extinction only), 2 High.
     int atmosphereQuality = 2;
     int cloudSeaQuality = 2; // Out-of-bounds cloud deck: 0 Off, 1 Low, 2 High.
+    // Valley fog banks on the missions that have them (visual_tuning valleyFogThickness): 0 Off, 1 Low (thinner banks, 4 samples), 2 High. A player setting; ships ON.
+    int valleyFog = 2;
     // Ground ambient occlusion: terrain-shape AO (baked once per mission from the heightfield) and the ground material cavity; ambient only. A player setting; ships ON.
     bool groundAo = true;
     bool operator==(const RenderOptions&) const = default;
@@ -136,6 +138,7 @@ inline constexpr Option kOptions[] = {
     detail::longOpt ("DrawDistance",                  &RenderOptions::drawDistance, 0, 3),
     detail::longOpt ("AtmosphereQuality",             &RenderOptions::atmosphereQuality, 0, 2),
     detail::longOpt ("CloudSeaQuality",               &RenderOptions::cloudSeaQuality, 0, 2),
+    detail::longOpt ("ValleyFog",                     &RenderOptions::valleyFog, 0, 2),
     detail::longOpt ("CameraView",                    &RenderOptions::cameraView, 0, 2),
     detail::boolOpt ("GroundAo",                      &RenderOptions::groundAo),
 };

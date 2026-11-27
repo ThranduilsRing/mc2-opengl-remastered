@@ -100,7 +100,7 @@ struct VisualGround {
 // ground: optional draw-side grounding (see VisualGround); nullptr keeps the shared flat floor.
 void CopyImportedActorPose(const void* source, const void* destination,
                            const mc2::sim::ImportedAnimState& presentation, float torsoYawDeg,
-                           VisualGround* ground = nullptr);
+                           VisualGround* ground = nullptr, bool solveFeet = true);
 
 // AO-1: imported mech's AO texture name (materials.ao.tga from the package), or nullptr
 // if not imported / no AO declared. Caller loads it + binds on texture unit 6.

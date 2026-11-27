@@ -118,9 +118,9 @@ vec3 tlp_terrainPoolLight(vec3 wp, int numPoolLights,
     // NIGHT-LIGHT-POOLS-3: soft-compress the accumulated sum. Gate-off =
     // legacy hard clamp.
     if (poolCompress != 0)
-        return lpa_dither(vec3(1.0) - exp(-1.6 * pool));
+        return lpa_dither(vec3(1.0) - exp(-1.6 * pool), wp);
     else
-        return lpa_dither(min(pool, vec3(1.0)));
+        return lpa_dither(min(pool, vec3(1.0)), wp);
 }
 
 #endif // __TERRAIN_LIGHT_POOL_HGLSL__
