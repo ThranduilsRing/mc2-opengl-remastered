@@ -45,12 +45,9 @@ long applyPlayerIntent(Mission& mission, const mc2::player::UnitIntent& intent, 
     } else {
         order.moveParams.wayPath.numPoints = 1;
         order.moveParams.wayPath.curPoint = 0;
-        const auto position = object->getPosition();
-        const auto direction = intent.location - position;
-        const float distance = glm::length(direction);
-        const auto requested = distance > 800 ? position + direction * (800.0f / distance) : intent.location;
         glm::vec3 location;
-        if (MoverGroup::calcMoveGoals(requested, 1, &location) != 1) return 1;
+        // Give native routing the destination, including detours around blocked terrain.
+        if (MoverGroup::calcMoveGoals(intent.location, 1, &location) != 1) return 1;
         order.moveParams.wayPath.points[0] = location.x;
         order.moveParams.wayPath.points[1] = location.y;
         order.moveParams.wayPath.points[2] = location.z;
@@ -140,7 +137,8 @@ void Mission::updateMissionTest(bool report) {
             passed += state == OS_SUCCESSFUL;
             failed += state == OS_FAILED;
             pending += state == OS_UNDETERMINED;
-            if (!destination && state == OS_UNDETERMINED && objective->IsActive())
+            if (state == OS_UNDETERMINED && objective->IsActive()
+                && (!destination || (objective->Priority() == 1 && destination->Priority() != 1)))
                 destination = objective;
         }
         ++id;
@@ -207,13 +205,29 @@ void Mission::updateMissionTest(bool report) {
     for (auto* condition : destination->m_conditionList) {
         if (condition->Status() == OS_SUCCESSFUL) continue;
         auto point = condition->GetObjectivePosition();
-        // Unit IDs identify objective combat targets; navigation keeps the authored marker.
+        if (condition->Species() == DESTROY_ALL_ENEMY_UNITS
+            || condition->Species() == DESTROY_NUMBER_OF_ENEMY_UNITS) {
+            // These conditions have no marker or specific unit ID to navigate to.
+            for (long i = 0; i < ObjectManager->getNumMovers(); ++i) {
+                auto* enemy = ObjectManager->getMover(i);
+                if (!enemy || !enemy->getTeam() || Team::home->isFriendly(enemy->getTeam())
+                    || !enemy->getExists() || enemy->isDisabled() || enemy->isDestroyed()) continue;
+                objectiveTarget = enemy;
+                location = enemy->getPosition();
+                break;
+            }
+            break;
+        }
+        // Unmarked unit objectives have no navigation marker (often 0,0).
         if (auto* specific = dynamic_cast<CSpecificUnitObjectiveCondition*>(condition)) {
             if (!objectiveTarget && (condition->Species() == DESTROY_SPECIFIC_ENEMY_UNIT
+                || condition->Species() == CAPTURE_OR_DESTROY_SPECIFIC_ENEMY_UNIT
+                || condition->Species() == DEAD_OR_FLED_SPECIFIC_ENEMY_UNIT
                 || condition->Species() == CAPTURE_UNIT)) {
                 objectiveTarget = ObjectManager->getByWatchID(specific->UnitWatchID());
                 captureObjective = condition->Species() == CAPTURE_UNIT;
-                if (captureObjective && objectiveTarget) location = objectiveTarget->getPosition();
+                if (objectiveTarget)
+                    location = objectiveTarget->getPosition();
             }
             continue;
         }
@@ -225,7 +239,8 @@ void Mission::updateMissionTest(bool report) {
             || condition->Species() == MOVE_ALL_SURVIVING_UNITS_TO_AREA
             || condition->Species() == MOVE_ALL_UNITS_TO_AREA;
         captureObjective = condition->Species() == CAPTURE_STRUCTURE;
-        if (condition->Species() == DESTROY_SPECIFIC_STRUCTURE || captureObjective) {
+        if (condition->Species() == DESTROY_SPECIFIC_STRUCTURE
+            || condition->Species() == CAPTURE_OR_DESTROY_SPECIFIC_STRUCTURE || captureObjective) {
             for (long i = 0; i < ObjectManager->getNumBuildings(); ++i) {
                 auto* building = ObjectManager->getBuilding(i);
                 if (building && building->getExists() && !building->isDestroyed()
@@ -455,7 +470,7 @@ void Mission::updateMissionTest(bool report) {
         const long capture = captureObjective && objectiveTarget
             && intent.goal == mc2::player::Goal::Move && intent.posture == mc2::player::Posture::Advance
             && !mover->isRefit() && !mover->isRecover() && !mover->isGuardTower()
-            && !recovering && glm::distance(mover->getPosition(), location) < 400 ? objectiveTarget->getWatchID() : 0;
+            && !recovering ? objectiveTarget->getWatchID() : 0;
         const long result = applyPlayerIntent(*this, intent, capture);
         if (result) ++rejected;
         else ++issued;
