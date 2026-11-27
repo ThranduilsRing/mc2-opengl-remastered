@@ -137,8 +137,8 @@ struct FogOobParams {
     float u_horizonFadeStartSin;   // off 88
     float u_horizonFadeEndSin;     // off 92
     float u_cloudSea[4];           // off 96 altitude, thickness, billow, quality
-    float u_cloudSun[4];           // off 112 toward sun, scene light scale
-    float u_cloudMotion[4];        // off 128 seconds, map half extent, near/far fade
+    float u_cloudSun[4];           // off 112 toward sun, sky radiance blue scale
+    float u_cloudMotion[4];        // off 128 seconds, map half extent, sky radiance red/green scales
     float u_cloudLight[4];         // off 144 shared live sun colour
     float u_cloudAmbient[4];       // off 160 shared live ambient colour
 };
@@ -774,16 +774,17 @@ bool gosPostProcess::runVkPostFogNative()
         p.u_cloudSea[0] = waterElevation_ + cloudSeaAltitude_;
         p.u_cloudSea[1] = cloudSeaThickness_;
         p.u_cloudSea[2] = cloudSeaBillow_;
-        p.u_cloudSea[3] = 2.0f;
+        p.u_cloudSea[3] = static_cast<float>(mc2::options::current().cloudSeaQuality);
         std::memcpy(p.u_cloudSun, environment.sunDirLive, 3 * sizeof(float));
-        p.u_cloudSun[3] = environment.sceneLight[0];
+        const auto skyRadiance = mc2::environment::skyRadianceScale(visualTuning_environment());
+        p.u_cloudSun[3] = skyRadiance[2];
         std::memcpy(p.u_cloudLight, environment.sunLive, sizeof(p.u_cloudLight));
         std::memcpy(p.u_cloudAmbient, environment.ambLive, sizeof(p.u_cloudAmbient));
         p.u_cloudMotion[0] = static_cast<float>(SmokeMode::fixedTimestepEnabled()
             ? SmokeMode::fixedClockSeconds() : SDL_GetTicks64() * 0.001);
         p.u_cloudMotion[1] = mapHalfExtent_;
-        p.u_cloudMotion[2] = 3000.0f;
-        p.u_cloudMotion[3] = 8500.0f;
+        p.u_cloudMotion[2] = skyRadiance[0];
+        p.u_cloudMotion[3] = skyRadiance[1];
         if (void* m = frame.oobUbo.map()) {
             std::memcpy(m, &p, sizeof(p));
             frame.oobUbo.unmap();

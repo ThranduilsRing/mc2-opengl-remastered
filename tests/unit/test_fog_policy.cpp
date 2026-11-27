@@ -25,6 +25,7 @@ TEST_CASE("fog_policy/cloud sea dissolves border water continuously before the m
         for (float wob : {-1000.0f, 0.0f, 1000.0f})
             for (float aa : {0.0f, 40.0f, 5000.0f}) {
                 CHECK(mc2CloudSeaReplace(half - 1000.0f, wob, half, aa) == 0); // playable map untouched
+                CHECK(mc2CloudSeaReplace(half, wob, half, aa) == 1); // fully replaced before the rectangular mesh ends
                 CHECK(mc2CloudSeaReplace(half + 200.0f, wob, half, aa) == 1);
                 float previous = 0;
                 for (float m = half - 1000.0f; m < half + 200.0f; m += 10.0f) {

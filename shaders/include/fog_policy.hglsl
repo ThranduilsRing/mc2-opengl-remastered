@@ -83,7 +83,7 @@ MC2_FOG_INLINE float mc2CloudSeaGuard(float surfaceMaxAbs, float halfExtent) {
 // boundary distance; terrain still occludes the deck at its actual depth.
 MC2_FOG_INLINE float mc2CloudSeaReplace(float surfaceMaxAbs, float wobble, float halfExtent, float aa) {
     float w = wobble > 250.0f ? 250.0f : (wobble < -250.0f ? -250.0f : wobble);
-    return mc2FogSmooth(mc2FogRamp(surfaceMaxAbs + w, halfExtent - 1000.0f, halfExtent - 100.0f)) * mc2CloudSeaGuard(surfaceMaxAbs, halfExtent);
+    return mc2FogSmooth(mc2FogRamp(surfaceMaxAbs + w, halfExtent - 1000.0f, halfExtent - 350.0f)) * mc2CloudSeaGuard(surfaceMaxAbs, halfExtent);
 }
 
 #undef MC2_FOG_INLINE

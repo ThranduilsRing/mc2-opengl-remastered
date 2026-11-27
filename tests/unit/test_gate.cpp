@@ -2164,6 +2164,21 @@ TEST_CASE("overlap audit retains numeric fence and jitter levels") {
     CHECK_FALSE(gate::lookupName("MC2_SIM_OVERLAP_JITTER").has_value());
 }
 
+TEST_CASE("cloud deck defaults High and all modes persist in options.cfg") {
+    namespace mo = mc2::options;
+    CHECK(mo::RenderOptions{}.cloudSeaQuality == 2);
+    const auto* option = mo::find("CloudSeaQuality");
+    REQUIRE(option);
+    for (int mode : {0, 1, 2}) {
+        mo::RenderOptions loaded;
+        CHECK(mo::cfg::loadFromText(loaded, mo::cfg::set("[MechCommander2]\nFITend\n", *option, std::to_string(mode))) == 1);
+        CHECK(loaded.cloudSeaQuality == mode);
+    }
+    mo::RenderOptions loaded;
+    CHECK(mo::setFromText(loaded, *option, "3") == mo::Verdict::OutOfRange);
+    CHECK(loaded.cloudSeaQuality == 2);
+}
+
 TEST_CASE("camera view defaults to Wide and all presets round-trip through options.cfg") {
     namespace mo = mc2::options;
     CHECK(mo::RenderOptions{}.cameraView == 2);

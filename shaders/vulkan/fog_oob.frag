@@ -108,7 +108,7 @@ vec3 skyAt(vec3 rd, float elev)
         float s = sqrt(max(1.0 - elev * elev, 0.0));
         c = textureLod(skyTex, vec3(cos(az) * s, elev, sin(az) * s), 0.0).rgb;
     }
-    return c * u_cloudSun.w;
+    return c * vec3(u_cloudMotion.zw, u_cloudSun.w);
 }
 
 float cloudMask(vec3 p, float t)

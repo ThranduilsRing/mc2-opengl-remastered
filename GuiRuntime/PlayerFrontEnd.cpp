@@ -798,6 +798,9 @@ void drawOptions() {
             } else if (std::string_view(option.key) == "AtmosphereQuality") {
                 const char* labels[] = {"Off", "Low", "High"};
                 changed |= ImGui::Combo("Atmosphere (fog and sun haze)", &(draft.*option.l), labels, IM_ARRAYSIZE(labels));
+            } else if (std::string_view(option.key) == "CloudSeaQuality") {
+                const char* labels[] = {"Off", "Low", "High"};
+                changed |= ImGui::Combo("Cloud deck quality", &(draft.*option.l), labels, IM_ARRAYSIZE(labels));
             } else if (std::string_view(option.key) == "DrawDistance") {
                 continue; // DrawDistance GUI row is a later lane
             } else if (std::string_view(option.key) == "SpatialAA") {
