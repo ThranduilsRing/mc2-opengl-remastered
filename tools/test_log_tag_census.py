@@ -62,6 +62,20 @@ def test_the_frozen_baseline_matches_the_tree():
     assert lc.main(["--check"]) == 0
 
 
+def test_frame_pacing_fields_only_append_to_the_frozen_prefix():
+    for tag, stream, suffix in (("PERF", "stdout", ("over10", "over16")),
+                                ("VK_GPU_PASSES", "stderr", ("max_frame_ms", "max_scope"))):
+        base = {"emitters": [{"tag": tag, "ver": 1, "stream": stream,
+                              "keys": ["first", "last"], "count": 1}]}
+        shape = (tag, 1, stream, ("first", "last") + suffix)
+        assert lc.diff(lc.collections.Counter({shape: 1}), base, {tag}) == []
+        for invalid in ((tag, 1, stream, ("last", "first") + suffix),
+                        (tag, 2, stream, shape[3]),
+                        (tag, 1, "buffer", shape[3]),
+                        (tag, 1, stream, shape[3] + ("extra",))):
+            assert lc.diff(lc.collections.Counter({invalid: 1}), base, {tag})
+
+
 def test_a_converted_log_call_yields_the_same_record_as_the_printf_it_replaced():
     import printf_log as pl
     src = '#include <cstdio>\nvoid f(){ fprintf(stderr, "[PERF v1] avg_fps=%.1f samples=%d\\n", a, n); printf("[HEARTBEAT] frames=%d\\n", n); fprintf(fp, "[X v1] k=%d\\n", n); }\n'

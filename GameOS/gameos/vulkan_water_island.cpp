@@ -223,6 +223,7 @@ bool ensure_thin_capacity(WaterIsland* s, uint32_t par, VkDeviceSize bytes) {
 // STEP 3.4P: the mission-static recipes (64 B each) copied once into a device-local storage buffer (staging + one-shot copy). The native cull reads it every
 // frame and the water vertex stage reads it for the visible records, so it must not live in host memory.
 bool upload_recipes_device(WaterIsland* s, const void* recipes, uint32_t recipeCount) {
+    ZoneScopedN("VKIsl.Water.upload_recipes_device"); MC2_HITCH_CAUSE("VKIsl.Water.upload_recipes_device");
     const VkDeviceSize need = static_cast<VkDeviceSize>(recipeCount) * 64;
     if (!recipes || need == 0) return false;
     mc2vk::OwnedBuffer staging;

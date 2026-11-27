@@ -13,6 +13,7 @@
 #include "texture_probe_memo.h"
 #include "model_override_registry.h"
 #include "../RenderCore/SurfaceMaterial.h"
+#include "../RenderCore/PropLodState.h"
 #include "assimp_importer.h"
 #include "Gates/gate.h"
 #include <filesystem>
@@ -36,12 +37,14 @@ void GVAppearance::updateRenderShape()
 		renderLOD = -1;
 		return;
 	}
-	int lod = 0;
+	uint8_t lod = static_cast<uint8_t>(renderLOD < 0 ? 0 : renderLOD);
 	glm::vec3 translation;
 	mc2ToRender(translation, position);
 	const float eyeDistance = eye->usePerspective ? glm::length(translation - glm::vec3(eye->getCameraOrigin())) : 0.0f;
-	for (int i = 1; i < 3; ++i)
-		if (appearType->renderLods[i] && eyeDistance > appearType->renderLodDistance[i]) lod = i;
+	size_t lodCount = 1;
+	while (lodCount < 3 && appearType->renderLods[lodCount]) ++lodCount;
+	if (lod >= lodCount) lod = static_cast<uint8_t>(lodCount - 1);
+	propLodAdvance(lod, eyeDistance, std::span<const float>(appearType->renderLodDistance, lodCount), 0.08f);
 	const auto* override = ModelOverrideRegistry::instance().resolve("vehicle", appearType->name);
 	TG_TypeMultiShape* variantType = nullptr;
 	bool newVariant = false;
@@ -606,6 +609,7 @@ bool GVAppearance::recalcBounds (void)
 		//ALWAYS need to do this or select is YAYA
 		// [PROJECTZ:ScreenXYOracle id=gvactor_screen_pos]
 		eye->projectForScreenXY(position,screenPos);
+		if (screenPos.w <= 1e-4f) screenPos.x=screenPos.y=-1000000.0f;
 		
 		if (eye->usePerspective)
 		{
@@ -643,7 +647,7 @@ bool GVAppearance::recalcBounds (void)
 				Distance = glm::normalize(Distance);
 				
 				float cosine = glm::dot(Distance, eye->getLookVector());
- 				if (cosine > eye->cosHalfFOV)
+				if (eye->sphereInViewCone(cosine, getRadius(), glm::length(objPosition - eyePosition)))
 					setVisibilityGatesFromLegacy(true);
 				else
 					setVisibilityGatesFromLegacy(false);
@@ -734,24 +738,28 @@ bool GVAppearance::recalcBounds (void)
 				float maxX = 0.0f, maxY = 0.0f;
 				float minX = 0.0f, minY = 0.0f;
 
+				bool firstProjected=true;
 				for (long i=0;i<8;i++)
 				{
 					// [PROJECTZ:ScreenXYOracle id=gvactor_box_rect]
 					eye->projectForScreenXY(boxCoords[i],bcsp[i]);
-					if (!i)
+					if (bcsp[i].w <= 1e-4f) continue;
+					if (firstProjected)
 					{
 						maxX = minX = bcsp[i].x;
 						maxY = minY = bcsp[i].y;
 					}
 					
-					if (i)
+					if (!firstProjected)
 					{
 						maxX = std::max(maxX, bcsp[i].x);
 						minX = std::min(minX, bcsp[i].x);
 						maxY = std::max(maxY, bcsp[i].y);
 						minY = std::min(minY, bcsp[i].y);
 					}
+					firstProjected=false;
 				}
+				if (firstProjected) minX=maxX=minY=maxY=-1000000.0f;
 		
 				upperLeft.x = minX;
 				upperLeft.y = minY;
@@ -968,7 +976,7 @@ glm::vec3 GVAppearance::getNodeNamePosition (mc2::czstring nodeName)
 
 	// C3: route to GPU-lagged visibility when killswitch is enabled.
 	if (s_gpuCullLifecycle) {
-		if (!gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_)))
+		if (!gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_)) && !eye->sphereInFrustum(position,getRadius()))
 			return result;
 	} else {
 		if (!inView)
@@ -1008,7 +1016,7 @@ glm::vec3 GVAppearance::getNodeIdPosition (long nodeId)
 
 	// C3: route to GPU-lagged visibility when killswitch is enabled.
 	if (s_gpuCullLifecycle) {
-		if (!gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_)))
+		if (!gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_)) && !eye->sphereInFrustum(position,getRadius()))
 			return result;
 	} else {
 		if (!inView)

@@ -96,8 +96,8 @@ bool propHidden(uint id) {
         for (int a = 0; a < 4; ++a)
             for (int k = 0; k < 4; ++k) clip[a] += params.worldToClip[k][a] * world[k];
         if (any(isnan(clip)) || any(isinf(clip))) return false;
-        float biasedZ = clip.z + params.viewportDepth.z * clip.w;
-        float padZ = swayPad.z + abs(params.viewportDepth.z) * swayPad.w;
+        float biasedZ = clip.z * (1.0 + params.viewportDepth.z);
+        float padZ = swayPad.z * (1.0 + abs(params.viewportDepth.z));
         maxClip = max(maxClip, vec3(clip.w + swayPad.w, biasedZ + padZ, clip.w - biasedZ + swayPad.w + padZ));
         {   // Side planes run before the near-plane keep: a box with every corner outside ONE side plane cannot rasterize, even when
             // a corner is behind the eye (a near-straddling ground-level box under the camera). Pad by leaf sway and 4 px.
@@ -108,7 +108,7 @@ bool propHidden(uint id) {
         }
         if (!(clip.w > 1e-5)) { projectable = false; continue; }
         vec3 ndc = clip.xyz / clip.w;
-        ndc.z += params.viewportDepth.z;
+        ndc.z *= 1.0 + params.viewportDepth.z;
         if (any(isnan(ndc)) || any(isinf(ndc)) || ndc.z < 0 || ndc.z >= 1) { projectable = false; continue; }
         if (clip.w > swayPad.w + 1e-5) {
             vec2 margin = (swayPad.xy + abs(ndc.xy) * swayPad.w) / (clip.w - swayPad.w) + 4.0 / params.viewportDepth.xy;

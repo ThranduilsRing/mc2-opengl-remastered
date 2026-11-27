@@ -675,7 +675,6 @@ long SimpleCamera::update()
 			ZoomTight();
 			AltitudeTight = sharedAlt;
 			camera_fov = framedFov_;
-			cosHalfFOV = std::cos( camera_fov * DEGREES_TO_RADS );
 		}
 		else
 			ZoomTight();

@@ -1,6 +1,7 @@
 #include "doctest.h"
 #include "../../GuiRuntime/PlayerFrontEnd.h"
 #include "../../GuiRuntime/PlayerSettings.h"
+#include "../../mclib/campaign_mod_catalogue.h"
 #include <filesystem>
 #include <fstream>
 
@@ -80,4 +81,27 @@ TEST_CASE("campaign menu/a relaunched child keeps the parent's priority class") 
     CHECK(relaunchPriorityClass(0x20, 0x20) == 0x20);   // player parent NORMAL -> NORMAL
     CHECK(relaunchPriorityClass(0x4000, 0x20) == 0x4000);   // below-normal harness parent stays below normal
     CHECK(relaunchPriorityClass(0, 0x20) == 0x20);   // unknown -> NORMAL
+}
+
+TEST_CASE("campaign menu/a pre-layer-key save relaunches into its migrated packs only when they differ") {
+    using namespace PlayerFrontEnd;
+    const fs::path root = fs::temp_directory_path() / "mc2_save_relaunch_fixture" / "mods";
+    fs::remove_all(root.parent_path());
+    put(root / "magic-gamesys-tweaks" / "mod.json", "{\"id\":\"magic-gamesys-tweaks\",\"type\":\"assets\"}");
+    put(root / "magic-gamesys-tweaks" / "data" / "defs" / "equipment" / "weapons.csv", "x");
+    const auto addons = mc2::mods::catalogue(root);
+    REQUIRE(addons.size() == 1);
+    // No ActiveMod/ModDeps and no rules block: it ran under the mounted mod with the legacy pack selection.
+    mc2::rules::GameRules rules;
+    mc2::rules::migrateLegacyMods(rules, "magic-gamesys-tweaks");
+    const auto layers = mc2::mods::dependencies(loadModField(""), rules.mods, addons);
+    CHECK(layers == "magic-gamesys-tweaks");
+    const auto mod = saveLoadMod(false, "", "alpha");
+    CHECK(mod == "alpha");
+    CHECK(saveNeedsRelaunch(true, mod, layers, "alpha", ""));             // mounted without those packs: relaunch
+    CHECK_FALSE(saveNeedsRelaunch(true, mod, layers, "alpha", layers));   // already mounted: no relaunch
+    // A recorded save names its own mod ("-" = none).
+    CHECK(saveLoadMod(true, "-", "alpha").empty());
+    CHECK(saveLoadMod(true, "beta", "alpha") == "beta");
+    fs::remove_all(root.parent_path());
 }

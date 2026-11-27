@@ -27,13 +27,6 @@ uint vegBlockIndex(VegInstance i, VegParamsData p) {
     return uint(row * side + col);
 }
 
-// Field carpet share kept by distance: full to 1500 WU, thinning by rank to 35% by 4500 WU so a low,
-// long view stays inside the visible list. The vertex stage widens the survivors by 1/sqrt of it, so the
-// gameplay-camera sward (~2600 WU, owner ref 3) keeps its cover instead of opening onto bare ground.
-float vegFieldThin(VegInstance i, VegParamsData p) {
-    return mix(1.0, 0.35, smoothstep(6000.0, 18000.0, length(i.pos - p.cam.xyz)));
-}
-
 // Projected card height in pixels (the cull's cover metric; the vertex stage widens sub-2 px field blades).
 float vegPixels(VegInstance i, VegParamsData p) {
     // Field roles mark fringe draw outcomes, never population/LOD changes.
@@ -46,17 +39,9 @@ float vegPixels(VegInstance i, VegParamsData p) {
 // One rank and one continuous scale, shared by the cull and draw. No alpha
 // fade, frame-dependent noise or separate binary distance/population tests.
 float vegLodScale(VegInstance i, VegParamsData p) {
-    if (p.flags.x != 0u) return 1.0;
-    float clipW = dot(p.clipRow, vec4(i.pos, 1.0));
-    if (clipW <= 0.001) return 0.0;
-    float pixels = vegPixels(i, p);
-    // Every instanced vegetation card shares the grass range and continuous projected cover.
-    bool fieldCard = (i.atlasFrame & 8u) != 0u;
-    const float distanceScale = 12.0;
-    float distanceFade = 1.0 - smoothstep(p.misc.x * distanceScale, p.cam.w * distanceScale, length(i.pos - p.cam.xyz));
-    float thin = fieldCard ? vegFieldThin(i, p) : 1.0;
-    float cover = fieldCard ? smoothstep(0.0, 1.0, pixels) : smoothstep(0.0, 2.0, pixels);
-    float density = min(min(distanceFade, thin), cover);
+    // The cooked map-cell population is the world budget. Keep its full density;
+    // the persistent seed supplies the rank, independent of the camera.
+    const float density = 1.0;
     float rank = fract(i.seed * 17.371 + 0.137);
-    return clamp((density - rank) / 0.15, 0.0, 1.0);
+    return rank < density ? 1.0 : 0.0;
 }

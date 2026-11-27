@@ -98,8 +98,7 @@ void Camera::zoomValue (float value)
 		cameraAltitudeDesired = cameraAltitude;
 		cameraAltitude = std::max(cameraAltitude, AltitudeMinimum);
 			
-		float anglePercent = (projectionAngle - MIN_PERSPECTIVE) / (MAX_PERSPECTIVE - MIN_PERSPECTIVE);
-		float testMax = Camera::AltitudeMaximumLo + ((Camera::AltitudeMaximumHi - Camera::AltitudeMaximumLo) * anglePercent);
+		float testMax = altitudeMaxForAngle(projectionAngle);
 
 		newScaleFactor = 1.0f - ((cameraAltitude - AltitudeMinimum) / testMax);
 	}
@@ -141,8 +140,7 @@ void Camera::ZoomOut (float amount)
 	}
 	else
 	{
-		float anglePercent = (projectionAngle - MIN_PERSPECTIVE) / (MAX_PERSPECTIVE - MIN_PERSPECTIVE);
-		float testMax = Camera::AltitudeMaximumLo + ((Camera::AltitudeMaximumHi - Camera::AltitudeMaximumLo) * anglePercent);
+		float testMax = altitudeMaxForAngle(projectionAngle);
 
 		// Proportional zoom: strip scaleFactor bake-in, step = % of remaining range.
 		// Momentum boosts fast scrolling up to ~2.5x; slow scroll stays at 1x.
@@ -167,9 +165,7 @@ void Camera::ZoomNormal (void)
 	else
 	{
 		camera_fov = DefaultFov;
-		cosHalfFOV = cos(camera_fov * DEGREES_TO_RADS);
-		float anglePercent = (projectionAngle - MIN_PERSPECTIVE) / (MAX_PERSPECTIVE - MIN_PERSPECTIVE);
-		float testMax = Camera::AltitudeMaximumLo + ((Camera::AltitudeMaximumHi - Camera::AltitudeMaximumLo) * anglePercent);
+		float testMax = altitudeMaxForAngle(projectionAngle);
 		cameraAltitude = AltitudeDefault;
 		cameraAltitudeDesired = cameraAltitude;
  		
@@ -189,9 +185,7 @@ void Camera::ZoomMin (void)
 	else
 	{
 		camera_fov = DefaultFov;
-		cosHalfFOV = cos(camera_fov * DEGREES_TO_RADS);
-		float anglePercent = (projectionAngle - MIN_PERSPECTIVE) / (MAX_PERSPECTIVE - MIN_PERSPECTIVE);
-		float testMax = Camera::AltitudeMaximumLo + ((Camera::AltitudeMaximumHi - Camera::AltitudeMaximumLo) * anglePercent);
+		float testMax = altitudeMaxForAngle(projectionAngle);
 		cameraAltitude = testMax;
 		cameraAltitudeDesired = cameraAltitude;
  		
@@ -211,12 +205,10 @@ void Camera::ZoomDefault (void)
 	else
 	{
 		camera_fov = DefaultFov;
-		cosHalfFOV = cos(camera_fov * DEGREES_TO_RADS);
 		cameraAltitude = AltitudeDefault;
 		cameraAltitudeDesired = cameraAltitude;
 		
-		float anglePercent = (projectionAngle - MIN_PERSPECTIVE) / (MAX_PERSPECTIVE - MIN_PERSPECTIVE);
-		float testMax = Camera::AltitudeMaximumLo + ((Camera::AltitudeMaximumHi - Camera::AltitudeMaximumLo) * anglePercent);
+		float testMax = altitudeMaxForAngle(projectionAngle);
 
 		newScaleFactor = 1.0f - ((cameraAltitude - AltitudeMinimum) / testMax);
 	}
@@ -234,12 +226,10 @@ void Camera::ZoomTight (void)
 	else
 	{
 		camera_fov = DefaultFov;
-		cosHalfFOV = cos(camera_fov * DEGREES_TO_RADS);
 		cameraAltitude = AltitudeTight;
 		cameraAltitudeDesired = cameraAltitude;
 		
-		float anglePercent = (projectionAngle - MIN_PERSPECTIVE) / (MAX_PERSPECTIVE - MIN_PERSPECTIVE);
-		float testMax = Camera::AltitudeMaximumLo + ((Camera::AltitudeMaximumHi - Camera::AltitudeMaximumLo) * anglePercent);
+		float testMax = altitudeMaxForAngle(projectionAngle);
 
 		newScaleFactor = 1.0f - ((cameraAltitude - AltitudeMinimum) / testMax);
 	}
@@ -257,12 +247,10 @@ void Camera::ZoomMax (void)
 	else
 	{
 		camera_fov = DefaultFov;
-		cosHalfFOV = cos(camera_fov * DEGREES_TO_RADS);
 		cameraAltitude = AltitudeMinimum;
 		cameraAltitudeDesired = cameraAltitude;
 		
-		float anglePercent = (projectionAngle - MIN_PERSPECTIVE) / (MAX_PERSPECTIVE - MIN_PERSPECTIVE);
-		float testMax = Camera::AltitudeMaximumLo + ((Camera::AltitudeMaximumHi - Camera::AltitudeMaximumLo) * anglePercent);
+		float testMax = altitudeMaxForAngle(projectionAngle);
 
 		newScaleFactor = 1.0f - ((cameraAltitude - AltitudeMinimum) / testMax);
 	}

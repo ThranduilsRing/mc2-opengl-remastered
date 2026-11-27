@@ -131,14 +131,7 @@ void main()
     float shoreIntensity = float(landNeighbors) / 24.0;
     shoreIntensity = smoothstep(0.1, 0.5, shoreIntensity);
 
-    // Animated foam via FBM
-    vec2 foamCoord = TexCoord * screenSize * 0.02;
-    float foam = fbm(foamCoord + vec2(time * 0.1, time * 0.05), 3);
-    foam = smoothstep(0.0, 0.4, foam * 0.5 + 0.5);
-
-    // Pulsing wave edge
-    float wave = sin(time * 2.0 + length(TexCoord - vec2(0.5)) * 50.0) * 0.5 + 0.5;
-    foam = mix(foam, 1.0, wave * 0.2);
+    const float foam = 1.0;
 
     // Brighten water at shore (multiplicative > 1.0)
     float foamBrightness = shoreIntensity * foam * 0.4;

@@ -327,7 +327,7 @@ TEST_CASE("HZB prop bounds enclose off-centre geometry and preserve render axes"
     const mc2hzb::PropBounds box[] = {{{-.1f,-.1f,-.1f},{.1f,.1f,.1f},true}};
     const auto projected = mc2hzb::project_prop(instance,clip,.001f,box,101,79,8);
     CHECK(projected.keep == 0);
-    CHECK(projected.nearest == doctest::Approx(.701f));
+    CHECK(projected.nearest == doctest::Approx(.7007f));   // relative layer bias: z * (1 + .001)
     // Stuff translation (.2,.1,.3) becomes render (-.2,.3,.1).
     CHECK(projected.pixels[0] <= .35f*101);
     CHECK(projected.pixels[2] >= .45f*101);

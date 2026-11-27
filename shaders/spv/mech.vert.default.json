@@ -6,19 +6,19 @@
   "specializationParams": [],
   "artifact": "mech.vert.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "260652a87b720c822fb33c130198ba40e108877fa2422c530364141ef43dc049",
-  "spirv_sha256": "3ce772c86b11a9589817104aab494dbda067a54b6b6630e56d0d450f4581195d",
+  "source_sha256": "71ca4a823493b0317c7d550390f24a654c348e23f57b9ec4ddcd9e1de0d46f63",
+  "spirv_sha256": "9432866b0f1c186c2dfabe4227fd2453129eda14ae01e5cfc0ac5a9a0e9a7f6a",
   "bindings": {
     "ubos": [
       {
-        "type": "_107",
+        "type": "_109",
         "name": "EnvironmentUBO",
         "block_size": 496,
         "set": 0,
         "binding": 26
       },
       {
-        "type": "_147",
+        "type": "_150",
         "name": "MechFrameUBO",
         "block_size": 272,
         "set": 0,
@@ -27,7 +27,7 @@
     ],
     "ssbos": [
       {
-        "type": "_169",
+        "type": "_171",
         "name": "LightsData",
         "readonly": true,
         "block_size": 0,
@@ -35,7 +35,7 @@
         "binding": 4
       },
       {
-        "type": "_511",
+        "type": "_534",
         "name": "InstanceBuffer",
         "readonly": true,
         "block_size": 0,
@@ -43,7 +43,7 @@
         "binding": 1
       },
       {
-        "type": "_564",
+        "type": "_587",
         "name": "BoneBuffer",
         "readonly": true,
         "block_size": 0,
@@ -55,7 +55,7 @@
     "images": []
   },
   "types": {
-    "_107": {
+    "_109": {
       "name": "EnvironmentUBO",
       "members": [
         {
@@ -179,7 +179,7 @@
         }
       ]
     },
-    "_147": {
+    "_150": {
       "name": "MechFrameUBO",
       "members": [
         {
@@ -256,7 +256,7 @@
         }
       ]
     },
-    "_160": {
+    "_162": {
       "name": "ObjectLights",
       "members": [
         {
@@ -305,7 +305,7 @@
         }
       ]
     },
-    "_167": {
+    "_169": {
       "name": "ObjectLights",
       "members": [
         {
@@ -364,12 +364,12 @@
         }
       ]
     },
-    "_169": {
+    "_171": {
       "name": "LightsData",
       "members": [
         {
           "name": "light",
-          "type": "_167",
+          "type": "_169",
           "array": [
             0
           ],
@@ -381,7 +381,7 @@
         }
       ]
     },
-    "_506": {
+    "_529": {
       "name": "GpuMechInstance",
       "members": [
         {
@@ -426,7 +426,7 @@
         }
       ]
     },
-    "_509": {
+    "_532": {
       "name": "GpuMechInstance",
       "members": [
         {
@@ -481,12 +481,12 @@
         }
       ]
     },
-    "_511": {
+    "_534": {
       "name": "InstanceBuffer",
       "members": [
         {
           "name": "instances",
-          "type": "_509",
+          "type": "_532",
           "array": [
             0
           ],
@@ -498,7 +498,7 @@
         }
       ]
     },
-    "_559": {
+    "_582": {
       "name": "GpuMechBone",
       "members": [
         {
@@ -519,7 +519,7 @@
         }
       ]
     },
-    "_562": {
+    "_585": {
       "name": "GpuMechBone",
       "members": [
         {
@@ -544,12 +544,12 @@
         }
       ]
     },
-    "_564": {
+    "_587": {
       "name": "BoneBuffer",
       "members": [
         {
           "name": "bones",
-          "type": "_562",
+          "type": "_585",
           "array": [
             0
           ],
@@ -561,7 +561,7 @@
         }
       ]
     },
-    "_962": {
+    "_985": {
       "name": "gl_PerVertex",
       "members": [
         {
@@ -636,6 +636,14 @@
         "location": 13
       },
       {
+        "name": "vMechSunDirGL",
+        "location": 6
+      },
+      {
+        "name": "vMechSunFound",
+        "location": 7
+      },
+      {
         "name": "vUv",
         "location": 0
       },
@@ -650,10 +658,6 @@
       {
         "name": "vHighlight",
         "location": 3
-      },
-      {
-        "name": "vFog",
-        "location": 4
       },
       {
         "name": "vImportedMech",
@@ -674,14 +678,6 @@
       {
         "name": "vWorldPos",
         "location": 5
-      },
-      {
-        "name": "vMechSunDirGL",
-        "location": 6
-      },
-      {
-        "name": "vMechSunFound",
-        "location": 7
       }
     ]
   },

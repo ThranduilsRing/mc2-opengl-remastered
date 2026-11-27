@@ -1,3 +1,4 @@
+#include "../GameOS/gameos/hitch_stats.h"
 // GameObjectManager: mover lists, object types, part ids, collision lists, captures, effects spawn and appearance-only update.
 // Declared in the class headers; shared names in objmgr_internal.h.
 #include "objmgr_internal.h"
@@ -591,7 +592,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
         { ZoneScopedN("Presentation.Terrain.ActiveSweep"); updateActiveSweep(); }
 		// The dirty queue is already the bounded work list; the old optional
 		// prepass rebuilt a full-scene bounds/touch list even for settled statics.
-		ZoneNamedN(walkZone, "Presentation.Terrain.Walk", true);
+		ZoneNamedN(walkZone, "Presentation.Terrain.Walk", true); MC2_HITCH_CAUSE("Presentation.Terrain.Walk");
 		const mc2::battlebench::ScopeNs walkNs{mc2::battlebench::WalkPresNs};   // D2 census: the walk alone, not the sweeps above
 		uint64_t walkVisited = 0, walkRecalc = 0, walkGround = 0, walkTouch = 0, walkUpdate = 0;   // [PERF_COUNTERS v1] plain locals, folded once below
 		uint64_t dirtyCounts[mc2::TerrainRequeueReasonCount]{};
@@ -611,7 +612,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 			mc2::terrainNightFullInvalidate(terrainPresentationNightFactor, nightFactor, terrainPresentationIsNight, isNight);
 		if (fullInvalidate) std::fill(terrainAngularSpheres.begin(), terrainAngularSpheres.end(), mc2::AngularSphere{});
 		if (fullInvalidate || nightFactor != terrainPresentationNightFactor || worldToClip != terrainPresentationWorldToClip) {
-			ZoneScopedN("Presentation.Terrain.Invalidate");
+			ZoneScopedN("Presentation.Terrain.Invalidate"); MC2_HITCH_CAUSE("Presentation.Terrain.Invalidate");
 			auto bind = [this](long h) {
 				if (objList[h] && objList[h]->getAppearance()) objList[h]->getAppearance()->terrainPresentationHandle = h;
 			};
@@ -647,6 +648,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 			terrainPresentationIsNight = isNight;
 		}
 		// Trigger evidence (terrain-walk-hitch-1): which invalidation fed this walk, plotted per frame.
+		ZoneNamedN(drainZone, "Presentation.Terrain.DrainAndUpdate", true); MC2_HITCH_CAUSE("Presentation.Terrain.DrainAndUpdate");
 		const auto drained = dirty.drain();
 		TracyPlot("Terrain.Walk.Drained", static_cast<int64_t>(drained.size()));
 		TracyPlot("Terrain.Walk.MarkAllCum", static_cast<int64_t>(dirty.markAllCount()));

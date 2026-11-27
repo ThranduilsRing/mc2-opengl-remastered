@@ -426,11 +426,18 @@ if(MC2_VULKAN)
     # VK-FIELD-VFX-1: bake vfx_particle.{vert,frag} (procedural billboard VS reading the
     # GpuParticle SSBO + untextured colored soft-blob FS). SPIR-V loaded at runtime by
     # vulkan_vfx_island.cpp via load_spv(spv_dir()+"vfx_particle.*.spv").
-    set(MC2_VK_SHADER_BASENAMES edge_fog fog_oob hzb_reduce hzb_cull color_prop_cull shadow_debug_overlay water_geom shadow_prop shadow_prop_alpha shadow_mech shadow_terrain_static color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 mech_depth legacy_shape_tier1 terrain_overlay_tier1 terrain_decal_tier1 hdri_sky cloud_shadow shoreline screen_shadow_csm impact_decal postprocess postprocess_visual hud_color hud_tex vfx_particle)
+    # VALLEY-FOG (ground-fog-4): the valley fog banks' fragment stage
+    # is baked from shaders/vulkan/valley_fog.frag (the fullscreen triangle comes from edge_fog.vert.spv).
+    set(MC2_VK_SHADER_BASENAMES edge_fog fog_oob valley_fog hzb_reduce hzb_cull color_prop_cull shadow_debug_overlay water_geom shadow_prop shadow_prop_alpha shadow_mech shadow_terrain_static color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 mech_depth legacy_shape_tier1 terrain_overlay_tier1 terrain_decal_tier1 hdri_sky cloud_shadow shoreline screen_shadow_csm impact_decal postprocess postprocess_visual hud_color hud_tex vfx_particle)
     set(MC2_VK_SPV_OUTPUTS "")
     list(APPEND MC2_VK_SHADER_BASENAMES terrain_tier1_rt screen_shadow_rt)
     set(MC2_VK_SHADER_SRC_ALIAS_terrain_tier1_rt_frag terrain_tier1)
     set(MC2_VK_SHADER_DEFINES_terrain_tier1_rt_frag -DMC2_RT_SUN_SHADOWS=1)
+    foreach(receiver terrain_overlay_tier1 terrain_decal_tier1)
+        list(APPEND MC2_VK_SHADER_BASENAMES ${receiver}_rt)
+        set(MC2_VK_SHADER_SRC_ALIAS_${receiver}_rt_frag ${receiver})
+        set(MC2_VK_SHADER_DEFINES_${receiver}_rt_frag -DMC2_RT_SUN_SHADOWS=1 -DMC2_RT_SUN_SET=2)
+    endforeach()
     set(MC2_VK_SHADER_SRC_ALIAS_screen_shadow_rt_frag screen_shadow_csm)
     set(MC2_VK_SHADER_DEFINES_screen_shadow_rt_frag -DMC2_RT_SUN_SHADOWS=1)
     list(APPEND MC2_VK_SHADER_BASENAMES water_reflection_mask present_encode)

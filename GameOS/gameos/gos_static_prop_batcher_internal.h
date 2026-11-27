@@ -295,6 +295,7 @@ extern std::unordered_map<TG_TypeNodeId, uint32_t>  s_typeIndex;
 inline constexpr int kMaxPropLods = 5;   // LOD0-3 + far proxy for override trees; buildings use up to 3
 struct PropLodGroup { uint32_t target[kMaxPropLods]; float dist[kMaxPropLods]; int count; bool tree; };
 extern std::unordered_map<uint32_t, PropLodGroup> s_lodGroups;
+extern std::unordered_map<uint32_t, unsigned> s_lodTargetUses;
 // Every type of a registered tree LOD chain (base included) -> its tier and the chain's far tier type.
 struct PropLodMember { uint32_t farType; uint8_t tier; };
 extern std::unordered_map<uint32_t, PropLodMember> s_lodMembers;

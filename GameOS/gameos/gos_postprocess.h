@@ -177,6 +177,13 @@ public:
     float atmoSunScatter_ = 0.35f;     // sun in-scatter strength (High only)
     float atmoAnisotropy_ = 0.55f;     // Henyey-Greenstein g
 
+    // Valley fog (ground-fog-4): low-lying banks whose top is the regional low ground + thickness, one pass before the edge
+    // fog. Per-mission via visual_tuning valleyFog* keys (thickness 0 = none); the player's ValleyFog option picks Off / Low / High.
+    float valleyFogThickness_ = 0.0f;                    // wu above the fog floor
+    float valleyFogSigma_     = 0.05f;                   // extinction per wu inside a bank
+    float valleyFogCoverage_  = 0.45f;                   // coverage threshold (higher = fewer banks)
+    float valleyFogColor_[3]  = {0.86f, 0.90f, 0.98f};   // a sunlit top, scene units
+
     // Native scene image owners, rebuilt together on resize. Their registry
     // entries are the only images the islands and explicit readbacks consume.
     Mc2SharedSceneDepth* sharedSceneDepth_ = nullptr;

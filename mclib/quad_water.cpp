@@ -32,7 +32,7 @@ void TerrainQuad::drawWater (void)
 		// than a CPU re-derivation of the Stuff eye->projectForTerrainAdmission
 		// pipeline (which is NOT reachable from the gos_terrain_indirect.cpp
 		// transition dump site). The drawn CPU-water screen-z is exactly
-		// `vertices[k]->wz + WATER_DEPTH_FUDGE` (== WATER_DEPTH_FUDGE_RASTER
+		// `vertices[k]->wz * (1 + WATER_DEPTH_FUDGE)` (== WATER_DEPTH_FUDGE_RASTER
 		// 0.0025; see the gVertex[*].z assignments at ~:3345 and the
 		// terrain_depth_bias.h RASTER regime). We latch the value for the
 		// water vertex nearest the FIXED mid-map probe point P so the dump's
@@ -62,7 +62,7 @@ void TerrainQuad::drawWater (void)
 				if (!g_cpuWaterProbeAny || d2 < g_cpuWaterProbeBestD2)
 				{
 					g_cpuWaterProbeBestD2 = d2;
-					g_cpuWaterProbeZ = vertex->wz + WATER_DEPTH_FUDGE;
+					g_cpuWaterProbeZ = vertex->wz * (1.0f + WATER_DEPTH_FUDGE);
 					g_cpuWaterProbeAny = true;
 				}
 			}
@@ -97,7 +97,7 @@ void TerrainQuad::drawWater (void)
 			// Top Triangle
 			gVertex[0].x		= vertices[0]->wx;
 			gVertex[0].y		= vertices[0]->wy;
-			gVertex[0].z		= vertices[0]->wz + WATER_DEPTH_FUDGE;
+			gVertex[0].z		= vertices[0]->wz * (1.0f + WATER_DEPTH_FUDGE);
 			gVertex[0].rhw		= vertices[0]->ww;
 			gVertex[0].u		= minU + cloudOffsetX;
 			gVertex[0].v		= minV + cloudOffsetY;
@@ -107,7 +107,7 @@ void TerrainQuad::drawWater (void)
 
 			gVertex[1].x		= vertices[1]->wx;
 			gVertex[1].y		= vertices[1]->wy;
-			gVertex[1].z		= vertices[1]->wz + WATER_DEPTH_FUDGE;
+			gVertex[1].z		= vertices[1]->wz * (1.0f + WATER_DEPTH_FUDGE);
 			gVertex[1].rhw		= vertices[1]->ww;
 			gVertex[1].u		= maxU + cloudOffsetX;
 			gVertex[1].v		= minV + cloudOffsetY;
@@ -117,7 +117,7 @@ void TerrainQuad::drawWater (void)
 
 			gVertex[2].x		= vertices[2]->wx;
 			gVertex[2].y		= vertices[2]->wy;
-			gVertex[2].z		= vertices[2]->wz + WATER_DEPTH_FUDGE;
+			gVertex[2].z		= vertices[2]->wz * (1.0f + WATER_DEPTH_FUDGE);
 			gVertex[2].rhw		= vertices[2]->ww;
 			gVertex[2].u		= maxU + cloudOffsetX;
 			gVertex[2].v		= maxV + cloudOffsetY;
@@ -256,7 +256,7 @@ void TerrainQuad::drawWater (void)
 
 			gVertex[2].x		= vertices[3]->wx;
 			gVertex[2].y		= vertices[3]->wy;
-			gVertex[2].z		= vertices[3]->wz + WATER_DEPTH_FUDGE;
+			gVertex[2].z		= vertices[3]->wz * (1.0f + WATER_DEPTH_FUDGE);
 			gVertex[2].rhw		= vertices[3]->ww;
 			gVertex[2].u		= minU + cloudOffsetX;
 			gVertex[2].v		= maxV + cloudOffsetY;
@@ -385,7 +385,7 @@ void TerrainQuad::drawWater (void)
 			// Top Triangle.
 			gVertex[0].x		= vertices[0]->wx;
 			gVertex[0].y		= vertices[0]->wy;
-			gVertex[0].z		= vertices[0]->wz + WATER_DEPTH_FUDGE;
+			gVertex[0].z		= vertices[0]->wz * (1.0f + WATER_DEPTH_FUDGE);
 			gVertex[0].rhw		= vertices[0]->ww;
 			gVertex[0].u		= minU + cloudOffsetX;;
 			gVertex[0].v		= minV + cloudOffsetY;;
@@ -395,7 +395,7 @@ void TerrainQuad::drawWater (void)
 
 			gVertex[1].x		= vertices[1]->wx;
 			gVertex[1].y		= vertices[1]->wy;
-			gVertex[1].z		= vertices[1]->wz + WATER_DEPTH_FUDGE;
+			gVertex[1].z		= vertices[1]->wz * (1.0f + WATER_DEPTH_FUDGE);
 			gVertex[1].rhw		= vertices[1]->ww;
 			gVertex[1].u		= maxU + cloudOffsetX;;
 			gVertex[1].v		= minV + cloudOffsetY;;
@@ -405,7 +405,7 @@ void TerrainQuad::drawWater (void)
 
 			gVertex[2].x		= vertices[3]->wx;
 			gVertex[2].y		= vertices[3]->wy;
-			gVertex[2].z		= vertices[3]->wz + WATER_DEPTH_FUDGE;
+			gVertex[2].z		= vertices[3]->wz * (1.0f + WATER_DEPTH_FUDGE);
 			gVertex[2].rhw		= vertices[3]->ww;
 			gVertex[2].u		= minU + cloudOffsetX;;
 			gVertex[2].v		= maxV + cloudOffsetY;;
@@ -544,7 +544,7 @@ void TerrainQuad::drawWater (void)
 
 			gVertex[1].x		= vertices[2]->wx;
 			gVertex[1].y		= vertices[2]->wy;
-			gVertex[1].z		= vertices[2]->wz + WATER_DEPTH_FUDGE;
+			gVertex[1].z		= vertices[2]->wz * (1.0f + WATER_DEPTH_FUDGE);
 			gVertex[1].rhw		= vertices[2]->ww;
 			gVertex[1].u		= maxU + cloudOffsetX;;
 			gVertex[1].v		= maxV + cloudOffsetY;;

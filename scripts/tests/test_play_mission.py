@@ -1,6 +1,7 @@
 """The report keeps the latest state and requires an explicit engine verdict."""
 import importlib.util
 from pathlib import Path
+import pytest
 
 spec = importlib.util.spec_from_file_location("play_mission", Path(__file__).resolve().parents[2] / "tools/play_mission.py")
 driver = importlib.util.module_from_spec(spec)
@@ -79,3 +80,51 @@ def test_no_goto_or_mod_leaves_run_unchanged(monkeypatch):
     monkeypatch.setattr(driver.subprocess, "run", run)
     monkeypatch.delenv("MC2_PLAY_MISSION_GOTO", raising=False)
     assert driver.main(["--mission", "mc2_01"]) == 0
+
+
+@pytest.mark.parametrize("ai,reason,value", [
+    ("stock", "player-stock", 0), ("smarter", "player-smarter-magic-1.45", 1)])
+def test_ai_selects_options_and_requires_matching_policy(tmp_path, monkeypatch, ai, reason, value):
+    options = tmp_path / "options.cfg"
+    original = b"FITini\r\n[MechCommander2]\r\nl GameRulesAI = 0\r\n"
+    options.write_bytes(original)
+    monkeypatch.setenv("MC2_BRAIN_POLICY", "techbrain")
+    def run(cmd, **kwargs):
+        assert options.read_text().count("GameRulesAI") == 1
+        assert f"l GameRulesAI = {value}" in options.read_text()
+        assert "MC2_BRAIN_POLICY" not in kwargs["env"]
+        assert "--allow-nondefault-rules" in cmd
+        return type("Result", (), {"returncode": 0, "stdout":
+            f"[BRAIN_POLICY] mission=mc2_01 policy=legacy reason={reason}\n"
+            "[MISSION_OBJECTIVES v1] id=0 text_key=42 state=PASS primary=true hidden=false\n"
+            "[MISSION_VERDICT v1] verdict=PASS time=30\n"})()
+    monkeypatch.setattr(driver.subprocess, "run", run)
+    assert driver.main(["--mission", "mc2_01", "--install", str(tmp_path), "--ai", ai]) == 0
+    assert options.read_bytes() == original
+
+
+@pytest.mark.parametrize("policy,extra,objective", [
+    ("techbrain reason=player-commander", "", "PASS"),
+    ("legacy reason=player-smarter-magic-1.45 magic-profile-missing,stock-brain", "", "PASS"),
+    ("legacy reason=player-smarter-magic-1.45", "[ABL_FALLBACK]", "PASS"),
+    ("legacy reason=player-smarter-magic-1.45", "[ABL_FATAL]", "PASS"),
+    ("legacy reason=player-smarter-magic-1.45", "", "PENDING")])
+def test_ai_rejects_invalid_proof(tmp_path, monkeypatch, policy, extra, objective):
+    (tmp_path / "options.cfg").write_text("[MechCommander2]\n")
+    monkeypatch.setattr(driver.subprocess, "run", lambda *a, **k: type("Result", (), {
+        "returncode": 0, "stdout": f"[BRAIN_POLICY] mission=mc2_01 policy={policy}\n{extra}\n"
+        f"[MISSION_OBJECTIVES v1] id=0 text_key=42 state={objective} primary=true hidden=false\n"
+        "[MISSION_VERDICT v1] verdict=PASS time=30\n"})())
+    assert driver.main(["--mission", "mc2_01", "--install", str(tmp_path), "--ai", "smarter"]) == 1
+
+
+def test_ai_restores_options_when_harness_raises(tmp_path, monkeypatch):
+    options = tmp_path / "options.cfg"
+    original = b"[MechCommander2]\r\n"
+    options.write_bytes(original)
+    def fail(*args, **kwargs):
+        raise OSError("launch failed")
+    monkeypatch.setattr(driver.subprocess, "run", fail)
+    with pytest.raises(OSError):
+        driver.main(["--mission", "mc2_01", "--install", str(tmp_path), "--ai", "stock"])
+    assert options.read_bytes() == original

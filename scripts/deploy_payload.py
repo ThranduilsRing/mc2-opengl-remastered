@@ -35,7 +35,8 @@ Python (not .sh) to match sibling conventions: scripts/ is python-dominated
 (run_smoke.py, check-asset-manifests.py, ...) and we need sha256 + csv + robust
 Windows file-lock probing, all stdlib here.
 
-NO engine code. NO run_smoke verdict-path involvement. tier1 not required
+NO engine code. NO run_smoke verdict-path involvement by default.
+--warm-pipelines explicitly runs the separate rendering cache warmer after lease release. tier1 not required
 (scripts-only, zero runtime change).
 """
 
@@ -492,6 +493,7 @@ GAME_DATA_PAYLOAD = [
     "data/terrain_materials.json",
     "data/missions/mc2_13.biome.fit",
     "data/visual_tuning.json",
+    "data/missions/mc2_03.beauty/tree_decorations.json",
     # ImGui UI fonts (GuiRuntime resolves exe/data/fonts/ui first); without them every defs UI text falls back
     # to the ImGui bitmap default font (blocky, low-res at 4K).
     "data/fonts/ui/Roboto-Medium.ttf",
@@ -919,7 +921,7 @@ def magic_brain_145(source):
     """FixABL's 1.45 call migration, preserving bytes outside the changed calls.
 
     The original VB6 binary's UTF-16 replacement table (0x427c..0x47d0)
-    redirects coreAttack/coreAttackTactic and drops obsolete state/range args.
+    redirects coreAttack/coreAttackTactic. The profile keeps stock state/range args.
     Parse arguments rather than matching its hard-coded variable spellings.
     """
     text = source.decode('latin1')
@@ -949,11 +951,7 @@ def magic_brain_145(source):
         if name in ('coreattack', 'coreattacktactic', 'magicattack'):
             replacement = 'magicAttack(' + args[0] + ')'
         else:
-            arity = {'coreguard': 2, 'corepatrol': 2, 'corepatroldelayed': 3,
-                     'coreescort': 1, 'corewait': 2}[name]
-            if len(args) <= arity:
-                continue
-            replacement = match.group(1) + '(' + ', '.join(args[:arity]) + ')'
+            continue
         edits.append((match.start(), pos + 1, replacement))
     for start, end, replacement in reversed(edits):
         text = text[:start] + replacement + text[end:]
@@ -981,8 +979,7 @@ def magic_brain_payload(src_root, target):
             continue
         source = decompress_entry(off, comp, real, is_lz, data)
         fixed = magic_brain_145(source)
-        if fixed == source:
-            continue
+        # Refresh unchanged warriors too: an earlier profile may have trimmed their stock arguments.
         dest = generated / key
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(fixed)
@@ -3309,6 +3306,8 @@ def main():
                          "instead of enumerating a local build; sha256-verified, no build needed. Pair with --payload-head.")
     ap.add_argument("--payload-head", metavar="SHA", default=None,
                     help="with --from-payload: the candidate head the exe must fingerprint as (default: --source-root HEAD)")
+    ap.add_argument("--warm-pipelines", action="store_true",
+                    help="explicitly render missions after deploy to warm this build's Vulkan cache")
     ap.add_argument("--quiet", action="store_true",
                     help="print only verdicts, failures/warnings, artifact paths and the DEPLOY_FINGERPRINT lines; "
                          "the full output goes to a log (path on the last line)")
@@ -3458,6 +3457,12 @@ def main():
             sweep_asides(target)
             _ASIDE_TARGET[0] = None
             release_folder_lease(target)
+
+    if not args.shaders_only:
+        log(f'pipeline cache is now cold for the replaced exe; run: py -3 tools/pipeline_warm.py "{target}"')
+        if args.warm_pipelines:
+            subprocess.run([sys.executable, "-B", os.path.join(src_root, "tools", "pipeline_warm.py"), target],
+                           cwd=src_root, check=True, **console_child.child_kwargs(redirected=False))
 
 
 def rebuild_command():

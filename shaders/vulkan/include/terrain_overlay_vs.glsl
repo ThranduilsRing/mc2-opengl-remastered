@@ -43,10 +43,7 @@ void main() {
 
     vec4 clip4 = uT.worldToClipGL * vec4(a_worldPos, 1.0);
     if (pc._pad0 == 2) { gl_Position = clip4; return; } // Mines have true terrain depth.
-    if (pc.biasLegacy != 0)
-        clip4.z += OVERLAY_DEPTH_BIAS * clip4.w;
-    else
-        clip4.z += OVERLAY_DEPTH_BIAS_REL * clip4.z;
+    clip4.z += OVERLAY_DEPTH_BIAS_REL * clip4.z;
     gl_Position = clip4;
     if (!(clip4.w > 0.0 && clip4.z >= 0.0 && clip4.z <= clip4.w))
         gl_Position = vec4(0.0, 0.0, -2.0, 1.0);

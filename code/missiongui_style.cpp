@@ -403,7 +403,7 @@ void MissionInterfaceManager::updateOldStyle( bool shiftDn, bool altDn, bool ctr
 			const std::chrono::steady_clock::time_point _cpuT0 =
 				s_gpParityOn ? std::chrono::steady_clock::now()
 				             : std::chrono::steady_clock::time_point{};
-			eye->inverseProject(clickXY, wPos);
+			if (eye->inverseProject(clickXY,wPos)!=0) return;
 			// GPU-GROUND-PICK-PARITY-1: precise per-click move-order pick (R2 case).
 			// Depth-unproject reads the true rendered terrain surface -> the recon
 			// expects GPU >= CPU accuracy on slopes; sample distant clicks for the
@@ -771,7 +771,7 @@ void MissionInterfaceManager::updateAOEStyle(bool shiftDn, bool altDn, bool ctrl
 			const std::chrono::steady_clock::time_point _cpuT0 =
 				s_gpParityOn ? std::chrono::steady_clock::now()
 				             : std::chrono::steady_clock::time_point{};
-			eye->inverseProject(clickXY, wPos);
+			if (eye->inverseProject(clickXY,wPos)!=0) return;
 			// GPU-GROUND-PICK-PARITY-1: precise per-click move-order pick (R2 case),
 			// right-click variant. Parity-only; wPos is untouched.
 			if (s_gpParityOn) {

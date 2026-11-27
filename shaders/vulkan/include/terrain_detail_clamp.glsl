@@ -17,6 +17,6 @@ bool mv_needDetail(vec3 baseN, vec3 lightDir, vec4 materialW, float materialSnow
     float run = max(worldPos.z - uT.shorelineWaterElev, 0.0)
               * (nz / max(sqrt(max(1.0 - nz * nz, 1e-6)), 0.03));
     float reach = max(uT.shorelineWetRun, uT.shorelineFoamRun) + abs(uT.shorelineEdgeJitter);
-    bool nearShore = uT.shorelineOn != 0 && run > 0.0 && run < reach;
+    bool nearShore = TS_shorelineOn != 0 && run > 0.0 && run < reach;
     return nearShore || !(upperLight < normalLightFloor - 1e-4);
 }

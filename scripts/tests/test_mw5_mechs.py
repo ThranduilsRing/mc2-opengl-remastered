@@ -589,6 +589,18 @@ def test_distance_curve_preserves_variable_planted_travel(monkeypatch):
     assert np.all(np.diff(np.asarray(distance, dtype=np.float32)) > 0)
 
 
+def test_faced_stride_ignores_larger_lateral_limp_sway(monkeypatch):
+    from tools.mw5_mechs import parity as P
+    foot = [[10 * z, 0, z] for z in (0, -.25, -.5, -.75, -1, -.5, 0)]
+    monkeypatch.setattr(P, 'foot_tracks', lambda *a: ([foot, foot], 1))
+    asset = type('Asset', (), {'doc': {'nodes': [{'name': 'mw5_forward'}],
+        'animations': [{'name': 'atlas_moveCoreWalkLimpFwdRight'}]}})()
+    duration, *distance = map(float, P.distance_curves(asset)['atlas_moveCoreWalkLimpFwdRight'].split())
+    assert duration == 1
+    assert distance[4] == pytest.approx(1)
+    assert P.stride_speeds(asset)['atlas_moveCoreWalkLimpFwdRight'] == pytest.approx(1.5)
+
+
 def test_shutdown_fallback_holds_own_stand(fixture, tmp_path):
     from tools.mw5_mechs.build_pack import bind_stationary
     doc = B.build(fixture[0], tmp_path, tmp_path / 'stand.glb', 'a.png')

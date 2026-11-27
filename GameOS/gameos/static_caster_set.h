@@ -26,6 +26,7 @@ struct StaticCasterEntry {
     int32_t recipeIndex = -1;   // the registry recipe of the caster's shadow LOD
     CasterKind kind = CasterKind::TerrainObject;
     uint8_t damageState = 0;
+    int objectClass = -1;
 };
 
 class StaticCasterSet {
@@ -58,6 +59,7 @@ public:
 
     struct CasterEvent {
         std::vector<GpuStaticPropInstance> before, after;   // the caster's leaves before and after the change
+        bool moverDemotion = false;
     };
     std::vector<CasterEvent> takeEvents();
     bool hasEvents() const { return !events_.empty() || !removed_.empty(); }

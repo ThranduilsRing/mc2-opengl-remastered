@@ -510,6 +510,7 @@ void GameObjectManager::buildStaticShadowCasterSet() {
 			e.recipeIndex = recipe;
 			e.kind = kind;
 			e.damageState = obj->isDestroyed() ? 1 : 0;
+			e.objectClass = obj->getObjectClass();
 			set.add(e);
 		}
 	};

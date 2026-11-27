@@ -1,6 +1,7 @@
 {
   "_about": "Hand-maintained. check-background-launch.py RULE 14/15 fail on a launcher, injector or blanket kill that is not listed here, and on a listed entry that no longer does it. --write never edits this file.",
   "nofocus_callers": {
+    "scripts/tests/test_vk_device_fault.py": "Runs only a compiled synthetic device-fault fixture through nofocus.run; no engine or GPU is launched.",
     "scripts/run_mp_loopback_proof.py": "Explicitly authorized co-op proof: two nofocus off-screen peers at BelowNormal, one shared XTX lease for rendered peers, private user directories and only own-PID timeout cleanup.",
     "scripts/tests/test_nofocus_env.py": "Windows priority inheritance regression launches only a windowless Python child through nofocus.spawn; no game or host lease.",
     "scripts/tests/test_launcher_save_dir.py": "MC2_SAVE_DIR regression for nofocus.spawn: Popen, exe vetting, host lease and child registry are monkeypatched; no engine and no window is launched.",

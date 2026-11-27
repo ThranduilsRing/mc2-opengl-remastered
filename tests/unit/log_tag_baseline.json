@@ -4597,7 +4597,8 @@
     "gpu_span4_ms",
     "gpu_busy4_ms",
     "other_mc2",
-    "scopes"
+    "scopes",
+    "cause"
    ],
    "count": 1
   },
@@ -4625,6 +4626,16 @@
     "acquire_last_ms",
     "other_mc2",
     "class"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HITCH_CAUSE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "zone",
+    "ms"
    ],
    "count": 1
   },
@@ -7756,7 +7767,9 @@
     "p99_ms",
     "p1low_fps",
     "peak_ms",
-    "samples"
+    "samples",
+    "over10",
+    "over16"
    ],
    "count": 1
   },
@@ -9707,6 +9720,32 @@
    "count": 1
   },
   {
+   "tag": "SHADOW_BAKE_SPLIT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "clear",
+    "casters",
+    "pcss",
+    "march",
+    "resolve",
+    "batches"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADOW_BAKE_SPLIT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "clear",
+    "terrain",
+    "casters",
+    "partial"
+   ],
+   "count": 1
+  },
+  {
    "tag": "SHADOW_DEBUG",
    "ver": -1,
    "stream": "stderr",
@@ -10427,6 +10466,18 @@
     "source",
     "archives",
     "mod_files"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STATIC_CASTER_MOVE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "handle",
+    "kind",
+    "object_class",
+    "recipe"
    ],
    "count": 1
   },
@@ -12153,7 +12204,9 @@
     "scopes",
     "dropped",
     "overflow",
-    "pose"
+    "pose",
+    "max_frame_ms",
+    "max_scope"
    ],
    "count": 1
   },
@@ -13315,8 +13368,6 @@
     "dropped",
     "blas_bytes",
     "built_bytes",
-    "compacted",
-    "compacted_bytes",
     "tlas_bytes",
     "scratch_bytes",
     "instance_bytes",
@@ -14095,6 +14146,7 @@
   "ASSET_LOAD",
   "ASSET_PARITY",
   "ASSET_SCALE",
+  "BRAIN_POLICY",
   "BUILD_FINGERPRINT",
   "CAMERA_PARK",
   "COMMAND_REPLAY",
@@ -14128,6 +14180,7 @@
   "GAME_RULES",
   "GLP",
   "GPUPROPS",
+  "GPU_SPIKE_ADVISORY",
   "GRAVEYARD",
   "HEARTBEAT",
   "HOST_INFRA_ROWS",
@@ -14190,6 +14243,8 @@
   "VK_DEVICE",
   "VK_ENGINE_CONTEXT",
   "VK_GPU_PASSES",
+  "VK_LOAD_RESOURCE",
+  "VK_PIPECACHE",
   "VK_PROFILE",
   "VK_RESIDENCY",
   "VK_VALIDATION",
