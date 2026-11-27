@@ -145,8 +145,8 @@ struct OvlState {
     bool inited = false, disabled = false;
     int  waitStrikes = 0;
     // OWNED objects in creation order, released in reverse (pipelines before their layout, textures first).
-    mc2vk::OwnedShaderModule vert[2], frag[2];
-    mc2vk::OwnedPipeline pipe[2];
+    mc2vk::OwnedShaderModule vert[2], frag[2], sunFrag[2];
+    mc2vk::OwnedPipeline pipe[2], sunPipe[2];
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedDescriptorSetLayout texDsl;
     mc2vk::DescPoolChain texPool;   // grows by kOvlTexPerPool textures when a mission needs more; reset (capacity kept) at mission unload

@@ -1,3 +1,4 @@
+#include "../../mclib/terrain_depth_bias.h"
 // GpuStaticPropBatcher: the VK shadow-island geometry feed and the colour-prop island feeds (the GL prop shadow draws are gone).
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
 #include <atomic>
@@ -276,7 +277,7 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
     if (mvp) std::memcpy(out->worldToClipGL, mvp, sizeof(out->worldToClipGL));
     else     std::memset(out->worldToClipGL, 0, sizeof(out->worldToClipGL));
     // OBJECT_DEPTH_BIAS mirror (shaders/include/terrain_depth_bias.hglsl:62).
-    out->objectDepthBias = 0.0001f;
+    out->objectDepthBias = mc2depth::OBJECT_DEPTH_BIAS_REL;
 
     // VK-OFFLINE-PROOFS-1: golden feed dump. Fires once per process (see
     // vk_feed_dump.h). No-op unless MC2_VK_FEED_DUMP is set.

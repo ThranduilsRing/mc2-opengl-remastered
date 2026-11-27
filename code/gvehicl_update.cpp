@@ -856,9 +856,7 @@ void GroundVehicle::renderView (const mc2::render_view::RenderView& view)
 					endPos.z = TerrainRuntime::groundElevation(endPos);
 					
 					// [PROJECTZ:ScreenXYOracle id=gvehicl_path_step_start]
-					eye->projectForScreenXY(startPos,lineStart);
-					// [PROJECTZ:ScreenXYOracle id=gvehicl_path_step_end]
-					eye->projectForScreenXY(endPos,lineEnd);
+					if (!eye->projectSegmentForScreen(startPos,endPos,lineStart,lineEnd)) continue;
 
 					lineStart.z = lineEnd.z = HUD_DEPTH;
 

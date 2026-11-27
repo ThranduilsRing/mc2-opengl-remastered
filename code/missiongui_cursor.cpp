@@ -918,6 +918,7 @@ long MissionInterfaceManager::calcRotation()
 	// need to find second position
 	// [PROJECTZ:ScreenXYOracle id=gui_cam_rotation_goal]
 	eye->projectForScreenXY( camPos, screenPosGoal );
+	if (screenPosMover.w <= 1e-4f || screenPosGoal.w <= 1e-4f) return mState_NORMAL;
 	
 
 	//Do it the MC1 way!

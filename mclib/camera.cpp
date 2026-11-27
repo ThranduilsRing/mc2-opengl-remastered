@@ -615,10 +615,8 @@ long Camera::init (FitIniFilePtr cameraFile )
 	usePerspective = true;
 	applyPreset(mc2::options::current().cameraView);
 	camera_fov = DefaultFov;
-	cosHalfFOV = cos(camera_fov * 0.7071f * DEGREES_TO_RADS);				//Cosine of half the FOV for view cone.
 	
-	float anglePercent = (projectionAngle - MIN_PERSPECTIVE) / (MAX_PERSPECTIVE - MIN_PERSPECTIVE);
-	float testMax = Camera::AltitudeMaximumLo + ((Camera::AltitudeMaximumHi - Camera::AltitudeMaximumLo) * anglePercent);
+	float testMax = altitudeMaxForAngle(projectionAngle);
 
 	newScaleFactor = 1.0f - ((cameraAltitude - AltitudeMinimum) / testMax);
 	if (cameraFromSave)
@@ -732,7 +730,7 @@ void Camera::getClosestVertex (Stuff::Vector2DOf<long>& screenPos,
 // giving the six half-spaces:
 //   left=  x+w>=0   right= w-x>=0
 //   bottom=y+w>=0   top=   w-y>=0
-//   near=  z  >=0   far=   w-z>=0   (near is BARE z under ZERO_TO_ONE, not z+w)
+//   far=   z  >=0   near=  w-z>=0   (reverse-Z ZERO_TO_ONE)
 // Each plane [a b c d] tests RAW world AABBs as a*wx + b*wy + c*wz + d >= 0,
 // where a=M(0,*), b=M(1,*), c=M(2,*), d=M(3,*) combine column 3 (w) with the
 // per-plane axis column. Planes are unnormalized: quadAabbInFrustum tests sign
@@ -749,8 +747,8 @@ void Camera::extractFrustumPlanes (float planes[6][4]) const
 		{0, +1.0f, -1.0f},   // right  :  w - x
 		{1, +1.0f, +1.0f},   // bottom :  y + w
 		{1, +1.0f, -1.0f},   // top    :  w - y
-		{2,  0.0f, +1.0f},   // near   :  z       (ZERO_TO_ONE: z >= 0)
-		{2, +1.0f, -1.0f},   // far    :  w - z
+		{2,  0.0f, +1.0f},   // far    :  z       (reverse-Z ZERO_TO_ONE)
+		{2, +1.0f, -1.0f},   // near   :  w - z
 	};
 
 	for (int p = 0; p < 6; p++)
@@ -784,7 +782,7 @@ bool Camera::quadAabbInFrustum (const float planes[6][4],
 
 //---------------------------------------------------------------------------
 // [LOW-CAMERA-TERRAIN-CULL-1 / FIX-2] Near-plane-relaxed variant. Same as
-// quadAabbInFrustum but skips plane index 4 (near). Used by the terrain
+// quadAabbInFrustum but skips plane index 5 (near). Used by the terrain
 // LOD-chunk cull (gated by MC2_LOWCAM_TERRAIN_NEAR) so terrain within the
 // near-plane distance of a low-pitched eye is not spuriously culled. At a high
 // camera angle near terrain already passes the near plane, so dropping that
@@ -795,7 +793,7 @@ bool Camera::quadAabbInFrustumSkipNear (const float planes[6][4],
 {
 	const float fmn[3] = { mn.x, mn.y, mn.z };
 	const float fmx[3] = { mx.x, mx.y, mx.z };
-	return camera_frustum_math::aabbInFrustumSkipPlane(planes, fmn, fmx, 4);
+	return camera_frustum_math::aabbInFrustumSkipPlane(planes, fmn, fmx, 5);
 }
 
 //---------------------------------------------------------------------------
@@ -1284,8 +1282,7 @@ void Camera::setNearClipDistance(float nearClipDistance)
 
 float Camera::getMaximumCameraAltitude()
 {
-	float anglePercent = (projectionAngle - MIN_PERSPECTIVE) / (MAX_PERSPECTIVE - MIN_PERSPECTIVE);
-	float testMax = Camera::AltitudeMaximumLo + ((Camera::AltitudeMaximumHi - Camera::AltitudeMaximumLo) * anglePercent);
+	float testMax = altitudeMaxForAngle(projectionAngle);
 
  	return testMax;
 }

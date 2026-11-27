@@ -56,8 +56,8 @@ inline ProjectedProp project_prop(const GpuStaticPropInstance& inst, const float
         for (int a = 0; a < 4; ++a)
             for (int k = 0; k < 4; ++k) clip[a] += worldToClip[k*4+a] * world[k];
         for (float v : clip) if (!std::isfinite(v)) return out;
-        const float biasedZ = clip[2] + depthBias * clip[3];
-        const float padZ = swayPad[2] + std::abs(depthBias) * swayPad[3];
+        const float biasedZ = clip[2] * (1.0f + depthBias);
+        const float padZ = swayPad[2] * (1.0f + std::abs(depthBias));
         maxClipW = (std::max)(maxClipW, clip[3] + swayPad[3]);
         maxClipZ = (std::max)(maxClipZ, biasedZ + padZ);
         maxClipFar = (std::max)(maxClipFar, clip[3] - biasedZ + swayPad[3] + padZ);
@@ -68,7 +68,7 @@ inline ProjectedProp project_prop(const GpuStaticPropInstance& inst, const float
             maxSide[2] = (std::max)(maxSide[2], clip[3] + clip[1] + padY); maxSide[3] = (std::max)(maxSide[3], clip[3] - clip[1] + padY);
         }
         if (!(clip[3] > 1e-5f)) { projectable = false; continue; }
-        const float x = clip[0]/clip[3], y = clip[1]/clip[3], z = clip[2]/clip[3] + depthBias;
+        const float x = clip[0]/clip[3], y = clip[1]/clip[3], z = clip[2]/clip[3] * (1.0f + depthBias);
         if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z) || z < 0 || z >= 1) { projectable = false; continue; }
         if (clip[3] > swayPad[3] + 1e-5f) {
             const float marginX = (swayPad[0] + std::abs(x) * swayPad[3]) / (clip[3] - swayPad[3]) + 4.0f/w;

@@ -200,6 +200,7 @@ long GenericAppearance::render (long depthFixup)
 		{
 			// [PROJECTZ:ScreenXYOracle id=genactor_box_wire]
 			eye->projectForScreenXY(boxCoords[i],screenPos[i]);
+			if (screenPos[i].w <= 1e-4f) return NO_ERR;
 		}
 
 		{

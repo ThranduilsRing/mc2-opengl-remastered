@@ -531,7 +531,7 @@ void MechFlushFrame::snapshotFrame() {
     // gos_GetMechFixBMVPMat4() is the row-major kAxisSwap*worldToClip the island's vertex stage consumes.
     const float* mvp = gos_GetMechFixBMVPMat4();
     if (mvp) std::memcpy(s_vkMechWorldToClipGL, mvp, sizeof(s_vkMechWorldToClipGL));
-    s_vkMechObjectDepthBias = mc2depth::OBJECT_DEPTH_BIAS;   // mclib/terrain_depth_bias.h
+    s_vkMechObjectDepthBias = mc2depth::OBJECT_DEPTH_BIAS_REL;   // mclib/terrain_depth_bias.h
     s_vkMechSnapshotGeomGen = s_vkMechGeomGen;
     s_vkMechLeafCount = totalLeaves;
     s_vkMechReady.publish(totalInstances > 0 && !s_vkMechRunSnapshot.empty());

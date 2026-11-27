@@ -670,7 +670,6 @@ void apply_bookmark(const Bookmark& b0) {
     eye->setRotation(rot);
     if (b.preset >= 0) {
         eye->setFieldOfView(Camera::presetFov(b.preset));
-        eye->cosHalfFOV = cosf(Camera::presetFov(b.preset) * 0.7071f * DEGREES_TO_RADS);   // the view-cone cull follows the lens
     }
     // VK-FIRST-BOOKMARK-POSE-1: the hard setPosition/setRotation above does NOT
     // clear the intro-swoop goal or the object-tracking target, so the NEXT

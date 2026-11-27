@@ -80,7 +80,7 @@ float moverVisibilityEx(vec3 worldPos, vec3 N, float slopeBias) {
     // sequence or a camera-dependent pattern.
     // A continuous world-space phase avoids square filter-rotation cells on
     // magnified shadows. The penumbra always covers more than one depth texel.
-    float rotation = dot(worldPos.xy, vec2(0.067, 0.113)) / max(moverFrame.params.x, 1.0);
+    float rotation = dot(worldPos.xy, vec2(0.067, 0.113));
     float visibility = 0.0;
     // Rotate the same Vogel direction by its constant step; evaluate the
     // pixel's sine/cosine once instead of once for every filter sample.

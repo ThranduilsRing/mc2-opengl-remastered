@@ -270,8 +270,8 @@ TEST_CASE("hzb ref: depth bias moves nearest, margin is 2e-5") {
     const auto at = project(boxPixels(6.0f), flatMatrix(), 0.0f);
     CHECK_FALSE(hidden(at, py));                                 // 0.5 < 0.5 - 2e-5 is false
     const auto far = project(boxPixels(6.0f), flatMatrix(), -0.1f);
-    CHECK(far.nearest == doctest::Approx(0.4f));
-    CHECK(hidden(far, py));                                      // 0.4 < 0.5 - 2e-5
+    CHECK(far.nearest == doctest::Approx(0.45f));
+    CHECK(hidden(far, py));                                      // 0.45 < 0.5 - 2e-5
 }
 
 TEST_CASE("hzb ref: sub-pixel and zero-area boxes are rejected without a pyramid fetch") {
