@@ -3152,6 +3152,7 @@
   },
   "mclib/msl_transform.cpp": {},
   "mclib/mstates.h": {},
+  "mclib/mw5_contact_passes.h": {},
   "mclib/object_admission_predicate.cpp": {},
   "mclib/object_admission_predicate.h": {},
   "mclib/object_light_row.h": {
@@ -3487,7 +3488,7 @@
    "LG20": 1
   }
  },
- "head": "065e60935",
+ "head": "a4d2c30af",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
