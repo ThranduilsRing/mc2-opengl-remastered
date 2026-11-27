@@ -140,7 +140,8 @@ void Mission::updateMissionTest(bool report) {
             passed += state == OS_SUCCESSFUL;
             failed += state == OS_FAILED;
             pending += state == OS_UNDETERMINED;
-            if (!destination && state == OS_UNDETERMINED && objective->IsActive())
+            if (state == OS_UNDETERMINED && objective->IsActive()
+                && (!destination || (objective->Priority() == 1 && destination->Priority() != 1)))
                 destination = objective;
         }
         ++id;
@@ -198,7 +199,7 @@ void Mission::updateMissionTest(bool report) {
         test.finished = true;
         return;
     }
-    if (!destination || scenarioTime < test.nextOrder || !mc2::brainpolicy::techBrain()) return;
+    if (!destination || scenarioTime < test.nextOrder) return;
     test.nextOrder = scenarioTime + 2.0f;
     glm::vec3 location{destination->MarkerX(), destination->MarkerY(), 0.0f};
     GameObjectPtr objectiveTarget = nullptr;
@@ -207,13 +208,14 @@ void Mission::updateMissionTest(bool report) {
     for (auto* condition : destination->m_conditionList) {
         if (condition->Status() == OS_SUCCESSFUL) continue;
         auto point = condition->GetObjectivePosition();
-        // Unit IDs identify objective combat targets; navigation keeps the authored marker.
+        // Unmarked unit objectives have no navigation marker (often 0,0).
         if (auto* specific = dynamic_cast<CSpecificUnitObjectiveCondition*>(condition)) {
             if (!objectiveTarget && (condition->Species() == DESTROY_SPECIFIC_ENEMY_UNIT
                 || condition->Species() == CAPTURE_UNIT)) {
                 objectiveTarget = ObjectManager->getByWatchID(specific->UnitWatchID());
                 captureObjective = condition->Species() == CAPTURE_UNIT;
-                if (captureObjective && objectiveTarget) location = objectiveTarget->getPosition();
+                if (objectiveTarget && (captureObjective || !destination->DisplayMarker()))
+                    location = objectiveTarget->getPosition();
             }
             continue;
         }
