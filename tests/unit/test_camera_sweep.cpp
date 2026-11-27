@@ -6,6 +6,13 @@
 #include "../../RenderCore/VisibilityHistory.h"
 #include "math/mc2_xform.h"
 #include "../../3rdparty/glm/glm/gtc/matrix_transform.hpp"
+#include "mathfunc.h"
+#undef near
+#undef far
+#include "mc2fmt.h"
+#include <cassert>
+#include <limits>
+#include <tuple>
 
 namespace {
 float frameLength=1.0f/60;
@@ -23,6 +30,50 @@ struct Camera {
     void updateGoalRotation();
 };
 #include "camera_script_goal.inc"
+}
+
+namespace camera_rollback_test {
+constexpr float DEGREES_TO_RADS = 0.0174532925f, ELEVATION_BUFFER = 125;
+glm::vec3 actualPosition(7, 8, 9);
+struct TerrainRuntime {
+    static float cameraClearanceHeight(glm::vec3, const glm::vec3*, float) { return 0; }
+};
+struct Camera {
+    bool usePerspective = true;
+    void* land = nullptr;
+    float cameraAltitude = 1200, projectionAngle = 45, cameraRotation = 30;
+    float cameraShiftZ = 0, AltitudeMinimum = 60;
+    float NearPlaneDistance = -1, FarPlaneDistance = 10000;
+    glm::vec3 lookVector{1, 2, 3}, physicalPos{4, 5, 6}, cameraShift{}, position{};
+    mc2::math::YawPitchRange cameraDirection{0.2f, 0.3f, 400};
+    frameOfRef cameraFrame;
+    glm::mat4 cameraOrigin{2}, worldToCameraMatrix{3}, worldToClip{4}, clipToWorld{5};
+    glm::mat4 cameraToClip{6}, cameraToClipGL{7};
+    int cached = 0;
+    void setOrthogonal() { cameraToClip = glm::mat4(1); cameraToClipGL = glm::mat4(8); }
+    void cacheFrustumPlanes() { ++cached; }
+    void setCameraOrigin();
+    auto state() const {
+        return std::make_tuple(lookVector, physicalPos, actualPosition, cameraOrigin,
+            worldToCameraMatrix, worldToClip, clipToWorld, cameraDirection.yaw,
+            cameraDirection.pitch, cameraDirection.range, cameraFrame.i, cameraFrame.j,
+            cameraFrame.k, NearPlaneDistance, FarPlaneDistance, cameraToClip, cameraToClipGL);
+    }
+};
+#include "camera_origin.inc"
+}
+
+TEST_CASE("camera rollback: NaN and invalid depth restore the complete pre-call state") {
+    camera_rollback_test::Camera camera;
+    SUBCASE("NaN view") { camera.cameraAltitude = std::numeric_limits<float>::quiet_NaN(); }
+    SUBCASE("near equals far") { camera.NearPlaneDistance = -10000; }
+    SUBCASE("near exceeds far") { camera.NearPlaneDistance = -20000; }
+    const auto before = camera.state();
+    const auto glBefore = camera.worldToCameraMatrix * camera.cameraToClipGL;
+    camera.setCameraOrigin();
+    CHECK(camera.state() == before);
+    CHECK(camera.worldToCameraMatrix * camera.cameraToClipGL == glBefore);
+    CHECK(camera.cached == 0);
 }
 
 TEST_CASE("camera sweep: scripted altitude holds and goal includes altitude") {

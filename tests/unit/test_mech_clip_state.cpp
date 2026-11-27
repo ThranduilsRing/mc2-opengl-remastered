@@ -27,6 +27,68 @@
 #include <fstream>
 #include <regex>
 #include <sstream>
+#include <optional>
+#include "mech_anim_runtime.h"
+#include "mech_anim_preview.h"
+
+namespace imported_runtime_test {
+// Only engine registration/presentation storage is replaced; selection, clocks,
+// distance matching and skeleton evaluation below are the production source.
+struct ActorAnimState : mc2::sim::ImportedAnimState {};
+struct ImportedAnimEntry {
+    const aiScene* scene = nullptr;
+    std::shared_ptr<const mc2skel::SkelPlan> plan;
+    mc2skel::LocalRotation torsoTwist;
+    std::string pinnedClip, showcaseClip;
+    std::map<std::string, float> strideSpeed;
+    std::map<std::string, mc2clip::DistanceCurve> distanceCurves;
+    std::vector<aiMatrix4x4> invMWrest;
+    float scale = 1;
+};
+namespace mc2_diag { bool tagRequested(const char*) { return false; } }
+#include "imported_sample.inc"
+}
+
+TEST_CASE("clip state: synthetic imported runtime is deterministic and clocks follow entry scale") {
+    using namespace imported_runtime_test;
+    aiScene scene;
+    scene.mRootNode = new aiNode("synthetic_root");
+    scene.mNumAnimations = 1;
+    scene.mAnimations = new aiAnimation*[1]{new aiAnimation};
+    auto& clip = *scene.mAnimations[0];
+    clip.mName = "atlas_moveCoreWalkFwd"; clip.mDuration = 1; clip.mTicksPerSecond = 1;
+    clip.mNumChannels = 1; clip.mChannels = new aiNodeAnim*[1]{new aiNodeAnim};
+    auto& channel = *clip.mChannels[0]; channel.mNodeName = "synthetic_root";
+    channel.mNumPositionKeys = 3;
+    channel.mPositionKeys = new aiVectorKey[3]{{0, {0, 0, 0}}, {0.5, {0, 0, 1}}, {1, {0, 0, 0}}};
+    ImportedAnimEntry e;
+    e.scene = &scene; e.plan = mc2skel::BuildPlan(&scene, {"synthetic_root"});
+    REQUIRE(e.plan != nullptr);
+    e.distanceCurves[clip.mName.C_Str()] = {1, {0, 1, 2}};
+    const float dt = 1.0f / 30;
+    for (float scale : {0.5f, 1.0f, 2.0f}) {
+        e.scale = scale;
+        ActorAnimState a, b;
+        a.activeClip = b.activeClip = clip.mName.C_Str();
+        a.locomotion = b.locomotion = true;
+        a.havePrev = b.havePrev = true;
+        for (int tick = 1; tick <= 120; ++tick) {
+            mc2mechanim::MechMotion motion;
+            motion.gestureId = mc2clip::kGestureWalk; motion.px = tick * 0.125f;
+            std::vector<mc2skel::GpuBone> first, second;
+            REQUIRE(sampleActorClip(e, a, dt, motion, first, true));
+            REQUIRE(sampleActorClip(e, b, dt, motion, second, true));
+            mc2::save::Archive aw, bw; aw(a); bw(b);
+            REQUIRE(aw.good()); REQUIRE(bw.good());
+            CHECK(aw.bytes() == bw.bytes());
+            CHECK(a.fadeSourceLocals == b.fadeSourceLocals);
+            CHECK(a.clipTimeSec == doctest::Approx(std::fmod(tick * 0.125f / (2 * scale), 1.0f)).epsilon(0.0001));
+            REQUIRE(first.size() == second.size());
+            for (size_t bone = 0; bone < first.size(); ++bone)
+                for (int k = 0; k < 16; ++k) CHECK(first[bone].m[k] == second[bone].m[k]);
+        }
+    }
+}
 
 namespace imported_scale_test {
 struct ActorAnimState {
@@ -907,8 +969,11 @@ TEST_CASE("foot grounding: worldPoint uses the row-vector shapeToWorld layout") 
     CHECK(w.z == doctest::Approx(-4));
 }
 
-// Trigger: draw-side imported pose in mclib/mech3d_geometry.cpp. Terrain grounding must not depend on the camera.
-TEST_CASE("imported grounding: draw-side pose never depends on visibility or screen size") {
+// Pins only the inputs inside updateGeometry, not its scheduling. The caller in
+// mech3d_update.cpp runs it for turn<3, GPU/inView visibility, or GestureJump.
+// Off-screen non-jumping actors after turn 2 can therefore retain an older pose;
+// this test does not claim that their grounding is refreshed every tick.
+TEST_CASE("imported grounding: draw-side pose inputs do not read visibility or screen size") {
     std::ifstream in(std::string(MC2_REPO_ROOT) + "/mclib/mech3d_geometry.cpp", std::ios::binary);
     REQUIRE(in.good());
     const std::string text((std::istreambuf_iterator<char>(in)), {});

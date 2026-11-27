@@ -407,6 +407,13 @@ void Camera::setCameraOrigin (void)
 	const glm::mat4 lastWorldToCamera = worldToCameraMatrix;
 	const glm::mat4 lastWorldToClip = worldToClip;
 	const glm::mat4 lastClipToWorld = clipToWorld;
+	const glm::vec3 lastActualPosition = actualPosition;
+	const auto lastCameraDirection = cameraDirection;
+	frameOfRef lastCameraFrame(cameraFrame);
+	const float lastNearPlane = NearPlaneDistance, lastFarPlane = FarPlaneDistance;
+	const glm::mat4 lastCameraToClip = cameraToClip, lastCameraToClipGL = cameraToClipGL;
+	// Projection and view are one transaction; snapshot before rebuilding either.
+	setOrthogonal();
 	if (!usePerspective)
 	{
 		//--------------------
@@ -547,6 +554,13 @@ void Camera::setCameraOrigin (void)
 		worldToCameraMatrix = lastWorldToCamera;
 		worldToClip = lastWorldToClip;
 		clipToWorld = lastClipToWorld;
+		actualPosition = lastActualPosition;
+		cameraDirection = lastCameraDirection;
+		cameraFrame = lastCameraFrame;
+		NearPlaneDistance = lastNearPlane;
+		FarPlaneDistance = lastFarPlane;
+		cameraToClip = lastCameraToClip;
+		cameraToClipGL = lastCameraToClipGL;
 		return;
 	}
 	cacheFrustumPlanes(); // Lights and CPU visibility consume this before terrain::geometry.
@@ -629,7 +643,7 @@ void Camera::calculateProjectionConstants (void)
 	screenCenter.y = screenResolution.y / 2.0;
 	screenCenter.z = screenResolution.z = 0.0f;
 	
-	setOrthogonal(); // Establish the actual drawable/preview projection first.
+	setCameraOrigin(); // Establish the complete drawable/preview view and projection first.
 	if (usePerspective)
 	{
 		horizontalSphereClipConstant = 0.5f / std::fabs(cameraToClip[LEFT_AXIS][LEFT_AXIS]);
@@ -637,8 +651,6 @@ void Camera::calculateProjectionConstants (void)
 		cosHalfFOV = camera_frustum_math::coneCosine(camera_fov * DEGREES_TO_RADS,
 			verticalSphereClipConstant / horizontalSphereClipConstant);
 	}
-
-	setCameraOrigin();
 
 	// Invalidate pick screen-rect cache when camera inputs change visually.
 	// Coarse grid: position snapped to 0.25 WU, rotation to 0.05 deg, fov to 0.1 deg.
@@ -665,8 +677,6 @@ void Camera::calculateTopViewConstants (void)
 	
 	screenCenter.x = screenResolution.x / 2.0;
 	screenCenter.y = screenResolution.y / 2.0;
-	
-	setOrthogonal();		//Setup the camera Clip matrix.
 	
 	setCameraOrigin();
 }
