@@ -137,6 +137,24 @@ TEST_CASE_FIXTURE(PropLodLifecycle, "prop_lod_seams: registry erase and recycle 
     CHECK(s_lodState[propLodKey(c)] == 4);
 }
 
+TEST_CASE_FIXTURE(PropLodLifecycle, "prop_lod_seams: destroying a tree removes its decoration copies") {
+    TG_MultiShape shape;
+    const auto stock=prop(10), copy=prop(100);
+    const int32_t index=GpuStaticPropRegistry::registerRecipe(&shape,{stock,copy});
+    REQUIRE(index>=0);
+    REQUIRE(GpuStaticPropRegistry::s_recipeRanges[index].count==2);
+    s_lodState[propLodKey(stock)]=1;
+    s_lodState[propLodKey(copy)]=2;
+    const auto begin=GpuStaticPropRegistry::s_recipeRanges[index].begin;
+    GpuStaticPropRegistry::invalidate(index);
+    CHECK(GpuStaticPropRegistry::s_recipeRanges[index].count==0);
+    CHECK(s_lodState.find(propLodKey(stock))==nullptr);
+    CHECK(s_lodState.find(propLodKey(copy))==nullptr);
+    const GpuStaticPropInstance empty{};
+    CHECK(std::memcmp(&GpuStaticPropRegistry::s_recipes[begin],&empty,sizeof(empty))==0);
+    CHECK(std::memcmp(&GpuStaticPropRegistry::s_recipes[begin+1],&empty,sizeof(empty))==0);
+}
+
 TEST_CASE_FIXTURE(PropLodLifecycle, "prop_lod_seams: persistent rebuild handles same-count reorder and replacement") {
     const auto a = prop(10), b = prop(20), c = prop(30);
     append({a, b});
