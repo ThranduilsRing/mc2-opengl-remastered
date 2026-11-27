@@ -502,6 +502,8 @@ def _refresh_game_affinity() -> None:
                     try:
                         _set_affinity(handle, pid, mask)
                     except (OSError, RuntimeError) as err:
+                        if not child_registry.pid_alive(pid):
+                            continue
                         if _ours(rec):
                             raise
                         _log_default(f"[host-affinity] skipped pid {pid}: cannot pin ({err})")

@@ -131,6 +131,7 @@ long fileExists (mc2::czstring fName, long destination_mask)
 
 	// The same resolution as File::open (mclib/vfs.h): 1 = a mod or loose file, 2 = an FST member.
 	const mc2::vfs::OpenedFile opened = mc2::vfs::openRead(normName, nullptr, true);
+    if (opened.layer == "match-cache") return opened.pakBytes ? (2 & destination_mask) : 0;
 	if (opened.fd != -1) {
 		_close(opened.fd);
 		return 1 & destination_mask;
