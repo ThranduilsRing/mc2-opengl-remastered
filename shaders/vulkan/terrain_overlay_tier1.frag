@@ -22,6 +22,9 @@
 #include "../include/edge_haze.hglsl"
 #include "include/terrain_frame_vk.glsl"
 #ifdef MC2_RT_SUN_SHADOWS
+#ifndef MC2_RT_SUN_SET
+#define MC2_RT_SUN_SET 2   // set 1 binding 0 is this pass's tex1
+#endif
 #include "include/rt_sun_shadow.glsl"
 #endif
 #include "include/concrete_detail_vk.glsl"
