@@ -384,6 +384,22 @@ TEST_CASE("net simulation transfer rejects corrupt chunks and malformed packets"
     CHECK_THROWS(net::SimTransfer(true, {{"data/objects/../escape.csv", {}}}));
 }
 
+TEST_CASE("net simulation finish preserves the content digest and rejects tampering") {
+    const net::SimFiles files{{"data/objects/test.fit", {1, 2, 3}}};
+    net::SimTransfer host(true, files), client(false, files);
+    auto finish = host.receive(client.receive(host.begin()));
+    save::Archive archive(finish);
+    std::uint32_t kind = 0;
+    save::Digest digest{};
+    archive(kind, digest);
+    REQUIRE(archive.finish());
+    CHECK(kind == 0x53494d05);
+    CHECK(digest == net::simDataHash(files));
+    finish.back() ^= 1;
+    CHECK(client.receive(finish).empty());
+    CHECK_FALSE(client.error.empty());
+}
+
 TEST_CASE("net simulation identical manifests exchange have need in bounded batches") {
     net::SimFiles files;
     for (unsigned i = 0; i < 300; ++i) files.emplace("data/objects/" + std::to_string(i) + ".fit", save::Bytes{1});

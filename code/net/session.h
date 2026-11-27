@@ -26,6 +26,8 @@ private:
     bool host_;
     enum class Phase { Entry, Request, Chunk, Ack, Finish } phase_ = Phase::Entry;
     SimFiles accepted_;
+    std::map<std::string, save::Digest> installedDigests_;
+    save::Archive manifest_;
     struct Entry { std::string name; std::uint32_t size = 0; save::Digest digest{}; };
     std::vector<Entry> batch_;
     std::deque<Entry> needed_;

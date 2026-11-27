@@ -125,6 +125,7 @@ SimTransfer::SimTransfer(bool host, SimFiles source) : files(std::move(source)),
         total_ += bytes.size();
         if (!simDataPath(name) || name.size() > 512 || bytes.size() > save::maxFileBytes || total_ > simTotalBytes)
             throw std::runtime_error("invalid or oversized simulation data");
+        installedDigests_.emplace(name, save::sha256(bytes));
     }
     if (files.size() > 8192) throw std::runtime_error("simulation manifest exceeds file limit");
     total_ = 0;
@@ -148,14 +149,17 @@ save::Bytes SimTransfer::next() {
         phase_ = Phase::Finish;
         save::Archive a;
         auto kind = simFinish;
-        auto digest = simDataHash(files);
+        if (!manifest_.good()) throw std::runtime_error("simulation manifest exceeds limit");
+        auto digest = save::sha256(manifest_.bytes());
         a(kind, digest);
         return a.bytes();
     }
     batch_.clear();
     for (; it != files.end() && batch_.size() < 128; ++it) {
         const auto& [name, bytes] = *it;
-        batch_.push_back({name, static_cast<std::uint32_t>(bytes.size()), save::sha256(bytes)});
+        batch_.push_back({name, static_cast<std::uint32_t>(bytes.size()), installedDigests_.at(name)});
+        save::Bytes text(name.begin(), name.end());
+        manifest_(text, batch_.back().digest);
         batchEnd_ = name;
     }
     save::Archive a;
@@ -209,11 +213,14 @@ save::Bytes SimTransfer::receive(std::span<const std::uint8_t> packet) {
             if (!simDataPath(entry.name) || (!batchEnd_.empty() && entry.name <= batchEnd_) ||
                 entry.size > save::maxFileBytes || total_ + entry.size > simTotalBytes) return bad();
             batchEnd_ = entry.name; total_ += entry.size;
+            save::Bytes text(entry.name.begin(), entry.name.end());
+            auto digest = entry.digest;
+            manifest_(text, digest);
             const auto local = files.find(entry.name);
             bool missing = true;
             if (local != files.end()) {
                 auto& [name, bytes] = *local;
-                missing = bytes.size() != entry.size || save::sha256(bytes) != entry.digest;
+                missing = bytes.size() != entry.size || installedDigests_.at(name) != entry.digest;
                 if (!missing) accepted_.emplace(name, std::move(bytes));
             }
             needed.push_back(missing ? 1 : 0);
@@ -242,7 +249,7 @@ save::Bytes SimTransfer::receive(std::span<const std::uint8_t> packet) {
     if (phase_ == Phase::Entry && kind == simFinish) {
         save::Digest digest{};
         a(digest);
-        if (!a.finish() || digest != simDataHash(accepted_)) return bad();
+        if (!a.finish() || !manifest_.good() || digest != save::sha256(manifest_.bytes())) return bad();
         files = std::move(accepted_); ready = true;
         return simControl(simAck);
     }

@@ -455,6 +455,7 @@ void beginMission(std::string_view mission, std::uint32_t seed) {
         try { session->open(hosting, endpoint, identity, std::move(files)); }
         catch (const std::exception& error) { fail(error.what()); }
         session->missionLoading(true);
+        trace << "LISTENING\n" << std::flush;
 #ifndef MC2_NET_RUNTIME_TESTS
         while (!session->dataReady()) {
             graphics::pump_loading_events();

@@ -327,9 +327,9 @@ def run_pair(args, out, kill_peer=None):
             upstream, client = (args.address, args.port), None
             for slot, directory in enumerate(peers):
                 if slot and not args.lobby:
-                    # Identity is flushed after the host's cold simulation-data read.
+                    # Wait until cold data reads and hashing finish and ENet is open.
                     identity_trace = peers[0] / "session.trace"
-                    while not (identity_trace.exists() and identity_trace.stat().st_size):
+                    while not (identity_trace.exists() and "LISTENING\n" in identity_trace.read_text(encoding="utf-8")):
                         if processes[0].poll() is not None or time.monotonic() - started > args.timeout:
                             raise ValueError("host failed or timed out preparing simulation data")
                         time.sleep(0.05)
