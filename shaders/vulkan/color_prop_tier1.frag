@@ -88,6 +88,7 @@ layout(location = 1) in vec3 vFrontNormalStuff;
 layout(location = 18) in vec3 vBackNormalStuff;
 layout(location = 19) in vec3 vBackArgb;
 flat layout(location = 20) in float vLodBlend;
+flat layout(location = 21) in vec3 vLodOrigin;
 #define vNormalStuff ((kTwoSided == 0 || gl_FrontFacing) ? vFrontNormalStuff : vBackNormalStuff)
 #define vArgb ((kTwoSided == 0 || gl_FrontFacing) ? vFrontArgb : vBackArgb)
 flat layout(location = 2) in int  vLayer;
@@ -189,7 +190,13 @@ float treeVisibility(vec3 N) {
 }
 void main() {
     if (abs(vLodBlend) >= 2.0) {
-        vec2 key = floor(vWorldPos.xy * 4.0);
+        // Pixel-sized cells anchored to the instance's projected origin. A pan
+        // translates both ends equally; both LODs share the origin and seed.
+        vec4 p = uFrame.worldToClipGL * vec4(vWorldPos, 1.0);
+        vec4 anchor = uFrame.worldToClipGL * vec4(vLodOrigin, 1.0);
+        vec2 ndc = p.xy / p.w;
+        vec2 key = floor((ndc - anchor.xy / anchor.w) / max(fwidth(ndc), vec2(1e-7)));
+        key += vec2(vWindow.y & 65535u, vWindow.y >> 16);
         float rank = fract(52.9829189 * fract(dot(key, vec2(0.06711056, 0.00583715))));
         float blend = abs(vLodBlend) - 2.0;
         if (vLodBlend > 0.0 ? rank >= blend : rank < blend) discard;

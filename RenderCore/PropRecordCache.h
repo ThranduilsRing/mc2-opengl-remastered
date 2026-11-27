@@ -25,7 +25,8 @@ struct PropLodTierCache {
         for (size_t i = 0; i < store.size(); ++i) {
             const uint8_t tier = tierOf(i);
             emitted[i] = tier;
-            tiers[tier].push_back(retype(store[i], tier));
+            // Out-of-range snapshots are emitted directly (LOD blend bands).
+            if (tier < Tiers) tiers[tier].push_back(retype(store[i], tier));
         }
         return true;
     }

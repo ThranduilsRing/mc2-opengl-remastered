@@ -1,7 +1,7 @@
 // BldgAppearance / TreeAppearance: TreeAppearance static registry: touch*, registerStatic, prewarm.
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include <atomic>
-#include <fstream>
+#include "file.h"
 #include <nlohmann/json.hpp>
 #include <string>
 extern uint32_t mc2LightSlotBakedHighWater();
@@ -10,6 +10,30 @@ extern uint32_t mc2LightSlotBakedHighWater();
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
 #include "../GameOS/gameos/static_caster_set.h"   // shadow-bake caster events
+
+// Reuse the terrain overlay/cement and movement occupancy masks over the root
+// footprint, including its neighbour cells, rather than only testing elevation.
+static bool treeDecorationAllowed(const glm::vec3& p, float radius)
+{
+	if (!GameMap || !Terrain::mapData) return false;
+	int r0,c0,r1,c1;
+	land->worldToCell(p-glm::vec3(radius,radius,0),r0,c0);
+	land->worldToCell(p+glm::vec3(radius,radius,0),r1,c1);
+	for (int r=(std::min)(r0,r1)-1;r<=(std::max)(r0,r1)+1;++r)
+		for (int c=(std::min)(c0,c1)-1;c<=(std::max)(c0,c1)+1;++c) {
+			if (!GameMap->inBounds(r,c)) return false;
+			auto& cell=GameMap->cellAt(r,c);
+			if (!cell.getPassable() || cell.getRoad() || cell.getGate() || cell.getWall() || cell.getOffMap()) return false;
+			glm::vec3 center; land->cellToWorld(r,c,center);
+			int tr,tc; land->worldToTile(center,tr,tc);
+			if (tr<0 || tc<0 || tr>=Terrain::realVerticesMapSide || tc>=Terrain::realVerticesMapSide) return false;
+			Overlays overlay; DWORD offset; land->getOverlay(tr,tc,overlay,offset);
+			if (overlay!=INVALID_OVERLAY) return false;
+			const auto* face=Terrain::mapData->getTerrainFaceCacheEntry(tr,tc);
+			if (!face || !face->isValid() || face->isCement()) return false;
+		}
+	return true;
+}
 
 void TreeAppearance::touch()
 {
@@ -347,9 +371,12 @@ void TreeAppearance::registerStatic() {
 			if (decorationMission != missionName) {
 				decorationMission = missionName;
 				decorationOffset = 0.0f;
-				std::ifstream input("data/missions/" + missionName + ".beauty/tree_decorations.json");
-				if (input) {
-					const auto doc = nlohmann::json::parse(input, nullptr, false);
+				File input;
+				const std::string path="data/missions/" + missionName + ".beauty/tree_decorations.json";
+				if (input.open(path.c_str())==NO_ERR) {
+					std::vector<uint8_t> bytes(input.getLength());
+					if (input.read(bytes.data(),static_cast<long>(bytes.size()))!=static_cast<long>(bytes.size())) bytes.clear();
+					const auto doc = nlohmann::json::parse(bytes.begin(),bytes.end(),nullptr,false);
 					if (doc.is_object() && doc.contains("offsetWu") && doc["offsetWu"].is_number())
 						decorationOffset = std::clamp(doc["offsetWu"].get<float>(), 0.0f, 128.0f);
 				}
@@ -357,7 +384,8 @@ void TreeAppearance::registerStatic() {
 			if (decorationOffset > 0.0f && land && !damaged) {
 				const glm::vec3 extra = position + glm::vec3(decorationOffset, decorationOffset * 0.67f, 0.0f);
 				const float z = TerrainRuntime::sampleVisibleGroundHeight(extra);
-				if (z > Terrain::waterElevation && std::abs(z - xlatPosition.y) < 64.0f) {
+				if (z > Terrain::waterElevation && std::abs(z - xlatPosition.y) < 64.0f &&
+				    treeDecorationAllowed(extra,treeRootRadius(appearType->treeRenderShape[0].get()))) {
 					const size_t stockCount = batch.size();
 					batch.reserve(stockCount * 2);
 					for (size_t i = 0; i < stockCount; ++i) {

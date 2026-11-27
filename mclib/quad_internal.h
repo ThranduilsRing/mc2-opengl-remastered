@@ -255,12 +255,11 @@ inline BYTE terrainTypeToMaterial(DWORD terrainType)
 // mclib/terrain_depth_bias.h (+ its lockstep GLSL sibling). These legacy
 // CPU raster consumers are the RASTER water regime: WATER_DEPTH_FUDGE
 // resolves (via the header's back-compat alias) to WATER_DEPTH_FUDGE_RASTER
-// = terrain + 0.0005 = 0.0025. Water has TWO LEGITIMATE REGIMES (RASTER
-// here / CPU raster + mask-water; FAST = the GPU water VS at 0.0025) -- they
+// = 0.00025. Water has TWO LEGITIMATE REGIMES (RASTER
+// here / CPU raster + mask-water; FAST_REL = the GPU water VS at 0.000625) -- they
 // are deliberately NOT unified to one value; a single constant regressed
 // the map edges (TES tiles through water). Do NOT "collapse the deltas":
-// see the two-regime rationale + git 89d7c4f-vs-6ff6c5c reconciliation in
-// terrain_depth_bias.h. Consumers below use TERRAIN_DEPTH_FUDGE /
+// see shaders/include/terrain_depth_bias.hglsl. Consumers below use TERRAIN_DEPTH_FUDGE /
 // WATER_DEPTH_FUDGE (== RASTER) unqualified.
 using mc2depth::TERRAIN_DEPTH_FUDGE;
 using mc2depth::WATER_DEPTH_FUDGE;

@@ -1,6 +1,10 @@
 {
   "_doc": "QUIET-DEFAULT-BUILD-1 baseline for scripts/check-default-build-quiet.py. This is ATTRIBUTED DEBT, not an approved list -- but unlike the 83-tag seed it replaces, every entry now carries a `keep` reason naming the harness code that parses it. History: VERIFY-INTEGRITY-3 measured 83 tags printing in a default build (nine repeating every 600 frames forever, four announcing switched-OFF features). QUIET-DEFAULT-BUILD-1 gated 70 of them behind MC2_DIAG_VERBOSE, taking a measured default-env mc2_10 run from 79 distinct tags / 439 diagnostic lines to 9 tags / 44 lines. The 9 that remain are load-bearing for verification itself: silencing them would blind the smoke harness, which is a worse failure than being noisy. Changing that is a harness-contract change and belongs to its own slice. The ratchet only ever tightens: gating a tag and removing it here is always correct; adding one requires a keep reason.",
   "tags": {
+    "CAMERA": {
+      "status": "keep",
+      "reason": "Error-only, rate-limited: reports a failed camera invariant while retaining the last valid view; silent on healthy frames."
+    },
     "ABL_FATAL": {"status": "keep", "reason": "Error-only, once per distinct fatal message: owner-required ABL source context before callback suppression; silent on healthy missions."},
     "ABL_FALLBACK": {"status": "keep", "reason": "Error-only, once per failed script instance: owner-required quarantine receipt proves a returning ABL fatal cannot silently spin an activation; silent on healthy missions."},
     "CAMERA": {"status": "keep", "reason": "Error-only and rate-limited (first, then every 600th failure): a camera invariant failed and the last valid view is kept; never prints on a healthy run."},

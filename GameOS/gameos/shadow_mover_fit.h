@@ -119,14 +119,12 @@ inline MoverSphere moverGroundFootprint(const float rows[16], float ground, floa
 
 inline float moverRadiusBand(float radius, float& band) {
     radius=(std::max)(radius,4.0f);
-    if (band == 0) band=std::exp2(std::ceil(std::log2(radius)));
-    while (radius > band) band*=2.0f;
-    while (band > 4.0f && radius < band*0.5f*0.85f) band*=0.5f;
+    band=radius;
     return band;
 }
 
-// XY uses a banded ground footprint; depth bounds must cover the entire map,
-// independently of which casters are visible.
+// XY follows the ground footprint continuously; depth covers the admitted
+// casters and their ground reach, preserving D16 and coverage-grid precision.
 inline Window fitMoverWindow(std::span<const MoverSphere> spheres, const LightBasis& basis,
                              float ground, int mapSide, MoverSphere region) {
     Window w{};
