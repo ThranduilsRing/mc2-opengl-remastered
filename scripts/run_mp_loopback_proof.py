@@ -326,6 +326,13 @@ def run_pair(args, out, kill_peer=None):
             relay.bind((args.address, args.port + 1))
             upstream, client = (args.address, args.port), None
             for slot, directory in enumerate(peers):
+                if slot and not args.lobby:
+                    # Identity is flushed after the host's cold simulation-data read.
+                    identity_trace = peers[0] / "session.trace"
+                    while not (identity_trace.exists() and identity_trace.stat().st_size):
+                        if processes[0].poll() is not None or time.monotonic() - started > args.timeout:
+                            raise ValueError("host failed or timed out preparing simulation data")
+                        time.sleep(0.05)
                 rendered = args.render == "both" or args.render == ("host" if slot == 0 else "client")
                 processes.append(peer_start(str(installs[slot]), str(directory), slot, args.port + (0 if args.lobby else slot),
                     args.ticks, args.timeout, rendered, logs, args.address, args.combat, args.wall_clock, args.lobby))

@@ -74,7 +74,8 @@ void clearMatchData();
     std::fprintf(stderr, "Multiplayer stopped: %.*s\n", static_cast<int>(reason.size()), reason.data());
     if (trace) { trace << "STOP " << reason << '\n' << std::flush; }
     std::fflush(nullptr);
-    clearMatchData();
+    fromLobby = false;
+    endMission();
     restoreUserDirectory();
     status = 3;
     throw SessionStopped{};
@@ -752,6 +753,7 @@ void testUserDirectoryLifecycle() {
         REQUIRE(takeLobbyStart() == "mc2_01");
         std::filesystem::create_directory(userDirectory / "session.trace");
         CHECK_THROWS_AS(beginMission("mc2_01", 12345), SessionStopped);
+        CHECK(missionOrigin() == MissionOrigin::None);
         restored();
     }
     SUBCASE("ordinary single player and explicit override") {
