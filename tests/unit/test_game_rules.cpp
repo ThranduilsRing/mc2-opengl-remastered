@@ -550,6 +550,15 @@ TEST_CASE("game rules: new-campaign defaults, legacy add-on migration and the ad
     CHECK(readFit(in, [] { return std::string("magic-ballistic-weapons"); }).mods == "-");
     in.close();
     std::remove(chosen.c_str());
+    {   // A pre-11-23 campaign save: [General] records ModDeps "-" (none) but there is no [GameRules] Mods key -> the legacy selection.
+        const std::string legacySave = "game_rules_moddeps_dash.fit";
+        std::ofstream(legacySave) << "[General]\nst ActiveMod = \"-\"\nst ModDeps = \"-\"\n";
+        FitIniFile legacyIn;
+        REQUIRE(legacyIn.open(legacySave.c_str()) == NO_ERR);
+        CHECK(readFit(legacyIn, [] { return std::string("magic-ballistic-weapons"); }).mods == "magic-ballistic-weapons");
+        legacyIn.close();
+        std::remove(legacySave.c_str());
+    }
     // Nothing to restore (a stock or harness install) leaves the save as it was.
     GameRules bare;
     migrateLegacyMods(bare, "");
